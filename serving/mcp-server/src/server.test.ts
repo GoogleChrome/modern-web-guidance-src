@@ -63,6 +63,15 @@ describe("Server Resource Registration", () => {
       }),
       expect.any(Function)
     );
+
+    // Verify search_use_cases is registered
+    expect(server.registerTool).toHaveBeenCalledWith(
+      "search_use_cases",
+      expect.objectContaining({
+        description: "Search for modern web use cases using semantic search",
+      }),
+      expect.any(Function)
+    );
   });
 
   it("should register setup_agents_guide prompt", async () => {

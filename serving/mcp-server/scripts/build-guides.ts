@@ -2,6 +2,8 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { fileURLToPath } from "url";
+import { Embedder } from "../src/lib/embedder.js";
+import { Store, type UseCase as StoreUseCase } from "../src/lib/store.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,9 +25,17 @@ if (!fs.existsSync(BUILD_GUIDES_DIR)) {
   fs.mkdirSync(BUILD_GUIDES_DIR, { recursive: true });
 }
 
-function processGuides() {
+async function processGuides() {
   const useCases: UseCase[] = [];
+  const storeUseCases: StoreUseCase[] = [];
   const categories = fs.readdirSync(GUIDES_DIR);
+
+  console.log("Initializing Embedder...");
+  const embedder = Embedder.getInstance();
+  await embedder.init();
+
+  console.log("Initializing Store...");
+  const store = new Store();
 
   for (const category of categories) {
     const categoryDir = path.join(GUIDES_DIR, category);
@@ -58,6 +68,16 @@ function processGuides() {
         category,
       });
 
+      console.log(`Embedding ${id}...`);
+      const vector = await embedder.embed(data.description);
+
+      storeUseCases.push({
+        id,
+        description: data.description,
+        category,
+        vector
+      });
+
       // Write clean markdown to build dir
       const buildFilePath = path.join(buildCategoryDir, file);
       fs.writeFileSync(buildFilePath, markdownBody.trimStart());
@@ -77,6 +97,10 @@ export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
 
   fs.writeFileSync(OUTPUT_FILE, tsContent);
   console.log(`Generated ${useCases.length} use cases to ${OUTPUT_FILE}`);
+
+  console.log("Upserting to LanceDB...");
+  await store.upsert(storeUseCases);
+  console.log("Vector store updated.");
 }
 
-processGuides();
+processGuides().catch(console.error);

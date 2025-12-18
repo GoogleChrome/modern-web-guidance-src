@@ -2,6 +2,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { registerModernWebTools } from './modern-web.js';
 import * as modernPractices from '../data/modern-practices.js';
 
+// Mock mocks
+const mockEmbed = vi.fn();
+const mockSearch = vi.fn();
+
+// Mock dependencies
+vi.mock('../lib/embedder.js', () => ({
+  Embedder: {
+    getInstance: () => ({
+      embed: mockEmbed,
+    }),
+  },
+}));
+
+vi.mock('../lib/store.js', () => ({
+  Store: class {
+    search = mockSearch;
+  },
+}));
+
+vi.mock('../data/modern-practices.js');
+
 // Mock McpServer
 const mockTool = vi.fn();
 const mockServer = {
@@ -9,20 +30,17 @@ const mockServer = {
   registerTool: mockTool,
 } as any;
 
-// Mock modern-practices data
-vi.mock('../data/modern-practices.js');
-
 describe('modern-web tools', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
   });
 
-  it('should register list_use_cases and get_best_practices tools', () => {
+  it('should register search_use_cases and get_best_practices tools', () => {
     registerModernWebTools(mockServer);
 
     expect(mockTool).toHaveBeenCalledTimes(2);
     expect(mockTool).toHaveBeenCalledWith(
-      'list_use_cases',
+      'search_use_cases',
       expect.any(Object),
       expect.any(Function)
     );
@@ -33,18 +51,22 @@ describe('modern-web tools', () => {
     );
   });
 
-  describe('list_use_cases handler', () => {
-    it('should return use cases list', async () => {
-      const mockUseCases = [{ id: 'test', category: 'webperf' }];
-      vi.mocked(modernPractices.getUseCasesByCategory).mockReturnValue(mockUseCases as any);
+  describe('search_use_cases handler', () => {
+    it('should return search results', async () => {
+      const mockVector = [0.1, 0.2, 0.3];
+      const mockResults = [{ id: 'test', description: 'test desc', category: 'test cat' }];
+
+      mockEmbed.mockResolvedValue(mockVector);
+      mockSearch.mockResolvedValue(mockResults);
 
       registerModernWebTools(mockServer);
-      const handler = mockTool.mock.calls.find(call => call[0] === 'list_use_cases')![2];
+      const handler = mockTool.mock.calls.find(call => call[0] === 'search_use_cases')![2];
 
-      const result = await handler({ category: 'webperf' });
+      const result = await handler({ query: 'test query' });
 
-      expect(JSON.parse(result.content[0].text)).toEqual(mockUseCases);
-      expect(modernPractices.getUseCasesByCategory).toHaveBeenCalledWith('webperf');
+      expect(mockEmbed).toHaveBeenCalledWith('test query');
+      expect(mockSearch).toHaveBeenCalledWith(mockVector);
+      expect(JSON.parse(result.content[0].text)).toEqual(mockResults);
     });
   });
 

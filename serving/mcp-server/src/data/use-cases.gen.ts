@@ -17,6 +17,11 @@ export const USE_CASES: UseCase[] = [
     "category": "ui"
   },
   {
+    "id": "color-systems",
+    "description": "Create dynamic, accessible color systems using modern color syntax and relative colors",
+    "category": "ui"
+  },
+  {
     "id": "scroll-driven-animations",
     "description": "Create animations linked to scroll position",
     "category": "ui"

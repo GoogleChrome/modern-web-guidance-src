@@ -4,20 +4,28 @@ import { getUseCasesByCategory, getGuide } from "../data/modern-practices.js";
 
 export function registerModernWebTools(server: McpServer) {
   server.registerTool(
-    "list_use_cases",
+    "search_use_cases",
     {
-      description: "List available modern web use cases, optionally filtered by category",
+      description: "Search for modern web use cases using semantic search",
       inputSchema: {
-        category: z.string().optional().describe("Category to filter by (e.g., 'webperf', 'ui')"),
+        query: z.string().describe("The search query (e.g., 'how to improve capability')"),
       },
     },
-    async ({ category }) => {
-      const useCases = getUseCasesByCategory(category);
+    async ({ query }) => {
+      const { Store } = await import("../lib/store.js");
+      const { Embedder } = await import("../lib/embedder.js");
+
+      const store = new Store();
+      const embedder = Embedder.getInstance();
+
+      const vector = await embedder.embed(query);
+      const results = await store.search(vector);
+
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify(useCases, null, 2),
+            text: JSON.stringify(results, null, 2),
           },
         ],
       };
