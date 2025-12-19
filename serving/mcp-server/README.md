@@ -112,9 +112,62 @@ To run the server in development mode with hot-reloading:
 npm run dev
 ```
 
+## Usage
+
+Configure your MCP client to use the locally-built server:
+
+```json
+{
+  "mcpServers": {
+    "Modern Web": {
+      "command": "node",
+      "args": [
+        "/path/to/modern-web-mcp/build/index.js"
+      ]
+    }
+  }
+}
+```
+
+Hypothetically, this server could be published to npm and immediately used via `npx`, with no build step required:
+
+```json
+{
+  "mcpServers": {
+    "Modern Web": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "modern-web-mcp"
+      ]
+    }
+  }
+}
+```
+
+_Note that the npx approach will not work today! This is just for illustration purposes._
+
+## Releasing Updates
+
+For now, this project is under active development and is not yet published to npm. However, if and when it is published, it's configured to publish the **pre-built vector database** to npm. This allows users to run the server via `npx` immediately without needing to build the database locally.
+
+### How to Publish
+
+1.  **Pull latest changes**: Ensure you have the latest markdown guides.
+    ```bash
+    git pull origin main
+    ```
+2.  **Publish**:
+    ```bash
+    npm publish
+    ```
+    *   The `prepublishOnly` script will automatically run `npm run build` to regenerate the vector database in `.mcp-data/` and compile the code.
+    *   The `files` allowlist in `package.json` ensures that `.mcp-data/` and `build/` are included in the tarball, while `src/` is excluded.
+
 ## Architecture
 
 - **`src/guides/`**: Source markdown files containing web development patterns.
 - **`scripts/build-guides.ts`**: The build script that parses guides, generates embeddings, and updates the LanceDB instance.
-- **`.mcp-data/`**: The local directory where the LanceDB vector store is persisted (gitignored).
+- **`.mcp-data/`**: The local directory where the LanceDB vector store is persisted (gitignored but published to npm).
+- **`build/`**: The directory where the compiled code is stored (gitignored but published to npm).
 - **`AGENTS.md`**: Operational instruction file for AI agents.
