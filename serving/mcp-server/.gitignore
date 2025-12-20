@@ -4,4 +4,5 @@ coverage/
 .DS_Store
 .env
 *.log
-\nsrc/data/use-cases.gen.ts
+src/data/use-cases.gen.ts
+.mcp-data/
