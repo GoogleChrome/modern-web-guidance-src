@@ -4,7 +4,7 @@
 | Group | Passing | Total | Rate |
 |---|---|---|---|
 | **Unguided** | 7 | 24 | 29% |
-| **Guided** | 16 | 24 | 67% |
+| **Guided** | 15 | 24 | 63% |
 
 ## GREENFIELD - VAGUE - UNGUIDED (0/6)
 
@@ -12,8 +12,8 @@
 |---|---|
 | ❌ | Found img with loading-placeholder attribute |
 | ❌ | Found button with interestfor attribute |
-| ❌ | JS contains interestfor feature detection (hasOwnProperty(&quot;interestForElement&quot;)) |
-| ❌ | JS handles loading-placeholder manually |
+| ❌ | JS contains interestfor feature detection |
+| ❌ | JS contains loading-placeholder feature detection |
 | ❌ | CSS uses animation-timeline: view() |
 | ❌ | CSS respects prefers-reduced-motion |
 
@@ -23,8 +23,8 @@
 |---|---|
 | ❌ | Found img with loading-placeholder attribute |
 | ✅ | Found button with interestfor attribute |
-| ❌ | JS contains interestfor feature detection (hasOwnProperty(&quot;interestForElement&quot;)) |
-| ❌ | JS handles loading-placeholder manually |
+| ❌ | JS contains interestfor feature detection |
+| ❌ | JS contains loading-placeholder feature detection |
 | ✅ | CSS uses animation-timeline: view() |
 | ✅ | CSS respects prefers-reduced-motion |
 
@@ -34,19 +34,19 @@
 |---|---|
 | ❌ | Found img with loading-placeholder attribute |
 | ❌ | Found button with interestfor attribute |
-| ❌ | JS contains interestfor feature detection (hasOwnProperty(&quot;interestForElement&quot;)) |
-| ❌ | JS handles loading-placeholder manually |
+| ❌ | JS contains interestfor feature detection |
+| ❌ | JS contains loading-placeholder feature detection |
 | ✅ | CSS uses animation-timeline: view() |
 | ❌ | CSS respects prefers-reduced-motion |
 
-## GREENFIELD - SPECIFIC - GUIDED (4/6)
+## GREENFIELD - SPECIFIC - GUIDED (3/6)
 
 | Status | Expectation |
 |---|---|
 | ✅ | Found img with loading-placeholder attribute |
 | ✅ | Found button with interestfor attribute |
-| ❌ | JS contains interestfor feature detection (hasOwnProperty(&quot;interestForElement&quot;)) |
-| ✅ | JS handles loading-placeholder manually |
+| ❌ | JS contains interestfor feature detection |
+| ❌ | JS contains loading-placeholder feature detection |
 | ✅ | CSS uses animation-timeline: view() |
 | ❌ | CSS respects prefers-reduced-motion |
 
@@ -87,7 +87,7 @@
 | Status | Expectation |
 |---|---|
 | ❌ | Refactored to use declarative interestfor attribute |
-| ❌ | Conditionally includes interestfor polyfill |
+| ❌ | Check for interestfor feature detection |
 | ✅ | No addEventListener(&quot;mouseover&quot;) detected |
 
 ## REDFIELD - VAGUE - GUIDED (2/3)
@@ -95,7 +95,7 @@
 | Status | Expectation |
 |---|---|
 | ✅ | Refactored to use declarative interestfor attribute |
-| ❌ | Conditionally includes interestfor polyfill |
+| ❌ | Check for interestfor feature detection |
 | ✅ | No addEventListener(&quot;mouseover&quot;) detected |
 
 ## REDFIELD - SPECIFIC - UNGUIDED (1/3)
@@ -103,7 +103,7 @@
 | Status | Expectation |
 |---|---|
 | ❌ | Refactored to use declarative interestfor attribute |
-| ❌ | Conditionally includes interestfor polyfill |
+| ❌ | Check for interestfor feature detection |
 | ✅ | No addEventListener(&quot;mouseover&quot;) detected |
 
 ## REDFIELD - SPECIFIC - GUIDED (2/3)
@@ -111,6 +111,6 @@
 | Status | Expectation |
 |---|---|
 | ✅ | Refactored to use declarative interestfor attribute |
-| ❌ | Conditionally includes interestfor polyfill |
+| ❌ | Check for interestfor feature detection |
 | ✅ | No addEventListener(&quot;mouseover&quot;) detected |
 

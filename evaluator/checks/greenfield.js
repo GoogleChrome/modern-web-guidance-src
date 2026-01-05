@@ -43,20 +43,20 @@ module.exports = function checkGreenfield(dirPath, files) {
 
   // 4. Check JS Polyfills
   const jsFiles = files.filter(f => f.endsWith('.js'));
-  let interestForPolyfillFound = false;
-  let loadingPlaceholderPolyfillFound = false;
+  let interestForFeatureDetected = false;
+  let loadingPlaceholderFeatureDetected = false;
 
   const checkContent = (content) => {
-    // Check for interestfor polyfill / feature detection
+    // Check for interestfor feature detection
     // Match: .hasOwnProperty('interestForElement') or "interestForElement" with flexible quotes/spacing
     if (/\.hasOwnProperty\(\s*["']interestForElement["']\s*\)/.test(content)) {
-      interestForPolyfillFound = true;
+      interestForFeatureDetected = true;
     }
 
-    // Check for loading-placeholder manual handling (simplified check for logic)
-    // Look for generic pattern: reading the attribute and doing something
-    if (content.includes('getAttribute("loading-placeholder")') || content.includes("getAttribute('loading-placeholder')")) {
-      loadingPlaceholderPolyfillFound = true;
+    // Check for loading-placeholder feature detection
+    // Match: 'loadingPlaceholder' in HTMLImageElement.prototype
+    if (/['"]loadingPlaceholder['"]\s*in\s*HTMLImageElement\.prototype/.test(content)) {
+      loadingPlaceholderFeatureDetected = true;
     }
   };
 
@@ -75,14 +75,14 @@ module.exports = function checkGreenfield(dirPath, files) {
 
   results.push({
     id: 'js-interestfor-polyfill',
-    passed: interestForPolyfillFound,
-    message: 'JS contains interestfor feature detection (hasOwnProperty("interestForElement"))'
+    passed: interestForFeatureDetected,
+    message: 'JS contains interestfor feature detection'
   });
 
   results.push({
     id: 'js-loading-placeholder-support',
-    passed: loadingPlaceholderPolyfillFound,
-    message: 'JS handles loading-placeholder manually'
+    passed: loadingPlaceholderFeatureDetected,
+    message: 'JS contains loading-placeholder feature detection'
   });
 
   // 5. Check CSS Features

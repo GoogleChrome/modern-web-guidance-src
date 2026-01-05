@@ -40,13 +40,13 @@ module.exports = function checkRedfield(dirPath, files) {
     }
   });
 
-  let interestForPolyfillFound = false;
+  let interestForFeatureDetected = false;
   let imperativePatternFound = false;
 
   const checkContent = (content) => {
     // Check for interestfor polyfill / feature detection
     if (/\.hasOwnProperty\(\s*["']interestForElement["']\s*\)/.test(content)) {
-      interestForPolyfillFound = true;
+      interestForFeatureDetected = true;
     }
 
     // Heuristic: If we see addEventListener('mouseover') or 'mouseenter' it MIGHT be the old way.
@@ -67,8 +67,8 @@ module.exports = function checkRedfield(dirPath, files) {
 
   results.push({
     id: 'redfield-polyfill-present',
-    passed: interestForPolyfillFound,
-    message: 'Conditionally includes interestfor polyfill'
+    passed: interestForFeatureDetected,
+    message: 'Check for interestfor feature detection'
   });
 
   // This is a "soft" check - having imperative code might be necessary for other things, 
