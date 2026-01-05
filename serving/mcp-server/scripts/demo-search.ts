@@ -25,7 +25,7 @@ async function main() {
   // 3. Display
   console.log("\nTop Results:");
   results.forEach((r, i) => {
-    console.log(`\n${i + 1}. [${r.id}] (${r.category}) - Distance: ${r.distance?.toFixed(4)}`);
+    console.log(`\n${i + 1}. [${r.id}] (${r.category}) - Distance: ${r.distance}`);
     console.log(`   ${r.description}`);
   });
 }

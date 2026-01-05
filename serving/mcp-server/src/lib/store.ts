@@ -67,7 +67,6 @@ export class Store {
     const uniqueResults: UseCase[] = [];
 
     for (const r of results) {
-      // @ts-ignore
       const dist = r._distance;
       if (dist === undefined || dist > maxDistance) continue;
 
@@ -78,7 +77,7 @@ export class Store {
         id: r.id as string,
         description: r.description as string,
         category: r.category as string,
-        distance: dist,
+        distance: dist.toFixed(1),
       });
 
       if (uniqueResults.length >= limit) break;
