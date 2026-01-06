@@ -1,11 +1,21 @@
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        const response = await fetch('evaluation_results.json');
-        if (!response.ok) throw new Error('Failed to load data');
+        // Get testID from query string
+        const params = new URLSearchParams(window.location.search);
+        const testID = params.get('testID');
+
+        if (!testID) {
+            throw new Error('No testID provided in query string');
+        }
+
+        const evalsPath = `results/${testID}/evals.json`;
+        const response = await fetch(evalsPath);
+        if (!response.ok) throw new Error(`Failed to load data from ${evalsPath}`);
         const data = await response.json();
 
-        renderSummary(data);
-        renderGrid(data);
+        renderTestHeader(testID);
+        renderSummary(data, testID);
+        renderGrid(data, testID);
     } catch (error) {
         console.error('Error:', error);
         document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;">Error loading dashboard data: ${error.message}</div>`;
@@ -43,7 +53,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-function renderSummary(data) {
+function renderTestHeader(testID) {
+    const container = document.getElementById('test-header');
+    if (container) {
+        const timestamp = testID.replace('test_', '').replace(/-/g, ':').slice(0, -2);
+        container.innerHTML = `Test ID: <strong>${testID}</strong> — Run at ${timestamp}`;
+    }
+}
+
+function renderSummary(data, testID) {
     const container = document.getElementById('summary-stats');
     const summary = data.summary;
     const results = data.results;
@@ -91,7 +109,7 @@ function calculateGroupTotalStats(results, groupType) {
     return { passed, total };
 }
 
-function renderGrid(data) {
+function renderGrid(data, testID) {
     const grid = document.getElementById('dashboard-grid');
     const results = data.results;
     const stats = data.stats;
@@ -121,7 +139,7 @@ function renderGrid(data) {
 
                     const s = getRunStats(medianRun.results);
 
-                    card.onclick = () => showDetails(testName, runData, testStats);
+                    card.onclick = () => showDetails(testName, runData, testStats, testID);
                     card.innerHTML = `
                         <h3>${formatTestName(testName)}</h3>
                         <div class="pass-rate-bar">
@@ -144,7 +162,7 @@ function renderGrid(data) {
     });
 }
 
-async function showDetails(testName, runs, stats) {
+async function showDetails(testName, runs, stats, testID) {
     const modal = document.getElementById('modal');
     const title = document.getElementById('modal-title');
     const body = document.getElementById('modal-body');
@@ -155,12 +173,6 @@ async function showDetails(testName, runs, stats) {
     // Fetch prompt text
     let promptHtml = '';
     try {
-        const promptParams = new URLSearchParams({
-            scenario,
-            prompt
-        });
-
-        // Ensure path matches strict server file structure
         const promptPath = `setup/${scenario}/${prompt}/PROMPT.txt`;
         const res = await fetch(promptPath);
         if (res.ok) {
@@ -178,7 +190,7 @@ async function showDetails(testName, runs, stats) {
 
     const runsHtml = runs.map(run => {
         const s = getRunStats(run.results);
-        const linkPath = `test_runs/${run.runNumber}/${scenario}/${prompt}/${agent}/index.html`;
+        const linkPath = `results/${testID}/${run.runNumber}/${scenario}/${prompt}/${agent}/index.html`;
 
         return `
             <div class="run-detail">

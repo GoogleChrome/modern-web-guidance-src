@@ -23,8 +23,10 @@ const server = http.createServer((req, res) => {
 
   // Normalize URL to file path
   let filePath = '.' + req.url;
+  
+  // Default to index.html for root
   if (filePath === './') {
-    filePath = './dashboard.html';
+    filePath = './index.html';
   }
 
   // Remove query string if present
@@ -53,7 +55,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  const url = `http://localhost:${PORT}/dashboard.html`;
+  const url = `http://localhost:${PORT}/`;
   console.log(`Server running at ${url}`);
 
   // Try to open the browser

@@ -74,20 +74,21 @@ function updateMcpConfig(agentType) {
 async function main() {
   const baseDir = __dirname;
   const setupDir = path.join(baseDir, 'setup');
-  const testRunsDir = path.join(baseDir, 'test_runs');
+  const resultsDir = path.join(baseDir, 'results');
 
-  // Determine start run number based on existing runs
-  let startRun = 1;
-  if (fs.existsSync(testRunsDir)) {
-    const existingRuns = fs.readdirSync(testRunsDir)
-      .map(name => parseInt(name, 10))
-      .filter(num => !isNaN(num) && num > 0)
-      .sort((a, b) => a - b);
-
-    if (existingRuns.length > 0) {
-      startRun = existingRuns[existingRuns.length - 1] + 1;
-    }
+  // Create results directory if it doesn't exist
+  if (!fs.existsSync(resultsDir)) {
+    fs.mkdirSync(resultsDir, { recursive: true });
   }
+
+  // Generate a unique testID with timestamp
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // e.g., 2026-01-06T09-11-03
+  const testID = `test_${timestamp}`;
+  const testDir = path.join(resultsDir, testID);
+  fs.mkdirSync(testDir, { recursive: true });
+
+  console.log(`\n=== Test Suite Starting with ID: ${testID} ===\n`);
+  console.log(`Results will be saved to: ${testDir}\n`);
 
   // Artifact directories to reset
   const ARTIFACT_DIRS = [
@@ -116,16 +117,16 @@ async function main() {
     }
     console.log('✅ Backup successful');
 
-    const endRun = startRun + NUM_RUNS;
-    console.log(`\nStarting execution from Run ${startRun} to ${endRun - 1} (Total ${NUM_RUNS} runs)`);
+    const endRun = 1 + NUM_RUNS;
+    console.log(`\nStarting execution for ${NUM_RUNS} runs`);
 
-    for (let runNumber = startRun; runNumber < endRun; runNumber++) {
+    for (let runNumber = 1; runNumber < endRun; runNumber++) {
       console.log(`\n${'='.repeat(60)}`);
       console.log(`>>> STARTING RUN ${runNumber} <<<`);
       console.log(`${'='.repeat(60)}\n`);
 
-      // Create run directory
-      const runDir = path.join(testRunsDir, String(runNumber));
+      // Create run directory under testID
+      const runDir = path.join(testDir, String(runNumber));
       if (!fs.existsSync(runDir)) {
         fs.mkdirSync(runDir, { recursive: true });
       }
@@ -181,6 +182,29 @@ async function main() {
         }
       }
     }
+
+    // Save testID to manifest file
+    const manifestPath = path.join(resultsDir, 'tests.json');
+    let manifest = { tests: [] };
+    if (fs.existsSync(manifestPath)) {
+      try {
+        manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      } catch (e) {
+        console.warn('Could not parse existing manifest, starting fresh');
+      }
+    }
+    
+    if (!manifest.tests.some(t => t.id === testID)) {
+      manifest.tests.push({
+        id: testID,
+        timestamp: new Date().toISOString(),
+        runCount: NUM_RUNS
+      });
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+      console.log(`\n✅ Manifest updated: ${manifestPath}`);
+    }
+
+    console.log(`\n✅ Test suite complete! Results saved to: results/${testID}`);
   } catch (e) {
     console.error('❌ Error during suite execution:', e);
   } finally {

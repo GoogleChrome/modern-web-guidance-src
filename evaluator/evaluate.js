@@ -10,22 +10,48 @@ const checkRedfield = require('./checks/redfield');
 async function main() {
   console.log('Starting Static Evaluation...'.cyan.bold);
 
-  // Find all test run directories
-  const testRunsDir = 'test_runs';
-  if (!fs.existsSync(testRunsDir)) {
-    console.error('test_runs directory not found!'.red);
+  // Read manifest to find the latest test
+  const manifestPath = 'results/tests.json';
+  if (!fs.existsSync(manifestPath)) {
+    console.error('Manifest file not found at results/tests.json!'.red);
     return;
   }
 
-  const runDirs = fs.readdirSync(testRunsDir)
+  let manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  } catch (e) {
+    console.error('Failed to parse manifest!'.red);
+    return;
+  }
+
+  if (!manifest.tests || manifest.tests.length === 0) {
+    console.error('No tests found in manifest!'.red);
+    return;
+  }
+
+  // Get the latest test
+  const latestTest = manifest.tests[manifest.tests.length - 1];
+  const testID = latestTest.id;
+  const resultsDir = path.join('results', testID);
+
+  console.log(`Evaluating test: ${testID}`.cyan);
+  console.log(`Results directory: ${resultsDir}`.cyan);
+
+  if (!fs.existsSync(resultsDir)) {
+    console.error(`Results directory not found at ${resultsDir}!`.red);
+    return;
+  }
+
+  const runDirs = fs.readdirSync(resultsDir)
     .filter(name => {
-      const fullPath = path.join(testRunsDir, name);
-      return fs.statSync(fullPath).isDirectory();
+      const fullPath = path.join(resultsDir, name);
+      return fs.statSync(fullPath).isDirectory() && /^\d+$/.test(name);
     })
     .sort((a, b) => parseInt(a) - parseInt(b));
 
   if (runDirs.length === 0) {
-    console.error('No test runs found in test_runs directory!'.red);
+    console.error('No test runs found!'.red);
     return;
   }
 
@@ -39,10 +65,10 @@ async function main() {
     console.log(`Evaluating Run ${runDir}`.cyan.bold);
     console.log(`${'='.repeat(60)}`.cyan);
 
-    const runPath = path.join(testRunsDir, runDir);
+    const runPath = path.join(resultsDir, runDir);
     
     // Find all leaf directories with an index.html or just strict structure
-    // Structure: test_runs/{runNumber}/{scenario}/{type}/{agent}
+    // Structure: results/{testID}/{runNumber}/{scenario}/{type}/{agent}
     const directories = glob.sync('*/*/*/', {
       cwd: runPath,
       absolute: true
@@ -84,10 +110,10 @@ async function main() {
     }
   }
 
-  generateReport(allResults, runDirs.length);
+  generateReport(allResults, runDirs.length, testID);
 }
 
-function generateReport(allResults, numRuns) {
+function generateReport(allResults, numRuns, testID) {
   let md = '# Evaluation Results\n\n';
 
   const scenarioOrder = { 'greenfield': 1, 'brownfield': 2, 'redfield': 3 };
@@ -205,8 +231,11 @@ function generateReport(allResults, numRuns) {
     md += tableHeader + tableRows + '\n';
   }
 
-  fs.writeFileSync('evaluation_results.md', md);
-  console.log(`\nReport generated: ${path.resolve('evaluation_results.md')}`.green.bold);
+  const resultsDir = path.join('results', testID);
+  fs.mkdirSync(resultsDir, { recursive: true });
+
+  fs.writeFileSync(path.join(resultsDir, 'evals.md'), md);
+  console.log(`\nReport generated: ${path.resolve(path.join(resultsDir, 'evals.md'))}`.green.bold);
   console.log(`Median Pass Rate - Unguided: ${unguidedMedian}%, Guided: ${guidedMedian}%`.cyan);
 
   const jsonOutput = {
@@ -219,8 +248,8 @@ function generateReport(allResults, numRuns) {
     stats: testPassRates
   };
 
-  fs.writeFileSync('evaluation_results.json', JSON.stringify(jsonOutput, null, 2));
-  console.log(`JSON Report generated: ${path.resolve('evaluation_results.json')}`.green.bold);
+  fs.writeFileSync(path.join(resultsDir, 'evals.json'), JSON.stringify(jsonOutput, null, 2));
+  console.log(`JSON Report generated: ${path.resolve(path.join(resultsDir, 'evals.json'))}`.green.bold);
 }
 
 main().catch(console.error);
