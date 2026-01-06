@@ -166,8 +166,12 @@ async function main() {
             const targetDir = path.join(runDir, scenario, promptType, agentType);
 
             if (!fs.existsSync(targetDir)) {
-              console.warn(`WARNING: Target directory not found at ${targetDir}. Skipping.`);
-              continue;
+              if (scenario === 'greenfield') {
+                fs.mkdirSync(targetDir, { recursive: true });
+              } else {
+                console.warn(`WARNING: Target directory not found at ${targetDir}. Skipping.`);
+                continue;
+              }
             }
 
             console.log(`\n>>> Running Scenario: ${scenario} | Prompt: ${promptType} | Agent: ${agentType} | Run: ${runNumber}`);
