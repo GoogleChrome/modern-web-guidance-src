@@ -1,6 +1,7 @@
 const puppeteer = require('puppeteer-core');
 const { spawn, execSync } = require('child_process');
 const path = require('path');
+const config = require('./config');
 
 // Parse arguments
 const args = process.argv.slice(2);
@@ -28,12 +29,12 @@ function killProcessOnPort(port) {
 }
 
 async function startJetski(directory) {
-  // Kill anything on 9222 first
-  killProcessOnPort(9222);
+  // Kill anything on the debug port first
+  killProcessOnPort(config.jetskiDebugPort);
 
   console.log(`Starting Jetski with directory: ${directory}`);
-  const jetskiProcess = spawn('/Applications/Jetski.app/Contents/Resources/app/bin/jetski', [
-    '--remote-debugging-port=9222',
+  const jetskiProcess = spawn(config.jetskiBin, [
+    `--remote-debugging-port=${config.jetskiDebugPort}`,
     directory
   ], {
     detached: true, // Let it run independently
@@ -42,12 +43,12 @@ async function startJetski(directory) {
 
   jetskiProcess.unref(); // Don't wait for it to exit
 
-  // Wait for port 9222 to be ready
+  // Wait for the debug port to be ready
   console.log("Waiting for Jetski to be ready...");
   for (let i = 0; i < 30; i++) {
     try {
       const browser = await puppeteer.connect({
-        browserURL: 'http://127.0.0.1:9222',
+        browserURL: `http://127.0.0.1:${config.jetskiDebugPort}`,
         defaultViewport: null
       });
       browser.disconnect();
@@ -65,7 +66,7 @@ async function run() {
   try {
     await startJetski(absoluteTargetDir);
 
-    const browserURL = 'http://127.0.0.1:9222';
+    const browserURL = `http://127.0.0.1:${config.jetskiDebugPort}`;
 
     const browser = await puppeteer.connect({
       browserURL,

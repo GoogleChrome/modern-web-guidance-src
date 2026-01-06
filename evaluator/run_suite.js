@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
+const config = require('./config');
 
 const SCENARIOS = ['greenfield', 'brownfield', 'redfield'];
 const PROMPT_TYPES = ['specific', 'vague'];
@@ -30,41 +31,41 @@ async function runCommand(command, args) {
 }
 
 function updateMcpConfig(agentType) {
-  const configPath = '/Users/rviscomi/.gemini/jetski/mcp_config.json';
-  let config = { mcpServers: {} };
+  const configPath = path.join(config.jetskiDir, 'mcp_config.json');
+  let mcpConfig = { mcpServers: {} };
 
   try {
     if (fs.existsSync(configPath)) {
       const content = fs.readFileSync(configPath, 'utf8');
       if (content.trim()) {
-        config = JSON.parse(content);
+        mcpConfig = JSON.parse(content);
       }
     }
   } catch (e) {
     console.error('Failed to read MCP config:', e);
   }
 
-  if (!config.mcpServers) config.mcpServers = {};
+  if (!mcpConfig.mcpServers) mcpConfig.mcpServers = {};
 
   const serverName = 'modern-web';
   // Only configure modern-web for guided agents
   if (agentType === 'guided') {
-    config.mcpServers[serverName] = {
+    mcpConfig.mcpServers[serverName] = {
       "command": "node",
       "args": [
-        "/Users/rviscomi/git/modern-web-mcp/build/index.js"
+        config.mcpServerPath
       ]
     };
     console.log('Enabled modern-web MCP server');
   } else {
-    if (config.mcpServers[serverName]) {
-      delete config.mcpServers[serverName];
+    if (mcpConfig.mcpServers[serverName]) {
+      delete mcpConfig.mcpServers[serverName];
       console.log('Disabled modern-web MCP server');
     }
   }
 
   try {
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
   } catch (e) {
     console.error('Failed to write MCP config:', e);
   }
@@ -99,7 +100,7 @@ async function main() {
     'implicit',
     'knowledge'
   ];
-  const jetskiDir = '/Users/rviscomi/.gemini/jetski';
+  const jetskiDir = config.jetskiDir;
   const backupBaseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jetski-artifacts-backup-'));
 
   console.log(`\n=== Backing up Artifacts ===`);
