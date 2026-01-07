@@ -13,7 +13,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!response.ok) throw new Error(`Failed to load data from ${evalsPath}`);
         const data = await response.json();
 
-        renderTestHeader(testID);
+        // Fetch jetski info (optional)
+        let jetskiVersion = null;
+        try {
+            const jetskiRes = await fetch(`results/${testID}/jetski_info.json`);
+            if (jetskiRes.ok) {
+                const jetskiData = await jetskiRes.json();
+                jetskiVersion = jetskiData['Jetski Version'];
+            }
+        } catch (e) {
+            console.log('Could not load Jetski info:', e);
+        }
+
+        renderTestHeader(testID, jetskiVersion);
         renderSummary(data, testID);
         renderGrid(data, testID);
     } catch (error) {
@@ -70,11 +82,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-function renderTestHeader(testID) {
+function renderTestHeader(testID, jetskiVersion) {
     const container = document.getElementById('test-header');
     if (container) {
         const timestamp = testID.replace('test_', '').replace(/-/g, ':').slice(0, -2);
-        container.innerHTML = `Test ID: <strong>${testID}</strong> — Run at ${timestamp}`;
+        let html = `Test ID: <strong>${testID}</strong> — Run at ${timestamp}`;
+        if (jetskiVersion) {
+            html += ` — Jetski Version: <strong>${jetskiVersion}</strong>`;
+        }
+        container.innerHTML = html;
     }
 }
 

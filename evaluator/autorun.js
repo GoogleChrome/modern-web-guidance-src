@@ -1,4 +1,6 @@
+const fs = require('fs');
 const puppeteer = require('puppeteer-core');
+
 const { spawn, execSync } = require('child_process');
 const path = require('path');
 const config = require('./config');
@@ -14,6 +16,67 @@ const absoluteTargetDir = path.resolve(targetDirectory);
 
 async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Opens the "About" dialog via the Command Palette and saves the info to a file.
+ * @param {import('puppeteer').Page} page - The connected Puppeteer page object.
+ * @param {string} outputPath - The path to save the info to.
+ */
+async function extractJetskiVersionInfo(page, outputPath) {
+  try {
+    // 1. Ensure the window is focused to receive keyboard events
+    await page.bringToFront();
+
+    // 2. Trigger Command Palette (Cmd + Shift + P)
+    // Using individual down/up calls for the 'chord' to ensure Electron registers it
+    await page.keyboard.down('Meta');
+    await page.keyboard.down('Shift');
+    await page.keyboard.press('KeyP');
+    await page.keyboard.up('Shift');
+    await page.keyboard.up('Meta');
+
+    // 3. Wait for the Quick Input widget to appear
+    const paletteInput = 'input.quick-input-filter';
+    await page.waitForSelector(paletteInput, { visible: true, timeout: 5000 });
+
+    // 4. Type the command with a slight delay to ensure the UI stays in sync
+    await page.type(paletteInput, 'Help: About', { delay: 50 });
+    await page.keyboard.press('Enter');
+
+    // 5. Wait for the Monaco dialog detail to appear in the DOM
+    const detailSelector = '#monaco-dialog-message-detail';
+    await page.waitForSelector(detailSelector, { visible: true, timeout: 5000 });
+
+    // 6. Extract the text
+    const versionText = await page.$eval(detailSelector, el => el.innerText);
+
+    // 7. Parse to JSON
+    const lines = versionText.split('\n');
+    const info = {};
+    for (const line of lines) {
+      // Split by first occurrence of ': '
+      const separatorIndex = line.indexOf(': ');
+      if (separatorIndex !== -1) {
+        const key = line.substring(0, separatorIndex).trim();
+        const value = line.substring(separatorIndex + 2).trim();
+        info[key] = value;
+      }
+    }
+
+    // 8. Write to file
+    fs.writeFileSync(outputPath, JSON.stringify(info, null, 2), 'utf8');
+
+    // 9. Close the dialog to leave the IDE in a clean state
+    await page.keyboard.press('Escape');
+
+    console.log(`Successfully saved Jetski info to ${outputPath}`);
+    return info;
+
+  } catch (error) {
+    console.error('Failed to extract version info:', error.message);
+    throw error;
+  }
 }
 
 function killProcessOnPort(port) {
@@ -87,6 +150,24 @@ async function run() {
       console.error("Could not find the Jetski workbench window.");
       await browser.disconnect();
       return;
+    }
+
+    // Attempt to save Jetski info (only once per Test ID, effectively)
+    // targetDirectory is: results/<testID>/<runNumber>/<scenario>/<promptType>/<agentType>
+    // We want: results/<testID>/jetski_info.txt
+    // Go up 4 levels: agentType -> promptType -> scenario -> runNumber -> testID
+    const jetskiInfoPath = path.resolve(absoluteTargetDir, '../../../../jetski_info.json');
+
+    if (!fs.existsSync(jetskiInfoPath)) {
+      console.log(`Extracting Jetski info to: ${jetskiInfoPath}`);
+      try {
+        await extractJetskiVersionInfo(page, jetskiInfoPath);
+      } catch (e) {
+        console.error("Failed to extract Jetski info:", e);
+        // Don't crash the run for this, just continue
+      }
+    } else {
+      console.log(`Jetski info already exists at: ${jetskiInfoPath}`);
     }
 
     const inputSelector = '#chat [contenteditable="true"][role="textbox"]';
