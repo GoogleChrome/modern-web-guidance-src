@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const params = new URLSearchParams(window.location.search);
         const testID = params.get('testID');
         const logPath = `results/${testID}/test_suite.log`;
-        
+
         // Check if log file exists
         try {
             const checkRes = await fetch(logPath, { method: 'HEAD' });
@@ -196,7 +196,7 @@ async function showDetails(testName, runs, stats, testID) {
             const text = await res.text();
             promptHtml = `
                 <div class="prompt-section" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--text-secondary);">
-                    <h4 style="margin-top: 0; margin-bottom: 10px;">Prompt (${prompt})</h4>
+                    <h4 style="margin-top: 0; margin-bottom: 10px;">Prompt</h4>
                     <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; color: var(--text-primary);">${escapeHtml(text)}</pre>
                 </div>
             `;
@@ -205,16 +205,34 @@ async function showDetails(testName, runs, stats, testID) {
         console.error('Failed to fetch prompt', e);
     }
 
-    const runsHtml = runs.map(run => {
+    // Check for setup file asynchronously for each run to show View Diff button if applicable
+    const runDetailsPromises = runs.map(async run => {
         const s = getRunStats(run.results);
-        const linkPath = `results/${testID}/${run.runNumber}/${scenario}/${prompt}/${agent}/index.html`;
+        const resultPath = `results/${testID}/${run.runNumber}/${scenario}/${prompt}/${agent}/index.html`;
+        const setupPath = `setup/${scenario}/${prompt}/${agent}/index.html`;
+
+        // Check if setup file exists
+        let hasSetup = false;
+        try {
+            const res = await fetch(setupPath, { method: 'HEAD' });
+            hasSetup = res.ok;
+        } catch (e) {
+            hasSetup = false;
+        }
+
+        const diffButton = hasSetup
+            ? `<button class="secondary-btn small-btn" onclick="viewDiff('${setupPath}', '${resultPath}')" style="margin-left: 10px; font-size: 0.8em; padding: 2px 8px;">View Diff</button>`
+            : '';
 
         return `
             <div class="run-detail">
                 <div class="run-header">
                     <strong>Run ${run.runNumber}</strong>
                     <span style="color: ${getColor(s.rate)}">${s.rate}% Pass (${s.passed}/${s.total})</span>
-                    <a href="${linkPath}" target="_blank">View Source ↗</a>
+                    <div>
+                        <a href="${resultPath}" target="_blank">View Source ↗</a>
+                        ${diffButton}
+                    </div>
                 </div>
                 <ul class="check-list">
                     ${run.results.map(check => `
@@ -226,10 +244,106 @@ async function showDetails(testName, runs, stats, testID) {
                 </ul>
             </div>
         `;
-    }).join('');
+    });
+
+    const runsHtml = (await Promise.all(runDetailsPromises)).join('');
 
     body.innerHTML = promptHtml + runsHtml;
     modal.classList.add('show');
+}
+
+async function viewDiff(setupPath, resultPath) {
+    const title = document.getElementById('modal-title');
+    const body = document.getElementById('modal-body');
+    const contentDiv = document.querySelector('.modal-content');
+
+
+
+    title.textContent = 'Diff View';
+    body.innerHTML = '<div style="text-align:center; padding: 20px;">Computing diff...</div>';
+
+    // Optional: Make modal wider for diff
+    contentDiv.classList.add('diff-modal');
+
+    try {
+        const [setupRes, resultRes] = await Promise.all([
+            fetch(setupPath),
+            fetch(resultPath)
+        ]);
+
+        if (!setupRes.ok) throw new Error(`Failed to load setup file: ${setupPath}`);
+        if (!resultRes.ok) throw new Error(`Failed to load result file: ${resultPath}`);
+
+        const setupText = await setupRes.text();
+        const resultText = await resultRes.text();
+
+        const diff = Diff.diffLines(setupText, resultText);
+
+        let diffHtml = '<div class="diff-container">';
+
+        diff.forEach((part, index) => {
+            const colorClass = part.added ? 'diff-added' :
+                part.removed ? 'diff-removed' : 'diff-unchanged';
+
+            if (part.added || part.removed) {
+                diffHtml += `<span class="${colorClass}">${escapeHtml(part.value)}</span>`;
+                return;
+            }
+
+            // Unchanged part
+            let lines = part.value.split('\n');
+            // If the last element is empty (common with trailing newline), temporarily remove it for counting
+            let trailingNewline = false;
+            if (lines.length > 0 && lines[lines.length - 1] === '') {
+                lines.pop();
+                trailingNewline = true;
+            }
+
+            const CONTEXT = 3;
+            // Only collapse if we save significant space (e.g. > context*2 lines)
+            if (lines.length > CONTEXT * 2) {
+                const isFirst = index === 0;
+                const isLast = index === diff.length - 1;
+
+                let head = '';
+                let tail = '';
+                let hiddenCount = 0;
+
+                if (isFirst) {
+                    const tailLines = lines.slice(-CONTEXT);
+                    hiddenCount = lines.length - CONTEXT;
+                    tail = tailLines.join('\n') + (trailingNewline ? '\n' : '');
+                } else if (isLast) {
+                    const headLines = lines.slice(0, CONTEXT);
+                    hiddenCount = lines.length - CONTEXT;
+                    head = headLines.join('\n') + '\n';
+                } else {
+                    const headLines = lines.slice(0, CONTEXT);
+                    const tailLines = lines.slice(-CONTEXT);
+                    hiddenCount = lines.length - (CONTEXT * 2);
+                    head = headLines.join('\n') + '\n';
+                    tail = tailLines.join('\n') + (trailingNewline ? '\n' : '');
+                }
+
+                if (hiddenCount > 0) {
+                    if (head) diffHtml += `<span class="${colorClass}">${escapeHtml(head)}</span>`;
+                    diffHtml += `<div class="diff-separator">... ${hiddenCount} unchanged lines ...</div>`;
+                    if (tail) diffHtml += `<span class="${colorClass}">${escapeHtml(tail)}</span>`;
+                    return;
+                }
+            }
+
+            diffHtml += `<span class="${colorClass}">${escapeHtml(part.value)}</span>`;
+        });
+
+        diffHtml += '</div>';
+
+        body.innerHTML = diffHtml;
+
+    } catch (e) {
+        body.innerHTML = `<div style="color: var(--accent-failure); padding: 20px;">Error loading diff: ${e.message}</div>`;
+        contentDiv.classList.remove('diff-modal');
+    }
 }
 
 function getRunStats(checks) {

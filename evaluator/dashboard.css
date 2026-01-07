@@ -254,3 +254,48 @@ h1 {
     overflow-x: auto;
     border: 1px solid var(--border-color);
 }
+/* Diff View Styles */
+.diff-container {
+    font-family: monospace;
+    white-space: pre-wrap;
+    background: #0d1117;
+    color: #c9d1d9;
+    padding: 10px;
+    border-radius: 6px;
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+}
+
+.diff-added {
+    background-color: rgba(46, 160, 67, 0.15);
+    color: #7ee787;
+    display: block;
+}
+
+.diff-removed {
+    background-color: rgba(218, 54, 51, 0.15);
+    color: #ffa198;
+    display: block;
+    text-decoration: line-through;
+    opacity: 0.8;
+}
+
+.diff-unchanged {
+    color: #8b949e;
+    display: block;
+}
+
+.modal-content.diff-modal {
+    max-width: 90%;
+    width: 1200px;
+}
+
+.diff-separator {
+    background-color: var(--border-color);
+    color: var(--text-secondary);
+    padding: 4px;
+    text-align: center;
+    font-size: 0.85em;
+    user-select: none;
+    opacity: 0.7;
+}
