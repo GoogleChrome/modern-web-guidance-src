@@ -16,6 +16,9 @@ const config = {
   jetskiBin: process.env.JETSKI_BIN || '/Applications/Jetski.app/Contents/Resources/app/bin/jetski',
   jetskiDebugPort: parseInt(process.env.JETSKI_DEBUG_PORT) || 9222,
 
+  // Skills Configuration
+  skillsDir: process.env.SKILLS_DIR || path.join(os.homedir(), '.agent/skills'),
+
   // MCP Server Configuration
   mcpServerPath: process.env.MCP_SERVER_PATH || path.join(os.homedir(), 'git/modern-web-mcp/build/index.js'),
 };

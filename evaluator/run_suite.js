@@ -86,44 +86,66 @@ async function runCommand(command, args) {
   });
 }
 
-function updateMcpConfig(agentType) {
-  const configPath = path.join(config.jetskiDir, 'mcp_config.json');
-  let mcpConfig = { mcpServers: {} };
+async function updateSkills(agentType) {
+  const mcpConfigPath = path.join(config.jetskiDir, 'mcp_config.json');
+  const skillsDir = path.join(config.jetskiDir, 'skills');
+  const guidesDir = path.resolve(path.dirname(config.mcpServerPath), 'guides');
 
+  // Ensure skills directory exists
+  if (!fs.existsSync(skillsDir)) {
+    fs.mkdirSync(skillsDir, { recursive: true });
+  }
+
+  // Always start with a clean skills directory
   try {
-    if (fs.existsSync(configPath)) {
-      const content = fs.readFileSync(configPath, 'utf8');
-      if (content.trim()) {
-        mcpConfig = JSON.parse(content);
-      }
-    }
+    await runCommand(`rm -rf "${skillsDir}"/*`);
   } catch (e) {
-    console.error('Failed to read MCP config:', e);
+    // It's fine if it was already empty
   }
 
-  if (!mcpConfig.mcpServers) mcpConfig.mcpServers = {};
-
-  const serverName = 'modern-web';
-  // Only configure modern-web for guided agents
-  if (agentType === 'guided') {
-    mcpConfig.mcpServers[serverName] = {
-      "command": "node",
-      "args": [
-        config.mcpServerPath
-      ]
-    };
-    console.log('Enabled modern-web MCP server');
-  } else {
-    if (mcpConfig.mcpServers[serverName]) {
-      delete mcpConfig.mcpServers[serverName];
-      console.log('Disabled modern-web MCP server');
-    }
-  }
-
+  // Ensure MCP config is empty
   try {
-    fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
+    fs.writeFileSync(mcpConfigPath, '{}');
   } catch (e) {
     console.error('Failed to write MCP config:', e);
+  }
+
+  if (agentType === 'guided') {
+    if (!fs.existsSync(guidesDir)) {
+      console.warn(`WARNING: Guides source not found: ${guidesDir}`);
+      return;
+    }
+
+    console.log(`Syncing guides from ${guidesDir} to ${skillsDir}`);
+    try {
+      const categories = fs.readdirSync(guidesDir);
+
+      for (const category of categories) {
+        const categoryPath = path.join(guidesDir, category);
+        if (!fs.statSync(categoryPath).isDirectory()) continue;
+
+        const files = fs.readdirSync(categoryPath)
+          .filter(f => f.endsWith('.md'));
+
+        for (const file of files) {
+          const useCase = path.basename(file, '.md');
+          const skillName = `${category}-${useCase}`;
+          const skillDestDir = path.join(skillsDir, skillName);
+
+          if (!fs.existsSync(skillDestDir)) {
+            fs.mkdirSync(skillDestDir, { recursive: true });
+          }
+
+          const content = fs.readFileSync(path.join(categoryPath, file));
+          fs.writeFileSync(path.join(skillDestDir, 'SKILL.md'), content);
+        }
+      }
+      console.log('✅ Skills populated from guides');
+    } catch (e) {
+      console.error('Failed to copy guides to skills:', e);
+    }
+  } else {
+    console.log('Agent is unguided; ensuring skills are empty');
   }
 }
 
@@ -213,7 +235,7 @@ async function main() {
           promptContent += ` Don't bother doing any manual verification in a browser.`;
 
           for (const agentType of AGENT_TYPES) {
-            updateMcpConfig(agentType);
+            await updateSkills(agentType);
 
             console.log('🧹 Clearing Artifacts for new run...');
             for (const dirName of ARTIFACT_DIRS) {
