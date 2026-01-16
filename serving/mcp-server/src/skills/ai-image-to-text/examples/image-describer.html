@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Image to Text Example</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    .preview {
+      max-width: 100%;
+      margin: 1rem 0;
+      border-radius: 8px;
+    }
+    #output {
+      white-space: pre-wrap;
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 4px;
+      margin-top: 1rem;
+      min-height: 100px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Image Description</h1>
+<p>Upload an image to describe it using the built-in Prompt API.</p>
+
+<input type="file" id="image-upload" accept="image/*">
+<button id="stop-btn" hidden>Stop Generation</button>
+
+<img id="image-preview" class="preview" hidden>
+
+<div id="status"></div>
+<div id="output"></div>
+
+<script>
+const outputEl = document.querySelector("#output");
+const statusEl = document.querySelector("#status");
+const fileInput = document.querySelector("#image-upload");
+const stopBtn = document.querySelector("#stop-btn");
+const imgPreview = document.querySelector("#image-preview");
+
+let session;
+let abortController;
+
+async function initModel() {
+  if (!window.LanguageModel) {
+    statusEl.textContent = "❌ Window.LanguageModel is not available in this browser.";
+    return false;
+  }
+
+  const options = {
+    expectedInputs: [{ type: "image" }],
+    expectedOutputs: [{ type: "text", languages: ["en"] }]
+  };
+
+  try {
+    const availability = await window.LanguageModel.availability(options);
+    if (availability === "unavailable") {
+      statusEl.textContent = "❌ Model unavailable.";
+      return false;
+    }
+
+    statusEl.textContent = "⬇️ Initializing model...";
+    
+    // Initialize with download progress
+    session = await window.LanguageModel.create({
+      ...options,
+      monitor(m) {
+        m.addEventListener("downloadprogress", (e) => {
+          statusEl.textContent = `Downloading: ${Math.round(e.loaded * 100)}%`;
+        });
+      },
+    });
+    
+    statusEl.textContent = "✅ Model ready.";
+    return true;
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = "❌ Error initializing model.";
+    return false;
+  }
+}
+
+// Handle generation
+async function generateDescription(file) {
+  if (!session) {
+    const success = await initModel();
+    if (!success) return;
+  }
+  
+  // Abort previous request if running
+  if (abortController) abortController.abort();
+  abortController = new AbortController();
+
+  stopBtn.hidden = false;
+  stopBtn.onclick = () => {
+    abortController.abort();
+    statusEl.textContent = "🛑 Generation stopped.";
+    stopBtn.hidden = true;
+  };
+
+  try {
+    statusEl.textContent = "🤖 Generating description...";
+    outputEl.textContent = "";
+
+    // Prompt with both text and image
+    const stream = await session.promptStreaming([{
+      role: "user",
+      content: [
+        { type: "text", value: "Describe this image in vivid detail." },
+        { type: "image", value: file },
+      ]
+    }], {
+      signal: abortController.signal
+    });
+
+    for await (const chunk of stream) {
+      outputEl.textContent += chunk;
+    }
+    
+    statusEl.textContent = "✅ Generation complete.";
+    stopBtn.hidden = true;
+  } catch (err) {
+    if (err.name === "AbortError") {
+      console.log("Generation aborted");
+    } else {
+      console.error(err);
+      statusEl.textContent = "❌ Error processing image.";
+    }
+    stopBtn.hidden = true;
+  }
+}
+
+fileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imgPreview.src = e.target.result;
+      imgPreview.hidden = false;
+    };
+    reader.readAsDataURL(file);
+    
+    // Generate
+    generateDescription(file);
+  }
+});
+</script>
+
+</body>
+</html>

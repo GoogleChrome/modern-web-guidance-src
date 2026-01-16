@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern Color System</title>
+  <style>
+    /* Modern Color System */
+    :root {
+      /* 1. Define base brand color */
+      --brand: #3b82f6;
+
+      /* 2. Use light-dark() for effortless theming */
+      color-scheme: light dark;
+      --surface: light-dark(#ffffff, oklch(from var(--brand) 0.1 0.05 h));
+      --text: light-dark(#1a1a1a, #ffffff);
+      --card-bg: light-dark(#f3f4f6, oklch(from var(--brand) 0.15 0.05 h));
+    }
+
+    body {
+      background-color: var(--surface);
+      color: var(--text);
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      margin: 0;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      padding: 2rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+
+    .button {
+      /* 3. Use Relative Color Syntax for state variants */
+      background: var(--brand);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+
+    .button:hover {
+      /* Adjust lightness (l) dynamically without defining a new hex */
+      background: oklch(from var(--brand) calc(l + 0.1) c h);
+    }
+
+    .button-ghost {
+      /* Use the forward-slash for alpha transparency */
+      background: oklch(from var(--brand) l c h / 0.15);
+      color: var(--brand);
+      margin-left: 1rem;
+    }
+    
+    .button-ghost:hover {
+      background: oklch(from var(--brand) l c h / 0.25);
+    }
+    
+    .palette {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+      flex-wrap: wrap;
+    }
+    
+    .swatch {
+      width: 100px;
+      height: 100px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Modern Color System</h1>
+  <p>This page uses <code>light-dark()</code> and Relative Color Syntax (RCS).</p>
+  <p>Try switching your OS theme between Light and Dark mode!</p>
+
+  <div class="card">
+    <h2>Dynamic Components</h2>
+    <p>These buttons derive their hover states automatically from the brand color.</p>
+    <br>
+    <button class="button">Primary Action</button>
+    <button class="button button-ghost">Secondary Action</button>
+  </div>
+  
+  <h2>Live Color Tweaking</h2>
+  <p>Change the brand color to see the entire UI update automatically.</p>
+  <input type="color" id="color-picker" value="#3b82f6">
+  
+  <div class="palette">
+    <div class="swatch" style="background: var(--brand); color: white;">Brand</div>
+    <div class="swatch" style="background: oklch(from var(--brand) calc(l + 0.2) c h); color: black;">Lighter</div>
+    <div class="swatch" style="background: oklch(from var(--brand) calc(l - 0.2) c h); color: white;">Darker</div>
+    <div class="swatch" style="background: oklch(from var(--brand) l c calc(h + 120)); color: white;">Compl.</div>
+  </div>
+</div>
+
+<script>
+  const picker = document.getElementById('color-picker');
+  const root = document.documentElement;
+  
+  picker.addEventListener('input', (e) => {
+    root.style.setProperty('--brand', e.target.value);
+  });
+</script>
+
+</body>
+</html>

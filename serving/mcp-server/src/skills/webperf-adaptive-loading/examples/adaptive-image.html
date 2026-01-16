@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Adaptive Loading Example</title>
+</head>
+<body>
+
+<h1>Adaptive Loading</h1>
+<p>If network is slow, the placeholder image will be loaded instead of the high-res one.</p>
+
+<!-- 
+  loading-placeholder: URL to a lightweight resource
+  The browser uses this if ECT (Effective Connection Type) is slow (e.g., 2g/3g)
+-->
+<img 
+  src="https://placehold.co/1200x800?text=High+Res" 
+  loading-placeholder="https://placehold.co/120x80?text=Low+Res" 
+  alt="Hero Image"
+  width="1200" height="800"
+>
+
+<script>
+  // Feature detection
+  if (!('loadingPlaceholder' in HTMLImageElement.prototype)) {
+    console.log("Adaptive Loading not supported natively.");
+    // Load polyfill if needed
+  }
+</script>
+
+</body>
+</html>

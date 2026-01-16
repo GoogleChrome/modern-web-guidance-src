@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern Carousel Example</title>
+  <style>
+    .carousel-track {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory; /* Snap horizontally */
+      scroll-behavior: smooth;
+      gap: 1rem;
+      padding: 1rem;
+      list-style: none;
+      margin: 0;
+    }
+
+    .carousel-slide {
+      flex: 0 0 100%; /* Each slide takes full width */
+      scroll-snap-align: center; /* Snap to center of viewport */
+      min-height: 200px;
+      background: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+<div class="carousel" role="region" aria-label="Image Carousel">
+  <ul class="carousel-track" id="track">
+    <li class="carousel-slide" id="slide1">
+      <img src="https://placehold.co/600x400?text=Slide+1" alt="Description 1" loading="lazy">
+    </li>
+    <li class="carousel-slide" id="slide2">
+      <img src="https://placehold.co/600x400?text=Slide+2" alt="Description 2" loading="lazy">
+    </li>
+    <li class="carousel-slide" id="slide3">
+      <img src="https://placehold.co/600x400?text=Slide+3" alt="Description 3" loading="lazy">
+    </li>
+  </ul>
+  
+  <div class="controls">
+    <button onclick="document.getElementById('track').scrollBy({left: -300, behavior: 'smooth'})">Previous</button>
+    <button onclick="document.getElementById('track').scrollBy({left: 300, behavior: 'smooth'})">Next</button>
+  </div>
+</div>
+
+</body>
+</html>

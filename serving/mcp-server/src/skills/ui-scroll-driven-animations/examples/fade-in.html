@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fade In on Scroll</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    header {
+      height: 80vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: #fdf2f8;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    .content {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 4rem 1rem;
+    }
+
+    /* Fade-in Image on Scroll */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(50px) scale(0.9); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @supports (animation-timeline: view()) {
+      .fade-in-image {
+        opacity: 0; /* Initial state */
+        border-radius: 12px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        display: block;
+        max-width: 100%;
+        margin: 2rem auto;
+        
+        animation: fade-in linear both;
+        animation-timeline: view();
+        /* Start animating when 10% visible, finish when 40% visible */
+        animation-range: entry 10% entry 40%;
+      }
+    }
+    
+    .spacer { height: 150px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Fade In on Scroll</h1>
+  <p>Scroll down to see images animate as they enter the viewport.</p>
+  <p>Linked to <code>view()</code></p>
+  <div style="font-size: 3rem;">🔽</div>
+</header>
+
+<div class="content">
+  <p>Scroll down...</p>
+  
+  <div class="spacer"></div>
+  
+  <img src="https://placehold.co/700x400/db2777/white?text=Fade+In+1" alt="Demo 1" class="fade-in-image">
+  
+  <div class="spacer"></div>
+  
+  <p>Keep scrolling...</p>
+  
+  <div class="spacer"></div>
+
+  <img src="https://placehold.co/700x400/9333ea/white?text=Fade+In+2" alt="Demo 2" class="fade-in-image">
+  
+  <div class="spacer"></div>
+  
+  <p>One more...</p>
+  
+  <div class="spacer"></div>
+  
+  <img src="https://placehold.co/700x400/2563eb/white?text=Fade+In+3" alt="Demo 3" class="fade-in-image">
+  
+  <div class="spacer"></div>
+</div>
+
+</body>
+</html>

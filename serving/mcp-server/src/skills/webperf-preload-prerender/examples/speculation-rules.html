@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Speculation Rules Example</title>
+  
+  <!-- 
+    Speculation Rules API:
+    Tells the browser to verify or prerender pages before the user navigates.
+  -->
+  <script type="speculationrules">
+  {
+    "prerender": [
+      {
+        "source": "document",
+        "where": {
+          "and": [
+            // Prerender all links starting with /product/
+            { "href_matches": "/product/*" },
+            // But NOT if they match /logout or /cart
+            { "not": { "href_matches": ["/logout", "/cart/*"] }}
+          ]
+        },
+        "eagerness": "moderate"
+      }
+    ],
+    "prefetch": [
+      {
+        "source": "document",
+        "where": {
+           "href_matches": "/about"
+        },
+        "eagerness": "conservative"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+
+<nav>
+  <a href="/">Home</a>
+  <a href="/about">About (Prefetched)</a>
+  <a href="/product/123">Product 123 (Prerendered)</a>
+  <a href="/logout">Logout (Excluded)</a>
+</nav>
+
+<h1>Speculation Rules Demo</h1>
+<p>
+  The browser will speculatively load the Product page based on the rules defined in the head.
+  Check the Network tab or chrome://prerender-internals to see it in action.
+</p>
+
+</body>
+</html>

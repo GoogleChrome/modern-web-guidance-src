@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Break Up Long Tasks</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      line-height: 1.5;
+    }
+    
+    /* Spinner to visualize main thread blocking */
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 2rem auto;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .controls {
+      display: grid;
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+    
+    button {
+      padding: 0.75rem;
+      font-size: 1rem;
+      cursor: pointer;
+      background: #eee;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    
+    button:hover {
+      background: #ddd;
+    }
+    
+    #log {
+      background: #f0f0f0;
+      padding: 1rem;
+      border-radius: 4px;
+      height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+    }
+    
+    .bad { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+    .good { background: #dcfce7; border-color: #22c55e; color: #166534; }
+  </style>
+</head>
+<body>
+
+<h1>Break Up Long Tasks</h1>
+<p>Test the difference between blocking the main thread and yielding with <code>scheduler.yield()</code>.</p>
+<p><strong>Look at the spinner below.</strong> If it freezes, the main thread is blocked!</p>
+
+<div class="spinner"></div>
+
+<div class="controls">
+  <button onclick="runBlockingTask()" class="bad">Run Long Task (Blocks everything)</button>
+  <button onclick="runYieldingTask()" class="good">Run Yielding Task (Smooth)</button>
+</div>
+
+<div id="log">Log output...</div>
+
+<script>
+  const logEl = document.getElementById('log');
+
+  function log(msg) {
+    const div = document.createElement('div');
+    div.textContent = `${new Date().toLocaleTimeString()}: ${msg}`;
+    logEl.appendChild(div);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // Helper to simulate heavy work (synchronous loop)
+  function doHeavyWork(ms = 50) {
+    const start = performance.now();
+    while (performance.now() - start < ms) {
+      // Busy wait
+    }
+  }
+
+  // BAD: Blocks the main thread for 2 seconds
+  function runBlockingTask() {
+    log("🔴 Starting blocking task...");
+    
+    // This loops runs synchronously for ~2 seconds total
+    for (let i = 0; i < 40; i++) {
+        doHeavyWork(50); // 50ms * 40 = 2000ms
+    }
+    
+    log("🔴 Task finished. Did the spinner freeze? Yes.");
+  }
+
+  // GOOD: Yields to main thread periodically
+  async function runYieldingTask() {
+    log("🟢 Starting yielding task...");
+    
+    for (let i = 0; i < 40; i++) {
+      doHeavyWork(50);
+      
+      // Update UI (text might not paint if we just yielded, but logic runs)
+      // log(`Processed chunk ${i+1}/40`); 
+      
+      // YIELD!
+      if ('scheduler' in window && 'yield' in scheduler) {
+        await scheduler.yield();
+      } else {
+        // Fallback for older browsers
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+    }
+    
+    log("🟢 Task finished. The spinner should have kept spinning.");
+  }
+</script>
+
+</body>
+</html>

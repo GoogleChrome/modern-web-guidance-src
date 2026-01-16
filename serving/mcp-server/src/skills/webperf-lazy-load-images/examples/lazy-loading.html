@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lazy Loading Example</title>
+  <style>
+    .spacer {
+      height: 150vh;
+      background: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HERO IMAGE: Always load eagerly (default) or explicitly -->
+<img src="https://placehold.co/1200x600?text=Hero+Image" alt="Hero" width="1200" height="600" fetchpriority="high">
+
+<div class="spacer">
+  Scroll down to see lazy loaded image...
+</div>
+
+<!-- LAZY IMAGE: Loads only when nearing viewport -->
+<img 
+  src="https://placehold.co/800x600?text=Lazy+Image" 
+  loading="lazy" 
+  alt="Lazy Loaded"
+  width="800" height="600"
+>
+
+<div class="spacer">
+  Keep scrolling...
+</div>
+
+<!-- LAZY IMAGE 2 -->
+<img 
+  src="https://placehold.co/800x600?text=Lazy+Image+2" 
+  loading="lazy" 
+  alt="Lazy Loaded 2"
+  width="800" height="600"
+>
+
+</body>
+</html>
