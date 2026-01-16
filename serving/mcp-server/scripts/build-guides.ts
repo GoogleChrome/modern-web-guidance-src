@@ -12,6 +12,8 @@ const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "..");
 const GUIDES_DIR = path.join(ROOT_DIR, "src/guides");
 const BUILD_GUIDES_DIR = path.join(ROOT_DIR, "build/guides");
+const SKILLS_DIR = path.join(ROOT_DIR, "src/skills");
+const BUILD_SKILLS_DIR = path.join(ROOT_DIR, "build/skills");
 const DATA_DIR = path.join(ROOT_DIR, "src/data");
 const OUTPUT_FILE = path.join(DATA_DIR, "use-cases.gen.ts");
 
@@ -26,6 +28,11 @@ if (!fs.existsSync(BUILD_GUIDES_DIR)) {
   fs.mkdirSync(BUILD_GUIDES_DIR, { recursive: true });
 }
 
+// Ensure build/skills exists
+if (!fs.existsSync(BUILD_SKILLS_DIR)) {
+  fs.mkdirSync(BUILD_SKILLS_DIR, { recursive: true });
+}
+
 async function processGuides() {
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
@@ -37,6 +44,9 @@ async function processGuides() {
 
   console.log("Initializing Store...");
   const store = new Store();
+
+  // Copy entire contents of src/skills to build/skills
+  fs.cpSync(SKILLS_DIR, BUILD_SKILLS_DIR, { recursive: true });
 
   for (const category of categories) {
     const categoryDir = path.join(GUIDES_DIR, category);
