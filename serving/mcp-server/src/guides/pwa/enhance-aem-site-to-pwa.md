@@ -1,3 +1,4 @@
+---
 description: Enhance existing Adobe Experience Manager (AEM) websites into Progressive Web Apps (PWAs) with Workbox for an app-like experience without coding.
 filename: enhance-aem-site-to-pwa
 category: pwa
