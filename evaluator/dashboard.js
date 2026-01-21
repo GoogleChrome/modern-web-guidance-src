@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw new Error('No testID provided in query string');
         }
 
-        const evalsPath = `results/${testID}/evals.json`;
+        const evalsPath = `results/${testID}/evals.json?t=${Date.now()}`;
         const response = await fetch(evalsPath);
         if (!response.ok) throw new Error(`Failed to load data from ${evalsPath}`);
         const data = await response.json();
@@ -25,7 +25,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('Could not load Jetski info:', e);
         }
 
-        renderTestHeader(testID, jetskiVersion);
+        // Fetch timestamp from manifest
+        let timestamp = null;
+        try {
+            const manifestRes = await fetch(`results/tests.json?t=${Date.now()}`);
+            if (manifestRes.ok) {
+                const manifest = await manifestRes.json();
+                const testEntry = manifest.tests.find(t => t.id === testID);
+                if (testEntry && testEntry.timestamp) {
+                    timestamp = testEntry.timestamp;
+                }
+            }
+        } catch (e) {
+            console.log('Could not load test manifest:', e);
+        }
+
+        renderTestHeader(testID, jetskiVersion, timestamp);
         renderSummary(data, testID);
         renderGrid(data, testID);
 
@@ -114,11 +129,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-function renderTestHeader(testID, jetskiVersion) {
+function renderTestHeader(testID, jetskiVersion, timestamp) {
     const container = document.getElementById('test-header');
     if (container) {
-        const timestamp = testID.replace('test_', '').replace(/-/g, ':').slice(0, -2);
-        let html = `Test ID: <strong>${testID}</strong> — Run at ${timestamp}`;
+        let html = `Test ID: <strong>${testID}</strong>`;
+
+        if (timestamp) {
+            let timeStr = timestamp;
+            try {
+                timeStr = new Date(timestamp).toLocaleString();
+            } catch (e) { }
+            html += ` — Run at ${timeStr}`;
+        }
+
         if (jetskiVersion) {
             html += ` — Jetski Version: <strong>${jetskiVersion}</strong>`;
         }
@@ -134,21 +157,24 @@ function renderSummary(data, testID) {
     const unguidedStats = calculateGroupTotalStats(results, 'unguided');
     const guidedStats = calculateGroupTotalStats(results, 'guided');
 
+    const unguidedRate = unguidedStats.total > 0 ? Math.round((unguidedStats.passed / unguidedStats.total) * 100) : 0;
+    const guidedRate = guidedStats.total > 0 ? Math.round((guidedStats.passed / guidedStats.total) * 100) : 0;
+
     container.innerHTML = `
         <div class="stat-card">
-            <span class="stat-value" style="color: ${getColor(summary.unguidedMedian)}">
-                ${summary.unguidedMedian}%
+            <span class="stat-value" style="color: ${getColor(unguidedRate)}">
+                ${unguidedRate}%
             </span>
-            <span class="stat-label">Unguided Median Pass Rate</span>
+            <span class="stat-label">Unguided Pass Rate</span>
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
                 ${unguidedStats.passed}/${unguidedStats.total} checks passed
             </div>
         </div>
         <div class="stat-card">
-            <span class="stat-value" style="color: ${getColor(summary.guidedMedian)}">
-                ${summary.guidedMedian}%
+            <span class="stat-value" style="color: ${getColor(guidedRate)}">
+                ${guidedRate}%
             </span>
-            <span class="stat-label">Guided Median Pass Rate</span>
+            <span class="stat-label">Guided Pass Rate</span>
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
                 ${guidedStats.passed}/${guidedStats.total} checks passed
             </div>
@@ -196,22 +222,27 @@ function renderGrid(data, testID) {
                 card.className = 'test-card';
 
                 if (runData && testStats) {
-                    // Find a run that matches the median to show representative counts
-                    const medianRun = runData.find(run => {
+                    // Calculate Total/Average Pass Rate for this specific test configuration
+                    let totalPassed = 0;
+                    let totalChecks = 0;
+                    runData.forEach(run => {
                         const s = getRunStats(run.results);
-                        return s.rate === testStats.median;
-                    }) || runData[0];
+                        totalPassed += s.passed;
+                        totalChecks += s.total;
+                    });
 
-                    const s = getRunStats(medianRun.results);
+                    const numRuns = runData.length;
+                    const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
 
+                    // Display totals to ensure the percentage mathematically matches the fraction
                     card.onclick = () => showDetails(testName, runData, testStats, testID);
                     card.innerHTML = `
                         <h3>${formatTestName(testName)}</h3>
                         <div class="pass-rate-bar">
-                            <div class="pass-rate-fill" style="width: ${testStats.median}%; background-color: ${getColor(testStats.median)}"></div>
+                            <div class="pass-rate-fill" style="width: ${avgRate}%; background-color: ${getColor(avgRate)}"></div>
                         </div>
                         <div style="display: flex; justify-content: space-between; font-size: 0.9em; color: var(--text-secondary);">
-                            <span>Median: ${testStats.median}% <span style="opacity: 0.8">(${s.passed}/${s.total})</span></span>
+                            <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
                             <span>Runs: ${testStats.rates.length}</span>
                         </div>
                     `;

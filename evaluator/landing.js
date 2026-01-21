@@ -10,6 +10,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupTabs();
         setupFilters();
 
+        const params = new URLSearchParams(window.location.search);
+        const view = params.get('view');
+        if (view && ['overview', 'explorer', 'trends'].includes(view)) {
+            activateTab(view, false);
+        }
+
         // Initial Render
         renderOverview();
         renderExplorer();
@@ -21,24 +27,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// Handle browser back/forward
+window.addEventListener('popstate', () => {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view') || 'overview';
+    if (['overview', 'explorer', 'trends'].includes(view)) {
+        activateTab(view, false);
+    }
+});
+
 function setupTabs() {
     const tabs = document.querySelectorAll('.tab-button');
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            // Update active tab state
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-
-            // Hide all content
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-            // Show selected content
-            const targetId = `${tab.dataset.tab}-tab`;
-            document.getElementById(targetId).classList.add('active');
-
-            currentTab = tab.dataset.tab;
+            activateTab(tab.dataset.tab);
         });
     });
+}
+
+function activateTab(tabName, updateUrl = true) {
+    if (updateUrl && currentTab === tabName) return;
+
+    const tabs = document.querySelectorAll('.tab-button');
+
+    // Update active tab state
+    tabs.forEach(t => {
+        if (t.dataset.tab === tabName) {
+            t.classList.add('active');
+        } else {
+            t.classList.remove('active');
+        }
+    });
+
+    // Hide all content
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+    // Show selected content
+    const targetId = `${tabName}-tab`;
+    const targetContent = document.getElementById(targetId);
+    if (targetContent) {
+        targetContent.classList.add('active');
+    }
+
+    currentTab = tabName;
+
+    if (updateUrl) {
+        const url = new URL(window.location);
+        url.searchParams.set('view', tabName);
+        window.history.replaceState({}, '', url);
+    }
 }
 
 function setupFilters() {
@@ -59,7 +96,7 @@ function setupFilters() {
 
 async function loadAllTests() {
     try {
-        const response = await fetch('results/tests.json');
+        const response = await fetch(`results/tests.json?t=${Date.now()}`);
         if (!response.ok) throw new Error('Manifest not found');
         const manifest = await response.json();
 
@@ -73,7 +110,7 @@ async function loadAllTests() {
         // Load all test data
         for (const testEntry of manifest.tests) {
             try {
-                const response = await fetch(`results/${testEntry.id}/evals.json`);
+                const response = await fetch(`results/${testEntry.id}/evals.json?t=${Date.now()}`);
                 if (response.ok) {
                     allTestData[testEntry.id] = {
                         timestamp: testEntry.timestamp,
@@ -106,15 +143,17 @@ function renderOverview() {
     const guidedMetric = document.getElementById('latest-guided-metric');
     const unguidedMetric = document.getElementById('latest-unguided-metric');
 
-    // Animate numbers (simple)
-    const guidedVal = latestData.summary.guidedMedian;
-    const unguidedVal = latestData.summary.unguidedMedian;
+    const guidedStats = calculateGroupTotalStats(latestData.results, 'guided');
+    const unguidedStats = calculateGroupTotalStats(latestData.results, 'unguided');
 
-    guidedMetric.textContent = `${guidedVal}%`;
-    guidedMetric.style.color = getColor(guidedVal);
+    const guidedRate = guidedStats.total > 0 ? Math.round((guidedStats.passed / guidedStats.total) * 100) : 0;
+    const unguidedRate = unguidedStats.total > 0 ? Math.round((unguidedStats.passed / unguidedStats.total) * 100) : 0;
 
-    unguidedMetric.textContent = `${unguidedVal}%`;
-    unguidedMetric.style.color = getColor(unguidedVal);
+    guidedMetric.textContent = `${guidedRate}%`;
+    guidedMetric.style.color = getColor(guidedRate);
+
+    unguidedMetric.textContent = `${unguidedRate}%`;
+    unguidedMetric.style.color = getColor(unguidedRate);
 
     // 2. Render Recent Tests List
     const container = document.getElementById('overview-recent-tests');
@@ -123,8 +162,13 @@ function renderOverview() {
     container.innerHTML = recentTests.map(testID => {
         const testInfo = allTestData[testID];
         const data = testInfo.data;
-        const summary = data.summary;
         const timestamp = new Date(testInfo.timestamp).toLocaleString();
+
+        const gStats = calculateGroupTotalStats(data.results, 'guided');
+        const uStats = calculateGroupTotalStats(data.results, 'unguided');
+
+        const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
+        const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
 
         return `
             <a class="recent-test-item" href="dashboard.html?testID=${testID}">
@@ -135,11 +179,11 @@ function renderOverview() {
                 <div class="test-stats">
                     <div>
                         <div class="stat-label">Guided</div>
-                        <div class="stat-value" style="color: ${getColor(summary.guidedMedian)}">${summary.guidedMedian}%</div>
+                        <div class="stat-value" style="color: ${getColor(gRate)}">${gRate}%</div>
                     </div>
                     <div>
                         <div class="stat-label">Unguided</div>
-                        <div class="stat-value" style="color: ${getColor(summary.unguidedMedian)}">${summary.unguidedMedian}%</div>
+                        <div class="stat-value" style="color: ${getColor(uRate)}">${uRate}%</div>
                     </div>
                 </div>
             </a>
@@ -229,7 +273,7 @@ function renderGridRow(testName) {
                 <a class="test-grid-cell"
                      href="dashboard.html?testID=${testID}"
                      style="background-color: ${getColor(testStats.median)}" 
-                     title="${testName}: ${testStats.median}%">
+                     title="${testID} - ${new Date(allTestData[testID].timestamp).toLocaleDateString()}: ${testStats.median}%">
                     ${testStats.median}%
                 </a>
             `);
@@ -302,40 +346,64 @@ function renderComparisonHistory(scenario, prompt) {
                 const data = allTestData[testID].data;
                 const results = data.results;
 
-                let status = 'missing';
-                let tooltip = `Test ${testID.replace('test_', '')}: Not Run`;
+                let hasRuns = false;
 
                 if (results && results[testName]) {
                     const runs = results[testName];
                     if (runs && runs.length > 0) {
-                        const run = runs[0];
-                        const check = run.results.find(c => c.id === checkId);
-                        if (check) {
-                            status = check.passed ? 'pass' : 'fail';
-                            tooltip = `Test ${testID.replace('test_', '')}: ${check.passed ? 'PASS' : 'FAIL'}\n${check.message}`;
-                        }
+                        hasRuns = true;
+                        // Show runs Latest -> Oldest (assuming runs are strictly ascending by runNumber)
+                        // logic in evaluate.js suggests they are pushed in runDirs sort order (ascending)
+                        [...runs].reverse().forEach(run => {
+                            let status = 'missing';
+                            let tooltip = `Test ${testID.replace('test_', '')} (Run ${run.runNumber}): Not Run`;
+
+                            const check = run.results.find(c => c.id === checkId);
+                            if (check) {
+                                status = check.passed ? 'pass' : 'fail';
+                                tooltip = `Test ${testID.replace('test_', '')} (Run ${run.runNumber}): ${check.passed ? 'PASS' : 'FAIL'}\n${check.message}`;
+                            }
+
+                            let color = 'var(--bg-tertiary)';
+                            if (status === 'pass') color = 'var(--accent-success)';
+                            if (status === 'fail') color = 'var(--accent-failure)';
+                            const border = status === 'missing' ? '1px solid var(--border-color)' : 'none';
+
+                            const encodedTestName = encodeURIComponent(testName);
+                            const encodedCheckId = encodeURIComponent(checkId);
+
+                            sparklinesHtml += `
+                                <a href="dashboard.html?testID=${testID}&testName=${encodedTestName}&checkId=${encodedCheckId}" 
+                                   class="sparkline-dot" 
+                                   style="background-color: ${color}; border: ${border};" 
+                                   title="${escapeHtml(tooltip)}"></a>
+                            `;
+                        });
                     }
                 }
 
-                let color = 'var(--bg-tertiary)';
-                if (status === 'pass') color = 'var(--accent-success)';
-                if (status === 'fail') color = 'var(--accent-failure)';
-                const border = status === 'missing' ? '1px solid var(--border-color)' : 'none';
+                if (!hasRuns) {
+                    let status = 'missing';
+                    let tooltip = `Test ${testID.replace('test_', '')}: Not Run`;
 
-                const encodedTestName = encodeURIComponent(testName);
-                const encodedCheckId = encodeURIComponent(checkId);
+                    let color = 'var(--bg-tertiary)';
+                    const border = '1px solid var(--border-color)';
 
-                sparklinesHtml += `
-                    <a href="dashboard.html?testID=${testID}&testName=${encodedTestName}&checkId=${encodedCheckId}" 
-                       class="sparkline-dot" 
-                       style="background-color: ${color}; border: ${border};" 
-                       title="${escapeHtml(tooltip)}"></a>
-                `;
+                    const encodedTestName = encodeURIComponent(testName);
+                    const encodedCheckId = encodeURIComponent(checkId);
+
+                    sparklinesHtml += `
+                        <a href="dashboard.html?testID=${testID}&testName=${encodedTestName}&checkId=${encodedCheckId}" 
+                           class="sparkline-dot" 
+                           style="background-color: ${color}; border: ${border};" 
+                           title="${escapeHtml(tooltip)}"></a>
+                    `;
+                }
             });
 
             html += `
                 <div class="history-item">
-                    <div class="check-id-text" title="${checkId}">${description}</div>
+                    <div class="check-id-text" title="${checkId}">${escapeHtml(description)}</div>
                     <div class="history-sparklines">${sparklinesHtml}</div>
                 </div>
             `;
@@ -357,10 +425,11 @@ function renderTrends() {
     if (!guidedTimeline || !unguidedTimeline) return;
 
     // Helper to render bars
-    const renderBars = (metric) => {
+    const renderBars = (groupType) => {
         return testIds.map(testID => {
             const data = allTestData[testID].data;
-            const value = data.summary[metric];
+            const stats = calculateGroupTotalStats(data.results, groupType);
+            const value = stats.total > 0 ? Math.round((stats.passed / stats.total) * 100) : 0;
             const timestamp = new Date(allTestData[testID].timestamp).toLocaleDateString();
 
             return `
@@ -372,13 +441,39 @@ function renderTrends() {
         }).join('');
     };
 
-    guidedTimeline.innerHTML = renderBars('guidedMedian');
-    unguidedTimeline.innerHTML = renderBars('unguidedMedian');
+    guidedTimeline.innerHTML = renderBars('guided');
+    unguidedTimeline.innerHTML = renderBars('unguided');
 }
 
 // ==========================================
 // HELPERS
 // ==========================================
+
+function calculateGroupTotalStats(results, groupType) {
+    let passed = 0;
+    let total = 0;
+
+    Object.keys(results).forEach(key => {
+        // key format: "scenario - prompt - agent"
+        if (key.endsWith(` - ${groupType}`)) {
+            results[key].forEach(run => {
+                const s = getRunStats(run.results);
+                passed += s.passed;
+                total += s.total;
+            });
+        }
+    });
+
+    return { passed, total };
+}
+
+function getRunStats(checks) {
+    if (!checks || !checks.length) return { rate: 0, passed: 0, total: 0 };
+    const passed = checks.filter(c => c.passed).length;
+    const total = checks.length;
+    const rate = Math.round((passed / total) * 100);
+    return { rate, passed, total };
+}
 
 function getSortedTestIds() {
     return Object.keys(allTestData).sort((a, b) => {

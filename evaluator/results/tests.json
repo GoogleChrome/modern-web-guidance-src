@@ -16,12 +16,12 @@
       "runCount": 3
     },
     {
-      "id": "test_2026-01-21T14-16-55",
+      "id": "smoke-test-fast-mode",
       "timestamp": "2026-01-21T15:57:50.175Z",
       "runCount": 3
     },
     {
-      "id": "test_2026-01-21T17-00-13",
+      "id": "smoke-test-planning-mode",
       "timestamp": "2026-01-21T19:47:27.309Z",
       "runCount": 3
     }

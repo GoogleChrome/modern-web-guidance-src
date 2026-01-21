@@ -40,6 +40,21 @@ const server = http.createServer((req, res) => {
 
   fs.readFile(filePath, (err, content) => {
     if (err) {
+      if (err.code === 'EISDIR') {
+        // It's a directory, try serving index.html
+        const indexPath = path.join(filePath, 'index.html');
+        fs.readFile(indexPath, (err2, content2) => {
+          if (err2) {
+            res.writeHead(404);
+            res.end('404 Not Found (Directory index missing)');
+          } else {
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(content2, 'utf-8');
+          }
+        });
+        return;
+      }
+
       if (err.code === 'ENOENT') {
         res.writeHead(404);
         res.end('404 Not Found');

@@ -156,7 +156,7 @@ function generateReport(allResults, numRuns, testID) {
     };
   }
 
-  // Calculate overall statistics
+  // Calculate overall statistics (Median)
   let guidedMedians = [];
   let unguidedMedians = [];
   
@@ -181,11 +181,37 @@ function generateReport(allResults, numRuns, testID) {
   const unguidedMedian = Math.round(calculateMedian(unguidedMedians));
   const guidedMedian = Math.round(calculateMedian(guidedMedians));
 
+  // Calculate total pass rates (Weighted/True Average)
+  let unguidedPassed = 0;
+  let unguidedTotal = 0;
+  let guidedPassed = 0;
+  let guidedTotal = 0;
+
+  for (const name of sortedKeys) {
+    const runs = allResults[name];
+    runs.forEach(run => {
+      const checks = run.results;
+      const passCount = checks.filter(c => c.passed).length;
+      const totalCount = checks.length;
+
+      if (name.includes(' - unguided')) {
+        unguidedPassed += passCount;
+        unguidedTotal += totalCount;
+      } else if (name.includes(' - guided')) {
+        guidedPassed += passCount;
+        guidedTotal += totalCount;
+      }
+    });
+  }
+
+  const unguidedRate = unguidedTotal > 0 ? Math.round((unguidedPassed / unguidedTotal) * 100) : 0;
+  const guidedRate = guidedTotal > 0 ? Math.round((guidedPassed / guidedTotal) * 100) : 0;
+
   const summary = `
-| Group | Median Pass Rate | Test Runs |
+| Group | Pass Rate | Test Runs |
 |---|---|---|
-| **Unguided** | ${unguidedMedian}% | ${numRuns} |
-| **Guided** | ${guidedMedian}% | ${numRuns} |
+| **Unguided** | ${unguidedRate}% (${unguidedPassed}/${unguidedTotal}) | ${numRuns} |
+| **Guided** | ${guidedRate}% (${guidedPassed}/${guidedTotal}) | ${numRuns} |
 
 `;
 
@@ -236,12 +262,14 @@ function generateReport(allResults, numRuns, testID) {
 
   fs.writeFileSync(path.join(resultsDir, 'evals.md'), md);
   console.log(`\nReport generated: ${path.resolve(path.join(resultsDir, 'evals.md'))}`.green.bold);
-  console.log(`Median Pass Rate - Unguided: ${unguidedMedian}%, Guided: ${guidedMedian}%`.cyan);
+  console.log(`Pass Rate - Unguided: ${unguidedRate}%, Guided: ${guidedRate}%`.cyan);
 
   const jsonOutput = {
     summary: {
       unguidedMedian,
       guidedMedian,
+      unguidedPassRate: unguidedRate,
+      guidedPassRate: guidedRate,
       numRuns
     },
     results: allResults,
