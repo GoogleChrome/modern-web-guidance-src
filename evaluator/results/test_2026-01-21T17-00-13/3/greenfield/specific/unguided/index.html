@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Experience the finest artisanal coffee at Aethelgard's Brew. Sustainably sourced, expertly roasted.">
+    <title>Aethelgard's Brew | Artisanal Coffee</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">Aethelgard's</div>
+            <button class="cta-button">Order Now</button>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Awaken Your Senses</h1>
+                <p>Ethically sourced, small-batch roasted coffee for the discerning drinker.</p>
+                <div class="product-actions">
+                    <button id="details-btn" class="secondary-button" popovertarget="ingredients-popover" popovertargetaction="show">Details</button>
+                    <!-- Popover Content -->
+                    <div id="ingredients-popover" popover>
+                        <h3>Blend Ingredients</h3>
+                        <ul>
+                            <li>100% Arabica Beans</li>
+                            <li>Notes of Dark Chocolate</li>
+                            <li>Hint of Roasted Hazelnut</li>
+                            <li>Sun-dried Cherry Finish</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-image-container">
+                <!-- Adaptive Loading: default to low res or empty, JS will swap based on network -->
+                 <!-- High quality: 1920w, Low quality: 400w -->
+                <img id="hero-img" 
+                     src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&q=60&w=400" 
+                     data-src-high="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&q=80&w=1600" 
+                     data-src-low="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&q=60&w=400"
+                     alt="Pouring hot coffee into a cup"
+                     width="800" height="1000">
+            </div>
+        </section>
+
+        <!-- Spacer for scroll -->
+        <section class="content-spacer">
+            <p>Scroll down to see the magic happen...</p>
+        </section>
+        <section class="content-spacer">
+            <p>More delicious content...</p>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

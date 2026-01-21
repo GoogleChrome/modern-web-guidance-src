@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brew & Bloom - Artisan Coffee</title>
+    <meta name="description" content="Experience the finest artisan coffee at Brew & Bloom. Sustainably sourced, expertly roasted.">
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Design System Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <!-- Polyfill for Popover API if needed -->
+    <script>
+        if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+            const script = document.createElement('script');
+            script.src = "https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js";
+            document.head.appendChild(script);
+        }
+        if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+             const script = document.createElement('script');
+            script.src = "https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js";
+            document.head.appendChild(script);
+        }
+    </script>
+</head>
+<body>
+
+    <header class="site-header">
+        <nav>
+            <div class="logo">Brew & Bloom</div>
+            <ul class="nav-links">
+                <li><a href="#shop">Shop</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#visit">Visit</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Awaken Your Senses</h1>
+                <p>Small batch, ethically sourced coffee roasted to perfection.</p>
+                <a href="#shop" class="cta-button">Order Now</a>
+            </div>
+            
+            <!-- 
+                Adaptive Image Loading:
+                Default src is low-res/placeholder. 
+                data-high-res attribute holds the high quality URL.
+                Script will swap if connection is good.
+            -->
+            <div class="hero-image-container">
+                <img 
+                    id="hero-image"
+                    src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=10&w=400&blur=50" 
+                    data-high-res="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=2000"
+                    alt="Cozy coffee shop interior with warm lighting"
+                    class="hero-img"
+                >
+            </div>
+        </section>
+
+        <section id="shop" class="products">
+            <h2>Our Signature Blends</h2>
+            <div class="product-grid">
+                <!-- Product Card 1 -->
+                <article class="product-card">
+                    <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?q=80&w=600" alt="Bag of House Blend Coffee">
+                    <div class="product-info">
+                        <h3>Morning Mist</h3>
+                        <p class="price">$18.00</p>
+                        
+                        <!-- Tooltip Trigger using Popover API & Interest Invokers -->
+                        <button class="details-btn" interestfor="ingredients-popover-1">
+                            Details
+                        </button>
+                        
+                        <!-- Tooltip Content -->
+                        <div id="ingredients-popover-1" popover="hint" class="ingredients-tooltip">
+                            <h4>Origin & Notes</h4>
+                            <p><strong>Region:</strong> Ethiopia Yirgacheffe</p>
+                            <p><strong>Process:</strong> Washed</p>
+                            <p><strong>Notes:</strong> Jasmine, Lemon, Light Honey</p>
+                            <div class="popover-arrow"></div>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Product Card 2 -->
+                <article class="product-card">
+                    <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?q=80&w=600" alt="Espresso Cup">
+                    <div class="product-info">
+                        <h3>Midnight Oil</h3>
+                        <p class="price">$20.00</p>
+                        
+                         <button class="details-btn" interestfor="ingredients-popover-2">
+                            Details
+                        </button>
+                        
+                        <div id="ingredients-popover-2" popover="hint" class="ingredients-tooltip">
+                             <h4>Origin & Notes</h4>
+                            <p><strong>Region:</strong> Sumatra Mandheling</p>
+                            <p><strong>Process:</strong> Wet Hulled</p>
+                            <p><strong>Notes:</strong> Dark Chocolate, Earth, Spice</p>
+                             <div class="popover-arrow"></div>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </section>
+        
+        <section class="spacer">
+            <p>Scroll down to see the footer...</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Brew & Bloom Coffee Co.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

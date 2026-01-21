@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Tooltip Demo</title>
+    
+    <!-- Polyfills for Popover API, Interest Invokers, and CSS Anchor Positioning -->
+    <script src="polyfills/interestfor.min.js" type="module"></script>
+    <script src="polyfills/popover.min.js" type="module"></script>
+    <script src="polyfills/css-anchor-positioning.js" type="module"></script>
+    
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        .container {
+            position: relative;
+        }
+
+        /* The Button */
+        #tooltip-trigger {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            
+            /* Connect to the anchor */
+            anchor-name: --tooltip-trigger;
+        }
+
+        #tooltip-trigger:hover {
+            background-color: #0056b3;
+        }
+
+        /* The Tooltip */
+        #tooltip {
+            /* Anchoring */
+            position-anchor: --tooltip-trigger;
+            position-area: top;
+            position-try-fallbacks: flip-block;
+            margin-bottom: 8px; /* Spacing */
+            
+            /* Sizing */
+            width: max-content;
+            
+            /* Visuals */
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            
+            /* Animations */
+            opacity: 0;
+            transform: translateY(5px);
+            transition: opacity 0.2s, transform 0.2s, display 0.2s allow-discrete;
+        }
+
+        #tooltip:popover-open {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        @starting-style {
+            #tooltip:popover-open {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+        }
+        
+        /* Arrow using standard CSS (pseudo-element on the tooltip) */
+        #tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- interestfor connects the button to the popover for mouse interactions -->
+        <button id="tooltip-trigger" interestfor="tooltip">Hover over me</button>
+        
+        <!-- popover="hint" designates this as a transient UI element -->
+        <div id="tooltip" popover="hint">I'm a modern tooltip!</div>
+    </div>
+
+</body>
+</html>

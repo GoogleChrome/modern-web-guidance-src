@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Menu | The Daily Grind</title>
+  <style>
+    :root {
+      --primary: #4e342e;
+      --secondary: #d7ccc8;
+      --accent: #ffab40;
+      --text: #3e2723;
+      --light: #fafafa;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background-color: var(--light);
+    }
+
+    /* Navigation */
+    nav {
+      background: var(--primary);
+      color: white;
+      padding: 1rem 5%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    .logo a {
+      color: white;
+      text-decoration: none;
+    }
+
+    nav ul {
+      display: flex;
+      list-style: none;
+    }
+
+    nav ul li {
+      margin-left: 20px;
+    }
+
+    nav a {
+      color: white;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.3s;
+    }
+
+    nav a:hover {
+      color: var(--accent);
+    }
+
+    .logout-link {
+      border: 1px solid var(--accent);
+      padding: 5px 12px;
+      border-radius: 4px;
+    }
+
+    /* Content Sections */
+    .container {
+      max-width: 1100px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 2rem;
+      color: var(--primary);
+    }
+
+    .menu-section {
+      margin-bottom: 3rem;
+    }
+
+    .menu-section h2 {
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .menu-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      border-bottom: 1px dotted #ccc;
+      padding-bottom: 0.5rem;
+    }
+
+    .menu-item-name {
+      font-weight: bold;
+    }
+
+    .menu-item-price {
+      font-weight: bold;
+      color: var(--primary);
+    }
+  </style>
+  <script type="speculationrules">
+  {
+    "prerender": [
+      {
+        "source": "document",
+        "where": {
+          "href_matches": "/*"
+        },
+        "eagerness": "moderate"
+      }
+    ]
+  }
+  </script>
+</head>
+
+<body>
+
+  <nav>
+    <div class="logo"><a href="/index.html">THE DAILY GRIND</a></div>
+    <ul>
+      <li><a href="/menu.html">Menu</a></li>
+      <li><a href="/locations">Locations</a></li>
+      <li><a href="/rewards">Rewards</a></li>
+      <li><a href="/account">My Account</a></li>
+      <li><a href="/logout" class="logout-link">Logout</a></li>
+    </ul>
+  </nav>
+
+  <main class="container">
+    <h1>Our Menu</h1>
+
+    <div class="menu-section">
+      <h2>Espresso Bar</h2>
+      <div class="menu-item">
+        <span class="menu-item-name">Espresso</span>
+        <span class="menu-item-price">$3.50</span>
+      </div>
+      <div class="menu-item">
+        <span class="menu-item-name">Americano</span>
+        <span class="menu-item-price">$3.75</span>
+      </div>
+      <div class="menu-item">
+        <span class="menu-item-name">Cappuccino</span>
+        <span class="menu-item-price">$4.50</span>
+      </div>
+      <div class="menu-item">
+        <span class="menu-item-name">Latte</span>
+        <span class="menu-item-price">$4.75</span>
+      </div>
+    </div>
+
+    <div class="menu-section">
+      <h2>Brewed Coffee</h2>
+      <div class="menu-item">
+        <span class="menu-item-name">House Blend</span>
+        <span class="menu-item-price">$2.95</span>
+      </div>
+      <div class="menu-item">
+        <span class="menu-item-name">Single Origin (Ethiopia)</span>
+        <span class="menu-item-price">$3.25</span>
+      </div>
+      <div class="menu-item">
+        <span class="menu-item-name">Cold Brew</span>
+        <span class="menu-item-price">$4.25</span>
+      </div>
+    </div>
+  </main>
+
+</body>
+
+</html>

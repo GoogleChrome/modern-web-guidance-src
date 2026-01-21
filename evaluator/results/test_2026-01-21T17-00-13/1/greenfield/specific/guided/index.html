@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velvet Brew | Premium Coffee Experience</title>
+    <meta name="description" content="Experience the finest artisanal coffee at Velvet Brew. Sustainably sourced, expertly roasted.">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+    <!-- Polyfills -->
+    <script>
+        // Adaptive Loading Polyfill (Inline for reliability)
+        (function() {
+            if ('loadingPlaceholder' in HTMLImageElement.prototype) return;
+            
+            function updateImages() {
+                const images = document.querySelectorAll('img[loading-placeholder]');
+                const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                const isSlow = connection && (connection.saveData || /2g|3g/.test(connection.effectiveType));
+                
+                images.forEach(img => {
+                    if (isSlow) {
+                        const placeholder = img.getAttribute('loading-placeholder');
+                        if (placeholder) {
+                            // Store original src to maybe swap back if network improves (optional implementation)
+                            img.dataset.originalSrc = img.src;
+                            img.src = placeholder;
+                        }
+                    }
+                });
+            }
+            
+            document.addEventListener('DOMContentLoaded', updateImages);
+        })();
+    </script>
+    
+    <!-- Interest Invokers Polyfill -->
+    <script>
+        if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+            const script = document.createElement('script');
+            script.src = "https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js";
+            document.head.appendChild(script);
+        }
+    </script>
+
+    <!-- Popover Polyfill -->
+    <script>
+        if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+            const script = document.createElement('script');
+            script.src = "https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js";
+            document.head.appendChild(script);
+        }
+    </script>
+
+    <!-- CSS Anchor Positioning Polyfill -->
+    <script>
+        if (!("positionAnchor" in document.documentElement.style)) {
+             const script = document.createElement('script');
+             script.src = "https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js";
+             document.head.appendChild(script);
+        }
+    </script>
+
+    <style>
+        :root {
+            /* Palette */
+            --color-bg-dark: #0f0e0e;
+            --color-bg-panel: rgba(30, 30, 30, 0.6);
+            --color-primary: #d4a373; /* Latte color */
+            --color-accent: #bc6c25;
+            --color-text-main: #fefae0;
+            --color-text-muted: #b7b7a4;
+            --color-surface: #2b2b2b;
+
+            /* Spacing */
+            --space-md: 2rem;
+            --space-lg: 4rem;
+
+            /* Animation */
+            --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        @media (prefers-color-scheme: light) {
+            /* Optional light mode overrides if needed, focusing on dark mode premium feel as default */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg-dark);
+            color: var(--color-text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Playfair Display', serif;
+            color: var(--color-primary);
+        }
+
+        /* Glassmorphism Utility */
+        .glass-panel {
+            background: var(--color-bg-panel);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 100vh;
+            display: grid;
+            place-items: center;
+            position: relative;
+            padding: var(--space-md);
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            z-index: 2;
+            max-width: 800px;
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 8vw, 6rem);
+            margin-bottom: 1rem;
+            line-height: 1.1;
+            opacity: 0;
+            animation: fade-in-up 1s var(--ease-out-expo) forwards;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--color-text-muted);
+            margin-bottom: 2rem;
+            opacity: 0;
+            animation: fade-in-up 1s var(--ease-out-expo) 0.2s forwards;
+        }
+
+        /* Scroll-driven Hero Image */
+        .hero-image-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .hero-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.4;
+            
+            /* Scroll Animation: Fade in and Scale up */
+            animation: hero-reveal linear forwards;
+            animation-timeline: scroll(root); 
+            animation-range: 0vh 50vh; /* Animate over the first 50vh of scroll */
+        }
+
+        /* Fallback for browsers without animation-timeline support (optional initial state) */
+        @supports not (animation-timeline: scroll()) {
+            .hero-image {
+                opacity: 0.6;
+                transform: scale(1.1);
+            }
+        }
+
+        @keyframes hero-reveal {
+            from {
+                opacity: 0.2;
+                transform: scale(1);
+            }
+            to {
+                opacity: 0.6;
+                transform: scale(1.2);
+            }
+        }
+
+        @keyframes fade-in-up {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Details Section */
+        .details-section {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-lg);
+            position: relative;
+            z-index: 2;
+            background: linear-gradient(to bottom, var(--color-bg-dark), #1a1a1a);
+        }
+
+        .product-card {
+            padding: 3rem;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .product-title {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn-details {
+            background-color: var(--color-primary);
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            margin-top: 1rem;
+            
+            /* Anchor name for popover */
+            anchor-name: --details-btn;
+        }
+
+        .btn-details:hover {
+            transform: scale(1.05);
+            background-color: var(--color-accent);
+        }
+
+        /* Popover Styles */
+        [popover] {
+            background: rgba(20, 20, 20, 0.95);
+            color: var(--color-text-main);
+            border: 1px solid var(--color-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            font-size: 0.9rem;
+            max-width: 300px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            
+            /* Positioning */
+            position-anchor: --details-btn;
+            position-area: top center; 
+            margin-bottom: 10px; /* Gap */
+
+            /* Animations */
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s, transform 0.3s, display 0.3s allow-discrete;
+        }
+
+        [popover]:popover-open {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Popover List */
+        .ingredient-list {
+            list-style: none;
+            text-align: left;
+        }
+
+        .ingredient-list li {
+            padding: 4px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ingredient-list li::before {
+            content: '•';
+            color: var(--color-primary);
+        }
+
+        /* Extra spacer to allow scrolling */
+        .spacer {
+            height: 100vh;
+        }
+
+    </style>
+</head>
+<body>
+
+    <main>
+        <section class="hero">
+            <div class="hero-image-container">
+                <!-- 
+                   High Res: Coffee Pour
+                   Low Res: Small version for Placeholder 
+                -->
+                <img 
+                    class="hero-image"
+                    src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=2000&auto=format&fit=crop" 
+                    loading-placeholder="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=10&w=200&auto=format&fit=crop"
+                    alt="Artisanal Latte Art"
+                >
+            </div>
+            <div class="hero-content">
+                <h1>Velvet Brew</h1>
+                <p>Where every cup is a masterpiece of flavor and aroma.</p>
+            </div>
+        </section>
+
+        <section class="details-section">
+            <article class="product-card glass-panel">
+                <h2 class="product-title">Signature Hazelnut Latte</h2>
+                <p style="color: var(--color-text-muted); margin-bottom: 2rem;">
+                    A rich, velvety espresso blend infused with roasted hazelnut and steamed oat milk.
+                </p>
+
+                <!-- Interest Invoker Trigger -->
+                <!-- 'interestfor' connects to the popover ID -->
+                <button class="btn-details" interestfor="ingredients-popover">
+                    View Ingredients
+                </button>
+
+                <!-- Non-modal Popover -->
+                <div id="ingredients-popover" popover="manual">
+                    <h3 style="margin-bottom: 10px; font-size: 1.1rem;">Ingredients</h3>
+                    <ul class="ingredient-list">
+                        <li>Premium Arabica Espresso</li>
+                        <li>Organic Oat Milk</li>
+                        <li>Roasted Hazelnut Syrup</li>
+                        <li>Cocoa Dusting</li>
+                    </ul>
+                </div>
+            </article>
+        </section>
+
+        <div class="spacer"></div>
+    </main>
+
+</body>
+</html>

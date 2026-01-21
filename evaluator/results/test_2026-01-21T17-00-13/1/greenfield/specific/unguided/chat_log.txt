@@ -1,0 +1,91 @@
+Build a product landing page in index.html for a new coffee shop using native web platform features. It should feature a 'Details' button that triggers a non-modal popover when a user hovers over it, showing ingredients. Additionally, the main hero image should fade into view and scale up as the user scrolls down the page. Finally, ensure the hero image uses the Adaptive Loading API to show a placeholder on slow networks. Don't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.
+Thought for 10s
+
+Defining Core Functionality
+
+I'm currently focused on defining the core functionality of this coffee shop landing page. I've decided to prioritize using native web platform features. I'm thinking I'll start with the "Details" button, and implement a non-modal popover on hover to display ingredient information. Next, I will think about creating a hero image scroll animation to make it fade in and scale up as a user scrolls down the page.
+
+Considering Image Optimization
+
+I'm now thinking about how to handle the hero image. Slow networks are a concern, so I'll implement placeholder images for a better user experience with the Adaptive Loading API. I'll also be using stock photos and won't be using image generation. I'm focusing on simplicity, planning the index.html structure and the 'Details' button using the Popover API, which I'll implement with a CSS or JS hover effect.
+
+Analyzing Implementation Details
+
+I've been refining my approach to the "Details" button hover popover. I realized a direct implementation of the HTML Popover API won't work perfectly, so I'll need a small JavaScript tweak to manage the hover effect with mouseenter and mouseleave. Next, I'll be focusing on the hero image scroll animation using CSS Scroll-driven Animations, deciding between animation-timeline: view() or scroll(). I also have to find a coffee shop hero image URL for this. Finally, I'll use the Adaptive Loading API, referencing navigator.connection.saveData or navigator.connection.effectiveType to handle image loading based on network conditions.
+
+Create Coffee Shop Landing Page
+
+I have created the 
+index.html
+ file with the requested native web features: Popover API for the details button, Scroll-driven animations for the hero image, and Adaptive Loading API for network-aware image loading.
+
+Files Edited
+index.html
+Implementation Plan
+Progress Updates
+Expand all
+1
+
+Checking existing files
+
+2
+
+Writing index.html with requisite features
+
+3
+
+Work complete
+
+I have built the coffee shop landing page in index.html. It includes:
+
+Non-modal Popover: The "Details" button uses the popover API with hover triggers.
+Scroll-driven Animation: The hero image uses CSS animation-timeline: view() to fade in and scale up as it enters the viewport.
+Adaptive Loading: The specific image source matches the user's connection speed using navigator.connection.
+
+You can open index.html in a modern browser (Chrome 115+, Edge, etc.) to view the result.
+
+index.html
+Open
+Proceed
+Good
+Bad
+1 File With Changes
+Reject all
+Accept all
++305
+-0
+index.html
+index.html
+
+
+
+
+Ask anything (⌘L), @ to mention, / for workflows
+
+Add context
+Images
+Mentions
+Workflows
+Planning
+Conversation mode
+Planning
+Agent can plan before executing tasks. Use for deep research, complex tasks, or collaborative work
+Fast
+Agent will execute tasks directly. Use for simple tasks that can be completed faster
+
+Gemini 3 Pro (High)
+
+Model
+
+Gemini 3 Pro (High)
+
+Gemini 3 Pro (Low)
+
+Gemini 3 Flash
+
+Gemini 2.5 Pro
+
+Gemini 2.5 Pro for Google
+
+Custom
+Submit

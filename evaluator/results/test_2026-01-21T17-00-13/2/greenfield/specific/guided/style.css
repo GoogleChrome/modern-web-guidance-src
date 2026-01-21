@@ -1,0 +1,172 @@
+:root {
+    --bg-color: #121212;
+    --text-color: #f5f5f5;
+    --accent-color: #cfb096;
+    --popover-bg: #1e1e1e;
+    --font-main: 'Outfit', sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-main);
+    margin: 0;
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+header {
+    padding: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    gap: 2rem;
+}
+
+nav a {
+    color: var(--text-color);
+    text-decoration: none;
+    font-weight: 300;
+}
+
+.hero-spacer {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: radial-gradient(circle at center, #2a2a2a 0%, #121212 70%);
+}
+
+.product-showcase {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4rem;
+    padding: 2rem;
+    flex-wrap: wrap;
+}
+
+.image-container {
+    flex: 1;
+    max-width: 500px;
+}
+
+.image-container img {
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+}
+
+/* Scroll-driven Animation */
+@keyframes fade-in-scale {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@supports (animation-timeline: view()) {
+    .fade-in-image {
+        animation: fade-in-scale linear both;
+        animation-timeline: view();
+        animation-range: entry 10% cover 40%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fade-in-image {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.product-details {
+    flex: 1;
+    max-width: 400px;
+}
+
+h2 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--accent-color);
+}
+
+.btn-primary {
+    background-color: var(--accent-color);
+    color: #121212;
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: 30px;
+    margin-top: 1rem;
+    transition: transform 0.2s;
+}
+
+.btn-primary:hover {
+    transform: scale(1.05);
+}
+
+/* Popover Styling */
+[popover] {
+    background: var(--popover-bg);
+    color: var(--text-color);
+    border: 1px solid var(--accent-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    /* Native positioning usually centers it or we use Anchor Positioning if supported */
+}
+
+/* Explicit fallback positioning if anchor not fully supported/used yet in this basic demo */
+[popover]:popover-open {
+    /* If we wanted to manually position it near the button without anchor, 
+       we'd need JS or simply let it be a "popover" (often centers or goes top layer). 
+       Since the prompt asked for "non-modal popover when a user hovers", 
+       we should try to make it look connected.
+       However, native popover API without anchor positioning simply displays it top-layer.
+       Let's use Anchor Positioning just in case browser supports it, as per 'modern web' request.
+    */
+    position-anchor: --details-btn;
+    margin: 0;
+    top: anchor(bottom);
+    left: anchor(center);
+    translate: -50% 10px;
+}
+
+#details-btn {
+    anchor-name: --details-btn;
+}
+
+/* Fallback for popover backdrop/outside usually not needed for non-modal */
+/* We requested "non-modal", so we don't use ::backdrop styling to block interaction */
+
+.footer-spacer {
+    height: 50vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+}

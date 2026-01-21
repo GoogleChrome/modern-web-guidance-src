@@ -1,0 +1,209 @@
+:root {
+    --color-bg: #f8f5f2;
+    --color-text: #2c241b;
+    --color-accent: #c9a66b;
+    --color-secondary: #5e503f;
+    --color-popover-bg: #fff;
+    --color-popover-shadow: rgba(44, 36, 27, 0.15);
+    
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Lato', sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2rem 5%;
+    position: absolute;
+    width: 100%;
+    z-index: 10;
+}
+
+.logo {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--color-text);
+}
+
+.cta-button {
+    background-color: var(--color-text);
+    color: var(--color-bg);
+    border: none;
+    padding: 0.8rem 1.5rem;
+    font-family: var(--font-body);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.cta-button:hover {
+    background-color: var(--color-secondary);
+}
+
+.hero {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    padding: 0 5%;
+    gap: 4rem;
+}
+
+.hero-content {
+    max-width: 600px;
+    z-index: 2;
+}
+
+.hero-content h1 {
+    font-family: var(--font-heading);
+    font-size: 4rem;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    color: var(--color-text);
+}
+
+.hero-content p {
+    font-size: 1.1rem;
+    color: var(--color-secondary);
+    margin-bottom: 2.5rem;
+}
+
+.secondary-button {
+    background: transparent;
+    border: 1px solid var(--color-text);
+    padding: 0.8rem 2rem;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    cursor: pointer;
+    position: relative; /* Anchor for Popover? We'll utilize Anchor Positioning if supported */
+    anchor-name: --details-btn;
+}
+
+.hero-image-container {
+    position: relative;
+    height: 80vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+#hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+    
+    /* Scroll-driven Animation */
+    /* Starting state */
+    opacity: 0;
+    scale: 0.9;
+    
+    /* Animation definition */
+    animation: fade-in-scale linear forwards;
+    animation-timeline: view();
+    animation-range: entry 10% cover 50%; /* Start animating when 10% enters, finish when 50% covers */
+}
+
+@keyframes fade-in-scale {
+    to {
+        opacity: 1;
+        scale: 1;
+    }
+}
+
+/* Popover Styling */
+#ingredients-popover {
+    margin: 0;
+    padding: 2rem;
+    background: var(--color-popover-bg);
+    border: 1px solid var(--color-accent);
+    border-radius: 2px;
+    box-shadow: 0 10px 30px var(--color-popover-shadow);
+    color: var(--color-text);
+    
+    /* Native Popover styles reset */
+    position: absolute;
+    inset: auto; /* reset default fixed inset */
+    
+    /* Anchor Positioning */
+    position-anchor: --details-btn;
+    top: anchor(bottom);
+    left: anchor(center);
+    translate: -50% 10px; /* Center horizontally relative to anchor and add gap */
+    
+    opacity: 0;
+    transition: opacity 0.3s ease, translate 0.3s ease;
+    
+    /* Allow it to be visible */
+}
+
+/* Open state for popover */
+#ingredients-popover:popover-open {
+    opacity: 1;
+    translate: -50% 15px;
+}
+
+/* Fallback if Anchor Positioning not supported (basic centering or manual) */
+@supports not (position-anchor: --details-btn) {
+    #ingredients-popover {
+        top: 50%;
+        left: 50%;
+        translate: -50% -50%;
+    }
+}
+
+#ingredients-popover h3 {
+    font-family: var(--font-heading);
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+#ingredients-popover ul {
+    list-style: none;
+}
+
+#ingredients-popover li {
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+}
+
+#ingredients-popover li::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background-color: var(--color-accent);
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+/* Content spacers to allow scrolling */
+.content-spacer {
+    height: 80vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #fff;
+    color: var(--color-secondary);
+}

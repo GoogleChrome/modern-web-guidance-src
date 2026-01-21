@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Morning Brew - The finest coffee in town using modern web tech.">
+    <title>Morning Brew</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header>
+        <nav>
+            <div class="logo">Morning Brew</div>
+            <ul>
+                <li><a href="#">Shop</a></li>
+                <li><a href="#">About</a></li>
+                <li><a href="#">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero-spacer">
+            <h1>Scroll down to see the magic</h1>
+            <p>Experience the web platform capabilities.</p>
+        </section>
+
+        <section class="product-showcase">
+            <div class="image-container">
+                <!-- Adaptive Loading will handle src -->
+                <img id="hero-image" 
+                     class="fade-in-image"
+                     alt="Freshly brewed coffee in a glass cup"
+                     width="600" height="800"
+                     data-high-res="https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=1600&auto=format&fit=crop"
+                     data-low-res="https://images.unsplash.com/photo-1541167760496-1628856ab772?q=10&w=200&auto=format&fit=crop">
+            </div>
+            
+            <div class="product-details">
+                <h2>The Perfect Pour</h2>
+                <p>Rich, aromatic, and ethically sourced. Our signature blend brings you the warmth you need.</p>
+                
+                <button id="details-btn" class="btn-primary" interestfor="ingredients-popover">
+                    Details
+                </button>
+
+                <div id="ingredients-popover" popover>
+                    <h3>Ingredients</h3>
+                    <ul>
+                        <li>100% Arabica Beans</li>
+                        <li>Spring Water</li>
+                        <li>Love</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+        
+        <section class="footer-spacer">
+            <p>More content below...</p>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

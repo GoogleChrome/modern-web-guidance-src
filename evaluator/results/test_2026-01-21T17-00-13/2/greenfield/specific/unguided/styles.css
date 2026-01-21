@@ -1,0 +1,224 @@
+:root {
+  --primary-color: #4a3b32;
+  /* Coffee brown */
+  --accent-color: #d4a373;
+  /* Latte color */
+  --bg-color: #fcf9f5;
+  /* Cream */
+  --text-color: #2c241b;
+  --font-heading: 'Helvetica Neue', sans-serif;
+  --font-body: 'Georgia', serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+h1,
+h2,
+h3,
+h4,
+.logo {
+  font-family: var(--font-heading);
+  color: var(--primary-color);
+}
+
+.site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  font-weight: bold;
+  font-size: 1.5rem;
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 20px;
+}
+
+nav a {
+  text-decoration: none;
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 4rem 2rem;
+  position: relative;
+  overflow: hidden;
+  min-height: 80vh;
+  justify-content: center;
+}
+
+.hero-content {
+  margin-bottom: 2rem;
+  z-index: 10;
+}
+
+h1 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.cta-button {
+  display: inline-block;
+  padding: 10px 20px;
+  background: var(--primary-color);
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  font-family: var(--font-heading);
+  margin-top: 1rem;
+}
+
+.hero-image {
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  /* Initial state for animation */
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+/* Scroll-driven Animation */
+/* Only animate if supported */
+@supports (animation-timeline: scroll()) {
+  .hero-image {
+    animation: fade-scale-in linear forwards;
+    animation-timeline: scroll(root);
+    animation-range: 0vh 40vh;
+    /* Animate over the first 40vh of scrolling */
+  }
+
+  @keyframes fade-scale-in {
+    from {
+      opacity: 0.2;
+      /* Start slightly visible so it's not completely empty space if user doesn't scroll immediately */
+      transform: scale(0.9);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}
+
+.products {
+  padding: 4rem 2rem;
+  background: white;
+}
+
+.products h2 {
+  text-align: center;
+  margin-bottom: 3rem;
+  font-size: 2.5rem;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.product-card {
+  text-align: center;
+  padding: 1.5rem;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  transition: transform 0.2s;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+}
+
+.product-image {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.details-btn {
+  margin-top: 1rem;
+  background: transparent;
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+  padding: 5px 15px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-family: var(--font-heading);
+}
+
+.details-btn:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+/* Popover Styling */
+[popover] {
+  padding: 1rem;
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background-color: white;
+  color: var(--text-color);
+  font-family: var(--font-body);
+  /* Simple positioning near the trigger manually if needed, 
+       but for now we let it float or use anchor positioning in future. 
+       We will use JS to position it near the mouse/button or rely on native centering for now unless anchor is available.
+       Actually, native popover centers by default or we can position it. 
+       Let's add some basic styles to make it look popover-y.
+    */
+  margin: auto;
+}
+
+/* Backdrop */
+::backdrop {
+  background-color: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(2px);
+}
+
+.ingredients-popover h4 {
+  margin-bottom: 0.5rem;
+}
+
+.ingredients-popover ul {
+  list-style-position: inside;
+  padding-left: 0;
+}
+
+footer {
+  text-align: center;
+  padding: 2rem;
+  background: var(--primary-color);
+  color: rgb(240, 240, 240);
+  margin-top: 2rem;
+}

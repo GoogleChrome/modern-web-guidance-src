@@ -1,0 +1,234 @@
+/* CSS Reset & Variables */
+:root {
+  --color-primary: #8d6e63;
+  --color-secondary: #efebe9;
+  --color-text: #3e2723;
+  --color-bg: #fffefe;
+  --bg-secondary: #f5f5f5;
+  --font-main: 'Inter', system-ui, sans-serif;
+  --spacing-md: 1.5rem;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+/* Navbar */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--color-text);
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover {
+  color: var(--color-primary);
+}
+
+/* Hero Section */
+.hero {
+  min-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  overflow: hidden; /* Prevent horizontal scroll from growing image */
+}
+
+.hero-content h1 {
+  font-size: 3.5rem;
+  margin-bottom: 0.5rem;
+  color: #2c1a15;
+}
+
+.hero-content p {
+  font-size: 1.25rem;
+  color: #6d4c41;
+  margin-bottom: 2rem;
+  max-width: 600px;
+}
+
+.cta-button {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 0.8rem 2rem;
+  font-size: 1rem;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.cta-button:hover {
+  background-color: #6d4c41;
+  transform: translateY(-2px);
+}
+
+/* Hero Image & Scroll Animation */
+.hero-image-wrapper {
+  margin-top: 3rem;
+  width: 100%;
+  max-width: 1000px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+.hero-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Scroll-Driven Animation Implementation */
+@keyframes fade-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .hero-img {
+    animation: fade-grow linear both;
+    animation-timeline: view();
+    /* Start animating when top of image enters viewport (0%) 
+       End when top of image is 40% into viewport */
+    animation-range: entry 0% entry 40%;
+  }
+}
+
+/* Fallback for no scroll-animation support (ensure visibility) */
+@supports not (animation-timeline: view()) {
+  .hero-img {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Product Section & Tooltip */
+.product-spotlight {
+  padding: 4rem 2rem;
+  background-color: var(--bg-secondary);
+  text-align: center;
+}
+
+.product-card {
+  background: white;
+  padding: 3rem;
+  border-radius: 16px;
+  max-width: 600px;
+  margin: 0 auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+
+.details-btn {
+  margin-top: 1.5rem;
+  background: transparent;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  
+  /* Anchor Positioning: Name this element */
+  anchor-name: --details-btn;
+}
+
+.details-btn:hover {
+  background: var(--color-secondary);
+}
+
+/* Popover Tooltip */
+#ingredients-popover {
+  /* Core Popover Styles */
+  border: none;
+  padding: 1rem;
+  border-radius: 8px;
+  background: #3e2723;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  max-width: 250px;
+  font-size: 0.9rem;
+  
+  /* Anchor Positioning */
+  position-anchor: --details-btn;
+  position-area: top; /* try 'top center' first */
+  margin-bottom: 10px; /* spacing */
+  
+  /* Modern fallback if position-area not supported */
+  top: calc(anchor(top) - 10px);
+  left: anchor(center);
+  transform: translateX(-50%) translateY(-100%);
+}
+
+/* Since position-area handles simplified positioning, 
+   we might need checks or just let the polyfill handle it.
+   The polyfill supports position-area as well. */
+
+#ingredients-popover ul {
+  list-style: none; /* simple cleaner look */
+  padding-left: 0;
+  margin: 0.5rem 0;
+}
+
+#ingredients-popover h3 {
+  font-size: 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Spacer */
+.content-spacer {
+  padding: 2rem;
+  text-align: center;
+  color: #888;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hero-content h1 {
+    font-size: 2.5rem;
+  }
+}

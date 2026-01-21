@@ -1,0 +1,229 @@
+/* Base Styles */
+:root {
+    --color-primary: #2c1810;
+    --color-secondary: #8b5a2b;
+    --color-accent: #d4a373;
+    --color-bg: #faedcd;
+    --color-text: #4a403a;
+    --color-white: #ffffff;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Header */
+.header {
+    background: var(--color-white);
+    padding: 1rem 0;
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+    gap: 2rem;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--color-text);
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.nav-links a:hover {
+    color: var(--color-secondary);
+}
+
+/* Hero Section */
+.hero {
+    padding: 4rem 0;
+    text-align: center;
+    min-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.hero h1 {
+    font-size: 3rem;
+    color: var(--color-primary);
+    margin-bottom: 1rem;
+}
+
+.hero-image-wrapper {
+    margin-top: 3rem;
+    overflow: hidden;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.hero-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    /* Initial state for animation */
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 1.5s ease-out, transform 1.5s ease-out, filter 0.3s ease;
+    /* Blur placeholder initially */
+    filter: blur(10px);
+}
+
+.hero-img.loaded {
+    filter: blur(0);
+}
+
+.hero-img.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Products Section */
+.section {
+    padding: 5rem 0;
+}
+
+.product-card {
+    background: var(--color-white);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    max-width: 400px;
+    margin: 2rem auto;
+}
+
+.product-image img {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+}
+
+.product-info {
+    padding: 1.5rem;
+    position: relative;
+}
+
+.tooltip-container {
+    position: relative;
+    display: inline-block;
+    margin-top: 1rem;
+}
+
+.btn-details {
+    background: var(--color-secondary);
+    color: var(--color-white);
+    border: none;
+    padding: 0.5rem 1.5rem;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.btn-details:hover {
+    background: var(--color-primary);
+}
+
+/* Tooltip Logic */
+.tooltip {
+    visibility: hidden;
+    opacity: 0;
+    width: 200px;
+    background-color: var(--color-primary);
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 1rem;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%; /* Position above */
+    left: 50%;
+    margin-left: -100px;
+    transition: opacity 0.3s;
+    pointer-events: none; /* Prevent interaction blocking */
+}
+
+.tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: var(--color-primary) transparent transparent transparent;
+}
+
+.tooltip h4 {
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    padding-bottom: 0.25rem;
+}
+
+.tooltip ul {
+    list-style: none;
+    font-size: 0.9rem;
+}
+
+/* Show tooltip on hover of the button (or the container if preferred, but user said 'hover over it' implying the button) */
+.btn-details:hover + .tooltip,
+.tooltip:hover { /* Allow hovering the tooltip itself if needed */
+    visibility: visible;
+    opacity: 1;
+}
+/* Accessibility focus support */
+.btn-details:focus + .tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+@media (min-width: 768px) {
+    .product-card {
+        flex-direction: row;
+        max-width: 700px;
+    }
+    .product-image img {
+        height: 100%;
+        min-width: 300px;
+    }
+}

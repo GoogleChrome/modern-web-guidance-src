@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Tooltip Demo</title>
+    <style>
+        :root {
+            /* Design Tokens */
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+            --text-color: #1f2937;
+            --bg-color: #f3f4f6;
+            --tooltip-bg: rgba(17, 24, 39, 0.9);
+            --tooltip-text: #ffffff;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius: 8px;
+            --transition-speed: 0.2s;
+            --arrow-size: 6px;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+
+        /* Trigger Button Styling */
+        .tooltip-trigger {
+            appearance: none;
+            border: none;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: background-color var(--transition-speed), transform 0.1s;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .tooltip-trigger:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .tooltip-trigger:active {
+            transform: scale(0.98);
+        }
+
+        .tooltip-trigger:focus-visible {
+            outline: 2px solid var(--primary-hover);
+            outline-offset: 2px;
+        }
+
+        /* Tooltip Element Styling */
+        .tooltip-element {
+            position: fixed; /* Fixed to avoid overflow issues in parents */
+            top: 0;
+            left: 0;
+            max-width: 250px;
+            padding: 10px 14px;
+            background-color: var(--tooltip-bg);
+            color: var(--tooltip-text);
+            font-size: 0.875rem;
+            line-height: 1.4;
+            border-radius: var(--radius);
+            pointer-events: none; /* Let clicks pass through */
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity var(--transition-speed) ease-out, transform var(--transition-speed) ease-out;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        /* State: Visible */
+        .tooltip-element.is-visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Arrow (Pseudo-element) */
+        .tooltip-element::after {
+            content: '';
+            position: absolute;
+            width: var(--arrow-size);
+            height: var(--arrow-size);
+            background-color: var(--tooltip-bg);
+            transform: rotate(45deg);
+            z-index: -1;
+        }
+
+        /* Arrow variants (set by JS) */
+        .tooltip-element[data-placement="top"]::after {
+            bottom: calc(var(--arrow-size) * -0.5);
+            left: 50%;
+            margin-left: calc(var(--arrow-size) * -0.5);
+        }
+        
+        .tooltip-element[data-placement="bottom"]::after {
+            top: calc(var(--arrow-size) * -0.5);
+            left: 50%;
+            margin-left: calc(var(--arrow-size) * -0.5);
+        }
+
+        /* Screen reader only utility */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Example 1: Standard Tooltip -->
+        <button class="tooltip-trigger" 
+                aria-describedby="tooltip-1" 
+                data-tooltip="Hello! I am a modern, accessible tooltip.">
+            Hover Me
+        </button>
+
+        <!-- Example 2: Another one to test positioning/multiple -->
+        <button class="tooltip-trigger" 
+                aria-describedby="tooltip-2" 
+                data-tooltip="I adapt to my position automatically!">
+            Another Focus
+        </button>
+    </div>
+
+    <!-- 
+      We could hardcode the tooltip DOM, but a modern approach 
+      often generates it or reuses a single instance.
+      I will use a single shared tooltip instance for performance and simplicity.
+    -->
+    <div id="global-tooltip" role="tooltip" class="tooltip-element" aria-hidden="true"></div>
+
+    <script>
+        /**
+         * Modern Tooltip Manager
+         * Handles positioning, accessibility, and visibility.
+         */
+        class TooltipManager {
+            constructor() {
+                this.tooltip = document.getElementById('global-tooltip');
+                this.triggers = document.querySelectorAll('[data-tooltip]');
+                this.activeTrigger = null;
+                this.gap = 12; // Gap between triggers and tooltip
+
+                this.init();
+            }
+
+            init() {
+                // Event Delegation for performance if we had many, 
+                // but direct attachment is fine for clarity here.
+                this.triggers.forEach(trigger => {
+                    // Mouse Events
+                    trigger.addEventListener('mouseenter', (e) => this.show(e.target));
+                    trigger.addEventListener('mouseleave', () => this.hide());
+                    
+                    // Keyboard Events
+                    trigger.addEventListener('focus', (e) => this.show(e.target));
+                    trigger.addEventListener('blur', () => this.hide());
+                    
+                    // Accessibility: Ensure triggers have correct ARIA
+                    // Ideally we generate IDs if missing, but we'll assume simple demo setup
+                });
+
+                // Window resize should update/hide
+                window.addEventListener('resize', () => {
+                   if (this.tooltip.classList.contains('is-visible')) {
+                       this.updatePosition(this.activeTrigger);
+                   } 
+                });
+                
+                // Scroll update (simple version)
+                window.addEventListener('scroll', () => {
+                   if (this.tooltip.classList.contains('is-visible')) {
+                       this.updatePosition(this.activeTrigger);
+                   } 
+                }, { passive: true });
+            }
+
+            show(trigger) {
+                this.activeTrigger = trigger;
+                const text = trigger.getAttribute('data-tooltip');
+                
+                if (!text) return;
+
+                // Content
+                this.tooltip.textContent = text;
+                this.tooltip.setAttribute('aria-hidden', 'false');
+                
+                // Sync accessibility
+                const id = trigger.getAttribute('aria-describedby');
+                if (id) this.tooltip.id = id;
+
+                // Show (for measurement)
+                this.tooltip.classList.add('is-visible');
+
+                // Position
+                this.updatePosition(trigger);
+            }
+
+            hide() {
+                this.tooltip.classList.remove('is-visible');
+                this.tooltip.setAttribute('aria-hidden', 'true');
+                this.activeTrigger = null;
+            }
+
+            updatePosition(trigger) {
+                if (!trigger) return;
+
+                const triggerRect = trigger.getBoundingClientRect();
+                const tooltipRect = this.tooltip.getBoundingClientRect();
+                
+                // Default: Top
+                let top = triggerRect.top - tooltipRect.height - this.gap;
+                let left = triggerRect.left + (triggerRect.width / 2) - (tooltipRect.width / 2);
+                let placement = 'top';
+
+                // Check top collision
+                if (top < 0) {
+                    // Flip to bottom
+                    top = triggerRect.bottom + this.gap;
+                    placement = 'bottom';
+                }
+
+                // Horizontal clamp
+                const padding = 10;
+                if (left < padding) left = padding;
+                if (left + tooltipRect.width > window.innerWidth - padding) {
+                    left = window.innerWidth - tooltipRect.width - padding;
+                }
+
+                this.tooltip.style.transform = `translate(${left}px, ${top}px)`;
+                // We remove the default scale transform from CSS when applying specific pixels
+                // easiest way is to use top/left directly or just standard style.
+                // Actually, let's just use top/left and keep the CSS transition on opacity/transform
+                // Wait, if I use transform for position, it conflicts with the scale animation unless I wrap or combine.
+                // Let's use top/left for position.
+                
+                this.tooltip.style.left = `${left}px`;
+                this.tooltip.style.top = `${top}px`;
+                this.tooltip.style.transform = 'translate(0, 0) scale(1)'; // Override the scale-0.95
+                
+                this.tooltip.dataset.placement = placement;
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            new TooltipManager();
+        });
+    </script>
+</body>
+</html>

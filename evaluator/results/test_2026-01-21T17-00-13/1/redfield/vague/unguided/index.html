@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Tooltip Demo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Simple Tooltip -->
+    <div class="container">
+        <button id="simple-trigger" class="btn" 
+                data-tooltip-trigger 
+                aria-describedby="tooltip-simple">
+            Hover for Simple Tooltip
+        </button>
+        <div id="tooltip-simple" class="tooltip" role="tooltip">
+            Just a clean, glassmorphic tooltip.
+        </div>
+    </div>
+
+    <!-- Rich Tooltip -->
+    <div class="container">
+        <button id="rich-trigger" class="btn" 
+                style="background-color: #ec4899;" 
+                data-tooltip-trigger 
+                aria-describedby="tooltip-rich">
+            Hover for Rich Tooltip
+        </button>
+        <div id="tooltip-rich" class="tooltip tooltip--rich" role="tooltip">
+            <img src="https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?auto=format&fit=crop&w=400&q=80" 
+                 alt="Beautiful Landscape" 
+                 class="tooltip__image">
+            <div class="tooltip__content">
+                <h3 class="tooltip__title">Nature's Beauty</h3>
+                <p class="tooltip__text">Experience the modern web with rich content support.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="tooltip.js"></script>
+
+</body>
+</html>
