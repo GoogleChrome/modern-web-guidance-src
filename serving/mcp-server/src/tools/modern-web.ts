@@ -11,7 +11,7 @@ export function registerModernWebTools(server: McpServer) {
         query: z.string().describe("Action-oriented description of the desired use case (e.g., 'lazy load images' or 'create a tooltip'). Avoid 'how to' questions and single-keyword queries (e.g. 'images')."),
       },
     },
-    async ({ query }) => {
+    async ({ query }: { query: string }) => {
       const { Store } = await import("../lib/store.js");
       const { Embedder } = await import("../lib/embedder.js");
 
@@ -40,7 +40,7 @@ export function registerModernWebTools(server: McpServer) {
         use_case_id: z.string().describe("The exact 'id' from the search_use_cases result (e.g. 'tooltip')."),
       },
     },
-    async ({ use_case_id }) => {
+    async ({ use_case_id }: { use_case_id: string }) => {
       const guide = await getGuide(use_case_id);
       if (!guide) {
         return {

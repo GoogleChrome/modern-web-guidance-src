@@ -7,13 +7,1043 @@ export interface UseCase {
 
 export const USE_CASES: UseCase[] = [
   {
+    "id": "accessibility-for-teams",
+    "description": "Incorporate accessibility into your team's workflow by defining roles and responsibilities for project managers, UX designers, and developers.",
+    "category": "a11y"
+  },
+  {
+    "id": "accessible-animation",
+    "description": "Design accessible animations that respect user preferences for reduced motion, ensuring a better experience for all users.",
+    "category": "a11y"
+  },
+  {
+    "id": "maintain-logical-source-order",
+    "description": "Ensure consistent user experiences for keyboard navigators by maintaining logical source order, especially when visually reordering content with CSS.",
+    "category": "a11y"
+  },
+  {
+    "id": "prevent-keyboard-focus-traps",
+    "description": "Prevent keyboard focus from being trapped in a specific region of a webpage to ensure all interactive elements are accessible.",
+    "category": "a11y"
+  },
+  {
+    "id": "track-focused-element",
+    "description": "Track the currently focused element on a web page to improve keyboard navigation accessibility.",
+    "category": "a11y"
+  },
+  {
+    "id": "ai-assistance-in-devtools",
+    "description": "Utilize AI assistance within Chrome DevTools to understand website functionality, debug issues, and gain insights into styling, network requests, sources, and performance.",
+    "category": "ai"
+  },
+  {
+    "id": "chrome-ai-challenge",
+    "description": "Build and submit new web applications or Chrome Extensions using built-in AI APIs for a chance to win.",
+    "category": "ai"
+  },
+  {
+    "id": "client-side-ai",
+    "description": "Implement client-side AI for improved performance, privacy, and offline capabilities by optimizing model delivery and inference.",
+    "category": "ai"
+  },
+  {
     "id": "image-to-text",
     "description": "Turn images into text, captions, or structured data using the built-in Prompt API",
     "category": "ai"
   },
   {
+    "id": "multilingual-customer-assistance-with-ai",
+    "description": "Enable personalized, multilingual customer assistance outside of business hours using generative AI and client-side web technologies.",
+    "category": "ai"
+  },
+  {
+    "id": "render-streamed-llm-responses",
+    "description": "Display streamed LLM responses from APIs like Gemini securely and performantly using frontend best practices.",
+    "category": "ai"
+  },
+  {
+    "id": "translator-api-client-side-translation",
+    "description": "Use the built-in Translator API to translate content to a target language on the client-side.",
+    "category": "ai"
+  },
+  {
+    "id": "client-side-storage",
+    "description": "Provides guidance on best practices for client-side data storage and caching in web applications, comparing options like IndexedDB and Local Storage.",
+    "category": "data"
+  },
+  {
+    "id": "crux-history-api-trends",
+    "description": "Track user experience trends over time using historical web performance data from the CrUX History API.",
+    "category": "data"
+  },
+  {
+    "id": "indexeddb-data-management",
+    "description": "Learn how to view, edit, and delete IndexedDB data using Chrome DevTools for effective debugging and data management.",
+    "category": "data"
+  },
+  {
+    "id": "origin-private-file-system",
+    "description": "Use the origin private file system (OPFS) for high-performance, origin-private file storage within web applications, enabling offline data persistence and efficient data manipulation.",
+    "category": "data"
+  },
+  {
+    "id": "query-chrome-ux-report-bigquery",
+    "description": "Learn how to query the Chrome UX Report dataset on BigQuery to extract insights quickly and cheaply using summary datasets and shortcut functions.",
+    "category": "data"
+  },
+  {
+    "id": "reliable-data-beaconing",
+    "description": "Reliably send data from a web page to a server, even if the page is closed or the user navigates away, by using the fetchLater API.",
+    "category": "data"
+  },
+  {
+    "id": "safe-unicode-base64",
+    "description": "Safely encode and decode strings with Unicode characters in JavaScript by handling potential errors and data corruption.",
+    "category": "data"
+  },
+  {
+    "id": "structured-data-markup",
+    "description": "Use structured data to help search engines understand and richly display your content in search results.",
+    "category": "data"
+  },
+  {
+    "id": "transformstream-data-processing",
+    "description": "Use TransformStream to process data in chunks as it streams, enabling efficient manipulation of data from sources like network responses.",
+    "category": "data"
+  },
+  {
+    "id": "version-history-api",
+    "description": "Retrieve Chrome release version history and release information for specific platforms and channels using the VersionHistory API.",
+    "category": "data"
+  },
+  {
+    "id": "build-chrome-apps-angularjs",
+    "description": "Building Chrome Apps with AngularJS, covering manifest creation, event pages, Angular MVC structure, data fetching, and offline caching.",
+    "category": "extensions"
+  },
+  {
+    "id": "bundling-and-distributing-web-components",
+    "description": "Bundle HTML, CSS, and JavaScript into a single distributable resource for easier code organization and dependency management.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-app-lifecycle-management",
+    "description": "Manages the lifecycle of Chrome Apps, from installation and launch to suspension and termination, ensuring proper event handling and data persistence.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-apps-angularjs",
+    "description": "Build and deploy Chrome Apps using AngularJS for creating interactive web applications that leverage Google APIs.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-bluetooth-api",
+    "description": "Enable and manage Bluetooth devices from a web application, allowing for seamless interaction with hardware.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-bookmarks-management",
+    "description": "Manage browser bookmarks programmatically using the chrome.bookmarks API.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-browser-actions",
+    "description": "Define and manage browser action icons, tooltips, badges, and popups for Chrome extensions.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-devtools-network-api",
+    "description": "Inspect and debug network requests in Chrome Developer Tools using the chrome.devtools.network API.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-dns-api-usage",
+    "description": "This document explains how to use the `chrome.dns` API to resolve DNS\nrecords for a given hostname, enabling developers to programmatically\nobtain IP addresses within their Chrome extensions.\n",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-dns-resolution",
+    "description": "Resolve hostnames and IP address literals to their corresponding IP addresses using the Chrome DNS API.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-extension-api-overview",
+    "description": "Learn about the Chrome Extension APIs that enable extensions to interact with the Chrome browser and provide custom functionality.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-extensions-mv2",
+    "description": "Develop and distribute Chrome Extensions using Manifest V2.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-file-browser-handler",
+    "description": "Implement custom file handling logic in Chrome extensions by responding to user interactions within the ChromeOS file browser.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-fontsettings-api",
+    "description": "Customize font settings for specific language scripts and generic font families within a Chrome extension.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-page-overrides",
+    "description": "Use Chrome Extension APIs to replace default Chrome pages like bookmarks, history, or the new tab page with custom HTML content.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-printing-metrics",
+    "description": "Provides APIs for interacting with printing capabilities in Chrome, allowing extensions to programmatically control print jobs.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-printing",
+    "description": "Enables programmatic control of printing from a Chrome extension by allowing users to submit print jobs, manage them, and retrieve printer information.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-privacy-api-control",
+    "description": "Control Chrome settings related to user privacy using the chrome.privacy API, ensuring user consent and understanding.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-privacy-api-usage",
+    "description": "Controls Chrome's privacy-impacting features, such as network settings, service integrations, and website data exposure, using the ChromeSetting prototype.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-sockets-tcp-usage",
+    "description": "Learn how to use the chrome.sockets.tcp API to establish and manage TCP connections for network applications within Chrome extensions.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-storage-api-best-practices",
+    "description": "Provides methods for managing local storage for Chrome extensions using different storage areas.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-storage-best-practices",
+    "description": "Store, retrieve, and track user data with the chrome.storage API for persistent extension data.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-vpn-provider",
+    "description": "Implement VPN functionality in Chrome extensions to create secure, persistent network connections for users.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-web-store-analytics-revamp",
+    "description": "Improve Chrome Web Store item analytics with a revamped dashboard that consolidates key information and simplifies data visualization for better decision-making.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-web-store-developer-registration",
+    "description": "Guide for registering as a Chrome Web Store developer to publish extensions.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome-webstore-api-automation",
+    "description": "Automate Chrome Web Store API operations for managing extensions, including submissions, rollouts, and status checks, simplifying developer workflows.",
+    "category": "extensions"
+  },
+  {
+    "id": "chrome_top_sites_api",
+    "description": "Retrieve and manage a user's most visited websites to enhance browser functionality and provide personalized experiences.",
+    "category": "extensions"
+  },
+  {
+    "id": "command-key-combinations",
+    "description": "Respond to custom key combinations in an extension to trigger specific actions.",
+    "category": "extensions"
+  },
+  {
+    "id": "connect-lego-spike-prime-web-apis",
+    "description": "Connect LEGO Education SPIKE Prime kits to computers using Web Bluetooth and Web Serial APIs for programming and control.",
+    "category": "extensions"
+  },
+  {
+    "id": "content-settings-management",
+    "description": "Use the `chrome.contentSettings` API to manage website permissions for features like cookies, JavaScript, and camera access on a per-site basis.",
+    "category": "extensions"
+  },
+  {
+    "id": "context-menus",
+    "description": "Implement a context menu that appears on alternate mouse clicks to invoke extension features.",
+    "category": "extensions"
+  },
+  {
+    "id": "create-side-panel",
+    "description": "Create a side panel in Chrome extensions to display custom UI that remains visible when navigating between tabs.",
+    "category": "extensions"
+  },
+  {
+    "id": "cross-origin-opener-policy",
+    "description": "Allows extensions to declare a value for the Cross-Origin-Opener-Policy response header to enable cross-origin isolation.",
+    "category": "extensions"
+  },
+  {
+    "id": "debugging-webassembly",
+    "description": "Debugging WebAssembly applications in Chrome DevTools using source maps and DWARF information.",
+    "category": "extensions"
+  },
+  {
+    "id": "default-locale-manifest",
+    "description": "Manages default language strings for Chrome extensions by specifying the locale subdirectory.",
+    "category": "extensions"
+  },
+  {
+    "id": "devtools-performance-recording-status",
+    "description": "Enable extensions to react to Chrome DevTools Performance panel recording status changes for enhanced automation during profiling.",
+    "category": "extensions"
+  },
+  {
+    "id": "direct-sockets-iwa",
+    "description": "Enable Isolated Web Apps (IWAs) to establish direct TCP and UDP connections for communicating with legacy systems or hardware devices.",
+    "category": "extensions"
+  },
+  {
+    "id": "enterprise-hardware-platform-api",
+    "description": "Provides Chrome extensions with access to hardware and platform-specific information for enhanced device management and security.",
+    "category": "extensions"
+  },
+  {
+    "id": "export-chrome-app-data",
+    "description": "Enable users to export data from a Chrome App to a local file using the Filesystem API.",
+    "category": "extensions"
+  },
+  {
+    "id": "extension-availability-warnings",
+    "description": "Inform users about Chrome extensions that are no longer available in the Chrome Web Store.",
+    "category": "extensions"
+  },
+  {
+    "id": "extension-description",
+    "description": "Provides clear and concise descriptions for browser extensions, suitable for display in browser extension management pages and online stores.",
+    "category": "extensions"
+  },
+  {
+    "id": "extension-permissions",
+    "description": "Manage extension permissions to control access to browser features and data, with clear explanations for users.",
+    "category": "extensions"
+  },
+  {
+    "id": "file-system-access",
+    "description": "Allow Chrome apps to interact with the user's local file system for reading and writing files.",
+    "category": "extensions"
+  },
+  {
+    "id": "inline-installation-deprecation",
+    "description": "Provide users with clear and concise information about deprecated inline installation for Chrome extensions and guide them to relevant resources for migration.",
+    "category": "extensions"
+  },
+  {
+    "id": "input-ime",
+    "description": "Enable extensions to create custom input methods for users to type text and input characters.",
+    "category": "extensions"
+  },
+  {
+    "id": "internationalize-extension-ui",
+    "description": "Internationalize your Chrome extension's interface using the chrome.i18n API for multi-language support.",
+    "category": "extensions"
+  },
+  {
+    "id": "maintain-extension-id",
+    "description": "Ensure your Chrome extension consistently uses the same unique ID during development by uploading it to the developer dashboard and retrieving its public key.",
+    "category": "extensions"
+  },
+  {
+    "id": "manifest-file-format",
+    "description": "Define core application metadata, configuration, and features for Chrome Apps.",
+    "category": "extensions"
+  },
+  {
+    "id": "manifest-requirements",
+    "description": "Guides developers on specifying essential technologies for Chrome extensions to ensure compatibility and prevent installation issues on unsupported systems.",
+    "category": "extensions"
+  },
+  {
+    "id": "manifest-sandbox",
+    "description": "Securely isolate specific extension pages with a custom Content Security Policy and unique origin using the sandbox manifest property.",
+    "category": "extensions"
+  },
+  {
+    "id": "manifest-version-management",
+    "description": "Provides guidance on managing extension versions for auto-updates and display purposes.",
+    "category": "extensions"
+  },
+  {
+    "id": "manifest-version",
+    "description": "Ensure compatibility and proper functioning of Chrome Apps by specifying the correct manifest version.",
+    "category": "extensions"
+  },
+  {
+    "id": "match-patterns-for-chrome-extensions",
+    "description": "Match patterns define groups of URLs for Chrome extensions to interact with, enabling functionality like content script injection and host permission declarations.",
+    "category": "extensions"
+  },
+  {
+    "id": "mv2-chrome-notifications",
+    "description": "Implement rich desktop notifications in Chrome extensions using the webkitNotifications API for Manifest V2.",
+    "category": "extensions"
+  },
+  {
+    "id": "oauth-chrome-extension",
+    "description": "Authenticate users with Google OAuth2 to access Google People API data in Chrome extensions.",
+    "category": "extensions"
+  },
+  {
+    "id": "omnibox-search",
+    "description": "Provide a custom search experience directly within the browser's address bar.",
+    "category": "extensions"
+  },
+  {
+    "id": "page-capture",
+    "description": "Enable extensions to capture and save the current state of a web page as a single MHTML file for offline access or further processing.",
+    "category": "extensions"
+  },
+  {
+    "id": "porting-complex-native-apps",
+    "description": "Port complex native applications with deep dependencies to the web using Emscripten and WebAssembly.",
+    "category": "extensions"
+  },
+  {
+    "id": "project-fugu-capabilities",
+    "description": "Enable web apps to perform actions previously only available to native apps by exposing native platform capabilities to the web.",
+    "category": "extensions"
+  },
+  {
+    "id": "promotional-images",
+    "description": "Guidelines for creating effective promotional images for the Chrome Web Store to increase extension visibility.",
+    "category": "extensions"
+  },
+  {
+    "id": "self-host-chrome-extensions",
+    "description": "Self-host Chrome extensions from a personal server for Linux users, enabling custom packaging, hosting, and updating.",
+    "category": "extensions"
+  },
+  {
+    "id": "skip-review-for-mv3-extensions",
+    "description": "Allow developers to skip the review process for eligible changes to Manifest V3 extensions using the Declarative Net Request API.",
+    "category": "extensions"
+  },
+  {
+    "id": "track-webstore-analytics",
+    "description": "Track user engagement and advertising performance for your Chrome Web Store listing using Google Analytics.",
+    "category": "extensions"
+  },
+  {
+    "id": "user-scripts-api",
+    "description": "Enable extensions to inject and manage user-provided scripts on web pages with granular control over execution environments and messaging.",
+    "category": "extensions"
+  },
+  {
+    "id": "web-request-interception",
+    "description": "Intercept, analyze, and modify web requests to enhance browser functionality or security.",
+    "category": "extensions"
+  },
+  {
+    "id": "webusb-device-communication",
+    "description": "Enable web applications to communicate directly with USB devices, allowing for richer hardware interactions without native applications.",
+    "category": "extensions"
+  },
+  {
+    "id": "yeoman-scaffolding",
+    "description": "Streamline web application development and project scaffolding with Yeoman, a powerful tool for creating consistent and maintainable project structures.",
+    "category": "extensions"
+  },
+  {
+    "id": "automatic-passkey-creation",
+    "description": "Enable seamless transition to passkeys by automatically creating them after password sign-ins with Chrome for Android.",
+    "category": "identity"
+  },
+  {
+    "id": "capture-handle",
+    "description": "Use Capture Handle to allow web apps to securely identify each other when one is capturing the other, improving collaboration and preventing issues like the \"hall of mirrors\" effect.",
+    "category": "identity"
+  },
+  {
+    "id": "chips-api-evolution",
+    "description": "Understand how community feedback shaped the CHIPS API design to improve its usability for developers while maintaining user privacy.\n",
+    "category": "identity"
+  },
+  {
+    "id": "cross-platform-passkey-sync",
+    "description": "Enable cross-platform passkey synchronization in Chrome for enhanced security and user experience.",
+    "category": "identity"
+  },
+  {
+    "id": "digital-credentials-identity-verification",
+    "description": "Securely verify user identity on the web using cryptographically-signed digital credentials, enhancing privacy and reducing the need for sensitive document uploads.",
+    "category": "identity"
+  },
+  {
+    "id": "federated-credential-management-api",
+    "description": "Provides a unified way for users to log in to websites using their existing identity providers, reducing the need for multiple accounts and passwords.",
+    "category": "identity"
+  },
+  {
+    "id": "gmail-mailto-handler",
+    "description": "Configure your browser to use Gmail as the default email client for all mailto links.",
+    "category": "identity"
+  },
+  {
+    "id": "passkey-adoption-and-cost-reduction",
+    "description": "Improve user adoption and reduce costs by transitioning to passwordless authentication with passkeys.",
+    "category": "identity"
+  },
+  {
+    "id": "payment-request-api-integration",
+    "description": "Integrate Payment Request API for seamless and secure online transactions within your web applications.",
+    "category": "identity"
+  },
+  {
+    "id": "web-based-payment-app-registration-debugging",
+    "description": "Learn how to register and debug web-based payment apps for seamless customer transactions.",
+    "category": "identity"
+  },
+  {
+    "id": "webotp-api-phone-verification",
+    "description": "Simplify phone number verification for users by automatically filling SMS OTPs on desktop and mobile.",
+    "category": "identity"
+  },
+  {
+    "id": "art-directed-images",
+    "description": "Serve different image versions based on viewport size and device capabilities for optimal performance and visual quality.",
+    "category": "media"
+  },
+  {
+    "id": "background-blur-camera",
+    "description": "Control camera background blur using the Background Blur API to enhance video calls and recordings.",
+    "category": "media"
+  },
+  {
+    "id": "camera-ptz-control",
+    "description": "Enable web applications to control camera pan, tilt, and zoom features through browser APIs.",
+    "category": "media"
+  },
+  {
+    "id": "capture-media-streams",
+    "description": "Capture real-time media streams from HTML elements like canvas, audio, and video for recording, live-streaming, or manipulation.",
+    "category": "media"
+  },
+  {
+    "id": "eme-logger",
+    "description": "Log Encrypted Media Extensions (EME) events and calls to the DevTools console for debugging.",
+    "category": "media"
+  },
+  {
+    "id": "exceeding-mse-buffer-quota",
+    "description": "Handles QuotaExceededError when exceeding Media Source Extensions buffering limits by implementing strategies to manage buffer space.\n",
+    "category": "media"
+  },
+  {
+    "id": "image-capture-api",
+    "description": "Capture full-resolution photos directly within web applications using the Image Capture API, simplifying the user experience by eliminating the need to switch between apps.",
+    "category": "media"
+  },
+  {
+    "id": "media-file-basics",
+    "description": "Prepare and serve video files efficiently on the web by understanding media containers, codecs, bitrate, and resolution.",
+    "category": "media"
+  },
+  {
+    "id": "media-session-api-best-practices",
+    "description": "Customize media playback notifications and controls using the Media Session API to enhance user experience across various devices.",
+    "category": "media"
+  },
+  {
+    "id": "mother-language-day-video-series",
+    "description": "Showcase a weekly video series in multiple languages to celebrate International Mother Language Day.",
+    "category": "media"
+  },
+  {
+    "id": "mse-codec-switching",
+    "description": "Enable seamless video playback across different codecs and containers using Media Source Extensions' new `changeType()` method.",
+    "category": "media"
+  },
+  {
+    "id": "real-time-communication",
+    "description": "Enable real-time audio and video communication directly within web browsers without plugins, facilitating seamless peer-to-peer interaction.",
+    "category": "media"
+  },
+  {
+    "id": "record-and-save-screen-capture",
+    "description": "Record and save the user's screen using the Screen Capture API and MediaRecorder API, with local preview and file saving capabilities.",
+    "category": "media"
+  },
+  {
+    "id": "sdf-bitmap-fonts-webvr",
+    "description": "Render text in 3D WebVR environments using Signed Distance Field bitmap fonts for better visual quality and performance.",
+    "category": "media"
+  },
+  {
+    "id": "video-player-sample",
+    "description": "Build and distribute an open-source, customizable video player web app with features like playlists, multiple format support, and social sharing.",
+    "category": "media"
+  },
+  {
+    "id": "web-audio-api-effects",
+    "description": "Use the Web Audio API to add dynamic audio effects like filters and distortion to web applications.",
+    "category": "media"
+  },
+  {
+    "id": "web-stories",
+    "description": "Create immersive, engaging content experiences on your website using Web Stories, a popular storytelling format that offers control over user experience and monetization.",
+    "category": "media"
+  },
+  {
+    "id": "amp-pwa-mobile-web-experience",
+    "description": "Combine AMP and PWA for a fast, app-like mobile web experience that boosts engagement and revenue.",
+    "category": "pwa"
+  },
+  {
+    "id": "apple-touch-icon",
+    "description": "Provide a custom icon for Progressive Web Apps on iOS home screens by adding a link tag to your HTML.",
+    "category": "pwa"
+  },
+  {
+    "id": "background-sync",
+    "description": "Use background sync to reliably make network requests even when the user is offline.",
+    "category": "pwa"
+  },
+  {
+    "id": "debug-pwas",
+    "description": "Inspect, modify, and debug web app manifests, service workers, and service worker caches for Progressive Web Apps using the Chrome DevTools Application panel.",
+    "category": "pwa"
+  },
+  {
+    "id": "enhance-aem-site-to-pwa",
+    "description": "Enhance existing Adobe Experience Manager (AEM) websites into Progressive Web Apps (PWAs) with Workbox for an app-like experience without coding.",
+    "category": "pwa"
+  },
+  {
+    "id": "fallback-content-javascript-disabled",
+    "description": "Ensure users can view at least some content on your web page when JavaScript is unavailable by implementing progressive enhancement.",
+    "category": "pwa"
+  },
+  {
+    "id": "get-installed-related-apps",
+    "description": "Enables websites to check if related apps (PWA, Android, or UWP) are installed on a user's device, allowing for customized user experiences.",
+    "category": "pwa"
+  },
+  {
+    "id": "in-browser-wordpress-development",
+    "description": "Enable interactive and self-contained WordPress development environments that run entirely within the browser using WebAssembly.",
+    "category": "pwa"
+  },
+  {
+    "id": "installable-pwa",
+    "description": "Make web apps installable and blend seamlessly with the operating system using PWA features like fullscreen display and window controls overlay.",
+    "category": "pwa"
+  },
+  {
+    "id": "notification-action-buttons",
+    "description": "Allow users to interact with notifications without opening the app by adding action buttons.",
+    "category": "pwa"
+  },
+  {
+    "id": "progressive-enhancement",
+    "description": "Enhance web applications by progressively adding new browser capabilities for an advanced user experience on modern browsers.",
+    "category": "pwa"
+  },
+  {
+    "id": "progressive-web-app-best-practices",
+    "description": "Build a performant and engaging user experience by implementing Progressive Web App (PWA) features like service workers and web app manifests.",
+    "category": "pwa"
+  },
+  {
+    "id": "progressive-web-app-for-engagement",
+    "description": "Enhance mobile web user experience and engagement by building a Progressive Web App with features like \"Add to Home screen\" prompts and push notifications.",
+    "category": "pwa"
+  },
+  {
+    "id": "progressive-web-apps",
+    "description": "Build installable, reliable, and engaging web applications that offer an app-like experience across devices.",
+    "category": "pwa"
+  },
+  {
+    "id": "push-notification-permission-ux",
+    "description": "Guides developers on implementing effective user permission requests for web push notifications to improve user experience and reduce blocking.",
+    "category": "pwa"
+  },
+  {
+    "id": "push-notifications-for-background-updates",
+    "description": "Providing timely and relevant updates to users even when the web application is not actively running by leveraging push notifications.",
+    "category": "pwa"
+  },
+  {
+    "id": "push-notifications-for-mobile-engagement",
+    "description": "Re-engage mobile web users and increase revenue with timely push notifications.",
+    "category": "pwa"
+  },
+  {
+    "id": "push-notifications-guide",
+    "description": "Guide developers on how to implement push notifications to engage users with timely updates and information.",
+    "category": "pwa"
+  },
+  {
+    "id": "pwa-to-android-app",
+    "description": "Learn how to package your Progressive Web App as an Android app using Trusted Web Activity and Bubblewrap.",
+    "category": "pwa"
+  },
+  {
+    "id": "pwa-window-management",
+    "description": "Manage the lifecycle and appearance of PWA windows to provide a seamless desktop-like experience.",
+    "category": "pwa"
+  },
+  {
+    "id": "pwas-on-oculus-quest-2",
+    "description": "Build and distribute Progressive Web Apps (PWAs) for the Oculus Quest 2, enabling VR experiences with its multitasking feature.",
+    "category": "pwa"
+  },
+  {
+    "id": "richer-install-ui",
+    "description": "Enhance web app installation with richer UI elements that provide more context and visual information to users, similar to app store experiences.",
+    "category": "pwa"
+  },
+  {
+    "id": "service-worker-broadcast-updates",
+    "description": "Enable proactive communication from service workers to web pages for timely updates and notifications.",
+    "category": "pwa"
+  },
+  {
+    "id": "service-worker-compatibility",
+    "description": "Ensure service worker compatibility by adhering to cache.addAll() and importScripts() specifications.",
+    "category": "pwa"
+  },
+  {
+    "id": "service-worker-offline-caching",
+    "description": "Service workers enable web applications to work offline by caching resources and handling network requests.",
+    "category": "pwa"
+  },
+  {
+    "id": "service-worker-prefetching",
+    "description": "Enhance website navigation speed by using service workers to extend the cache lifetime of prefetched resources, ensuring faster load times and improved user experience.",
+    "category": "pwa"
+  },
+  {
+    "id": "service-worker-static-routing",
+    "description": "Optimize service worker performance by declaratively routing specific URL patterns to bypass the service worker for direct network or cache access.",
+    "category": "pwa"
+  },
+  {
+    "id": "troubleshooting-and-logging",
+    "description": "Simplify service worker debugging and troubleshooting with Workbox's informative logging and built-in tools.",
+    "category": "pwa"
+  },
+  {
+    "id": "web-share-api",
+    "description": "Enable web applications to share links, text, and files with other applications installed on the device, mimicking native app sharing capabilities.",
+    "category": "pwa"
+  },
+  {
+    "id": "workbox-caching-strategies",
+    "description": "Implement efficient offline experiences for web applications by leveraging Workbox caching strategies.",
+    "category": "pwa"
+  },
+  {
+    "id": "auditing-third-party-resources",
+    "description": "Audit and mitigate risks associated with integrating third-party resources into your website to protect user privacy.",
+    "category": "security"
+  },
+  {
+    "id": "coding-outside-the-sandbox",
+    "description": "Securely code in Chrome's browser process by understanding sandbox limitations and implementing best practices to mitigate risks.",
+    "category": "security"
+  },
+  {
+    "id": "cookie-best-practices",
+    "description": "Learn best practices for first-party cookies and how to prepare for a more private web when using third-party cookies.",
+    "category": "security"
+  },
+  {
+    "id": "debugging-csp-trusted-types",
+    "description": "Debugging Content Security Policy and Trusted Types issues in Chrome DevTools for improved web security.",
+    "category": "security"
+  },
+  {
+    "id": "deprecate-document-domain",
+    "description": "Prevent security vulnerabilities by migrating away from the deprecated document.domain setter.",
+    "category": "security"
+  },
+  {
+    "id": "device-bound-session-credentials",
+    "description": "Protect web applications against session hijacking by integrating Device Bound Session Credentials (DBSC) to bind sessions to specific devices.",
+    "category": "security"
+  },
+  {
+    "id": "document-isolation-policy",
+    "description": "Securely enable advanced web features like SharedArrayBuffers and WebAssembly threads using Document Isolation Policy for enhanced application capabilities.",
+    "category": "security"
+  },
+  {
+    "id": "enforce-https-with-hsts",
+    "description": "Implement HTTP Strict Transport Security (HSTS) to enforce secure HTTPS connections and improve website performance by eliminating insecure HTTP redirects.",
+    "category": "security"
+  },
+  {
+    "id": "fetch-metadata-resource-isolation",
+    "description": "Protect web resources from cross-origin attacks like CSRF and XSSI using Fetch Metadata request headers to implement a Resource Isolation Policy.",
+    "category": "security"
+  },
+  {
+    "id": "fix-cloaked-keywords-links-hack",
+    "description": "Explains how to identify and remove the cloaked keywords and links hack from a website to restore its integrity and prevent future attacks.",
+    "category": "security"
+  },
+  {
+    "id": "html-attribute-escaping",
+    "description": "Protect against mutation XSS vulnerabilities by understanding how the HTML specification now escapes '<' and '>' characters in attributes.",
+    "category": "security"
+  },
+  {
+    "id": "learn-privacy-best-practices",
+    "description": "Help developers protect user privacy by understanding and implementing best practices for handling user data responsibly.",
+    "category": "security"
+  },
+  {
+    "id": "local-network-access-prompt",
+    "description": "Protect users from local network-based attacks by implementing Chrome's new permission prompt for sites connecting to local networks.",
+    "category": "security"
+  },
+  {
+    "id": "malware-removal-guide",
+    "description": "Detect and remove malware from a compromised website to restore its security and protect users.",
+    "category": "security"
+  },
+  {
+    "id": "manifest-v3-migration-security",
+    "description": "Improve Chrome extension security by migrating from Manifest V2 to Manifest V3, addressing known issues and adopting new security enhancements.",
+    "category": "security"
+  },
+  {
+    "id": "passkey-management-ui",
+    "description": "Provide users with a clear and intuitive interface to manage their passkeys, enhancing security and user experience.",
+    "category": "security"
+  },
+  {
+    "id": "privacy-and-security-panel",
+    "description": "Inspect and control third-party cookies and check HTTPS protection using the Privacy and security panel in Chrome DevTools.",
+    "category": "security"
+  },
+  {
+    "id": "secure-data-handling",
+    "description": "Provides guidance on securely handling user data in web applications by outlining best practices and requirements for data collection, storage, and processing.",
+    "category": "security"
+  },
+  {
+    "id": "secure-geolocation-access",
+    "description": "Securely access user location data by serving pages over HTTPS, preventing interception and protecting user privacy.",
+    "category": "security"
+  },
+  {
+    "id": "secure-payment-confirmation",
+    "description": "Securely confirm payments on the web using phishing-resistant passkeys with Secure Payment Confirmation.",
+    "category": "security"
+  },
+  {
+    "id": "visited-link-privacy",
+    "description": "Mitigate privacy leaks and prevent cross-site tracking by partitioning visited link history.",
+    "category": "security"
+  },
+  {
+    "id": "meta-description-best-practices",
+    "description": "Ensure your web pages have a clear and concise meta description to improve search engine visibility and user click-through rates.",
+    "category": "seo"
+  },
+  {
+    "id": "robots-txt-configuration",
+    "description": "Ensures search engines can crawl public pages and avoid indexing unwanted content by correctly configuring the robots.txt file.",
+    "category": "seo"
+  },
+  {
+    "id": "accessible-color-contrast-testing",
+    "description": "Ensure text is readable for everyone by testing and verifying accessible color contrast in web designs using various tools and techniques.",
+    "category": "testing"
+  },
+  {
+    "id": "automate-performance-testing",
+    "description": "Automate performance testing with Lighthouse Bot to maintain app speed and prevent regressions.",
+    "category": "testing"
+  },
+  {
+    "id": "automate-user-flows",
+    "description": "Enable efficient testing and debugging of web applications by automating user flows with the Chrome DevTools Recorder.",
+    "category": "testing"
+  },
+  {
+    "id": "automated-accessibility-testing",
+    "description": "Learn how to perform automated accessibility testing using Lighthouse to identify and fix accessibility issues in web pages.",
+    "category": "testing"
+  },
+  {
+    "id": "breakpoint-sidebar-redesign",
+    "description": "Streamline debugging by making common breakpoint actions more accessible and intuitive in Chrome DevTools.",
+    "category": "testing"
+  },
+  {
+    "id": "chrome-devtools-issues-panel",
+    "description": "This video demonstrates how to leverage the Chrome DevTools Issues Panel for a more structured and actionable way to identify and resolve browser deprecations and warnings, improving website quality.",
+    "category": "testing"
+  },
+  {
+    "id": "chromedriver-bug-reporting",
+    "description": "Provides guidance on how to report and track bugs or request features for ChromeDriver, including understanding priority and status levels, and support policies.",
+    "category": "testing"
+  },
+  {
+    "id": "cross-browser-testing-automation",
+    "description": "Automate cross-browser testing with Puppeteer and WebDriver BiDi for stable and unified browser control.",
+    "category": "testing"
+  },
+  {
+    "id": "cross-platform-form-testing",
+    "description": "Ensure forms work across various devices, browsers, platforms, and contexts by implementing accessible design patterns and testing strategies.",
+    "category": "testing"
+  },
+  {
+    "id": "debug-javascript-seo",
+    "description": "Debug JavaScript SEO issues on individual pages or across an entire site using Google's developer tools.",
+    "category": "testing"
+  },
+  {
+    "id": "debugging-third-party-cookie-phaseout",
+    "description": "Debugging third-party cookie issues and preparing for their deprecation with Chrome DevTools.",
+    "category": "testing"
+  },
+  {
+    "id": "freeze-and-inspect-elements",
+    "description": "Freeze elements in the DOM to inspect disappearing elements with DevTools.",
+    "category": "testing"
+  },
+  {
+    "id": "learn-accessibility",
+    "description": "Build accessible websites and web apps by learning essential practices for forms, automated testing, manual testing, and assistive technology.",
+    "category": "testing"
+  },
+  {
+    "id": "live-js-error-debugging",
+    "description": "Debug JavaScript errors in real-time by clicking on console errors to reveal their source in the Sources panel.",
+    "category": "testing"
+  },
+  {
+    "id": "mobile-web-development-devtools",
+    "description": "Streamline mobile web development by leveraging Chrome DevTools for remote debugging, device emulation, and screencasting.",
+    "category": "testing"
+  },
+  {
+    "id": "monitor-events-in-console",
+    "description": "Monitor events dispatched to an object in the Console to aid in debugging and understanding object behavior.",
+    "category": "testing"
+  },
+  {
+    "id": "network-panel-filtering",
+    "description": "Efficiently debug web applications by filtering network requests in the DevTools Network panel using custom search queries.",
+    "category": "testing"
+  },
+  {
+    "id": "test-css-masonry-layout",
+    "description": "Enable and test the proposed CSS masonry syntax in Chromium browsers for early developer feedback.",
+    "category": "testing"
+  },
+  {
+    "id": "testing-best-practices",
+    "description": "Provide guidance on effective testing strategies to determine what to test and what to avoid, ensuring efficient and maintainable code.",
+    "category": "testing"
+  },
+  {
+    "id": "testing-bounce-tracking-mitigations",
+    "description": "Test Chrome's bounce tracking mitigations to protect user privacy by enabling developers to identify and fix potential issues in their redirection flows before the feature is widely rolled out.",
+    "category": "testing"
+  },
+  {
+    "id": "testing-course-setup",
+    "description": "Guides users through the process of setting up and configuring a testing course, with placeholder content for future updates.",
+    "category": "testing"
+  },
+  {
+    "id": "testing-service-worker-suspension",
+    "description": "Testing Chrome extension service workers when they are suspended by the browser.",
+    "category": "testing"
+  },
+  {
+    "id": "accessibility-navigation",
+    "description": "Improve navigation for assistive technology users by structuring content with headings and landmarks, and providing skip links.",
+    "category": "ui"
+  },
+  {
+    "id": "accessible-color-schemes",
+    "description": "Create accessible and themeable color schemes using HSL in CSS for modern browsers.",
+    "category": "ui"
+  },
+  {
+    "id": "accessible-fab-components",
+    "description": "Create accessible, responsive, and color-adaptive Floating Action Buttons (FABs) using semantic HTML and CSS custom properties.",
+    "category": "ui"
+  },
+  {
+    "id": "accessible-images",
+    "description": "Provides guidance on creating accessible images by offering strategies for decorative, informative, functional, and complex images, along with best practices for alternative text.",
+    "category": "ui"
+  },
+  {
+    "id": "adaptive-3d-game-menu",
+    "description": "Create an adaptive 3D video game menu that responds to OS color and motion preferences, and supports mouse and keyboard input.",
+    "category": "ui"
+  },
+  {
+    "id": "adaptive-svg-favicon",
+    "description": "Adaptively render favicons with SVG, leveraging CSS media queries for dynamic styling based on user preferences like light and dark mode.",
+    "category": "ui"
+  },
+  {
+    "id": "address-form-best-practices",
+    "description": "Build accessible and user-friendly address forms using semantic HTML and relevant attributes for improved usability and browser autofill.",
+    "category": "ui"
+  },
+  {
+    "id": "anchor-positioning-tooltips",
+    "description": "Create tooltips and other anchored UI elements that adapt to available space by positioning them relative to an anchor element.",
+    "category": "ui"
+  },
+  {
+    "id": "animation-easing-and-duration",
+    "description": "Choose appropriate easing and animation durations for your project to create a responsive and enjoyable user experience.",
+    "category": "ui"
+  },
+  {
+    "id": "auto-resizing-html5-games",
+    "description": "Make HTML5 games automatically adjust to any screen resolution using CSS and JavaScript.",
+    "category": "ui"
+  },
+  {
+    "id": "auto-sizing-form-elements",
+    "description": "Automatically size form elements based on their content with CSS field-sizing.",
+    "category": "ui"
+  },
+  {
+    "id": "baseline-queries-in-browserslist",
+    "description": "Use Browserslist's new Baseline queries to target browsers supporting specific feature sets, ensuring compatibility and streamlining your development workflow.",
+    "category": "ui"
+  },
+  {
+    "id": "canvas-timeline-rendering",
+    "description": "Implement dynamic and responsive timelines and visualizations using HTML canvas for complex data rendering in web applications.",
+    "category": "ui"
+  },
+  {
     "id": "carousel",
     "description": "Build responsive, accessible carousels with CSS Scroll Snap",
+    "category": "ui"
+  },
+  {
+    "id": "centralized-spa-routing",
+    "description": "Centralize client-side routing logic for single-page applications using the Navigation API to improve developer experience and browser compatibility.",
+    "category": "ui"
+  },
+  {
+    "id": "chrome-viewport-resize-behavior",
+    "description": "Prepare for changes in Chrome's viewport resize behavior on Android when the on-screen keyboard appears by understanding the new default and how to opt into previous behaviors.",
     "category": "ui"
   },
   {
@@ -22,8 +1052,293 @@ export const USE_CASES: UseCase[] = [
     "category": "ui"
   },
   {
+    "id": "control-text-spacing",
+    "description": "Control the space above and below text elements for improved optical balance and alignment, particularly in buttons and tags.",
+    "category": "ui"
+  },
+  {
+    "id": "cross-device-webapp-best-practices",
+    "description": "Build cross-device web applications by classifying devices into classes and serving tailored versions to maximize code reuse and performance.",
+    "category": "ui"
+  },
+  {
+    "id": "css-3d-christmas-demo",
+    "description": "Use CSS 3D transforms to create engaging, Christmas-themed interactive experiences with a focus on visual appeal and animation.",
+    "category": "ui"
+  },
+  {
+    "id": "css-box-model",
+    "description": "Understand and control element sizing with the CSS Box Model for predictable layouts.",
+    "category": "ui"
+  },
+  {
+    "id": "css-filter-effects",
+    "description": "Apply visual effects to web content using CSS filters for enhanced aesthetics and user experience.",
+    "category": "ui"
+  },
+  {
+    "id": "css-gradient-generator",
+    "description": "Easily create visually appealing CSS gradients for web designs using Josh W Comeau's Gradient Generator tool.",
+    "category": "ui"
+  },
+  {
+    "id": "css-grid-layout",
+    "description": "Use CSS Grid Layout to create flexible and responsive web application layouts, enabling content to adapt to different screen sizes and overlap for unique designs.",
+    "category": "ui"
+  },
+  {
+    "id": "css-if-function-conditionals",
+    "description": "Use the CSS `if()` function to conditionally apply styles based on media queries, support queries, or element styles, enabling dynamic and responsive user interfaces.",
+    "category": "ui"
+  },
+  {
+    "id": "css-layout-methods",
+    "description": "Learn about different CSS layout methods like Flexbox and Grid to create responsive and visually appealing web page designs.",
+    "category": "ui"
+  },
+  {
+    "id": "css-nesting-improvements",
+    "description": "Improve CSS nesting predictability and maintainability by leveraging the CSSNestedDeclarations interface.",
+    "category": "ui"
+  },
+  {
+    "id": "css-overflow-replaced-elements",
+    "description": "Prevent unwanted visual overflow in replaced elements by correctly applying the CSS overflow property.",
+    "category": "ui"
+  },
+  {
+    "id": "css-relative-color-palettes",
+    "description": "Create dynamic color palettes with CSS relative color syntax for consistent and adaptable theming.",
+    "category": "ui"
+  },
+  {
+    "id": "css-transitions",
+    "description": "Use CSS transitions to smoothly animate changes between element states, enhancing user experience with visual feedback.",
+    "category": "ui"
+  },
+  {
+    "id": "custom-tabs-in-app-browser",
+    "description": "Customize the in-app browser experience for Android users with Custom Tabs, allowing for seamless integration and branding.",
+    "category": "ui"
+  },
+  {
+    "id": "customizable-select-menus",
+    "description": "Create customizable select menus with web-native styling for richer user experiences.",
+    "category": "ui"
+  },
+  {
+    "id": "debug-form-autofill-issues",
+    "description": "Debugging form and Autofill issues in Chrome DevTools to improve user experience and accessibility.",
+    "category": "ui"
+  },
+  {
+    "id": "device-motion-orientation",
+    "description": "Access device sensors like accelerometers and gyroscopes to create interactive mobile experiences.",
+    "category": "ui"
+  },
+  {
+    "id": "document-picture-in-picture-enhancement",
+    "description": "Enhance online learning by allowing users to open arbitrary HTML content in a floating, always-on-top Picture-in-Picture window.",
+    "category": "ui"
+  },
+  {
+    "id": "dom-manipulation-with-devtools",
+    "description": "Learn how to inspect, search, and edit DOM nodes in Chrome DevTools to understand and modify web page structure.",
+    "category": "ui"
+  },
+  {
+    "id": "editcontext-api-for-advanced-editing",
+    "description": "Build advanced text editing experiences on the web by decoupling text input from the DOM with the EditContext API.",
+    "category": "ui"
+  },
+  {
+    "id": "elements-panel-resource-editing",
+    "description": "Allows developers to quickly view and edit resources directly from the Elements panel in Chrome DevTools.",
+    "category": "ui"
+  },
+  {
+    "id": "file-handling-with-javascript",
+    "description": "Learn how to allow users to select, read, and monitor the progress of local files using JavaScript, covering both modern and legacy methods.",
+    "category": "ui"
+  },
+  {
+    "id": "fluffy-center",
+    "description": "A technique for centering content on a webpage using equal padding on all sides.",
+    "category": "ui"
+  },
+  {
+    "id": "gamepad-api-integration",
+    "description": "Enables web applications to detect and utilize gamepad input for enhanced interactivity in games and other interactive experiences.",
+    "category": "ui"
+  },
+  {
+    "id": "gui-challenge-switches",
+    "description": "Style and implement interactive switches for web applications, focusing on layout, accessibility, animations, and interactions.",
+    "category": "ui"
+  },
+  {
+    "id": "handwriting-recognition",
+    "description": "Allow web applications to recognize text from handwritten input in real time using the Handwriting Recognition API, enabling features like note-taking and form input.",
+    "category": "ui"
+  },
+  {
+    "id": "has-parent-styling",
+    "description": "Style parent elements and their children dynamically based on the state of their descendants using the :has() CSS selector.",
+    "category": "ui"
+  },
+  {
+    "id": "hover-words-animation",
+    "description": "Create animated text effects that respond to user motion preferences, enhancing interactivity while respecting accessibility.",
+    "category": "ui"
+  },
+  {
+    "id": "idle-detection",
+    "description": "Detect when a user is inactive to trigger application logic, like returning public kiosk apps to a home view or making chat apps show contacts as unreachable.",
+    "category": "ui"
+  },
+  {
+    "id": "immutable-array-updates",
+    "description": "Learn to update arrays immutably using Array.prototype.with() to avoid unintended side effects and improve code predictability.",
+    "category": "ui"
+  },
+  {
+    "id": "inspect-and-debug-flexbox",
+    "description": "Learn how to inspect, modify, and debug CSS flexbox layouts using Chrome DevTools.",
+    "category": "ui"
+  },
+  {
+    "id": "interest-invoker-tooltips",
+    "description": "Creates interactive tooltips using the Popover API and Interest Invokers for enhanced user guidance.",
+    "category": "ui"
+  },
+  {
+    "id": "javascript-classes",
+    "description": "Learn how to define and use JavaScript classes for object-oriented programming.",
+    "category": "ui"
+  },
+  {
+    "id": "javascript-objects",
+    "description": "Learn how to create and use JavaScript objects, which are mutable data structures that can hold key-value pairs.",
+    "category": "ui"
+  },
+  {
+    "id": "keyboard-lock-api",
+    "description": "Enable websites to capture keys normally reserved by the OS for immersive, full-screen web applications like games or remote access apps.",
+    "category": "ui"
+  },
+  {
+    "id": "layered-ui-patterns",
+    "description": "Implement accessible and seamless modal windows and popovers using native browser features like &lt;dialog&gt; and the popover attribute.",
+    "category": "ui"
+  },
+  {
+    "id": "learn-css-next-steps",
+    "description": "Learn to build your own websites with CSS, using a variety of resources to expand your skills.",
+    "category": "ui"
+  },
+  {
+    "id": "list-styling-and-semantics",
+    "description": "Learn how to semantically structure and creatively style HTML lists for better web accessibility and design.",
+    "category": "ui"
+  },
+  {
+    "id": "logical-properties-for-internationalization",
+    "description": "Use logical properties in CSS to create designs that adapt to different writing modes and languages.",
+    "category": "ui"
+  },
+  {
+    "id": "mini-app-styling-best-practices",
+    "description": "Provide a consistent and responsive user interface across various mini app platforms by leveraging their respective styling dialects and responsive pixel units.",
+    "category": "ui"
+  },
+  {
+    "id": "page-flip-effect",
+    "description": "Create a realistic page-flipping effect for digital books using HTML5 canvas and JavaScript for an engaging reading experience.",
+    "category": "ui"
+  },
+  {
+    "id": "paste-text",
+    "description": "Securely paste text from the user's clipboard into a web application using modern or classic JavaScript APIs.",
+    "category": "ui"
+  },
+  {
+    "id": "polymer-app-structure",
+    "description": "Structure web applications using Polymer's component model for modularity and reusability.",
+    "category": "ui"
+  },
+  {
+    "id": "prevent-sleep",
+    "description": "Prevent system sleep and display dimming for uninterrupted user experiences.",
+    "category": "ui"
+  },
+  {
+    "id": "promise-try-error-handling",
+    "description": "Improve error handling in asynchronous JavaScript code by using Promise.try to uniformly handle both synchronous and asynchronous callbacks.",
+    "category": "ui"
+  },
+  {
+    "id": "reporting-observer-best-practices",
+    "description": "Developers can now be notified when their site uses a deprecated API or encounters a browser intervention, allowing for proactive issue resolution and improved site health.",
+    "category": "ui"
+  },
+  {
+    "id": "request-notification-permission-responsibly",
+    "description": "Prevent the Lighthouse notification audit from failing by requesting notification permissions at the right time.",
+    "category": "ui"
+  },
+  {
+    "id": "responsive-sidenav",
+    "description": "Build a responsive slide-out side navigation component using HTML, CSS, and JavaScript for a better user experience.",
+    "category": "ui"
+  },
+  {
+    "id": "responsive-typography",
+    "description": "Improve text legibility and aesthetic appeal on the web by implementing responsive typography techniques.",
+    "category": "ui"
+  },
+  {
+    "id": "run-javascript-in-console",
+    "description": "Learn how to use the Chrome DevTools Console to run JavaScript, inspect and modify web pages, and test code snippets.",
+    "category": "ui"
+  },
+  {
     "id": "scroll-driven-animations",
     "description": "Create animations linked to scroll position",
+    "category": "ui"
+  },
+  {
+    "id": "scroll-into-view",
+    "description": "Learn how to bring out-of-view elements into the viewport for easier inspection and debugging.",
+    "category": "ui"
+  },
+  {
+    "id": "scroll-linked-animations",
+    "description": "Use scroll-linked animations to create dynamic and engaging scrolling experiences in web applications.",
+    "category": "ui"
+  },
+  {
+    "id": "scroll-snap-after-layout-changes",
+    "description": "Ensure smooth scrolling experiences by preventing scroll snapping issues after layout changes.",
+    "category": "ui"
+  },
+  {
+    "id": "semantic-text-markup",
+    "description": "Use semantic HTML elements to structure content and improve accessibility for better SEO and screen reader compatibility.",
+    "category": "ui"
+  },
+  {
+    "id": "styles-pane-keyboard-shortcuts",
+    "description": "Streamline CSS editing in the browser by learning keyboard shortcuts for efficient navigation and modification within the Styles pane.",
+    "category": "ui"
+  },
+  {
+    "id": "styles-pane-selector-matching",
+    "description": "Distinguish between matching and non-matching selector portions in the Styles Pane to understand DOM node selection.",
+    "category": "ui"
+  },
+  {
+    "id": "switch-component",
+    "description": "Create a responsive, adaptive, and accessible switch component using HTML, CSS, and JavaScript.",
     "category": "ui"
   },
   {
@@ -32,8 +1347,93 @@ export const USE_CASES: UseCase[] = [
     "category": "ui"
   },
   {
+    "id": "touch-interaction-best-practices",
+    "description": "Enhancing user interaction by making web apps responsive to touch input through state changes and custom gestures.",
+    "category": "ui"
+  },
+  {
+    "id": "track-changes",
+    "description": "Track changes made to HTML, CSS, and JavaScript within DevTools for debugging and development.",
+    "category": "ui"
+  },
+  {
+    "id": "url-pattern-api-best-practices",
+    "description": "Use the URLPattern API to simplify URL matching and parameter extraction in web applications.",
+    "category": "ui"
+  },
+  {
+    "id": "user-idle-detection",
+    "description": "Detect when a user is idle or active to save resources or change application behavior.",
+    "category": "ui"
+  },
+  {
+    "id": "user-interaction-form-validation",
+    "description": "Improve user experience by providing visual feedback on form input validity only after user interaction, reducing the need for manual state management.",
+    "category": "ui"
+  },
+  {
+    "id": "using-aria-for-accessible-descriptions",
+    "description": "Use ARIA attributes like aria-label, aria-labelledby, and aria-describedby to enhance the accessibility of web elements for users of assistive technologies.",
+    "category": "ui"
+  },
+  {
+    "id": "vertical-form-controls",
+    "description": "Enable vertical text display for form controls using the CSS writing-mode property to support international languages.",
+    "category": "ui"
+  },
+  {
+    "id": "view-transitions-spa",
+    "description": "Create smooth and animated page transitions in single-page applications using the View Transitions API.",
+    "category": "ui"
+  },
+  {
+    "id": "visual-search-with-web-perception-toolkit",
+    "description": "Enable visual search on your website by mapping real-world objects to content using the Web Perception Toolkit and structured data.",
+    "category": "ui"
+  },
+  {
+    "id": "web-animations-orchestration",
+    "description": "Orchestrate complex animations with promises and control their playback for smoother user experiences.",
+    "category": "ui"
+  },
+  {
+    "id": "web-components-best-practices",
+    "description": "Create reusable and encapsulated UI elements using custom elements, templates, and shadow DOM.",
+    "category": "ui"
+  },
+  {
+    "id": "web-speech-api",
+    "description": "Enable speech recognition in web applications using the Web Speech API for interactive voice-driven experiences.",
+    "category": "ui"
+  },
+  {
+    "id": "webgpu-release-notes",
+    "description": "Guide developers on how to update their applications with the latest WebGPU changes.",
+    "category": "ui"
+  },
+  {
+    "id": "adapt-content-network-quality",
+    "description": "Adapt web content, like videos, to serve appropriately based on the user's network quality using the Network Information API.",
+    "category": "webperf"
+  },
+  {
+    "id": "adapt-workload-to-cpu-pressure",
+    "description": "Adapt web application workloads based on system CPU pressure to maintain optimal performance without causing unmanageable system stress.",
+    "category": "webperf"
+  },
+  {
     "id": "adaptive-loading",
     "description": "Load a fallback image when network conditions are poor using the Adaptive Loading API",
+    "category": "webperf"
+  },
+  {
+    "id": "amp-for-mobile-content",
+    "description": "Improve user engagement and load times on mobile by leveraging AMP for content delivery.",
+    "category": "webperf"
+  },
+  {
+    "id": "avif-image-optimization",
+    "description": "Optimize image loading by serving appropriately sized images to different devices using the AVIF format.",
     "category": "webperf"
   },
   {
@@ -42,13 +1442,288 @@ export const USE_CASES: UseCase[] = [
     "category": "webperf"
   },
   {
+    "id": "brotli-compression-for-payload-reduction",
+    "description": "Reduce web application payload sizes using Brotli compression for improved performance and reduced bandwidth usage.",
+    "category": "webperf"
+  },
+  {
+    "id": "choosing-build-tools",
+    "description": "A guide to selecting and configuring build tools for web development to optimize application performance and delivery.",
+    "category": "webperf"
+  },
+  {
+    "id": "chromium-accessibility-performance",
+    "description": "Improve Chromium accessibility performance by optimizing scrolling and cache mechanisms.",
+    "category": "webperf"
+  },
+  {
+    "id": "client-hints-best-practices",
+    "description": "Leverage client hints to adapt website resource delivery based on device capabilities and network conditions for improved performance.",
+    "category": "webperf"
+  },
+  {
+    "id": "content-delivery-networks",
+    "description": "Optimize website performance and reduce server load by leveraging content delivery networks (CDNs) to cache and serve content closer to users.",
+    "category": "webperf"
+  },
+  {
+    "id": "core-web-vitals-optimization",
+    "description": "Optimize web performance by comparing local Core Web Vitals with real-user data and configuring local environments.",
+    "category": "webperf"
+  },
+  {
+    "id": "cross-site-prefetching-best-practices",
+    "description": "Accelerate page load times for users by prefetching resources from other websites, enhancing user experience and conversion rates.",
+    "category": "webperf"
+  },
+  {
+    "id": "css-paint-performance-analysis",
+    "description": "Analyze and optimize CSS paint times and page render weight for improved web performance.",
+    "category": "webperf"
+  },
+  {
+    "id": "debugging-speculative-navigations",
+    "description": "Make web browsing faster by prefetching and prerendering pages using the Speculation Rules API and learn how to debug these speculative loads in Chrome DevTools.",
+    "category": "webperf"
+  },
+  {
+    "id": "dom-cssom-construction",
+    "description": "Understand how browsers construct DOM and CSSOM trees to optimize page rendering speed.",
+    "category": "webperf"
+  },
+  {
+    "id": "faster-devtools-navigation",
+    "description": "Speed up DevTools navigation using shortcuts and settings to improve workflow efficiency.",
+    "category": "webperf"
+  },
+  {
+    "id": "image-cdn-optimization",
+    "description": "Optimize images for faster loading and reduced data costs by using an image CDN.",
+    "category": "webperf"
+  },
+  {
+    "id": "improve-mobile-site-speed",
+    "description": "Improve mobile site speed to increase user engagement and conversion rates across the purchase funnel.",
+    "category": "webperf"
+  },
+  {
+    "id": "improve-ttfb",
+    "description": "Optimize web performance by reducing the time it takes for the first byte of a web page's response to arrive.",
+    "category": "webperf"
+  },
+  {
+    "id": "improve-website-performance-with-new-metrics",
+    "description": "Quantify and improve website performance by leveraging new metrics like LCP, TBT, and CLS, and by analyzing field data from CrUX.",
+    "category": "webperf"
+  },
+  {
+    "id": "indexeddb-performance-storage-buckets",
+    "description": "Improve IndexedDB performance by leveraging storage buckets for concurrent access.",
+    "category": "webperf"
+  },
+  {
+    "id": "inspect-and-troubleshoot-caches",
+    "description": "Inspect and troubleshoot web caches using Chrome DevTools to improve website performance.",
+    "category": "webperf"
+  },
+  {
     "id": "lazy-load-images",
     "description": "Defer loading of off-screen images to minimize network contention and improve LCP.",
     "category": "webperf"
   },
   {
+    "id": "lazy-loading-video",
+    "description": "Explains how to lazy-load videos for improved web performance, covering both non-autoplay and animated GIF replacement scenarios.",
+    "category": "webperf"
+  },
+  {
+    "id": "lighthouse-performance-6",
+    "description": "Measure and improve website performance by leveraging new metrics and updated scoring in Lighthouse 6.0.",
+    "category": "webperf"
+  },
+  {
+    "id": "long-animation-frames-api-use-cases",
+    "description": "Use the Long Animation Frames API to diagnose and improve web page responsiveness and smoothness by measuring frame update delays.",
+    "category": "webperf"
+  },
+  {
+    "id": "long-animation-frames-debugging",
+    "description": "Use the Long Animation Frame API to identify and debug performance bottlenecks caused by long-running JavaScript tasks that impact user interactions.",
+    "category": "webperf"
+  },
+  {
+    "id": "max-potential-first-input-delay",
+    "description": "Learn how to measure and optimize the deprecated Max Potential First Input Delay metric in Lighthouse to improve user interaction responsiveness.",
+    "category": "webperf"
+  },
+  {
+    "id": "measure-cumulative-layout-shift",
+    "description": "Minimize unexpected layout shifts for a better user experience by understanding and measuring Cumulative Layout Shift (CLS).",
+    "category": "webperf"
+  },
+  {
+    "id": "measure-spa-core-web-vitals",
+    "description": "Measure Core Web Vitals for Single Page Applications by utilizing the Soft Navigations API.",
+    "category": "webperf"
+  },
+  {
+    "id": "minimize-main-thread-work",
+    "description": "Optimize web pages by minimizing the main thread's workload to improve responsiveness and user experience.",
+    "category": "webperf"
+  },
+  {
+    "id": "mobile-optimization-css-meta",
+    "description": "Optimize existing websites for mobile devices by leveraging CSS media queries and meta tags without a complete redesign.",
+    "category": "webperf"
+  },
+  {
+    "id": "ngoptimizedimage-angular-optimization",
+    "description": "Optimize image loading and rendering in Angular applications using the NgOptimizedImage directive for improved web performance.",
+    "category": "webperf"
+  },
+  {
+    "id": "nodejs-performance-profiling",
+    "description": "Profile Node.js application performance using the Chrome DevTools Performance panel to identify and resolve bottlenecks.",
+    "category": "webperf"
+  },
+  {
+    "id": "object-observer",
+    "description": "Monitor JavaScript object changes efficiently for data-binding and enhanced web application performance using Object.observe().",
+    "category": "webperf"
+  },
+  {
+    "id": "offthread-image-decoding",
+    "description": "Improve UI responsiveness by decoding images off the main thread using createImageBitmap and Web Workers.",
+    "category": "webperf"
+  },
+  {
+    "id": "optimize-bundle-size",
+    "description": "Optimize web application performance by identifying and removing unused or unneeded code dependencies.",
+    "category": "webperf"
+  },
+  {
+    "id": "optimize-css-selector-costs",
+    "description": "Optimize CSS selector performance by reducing their complexity, count, and the DOM's size to improve the \"Recalculate style\" cost.",
+    "category": "webperf"
+  },
+  {
+    "id": "optimize-image-loading",
+    "description": "Optimize image loading for improved Web Vitals by strategically lazy-loading images below the fold while eagerly loading those in the initial viewport.",
+    "category": "webperf"
+  },
+  {
+    "id": "optimize-inp",
+    "description": "Optimize website performance by reducing Interaction to Next Paint (INP) to improve user experience and conversion rates.",
+    "category": "webperf"
+  },
+  {
+    "id": "optimize-javascript-delivery",
+    "description": "Optimize JavaScript delivery and parsing for faster page load and interactivity on various devices.",
+    "category": "webperf"
+  },
+  {
+    "id": "optimize-preload-scanner-discovery",
+    "description": "Ensure that the browser's preload scanner can efficiently discover and fetch critical resources to improve page load performance.",
+    "category": "webperf"
+  },
+  {
+    "id": "optimize-text-asset-transfer",
+    "description": "Optimize the encoding and transfer size of text-based assets by applying minification and compression techniques to reduce page load times.",
+    "category": "webperf"
+  },
+  {
+    "id": "optimize-web-font-size",
+    "description": "Optimize web font file sizes to ensure good typography doesn't lead to slow websites.",
+    "category": "webperf"
+  },
+  {
     "id": "preload-prerender",
     "description": "Improve navigation speed by preloading key resources or prerendering pages before the user clicks.",
+    "category": "webperf"
+  },
+  {
+    "id": "properly-size-images",
+    "description": "Optimize image delivery by serving appropriately sized images to users to reduce data usage and improve page load times.",
+    "category": "webperf"
+  },
+  {
+    "id": "reduce-third-party-script-impact",
+    "description": "Optimize web performance by identifying and reducing the impact of slow third-party scripts that block the main thread.",
+    "category": "webperf"
+  },
+  {
+    "id": "robust-page-lifecycle-handling",
+    "description": "Provide a predictable and robust user experience by handling browser interventions like freezing and discarding background tabs.",
+    "category": "webperf"
+  },
+  {
+    "id": "route-level-code-splitting-angular",
+    "description": "Reduce JavaScript bundle size and improve initial load times by implementing route-level code splitting in Angular applications.",
+    "category": "webperf"
+  },
+  {
+    "id": "setting-performance-budgets",
+    "description": "Establish and enforce performance budgets for websites to ensure fast load times and a better user experience.",
+    "category": "webperf"
+  },
+  {
+    "id": "smooth-animations",
+    "description": "Optimize web animations for smooth user experiences by leveraging V-sync, requestAnimationFrame, and CSS animations.",
+    "category": "webperf"
+  },
+  {
+    "id": "source-maps-debugging",
+    "description": "Enable debugging of minified and combined JavaScript code by mapping it back to its original source files.",
+    "category": "webperf"
+  },
+  {
+    "id": "stream-multiple-responses",
+    "description": "Stream multiple network responses sequentially into a single response or stream for improved performance and user experience.",
+    "category": "webperf"
+  },
+  {
+    "id": "streaming-multipage-apps",
+    "description": "Achieve near-instantaneous rendering for multipage applications by streaming partial HTML content from a service worker, combining cached common elements with dynamically fetched content.",
+    "category": "webperf"
+  },
+  {
+    "id": "streaming-responses",
+    "description": "Implement streaming responses in web applications to improve perceived performance and user experience by progressively displaying content.",
+    "category": "webperf"
+  },
+  {
+    "id": "tab-discarding",
+    "description": "Automatically discard unused Chrome tabs to reduce memory footprint and improve browser performance.",
+    "category": "webperf"
+  },
+  {
+    "id": "view-application-cache-data",
+    "description": "Learn how to inspect Application Cache data using Chrome DevTools to understand cached resources and their statuses.",
+    "category": "webperf"
+  },
+  {
+    "id": "wasm-feature-detection-and-bundling",
+    "description": "Learn how to use the newest WebAssembly features while supporting users across all browsers by compiling code into different bundles.",
+    "category": "webperf"
+  },
+  {
+    "id": "web-worker-performance",
+    "description": "Use web workers to offload computationally expensive tasks from the main thread, improving web performance and responsiveness.",
+    "category": "webperf"
+  },
+  {
+    "id": "webkit-css-canvas-backgrounds",
+    "description": "Use the WebKit-specific CSS canvas API to programmatically animate CSS backgrounds using JavaScript, enabling hardware-accelerated and DOM-independent animations.",
+    "category": "webperf"
+  },
+  {
+    "id": "workerized-javascript-with-amp-script",
+    "description": "Use amp-script to run JavaScript in a Worker thread, preventing it from blocking the main thread and ensuring smooth user experiences.",
+    "category": "webperf"
+  },
+  {
+    "id": "xhr-level-2-data-handling",
+    "description": "Leverage XMLHttpRequest Level 2 to send and receive various data formats, including binary data and form submissions, for enhanced web application functionality.",
     "category": "webperf"
   }
 ];
