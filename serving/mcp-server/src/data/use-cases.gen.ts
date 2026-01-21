@@ -1207,11 +1207,6 @@ export const USE_CASES: UseCase[] = [
     "category": "ui"
   },
   {
-    "id": "interest-invoker-tooltips",
-    "description": "Creates interactive tooltips using the Popover API and Interest Invokers for enhanced user guidance.",
-    "category": "ui"
-  },
-  {
     "id": "javascript-classes",
     "description": "Learn how to define and use JavaScript classes for object-oriented programming.",
     "category": "ui"
