@@ -263,18 +263,30 @@ function renderGridRow(testName) {
 
     testIds.forEach(testID => {
         const data = allTestData[testID].data;
-        const stats = data.stats;
+        const results = data.results;
 
-        const testStats = stats[testName];
+        const runData = results[testName];
 
-        if (testStats) {
+        if (runData && runData.length > 0) {
             hasData = true;
+
+            // Calculate average across runs
+            let totalPassed = 0;
+            let totalChecks = 0;
+            runData.forEach(run => {
+                const s = getRunStats(run.results);
+                totalPassed += s.passed;
+                totalChecks += s.total;
+            });
+
+            const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
+
             cellsHtml.push(`
                 <a class="test-grid-cell"
                      href="dashboard.html?testID=${testID}"
-                     style="background-color: ${getColor(testStats.median)}" 
-                     title="${testID} - ${new Date(allTestData[testID].timestamp).toLocaleDateString()}: ${testStats.median}%">
-                    ${testStats.median}%
+                     style="background-color: ${getColor(avgRate)}" 
+                     title="${testID} - ${new Date(allTestData[testID].timestamp).toLocaleDateString()}: ${avgRate}% (${totalPassed}/${totalChecks})">
+                    ${avgRate}%
                 </a>
             `);
         } else {
