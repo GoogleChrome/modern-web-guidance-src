@@ -7,6 +7,10 @@ description: Provides guidance on modern web development best practices. You MUS
 
 This skill is the primary entrypoint for all web development tasks. It provides guidance on modern web development best practices and is used to discover and retrieve best practices for specific use cases.
 
+You can access the SKILL.md file for a given use case by opening the guides/<ID>/SKILL.md file within this directory. Each file contains a list of best practices for that use case, which is critically important to follow when building modern web applications. You can find the use case ID in the table below.
+
+MANDATORY: Identify which of the supported use cases are relevant to the current task, fetch their SKILL.md files, and follow the instructions in each file to implement the best practices. Do this for ALL relevant use cases.
+
 Supported web development use cases include:
 
 ID | Description
@@ -354,7 +358,3 @@ ID | Description
 | webperf-webkit-css-canvas-backgrounds | Use the WebKit-specific CSS canvas API to programmatically animate CSS backgrounds using JavaScript, enabling hardware-accelerated and DOM-independent animations. |
 | webperf-workerized-javascript-with-amp-script | Use amp-script to run JavaScript in a Worker thread, preventing it from blocking the main thread and ensuring smooth user experiences. |
 | webperf-xhr-level-2-data-handling | Leverage XMLHttpRequest Level 2 to send and receive various data formats, including binary data and form submissions, for enhanced web application functionality. |
-
-You can access the SKILL.md file for a given use case by opening the skills/<ID>/SKILL.md file adjacent to this file. Each file contains a list of best practices for that use case, which is critically important to follow when building modern web applications.
-
-MANDATORY: Identify which of the supported use cases are relevant to the current task, fetch their SKILL.md files, and follow the instructions in each file to implement the best practices. Do this for ALL relevant use cases.
