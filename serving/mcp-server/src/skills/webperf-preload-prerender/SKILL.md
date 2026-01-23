@@ -1,6 +1,8 @@
 ---
 name: webperf-preload-prerender
 description: Improve navigation speed by preloading key resources or prerendering pages before the user clicks.
+web-feature-ids:
+  - speculation-rules
 ---
 
 # Speculative Preloading & Prerendering
@@ -10,7 +12,24 @@ Accelerate navigation by fetching and prerendering future content before the use
 ## Speculation Rules API
 The modern way to handle this is the **Speculation Rules API**.
 
-For a full working example, see `examples/speculation-rules.html`.
+```html
+<script type="speculationrules">
+{
+  "prerender": [
+    {
+      "source": "document",
+      "where": {
+        "and": [
+          { "href_matches": "/*" },
+          { "not": { "href_matches": ["/logout", "/add-to-cart", "/checkout/*"] }}
+        ]
+      },
+      "eagerness": "moderate"
+    }
+  ]
+}
+</script>
+```
 
 ## Best Practices
 - **DO** reserve eager prefetches and prerenders ("eagerness" values of "immediate" or "eager") for only the highest-confidence speculative navigations

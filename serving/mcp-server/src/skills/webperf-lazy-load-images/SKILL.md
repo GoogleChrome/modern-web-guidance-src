@@ -1,6 +1,8 @@
 ---
 name: webperf-lazy-load-images
 description: Defer loading of off-screen images to minimize network contention and improve LCP.
+web-feature-ids:
+  - loading-lazy
 ---
 
 # Lazy loading images
@@ -9,7 +11,9 @@ description: Defer loading of off-screen images to minimize network contention a
 
 The standard way to lazy load images is the `loading="lazy"` HTML attribute:
 
-For a full working example, see `examples/lazy-loading.html`.
+```html
+<img src="image.jpg" loading="lazy" alt="..." width="800" height="600">
+```
 
 ### When TO Use It
 - Images that are **below the fold** (off-screen initially).

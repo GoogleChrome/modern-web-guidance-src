@@ -1,6 +1,13 @@
 ---
 name: ui-color-systems
 description: Create dynamic, accessible color systems using modern color syntax and relative colors
+web-feature-ids:
+  - color
+  - color-function
+  - relative-color
+  - rgb
+  - oklab
+  - light-dark
 ---
 
 # Modern Color Systems
@@ -14,7 +21,33 @@ Reference docs:
 
 Use **space-separated syntax** for all color functions. This ensures portability with newer features like Relative Color Syntax (RCS). Favor **OKLCH** for UI components to ensure perceptual uniformity (consistent contrast across different hues).
 
-For a full working example, see `examples/color-theme.html`.
+```css
+:root {
+  /* 1. Define base brand color */
+  --brand: #3b82f6;
+
+  /* 2. Use light-dark() for effortless theming */
+  color-scheme: light dark;
+  --surface: light-dark(#ffffff, oklch(from var(--brand) 0.1 0.05 h));
+}
+
+.button {
+  /* 3. Use Relative Color Syntax for state variants */
+  background: var(--brand);
+  color: white;
+}
+
+.button:hover {
+  /* Adjust lightness (l) dynamically without defining a new hex */
+  background: oklch(from var(--brand) calc(l + 0.1) c h);
+}
+
+.button-ghost {
+  /* Use the forward-slash for alpha transparency */
+  background: oklch(from var(--brand) l c h / 0.15);
+}
+
+```
 
 **DO NOT** use legacy comma-separated syntax (e.g., `rgba(255, 0, 0, 0.5)`).
 **DO NOT** trust AI-generated CSS defaults for colors; LLMs frequently output legacy syntax that is incompatible with the `from` keyword used in Relative Colors.

@@ -1,6 +1,8 @@
 ---
 name: webperf-adaptive-loading
 description: Load a fallback image when network conditions are poor using the Adaptive Loading API
+web-feature-ids:
+  - adaptive-loading
 ---
 
 # Adaptive Loading
@@ -11,11 +13,18 @@ The `loading-placeholder` attribute is a non-standard mechanism for `<img>` and 
 
 Example 1: Basic usage on an image.
 
-For a full working example, see `examples/adaptive-image.html`.
+```html
+<img src='high-res.jpg' loading-placeholder='low-res.jpg' alt='Hero image'>
+```
 
 Example 2: Using it with a picture element for art direction.
 
-
+```html
+<picture>
+  <source media='(min-width: 800px)' srcset='large.jpg' loading-placeholder='large-blur.jpg'>
+  <img src='small.jpg' loading-placeholder='small-blur.jpg' alt='Responsive image'>
+</picture>
+```
 
 ## Fallback strategies
 

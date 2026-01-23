@@ -1,6 +1,8 @@
 ---
 name: ui-carousel
 description: Build responsive, accessible carousels with CSS Scroll Snap
+web-feature-ids:
+  - scroll-snap
 ---
 
 # Modern Carousel
@@ -18,13 +20,51 @@ A modern carousel (or slider) should rely primarily on CSS for layout and scroll
 ### 1. Structure
 Use a scrolling container with child items.
 
-For a full working example, see `examples/carousel.html`.
+```html
+<div class="carousel" role="region" aria-label="Image Carousel">
+  <ul class="carousel-track">
+    <li class="carousel-slide" id="slide1">
+      <img src="image1.jpg" alt="Description 1" loading="lazy">
+    </li>
+    <li class="carousel-slide" id="slide2">
+      <img src="image2.jpg" alt="Description 2" loading="lazy">
+    </li>
+    <li class="carousel-slide" id="slide3">
+      <img src="image3.jpg" alt="Description 3" loading="lazy">
+    </li>
+  </ul>
+</div>
+```
 
 ### 2. CSS Scroll Snap
 The magic happens in CSS.
 
+```css
+.carousel-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory; /* Snap horizontally */
+  scroll-behavior: smooth;
+  gap: 1rem;
+  padding: 1rem;
+  list-style: none;
+}
+
+.carousel-slide {
+  flex: 0 0 100%; /* Each slide takes full width */
+  scroll-snap-align: center; /* Snap to center of viewport */
+}
+```
+
 ### 3. Progressive Enhancement (Optional)
 Add "Next" and "Previous" buttons that scroll the container.
+
+```javascript
+/*
+  Example:
+  track.scrollBy({ left: track.clientWidth, behavior: 'smooth' });
+*/
+```
 
 ## Fallback strategies
 

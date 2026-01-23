@@ -1,6 +1,10 @@
 ---
 name: ui-tooltip
 description: Create tooltips with Popover API and Interest Invokers
+web-feature-ids:
+  - interest-invokers
+  - popover
+  - anchor-positioning
 ---
 
 # Tooltip
@@ -13,7 +17,29 @@ Reference docs:
 
 Use `interestfor` to declaratively build a hovercard using `popover`. Use CSS Anchor Positioning to tether the popover to the button.
 
-For a full working example, see `examples/tooltip.html`.
+```css
+.my-trigger {
+  anchor-name: --my-trigger;
+}
+
+#my-popover {
+  position-anchor: --my-trigger;
+  position-area: top; /* Shorthand for 'top center' */
+  width: max-content; /* Allow the element to take its natural width */
+  margin-inline: auto; /* Allow it to overflow the 'center' column equally on both sides */
+  position-try-fallbacks: flip-block;
+}
+```
+
+```html
+<button class="my-trigger" interestfor="my-popover">
+  Hover for popover
+</button>
+
+<div id="my-popover" popover="hint">
+  Hello world
+</div>
+```
 
 **DO NOT** use the `interesttarget` attribute, as it has been recently deprecated in favor of `interestfor`.
 

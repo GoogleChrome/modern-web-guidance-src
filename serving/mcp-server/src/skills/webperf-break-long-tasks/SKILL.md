@@ -1,6 +1,8 @@
 ---
 name: webperf-break-long-tasks
 description: Improve interaction responsiveness (INP) by yielding to the main thread.
+web-feature-ids:
+  - scheduler
 ---
 
 # Break Up Long Tasks for Better INP
@@ -16,10 +18,34 @@ To fix this, you need to break up long JavaScript work into smaller chunks and y
 ### Modern Approach: `scheduler.yield()`
 The `scheduler.yield()` API is the modern way to yield execution.
 
-For a full working example, see `examples/scheduler-yield.html`.
+```javascript
+async function doHeavyWork() {
+  for (const item of hugeList) {
+    process(item);
+    
+    // Yield to the main thread periodically
+    await scheduler.yield();
+  }
+}
+```
 
 ### Legacy Fallback: `setTimeout`
 For older browsers, use `setTimeout` with a delay of 0.
+
+```javascript
+function yieldToMain() {
+  return new Promise(resolve => {
+    setTimeout(resolve, 0);
+  });
+}
+
+async function doHeavyWork() {
+  for (const item of hugeList) {
+    process(item);
+    await yieldToMain();
+  }
+}
+```
 
 ## When to Yield?
 - After processing a chunk of data.

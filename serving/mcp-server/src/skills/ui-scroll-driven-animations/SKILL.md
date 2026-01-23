@@ -1,6 +1,8 @@
 ---
 name: ui-scroll-driven-animations
 description: Create animations linked to scroll position
+web-feature-ids:
+  - scroll-driven-animations
 ---
 
 # Scroll-driven animations
@@ -13,11 +15,64 @@ Reference docs:
 
 Use `animation-timeline: scroll()` to create a reading progress indicator:
 
-For a full working example, see `examples/reading-progress.html`.
+```css
+@keyframes grow-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+#progress {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 1em;
+  background: red;
+
+  transform-origin: 0 50%;
+  animation: grow-progress auto linear;
+  animation-timeline: scroll(root block);
+}
+```
 
 Use `animation-timeline: view()` to fade an image in as it enters the viewport:
 
-For a full working example, see `examples/fade-in.html`.
+```css
+/* 1. Define the keyframes for the animation */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 2. Use @supports for feature detection */
+@supports (animation-timeline: view()) {
+
+  .fade-in-image {
+    /* Set initial state for browsers that support the feature */
+    opacity: 0;
+
+    /* Attach the animation */
+    animation: fade-in linear both;
+    animation-timeline: view();
+
+    /* 
+      Define the range for the animation.
+      It starts when the element is 20% into view (entry 20%)
+      and finishes when it is 60% into view (entry 60%).
+    */
+    animation-range: entry 20% entry 60%;
+  }
+
+  /* 3. Add a media query for users who prefer reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .fade-in-image {
+      /* Disable the animation and set the final state */
+      animation: none;
+      opacity: 1;
+    }
+  }
+}
+```
 
 **DO** use a @media query to disable animations if `prefers-reduced-motion` is set to `reduce`.
 
