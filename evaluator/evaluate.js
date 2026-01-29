@@ -85,7 +85,8 @@ async function main() {
 
       console.log(`Evaluating: ${testName}`.yellow);
 
-      const files = fs.readdirSync(dir);
+      // Use glob to recursively find all files (nodir: true skips directories themselves)
+      const files = glob.sync('**/*', { cwd: dir, nodir: true });
 
       let scenarioResults = [];
 

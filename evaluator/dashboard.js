@@ -287,21 +287,18 @@ async function showDetails(testName, runs, stats, testID) {
     // Check for setup file asynchronously for each run to show View Diff button if applicable
     const runDetailsPromises = runs.map(async run => {
         const s = getRunStats(run.results);
-        const resultPath = `results/${testID}/${run.runNumber}/${scenario}/${prompt}/${agent}/index.html`;
-        const setupPath = `setup/${scenario}/${prompt}/${agent}/index.html`;
+        const basePath = `results/${testID}/${run.runNumber}/${scenario}/${prompt}/${agent}`;
+        const resultPath = await findBestEntryPoint(basePath);
 
-        // Check if setup file exists
-        let hasSetup = false;
-        try {
-            const res = await fetch(setupPath, { method: 'HEAD' });
-            hasSetup = res.ok;
-        } catch (e) {
-            hasSetup = false;
-        }
+        // Calculate relative path (e.g., "src/App.jsx" or "index.html")
+        // resultPath is like "results/.../src/App.jsx"
+        // basePath is like "results/..."
+        const relativePath = resultPath.replace(basePath + '/', '');
+        const setupPath = `setup/${scenario}/${prompt}/${agent}/${relativePath}`;
 
-        const diffButton = hasSetup
-            ? `<button class="secondary-btn small-btn" onclick="viewDiff('${setupPath}', '${resultPath}')" style="margin-left: 10px; font-size: 0.8em; padding: 2px 8px;">View Diff</button>`
-            : '';
+        // Check if setup file exists - logic removed, we always want to attempt a diff
+        // If the setup file is missing, viewDiff will treat it as an empty file (all new content)
+        const diffButton = `<button class="secondary-btn small-btn" onclick="viewDiff('${setupPath}', '${resultPath}')" style="margin-left: 10px; font-size: 0.8em; padding: 2px 8px;">View Diff</button>`;
 
         return `
             <div class="run-detail">
@@ -336,8 +333,6 @@ async function viewDiff(setupPath, resultPath) {
     const body = document.getElementById('modal-body');
     const contentDiv = document.querySelector('.modal-content');
 
-
-
     title.textContent = 'Diff View';
     body.innerHTML = '<div style="text-align:center; padding: 20px;">Computing diff...</div>';
 
@@ -350,10 +345,16 @@ async function viewDiff(setupPath, resultPath) {
             fetch(resultPath)
         ]);
 
-        if (!setupRes.ok) throw new Error(`Failed to load setup file: ${setupPath}`);
-        if (!resultRes.ok) throw new Error(`Failed to load result file: ${resultPath}`);
+        // If setup is missing (404), treat as empty string
+        let setupText = '';
+        if (setupRes.ok) {
+            setupText = await setupRes.text();
+        } else if (setupRes.status !== 404) {
+            // If it's not OK and NOT 404, likely a real error
+            throw new Error(`Failed to load setup file: ${setupPath} (${setupRes.status})`);
+        }
 
-        const setupText = await setupRes.text();
+        if (!resultRes.ok) throw new Error(`Failed to load result file: ${resultPath}`);
         const resultText = await resultRes.text();
 
         const diff = Diff.diffLines(setupText, resultText);
@@ -451,4 +452,29 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+async function findBestEntryPoint(basePath) {
+    const candidates = [
+        'src/App.jsx',
+        'src/App.js',
+        'src/main.jsx',
+        'src/main.js',
+        'src/index.jsx',
+        'src/index.js',
+        'index.html'
+    ];
+
+    const checks = candidates.map(candidate =>
+        fetch(`${basePath}/${candidate}`, { method: 'HEAD' })
+            .then(res => res.ok ? candidate : null)
+            .catch(() => null)
+    );
+
+    const results = await Promise.all(checks);
+    const best = results.find(result => result !== null);
+
+    if (best) return `${basePath}/${best}`;
+    // Fallback
+    return `${basePath}/index.html`;
 }

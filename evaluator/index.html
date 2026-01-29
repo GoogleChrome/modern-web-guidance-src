@@ -15,6 +15,28 @@
         <h1 class="landing-title">Spike Test Results</h1>
         <p class="landing-subtitle">All test runs and performance over time</p>
       </div>
+      <div class="filter-container-nav">
+        <button id="filter-btn" class="secondary-btn">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"
+            style="vertical-align: text-bottom; margin-right: 4px;">
+            <path
+              d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z" />
+          </svg>
+          Filter Runs
+        </button>
+        <div id="filter-menu" class="filter-menu hidden">
+          <div class="filter-header">
+            <span class="filter-header-title">Select Test Runs</span>
+            <div class="filter-actions">
+              <button id="select-all-btn" class="text-btn">All</button>
+              <button id="deselect-all-btn" class="text-btn">None</button>
+            </div>
+          </div>
+          <div id="filter-list" class="filter-list">
+            <!-- Checkboxes injected by JS -->
+          </div>
+        </div>
+      </div>
     </header>
 
     <nav class="dashboard-tabs">

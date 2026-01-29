@@ -1,0 +1,71 @@
+.heroSection {
+  position: relative;
+  height: 90vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-white);
+}
+
+.imageWrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.heroImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  
+  /* Scroll Driven Animation */
+  /* Fallback first */
+  opacity: 1;
+  transform: scale(1);
+}
+
+@keyframes fade-grow {
+  from {
+    opacity: 0;
+    transform: scale(1);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .heroImage {
+    animation: fade-grow linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 50%; /* Adjust as needed */
+  }
+}
+
+.content {
+  text-align: center;
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 3rem;
+  backdrop-filter: blur(4px);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.title {
+  font-size: 4rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-cream);
+}
+
+.subtitle {
+  font-size: 1.5rem;
+  font-family: var(--font-sans);
+  color: var(--color-white);
+}

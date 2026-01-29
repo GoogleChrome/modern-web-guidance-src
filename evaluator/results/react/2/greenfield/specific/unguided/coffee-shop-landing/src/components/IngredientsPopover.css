@@ -1,0 +1,119 @@
+.popover-wrapper {
+  display: inline-block;
+  position: relative;
+  margin-top: 20px;
+}
+
+.details-btn {
+  background-color: #6d4c41;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.details-btn:hover {
+  background-color: #5d4037;
+}
+
+/* Native Popover Styles */
+/* The popover attribute puts it in the top layer */
+.ingredients-popover {
+  border: none;
+  padding: 20px;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  color: #333;
+  width: 200px;
+  
+  /* We can try to position it relative to the button using anchor positioning if supported, 
+     but for now we'll rely on basic top-layer behavior or just let it center/default, 
+     Actually manual popover often defaults to center or needs JS positioning.
+     Let's style it to be near the cursor or fixed if we can, or just let it be.
+     Wait, manual popover doesn't automatically position next to the trigger without Anchor Positioning API.
+     For a "popover on hover", creating it as a child might have been easier if not for the top layer.
+     But since we are using native popover, let's use some basic styles.
+  */
+  margin: 0;
+  position: absolute; /* Using absolute if we can make it relative to container, BUT popover escapes container context */
+  /* If popover escapes context, we might need to use Anchor Positioning or just center it for now to be safe.*/
+  
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  
+  /* Since popover="manual" places it in the top layer, 'position: absolute' relates to the ICB (initial containing block) usually,
+     UNLESS we use Anchor Positioning.
+     Let's assume Anchor Positioning might not be fully available everywhere or complex.
+     Actually, let's try to use basic positioning.
+     If we can't easily position it next to the button without Anchor API, 
+     we might want to just let it be fixed or use a simpler approach for the demo.
+     However, standard absolute positioning relative to the button WON'T work if it's in the top layer.
+     
+     Wait, if I put the popover inside the wrapper, but it has 'popover' attribute, 
+     it is promoted to top layer and taken out of document flow.
+     So position: absolute will be relative to viewport.
+     
+     Hack: We can use margin to offset it from top/left of viewport if we knew where it was.
+     Better: Use Anchor Positioning if available.
+     Fallback: Fixed position center or nearby.
+     
+     Let's try to use valid Anchor Positioning syntax for modern browsers, and fallback.
+  */
+}
+
+/* Anchor Positioning Demo */
+@supports (position-anchor: --details-btn) {
+  .details-btn {
+    anchor-name: --details-btn;
+  }
+  
+  .ingredients-popover {
+    position-anchor: --details-btn;
+    top: anchor(bottom);
+    left: anchor(center);
+    transform: translateX(-50%);
+    margin-top: 10px;
+    position: absolute; /* Top layer standard */
+  }
+}
+
+/* Fallback for no anchor support - just center it on screen or fix it */
+@supports not (position-anchor: --details-btn) {
+  .ingredients-popover {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.ingredients-popover h3 {
+  margin-top: 0;
+  color: #6d4c41;
+}
+
+.ingredients-popover ul {
+  padding-left: 20px;
+  margin-bottom: 0;
+}
+
+/* Entrance animation */
+.ingredients-popover:popover-open {
+  animation: pop-in 0.2s ease-out;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -60%); /* slightly above */
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}

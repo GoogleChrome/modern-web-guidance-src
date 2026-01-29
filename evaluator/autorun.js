@@ -235,13 +235,36 @@ async function run() {
     try {
       console.log("Saving chat log...");
       // Ensure #chat exists in the target frame
-      await targetFrame.waitForSelector('#chat #cascade', { timeout: 5000 });
-      const chatText = await targetFrame.$eval('#chat #cascade', el => el.innerText || '');
+      await targetFrame.waitForSelector('#chat', { timeout: 5000 });
+      const chatText = await targetFrame.$eval('#chat', el => el.innerText || '');
       const chatLogPath = path.resolve(absoluteTargetDir, 'chat_log.txt');
       fs.writeFileSync(chatLogPath, chatText, 'utf8');
       console.log(`Saved chat log to: ${chatLogPath}`);
+
+      // Also copy all artifact directories
+      const ARTIFACT_DIRS = ['conversations', 'brain', 'knowledge'];
+      const jetskiArtifactsDir = path.join(absoluteTargetDir, 'jetski_artifacts');
+
+      if (!fs.existsSync(jetskiArtifactsDir)) {
+        fs.mkdirSync(jetskiArtifactsDir, { recursive: true });
+      }
+
+      for (const dirName of ARTIFACT_DIRS) {
+        const sourceDir = path.join(config.jetskiDir, dirName);
+        if (fs.existsSync(sourceDir)) {
+          console.log(`Copying ${dirName} from ${sourceDir} to ${jetskiArtifactsDir}...`);
+          try {
+            execSync(`cp -R "${sourceDir}" "${jetskiArtifactsDir}"`);
+            console.log(`${dirName} copied successfully.`);
+          } catch (cpError) {
+            console.error(`Failed to copy ${dirName}: ${cpError.message}`);
+          }
+        } else {
+          console.log(`No ${dirName} directory found at ${sourceDir}`);
+        }
+      }
     } catch (e) {
-      console.warn('Could not save chat log:', e.message);
+      console.warn('Could not save chat log or conversations:', e.message);
     }
 
     // Close Jetski

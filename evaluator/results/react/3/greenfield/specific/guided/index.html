@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Daily Grind</title>
+    
+    <!-- Polyfills for modern web features -->
+    <script>
+      // Interest Invokers Polyfill
+      if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+        const script = document.createElement('script');
+        script.src = "https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js";
+        document.head.appendChild(script);
+      }
+      
+      // Popover Polyfill
+      if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+        const script = document.createElement('script');
+        script.src = "https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js";
+        document.head.appendChild(script);
+      }
+      
+      // CSS Anchor Positioning Polyfill
+      if (!("positionAnchor" in document.documentElement.style)) {
+        const script = document.createElement('script');
+        script.src = "https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js";
+        document.head.appendChild(script);
+      }
+
+      // Adaptive Loading Implementation
+      // Checks for slow connection and swaps src with loading-placeholder if present
+      (function() {
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        if (connection && (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g' || connection.effectiveType === '3g' || connection.saveData)) {
+          console.log('Adaptive Loading: Slow connection detected:', connection.effectiveType);
+          
+          const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+              mutation.addedNodes.forEach((node) => {
+                if (node.nodeType === 1) { // Element
+                   if (node.tagName === 'IMG' && node.hasAttribute('loading-placeholder')) {
+                     const placeholder = node.getAttribute('loading-placeholder');
+                     // We swap src to placeholder. Ideally we want to do this before it loads.
+                     node.src = placeholder;
+                     // Optional: add a class to indicate it's using a placeholder
+                     node.classList.add('using-placeholder');
+                   }
+                   // Also check children
+                   node.querySelectorAll('img[loading-placeholder]').forEach(img => {
+                     const placeholder = img.getAttribute('loading-placeholder');
+                     img.src = placeholder;
+                     img.classList.add('using-placeholder');
+                   });
+                }
+              });
+            });
+          });
+          
+          observer.observe(document.documentElement, { childList: true, subtree: true });
+          
+          // Also handle existing elements if any
+          document.addEventListener('DOMContentLoaded', () => {
+             document.querySelectorAll('img[loading-placeholder]').forEach(img => {
+               const placeholder = img.getAttribute('loading-placeholder');
+               img.src = placeholder;
+               img.classList.add('using-placeholder');
+             });
+          });
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

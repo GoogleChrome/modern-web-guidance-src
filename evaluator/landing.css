@@ -356,3 +356,119 @@
 .empty-state p {
   margin: 0;
 }
+/* Filter Dropdown */
+.filter-container-nav {
+  position: relative;
+}
+
+.filter-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  width: 450px;
+  max-width: 90vw;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-menu.hidden {
+  display: none;
+}
+
+.filter-header {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-tertiary);
+  border-radius: 6px 6px 0 0;
+}
+
+.filter-header-title {
+  font-weight: 600;
+  font-size: 0.9em;
+  color: var(--text-primary);
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.text-btn {
+  background: none;
+  border: none;
+  color: var(--accent-color);
+  font-size: 0.85em;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.text-btn:hover {
+  text-decoration: underline;
+}
+
+.filter-list {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.filter-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.filter-item input[type="checkbox"] {
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+.filter-item-label {
+  font-size: 0.9em;
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  justify-content: space-between;
+}
+
+.filter-item-date {
+  color: var(--text-secondary);
+  font-size: 0.85em;
+  margin-left: 8px;
+}
+
+.secondary-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.secondary-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--text-secondary);
+}

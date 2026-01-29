@@ -1,0 +1,49 @@
+:root {
+  --color-roast-dark: #2C1810;
+  --color-roast-medium: #4A3B32;
+  --color-cream: #F5E6D3;
+  --color-gold: #D4AF37;
+  --color-white: #FFFFFF;
+  --color-text-main: #2C1810;
+  --color-text-light: #F5E6D3;
+
+  --font-serif: 'Georgia', 'Times New Roman', serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  font-weight: 400;
+
+  color-scheme: light;
+  color: var(--color-text-main);
+  background-color: var(--color-cream);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  display: block; /* Overriding Vite's flex center */
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  line-height: 1.2;
+  margin: 0 0 1rem 0;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+}

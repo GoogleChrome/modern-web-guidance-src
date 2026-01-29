@@ -1,0 +1,93 @@
+:root {
+  --coffee-bg: #fdfbf7;
+  --coffee-dark: #3e2723;
+  --coffee-medium: #795548;
+  --coffee-light: #d7ccc8;
+  --coffee-accent: #6d4c41;
+  --text-primary: #2c1e18;
+  --font-sans: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--coffee-bg);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100%;
+}
+
+/* Scroll-driven Animations */
+
+@keyframes fade-in-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .scroll-fade-in {
+    animation: fade-in-scale linear both;
+    animation-timeline: view();
+    animation-range: entry 10% entry 80%;
+  }
+}
+
+/* Fallback for browsers without scroll-driven animations */
+@supports not (animation-timeline: view()) {
+  .scroll-fade-in {
+    opacity: 1;
+    transform: none;
+    /* Optional: Use IntersectionObserver in JS for fallback, but CSS fallback is to just show it */
+  }
+}
+
+/* Popover Styling */
+[popover] {
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--coffee-medium);
+  background: white;
+  color: var(--text-primary);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  font-size: 0.9rem;
+  max-width: 300px;
+}
+
+/* Details button anchor */
+.details-btn {
+  anchor-name: --details-btn;
+}
+
+/* Anchor positioning */
+#ingredients-popover {
+  position-anchor: --details-btn;
+  position-area: top;
+  margin-bottom: 8px; /* Spacing */
+  position-try-fallbacks: flip-block;
+  
+  /* Transition for popover mainly works with latest specs, 
+     but standard CSS transitions on display:none need special handling (transition-behavior: allow-discrete) */
+  transition: opacity 0.2s, display 0.2s allow-discrete;
+  opacity: 0;
+}
+
+#ingredients-popover:popover-open {
+  opacity: 1;
+}
+
+/* Utility */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}

@@ -1,6 +1,8 @@
 let allTestData = {}; // Cache all test data by testID
 let currentTab = 'overview';
 let currentScenarioFilter = 'all';
+let selectedTestIds = new Set(); // Set of test IDs to show
+
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -9,8 +11,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Initialize UI
         setupTabs();
         setupFilters();
+        setupTestFilters(); // New filter setup
 
         const params = new URLSearchParams(window.location.search);
+
+        // Handle 'tests' param - if present, filter selectedTestIds
+        const testsParam = params.get('tests');
+        if (testsParam) {
+            const requestedIds = new Set(testsParam.split(','));
+            // Only keep IDs that actually exist
+            selectedTestIds = new Set(
+                [...requestedIds].filter(id => allTestData[id])
+            );
+            // If none of the requested IDs exist, fallback to all? 
+            // Better to show none or empty state if user requested specific ones that don't exist?
+            // Let's stick to what we found.
+        } else {
+            // Default: Select All
+            selectedTestIds = new Set(Object.keys(allTestData));
+        }
+
+        // Update filter UI to match initial state
+        renderFilterMenuItems();
+
         const view = params.get('view');
         if (view && ['overview', 'explorer', 'trends'].includes(view)) {
             activateTab(view, false);
@@ -34,6 +57,20 @@ window.addEventListener('popstate', () => {
     if (['overview', 'explorer', 'trends'].includes(view)) {
         activateTab(view, false);
     }
+
+    // Also handle tests param update on popstate if needed
+    // Ideally we re-init selectedTestIds but that might be heavy?
+    // Let's just reload for now if tests param changes drastically, or re-render.
+    // For simplicity, we can reload or just re-read params.
+    const testsParam = params.get('tests');
+    if (testsParam) {
+        const requestedIds = new Set(testsParam.split(','));
+        selectedTestIds = new Set([...requestedIds].filter(id => allTestData[id]));
+    } else {
+        selectedTestIds = new Set(Object.keys(allTestData));
+    }
+    renderFilterMenuItems();
+    renderAll();
 });
 
 function setupTabs() {
@@ -92,6 +129,110 @@ function setupFilters() {
             renderExplorer();
         });
     });
+}
+
+function setupTestFilters() {
+    const filterBtn = document.getElementById('filter-btn');
+    const filterMenu = document.getElementById('filter-menu');
+    const selectAllBtn = document.getElementById('select-all-btn');
+    const deselectAllBtn = document.getElementById('deselect-all-btn');
+
+    // Toggle Menu
+    filterBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        filterMenu.classList.toggle('hidden');
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!filterMenu.contains(e.target) && !filterBtn.contains(e.target)) {
+            filterMenu.classList.add('hidden');
+        }
+    });
+
+    // Select All
+    selectAllBtn.addEventListener('click', () => {
+        selectedTestIds = new Set(Object.keys(allTestData));
+        updateUrlParams();
+        renderFilterMenuItems();
+        renderAll();
+    });
+
+    // Deselect All
+    deselectAllBtn.addEventListener('click', () => {
+        selectedTestIds.clear();
+        updateUrlParams();
+        renderFilterMenuItems();
+        renderAll();
+    });
+}
+
+function renderFilterMenuItems() {
+    const list = document.getElementById('filter-list');
+    list.innerHTML = '';
+
+    // Get all tests sorted by date
+    const allIds = Object.keys(allTestData).sort((a, b) => {
+        return new Date(allTestData[b].timestamp) - new Date(allTestData[a].timestamp);
+    });
+
+    allIds.forEach(testID => {
+        const item = document.createElement('label');
+        item.className = 'filter-item';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = selectedTestIds.has(testID);
+        checkbox.value = testID;
+
+        checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                selectedTestIds.add(testID);
+            } else {
+                selectedTestIds.delete(testID);
+            }
+            updateUrlParams();
+            renderAll();
+        });
+
+        const labelContent = document.createElement('div');
+        labelContent.className = 'filter-item-label';
+
+        const idSpan = document.createElement('span');
+        idSpan.textContent = `Test ${testID.replace('test_', '')}`;
+
+        const dateSpan = document.createElement('span');
+        dateSpan.className = 'filter-item-date';
+        dateSpan.textContent = new Date(allTestData[testID].timestamp).toLocaleString();
+
+        labelContent.appendChild(idSpan);
+        labelContent.appendChild(dateSpan);
+
+        item.appendChild(checkbox);
+        item.appendChild(labelContent);
+        list.appendChild(item);
+    });
+}
+
+function updateUrlParams() {
+    const url = new URL(window.location);
+    const allIds = Object.keys(allTestData);
+
+    // If all are selected, remove param
+    if (selectedTestIds.size === allIds.length) {
+        url.searchParams.delete('tests');
+    } else {
+        // Only list selected
+        url.searchParams.set('tests', Array.from(selectedTestIds).join(','));
+    }
+
+    window.history.replaceState({}, '', url);
+}
+
+function renderAll() {
+    renderOverview();
+    renderExplorer();
+    renderTrends();
 }
 
 async function loadAllTests() {
@@ -488,7 +629,10 @@ function getRunStats(checks) {
 }
 
 function getSortedTestIds() {
-    return Object.keys(allTestData).sort((a, b) => {
+    // Return only SELECTED tests, sorted by date
+    return Array.from(selectedTestIds).sort((a, b) => {
+        // Safety check if id not in allTestData (shouldn't happen but good practice)
+        if (!allTestData[a] || !allTestData[b]) return 0;
         return new Date(allTestData[b].timestamp) - new Date(allTestData[a].timestamp);
     });
 }

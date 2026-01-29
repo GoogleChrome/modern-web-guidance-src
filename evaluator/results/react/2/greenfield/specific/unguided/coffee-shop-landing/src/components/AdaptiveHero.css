@@ -1,0 +1,70 @@
+.hero-container {
+  height: 80vh;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1a1a1a;
+}
+
+.hero-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #3e2723 0%, #d7ccc8 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.placeholder-content {
+  text-align: center;
+}
+
+/* Scroll-driven animation */
+@keyframes fadeScale {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.fade-scale {
+  /* Only apply if browser supports scroll-driven animations */
+  @supports (animation-timeline: view()) {
+    animation-name: fadeScale;
+    animation-fill-mode: both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 50%;
+  }
+}
+
+.hero-overlay {
+  position: absolute;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+  text-align: center;
+  z-index: 10;
+}
+
+.hero-overlay h1 {
+  font-size: 4rem;
+  margin: 0;
+}
+
+.hero-overlay p {
+  font-size: 1.5rem;
+  margin: 10px 0 0;
+}
