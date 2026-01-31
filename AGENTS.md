@@ -16,7 +16,8 @@ You are working in the `guidance` monorepo, which defines and evaluates modern w
   - `mcp-server/guides/`: **Source of truth for implementation guidance.** Add or edit markdown files here to update what the MCP server knows.
   - `mcp-server/data/`: Generated data, including the vector-ready use-case registry.
   - `scripts/`: Utilities for building the vector store and testing search.
-- **`evaluator/`**: The "Spike Runner" evaluation suite.
+- **`harness/`**: The Spike Runner harness.
+- **`eval-view/`**: The static dashboard viewer. The "Spike Runner" evaluation suite.
   - `checks/`: Logic for scoring AI-generated code.
   - `setup/`: Templates and scenarios used for testing.
 

@@ -5,7 +5,8 @@ A unified repository for modern web development guidance, containing both an MCP
 ## Project Structure
 
 - **`serving/`**: The Modern Web MCP server. This provides semantic search over curated web development guides and browser support data.
-- **`evaluator/`**: The Spike Runner evaluation suite. This is used to test and score AI-generated code against modern web standards and best practices.
+- **`harness/`**: The Spike Runner evaluation harness.
+- **`eval-view/`**: The dashboard for viewing evaluation results. The Spike Runner evaluation suite. This is used to test and score AI-generated code against modern web standards and best practices.
 
 ## Getting Started
 
@@ -41,7 +42,7 @@ pnpm run dashboard # Starts a local server to view results
 
 This repository is managed as a monorepo. When contributing:
 - Add new implementation guides to `serving/mcp-server/guides/`.
-- Add new evaluation scenarios or checks to `evaluator/setup/` and `evaluator/checks/`.
+- Add new evaluation scenarios or checks to `harness/setup/` and `harness/checks/`.
 
 ## License
 
