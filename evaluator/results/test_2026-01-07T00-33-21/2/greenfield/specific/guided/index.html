@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artisan Brew | Premium Coffee Experience</title>
+    <meta name="description" content="Experience the finest artisan coffee with ethically sourced beans and love in every cup.">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">Artisan Brew</div>
+            <div class="nav-links">
+                <a href="#">Shop</a>
+                <a href="#">Locations</a>
+                <a href="#">Our Story</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Pouring Perfection</h1>
+                <p>Taste the devotion in every sip. Our beans are roasted to bring out the boldest flavors nature has to offer.</p>
+                <div class="cta-group">
+                    <button class="btn btn-primary">Order Now</button>
+                    <!-- Interest Invoker for Popover -->
+                    <button class="btn btn-text trigger" interestfor="ingredients-popover">Details</button>
+                </div>
+            </div>
+            
+            <div class="hero-image-container">
+                <!-- Adaptive Loading: loading-placeholder will be swapped by JS if network is slow -->
+                <img src="assets/hero-high.png" 
+                     loading-placeholder="assets/hero-low.png"
+                     alt="Close up of a perfect latte with steam rising"
+                     class="hero-image animate-on-scroll">
+            </div>
+        </section>
+
+        <!-- Popover Element -->
+        <div id="ingredients-popover" popover="auto" class="ingredients-popover">
+            <h3>Our Secret Blend</h3>
+            <ul>
+                <li><strong>Beans:</strong> 100% Arabica from Ethiopia</li>
+                <li><strong>Water:</strong> Triple filtered mountain spring water</li>
+                <li><strong>Love:</strong> Prepared by master baristas</li>
+            </ul>
+        </div>
+    </main>
+
+    <script src="app.js" type="module"></script>
+</body>
+</html>

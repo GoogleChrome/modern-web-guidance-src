@@ -1,0 +1,12 @@
+{
+  "Jetski Version": "1.22.2",
+  "VSCode OSS Version": "1.104.0",
+  "Commit": "4010500c1acea86970f0908b2087c5eed4291fca",
+  "Date": "2025-12-23T00:00:13.375Z (2 wks ago)",
+  "Electron": "37.3.1",
+  "Chromium": "138.0.7204.235",
+  "Node.js": "22.18.0",
+  "V8": "13.8.258.31-electron.0",
+  "OS": "Darwin arm64 24.6.0",
+  "Language Server CL": "847818096"
+}

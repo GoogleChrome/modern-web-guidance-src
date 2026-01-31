@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espresso Élégance | Artisan Coffee</title>
+    <meta name="description" content="Experience the finest artisanal coffee at Espresso Élégance. Premium beans, roasted to perfection.">
+    
+    <!-- Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Premium Color Palette */
+            --color-bg: #FDFBF7;
+            --color-text: #2C2420;
+            --color-accent: #D4A373;
+            --color-primary: #8B5E3C;
+            --color-secondary: #4A3B32;
+            --color-surface: #FFFFFF;
+            --shadow-soft: 0 10px 30px -10px rgba(44, 36, 32, 0.1);
+            --shadow-popover: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Playfair Display', serif;
+            color: var(--color-secondary);
+        }
+
+        /* --- Hero Section --- */
+        .hero {
+            min-height: 120vh; /* Extra height to allow scrolling for animation */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 10vh;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-content {
+            margin-bottom: 4rem;
+            z-index: 2;
+        }
+
+        h1 {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        p.subtitle {
+            font-size: 1.25rem;
+            color: var(--color-primary);
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        /* --- Scroll Driven Animation Target --- */
+        .hero-image-container {
+            width: 100%;
+            max-width: 1000px;
+            padding: 0 1rem;
+            perspective: 1000px;
+        }
+
+        .hero-image {
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: var(--shadow-soft);
+            display: block;
+        }
+
+        /* Feature Detection & Animation */
+        @supports (animation-timeline: view()) {
+            .hero-image {
+                opacity: 0; /* Start hidden */
+                /* transform: scale(0.9); */ /* Optional start scale */
+                
+                animation: fade-scale-up linear both;
+                animation-timeline: view();
+                /* Start animating when top of image enters 10% of viewport */
+                /* End animating when top of image reaches 50% of viewport */
+                animation-range: entry 0% cover 40%;
+            }
+
+            @keyframes fade-scale-up {
+                from {
+                    opacity: 0;
+                    transform: scale(0.9) translateY(50px);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1) translateY(0);
+                }
+            }
+        }
+        
+        /* Reduce motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            .hero-image {
+                animation: none;
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        /* --- Product Details & Popover --- */
+        .details-section {
+            padding: 4rem 1rem;
+            text-align: center;
+            background: white;
+        }
+
+        /* Button Styling */
+        .btn-details {
+            background: var(--color-secondary);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            anchor-name: --details-btn; /* CSS Anchor Positioning */
+        }
+
+        .btn-details:hover {
+            transform: translateY(-2px);
+            background-color: var(--color-primary);
+        }
+
+        /* Popover Styling */
+        .popover-card {
+            background: var(--color-surface);
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-popover);
+            min-width: 250px;
+            color: var(--color-text);
+            font-family: 'Outfit', sans-serif;
+            
+            /* Native Popover Styles */
+            margin: 0;
+            inset: auto; /* Reset default centering */
+            
+            /* CSS Anchor Positioning */
+            position-anchor: --details-btn;
+            position-area: top; /* Modern shorthand for top center */
+            margin-bottom: 10px; /* Spacing from button */
+            position-try-fallbacks: flip-block;
+            
+            /* Transition for entrance */
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.2s allow-discrete, transform 0.2s allow-discrete, display 0.2s allow-discrete;
+        }
+
+        .popover-card:popover-open {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @starting-style {
+            .popover-card:popover-open {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+        }
+
+        .ingredients-list {
+            list-style: none;
+            text-align: left;
+        }
+        
+        .ingredients-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .ingredients-list li:last-child {
+            border-bottom: none;
+        }
+
+        .ingredients-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            display: block;
+            border-bottom: 2px solid var(--color-accent);
+            padding-bottom: 0.5rem;
+        }
+
+        /* Spacer to make page scrollable */
+        .spacer {
+            height: 100vh;
+            background: linear-gradient(to bottom, #fff, var(--color-bg));
+        }
+
+    </style>
+</head>
+<body>
+
+    <main class="hero">
+        <div class="hero-content">
+            <h1>Espresso Élégance</h1>
+            <p class="subtitle">Where passion meets the bean. Discover the taste of true craftsmanship.</p>
+            
+            <!-- Details Button with Interest Invoker -->
+             <!-- Note: 'interestfor' is the modern attribute, 'interesttarget' is deprecated -->
+            <button class="btn-details" interestfor="ingredients-popover">
+                View Ingredients
+            </button>
+            
+            <!-- Popover Content -->
+            <div id="ingredients-popover" class="popover-card" popover="hint">
+                <span class="ingredients-title">Blend Profile</span>
+                <ul class="ingredients-list">
+                    <li><span>Ethiopian Yirgacheffe</span> <span>40%</span></li>
+                    <li><span>Colombian Supremo</span> <span>30%</span></li>
+                    <li><span>Brazilian Santos</span> <span>30%</span></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="hero-image-container">
+            <!-- Adaptive Loading Image -->
+            <!-- Note: loading-placeholder is the requested API -->
+            <img 
+                class="hero-image"
+                src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=1000&auto=format&fit=crop" 
+                loading-placeholder="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=10&w=100&auto=format&fit=crop&blur=5"
+                alt="A perfect pour of espresso in a ceramic cup with latte art"
+                width="1000"
+                height="600"
+            >
+        </div>
+    </main>
+    
+    <div class="details-section">
+        <h2>Experience the Ritual</h2>
+        <p>Scroll up to see our signature blend reveal itself.</p>
+    </div>
+
+    <div class="spacer"></div>
+
+    <!-- Polyfills -->
+    <script>
+        // 1. Interest Invokers Polyfill
+        if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+            console.log("Polyfilling Interest Invokers...");
+            const script = document.createElement('script');
+            script.src = "https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js";
+            document.head.appendChild(script);
+        }
+
+        // 2. Popover Polyfill (Robustness backup)
+        if (!HTMLDivElement.prototype.hasOwnProperty("popover")) {
+            console.log("Polyfilling Popover API...");
+            const script = document.createElement('script');
+            script.src = "https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js";
+            document.head.appendChild(script);
+        }
+
+        // 3. Anchor Positioning Polyfill / Setup
+        if (!("positionAnchor" in document.documentElement.style)) {
+             console.log("Polyfilling Anchor Positioning...");
+             const script = document.createElement('script');
+             // Using a reliable polyfill source if available, or relying on fallback styling
+             // For this specific demo, we'll try to load the Oddbird one.
+             script.src = "https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js";
+             script.type = "module";
+             document.head.appendChild(script);
+        }
+
+        // 4. Adaptive Loading Polyfill
+        if (!('loadingPlaceholder' in HTMLImageElement.prototype)) {
+            console.log("Polyfilling Adaptive Loading...");
+            const script = document.createElement('script');
+            script.src = "https://example.github.io/adaptive-loading-polyfill/adaptive-loading.min.js"; 
+            // Note: In a real prod environment, we would host this or find a reliable CDN. 
+            // The user prompt specifically asked to use the API, so we include the polyfill check as best practice.
+            document.head.appendChild(script);
+        }
+    </script>
+
+</body>
+</html>

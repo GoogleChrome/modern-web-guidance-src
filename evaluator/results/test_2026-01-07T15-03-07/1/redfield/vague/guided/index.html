@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Tooltip Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        .container {
+            /* No longer needs relative positioning for the tooltip */
+            display: inline-block;
+        }
+
+        /* The Button */
+        #tooltip-trigger {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+            anchor-name: --trigger;
+        }
+
+        /* The Tooltip */
+        #tooltip {
+            /* Popover default styles override display: none */
+            position-anchor: --trigger;
+            position-area: top; /* Standard anchor positioning */
+            margin-bottom: 10px; /* Spacing */
+            
+            border: none;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            
+            /* Animation for smooth entry/exit if supported */
+            transition: opacity 0.2s, display 0.2s allow-discrete;
+            opacity: 0;
+        }
+
+        #tooltip:popover-open {
+            opacity: 1;
+        }
+        
+        /* Fallback for position-area if not supported even with polyfill? 
+           The polyfill should handle it, but flip-block is good practice. */
+        #tooltip {
+            position-try-fallbacks: flip-block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- interestfor handles hover/focus behavior automatically -->
+        <button id="tooltip-trigger" interestfor="tooltip">Hover over me</button>
+        
+        <!-- popover="hint" is semantically correct for tooltips, or popover="auto" -->
+        <div id="tooltip" popover="hint">I'm a modern tooltip!</div>
+    </div>
+
+    <!-- Polyfills -->
+    <script>
+        // Check and load Intrest Invokers Polyfill
+        if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+            const script = document.createElement('script');
+            script.src = "https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js";
+            document.head.appendChild(script);
+        }
+
+        // Check and load Popover Polyfill
+        if (!HTMLDivElement.prototype.hasOwnProperty("popover")) {
+            const script = document.createElement('script');
+            script.src = "https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js";
+            document.head.appendChild(script);
+        }
+
+        // Check and load Anchor Positioning Polyfill
+        if (!("positionAnchor" in document.documentElement.style)) {
+            const script = document.createElement('script');
+            // Note: This polyfill is quite heavy and experimental, but required for the demo if native support missing
+            script.type = "module";
+            script.src = "https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js";
+            document.head.appendChild(script);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espresso Artigiano | Premium Coffee Experience</title>
+    <meta name="description" content="Discover the art of roasted perfection. Espresso Artigiano brings you the finest ethically sourced coffee beans.">
+    
+    <!-- Polyfills for modern features -->
+    <script type="module">
+        // Feature detection and loading polyfills
+        
+        // 1. Interest Invokers (for Tooltip)
+        if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+            console.log("Loading interest-invokers polyfill...");
+            import('https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js');
+        }
+
+        // 2. Popover API
+        if (!HTMLDivElement.prototype.hasOwnProperty("popover")) {
+            console.log("Loading popover polyfill...");
+            import('https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js');
+        }
+
+        // 3. CSS Anchor Positioning
+        if (!("positionAnchor" in document.documentElement.style)) {
+            console.log("Loading css-anchor-positioning polyfill...");
+            import('https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js');
+        }
+
+        // 4. Adaptive Loading (Custom implementation since polyfill might be stale/unavailable or specific)
+        // We'll implement a lightweight script here to handle loading-placeholder behavior if native support isn't present.
+        if (!('loadingPlaceholder' in HTMLImageElement.prototype)) {
+            console.log("Polyfilling loading-placeholder...");
+            document.addEventListener('DOMContentLoaded', () => {
+                const images = document.querySelectorAll('img[loading-placeholder]');
+                const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                const effectiveType = connection ? connection.effectiveType : '4g'; // Default to fast if unknown
+                
+                // If on slow connection (2g/3g), swap src with placeholder if not already loaded or if desired
+                // Actually, the spec logic is: if constrained, load placeholder.
+                const isSlow = effectiveType === 'slow-2g' || effectiveType === '2g' || effectiveType === '3g';
+                
+                if (isSlow) {
+                    images.forEach(img => {
+                        const placeholder = img.getAttribute('loading-placeholder');
+                        if (placeholder) {
+                            // Swap source to placeholder to save data/time
+                            // Ideally we would only do this if the main image hasn't started loading heavily, 
+                            // but for this demo ensuring the placeholder is used on slow nets is the goal.
+                            // We can store the original src in data-src just in case we want to lazy load it later.
+                            img.dataset.originalSrc = img.src;
+                            img.src = placeholder;
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+
+    <link rel="stylesheet" href="index.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="site-header">
+        <div class="logo">Espresso Artigiano</div>
+        <nav>
+            <a href="#">Shop</a>
+            <a href="#">Subscription</a>
+            <a href="#">About</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero-section">
+            <div class="hero-content">
+                <h1>Crafted for the <span class="accent">Curious</span>.</h1>
+                <p>Experience the boldest flavors from the world's most secluded highlands.</p>
+                <button class="cta-button">Order Now</button>
+            </div>
+            <div class="hero-image-container">
+                <!-- 
+                    loading="eager" because it is the LCP element.
+                    loading-placeholder provides the low-res version for slow networks.
+                -->
+                <img 
+                    src="hero-high.svg" 
+                    class="hero-image" 
+                    alt="Steaming cup of artisan coffee" 
+                    width="800" 
+                    height="600"
+                    loading="eager"
+                    loading-placeholder="hero-low.svg"
+                >
+            </div>
+        </section>
+
+        <section class="details-section">
+            <h2>Our Signature Blend</h2>
+            <p>A complex profile with notes of dark chocolate, dried cherry, and a hint of jasmine.</p>
+            
+            <div class="interactive-area">
+                <!-- Interest Invoker + Popover Tooltip -->
+                 <!-- Note: interesttarget is deprecated, using interestfor as recommended -->
+                <button class="details-button" interestfor="ingredients-popover">
+                    View Ingredients
+                </button>
+
+                <div id="ingredients-popover" class="tooltip-popover" popover="hint">
+                    <h3>Ingredients</h3>
+                    <ul>
+                        <li>100% Arabica Beans</li>
+                        <li>Ethically Sourced</li>
+                        <li>Small Batch Roasted</li>
+                        <li>Love & Passion</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="more-content">
+            <!-- Extra content to allow scrolling for the animation -->
+            <div class="spacer"></div>
+            <p>Scroll to see the magic happen above.</p>
+        </section>
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spike Test Results - All Runs</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="landing.css">
+  <link rel="stylesheet" href="dashboard-layout.css">
+</head>
+<body>
+  <div class="landing-container">
+    <header class="header-nav">
+      <div>
+        <h1 class="landing-title">Spike Test Results</h1>
+        <p class="landing-subtitle">All test runs and performance over time</p>
+      </div>
+    </header>
+
+    <nav class="dashboard-tabs">
+      <button class="tab-button active" data-tab="overview">Overview</button>
+      <button class="tab-button" data-tab="explorer">Explorer</button>
+      <button class="tab-button" data-tab="trends">Trends</button>
+    </nav>
+    
+    <!-- Overview Tab -->
+    <div id="overview-tab" class="tab-content active">
+      <div class="overview-grid">
+        <div class="overview-card">
+          <h3>Latest Guided Pass Rate</h3>
+          <div class="metric-huge" id="latest-guided-metric">-</div>
+          <div class="metric-sub">Across all checks</div>
+        </div>
+        <div class="overview-card">
+          <h3>Latest Unguided Pass Rate</h3>
+          <div class="metric-huge" id="latest-unguided-metric">-</div>
+          <div class="metric-sub">Across all checks</div>
+        </div>
+        <div class="overview-card">
+          <h3>Recent Runs</h3>
+          <div id="overview-recent-tests" class="recent-tests-compact"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Explorer Tab -->
+    <div id="explorer-tab" class="tab-content">
+      <div class="explorer-container">
+        <aside class="explorer-sidebar">
+          <div class="filter-group">
+            <div class="filter-title">Scenario</div>
+            <div class="filter-option active" data-filter-type="scenario" data-filter-value="all">All Scenarios</div>
+            <div class="filter-option" data-filter-type="scenario" data-filter-value="greenfield">Greenfield</div>
+            <div class="filter-option" data-filter-type="scenario" data-filter-value="brownfield">Brownfield</div>
+            <div class="filter-option" data-filter-type="scenario" data-filter-value="redfield">Redfield</div>
+          </div>
+        </aside>
+        <main class="explorer-content">
+          <div id="explorer-grids"></div>
+          <div id="explorer-timelines"></div>
+        </main>
+      </div>
+    </div>
+
+    <!-- Trends Tab -->
+    <div id="trends-tab" class="tab-content">
+      <div id="timeline-section" class="timeline-section">
+        <div class="timeline-header">
+          <h2>Overall Pass Rate Timeline</h2>
+          <span class="timeline-subtitle">(Latest First)</span>
+          </div>
+        <div class="timeline-group">
+          <div class="test-grid-label">Guided Pass Rate</div>
+          <div id="guided-timeline" class="timeline-chart"></div>
+        </div>
+
+        <div class="timeline-group">
+          <div class="test-grid-label">Unguided Pass Rate</div>
+          <div id="unguided-timeline" class="timeline-chart"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="empty-state" class="empty-state" style="display: none;">
+      <p>No test runs found yet. Run the test suite to get started.</p>
+    </div>
+  </div>
+
+  <script src="landing.js"></script>
+</body>
+</html>

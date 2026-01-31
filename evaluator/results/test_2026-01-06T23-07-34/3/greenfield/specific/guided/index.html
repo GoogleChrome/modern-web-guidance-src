@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espresso & Oak | Artisan Coffee</title>
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+    
+    <!-- Polyfills -->
+    <script src="https://unpkg.com/@oddbird/popover-polyfill" type="module"></script>
+    <script src="https://unpkg.com/@oddbird/css-anchor-positioning" type="module"></script>
+    <script src="https://unpkg.com/interestfor" type="module"></script>
+</head>
+<body>
+    <header class="header">
+        <nav class="nav">
+            <a href="#" class="logo">Espresso & Oak</a>
+            <ul class="nav-links">
+                <li><a href="#">Shop</a></li>
+                <li><a href="#">Locations</a></li>
+                <li><a href="#">About</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Brewed for the<br>Bold and Curious.</h1>
+                <p>Experience the finest beans, roasted to perfection in the heart of the city.</p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary">Shop Now</button>
+                    <!-- Trigger for popover -->
+                    <button class="btn btn-secondary" interestfor="ingredients-popover">Details</button>
+                </div>
+            </div>
+            
+            <div class="hero-image-wrapper">
+                <!-- Adaptive Loading: 'loading-placeholder' attribute -->
+                <img 
+                    id="hero-img"
+                    class="hero-image"
+                    src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=2000&q=80" 
+                    loading-placeholder="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=100&q=20&blur=10"
+                    alt="Warm and cozy coffee shop interior with wooden tables and hanging lights"
+                    width="2000"
+                    height="1333"
+                >
+            </div>
+        </section>
+
+        <!-- Popover Element -->
+        <div id="ingredients-popover" class="popover-card" popover>
+            <h3>Our Blend Ingredients</h3>
+            <ul>
+                <li><strong>Beans:</strong> 100% Arabica (Ethiopia & Colombia)</li>
+                <li><strong>Roast:</strong> Medium-Dark</li>
+                <li><strong>Notes:</strong> Dark Chocolate, Dried Cherry, Oak</li>
+            </ul>
+        </div>
+        
+        <section class="content-spacer">
+            <p>Scroll down to see the hero image animation in reverse (if you scroll back up, etc).</p>
+        </section>
+    </main>
+
+    <script src="script.js" type="module"></script>
+</body>
+</html>

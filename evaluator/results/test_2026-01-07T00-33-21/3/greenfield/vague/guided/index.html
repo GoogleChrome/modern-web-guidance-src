@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espresso & Ambrosia | Premium Coffee Experience</title>
+    <meta name="description" content="Experience the finest artisanal coffee in a serene, luxurious setting.">
+    
+    <!-- Polyfills -->
+    <script>
+        if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+            const script = document.createElement("script");
+            script.src = "https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js";
+            document.head.appendChild(script);
+        }
+        if (!HTMLDivElement.prototype.hasOwnProperty("popover")) {
+            const script = document.createElement("script");
+            script.src = "https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js";
+            document.head.appendChild(script);
+        }
+        if (!('positionAnchor' in document.documentElement.style)) {
+            const script = document.createElement("script");
+            script.src = "https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js";
+            document.head.appendChild(script);
+        }
+        if (!('loadingPlaceholder' in HTMLImageElement.prototype)) {
+            const script = document.createElement("script");
+            script.src = "https://example.github.io/adaptive-loading-polyfill/adaptive-loading.min.js"; // Note: This is a placeholder URL for the polyfill as per best practices doc, in real app would need actual source or custom impl.
+            // Since the best practice doc gave a potentially generic URL, I'll implement a simple script fallback for the demo if needed, but sticking to existing URLs for now.
+            document.head.appendChild(script);
+        }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Espresso &<br><em>Ambrosia</em></h1>
+                <p>Where every sip is a ritual.</p>
+            </div>
+            
+            <div class="hero-image-container">
+                <!-- 
+                    Adaptive Loading: loading-placeholder
+                    Scroll Animation: controlled via CSS view() timeline
+                -->
+                <img 
+                    src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=2560&auto=format&fit=crop" 
+                    class="hero-img"
+                    alt="Warm and cozy coffee shop interior with ambient lighting"
+                    loading-placeholder="https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=10&w=100&auto=format&fit=crop&blur=5"
+                    width="2560"
+                    height="1440"
+                >
+            </div>
+        </section>
+
+        <section class="details-section">
+            <div class="product-card">
+                <h2>Signature Latte</h2>
+                <p>Our award-winning house blend with velvety microfoam.</p>
+                
+                <!-- Interest Invoker & Popover -->
+                <button class="details-btn" interestfor="ingredients-popover">
+                    View Details
+                </button>
+
+                <div id="ingredients-popover" class="ingredients-tooltip" popover="hint">
+                    <h3>Ingredients</h3>
+                    <ul>
+                        <li>Ethiopian Yirgacheffe Beans</li>
+                        <li>Organic Oat Milk</li>
+                        <li>Madagascan Vanilla Bean</li>
+                        <li>Dash of Cinnamon</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+        
+        <section class="spacer">
+            <p>Scroll down to see the hero image animation in reverse (if you scroll up).</p>
+        </section>
+    </main>
+
+</body>
+</html>

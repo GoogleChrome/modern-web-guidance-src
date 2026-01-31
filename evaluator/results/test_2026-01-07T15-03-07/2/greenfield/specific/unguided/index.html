@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espresso & Code</title>
+    <meta name="description" content="Premium coffee shop experience.">
+    <link rel="stylesheet" href="style.css">
+    <script src="app.js" defer></script>
+</head>
+<body>
+
+    <header>
+        <nav>
+            <h1>Espresso & Code</h1>
+            <button class="details-btn" popovertarget="ingredients-popover">Details</button>
+            <!-- Non-modal popover (tooltip style) -->
+            <div id="ingredients-popover" popover>
+                <h3>Our Secret Blend</h3>
+                <ul>
+                    <li>100% Arabica Beans</li>
+                    <li>Roasted in-house</li>
+                    <li>Notes of chocolate & caramel</li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="intro">
+            <h2>Welcome to the grind.</h2>
+            <p>Scroll down to see our signature roast.</p>
+        </section>
+
+        <!-- Hero Image Section -->
+        <section class="hero-container">
+            <!-- Image source will be set by app.js based on connection -->
+            <img id="hero-img" alt="Signature Coffee Roast" class="hero-image" width="1920" height="1080">
+        </section>
+
+        <section class="content">
+            <p>Experience the finest coffee in the city. Our beans are sourced safely and roasted to perfection.</p>
+            <p>Open daily from 6am to 8pm.</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Espresso & Code. All rights reserved.</p>
+    </footer>
+
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sip & Savor - Premium Coffee</title>
+    <meta name="description" content="Experience the finest coffee in a warm, inviting atmosphere. Freshly brewed perfection.">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header">
+        <nav class="nav">
+            <div class="logo">Sip & Savor</div>
+            <ul class="nav-links">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#menu">Menu</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section id="home" class="hero-section">
+            <div class="hero-image-container">
+                <!-- Image will be injected/swapped by JS for low/high quality -->
+                <img id="hero-image" class="hero-image" src="hero-low.svg" alt="Cozy coffee shop interior" width="1200" height="800">
+            </div>
+            <div class="hero-content">
+                <h1>Taste the Warmth</h1>
+                <p>Artisanal coffee brewed with passion and precision.</p>
+                
+                <div class="tooltip-container">
+                    <button class="btn-primary">Details</button>
+                    <div class="tooltip" role="tooltip">
+                        <h3>Our Blend</h3>
+                        <ul>
+                            <li>100% Arabica Beans</li>
+                            <li>Ethically Sourced</li>
+                            <li>Medium Roast</li>
+                            <li>Notes of Caramel & Hazelnut</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="menu" class="content-section">
+            <h2>Our Selections</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Espresso</h3>
+                    <p>Rich and bold.</p>
+                </div>
+                <div class="card">
+                    <h3>Latte</h3>
+                    <p>Creamy perfection.</p>
+                </div>
+                <div class="card">
+                    <h3>Cappuccino</h3>
+                    <p>Frothy delight.</p>
+                </div>
+            </div>
+            <!-- Extra content to enable scrolling -->
+            <p style="margin-top: 2rem; color: #666;">
+                Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. 
+                Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+                Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+            </p>
+            <p style="margin-top: 2rem; color: #666;">
+                More content to ensure we can scroll...
+            </p>
+             <p style="margin-top: 2rem; color: #666;">
+                Keep scrolling...
+            </p>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 Sip & Savor Coffee. All rights reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

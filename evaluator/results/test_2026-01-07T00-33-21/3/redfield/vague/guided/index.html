@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Tooltip Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        .container {
+            position: relative;
+            display: inline-block;
+        }
+
+        /* The Button */
+        #tooltip-trigger {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+            anchor-name: --tooltip-trigger;
+        }
+
+        /* The Tooltip */
+        #tooltip {
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 0;
+            
+            /* Anchor Positioning */
+            position-anchor: --tooltip-trigger;
+            position-area: top;
+            margin: 0;
+            position-try-fallbacks: flip-block;
+            
+            /* Popover behavior transition */
+            opacity: 0;
+            transition: opacity 0.2s, display 0.2s allow-discrete;
+        }
+
+        #tooltip:popover-open {
+            opacity: 1;
+        }
+
+        /* Initial starting state for entry animation */
+        @starting-style {
+            #tooltip:popover-open {
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 
+            interestfor: Connects the button to the tooltip for hover behavior
+            aria-describedby: Accessibility best practice for tooltips
+        -->
+        <button id="tooltip-trigger" interestfor="tooltip" aria-describedby="tooltip">Hover over me</button>
+        
+        <!-- 
+            popover="hint": The semantic type for tooltips
+        -->
+        <div id="tooltip" popover="hint">I'm a modern declarative tooltip!</div>
+    </div>
+
+    <!-- Polyfills -->
+    <script>
+        // Feature detection and polyfill loading
+        if (!("interestForElement" in HTMLButtonElement.prototype)) {
+            const script = document.createElement("script");
+            script.src = "https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js";
+            document.head.appendChild(script);
+        }
+
+        if (!("popover" in document.documentElement)) {
+            const script = document.createElement("script");
+            script.src = "https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js";
+            document.head.appendChild(script);
+        }
+
+        if (!("positionAnchor" in document.documentElement.style)) {
+            const script = document.createElement("script");
+            script.src = "https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js";
+            document.head.appendChild(script);
+        }
+    </script>
+
+</body>
+</html>

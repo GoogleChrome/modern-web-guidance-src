@@ -1,0 +1,134 @@
+:root {
+  --color-bg: #1a1510;
+  --color-text: #e0d0c0;
+  --color-accent: #d4a373;
+  --color-popover-bg: #2c241b;
+  --font-main: 'Inter', system-ui, sans-serif;
+  --font-serif: 'Times New Roman', serif;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-main);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+/* Typography */
+h1 {
+  font-family: var(--font-serif);
+  font-size: 3rem;
+  font-weight: 300;
+  margin: 0 0 1rem;
+}
+
+/* Hero Section */
+.hero {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.hero-content {
+  z-index: 10;
+  margin-bottom: 2rem;
+}
+
+.hero-image {
+  max-width: 80%;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  
+  /* Scroll-driven animation: Fade in + Scale up */
+  /* Starting state handled by keyframes */
+  animation: fade-grow linear both;
+  animation-timeline: view();
+  animation-range: entry 25% cover 50%; /* Adjust as needed */
+}
+
+@keyframes fade-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Support check for safety */
+@supports not (animation-timeline: view()) {
+  .hero-image {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Details Section */
+.details-section {
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+.btn-details {
+  background: var(--color-accent);
+  color: #000;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.2s, background 0.2s;
+  
+  /* Anchor Name for Popover positioning */
+  anchor-name: --btn-details;
+}
+
+.btn-details:hover {
+  transform: translateY(-2px);
+  background: #e6b88a;
+}
+
+/* Popover / Tooltip */
+.popover-content {
+  background: var(--color-popover-bg);
+  color: var(--color-text);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  margin: 0; /* Reset default margins */
+  
+  /* Positioning */
+  position-anchor: --btn-details;
+  position-area: top; /* Standard property */
+  top: anchor(top); /* Fallback/Polyfill patterns might vary, using standard first */
+  
+  /* Animation */
+  opacity: 0;
+  transition: opacity 0.2s, display 0.2s allow-discrete;
+}
+
+.popover-content:popover-open {
+  opacity: 1;
+}
+
+/* Fallback for anchor positioning if needed, 
+   though polyfill should handle it. 
+   We can add some basic styles to center it if anchor fails 
+*/
+
+/* Utilities */
+.content-spacer {
+  padding: 2rem;
+  text-align: center;
+  opacity: 0.6;
+}

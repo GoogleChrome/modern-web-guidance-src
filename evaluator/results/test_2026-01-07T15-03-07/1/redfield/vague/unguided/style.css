@@ -1,0 +1,87 @@
+:root {
+  --tooltip-bg: #333;
+  --tooltip-text: #fff;
+  --tooltip-padding: 8px 12px;
+  --tooltip-radius: 6px;
+  --tooltip-arrow-size: 6px;
+  --tooltip-offset: 10px;
+  --tooltip-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --tooltip-anim-duration: 0.2s;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  background-color: #f4f4f9;
+}
+
+.container {
+  position: relative;
+  display: inline-block;
+}
+
+/* The Button */
+.tooltip-trigger {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  border: 1px solid #007bff;
+  background-color: #007bff;
+  color: white;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.tooltip-trigger:hover,
+.tooltip-trigger:focus {
+  background-color: #0056b3;
+  outline: none;
+}
+
+/* The Tooltip */
+.tooltip {
+  position: absolute;
+  /* Start hidden and offset */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50%) translateY(10px);
+  
+  background-color: var(--tooltip-bg);
+  color: var(--tooltip-text);
+  text-align: center;
+  padding: var(--tooltip-padding);
+  border-radius: var(--tooltip-radius);
+  z-index: 10;
+  font-size: 14px;
+  box-shadow: var(--tooltip-shadow);
+  pointer-events: none; /* Let mouse events pass through to elements below if needed */
+  white-space: nowrap;
+  
+  transition: 
+    opacity var(--tooltip-anim-duration) ease, 
+    visibility var(--tooltip-anim-duration) ease,
+    transform var(--tooltip-anim-duration) ease;
+}
+
+/* Showing the tooltip */
+.tooltip.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Arrow */
+.tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: calc(var(--tooltip-arrow-size) * -1);
+  border-width: var(--tooltip-arrow-size);
+  border-style: solid;
+  border-color: var(--tooltip-bg) transparent transparent transparent;
+}

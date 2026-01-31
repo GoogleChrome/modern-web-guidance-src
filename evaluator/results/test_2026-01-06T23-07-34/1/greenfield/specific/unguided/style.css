@@ -1,0 +1,150 @@
+:root {
+    --color-bg: #1a1512;
+    --color-text: #f0e6d2;
+    --color-accent: #d4af37;
+    --color-popover-bg: #2a201a;
+    --font-main: 'Outfit', sans-serif;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-main);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    overflow-x: hidden;
+}
+
+/* Hero Section */
+.hero {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+}
+
+.hero-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background: radial-gradient(circle at center, #3e2e26, #000);
+    /* Scroll-driven animation for Hero Image */
+    animation: hero-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 50%; /* Adjust as needed for the effect */
+    transform-origin: center;
+}
+
+/* If we had a real image, we'd use it here. 
+   Adaptive loading will toggle a class or change inline style. */
+.hero-bg.high-res {
+    background: url('hero_placeholder_high.svg') no-repeat center center/cover;
+}
+.hero-bg.low-res {
+    background: linear-gradient(to bottom, #2c2018, #000);
+}
+
+@keyframes hero-reveal {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.hero-content h1 {
+    font-size: 3.5rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.hero-content p {
+    font-size: 1.5rem;
+    color: var(--color-accent);
+}
+
+/* Product Section */
+.product-section {
+    padding: 4rem 2rem;
+    display: flex;
+    justify-content: center;
+    min-height: 50vh;
+}
+
+.product-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2rem;
+    border-radius: 12px;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    text-align: center;
+    max-width: 400px;
+    backdrop-filter: blur(10px);
+}
+
+.product-image-placeholder {
+    width: 100%;
+    height: 200px;
+    background: linear-gradient(135deg, #4b3621, #1a1512);
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.details-btn {
+    background: var(--color-accent);
+    color: #000;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: transform 0.2s;
+}
+
+.details-btn:hover {
+    transform: scale(1.05);
+}
+
+/* Popover API Styles */
+[popover] {
+    background: var(--color-popover-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-accent);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    margin: 0;
+    opacity: 0;
+    transition: opacity 0.3s display 0.3s allow-discrete;
+    
+    /* Center positioning manually or use CSS anchor positioning if supported, 
+       but for basic popover we can just let it be top-layer centered or positioned via JS.
+       Default popover behavior is center of viewport usually, or we can use Anchor Positioning API.
+       For this task, "non-modal popover" implies `popover="manual"` or `auto` without backdrop blocking.
+       Let's stick to simple centering or button relative if possible (Anchor API is newer).
+       For now, we'll just style it nice. */
+    position: absolute; /* Using JS to position or just absolute */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Transition for entry */
+[popover]:popover-open {
+    opacity: 1;
+}
+
+[popover]::backdrop {
+    background: rgba(0,0,0,0.4);
+}
+
+/* We want a non-modal popover, so we might want to override backdrop or use popover="manual" logic if we want it to persist. 
+   But "triggers... when a user hovers over it" implies we need JS for hover. */

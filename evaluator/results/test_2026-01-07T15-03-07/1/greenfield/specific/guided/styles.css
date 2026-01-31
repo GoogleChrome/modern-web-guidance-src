@@ -1,0 +1,238 @@
+:root {
+    --primary-color: #2c1810;
+    --accent-color: #d4a373;
+    --bg-color: #fdfbf7;
+    --text-color: #4a4a4a;
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Outfit', sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-body);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+.site-header {
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 100;
+    background: rgba(253, 251, 247, 0.9);
+    backdrop-filter: blur(10px);
+}
+
+.logo {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 2rem;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--primary-color);
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.nav-links a:hover {
+    color: var(--accent-color);
+}
+
+.hero-section {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8rem 2rem 4rem;
+    gap: 3rem;
+}
+
+.hero-content h1 {
+    font-family: var(--font-heading);
+    font-size: 3.5rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.hero-content p {
+    font-size: 1.25rem;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.hero-image-container {
+    width: 100%;
+    max-width: 600px;
+    position: relative;
+    aspect-ratio: 1;
+}
+
+.hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(44, 24, 16, 0.15);
+    
+    /* Scroll-driven animation */
+    /* Starting state handled by animation */
+    opacity: 0;
+    transform: scale(0.9);
+}
+
+@keyframes hero-appear {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@supports (animation-timeline: view()) {
+    .hero-img {
+        animation: hero-appear linear forwards;
+        animation-timeline: view();
+        animation-range: entry 10% cover 40%;
+    }
+}
+
+.details-section {
+    padding: 4rem 2rem;
+    background: white;
+    text-align: center;
+}
+
+.details-section h2 {
+    font-family: var(--font-heading);
+    font-size: 2.5rem;
+    color: var(--primary-color);
+    margin-bottom: 3rem;
+}
+
+.product-card {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 2rem;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    background: var(--bg-color);
+    position: relative;
+}
+
+.product-card h3 {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.price {
+    font-size: 1.25rem;
+    color: var(--accent-color);
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+}
+
+.details-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 2rem;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: background 0.3s;
+    /* Anchor positioning */
+    anchor-name: --details-btn;
+}
+
+.details-btn:hover {
+    background: var(--accent-color);
+}
+
+/* Popover Styling */
+.ingredients-popover {
+    border: none;
+    padding: 1.5rem;
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    color: var(--text-color);
+    font-family: var(--font-body);
+    width: max-content;
+    
+    /* Native Popover Positioning */
+    position-anchor: --details-btn;
+    margin: 0;
+    top: anchor(bottom);
+    left: anchor(center);
+    transform: translateX(-50%) translateY(10px);
+    
+    /* Animation */
+    opacity: 0;
+    transition: opacity 0.2s, display 0.2s allow-discrete;
+}
+
+.ingredients-popover:popover-open {
+    opacity: 1;
+}
+
+.ingredients-popover h4 {
+    color: var(--primary-color);
+    margin-bottom: 0.75rem;
+}
+
+.ingredients-popover ul {
+    list-style: none;
+    text-align: left;
+}
+
+.ingredients-popover li {
+    margin-bottom: 0.5rem;
+    padding-left: 1.5rem;
+    position: relative;
+}
+
+.ingredients-popover li::before {
+    content: "•";
+    color: var(--accent-color);
+    position: absolute;
+    left: 0;
+}
+
+/* Fallback for Anchor Positioning if needed */
+/* We can use standard positioning for fallback or just rely on popover default centering if anchor not supported */
+@supports not (position-anchor: --details-btn) {
+    .ingredients-popover {
+        /* Basic fallback */
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+}

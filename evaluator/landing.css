@@ -1,0 +1,358 @@
+/* Base Layout */
+.landing-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.landing-title {
+  margin: 0;
+}
+
+.landing-subtitle {
+  margin: 8px 0 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9em;
+}
+
+/* Sections */
+.section-wrapper {
+  margin-bottom: 30px;
+}
+
+.section-title {
+  font-size: 1.2em;
+  margin-bottom: 15px;
+}
+
+/* Recent Tests List */
+.recent-tests-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recent-test-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 15px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  /* added this from inline style in landing.js */
+}
+
+.recent-test-item:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-primary);
+  transform: translateX(5px);
+}
+
+.test-id {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.test-timestamp {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.test-stats {
+  display: flex;
+  gap: 15px;
+  text-align: right;
+}
+
+.stat-label {
+  font-size: 0.75em;
+  color: var(--text-secondary);
+}
+
+.stat-value {
+  font-weight: 700;
+}
+
+/* Test Grid */
+.tests-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 15px;
+  margin-bottom: 40px;
+}
+
+.test-card-link {
+  display: block;
+  padding: 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.test-card-link:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.test-card-title {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
+}
+
+.test-card-time {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.test-card-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+}
+
+.stat-mini {
+  text-align: center;
+}
+
+.stat-mini-label {
+  font-size: 0.75em;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.stat-mini-value {
+  font-size: 1.3em;
+  font-weight: 700;
+}
+
+/* Timeline */
+.timeline-section {
+  margin-bottom: 40px;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+.timeline-section h2 {
+  margin: 0;
+  font-size: 1.2em;
+}
+
+.timeline-subtitle {
+  font-size: 0.9em;
+  color: var(--text-secondary);
+  margin-left: 10px;
+}
+
+.timeline-group {
+  margin-bottom: 20px;
+}
+
+.timeline-chart {
+  display: flex;
+  gap: 2px;
+  padding: 15px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  overflow-x: auto;
+  align-items: flex-end;
+  min-height: 200px;
+}
+
+.timeline-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 50px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  text-decoration: none;
+}
+
+.timeline-bar:hover {
+  opacity: 0.8;
+}
+
+.timeline-bar-fill {
+  width: 100%;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  min-height: 10px;
+}
+
+.timeline-bar:hover .timeline-bar-fill {
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+}
+
+.timeline-bar-label {
+  font-size: 0.75em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  max-width: 30px;
+}
+
+/* Detailed Grid View */
+.grid-view {
+  display: grid;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.mt-15 {
+  margin-top: 15px;
+}
+
+.test-grid-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 5px;
+}
+
+.test-grid-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: 0.7em;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.7);
+  text-decoration: none;
+}
+
+.test-grid-cell:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.test-grid-cell.empty {
+  background-color: transparent;
+  border: 1px dashed var(--border-color);
+  cursor: default;
+}
+
+.test-grid-label {
+  font-size: 0.85em;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+/* Check Timelines */
+.check-timelines-section {
+  margin-top: 40px;
+}
+
+.check-timeline-wrapper {
+  margin-bottom: 30px;
+}
+
+.check-timeline-label {
+  margin-bottom: 10px;
+}
+
+.check-history-table-container {
+  overflow-x: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.check-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
+}
+
+.check-history-header-row {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.check-history-th {
+  text-align: left;
+  padding: 8px;
+}
+
+.check-history-th.id-col {
+  width: 300px;
+}
+
+.check-history-row {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.check-id-cell {
+  padding: 8px;
+  font-family: monospace;
+  color: var(--text-primary);
+}
+
+.history-cell {
+  padding: 8px;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.sparkline-dot {
+  display: block;
+  /* Required for anchor tag */
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  text-decoration: none;
+  /* Remove underline */
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
+}
+
+.empty-state p {
+  margin: 0;
+}

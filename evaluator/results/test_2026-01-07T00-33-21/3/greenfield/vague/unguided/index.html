@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velvet Bean Coffee</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <main>
+        <section class="hero-section">
+            <div class="hero-image-wrapper">
+                <!-- Low quality placeholder initially -->
+                <img 
+                    src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=50&q=10&blur=5" 
+                    data-src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=2000&q=80" 
+                    alt="Cozy Coffee Shop Interior" 
+                    class="hero-image lazy-hero"
+                    id="heroImage"
+                >
+                <div class="hero-overlay"></div>
+            </div>
+            <div class="hero-content">
+                <h1 class="hero-title">Experience the Roast</h1>
+                <p class="hero-subtitle">Artisanal coffee, brewed for the bold.</p>
+            </div>
+        </section>
+
+        <section class="product-details">
+            <div class="container">
+                <h2>Our Signature Blend</h2>
+                <p class="product-desc">A complex symphony of dark chocolate notes and berry undertones.</p>
+                
+                <div class="tooltip-container">
+                    <button class="btn-details" aria-describedby="ingredients-tooltip">Details</button>
+                    <div id="ingredients-tooltip" class="tooltip" role="tooltip">
+                        <strong>Ingredients:</strong><br>
+                        100% Arabica Beans<br>
+                        Notes of Cocoa<br>
+                        Hint of Vanilla
+                        <div class="tooltip-arrow"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="spacer" style="height: 100vh;"></div> <!-- Spacer to allow scrolling -->
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Tooltip Demo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <!-- 
+            data-tooltip defines the content 
+            The JS handles the rest
+        -->
+        <button 
+            class="tooltip-trigger" 
+            data-tooltip="I'm a modern accessible tooltip!"
+            aria-label="Hover or focus me"
+        >
+            Hover or Focus me
+        </button>
+
+        <br><br>
+
+        <button 
+            class="tooltip-trigger" 
+            data-tooltip="I work on another element too!"
+        >
+            Another Button
+        </button>
+    </div>
+
+    <!-- Load module -->
+    <script type="module" src="tooltip.js"></script>
+
+</body>
+</html>

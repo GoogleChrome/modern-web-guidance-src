@@ -1,0 +1,212 @@
+:root {
+    --primary-color: #2c1810;
+    --accent-color: #d4a373;
+    --text-color: #333;
+    --bg-color: #fdfbf7;
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Lato', sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-body);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+.header {
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background: rgba(253, 251, 247, 0.95);
+    z-index: 100;
+    backdrop-filter: blur(5px);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.logo {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.nav ul {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+}
+
+.nav a {
+    text-decoration: none;
+    color: var(--primary-color);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+.hero-section {
+    min-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4rem 2rem;
+    overflow: hidden; /* Hide overflow for scaling effects */
+}
+
+.hero-content h1 {
+    font-family: var(--font-heading);
+    font-size: 3.5rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    max-width: 800px;
+}
+
+.hero-content p {
+    font-size: 1.25rem;
+    color: #666;
+    margin-bottom: 3rem;
+}
+
+.hero-visual {
+    width: 100%;
+    max-width: 800px;
+    margin-top: 2rem;
+    
+    /* Scroll Driven Animation */
+    /* 
+       We want it to fade in and scale UP as we scroll DOWN? 
+       Usually "fade into view" implies it starts invisible/small and becomes visible/normal.
+       If it's already at the top, it's already "in view". 
+       Maybe the user meant as we scroll down, it enters? 
+       OR, as we scroll down (and it leaves), it does something?
+       
+       "fade into view and scale up as the user scrolls down the page" 
+       This usually implies a Parallax effect or an entry animation if it's lower down.
+       Since it's a Hero, I'll assume we want an effect where it perhaps starts small/transparent and grows as it enters the viewport fully? 
+       BUT, a hero is usually at the top.
+       
+       Let's assume the user might actually be scrolling *past* it, or it enters from below.
+       BUT if it is the HERO, it is arguably already there.
+       
+       INTERPRETATION:
+       I will apply `animation-timeline: view()` to the `.hero-visual`.
+       If it is at the top, `view()` might trigger immediately.
+       I'll use `entry 0% cover 50%` range or similar to make it animate as it comes in (if it was somehow offscreen) 
+       OR
+       If the request implies a "scroll-linked" effect where it grows/fades as you scroll AWAY (parallax zoom)?
+       "fade into view... as user scrolls DOWN" -> this strongly suggests it should be lower in the page initially?
+       
+       I will set it to animate on `view()`. If it's at the top, it will just show. 
+       To clarify the effect, I'll add a spacer or margin-top so we can see it scroll into view?
+       No, "Hero" implies top.
+       
+       Maybe they mean "Scale up and fad out as we scroll down"? No, "Fade INTO view".
+       
+       I will implement a standard `animation-timeline: view()` entry animation.
+    */
+    animation: fade-in-scale linear both;
+    animation-timeline: view();
+    animation-range: entry 10% cover 40%; 
+}
+
+@keyframes fade-in-scale {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.hero-img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+.products-section {
+    padding: 4rem 2rem;
+    text-align: center;
+    background: white;
+}
+
+.product-card {
+    border: 1px solid #eee;
+    padding: 2rem;
+    border-radius: 8px;
+    display: inline-block;
+    max-width: 400px;
+    margin: 0 auto;
+    position: relative; /* For anchoring if needed, though Popover is top-layer */
+}
+
+.details-btn {
+    margin-top: 1rem;
+    padding: 0.5rem 1.5rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-weight: 700;
+    transition: background 0.3s;
+}
+
+.details-btn:hover {
+    background-color: var(--accent-color);
+}
+
+/* Popover Styling */
+.ingredients-popover {
+    padding: 1.5rem;
+    border: 0;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    background: white;
+    font-family: var(--font-body);
+    color: var(--text-color);
+    max-width: 300px;
+    margin: 10px;
+    
+    /* Starting state for animation */
+    /* Note: Display toggles roughly, but we can animate opacity/overlay */
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateY(10px);
+}
+
+/* Open state for popover */
+.ingredients-popover:popover-open {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Backdrop? Non-modal usually doesn't need a backdrop, but if we wanted one: */
+/* .ingredients-popover::backdrop { background: transparent; } */
+
+h2 {
+    font-family: var(--font-heading);
+    color: var(--primary-color);
+    margin-bottom: 2rem;
+}
+
+h3 {
+    margin-bottom: 0.5rem;
+}

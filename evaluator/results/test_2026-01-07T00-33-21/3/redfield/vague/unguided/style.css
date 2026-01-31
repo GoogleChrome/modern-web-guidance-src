@@ -1,0 +1,84 @@
+:root {
+    --tooltip-bg: #333;
+    --tooltip-text: #fff;
+    --tooltip-arrow-size: 6px;
+    --tooltip-distance: 10px;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f4f4f9;
+}
+
+.container {
+    position: relative;
+    display: inline-block;
+}
+
+/* The Button */
+#tooltip-trigger {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border: 1px solid #007bff;
+    background-color: #007bff;
+    color: white;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+#tooltip-trigger:hover,
+#tooltip-trigger:focus {
+    background-color: #0056b3;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.4);
+}
+
+/* The Tooltip */
+.tooltip {
+    position: absolute;
+    bottom: calc(100% + var(--tooltip-distance));
+    left: 50%;
+    transform: translateX(-50%) translateY(5px);
+    width: max-content;
+    max-width: 200px;
+    background-color: var(--tooltip-bg);
+    color: var(--tooltip-text);
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    z-index: 10;
+    font-size: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    
+    /* Hidden state */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    
+    transition: all 0.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+/* Visible state */
+.tooltip.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Arrow */
+.tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: calc(-1 * var(--tooltip-arrow-size));
+    border-width: var(--tooltip-arrow-size);
+    border-style: solid;
+    border-color: var(--tooltip-bg) transparent transparent transparent;
+}

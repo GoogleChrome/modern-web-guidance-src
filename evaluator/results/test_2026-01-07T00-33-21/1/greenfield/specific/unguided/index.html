@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artisan Brew | Premium Coffee Experience</title>
+    <meta name="description" content="Experience the finest artisan coffee in a warm, inviting atmosphere.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="site-header">
+        <nav>
+            <div class="logo">Artisan Brew</div>
+            <ul class="nav-links">
+                <li><a href="#menu">Menu</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#visit">Visit</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Taste the <span class="accent">Extraordinary</span></h1>
+                <p>Ethically sourced, perfectly roasted, brewed with passion.</p>
+                <div class="cta-group">
+                    <button class="btn btn-primary">Order Now</button>
+                    <!-- Popover Trigger -->
+                    <button id="detailsBtn" class="btn btn-secondary">
+                        Details
+                    </button>
+                </div>
+                
+                <!-- Popover Content -->
+                <div id="ingredientsPopover" popover class="ingredients-popover">
+                    <h3>Our Signature Blend</h3>
+                    <ul>
+                        <li><strong>Beans:</strong> 100% Arabica</li>
+                        <li><strong>Origin:</strong> Ethiopia & Colombia</li>
+                        <li><strong>Roast:</strong> Medium-Dark</li>
+                        <li><strong>Notes:</strong> Chocolate, Berry, Jasmine</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="hero-image-container">
+                <!-- Image source will be set by JS for adaptive loading -->
+                <img id="heroImg" alt="Close up of artisan latte with latte art" width="1200" height="800">
+            </div>
+        </section>
+
+        <section id="menu" class="content-section">
+            <h2>Our Selection</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Espresso</h3>
+                    <p>Rich, bold, and creamy.</p>
+                </div>
+                <div class="card">
+                    <h3>Pour Over</h3>
+                    <p>Delicate and complex flavors.</p>
+                </div>
+                <div class="card">
+                    <h3>Cold Brew</h3>
+                    <p>Smooth, low acidity refreshment.</p>
+                </div>
+            </div>
+        </section>
+        
+        <section class="spacer"></section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Artisan Brew. All rights reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

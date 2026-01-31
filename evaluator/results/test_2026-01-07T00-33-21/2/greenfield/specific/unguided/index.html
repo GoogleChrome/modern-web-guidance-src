@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artisan Brew | Coffee Shop</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <script>
+        // Adaptive Loading: Pre-check network status
+        (function() {
+            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            let effectiveType = '4g';
+            let saveData = false;
+
+            if (connection) {
+                effectiveType = connection.effectiveType || '4g';
+                saveData = connection.saveData || false;
+            }
+
+            // Storing in a global variable or data attribute for the main script to use
+            window.adaptiveContext = {
+                effectiveType,
+                saveData,
+                isSlow: effectiveType === 'slow-2g' || effectiveType === '2g' || saveData
+            };
+            
+            document.documentElement.dataset.connection = effectiveType;
+        })();
+    </script>
+</head>
+<body>
+    <header class="header">
+        <nav class="nav">
+            <span class="logo">Artisan Brew</span>
+            <ul>
+                <li><a href="#products">Menu</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero-section">
+            <div class="hero-content">
+                <h1>Experience the Perfect Pour</h1>
+                <p>Ethically sourced. Expertly roasted. Passionately brewed.</p>
+            </div>
+            <div class="hero-visual">
+                <!-- Image source will be set by JS based on adaptive loading, but we provide a default -->
+                <img id="hero-image" 
+                     alt="Steaming cup of artisan coffee" 
+                     class="hero-img"
+                     width="800" height="600">
+            </div>
+        </section>
+
+        <section id="products" class="products-section">
+            <h2>Our Signature Blends</h2>
+            <div class="product-card">
+                <h3>Velvet Morning</h3>
+                <p>A smooth, creamy blend with notes of caramel and hazelnut.</p>
+                
+                <!-- Popover Trigger -->
+                <button class="details-btn" popovertarget="ingredients-popover" popovertargetaction="show">
+                    Details
+                </button>
+            </div>
+        </section>
+
+        <!-- Popover Element -->
+        <div id="ingredients-popover" popover class="ingredients-popover">
+            <h4>Velvet Morning Ingredients</h4>
+            <ul>
+                <li>100% Arabica Beans (Colombia)</li>
+                <li>Natural Caramel Flavoring</li>
+                <li>Roasted Hazelnuts</li>
+            </ul>
+        </div>
+        
+        <div style="height: 150vh; display: flex; align-items: center; justify-content: center; background: #f9f9f9;">
+            <p>Scroll content to demonstrate hero exit/entry effects...</p>
+        </div>
+    </main>
+    
+    <script src="script.js"></script>
+</body>
+</html>

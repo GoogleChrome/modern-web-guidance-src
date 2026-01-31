@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imperative Tooltip Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        .container {
+            position: relative;
+            display: inline-block;
+        }
+
+        /* The Button */
+        #tooltip-trigger {
+            anchor-name: --tooltip-trigger;
+
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+        }
+
+        /* The Tooltip */
+        #tooltip {
+            /* popover="hint" gives it some default styles, but we override positioning */
+            position-anchor: --tooltip-trigger;
+            position-area: top;
+            /* Standard anchor positioning */
+            position-try-fallbacks: flip-block;
+
+            margin: 0;
+            /* Reset margins for accurate positioning */
+            margin-bottom: 10px;
+            /* Space from anchor */
+
+            width: 140px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+            /* Popover implementation details */
+            border: none;
+        }
+
+        /* Little arrow using anchor positioning if possible, or just standard CSS */
+        /* Note: simple arrows are harder with basic native anchor positioning without complex math or additional elements, 
+           but we can try to position it relative to the tooltip */
+        #tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+    </style>
+</head>
+
+<body>
+
+    <script>
+        if (!("positionAnchor" in document.documentElement.style)) {
+            import('./lib/css-anchor-positioning.js');
+        }
+        if (!HTMLDivElement.prototype.hasOwnProperty("popover")) {
+            const script = document.createElement('script');
+            script.src = 'lib/popover.min.js';
+            document.head.appendChild(script);
+        }
+        if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+            const script = document.createElement('script');
+            script.src = 'lib/interestfor.min.js';
+            document.head.appendChild(script);
+        }
+    </script>
+
+    <div class="container">
+        <!-- 
+            interestfor: links this button to the popover 
+            anchor-name is defined in CSS (or we could use style="anchor-name: --tooltip-trigger")
+        -->
+        <button id="tooltip-trigger" interestfor="tooltip">Hover over me</button>
+
+        <!-- 
+            popover: makes it a popover
+            id: matches interestfor
+        -->
+        <div id="tooltip" popover="hint">I'm a modern tooltip!</div>
+    </div>
+
+</body>
+
+</html>

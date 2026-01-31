@@ -1,0 +1,203 @@
+:root {
+    --color-bg: #1A120B;
+    --color-text: #E5E5CB;
+    --color-accent: #D5CEA3;
+    --color-primary: #3C2A21;
+    --color-glass: rgba(60, 42, 33, 0.7);
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Inter', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+header {
+    padding: 2rem 4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: absolute;
+    width: 100%;
+    z-index: 10;
+}
+
+.logo {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-accent);
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    gap: 2rem;
+}
+
+nav a {
+    color: var(--color-text);
+    text-decoration: none;
+    font-weight: 400;
+    transition: color 0.3s ease;
+}
+
+nav a:hover {
+    color: var(--color-accent);
+}
+
+.hero {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    padding-top: 4rem;
+}
+
+.hero-content {
+    z-index: 5;
+    margin-bottom: 2rem;
+}
+
+h1 {
+    font-family: var(--font-heading);
+    font-size: 5rem;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+}
+
+h1 em {
+    color: var(--color-accent);
+    font-style: italic;
+}
+
+.hero-image {
+    width: 80%;
+    max-width: 1200px;
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    
+    /* Scroll-driven Animation */
+    /* Fades in and scales up as it moves through the viewport */
+    /* We use 'entry' to animate it as it enters, but since it's at the top,
+       we might want it to react to scroll similar to a parallax or just an entrance if initially hidden.
+       However, the prompt says "fade into view and scale up as the user scrolls down".
+       If it is the HERO image, it is usually already in view.
+       To satisfy the prompt strictly ("as user scrolls DOWN"), maybe we animate it
+       based on scroll position?
+       
+       Let's try a view() timeline where it starts slightly smaller/faded and grows.
+    */
+    animation: hero-reveal linear forwards;
+    animation-timeline: view();
+    animation-range: entry 0% cover 30%; /* Adjust range to trigger quickly */
+    opacity: 0; /* Initial state */
+    scale: 0.9;
+}
+
+@keyframes hero-reveal {
+    to {
+        opacity: 1;
+        scale: 1;
+    }
+}
+
+.product-feature {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 5rem 2rem;
+    background: linear-gradient(to bottom, var(--color-bg), var(--color-primary));
+}
+
+.product-card {
+    text-align: center;
+    max-width: 500px;
+}
+
+button {
+    margin-top: 2rem;
+    padding: 1rem 2rem;
+    background-color: var(--color-accent);
+    color: var(--color-primary);
+    border: none;
+    border-radius: 30px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    background-color: #E5E5CB;
+}
+
+/* Popover Styling */
+[popover] {
+    background: var(--color-glass);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--color-text);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    
+    /* Positioning */
+    /* Popover API centers by default, but we can position near element if needed via anchor (not requested) or just CSS */
+    /* For "hover popover", usually we want it near the button. 
+       Without CSS Anchor Positioning (which is also new), check if we can just center it or use margin.
+    */
+    position: absolute; /* Actually popover uses fixed/absolute in top layer */
+    
+    /* Reset basic popover styles */
+    margin: auto;
+    
+    width: 300px;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateY(10px);
+}
+
+/* Open state for popover */
+[popover]:popover-open {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+[popover] h3 {
+    font-family: var(--font-heading);
+    margin-bottom: 1rem;
+    color: var(--color-accent);
+}
+
+[popover] ul {
+    list-style: none;
+    text-align: left;
+}
+
+[popover] li {
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.spacer {
+    /* Just to create scroll room */
+}

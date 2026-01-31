@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velvet Bean - Luxury Coffee</title>
+    <meta name="description" content="Experience the Velvet Touch at Velvet Bean. Premium coffee, ethically sourced.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="hero">
+        <div class="hero-bg" id="hero-image">
+            <!-- Background image/gradient will be handled here -->
+        </div>
+        <div class="hero-content">
+            <h1>Experience the Velvet Touch</h1>
+            <p>Premium coffee for the refined palate.</p>
+        </div>
+    </header>
+
+    <main>
+        <section class="product-section">
+            <div class="product-card">
+                <h2>Signature Latte</h2>
+                <div class="product-image-placeholder"></div>
+                <p>A masterpiece of foam and flavor.</p>
+                
+                <!-- Popover Trigger -->
+                <button class="details-btn" id="details-btn" popovertarget="ingredients-popover" popovertargetaction="show">
+                    Details
+                </button>
+
+                <!-- Popover Content -->
+                <div id="ingredients-popover" popover>
+                    <h3>Ingredients</h3>
+                    <ul>
+                        <li>Premium Espresso</li>
+                        <li>Steamed Oat Milk</li>
+                        <li>Madagascan Vanilla Bean</li>
+                        <li>Ceylon Cinnamon Dust</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+        
+        <section class="story-section">
+            <h2>Our Story</h2>
+            <p>From the highlands to your cup, we ensure every bean is perfect.</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Velvet Bean Coffee.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

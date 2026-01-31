@@ -1,0 +1,158 @@
+:root {
+  --coffee-dark: #3b2f2f;
+  --coffee-med: #6f4e37;
+  --coffee-light: #d2b48c;
+  --cream: #f5f5dc;
+  --text-main: #2c2c2c;
+  --primary-color: #A0522D; /* Sienna */
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--cream);
+  color: var(--text-main);
+  overflow-x: hidden;
+}
+
+.hero {
+  position: relative;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: white;
+  text-align: center;
+}
+
+.hero-image-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.hero-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  
+  /* Scroll Animation: Grow and Fade */
+  /* 'view()' might be better if we want it to animate as it leaves view? 
+     But user said "fade in and grow larger as I scroll down". 
+     I'll interpret this as: As I scroll down (page progress), the image scales up.
+  */
+  animation: hero-expand linear forwards;
+  animation-timeline: scroll();
+  animation-range: 0vh 100vh;
+}
+
+@keyframes hero-expand {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 1; /* Keep it visible or fade? User said "Fade In", so maybe starts lower opacity? */
+  }
+}
+
+.hero-content {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2rem;
+  border-radius: 12px;
+  backdrop-filter: blur(4px);
+  animation: text-appear 1s ease-out;
+}
+
+@keyframes text-appear {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+h1 {
+  font-size: 4rem;
+  margin: 0.5rem 0;
+  font-weight: 300;
+  letter-spacing: 2px;
+}
+
+.btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 1.2rem;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn:hover {
+  transform: scale(1.05);
+  background: var(--coffee-med);
+}
+
+/* Tooltip / Popover */
+/* Note: 'popover' attribute elements are hidden by default via UA styles */
+[popover] {
+  background: var(--coffee-dark);
+  color: var(--cream);
+  border: 1px solid var(--coffee-light);
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  font-size: 1rem;
+  
+  /* Anchor Positioning */
+  position-anchor: --details-btn;
+  /* Top center relative to anchor */
+  position-area: top; 
+  /* margin-inline: auto; handled by browser defaults for centered area? */
+  margin: 0;
+  
+  /* Animation */
+  transition: opacity 0.3s, transform 0.3s;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+[popover]:popover-open {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Fallback/Polyfill anchor support for older browsers might need explicit styles if polyfill doesn't handle everything, 
+   but @oddbird/css-anchor-positioning should handle it. */
+#details-btn {
+  anchor-name: --details-btn;
+}
+
+.content {
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+  max-width: 800px;
+  margin: 2rem auto;
+}
+
+.menu-item {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  font-weight: bold;
+  color: var(--coffee-dark);
+}

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espresso Emporium</title>
+    <link rel="stylesheet" href="index.css">
+    
+    <!-- Polyfill for Popover API and Interest Invokers -->
+    <script src="https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js"></script>
+    <!-- Polyfill for CSS Anchor Positioning -->
+    <script src="https://unpkg.com/@oddbird/css-anchor-positioning/dist/css-anchor-positioning.js"></script>
+    
+    <!-- Adaptive Loading Script -->
+    <script>
+      (function() {
+        // Simple Adaptive Loading Polyfill/Implementation
+        // Checks for navigator.connection.saveData or slow effectiveType
+        
+        function updateImages() {
+          if (!('connection' in navigator)) return;
+          
+          const connection = navigator.connection;
+          const slowConnection = connection.saveData || 
+                                 (connection.effectiveType && ['slow-2g', '2g', '3g'].includes(connection.effectiveType));
+          
+          if (slowConnection) {
+            document.querySelectorAll('img[loading-placeholder]').forEach(img => {
+              const placeholder = img.getAttribute('loading-placeholder');
+              if (placeholder && img.src !== placeholder) {
+                // Store original src to maybe swap back if user requests? 
+                // For now, just swap to placeholder for speed.
+                img.dataset.originalSrc = img.src;
+                img.src = placeholder;
+              }
+            });
+          }
+        }
+        
+        // Run on load
+        window.addEventListener('DOMContentLoaded', updateImages);
+        
+        // Listen for connection changes
+        if (navigator.connection) {
+          navigator.connection.addEventListener('change', updateImages);
+        }
+      })();
+    </script>
+</head>
+<body>
+
+    <header>
+        <h1>Espresso Emporium</h1>
+        <p class="subtitle">Artisan coffee for the modern soul.</p>
+        <p>Scroll down to explore our blends.</p>
+    </header>
+
+    <section class="content">
+        <h2>Our Signature Roast</h2>
+        <p>Experience the bold flavors of our single-origin beans, roasted to perfection.</p>
+        
+        <div class="hero-image-container">
+            <!-- 
+                Adaptive Loading:
+                high-res: https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=1600
+                low-res placeholder: https://placehold.co/800x600/png?text=Low+Res+Coffee
+            -->
+            <img 
+                class="hero-image" 
+                src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=1600" 
+                loading-placeholder="https://placehold.co/800x600/png?text=Low+Res+Coffee"
+                alt="Freshly brewed coffee in a cup"
+                width="800"
+                height="600"
+            >
+        </div>
+
+        <div class="product-card">
+            <h3>Morning Mist Blend</h3>
+            <p>A smooth start to your day.</p>
+            
+            <!-- Interest Invoker for Popover -->
+            <button class="details-btn" interestfor="ingredients-popover">
+                Details
+            </button>
+            
+            <div id="ingredients-popover" class="ingredients-popover" popover>
+                <strong>Ingredients:</strong><br>
+                100% Arabica Beans<br>
+                Notes of Chocolate & Hazelnut
+            </div>
+        </div>
+        
+        <p style="margin-top: 50vh;">Keep scrolling...</p>
+        <p style="margin-top: 50vh;">More content...</p>
+    </section>
+
+</body>
+</html>

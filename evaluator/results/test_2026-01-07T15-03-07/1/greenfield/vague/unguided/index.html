@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velvet Bean Coffee</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg: #2C1A1D;
+            --color-text: #F5F5DC;
+            --color-accent: #D4AF37;
+            --color-secondary: #3E2B2E;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Playfair Display', serif;
+            color: var(--color-accent);
+        }
+
+        header {
+            padding: 2rem;
+            text-align: center;
+            position: fixed;
+            width: 100%;
+            z-index: 100;
+            background: rgba(44, 26, 29, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        .hero {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            padding-top: 80px;
+        }
+
+        .hero-content {
+            z-index: 10;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0;
+            animation: fadeInDown 1s ease-out forwards;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            opacity: 0;
+            animation: fadeInUp 1s ease-out 0.5s forwards;
+        }
+
+        .hero-image-container {
+            width: 100%;
+            height: 60vh;
+            position: relative;
+            margin-top: 2rem;
+            overflow: hidden;
+        }
+
+        .hero-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transform: scale(0.9);
+            transition: opacity 1.5s ease, transform 1.5s ease;
+        }
+
+        .hero-image.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .hero-image.scrolled {
+            transform: scale(1.1);
+        }
+
+        .details-section {
+            padding: 4rem 2rem;
+            text-align: center;
+            background: var(--color-secondary);
+            min-height: 50vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-container {
+            position: relative;
+            display: inline-block;
+            margin-top: 2rem;
+        }
+
+        .details-btn {
+            background-color: var(--color-accent);
+            color: var(--color-bg);
+            border: none;
+            padding: 1rem 2rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .details-btn:hover {
+            background-color: #E5C358;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+        }
+
+        .tooltip {
+            visibility: hidden;
+            width: 220px;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 1rem;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%; /* Position above */
+            left: 50%;
+            margin-left: -110px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            border: 1px solid var(--color-accent);
+        }
+
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: var(--color-accent) transparent transparent transparent;
+        }
+
+        .btn-container:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .tooltip h4 {
+            color: var(--color-accent);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .tooltip ul {
+            list-style-type: none;
+            font-size: 0.85rem;
+        }
+
+        .tooltip li {
+            margin-bottom: 0.25rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        footer {
+            padding: 2rem;
+            text-align: center;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h3>Velvet Bean</h3>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Artistry in Every Cup</h1>
+            <p>Experience the finest handcrafted espresso in town.</p>
+        </div>
+        <div class="hero-image-container">
+            <img id="heroImage" class="hero-image" src="hero_lq.png" alt="Latte Art">
+        </div>
+    </section>
+
+    <section class="details-section">
+        <h2>Our Signature Blend</h2>
+        <p style="max-width: 600px; margin: 1rem auto;">
+            Sourced from the highlands of Ethiopia and roasted to perfection. 
+            Our signature blend offers notes of dark chocolate, berry, and a smooth velvet finish.
+        </p>
+        
+        <div class="btn-container">
+            <button class="details-btn">View Ingredients</button>
+            <div class="tooltip">
+                <h4>Ingredients</h4>
+                <ul>
+                    <li><span>Ethiopian Beans</span> <span>80%</span></li>
+                    <li><span>Colombian Roast</span> <span>20%</span></li>
+                    <li><span>Filtered Water</span> <span>~</span></li>
+                    <li><span>Love</span> <span>100%</span></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        &copy; 2026 Velvet Bean Coffee. All rights reserved.
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const heroImage = document.getElementById('heroImage');
+            
+            // Network-aware Image Loading
+            const loadImage = () => {
+                const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                const effectiveType = connection ? connection.effectiveType : '4g';
+                
+                // If we are on a fast connection (4g) or simply default to high quality if API not supported/unknown
+                // For this demo, we assume anything better than 2g is "fast enough" or if api is missing we try HQ
+                if (!connection || effectiveType === '4g' || effectiveType === '3g') {
+                    const hqImage = new Image();
+                    hqImage.src = 'hero_hq.png';
+                    hqImage.onload = () => {
+                        heroImage.src = 'hero_hq.png';
+                        heroImage.classList.add('visible');
+                    };
+                } else {
+                    // Slow connection, stick with LQIP but animate it in
+                    heroImage.classList.add('visible');
+                }
+            };
+
+            loadImage();
+
+            // Scroll Animation
+            window.addEventListener('scroll', () => {
+                const scrollPosition = window.scrollY;
+                const heroContainer = document.querySelector('.hero-image-container');
+                
+                if (heroContainer) {
+                    // Parallax/Grow effect
+                    // As we scroll down, let's make the image grow slightly more
+                    if (scrollPosition > 50) {
+                        heroImage.classList.add('scrolled');
+                    } else {
+                        heroImage.classList.remove('scrolled');
+                    }
+                    
+                    // Optional: Fade out text on scroll
+                    const content = document.querySelector('.hero-content');
+                    content.style.opacity = 1 - (scrollPosition / 300);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

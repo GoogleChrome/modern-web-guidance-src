@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Experience the finest artisanal coffee at Aroma, where every cup is a masterpiece.">
+    <title>Aroma | Premium Coffee Experience</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <nav class="nav">
+            <a href="#" class="logo">Aroma</a>
+            <ul class="nav-links">
+                <li><a href="#menu">Menu</a></li>
+                <li><a href="#about">Our Story</a></li>
+                <li><a href="#locations">Locations</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <!-- LQIP and High-Res Image -->
+            <div class="hero-image-container">
+                <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=20&auto=format&fit=crop&blur=50" 
+                     data-src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=2575&auto=format&fit=crop" 
+                     alt="Cozy coffee shop interior with latte art" 
+                     class="hero-bg placeholder" 
+                     id="hero-image">
+            </div>
+            
+            <div class="hero-content">
+                <h1 class="hero-title">Refining the <br> <span class="accent">Art of Coffee</span></h1>
+                <p class="hero-subtitle">Where passion meets the perfect pour.</p>
+            </div>
+        </section>
+
+        <section class="product-spotlight">
+            <div class="product-card">
+                <div class="product-info">
+                    <h2>Signature Latte</h2>
+                    <p>Our signature espresso blend with velvety steamed milk and a touch of hazelnut.</p>
+                    <div class="tooltip-container">
+                        <button class="btn-details" aria-describedby="ingredients-tooltip">
+                            Details
+                        </button>
+                        <div id="ingredients-tooltip" class="tooltip" role="tooltip">
+                            <strong>Ingredients:</strong><br>
+                            • Ethically sourced Espresso<br>
+                            • Steamed Whole Milk<br>
+                            • Hazelnut Essence<br>
+                            • Love
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="spacer">
+            <!-- Just some space to allow scrolling -->
+            <p style="text-align: center; color: #888; margin-top: 100px;">Scroll to see the magic.</p>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 Aroma Coffee. All rights reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

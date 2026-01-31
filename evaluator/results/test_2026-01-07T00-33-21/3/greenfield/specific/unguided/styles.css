@@ -1,0 +1,240 @@
+:root {
+  --color-bg: #0f0e0d;
+  --color-text: #f0e6d2;
+  --color-primary: #d4a373;
+  --color-accent: #bc6c25;
+  --color-surface: #1f1c18;
+  --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+  --radius-md: 12px;
+  --radius-lg: 24px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-main);
+  line-height: 1.6;
+  overflow-x: hidden;
+  min-height: 200vh; /* To demonstrate scroll */
+}
+
+/* Typography */
+h1 {
+  font-size: clamp(3rem, 10vw, 6rem);
+  font-weight: 800;
+  line-height: 1.1;
+  background: linear-gradient(to right, #f0e6d2, #d4a373);
+  -webkit-background-clip: text;
+  color: transparent;
+  margin-bottom: 1.5rem;
+}
+
+h2 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: var(--color-primary);
+}
+
+p {
+  font-size: 1.125rem;
+  opacity: 0.9;
+  max-width: 60ch;
+}
+
+/* Header */
+header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 2rem;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  mix-blend-mode: difference;
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: -0.05em;
+}
+
+/* Hero Section */
+.hero {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-content {
+  z-index: 10;
+  margin-bottom: 4rem;
+  /* Animate content out on scroll */
+  animation: fade-out linear forwards;
+  animation-timeline: view();
+  animation-range: exit 0% exit 50%;
+}
+
+.hero-image-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  perspective: 1000px;
+}
+
+.hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.4;
+  mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+  
+  /* Scroll-driven animation */
+  animation: hero-scroll linear alternate;
+  animation-timeline: view();
+  animation-range: entry 0% cover 100%;
+}
+
+@keyframes hero-scroll {
+  from {
+    transform: scale(1);
+    opacity: 0.2;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.4;
+  }
+  to {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+}
+
+/* Product Section */
+.product {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface);
+  position: relative;
+}
+
+.product-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  max-width: 1200px;
+  width: 90%;
+  align-items: center;
+}
+
+.product-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2rem;
+  background: var(--color-primary);
+  color: var(--color-bg);
+  border: none;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+  width: fit-content;
+  text-decoration: none;
+}
+
+.btn:hover {
+  background: var(--color-accent);
+  transform: translateY(-2px);
+}
+
+/* Popover */
+[popover] {
+  background: rgba(31, 28, 24, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  margin: 0;
+  
+  /* Positioning handled by anchor positioning or manual JS coordinates if needed, 
+     but standard popover centers or we can anchor it.
+     For simplicity in this demo without anchor-positioning polyfill, 
+     we might let it act like a tooltip or use simple styles. 
+  */
+  position: absolute;
+  inset: unset; /* Override default fixed centering if we want to place it manually */
+  
+  /* Starting state for transition */
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s, transform 0.3s, display 0.3s allow-discrete;
+}
+
+/* Open state */
+[popover]:popover-open {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Starting style for entry animation */
+@starting-style {
+  [popover]:popover-open {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.ingredient-list {
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.ingredient-list li {
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.ingredient-list li span:last-child {
+  opacity: 0.6;
+}

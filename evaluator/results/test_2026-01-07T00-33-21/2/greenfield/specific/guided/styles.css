@@ -1,0 +1,214 @@
+/* Modern Web Design System */
+:root {
+    --color-bg: #FCFBF9;
+    --color-text-main: #2C1810;
+    --color-text-muted: #5D4037;
+    --color-accent: #D4A373;
+    --color-dark: #2C1810;
+    --color-light: #FAEDCD;
+    --color-white: #FFFFFF;
+    
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --spacing-container: clamp(1rem, 5vw, 2rem);
+    --border-radius: 12px;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-sans);
+    background-color: var(--color-bg);
+    color: var(--color-text-main);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* Header */
+header {
+    padding: 2rem var(--spacing-container);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-weight: 800;
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+}
+
+.nav-links {
+    display: flex;
+    gap: 2rem;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--color-text-muted);
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.nav-links a:hover {
+    color: var(--color-text-main);
+}
+
+/* Hero Section */
+.hero {
+    min-height: 80vh;
+    padding: 2rem var(--spacing-container);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+}
+
+.hero-content h1 {
+    font-size: clamp(3rem, 8vw, 5rem);
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.03em;
+    background: linear-gradient(to right, var(--color-dark), var(--color-accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.hero-content p {
+    font-size: 1.25rem;
+    color: var(--color-text-muted);
+    margin-bottom: 2.5rem;
+    max-width: 40ch;
+}
+
+.cta-group {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.btn {
+    padding: 1rem 2rem;
+    border-radius: 100px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-size: 1rem;
+    transition: transform 0.2s;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background-color: var(--color-dark);
+    color: var(--color-white);
+}
+
+.btn-text {
+    background: transparent;
+    color: var(--color-text-main);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+/* Hero Image & Animation */
+.hero-image-container {
+    perspective: 1000px;
+}
+
+.hero-image {
+    width: 100%;
+    height: auto;
+    border-radius: 24px;
+    box-shadow: 0 20px 40px rgba(44, 24, 16, 0.1);
+    
+    /* Fallback for no scroll animation */
+    opacity: 1; 
+}
+
+/* Scroll-driven Animation */
+@keyframes fade-scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@supports (animation-timeline: view()) {
+    .animate-on-scroll {
+        animation: fade-scale-in linear both;
+        animation-timeline: view();
+        animation-range: entry 10% cover 50%;
+    }
+}
+
+/* Popover & Interest Invoker */
+.ingredients-popover {
+    padding: 1.5rem;
+    border: none;
+    border-radius: var(--border-radius);
+    background: var(--color-white);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    color: var(--color-text-main);
+    width: max-content;
+    
+    /* Anchor Positioning */
+    position-anchor: --ingredients-anchor;
+    margin: 0;
+}
+
+/* Fallback/Polyfill anchor styles handled by library often, 
+   but native syntax: */
+.trigger {
+    anchor-name: --ingredients-anchor;
+}
+
+.ingredients-popover:popover-open {
+    /* If native support */
+    position-area: top center;
+    top: auto;
+    left: auto;
+    bottom: calc(anchor(top) + 10px); /* Manual fallback positioning syntax if needed, but position-area preferred */
+    position-try-fallbacks: flip-block;
+}
+
+/* Reset for native details styling if useful */
+ul {
+    list-style: none;
+    margin-top: 0.5rem;
+}
+
+li {
+    margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .hero {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+    
+    .hero-content h1 {
+        font-size: 3rem;
+    }
+    
+    .cta-group {
+        justify-content: center;
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .btn {
+        width: 100%;
+    }
+}

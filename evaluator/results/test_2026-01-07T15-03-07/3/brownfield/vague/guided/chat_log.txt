@@ -1,0 +1,34 @@
+Agent
+
+guided
+
+EnsurethatnavigationstootherpagesonthissiteareasinstantaspossibleDon'tbotherdoinganymanualverificationinabrowser.
+
+Add context
+Images
+Mentions
+Workflows
+Planning
+Conversation mode
+Planning
+Agent can plan before executing tasks. Use for deep research, complex tasks, or collaborative work
+Fast
+Agent will execute tasks directly. Use for simple tasks that can be completed faster
+
+Gemini 3 Pro (High)
+
+Model
+
+Gemini 3 Pro (High)
+
+Gemini 3 Pro (Low)
+
+Gemini 3 Flash
+
+Gemini 2.5 Pro
+
+Gemini 2.5 Pro for Google
+
+Custom
+Submit
+AI may make mistakes. Double-check all generated code.

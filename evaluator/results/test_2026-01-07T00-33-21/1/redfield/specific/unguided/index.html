@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Popover Tooltip Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        .container {
+            display: inline-block;
+        }
+
+        /* The Button */
+        #tooltip-trigger {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+            
+            /* Define the anchor */
+            anchor-name: --tooltip-trigger;
+        }
+
+        /* The Tooltip */
+        #tooltip {
+            /* Popover behaviors */
+            margin: 0; /* Reset browser default margin for popovers */
+            border: none; /* Reset border */
+            padding: 8px;
+            width: 140px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+
+            /* Anchor Positioning */
+            position-anchor: --tooltip-trigger;
+            position-area: top;
+            
+            /* Smooth transition for entry/exit */
+            opacity: 0;
+            transition: opacity 0.2s allow-discrete, display 0.2s allow-discrete;
+        }
+
+        #tooltip:popover-open {
+            opacity: 1;
+        }
+
+        /* Arrow */
+        #tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 
+             interesttarget: Handles hover/focus delays automatically
+             popover: Indicates this element is a popover
+        -->
+        <button id="tooltip-trigger" interesttarget="tooltip">Hover over me</button>
+        <div id="tooltip" popover>I'm a modern popover tooltip!</div>
+    </div>
+
+</body>
+</html>

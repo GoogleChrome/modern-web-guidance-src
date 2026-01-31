@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brew & Bean Co. | Premium Coffee</title>
+    <meta name="description" content="Experience the finest artisanal coffee at Brew & Bean Co. Locally roasted, expertly brewed for a moment of pure bliss.">
+    
+    <!-- Modern Web Feature Polyfills -->
+    <script>
+        // Adaptive Loading Polyfill
+        if (!('loadingPlaceholder' in HTMLImageElement.prototype)) {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/adaptive-loading-polyfill@1.0.0/adaptive-loading.js'; // Hypothetical stable link or we implement logic
+            // Since adaptive loading polyfill might not be on a stable unpkg URL that exactly matches, 
+            // we'll implement a simple inline fallback logic if needed, but for now let's use a known pattern or just skipping if complex.
+            // Actually, the best practices for adaptive-loading mentioned "http://example.github.io/adaptive-loading-polyfill/adaptive-loading.min.js" which is likely a demo.
+            // Let's implement a tiny inline polyfill for it:
+            document.addEventListener('DOMContentLoaded', () => {
+                if ('connection' in navigator) {
+                    const ect = navigator.connection.effectiveType;
+                    if (ect === '4g') return; // Fast enough
+                }
+                // Determine if we should swap
+                // Simple logic: if slow, swap src with placeholder if it hasn't loaded yet? 
+                // Actually the API intent is to *start* with placeholder if slow.
+                // We'll leave the native behavior to browsers or this simple script
+                document.querySelectorAll('img[loading-placeholder]').forEach(img => {
+                    if (navigator.connection && (navigator.connection.saveData || ['slow-2g', '2g', '3g'].includes(navigator.connection.effectiveType))) {
+                        img.src = img.getAttribute('loading-placeholder');
+                    }
+                });
+            });
+        }
+    </script>
+    <!-- Interest Invokers Polyfill -->
+    <script>
+        if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+            const script = document.createElement('script');
+            script.src = "https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js";
+            script.type = "module";
+            document.head.appendChild(script);
+        }
+    </script>
+    <!-- Popover Polyfill -->
+    <script>
+        if (!HTMLDivElement.prototype.hasOwnProperty("popover")) {
+            const script = document.createElement('script');
+            script.src = "https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js";
+            script.type = "module";
+            document.head.appendChild(script);
+        }
+    </script>
+    <!-- CSS Anchor Positioning Polyfill -->
+    <script>
+        if (!("positionAnchor" in document.documentElement.style)) {
+            const script = document.createElement('script');
+            script.src = "https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js";
+            script.type = "module";
+            document.head.appendChild(script);
+        }
+    </script>
+
+    <link rel="stylesheet" href="index.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">Brew & Bean Co.</div>
+            <ul>
+                <li><a href="#">Shop</a></li>
+                <li><a href="#">Locations</a></li>
+                <li><a href="#">About</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Pouring Perfection <br> in Every Cup</h1>
+                <p> artisanal sourcing, meticulous roasting, and a passion for the perfect brew.</p>
+                <div class="cta-container">
+                    <button class="primary-btn">Order Now</button>
+                    <!-- Interest Invoker Button -->
+                    <button class="ph-details-btn" interestfor="ingredients-popover">
+                        Ingredients Info
+                    </button>
+                </div>
+            </div>
+            
+            <div class="hero-image-wrapper">
+                <!-- Adaptive Loading: src is high-res, loading-placeholder is low-res -->
+                <img 
+                    src="coffee_shop_hero.png" 
+                    loading-placeholder="coffee_shop_hero_low.png"
+                    alt="Warm and inviting coffee shop interior with latte art"
+                    class="hero-img scroll-animate"
+                >
+            </div>
+        </section>
+
+        <section class="details">
+            <h2>Our Signature Blend</h2>
+            <p>Experience the richness of our house blend. Scroll down to see more.</p>
+            <div class="spacer"></div>
+        </section>
+    </main>
+
+    <!-- Popover Content -->
+    <div id="ingredients-popover" class="ingredients-popover" popover="auto">
+        <h3>Latte Ingredients</h3>
+        <ul>
+            <li><strong>Espresso:</strong> 100% Arabica Beans (Ethiopia/Columbia)</li>
+            <li><strong>Milk:</strong> Fresh Whole Milk (or Oat Alternative)</li>
+            <li><strong>Foam:</strong> Silky Micro-foam</li>
+            <li><strong>Love:</strong> Infinite</li>
+        </ul>
+    </div>
+
+</body>
+</html>

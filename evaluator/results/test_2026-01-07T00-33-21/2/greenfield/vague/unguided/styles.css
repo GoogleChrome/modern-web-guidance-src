@@ -1,0 +1,227 @@
+:root {
+    --color-bg: #FDFBF7;
+    --color-text: #2C241E;
+    --color-accent: #C69F77;
+    --color-nav-bg: rgba(253, 251, 247, 0.9);
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Inter', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background-color: var(--color-nav-bg);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.logo {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--color-text);
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 2rem;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--color-text);
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.nav-links a:hover {
+    color: var(--color-accent);
+}
+
+.hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6rem 2rem 2rem;
+    text-align: center;
+}
+
+.hero-content {
+    max-width: 800px;
+    width: 100%;
+}
+
+.hero h1 {
+    font-family: var(--font-heading);
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: var(--color-text);
+}
+
+.hero p {
+    font-size: 1.25rem;
+    color: #665b55;
+    margin-bottom: 2rem;
+}
+
+/* Product Showcase & Image */
+.product-showcase {
+    position: relative;
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.image-wrapper {
+    width: 100%;
+    max-width: 600px;
+    aspect-ratio: 4/3;
+    overflow: hidden;
+    border-radius: 1rem;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+.hero-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: filter 0.5s ease-out, transform 0.1s ease-out, opacity 1s ease-out;
+    /* Initial state for scroll animation */
+    opacity: 0;
+    transform: scale(0.95);
+}
+
+.hero-image.visible {
+    opacity: 1;
+    /* Transform is handled by scroll logic, but we set a base here if needed */
+}
+
+/* Blur-up Effect */
+.hero-image.placeholder {
+    filter: blur(20px);
+}
+
+.hero-image:not(.placeholder) {
+    filter: blur(0);
+}
+
+/* Details & Tooltip */
+.details-container {
+    position: relative;
+    margin-top: 1rem;
+}
+
+.btn-details {
+    background-color: var(--color-text);
+    color: white;
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-details:hover {
+    background-color: var(--color-accent);
+    transform: translateY(-2px);
+}
+
+.tooltip {
+    position: absolute;
+    bottom: 120%; /* Position above button */
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    width: 200px;
+    text-align: left;
+    
+    /* Reveal Animation States */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+}
+
+.tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -8px;
+    border-width: 8px;
+    border-style: solid;
+    border-color: white transparent transparent transparent;
+}
+
+/* Hover on button reveals tooltip using sibling selector or container hover */
+.details-container:hover .tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+.tooltip h4 {
+    font-family: var(--font-heading);
+    margin-bottom: 0.5rem;
+    color: var(--color-accent);
+}
+
+.tooltip ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.tooltip li {
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* Extra content for scrolling */
+.content {
+    min-height: 100vh;
+    padding: 4rem 2rem;
+    background-color: white;
+    text-align: center;
+}
+
+footer {
+    padding: 2rem;
+    text-align: center;
+    background-color: var(--color-text);
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .hero h1 {
+        font-size: 2.5rem;
+    }
+}

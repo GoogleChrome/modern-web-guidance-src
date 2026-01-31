@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#4B3621"/>
+  <circle cx="600" cy="400" r="200" fill="#D2691E"/>
+  <text x="600" y="420" font-family="Arial" font-size="60" fill="white" text-anchor="middle">Premium Coffee</text>
+  <text x="600" y="500" font-family="Arial" font-size="40" fill="#DEB887" text-anchor="middle">4G Connection Loaded</text>
+</svg>

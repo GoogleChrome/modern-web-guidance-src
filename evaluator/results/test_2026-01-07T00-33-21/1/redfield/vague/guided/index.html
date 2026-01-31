@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imperative Tooltip Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        .container {
+            position: relative;
+            display: inline-block;
+        }
+
+        /* The Button */
+        .tooltip-trigger {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+            
+            /* Anchor Positioning: Name the anchor */
+            anchor-name: --tooltip-trigger;
+        }
+
+        /* The Tooltip (Popover API + Anchor Positioning) */
+        [popover] {
+            /* Basic styling */
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: none;
+            
+            /* Reset typical popover styles if needed */
+            margin: 0;
+            
+            /* Anchor Positioning */
+            position-anchor: --tooltip-trigger;
+            position-area: top; /* Places it on top, centered */
+            
+            /* Fallback for position-area if not supported yet (using margin to center if width is intrinsic) */
+            justify-self: anchor-center; 
+            
+            /* Try to flip if it doesn't fit */
+            position-try-fallbacks: flip-block;
+            
+            /* Animation check (optional, keeping it simple for now as requested) */
+        }
+        
+        /* Arrow (using standard CSS shapes or similar, but positioning might need anchor-center if we were being fancy. 
+           For this modernization, we'll keep the arrow simple or omit if positioning is dynamic vs absolute.
+           Anchor positioning makes arrows tricky without `anchor()` function. 
+           Let's simpler: remove the arrow for now as standard anchor positioning often handles the box nicely, 
+           or we can try to re-add it if strictly required. 
+           The legacy code had an arrow. I will omit it for simplicity in this "Modernize" pass 
+           unless valid anchor-based arrow techniques are requested, as `position-area` handles the box placement perfectly.
+        */
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <button class="tooltip-trigger" interestfor="my-tooltip">Hover over me</button>
+        <div id="my-tooltip" popover="hint">I'm a modern tooltip!</div>
+    </div>
+
+    <script type="module">
+        // Feature detection and Polyfill loading
+        if (!("interestForElement" in HTMLButtonElement.prototype)) {
+            console.log("Loading Interest Invokers Polyfill...");
+            import("https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js");
+        }
+        
+        if (!("popover" in document.documentElement)) {
+             console.log("Loading Popover Polyfill...");
+             import("https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js");
+        }
+        
+        if (!CSS.supports("position-anchor: --foo")) {
+            console.log("Loading CSS Anchor Positioning Polyfill...");
+            import("https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js");
+        }
+    </script>
+
+</body>
+</html>

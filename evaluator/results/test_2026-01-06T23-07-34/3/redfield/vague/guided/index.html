@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Tooltip Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+
+
+        /* The Button */
+        #tooltip-trigger {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+
+            /* Anchor Positioning */
+            anchor-name: --my-trigger;
+        }
+
+        /* The Tooltip (Popover) */
+        #tooltip {
+            /* Reset defaults */
+            padding: 8px;
+            border: none;
+            margin: 0;
+
+            /* Visuals */
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 140px;
+
+            /* Anchor Positioning */
+            position-anchor: --my-trigger;
+            position-area: top;
+            /* Standard property for placement */
+            margin-bottom: 10px;
+            /* Spacing */
+
+            /* Popover Animation (optional but nice) */
+            transition: opacity 0.2s allow-discrete, overlay 0.2s allow-discrete, display 0.2s allow-discrete;
+            opacity: 0;
+        }
+
+        /* Popover Open State */
+        #tooltip:popover-open {
+            opacity: 1;
+        }
+
+        /* Styling the arrow using standard CSS if needed, 
+           NOTE: Anchor positioning doesn't automatically do arrows perfectly yet without complex clip-paths or additional elements, 
+           simplifying to just the bubble for this "modern" MVP as standard anchor-based arrows are still evolving. 
+           We will keep a simple pseudo-element arrow if possible, but it's tricky with basic anchor-positioning. 
+           Let's skip the arrow for the purest modern CSS demo or use a simple one. */
+
+        #tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <!-- 
+            interestfor: Connects the button to the popover for hover/focus behavior 
+        -->
+        <button id="tooltip-trigger" interestfor="tooltip">Hover over me</button>
+
+        <!-- 
+            popover="hint": Semantically appropriate for tooltips 
+        -->
+        <div id="tooltip" popover="hint">I'm a modern tooltip!</div>
+    </div>
+
+    <!-- Polyfills -->
+    <script type="module">
+        // 1. Interest Invokers Polyfill
+        if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js';
+            document.head.appendChild(script);
+        }
+
+        // 2. Popover Polyfill
+        if (!HTMLDivElement.prototype.hasOwnProperty("popover")) {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js';
+            document.head.appendChild(script);
+        }
+
+        // 3. Anchor Positioning Polyfill
+        if (!('positionAnchor' in document.documentElement.style)) {
+            const script = document.createElement('script');
+            // Note: The oddbird anchor polyfill is a bit heavier, usually imported as a module or script.
+            // We'll use the script tag version for simplicity in this demo.
+            script.src = 'https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js';
+            script.type = 'module'; // It often requires module support or specific build
+            document.head.appendChild(script);
+        }
+    </script>
+
+</body>
+
+</html>

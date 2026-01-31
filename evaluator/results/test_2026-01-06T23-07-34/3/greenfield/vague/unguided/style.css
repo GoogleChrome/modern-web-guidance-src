@@ -1,0 +1,264 @@
+:root {
+  --primary-color: #d2691e;
+  --secondary-color: #1a1a1a;
+  --text-color: #333;
+  --bg-color: #fdfbf7;
+  --tooltip-bg: rgba(0, 0, 0, 0.85);
+  --transition-speed: 0.3s;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+/* Header & Nav */
+header {
+  padding: 1.5rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: absolute;
+  width: 100%;
+  top: 0;
+  z-index: 10;
+}
+
+.logo {
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: var(--secondary-color);
+}
+
+nav ul {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
+}
+
+nav a {
+  text-decoration: none;
+  color: var(--secondary-color);
+  font-weight: 500;
+  transition: color var(--transition-speed);
+}
+
+nav a:hover {
+  color: var(--primary-color);
+}
+
+/* Hero Section */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 5%;
+  overflow: hidden;
+  position: relative;
+}
+
+.hero-content {
+  flex: 1;
+  padding-right: 2rem;
+  z-index: 2;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInContent 1s ease-out forwards 0.5s;
+}
+
+@keyframes fadeInContent {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero h1 {
+  font-size: 4rem;
+  line-height: 1.1;
+  color: var(--secondary-color);
+  margin-bottom: 1.5rem;
+}
+
+.hero p {
+  font-size: 1.25rem;
+  margin-bottom: 2rem;
+  max-width: 500px;
+  color: #666;
+}
+
+.cta-group {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all var(--transition-speed);
+}
+
+.btn.primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.btn.primary:hover {
+  background-color: #b55a19;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(210, 105, 30, 0.3);
+}
+
+.btn.secondary {
+  background-color: transparent;
+  border: 2px solid var(--secondary-color);
+  color: var(--secondary-color);
+  position: relative;
+  /* For tooltip */
+}
+
+.btn.secondary:hover {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+/* Tooltip */
+.tooltip-trigger {
+  position: relative;
+}
+
+.tooltip {
+  visibility: hidden;
+  background-color: var(--tooltip-bg);
+  color: #fff;
+  text-align: left;
+  border-radius: 6px;
+  padding: 10px;
+  position: absolute;
+  z-index: 100;
+  bottom: 125%;
+  /* Position above */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  font-size: 0.9rem;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.tooltip-trigger:hover .tooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(-5px);
+}
+
+.tooltip strong {
+  color: var(--primary-color);
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Hero Image */
+.hero-image-container {
+  flex: 1;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.hero-img {
+  width: 100%;
+  max-width: 600px;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  /* Hidden initially, fade in JS or CSS */
+  transform: scale(0.95);
+  transition: transform 0.1s linear, opacity 1s ease-out;
+}
+
+/* Scroll Animation Class */
+.hero-img.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Placeholder styles if we detailed that */
+.img-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  max-width: 600px;
+  height: 600px;
+  /* approx */
+  background: #e0d8cc;
+  /* Coffee latte color */
+  border-radius: 20px;
+  z-index: -1;
+}
+
+/* Content Section (for scrolling) */
+.content {
+  padding: 5rem 10%;
+  background: white;
+}
+
+.content h2 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.content p {
+  margin-bottom: 1.5rem;
+  color: #555;
+  font-size: 1.1rem;
+  max-width: 800px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero {
+    flex-direction: column-reverse;
+    text-align: center;
+    justify-content: center;
+    min-height: auto;
+    padding-top: 100px;
+  }
+
+  .hero-content {
+    padding-right: 0;
+    margin-top: 2rem;
+  }
+
+  .hero h1 {
+    font-size: 2.5rem;
+  }
+
+  .hero-image-container {
+    height: 50vh;
+    width: 100%;
+  }
+
+  .cta-group {
+    justify-content: center;
+  }
+}

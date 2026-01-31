@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Espresso & Essence | Premium Coffee Experience</title>
+  <meta name="description"
+    content="Experience the finest artisanal coffee at Espresso & Essence. Sustainably sourced, expertly roasted, and brewed to perfection.">
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap"
+    rel="stylesheet">
+
+  <!-- Polyfills for modern features -->
+  <script>
+    // Interest Invoker Polyfill
+    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+      const script = document.createElement("script");
+      script.src = "https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js";
+      document.head.appendChild(script);
+    }
+
+    // Popover Polyfill
+    if (!HTMLDivElement.prototype.hasOwnProperty("popover")) {
+      const script = document.createElement("script");
+      script.src = "https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js";
+      document.head.appendChild(script);
+    }
+
+    // CSS Anchor Positioning Polyfill
+    if (!("positionAnchor" in document.documentElement.style)) {
+      const script = document.createElement("script");
+      script.type = "module";
+      script.src = "https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js";
+      document.head.appendChild(script);
+    }
+
+    // Adaptive Loading Implementation
+    if ('connection' in navigator) {
+      const connection = navigator.connection;
+      if (connection.saveData || connection.effectiveType === '2g' || connection.effectiveType === 'slow-2g') {
+        document.addEventListener('DOMContentLoaded', () => {
+          const adaptiveImages = document.querySelectorAll('img[loading-placeholder]');
+          adaptiveImages.forEach(img => {
+            const placeholder = img.getAttribute('loading-placeholder');
+            if (placeholder) {
+              img.src = placeholder;
+            }
+          });
+        });
+      }
+    }
+  </script>
+</head>
+
+<body>
+
+  <header>
+    <nav>
+      <div class="logo">Espresso & Essence</div>
+      <ul>
+        <li><a href="#home">Home</a></li>
+        <li><a href="#menu">Menu</a></li>
+        <li><a href="#story">Our Story</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section id="home" class="hero">
+      <div class="hero-content">
+        <h1>Crafted for the <br><em>Connoisseur</em></h1>
+        <p>Every cup tells a story of origin, passion, and precision.</p>
+        <div class="cta-group">
+          <button class="btn btn-primary">View Menu</button>
+          <!-- Interest Invoker Button -->
+          <button class="btn btn-secondary" interestfor="ingredients-popover">Details</button>
+        </div>
+      </div>
+
+      <!-- Popover Tooltip -->
+      <div id="ingredients-popover" class="ingredients-tooltip" popover="hint">
+        <h3>Signature Blend Ingredients</h3>
+        <ul>
+          <li><strong>Beans:</strong> Ethiopian Yirgacheffe & Colombian Supremo</li>
+          <li><strong>Roast:</strong> Medium-Dark Full City</li>
+          <li><strong>Notes:</strong> Dark Chocolate, Dried Cherry, Jasmine</li>
+        </ul>
+      </div>
+
+      <div class="hero-image-wrapper">
+        <!-- Adaptive Loading & Scroll Animation Image -->
+        <!-- Using placeholder.co since generation failed -->
+        <img src="https://placehold.co/1920x1080/2a1c15/e8dcca?text=Premium+Coffee+Experience"
+          loading-placeholder="https://placehold.co/192x108/2a1c15/e8dcca?text=Loading..."
+          alt="Barista pouring latte art into a ceramic cup in a warm, cozy setting" class="hero-img" width="1920"
+          height="1080">
+      </div>
+    </section>
+
+    <section id="menu" class="menu-preview">
+      <h2>Our Selection</h2>
+      <p>Curated for excellence.</p>
+      <!-- Added content to make page scrollable for animation testing -->
+      <div class="menu-grid">
+        <div class="menu-item"></div>
+        <div class="menu-item"></div>
+        <div class="menu-item"></div>
+      </div>
+    </section>
+
+    <section id="story" class="story-section">
+      <h2>The Origin</h2>
+      <p>From the highlands of Ethiopia to your cup, we ensure every step respects the bean.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2024 Espresso & Essence. Crafted with passion.</p>
+  </footer>
+
+</body>
+
+</html>

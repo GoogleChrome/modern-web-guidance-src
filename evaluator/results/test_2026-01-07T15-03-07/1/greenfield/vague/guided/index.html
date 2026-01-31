@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brew & Bean | Artisan Coffee</title>
+  <meta name="description" content="Experience the finest artisan coffee at Brew & Bean. Freshly roasted, expertly brewed.">
+  <link rel="stylesheet" href="css/styles.css">
+  
+  <!-- Preload fonts if we were using external ones, but for now we rely on system/modern stacks or we could add a Google Font here -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+
+  <!-- Polyfills -->
+  <script src="js/vendor/interestfor.min.js" defer></script>
+  <script src="js/vendor/popover.min.js" defer></script>
+  <script src="js/vendor/css-anchor-positioning.js" defer></script>
+  <script src="js/vendor/adaptive-loading.js" defer></script>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav>
+      <div class="logo">Brew & Bean</div>
+      <ul class="nav-links">
+        <li><a href="#">Home</a></li>
+        <li><a href="#menu">Menu</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#visit">Visit</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-content">
+        <h1>Awaken Your Senses</h1>
+        <p>Expertly roasted beans, brewed to perfection.</p>
+        <button class="cta-button">Order Now</button>
+      </div>
+      <div class="hero-image-container">
+        <!-- 
+          Adaptive Loading: 
+          src: High resolution image
+          loading-placeholder: Low resolution placeholder for slow networks
+        -->
+        <img 
+          src="assets/hero-high-res.png" 
+          loading-placeholder="assets/hero-low-res.png" 
+          alt="Latte art on a wooden table" 
+          class="hero-img"
+          width="800"
+          height="600"
+        >
+      </div>
+    </section>
+
+    <section class="featured-product" id="menu">
+      <div class="product-card">
+        <h2>Signature Latte</h2>
+        <p>A silky smooth blend of our house espresso and steamed oat milk.</p>
+        
+        <!-- Interest Invoker / Popover Tooltip -->
+        <button class="details-btn" interestfor="ingredients-popover">
+          Details
+        </button>
+
+        <div id="ingredients-popover" class="tooltip-popover" popover="manual">
+          <h3>Ingredients</h3>
+          <ul>
+            <li>House Espresso Blend (Brazil & Ethiopia)</li>
+            <li>Organic Oat Milk</li>
+            <li>Agave Syrup (Optional)</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="story">
+      <div class="story-content">
+        <h2>Our Story</h2>
+        <p>From bean to cup, we ensure every step respects the tradition of coffee making while embracing modern sustainability.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Brew & Bean. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>

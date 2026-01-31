@@ -1,0 +1,106 @@
+:root {
+    --tooltip-bg: #333;
+    --tooltip-text: #fff;
+    --tooltip-spacing: 8px; /* space between target and tooltip */
+    --arrow-size: 6px;
+    --tooltip-radius: 6px;
+    --tooltip-font-size: 14px;
+    --tooltip-padding: 8px 12px;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f4f4f9;
+}
+
+.container {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border: 1px solid #007bff;
+    background-color: #007bff;
+    color: white;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+button:hover, button:focus-visible {
+    background-color: #0056b3;
+    outline: 2px solid #0056b3;
+    outline-offset: 2px;
+}
+
+/* Tooltip Element */
+.tooltip-element {
+    position: absolute;
+    background-color: var(--tooltip-bg);
+    color: var(--tooltip-text);
+    padding: var(--tooltip-padding);
+    border-radius: var(--tooltip-radius);
+    font-size: var(--tooltip-font-size);
+    white-space: nowrap;
+    z-index: 1000;
+    pointer-events: none; /* Prevents tooltip from blocking interactions */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08);
+    
+    /* Animation state: hidden by default */
+    opacity: 0;
+    transform: translateY(5px);
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.tooltip-element.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Arrow */
+.tooltip-element::after {
+    content: "";
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-style: solid;
+}
+
+/* Top positioning (default) */
+.tooltip-element[data-side="top"] {
+    transform: translateY(5px);
+}
+.tooltip-element[data-side="top"].visible {
+    transform: translateY(0);
+}
+.tooltip-element[data-side="top"]::after {
+    border-width: var(--arrow-size) var(--arrow-size) 0 var(--arrow-size);
+    border-color: var(--tooltip-bg) transparent transparent transparent;
+    bottom: calc(var(--arrow-size) * -1);
+    left: 50%;
+    margin-left: calc(var(--arrow-size) * -1);
+}
+
+/* Bottom positioning */
+.tooltip-element[data-side="bottom"] {
+    transform: translateY(-5px);
+}
+.tooltip-element[data-side="bottom"].visible {
+    transform: translateY(0);
+}
+.tooltip-element[data-side="bottom"]::after {
+    border-width: 0 var(--arrow-size) var(--arrow-size) var(--arrow-size);
+    border-color: transparent transparent var(--tooltip-bg) transparent;
+    top: calc(var(--arrow-size) * -1);
+    left: 50%;
+    margin-left: calc(var(--arrow-size) * -1);
+}

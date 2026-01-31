@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Tooltip Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        /* Example of overriding theme variables */
+        modern-tooltip {
+            --tooltip-bg: #222;
+            --tooltip-color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <modern-tooltip content="I'm a modern Web Component tooltip!">
+        <button style="padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px;">
+            Hover or Focus me
+        </button>
+    </modern-tooltip>
+
+    <script>
+        class ModernTooltip extends HTMLElement {
+            constructor() {
+                super();
+                this.attachShadow({ mode: 'open' });
+            }
+
+            connectedCallback() {
+                this.render();
+                this._trigger = this.shadowRoot.querySelector('slot').assignedElements()[0];
+                this._tooltip = this.shadowRoot.getElementById('tooltip');
+                
+                if (this._trigger) {
+                    this.setupEvents();
+                    this.setupAria();
+                }
+            }
+
+            disconnectedCallback() {
+                if (this._trigger) {
+                    this.removeEvents();
+                }
+            }
+
+            setupEvents() {
+                this._trigger.addEventListener('mouseenter', this.show.bind(this));
+                this._trigger.addEventListener('mouseleave', this.hide.bind(this));
+                this._trigger.addEventListener('focus', this.show.bind(this));
+                this._trigger.addEventListener('blur', this.hide.bind(this));
+            }
+
+            removeEvents() {
+                this._trigger.removeEventListener('mouseenter', this.show.bind(this));
+                this._trigger.removeEventListener('mouseleave', this.hide.bind(this));
+                this._trigger.removeEventListener('focus', this.show.bind(this));
+                this._trigger.removeEventListener('blur', this.hide.bind(this));
+            }
+
+            setupAria() {
+                const uniqueId = `tooltip-${Math.random().toString(36).substr(2, 9)}`;
+                this._tooltip.id = uniqueId;
+                this._trigger.setAttribute('aria-describedby', uniqueId);
+            }
+
+            show() {
+                this._tooltip.classList.add('visible');
+            }
+
+            hide() {
+                this._tooltip.classList.remove('visible');
+            }
+
+            render() {
+                const content = this.getAttribute('content') || '';
+                
+                this.shadowRoot.innerHTML = `
+                    <style>
+                        :host {
+                            position: relative;
+                            display: inline-block;
+                            --tooltip-bg: #333;
+                            --tooltip-color: #fff;
+                            --tooltip-padding: 8px 12px;
+                            --tooltip-arrow-size: 5px;
+                        }
+
+                        #tooltip {
+                            position: absolute;
+                            bottom: calc(100% + 10px);
+                            left: 50%;
+                            transform: translateX(-50%) translateY(10px);
+                            background-color: var(--tooltip-bg);
+                            color: var(--tooltip-color);
+                            padding: var(--tooltip-padding);
+                            border-radius: 6px;
+                            font-size: 14px;
+                            white-space: nowrap;
+                            opacity: 0;
+                            visibility: hidden;
+                            transition: opacity 0.2s ease, transform 0.2s ease;
+                            pointer-events: none;
+                            z-index: 10;
+                            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                        }
+
+                        #tooltip.visible {
+                            opacity: 1;
+                            visibility: visible;
+                            transform: translateX(-50%) translateY(0);
+                        }
+
+                        #tooltip::after {
+                            content: "";
+                            position: absolute;
+                            top: 100%;
+                            left: 50%;
+                            margin-left: calc(-1 * var(--tooltip-arrow-size));
+                            border-width: var(--tooltip-arrow-size);
+                            border-style: solid;
+                            border-color: var(--tooltip-bg) transparent transparent transparent;
+                        }
+                    </style>
+                    <slot></slot>
+                    <div id="tooltip" role="tooltip">${content}</div>
+                `;
+            }
+        }
+
+        customElements.define('modern-tooltip', ModernTooltip);
+    </script>
+
+</body>
+</html>
