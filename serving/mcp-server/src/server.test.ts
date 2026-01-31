@@ -68,7 +68,7 @@ describe("Server Resource Registration", () => {
     expect(server.registerTool).toHaveBeenCalledWith(
       "search_use_cases",
       expect.objectContaining({
-        description: "MANDATORY: Execute this FIRST for each and every web development use case, especially for writing modern web code. Returns use case IDs. You MUST subsequently call 'get_best_practices' with the most relevant ID to get the implementation guide.",
+        description: "MANDATORY: Execute this FIRST for each and every web development use case, even if you're implementing that use case in a framework like React, especially for writing modern web code. Returns use case IDs and descriptions. You MUST subsequently call 'get_best_practices' with the most relevant ID to get the implementation guide.",
       }),
       expect.any(Function)
     );
@@ -77,7 +77,7 @@ describe("Server Resource Registration", () => {
     expect(server.registerTool).toHaveBeenCalledWith(
       "get_best_practices",
       expect.objectContaining({
-        description: "MANDATORY: After finding a relevant 'use_case_id' from 'search_use_cases', call this tool to retrieve the complete, actionable implementation guide. Do not guess or hallucinate APIs; you must use the patterns in this guide.",
+        description: "MANDATORY: After finding a relevant 'use_case_id' from 'search_use_cases', call this tool to retrieve the complete, actionable implementation guide. This guidance is framework-agnostic; adapt it to whatever library or framework is being used. Do not guess or hallucinate APIs; you must use the patterns in this guide.",
       }),
       expect.any(Function)
     );

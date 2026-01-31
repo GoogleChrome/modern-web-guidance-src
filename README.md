@@ -15,9 +15,9 @@ The MCP server allows AI agents to access high-quality implementation patterns a
 
 ```bash
 cd serving
-npm install
-npm run build  # Generates the vector database and compiles code
-npm start
+pnpm install
+pnpm run build  # Generates the vector database and compiles code
+pnpm start
 ```
 
 For more details, see the [Serving README](./serving/mcp-server/README.md).
@@ -28,9 +28,9 @@ The evaluator suite measures how effectively AI models use modern web APIs in va
 
 ```bash
 cd evaluator
-npm install
-npm run autorun  # Runs the full test suite and evaluation
-npm run dashboard # Starts a local server to view results
+pnpm install
+pnpm run autorun  # Runs the full test suite and evaluation
+pnpm run dashboard # Starts a local server to view results
 ```
 
 ## Development

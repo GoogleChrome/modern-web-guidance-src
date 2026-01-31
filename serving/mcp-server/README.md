@@ -14,12 +14,12 @@ An Model Context Protocol (MCP) server that provides access to modern web develo
 ### Prerequisites
 
 - Node.js (v20 or higher recommended)
-- `npm`
+- `pnpm`
 
 ### 1. Install Dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 2. Build & Initialize Database
@@ -31,7 +31,7 @@ You **MUST** run the build script before starting the server. This script does t
 2.  Compiles the TypeScript code to `/build`.
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 > [!IMPORTANT]
@@ -40,7 +40,7 @@ npm run build
 ### 3. Start the Server
 
 ```bash
-npm start
+pnpm start
 ```
 
 ## Testing Semantic Search
@@ -48,7 +48,7 @@ npm start
 You can test the semantic search capabilities using the demo script:
 
 ```bash
-npx tsx scripts/demo-search.ts "fading in and growing an image as the user scrolls down"
+pnpm dlx tsx scripts/demo-search.ts "fading in and growing an image as the user scrolls down"
 
 # 🔎 Searching for: "fading in and growing an image as the user scrolls down"
 #
@@ -67,7 +67,7 @@ npx tsx scripts/demo-search.ts "fading in and growing an image as the user scrol
 ```
 
 ```bash
-npx tsx scripts/demo-search.ts "loading a low quality image placeholder on slow networks"
+pnpm dlx tsx scripts/demo-search.ts "loading a low quality image placeholder on slow networks"
 
 # 🔎 Searching for: "loading a low quality image placeholder on slow networks"
 #
@@ -86,7 +86,7 @@ npx tsx scripts/demo-search.ts "loading a low quality image placeholder on slow 
 ```
 
 ```bash
-npx tsx scripts/demo-search.ts "showing a tooltip when hovering over a button"
+pnpm dlx tsx scripts/demo-search.ts "showing a tooltip when hovering over a button"
 
 # 🔎 Searching for: "showing a tooltip when hovering over a button"
 #
@@ -109,7 +109,7 @@ npx tsx scripts/demo-search.ts "showing a tooltip when hovering over a button"
 To run the server in development mode with hot-reloading:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ## Usage
@@ -129,15 +129,15 @@ Configure your MCP client to use the locally-built server:
 }
 ```
 
-Hypothetically, this server could be published to npm and immediately used via `npx`, with no build step required:
+Hypothetically, this server could be published to npm and immediately used via `pnpm dlx`, with no build step required:
 
 ```json
 {
   "mcpServers": {
     "Modern Web": {
-      "command": "npx",
+      "command": "pnpm",
       "args": [
-        "-y",
+        "dlx",
         "modern-web-mcp"
       ]
     }
@@ -145,25 +145,24 @@ Hypothetically, this server could be published to npm and immediately used via `
 }
 ```
 
-_Note that the npx approach will not work today! This is just for illustration purposes._
+_Note that the pnpm dlx approach will not work today! This is just for illustration purposes._
 
 ## Releasing Updates
 
-For now, this project is under active development and is not yet published to npm. However, if and when it is published, it's configured to publish the **pre-built vector database** to npm. This allows users to run the server via `npx` immediately without needing to build the database locally.
+For now, this project is under active development and is not yet published to npm. However, if and when it is published, it's configured to publish the **pre-built vector database** to npm. This allows users to run the server via `pnpm dlx` immediately without needing to build the database locally.
 
 ### How to Publish
 
 1.  **Pull latest changes**: Ensure you have the latest markdown guides.
     ```bash
-    git pull origin main
+git pull origin main
     ```
 2.  **Publish**:
     ```bash
-    npm publish
+pnpm publish
     ```
-    *   The `prepublishOnly` script will automatically run `npm run build` to regenerate the vector database in `.mcp-data/` and compile the code.
+    *   The `prepublishOnly` script will automatically run `pnpm run build` to regenerate the vector database in `.mcp-data/` and compile the code.
     *   The `files` allowlist in `package.json` ensures that `.mcp-data/` and `build/` are included in the tarball, while `src/` is excluded.
-
 ## Architecture
 
 - **`src/guides/`**: Source markdown files containing web development patterns.

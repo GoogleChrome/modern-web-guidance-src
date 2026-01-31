@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+serving/build/
+serving/mcp-server/src/data/use-cases.gen.ts
+serving/mcp-server/.mcp-data/
+
+# Environment and Logs
+.env
+*.log
+
+# OS Junk
+.DS_Store
+
+# Coverage
+coverage/

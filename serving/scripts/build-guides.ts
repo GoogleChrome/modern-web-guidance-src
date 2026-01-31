@@ -3,16 +3,16 @@ import path from "path";
 import matter from "gray-matter";
 import { fileURLToPath } from "url";
 import { marked } from "marked";
-import { Embedder } from "../src/lib/embedder.js";
-import { Store, type UseCase as StoreUseCase } from "../src/lib/store.js";
+import { Embedder } from "../mcp-server/src/lib/embedder.js";
+import { Store, type UseCase as StoreUseCase } from "../mcp-server/src/lib/store.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const ROOT_DIR = path.resolve(__dirname, "..");
-const GUIDES_DIR = path.join(ROOT_DIR, "src/guides");
+const GUIDES_DIR = path.join(ROOT_DIR, "mcp-server/src/guides");
 const BUILD_GUIDES_DIR = path.join(ROOT_DIR, "build/guides");
-const DATA_DIR = path.join(ROOT_DIR, "src/data");
+const DATA_DIR = path.join(ROOT_DIR, "mcp-server/src/data");
 const OUTPUT_FILE = path.join(DATA_DIR, "use-cases.gen.ts");
 
 interface UseCase {

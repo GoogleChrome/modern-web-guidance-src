@@ -1,5 +1,5 @@
-import { Embedder } from "../src/lib/embedder.js";
-import { Store } from "../src/lib/store.js";
+import { Embedder } from "../mcp-server/src/lib/embedder.js";
+import { Store } from "../mcp-server/src/lib/store.js";
 
 async function main() {
   const query = process.argv[2] || "how to optimize images";

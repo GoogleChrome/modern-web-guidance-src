@@ -1,8 +1,0 @@
-node_modules/
-build/
-coverage/
-.DS_Store
-.env
-*.log
-src/data/use-cases.gen.ts
-.mcp-data/

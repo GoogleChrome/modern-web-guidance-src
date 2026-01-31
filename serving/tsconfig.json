@@ -10,6 +10,7 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": [
-    "mcp-server/src/**/*"
+    "mcp-server/src/**/*",
+    "scripts/**/*"
   ]
 }
