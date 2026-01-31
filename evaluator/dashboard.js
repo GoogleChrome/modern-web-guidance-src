@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const jetskiData = await jetskiRes.json();
                 jetskiVersion = jetskiData['Jetski Version'];
             }
-        } catch (e) {
+        } catch {
             console.log('Could not load Jetski info:', e);
         }
 
@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     timestamp = testEntry.timestamp;
                 }
             }
-        } catch (e) {
+        } catch {
             console.log('Could not load test manifest:', e);
         }
 
@@ -117,12 +117,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         if (!res.ok) throw new Error('Failed to fetch log');
                         const text = await res.text();
                         body.innerHTML = `<div class="log-content">${escapeHtml(text)}</div>`;
-                    } catch (e) {
+                    } catch {
                         body.innerHTML = `<div style="color: var(--accent-failure); padding: 20px;">Error loading log: ${e.message}</div>`;
                     }
                 };
             }
-        } catch (e) {
+        } catch {
             // Hide button on error
             viewLogBtn.style.display = 'none';
         }
@@ -138,7 +138,7 @@ function renderTestHeader(testID, jetskiVersion, timestamp) {
             let timeStr = timestamp;
             try {
                 timeStr = new Date(timestamp).toLocaleString();
-            } catch (e) { }
+            } catch { }
             html += ` — Run at ${timeStr}`;
         }
 
@@ -280,7 +280,7 @@ async function showDetails(testName, runs, stats, testID) {
                 </div>
             `;
         }
-    } catch (e) {
+    } catch {
         console.error('Failed to fetch prompt', e);
     }
 
@@ -420,7 +420,7 @@ async function viewDiff(setupPath, resultPath) {
 
         body.innerHTML = diffHtml;
 
-    } catch (e) {
+    } catch {
         body.innerHTML = `<div style="color: var(--accent-failure); padding: 20px;">Error loading diff: ${e.message}</div>`;
         contentDiv.classList.remove('diff-modal');
     }

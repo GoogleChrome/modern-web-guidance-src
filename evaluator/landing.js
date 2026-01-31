@@ -258,7 +258,7 @@ async function loadAllTests() {
                         data: await response.json()
                     };
                 }
-            } catch (e) {
+            } catch {
                 console.warn(`Failed to load test ${testEntry.id}:`, e);
             }
         }

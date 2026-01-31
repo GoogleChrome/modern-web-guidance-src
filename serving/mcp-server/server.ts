@@ -42,7 +42,7 @@ export function createServer() {
         try {
           content = await fs.readFile(p, "utf-8");
           break;
-        } catch (e) {
+        } catch {
           // Ignore and try next
         }
       }
@@ -80,7 +80,7 @@ export function createServer() {
         try {
           content = await fs.readFile(p, "utf-8");
           break;
-        } catch (e) {
+        } catch {
           // Ignore and try next
         }
       }

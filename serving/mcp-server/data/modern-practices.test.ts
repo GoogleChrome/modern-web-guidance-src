@@ -1,7 +1,6 @@
 
 import { describe, it, expect } from "vitest";
 import { getGuide } from "./modern-practices.ts";
-import path from "path";
 
 describe("getGuide", () => {
   it("should retrieve full guide when no section is provided", async () => {

@@ -20,7 +20,7 @@ async function main() {
   let manifest;
   try {
     manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  } catch (e) {
+  } catch {
     console.error('Failed to parse manifest!'.red);
     return;
   }

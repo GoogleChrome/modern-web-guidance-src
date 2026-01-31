@@ -61,7 +61,7 @@ module.exports = function checkBrownfield(dirPath, files) {
 
       excludesLogout = hasLogoutExclusion(json);
 
-    } catch (e) {
+    } catch {
       // Failed to parse or process
       excludesLogout = false;
     }

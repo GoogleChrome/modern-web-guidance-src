@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "test": "pnpm -r test",
-    "lint": "oxlint --ignore-path .oxlintignore",
+    "lint": "oxlint -A no-unused-vars --ignore-path .oxlintignore",
     "typecheck": "pnpm --filter modern-web-mcp run typecheck",
     "preflight": "pnpm run typecheck && pnpm run lint && pnpm run test"
   },

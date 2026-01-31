@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "eslint(no-unused-vars)": ["warn", { 
+      "varsIgnorePattern": "^e$",
+      "argsIgnorePattern": "^_"
+    }]
+  }
+}

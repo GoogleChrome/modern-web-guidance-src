@@ -82,7 +82,7 @@ function killProcessOnPort(port) {
       console.log(`Killing process ${pid} on port ${port}...`);
       execSync(`kill -9 ${pid}`);
     }
-  } catch (e) {
+  } catch {
     // Ignore error if no process found (grep/lsof returns exit code 1 if empty)
   }
 }
@@ -113,7 +113,7 @@ async function startJetski(directory) {
       browser.disconnect();
       console.log("Jetski is ready.");
       return;
-    } catch (e) {
+    } catch {
       console.log(`Connection attempt ${i + 1} failed: ${e.message}`);
       await sleep(1000);
     }
@@ -158,7 +158,7 @@ async function run() {
       console.log(`Extracting Jetski info to: ${jetskiInfoPath}`);
       try {
         await extractJetskiVersionInfo(page, jetskiInfoPath);
-      } catch (e) {
+      } catch {
         console.error("Failed to extract Jetski info:", e);
         // Don't crash the run for this, just continue
       }
@@ -209,7 +209,7 @@ async function run() {
       // WaitForSelector on frame
       await targetFrame.waitForSelector(cancelButtonSelector, { timeout: 5000 });
       console.log("Agent started working...");
-    } catch (e) {
+    } catch {
       console.log("Warning: Cancel button didn't appear quickly. Agent might have finished very fast or failed to start.");
     }
 
@@ -263,7 +263,7 @@ async function run() {
           console.log(`No ${dirName} directory found at ${sourceDir}`);
         }
       }
-    } catch (e) {
+    } catch {
       console.warn('Could not save chat log or conversations:', e.message);
     }
 

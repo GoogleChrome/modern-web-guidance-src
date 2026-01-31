@@ -1,5 +1,4 @@
 import { describe, it, expect, vi } from "vitest";
-import { createServer } from "./server.ts";
 
 // Mocking McpServer to verify registration
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", async () => {

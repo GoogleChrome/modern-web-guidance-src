@@ -97,7 +97,7 @@ function updateMcpConfig(agentType) {
         mcpConfig = JSON.parse(content);
       }
     }
-  } catch (e) {
+  } catch {
     console.error('Failed to read MCP config:', e);
   }
 
@@ -122,7 +122,7 @@ function updateMcpConfig(agentType) {
 
   try {
     fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
-  } catch (e) {
+  } catch {
     console.error('Failed to write MCP config:', e);
   }
 }
@@ -255,7 +255,7 @@ async function main() {
     if (fs.existsSync(manifestPath)) {
       try {
         manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-      } catch (e) {
+      } catch {
         console.warn('Could not parse existing manifest, starting fresh');
       }
     }
@@ -271,7 +271,7 @@ async function main() {
     }
 
     console.log(`\n✅ Test suite complete! Results saved to: results/${testID}`);
-  } catch (e) {
+  } catch {
     console.error('❌ Error during suite execution:', e);
   } finally {
     console.log(`\n=== Restoring Artifacts ===`);
