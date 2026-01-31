@@ -1,7 +1,10 @@
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import "dotenv/config";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Configuration module that loads settings from environment variables
@@ -16,7 +19,7 @@ const config = {
   jetskiDebugPort: parseInt(process.env.JETSKI_DEBUG_PORT) || 9222,
 
   // MCP Server Configuration
-  mcpServerPath: process.env.MCP_SERVER_PATH || path.join(os.homedir(), 'code/guidance/serving/mcp-server/index.ts'),
+  mcpServerPath: process.env.MCP_SERVER_PATH || path.join(__dirname, '../serving/mcp-server/index.ts'),
 };
 
 // Validate critical paths exist during configuration
