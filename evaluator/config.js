@@ -1,14 +1,13 @@
-const path = require('path');
-const os = require('os');
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
+import "dotenv/config";
 
 /**
  * Configuration module that loads settings from environment variables
  * with sensible defaults. This allows the project to work on different
  * machines without requiring hardcoded paths.
  */
-
-// Load .env file if it exists
-require('dotenv').config();
 
 const config = {
   // Jetski Configuration
@@ -17,7 +16,7 @@ const config = {
   jetskiDebugPort: parseInt(process.env.JETSKI_DEBUG_PORT) || 9222,
 
   // MCP Server Configuration
-  mcpServerPath: process.env.MCP_SERVER_PATH || path.join(os.homedir(), 'git/modern-web-mcp/build/index.js'),
+  mcpServerPath: process.env.MCP_SERVER_PATH || path.join(os.homedir(), 'code/guidance/serving/mcp-server/index.ts'),
 };
 
 // Validate critical paths exist during configuration
@@ -27,7 +26,6 @@ const criticalPaths = {
 };
 
 function validatePaths() {
-  const fs = require('fs');
   const warnings = [];
 
   for (const [name, dirPath] of Object.entries(criticalPaths)) {
@@ -43,7 +41,7 @@ function validatePaths() {
   }
 }
 
-module.exports = {
+export default {
   ...config,
   validatePaths
 };

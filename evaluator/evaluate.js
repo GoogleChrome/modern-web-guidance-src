@@ -1,11 +1,11 @@
-const glob = require('glob');
-const path = require('path');
-const fs = require('fs');
-const colors = require('colors');
+import { glob } from "glob";
+import path from 'path';
+import fs from 'fs';
+import colors from 'colors';
 
-const checkGreenfield = require('./checks/greenfield');
-const checkBrownfield = require('./checks/brownfield');
-const checkRedfield = require('./checks/redfield');
+import checkGreenfield from './checks/greenfield.js';
+import checkBrownfield from './checks/brownfield.js';
+import checkRedfield from './checks/redfield.js';
 
 async function main() {
   console.log('Starting Static Evaluation...'.cyan.bold);

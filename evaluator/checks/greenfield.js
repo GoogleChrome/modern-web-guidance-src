@@ -1,8 +1,8 @@
-const fs = require('fs');
-const path = require('path');
-const cheerio = require('cheerio');
+import fs from 'fs';
+import path from 'path';
+import * as cheerio from "cheerio";
 
-module.exports = function checkGreenfield(dirPath, files) {
+export default function checkGreenfield(dirPath, files) {
   const results = [];
 
   // 1. Load HTML

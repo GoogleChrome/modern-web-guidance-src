@@ -1,8 +1,8 @@
-const fs = require('fs');
-const path = require('path');
-const cheerio = require('cheerio');
+import fs from 'fs';
+import path from 'path';
+import * as cheerio from "cheerio";
 
-module.exports = function checkBrownfield(dirPath, files) {
+export default function checkBrownfield(dirPath, files) {
   const results = [];
 
   const htmlFile = files.find(f => f.endsWith('.html'));

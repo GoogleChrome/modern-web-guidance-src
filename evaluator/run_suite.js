@@ -1,8 +1,12 @@
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const { spawn } = require('child_process');
-const config = require('./config');
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import { spawn } from 'child_process';
+import config from './config.js';
 
 const SCENARIOS = ['greenfield', 'brownfield', 'redfield'];
 const PROMPT_TYPES = ['specific', 'vague'];

@@ -1,9 +1,9 @@
-const fs = require('fs');
-const puppeteer = require('puppeteer-core');
+import fs from 'fs';
+import puppeteer from 'puppeteer-core';
 
-const { spawn, execSync } = require('child_process');
-const path = require('path');
-const config = require('./config');
+import { spawn, execSync } from 'child_process';
+import path from 'path';
+import config from './config.js';
 
 // Parse arguments
 const args = process.argv.slice(2);
@@ -159,7 +159,7 @@ async function run() {
       try {
         await extractJetskiVersionInfo(page, jetskiInfoPath);
       } catch {
-        console.error("Failed to extract Jetski info:", e);
+        console.error("Failed to extract Jetski info:", _e);
         // Don't crash the run for this, just continue
       }
     } else {

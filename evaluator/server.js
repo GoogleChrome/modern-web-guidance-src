@@ -1,7 +1,7 @@
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const { exec } = require('child_process');
+import * as http from "http";
+import fs from 'fs';
+import path from 'path';
+import { exec } from 'child_process';
 
 const PORT = 8081;
 const MIME_TYPES = {

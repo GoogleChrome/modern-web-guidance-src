@@ -15,5 +15,6 @@
     "dotenv": "^16.4.7",
     "glob": "^10.4.5",
     "puppeteer-core": "^24.34.0"
-  }
+  },
+  "type": "module"
 }
