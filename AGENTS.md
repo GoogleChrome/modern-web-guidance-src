@@ -4,6 +4,7 @@ You are working in the `guidance` monorepo, which defines and evaluates modern w
 
 ## Rules of Engagement
 
+- **AI-first development**: Assume all code will be written and maintained by LLMs, not humans. Optimize for model reasoning, regeneration, and debugging — not human aesthetics.
 - **Flattened MCP**: The MCP server code lives in `serving/mcp-server/`. Do not create a `src/` directory there.
 - **Guidance is Truth**: The markdown files in `serving/mcp-server/guides/` are the source of truth for the MCP's knowledge.
 - **Monorepo**: This is a pnpm workspace. Run all installs and project-wide scripts (e.g., `pnpm run preflight`) from the root.
@@ -16,8 +17,8 @@ You are working in the `guidance` monorepo, which defines and evaluates modern w
   - `mcp-server/guides/`: **Source of truth for implementation guidance.** Add or edit markdown files here to update what the MCP server knows.
   - `mcp-server/data/`: Generated data, including the vector-ready use-case registry.
   - `scripts/`: Utilities for building the vector store and testing search.
-- **`harness/`**: The Spike Runner harness.
-- **`eval-view/`**: The static dashboard viewer. The "Spike Runner" evaluation suite.
+- **`harness/`**: The Guidance eval harness.
+- **`eval-view/`**: The eval dashboard for viewing eval results.
   - `checks/`: Logic for scoring AI-generated code.
   - `setup/`: Templates and scenarios used for testing.
 
@@ -28,13 +29,3 @@ You are working in the `guidance` monorepo, which defines and evaluates modern w
 3. **Testing**:
    - Serving: `pnpm --filter serving test`.
    - Evaluator: `cd evaluator && pnpm run autorun`.
-4. **Instruction Files**: 
-   - `AGENTS.md` (this file): Guidance for agents *developing* this repository.
-   - `serving/AGENTS.md`: Mandatory operational rules for agents *using* the MCP server in their own workflows.
-
-## Tech Stack
-
-- **Runtime**: Node.js (TypeScript in `serving`, JS in `evaluator`).
-- **Database**: LanceDB (Vector store for semantic search).
-- **Search**: `@huggingface/transformers` for local embeddings.
-- **MCP**: Built with the Model Context Protocol SDK.

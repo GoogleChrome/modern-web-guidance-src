@@ -5,12 +5,12 @@ A unified repository for modern web development guidance, containing both an MCP
 ## Project Structure
 
 - **`serving/`**: The Modern Web MCP server. This provides semantic search over curated web development guides and browser support data.
-- **`harness/`**: The Spike Runner evaluation harness.
-- **`eval-view/`**: The dashboard for viewing evaluation results. The Spike Runner evaluation suite. This is used to test and score AI-generated code against modern web standards and best practices.
+- **`harness/`**: The Guidance eval harness for executing and scoring tests.
+- **`eval-view/`**: A static dashboard for visualizing and analyzing evaluation results.
 
 ## Getting Started
 
-This project is managed as a **pnpm workspace**. You can install all dependencies for both the MCP server and the evaluator with a single command from the root:
+This project is managed as a **pnpm workspace**. You can install all dependencies for all projects with a single command from the root:
 
 ```bash
 pnpm install
@@ -22,27 +22,36 @@ The MCP server allows AI agents to access high-quality implementation patterns a
 
 ```bash
 cd serving
-pnpm run build  # Generates the vector database and compiles code
 pnpm start
 ```
 
 For more details, see the [Serving README](./serving/mcp-server/README.md).
 
-### 2. Spike Runner (Evaluator)
+### 2. Eval Harness & Dashboard
 
-The evaluator suite measures how effectively AI models use modern web APIs in various scenarios (Greenfield, Brownfield, Redfield).
+The evaluation suite measures how effectively AI models use modern web APIs.
 
 ```bash
-cd evaluator
-pnpm run autorun  # Runs the full test suite and evaluation
-pnpm run dashboard # Starts a local server to view results
+# To run the evaluation harness
+pnpm --filter harness run autorun
+
+# To view the results in the dashboard
+pnpm run dashboard
+```
+
+## Quality Control
+
+Run the full preflight suite (typechecking, linting, and tests) from the root:
+
+```bash
+pnpm run preflight
 ```
 
 ## Development
 
-This repository is managed as a monorepo. When contributing:
-- Add new implementation guides to `serving/mcp-server/guides/`.
-- Add new evaluation scenarios or checks to `harness/setup/` and `harness/checks/`.
+- Add implementation guides to `serving/mcp-server/guides/`.
+- Add evaluation scenarios or checks to `harness/setup/` and `harness/checks/`.
+- Build-free TypeScript is supported in `serving` (requires Node 24+).
 
 ## License
 
