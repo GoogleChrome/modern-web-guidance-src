@@ -5,12 +5,16 @@
   "main": "index.js",
   "scripts": {
     "test": "pnpm -r test",
-    "lint": "echo \"Linting not yet configured\"",
+    "lint": "oxlint --ignore-path .oxlintignore",
     "typecheck": "pnpm --filter modern-web-mcp run typecheck",
-    "preflight": "pnpm run typecheck && pnpm run test"
+    "preflight": "pnpm run typecheck && pnpm run lint && pnpm run test",
+    "docs": "node scripts/generate-docs.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.28.1"
+  "packageManager": "pnpm@10.28.1",
+  "devDependencies": {
+    "oxlint": "^1.42.0"
+  }
 }

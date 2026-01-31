@@ -2,6 +2,14 @@
 
 You are working in the `guidance` monorepo, which defines and evaluates modern web development best practices.
 
+## Rules of Engagement
+
+- **Flattened MCP**: The MCP server code lives in `serving/mcp-server/`. Do not create a `src/` directory there.
+- **Guidance is Truth**: The markdown files in `serving/mcp-server/guides/` are the source of truth for the MCP's knowledge.
+- **Monorepo**: This is a pnpm workspace. Run all installs and project-wide scripts (e.g., `pnpm run preflight`) from the root.
+- **Modern Web**: Prefer native browser APIs (Popover, CSS Anchor Positioning, View Transitions) over third-party libraries.
+- **TypeScript**: Strictly use ESM and `.js` extensions for imports in TypeScript files to support erasable syntax.
+
 ## Project Structure
 
 - **`serving/`**: The Modern Web MCP server.
