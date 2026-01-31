@@ -1,0 +1,23 @@
+# Guidance Project: Agent Rules of Engagement
+
+## Architectural Principles
+- **Flattened MCP**: The MCP server code lives in `serving/mcp-server/`. Do not create a `src/` directory there.
+- **Guidance is Truth**: The markdown files in `serving/mcp-server/guides/` are the source of truth for the MCP's knowledge.
+- **Monorepo**: This is a pnpm workspace. Run all installs and project-wide scripts from the root.
+
+## Coding Standards (2026 Modern Web)
+- **Vanilla over Libraries**: Prefer native browser APIs (Popover, CSS Anchor Positioning, View Transitions) over third-party React/Vue libraries.
+- **Types**: Use TypeScript for `serving/`. Ensure all new logic is fully typed.
+- **Testing**: Use Vitest. Add a test for every new feature or bug fix.
+- **ESM**: This is a pure ESM project. Use `.js` extensions in imports.
+
+## Agent Workflows
+1. **Understand**: Always read `AGENTS.md` and the relevant `README.md` before suggesting changes.
+2. **Verify**: After modifying guidance, run `pnpm run preflight` to ensure the vector store still builds and tests pass.
+3. **Safety**: Never expose secrets or private keys. Use `.env.example` for reference.
+
+## Prohibited Patterns
+- No `XMLHttpRequest` (use `fetch`).
+- No `var` (use `const/let`).
+- No legacy positioning for UI elements that should use the Popover API or Anchor Positioning.
+- No absolute paths for internal imports (use relative paths or workspace aliases).
