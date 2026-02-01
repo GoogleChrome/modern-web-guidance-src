@@ -4,6 +4,10 @@
     "guidedMedian": 47,
     "unguidedPassRate": 31,
     "guidedPassRate": 48,
+    "unguidedPassed": 26,
+    "unguidedTotal": 84,
+    "guidedPassed": 40,
+    "guidedTotal": 84,
     "numRuns": 3
   },
   "results": {
