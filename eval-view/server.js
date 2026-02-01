@@ -80,9 +80,11 @@ server.listen(PORT, () => {
   const url = `http://localhost:${PORT}/`;
   console.log(`Server running at ${url}`);
 
-  // Try to open the browser
-  const startCommand = process.platform === 'darwin' ? 'open' :
-    process.platform === 'win32' ? 'start' : 'xdg-open';
+  // Try to open the browser if not disabled
+  if (process.env.NO_OPEN !== 'true') {
+    const startCommand = process.platform === 'darwin' ? 'open' :
+      process.platform === 'win32' ? 'start' : 'xdg-open';
 
-  exec(`${startCommand} ${url}`);
+    exec(`${startCommand} ${url}`);
+  }
 });

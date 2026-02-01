@@ -9,7 +9,7 @@ export default defineConfig({
   workers: 1, // Ensure single worker for stable port usage
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:8082',
+    baseURL: 'http://localhost:11432',
     trace: 'on-first-retry',
   },
   projects: [
@@ -19,8 +19,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'PORT=8082 node server.js',
-    url: 'http://localhost:8082',
+    command: 'PORT=11432 NO_OPEN=true node server.js',
+    url: 'http://localhost:11432',
     reuseExistingServer: !process.env.CI,
     stdout: 'ignore',
     stderr: 'pipe',
