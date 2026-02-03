@@ -81,7 +81,8 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  console.log(`${req.method} ${req.url} -> ${filePath}`);
+  // Debug logging. Do not keep enabled.
+  // console.log(`${req.method} ${req.url} -> ${filePath}`);
 
   const extname = path.extname(filePath);
   let contentType = MIME_TYPES[extname] || 'application/octet-stream';

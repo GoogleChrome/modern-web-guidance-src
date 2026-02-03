@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import { spawn } from "child_process";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import path from "path";
@@ -14,7 +13,7 @@ describe("MCP Server Integration (Functional)", () => {
     // 1. Missing .ts extensions in dynamic imports
     // 2. Runtime environment issues (Node version compatibility)
     // 3. Actual dependency resolution (LanceDB, Transformers, etc.)
-    
+
     const transport = new StdioClientTransport({
       command: "node",
       args: [path.resolve(__dirname, "index.ts")],
@@ -27,14 +26,17 @@ describe("MCP Server Integration (Functional)", () => {
 
     try {
       await client.connect(transport);
-      
+
       const result = await client.callTool({
         name: "search_use_cases",
         arguments: { query: "tooltip" },
       });
 
-      expect(result.content).toBeDefined();
-      const textContent = result.content?.[0];
+      if (!result.content || !Array.isArray(result.content)) {
+        throw new Error("Expected content array in result");
+      }
+
+      const textContent = result.content[0];
       if (!textContent || textContent.type !== "text") {
         throw new Error("Expected text content");
       }
