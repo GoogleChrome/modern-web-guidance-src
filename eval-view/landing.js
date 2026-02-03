@@ -536,7 +536,6 @@ function renderComparisonHistory(scenario, prompt) {
                 }
 
                 if (!hasRuns) {
-                    let status = 'missing';
                     let tooltip = `Test ${testID.replace('test_', '')}: Not Run`;
 
                     let color = 'var(--bg-tertiary)';

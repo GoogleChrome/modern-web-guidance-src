@@ -1,6 +1,5 @@
 import path from 'path';
 import fs from 'fs';
-import colors from 'colors';
 import { collectResults } from './lib/collection.js';
 import { calculateMetrics } from './lib/metrics.js';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.js';

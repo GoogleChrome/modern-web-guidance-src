@@ -62,7 +62,7 @@ test.describe('Eval View Dashboard', () => {
     expect(response.status()).toBe(403);
   });
 
-  test('should block directory traversal attempts', async ({ page }) => {
+  test('should block directory traversal attempts', async ({ _page }) => {
     // Try to access a file that is definitely outside the project root
     const res = await fetch(`http://localhost:11432/../../../../../../../../../../etc/passwd`);
     // Both 403 and 404 are acceptable as they block access to the host system

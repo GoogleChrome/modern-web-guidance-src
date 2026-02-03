@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 };
             }
-        } catch (e) {
+        } catch {
             // Hide button on error
             viewLogBtn.style.display = 'none';
         }
@@ -138,7 +138,7 @@ function renderTestHeader(testID, jetskiVersion, timestamp) {
             let timeStr = timestamp;
             try {
                 timeStr = new Date(timestamp).toLocaleString();
-            } catch (e) { }
+            } catch { }
             html += ` — Run at ${timeStr}`;
         }
 
@@ -149,9 +149,8 @@ function renderTestHeader(testID, jetskiVersion, timestamp) {
     }
 }
 
-function renderSummary(data, testID) {
+function renderSummary(data, _testID) {
     const container = document.getElementById('summary-stats');
-    const summary = data.summary;
     const results = data.results;
 
     const unguidedStats = calculateGroupTotalStats(results, 'unguided');
@@ -223,15 +222,8 @@ function renderGrid(data, testID) {
 
                 if (runData && testStats) {
                     // Calculate Total/Average Pass Rate for this specific test configuration
-                    let totalPassed = 0;
-                    let totalChecks = 0;
-                    runData.forEach(run => {
-                        const s = getRunStats(run.results);
-                        totalPassed += s.passed;
-                        totalChecks += s.total;
-                    });
-
-                    const numRuns = runData.length;
+                    const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
+                    const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
                     const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
 
                     // Display totals to ensure the percentage mathematically matches the fraction
@@ -291,40 +283,42 @@ async function showDetails(testName, runs, stats, testID) {
         const resultPath = await findBestEntryPoint(basePath);
 
         // Calculate relative path (e.g., "src/App.jsx" or "index.html")
-        // resultPath is like "results/.../src/App.jsx"
-        // basePath is like "results/..."
         const relativePath = resultPath.replace(basePath + '/', '');
         const setupPath = `setup/${scenario}/${prompt}/${agent}/${relativePath}`;
 
-        // Check if setup file exists - logic removed, we always want to attempt a diff
-        // If the setup file is missing, viewDiff will treat it as an empty file (all new content)
-        const diffButton = `<button class="secondary-btn small-btn" onclick="viewDiff('${setupPath}', '${resultPath}')" style="margin-left: 10px; font-size: 0.8em; padding: 2px 8px;">View Diff</button>`;
-
-        return `
-            <div class="run-detail">
-                <div class="run-header">
-                    <strong>Run ${run.runNumber}</strong>
-                    <span style="color: ${getColor(s.rate)}">${s.rate}% Pass (${s.passed}/${s.total})</span>
-                    <div>
-                        <a href="${resultPath}" target="_blank">View Source ↗</a>
-                        ${diffButton}
-                    </div>
+        const runDetail = document.createElement('div');
+        runDetail.className = 'run-detail';
+        runDetail.innerHTML = `
+            <div class="run-header">
+                <strong>Run ${run.runNumber}</strong>
+                <span style="color: ${getColor(s.rate)}">${s.rate}% Pass (${s.passed}/${s.total})</span>
+                <div class="run-actions">
+                    <a href="${resultPath}" target="_blank">View Source ↗</a>
                 </div>
-                <ul class="check-list">
-                    ${run.results.map(check => `
-                        <li class="check-item">
-                            <span class="check-status">${check.passed ? '✅' : '❌'}</span>
-                            <span class="check-message">${escapeHtml(check.message)}</span>
-                        </li>
-                    `).join('')}
-                </ul>
             </div>
+            <ul class="check-list">
+                ${run.results.map(check => `
+                    <li class="check-item">
+                        <span class="check-status">${check.passed ? '✅' : '❌'}</span>
+                        <span class="check-message">${escapeHtml(check.message)}</span>
+                    </li>
+                `).join('')}
+            </ul>
         `;
+
+        const diffButton = document.createElement('button');
+        diffButton.className = 'secondary-btn small-btn';
+        diffButton.textContent = 'View Diff';
+        diffButton.style.cssText = 'margin-left: 10px; font-size: 0.8em; padding: 2px 8px;';
+        diffButton.onclick = () => viewDiff(setupPath, resultPath);
+
+        runDetail.querySelector('.run-actions').appendChild(diffButton);
+        return runDetail;
     });
 
-    const runsHtml = (await Promise.all(runDetailsPromises)).join('');
-
-    body.innerHTML = promptHtml + runsHtml;
+    const runDetails = await Promise.all(runDetailsPromises);
+    body.innerHTML = promptHtml;
+    runDetails.forEach(detail => body.appendChild(detail));
     modal.classList.add('show');
 }
 
@@ -432,10 +426,6 @@ function getRunStats(checks) {
     const total = checks.length;
     const rate = Math.round((passed / total) * 100);
     return { rate, passed, total };
-}
-
-function calculateRunPassRate(checks) {
-    return getRunStats(checks).rate;
 }
 
 function getColor(percentage) {

@@ -31,7 +31,7 @@ export function createServer() {
       },
     }),
     { mimeType: "text/markdown" },
-    async (uri, { request }) => {
+    async (uri, { _request }) => {
       const possiblePaths = [
         path.resolve(__dirname, "AGENTS.md"), // In build/
         path.resolve(__dirname, "../AGENTS.md"), // In root (dev fallback)
