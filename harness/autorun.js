@@ -263,7 +263,7 @@ async function run() {
           console.log(`No ${dirName} directory found at ${sourceDir}`);
         }
       }
-    } catch {
+    } catch (e) {
       console.warn('Could not save chat log or conversations:', e.message);
     }
 

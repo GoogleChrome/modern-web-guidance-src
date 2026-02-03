@@ -101,7 +101,7 @@ function updateMcpConfig(agentType) {
         mcpConfig = JSON.parse(content);
       }
     }
-  } catch {
+  } catch (e) {
     console.error('Failed to read MCP config:', e);
   }
 
@@ -126,7 +126,7 @@ function updateMcpConfig(agentType) {
 
   try {
     fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
-  } catch {
+  } catch (e) {
     console.error('Failed to write MCP config:', e);
   }
 }
