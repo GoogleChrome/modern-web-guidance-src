@@ -14,6 +14,7 @@ This project is managed as a **pnpm workspace**. You can install all dependencie
 
 ```bash
 pnpm install
+pnpm --filter eval-view exec playwright install
 ```
 
 ### 1. Modern Web MCP (Serving)
