@@ -16,7 +16,7 @@ const config = {
   // Jetski Configuration
   jetskiDir: process.env.JETSKI_DIR || path.join(os.homedir(), '.gemini/jetski'),
   jetskiBin: process.env.JETSKI_BIN || '/Applications/Jetski.app/Contents/Resources/app/bin/jetski',
-  jetskiDebugPort: parseInt(process.env.JETSKI_DEBUG_PORT) || 9222,
+  jetskiDebugPort: parseInt(process.env.JETSKI_DEBUG_PORT) || 9226,
 
   // MCP Server Configuration
   mcpServerPath: path.join(__dirname, '../../serving/mcp-server/index.ts'),
