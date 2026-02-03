@@ -19,7 +19,7 @@ const config = {
   jetskiDebugPort: parseInt(process.env.JETSKI_DEBUG_PORT) || 9222,
 
   // MCP Server Configuration
-  mcpServerPath: process.env.MCP_SERVER_PATH || path.join(__dirname, '../../serving/mcp-server/index.ts'),
+  mcpServerPath: path.join(__dirname, '../../serving/mcp-server/index.ts'),
 };
 
 // Validate critical paths exist during configuration

@@ -113,7 +113,7 @@ async function startJetski(directory) {
       browser.disconnect();
       console.log("Jetski is ready.");
       return;
-    } catch {
+    } catch (e) {
       console.log(`Connection attempt ${i + 1} failed: ${e.message}`);
       await sleep(1000);
     }
