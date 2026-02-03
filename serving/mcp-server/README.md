@@ -28,9 +28,7 @@ pnpm install
 
 This project uses a local **LanceDB** vector database to power its semantic search capabilities. The database is built from the source markdown guides located in `mcp-server/guides/`..
 
-You **MUST** run the build script before starting the server. This script does two things:
-1.  Generates the vector embeddings and populates `/.mcp-data/`.
-2.  Compiles the TypeScript code to `/build`.
+You **MUST** run the build script before starting the server. It generates the vector embeddings and populates `/.mcp-data/`.
 
 ```bash
 pnpm run build
