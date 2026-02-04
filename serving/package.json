@@ -28,7 +28,7 @@
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
     "@lancedb/lancedb": "^0.23.0",
-    "@modelcontextprotocol/sdk": "^1.0.1",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "apache-arrow": "18.1.0",
     "marked": "^17.0.1",
     "web-features": "^3.12.0",
