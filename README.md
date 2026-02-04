@@ -33,8 +33,14 @@ For more details, see the [Serving README](./serving/mcp-server/README.md).
 The evaluation suite measures how effectively AI models use modern web APIs.
 
 ```bash
-# To run the evaluation harness
-pnpm autorun
+# To run the full evaluation suite
+pnpm suite
+
+# To run a single isolated task
+pnpm task <directory> "<prompt>"
+
+# To generate reports from results
+pnpm report
 
 # To view the results in the dashboard
 pnpm dashboard

@@ -4,9 +4,10 @@
   "type": "module",
   "scripts": {
     "test": "node --test lib/*.test.js",
-    "evaluate": "node evaluate.js",
-    "run-suite": "node run_suite.js",
-    "autorun": "npm run run-suite && npm run evaluate"
+    "report": "node evaluate.js",
+    "suite": "node run_suite.js",
+    "task": "node run_suite.js",
+    "full-run": "npm run suite && npm run report"
   },
   "dependencies": {
     "cheerio": "^1.0.0",

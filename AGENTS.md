@@ -28,4 +28,4 @@ You are working in the `guidance` monorepo, which defines and evaluates modern w
 2. **Updating Guidance**: If you modify files in `serving/mcp-server/guides/`, you **MUST** run `pnpm build:mcp` to regenerate the vector database (`.mcp-data/`).
 3. **Testing**:
    - Serving: `pnpm test:mcp`.
-   - Evaluator: `pnpm autorun`.
+   - Evaluator: `pnpm suite`.

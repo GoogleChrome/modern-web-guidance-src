@@ -208,6 +208,23 @@ async function main() {
   console.log(`Log file: ${logFilePath}\n`);
   console.log(`Isolated HOME: ${testHomeDir}\n`);
 
+  // Single task mode check
+  const [argDir, argPrompt] = process.argv.slice(2);
+  if (argDir && argPrompt) {
+    console.log(`\n=== Running Single Task ===`);
+    console.log(`Directory: ${argDir}`);
+    console.log(`Prompt: ${argPrompt}\n`);
+    
+    try {
+      updateMcpConfig('guided');
+      await runCommand('node', ['jetski-agent.js', path.resolve(argDir), JSON.stringify(argPrompt)]);
+      console.log(`\n✅ Single task complete!`);
+    } catch (error) {
+      console.error(`\n❌ Single task failed:`, error);
+    }
+    return; // Exit after single task
+  }
+
   try {
     const endRun = 1 + NUM_RUNS;
     console.log(`\nStarting execution for ${NUM_RUNS} runs`);
@@ -261,7 +278,7 @@ async function main() {
 
             try {
               // autorun inherits the isolated HOME via process.env
-              await runCommand('node', ['autorun.js', targetDir, JSON.stringify(promptContent)]);
+              await runCommand('node', ['jetski-agent.js', targetDir, JSON.stringify(promptContent)]);
               console.log(`✅ Completed: ${scenario}/${promptType}/${agentType} (Run ${runNumber})`);
             } catch (error) {
               console.error(`❌ Failed: ${scenario}/${promptType}/${agentType} (Run ${runNumber})`, error);
