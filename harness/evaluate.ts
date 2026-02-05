@@ -1,9 +1,9 @@
 import path from 'path';
 import fs from 'fs';
 import 'colors';
-import { collectResults } from './lib/collection.js';
-import { calculateMetrics } from './lib/metrics.js';
-import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.js';
+import { collectResults } from './lib/collection.ts';
+import { calculateMetrics } from './lib/metrics.ts';
+import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
 
 async function main() {
   console.log('Starting Static Evaluation...'.cyan.bold);
@@ -56,9 +56,8 @@ Report generated: ${path.resolve(path.join(resultsDir, 'evals.md'))}`.green.bold
     console.log(`JSON Report generated: ${path.resolve(path.join(resultsDir, 'evals.json'))}`.green.bold);
     console.log(`Pass Rate - Unguided: ${metrics.summary.unguidedPassRate}%, Guided: ${metrics.summary.guidedPassRate}%`.cyan);
 
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`Evaluation failed: ${message}`.red);
+  } catch (error: any) {
+    console.error(`Evaluation failed: ${error.message}`.red);
   }
 }
 

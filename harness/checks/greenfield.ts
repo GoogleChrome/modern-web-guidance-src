@@ -1,13 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import * as cheerio from "cheerio";
+import type { ScenarioCheck } from '../lib/metrics.ts';
 
-/**
- * @param {string} dirPath
- * @param {string[]} files
- */
-export default function checkGreenfield(dirPath, files) {
-  const results = [];
+export default async function checkGreenfield(dirPath: string, files: string[]): Promise<ScenarioCheck[]> {
+  const results: ScenarioCheck[] = [];
 
   // 1. Load HTML
   const htmlFile = files.find((f) => f.endsWith('.html'));
@@ -48,8 +45,7 @@ export default function checkGreenfield(dirPath, files) {
   let interestForFeatureDetected = false;
   let loadingPlaceholderFeatureDetected = false;
 
-  /** @param {string} content */
-  const checkContent = (content) => {
+  const checkContent = (content: string) => {
     // Check for interestfor feature detection
     // Match: .hasOwnProperty('interestForElement') or "interestForElement" with flexible quotes/spacing
     if (/\.hasOwnProperty\(\s*["']interestForElement["']\s*\)/.test(content)) {
@@ -69,7 +65,7 @@ export default function checkGreenfield(dirPath, files) {
   });
 
   // Check inline scripts too
-  $('script').each((i, el) => {
+  $('script').each((_i, el) => {
     const content = $(el).html();
     if (content && content.trim()) {
       checkContent(content);
@@ -106,7 +102,7 @@ export default function checkGreenfield(dirPath, files) {
   });
 
   // Check inline styles in HTML
-  $('style').each((i, el) => {
+  $('style').each((_i, el) => {
     const content = $(el).html();
     if (content) {
       if (content.includes('animation-timeline: view()') || content.includes('animation-timeline:view()')) {

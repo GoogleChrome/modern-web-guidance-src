@@ -1,14 +1,11 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
-import checkGreenfield from '../checks/greenfield.js';
-import checkBrownfield from '../checks/brownfield.js';
-import checkRedfield from '../checks/redfield.js';
+import checkGreenfield from '../checks/greenfield.ts';
+import checkBrownfield from '../checks/brownfield.ts';
+import checkRedfield from '../checks/redfield.ts';
 
-/**
- * @param {string} resultsDir
- */
-export async function collectResults(resultsDir) {
+export async function collectResults(resultsDir: string) {
   const runDirs = fs.readdirSync(resultsDir)
     .filter(name => {
       const fullPath = path.join(resultsDir, name);
@@ -20,8 +17,7 @@ export async function collectResults(resultsDir) {
     throw new Error('No test runs found!');
   }
 
-  /** @type {Record<string, any[]>} */
-  const allResults = {};
+  const allResults: Record<string, any[]> = {};
 
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
@@ -46,11 +42,11 @@ export async function collectResults(resultsDir) {
       let scenarioResults = [];
 
       if (scenario === 'greenfield') {
-        scenarioResults = checkGreenfield(dir, files);
+        scenarioResults = await checkGreenfield(dir, files);
       } else if (scenario === 'brownfield') {
-        scenarioResults = checkBrownfield(dir, files);
+        scenarioResults = await checkBrownfield(dir, files);
       } else if (scenario === 'redfield') {
-        scenarioResults = checkRedfield(dir, files);
+        scenarioResults = await checkRedfield(dir, files);
       } else {
         console.warn(`Unknown scenario type: ${scenario}`);
         continue;

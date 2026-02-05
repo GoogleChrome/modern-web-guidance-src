@@ -2,14 +2,15 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import puppeteer from 'puppeteer-core';
+import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
-import config from './config.js';
+import { config } from './config.ts';
 
 // Parse arguments
-// Usage: node jetski-agent.js <directory> <prompt> [agentType]
+// Usage: node jetski-agent.ts <directory> <prompt> [agentType]
 const args = process.argv.slice(2);
 if (args.length < 2) {
-  console.error("Usage: node jetski-agent.js <directory> <prompt> [agentType]");
+  console.error("Usage: node jetski-agent.ts <directory> <prompt> [agentType]");
   process.exit(1);
 }
 const [targetDirectory, userPrompt, agentType = 'guided'] = args;
@@ -19,7 +20,9 @@ const absoluteTargetDir = path.resolve(targetDirectory);
  * Sets up an isolated HOME directory to ensure test isolation while preserving authentication.
  * @returns {string} The path to the temporary HOME directory.
  */
-function setupIsolatedHome() {
+function setupIsolatedHome(): string {
+  // Use /tmp/ deliberately because os.tmpdir() on macOS can return paths that are 
+  // too long for valid Unix socket paths, which causes issues for some JetSki/VS Code components.
   const tempHome = `/tmp/ghh-${Math.random().toString(36).substring(7)}`;
   fs.mkdirSync(tempHome, { recursive: true });
 
@@ -52,9 +55,8 @@ function setupIsolatedHome() {
   try {
     execSync(`rsync -a "${appSupportSource}/Local Storage/" "${appSupportDest}/Local Storage/"`);
     execSync(`rsync -a --exclude='workspaceStorage' "${appSupportSource}/User/" "${appSupportDest}/User/"`);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.warn('Warning: Failed to copy some Application Support directories:', message);
+  } catch (err: any) {
+    console.warn('Warning: Failed to copy some Application Support directories:', err.message);
   }
 
   // Copy essential .gemini state
@@ -71,6 +73,7 @@ function setupIsolatedHome() {
   process.env.JETSKI_DIR = geminiDest;
 
   // Re-sync config's jetskiDir now that environment variables are set
+  // (In TS we import it so we update the object)
   config.jetskiDir = geminiDest;
 
   return tempHome;
@@ -80,10 +83,9 @@ function setupIsolatedHome() {
  * Updates the MCP configuration in the current isolated home.
  * @param {string} type - 'guided' or 'unguided'
  */
-function updateMcpConfig(type) {
+function updateMcpConfig(type: string): void {
   const configPath = path.join(config.jetskiDir, 'mcp_config.json');
-  /** @type {{ mcpServers?: Record<string, any> }} */
-  let mcpConfig = { mcpServers: {} };
+  let mcpConfig: { mcpServers?: Record<string, any> } = { mcpServers: {} };
 
   try {
     if (fs.existsSync(configPath)) {
@@ -119,16 +121,11 @@ function updateMcpConfig(type) {
   }
 }
 
-/** @param {number} ms */
-async function sleep(ms) {
+async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/**
- * @param {import('puppeteer-core').Page} page
- * @param {string} outputPath
- */
-async function extractJetskiVersionInfo(page, outputPath) {
+async function extractJetskiVersionInfo(page: Page, outputPath: string): Promise<any> {
   try {
     // 1. Ensure the window is focused to receive keyboard events
     await page.bringToFront();
@@ -155,12 +152,11 @@ async function extractJetskiVersionInfo(page, outputPath) {
     await page.waitForSelector(detailSelector, { visible: true, timeout: 10000 });
 
     // 6. Extract the text
-    const versionText = await page.$eval(detailSelector, (/** @type {any} */ el) => el.innerText);
+    const versionText = await page.$eval(detailSelector, (el: any) => el.innerText);
 
     // 7. Parse to JSON
     const lines = versionText.split('\n');
-    /** @type {Record<string, string>} */
-    const info = {};
+    const info: Record<string, string> = {};
     for (const line of lines) {
       // Split by first occurrence of ': '
       const separatorIndex = line.indexOf(': ');
@@ -180,15 +176,13 @@ async function extractJetskiVersionInfo(page, outputPath) {
     console.log(`Successfully saved Jetski info to ${outputPath}`);
     return info;
 
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('Failed to extract version info:', message);
+  } catch (error: any) {
+    console.error('Failed to extract version info:', error.message);
     throw error;
   }
 }
 
-/** @param {number | string} port */
-function killProcessOnPort(port) {
+function killProcessOnPort(port: number | string): void {
   try {
     const pid = execSync(`lsof -t -i :${port}`).toString().trim();
     if (pid) {
@@ -200,8 +194,7 @@ function killProcessOnPort(port) {
   }
 }
 
-/** @param {string} directory */
-async function startJetski(directory) {
+async function startJetski(directory: string): Promise<void> {
   // Kill anything on the debug port first
   killProcessOnPort(config.jetskiDebugPort);
 
@@ -249,17 +242,16 @@ async function startJetski(directory) {
       browser.disconnect();
       console.log("Jetski is ready.");
       return;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      console.log(`Connection attempt ${i + 1} failed: ${message}`);
+    } catch (e: any) {
+      console.log(`Connection attempt ${i + 1} failed: ${e.message}`);
       await sleep(1000);
     }
   }
   throw new Error("Timeout waiting for Jetski to start");
 }
 
-async function run() {
-  let testHomeDir = null;
+async function run(): Promise<void> {
+  let testHomeDir: string | null = null;
   try {
     // Setup isolated environment and MCP config
     testHomeDir = setupIsolatedHome();
@@ -274,7 +266,7 @@ async function run() {
     });
 
     // Find the main IDE window (workbench)
-    let page;
+    let page: Page | undefined;
     for (let i = 0; i < 20; i++) {
       console.log(`Searching for workbench window (Attempt ${i + 1}/20)...`);
       const pages = await browser.pages();
@@ -309,10 +301,10 @@ async function run() {
     const cancelButtonSelector = '[data-tooltip-id="input-send-button-cancel-tooltip"]';
     const allowOnceButtonSelector = 'button[aria-label="Allow once"]';
 
-    const iframeSelector = '#antigravity\\.agentPanel, #antigravity\\.cascadePanel';
+    const iframeSelector = '#antigravity\.agentPanel, #antigravity\.cascadePanel';
 
     console.log(`Waiting for Agent Panel iframe...`);
-    let targetFrame = null;
+    let targetFrame: any = null;
     for (let i = 0; i < 20; i++) {
       const iframeElement = await page.$(iframeSelector);
       if (iframeElement) {
@@ -366,13 +358,12 @@ async function run() {
       console.log("Saving chat log...");
       // Ensure #chat exists in the target frame
       await targetFrame.waitForSelector('#chat', { timeout: 5000 });
-      const chatText = await targetFrame.$eval('#chat', (/** @type {any} */ el) => el.innerText || '');
+      const chatText = await targetFrame.$eval('#chat', (el: any) => el.innerText || '');
       const chatLogPath = path.resolve(absoluteTargetDir, 'chat_log.txt');
       fs.writeFileSync(chatLogPath, chatText, 'utf8');
       console.log(`Saved chat log to: ${chatLogPath}`);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      console.warn('Could not save chat log:', message);
+    } catch (e: any) {
+      console.warn('Could not save chat log:', e.message);
     }
 
     // Close Jetski
@@ -395,7 +386,8 @@ async function run() {
   } finally {
     killProcessOnPort(config.jetskiDebugPort);
     if (testHomeDir && fs.existsSync(testHomeDir)) {
-      console.log(`\n=== Cleaning up isolated HOME ===`);
+      console.log(`
+=== Cleaning up isolated HOME ===`);
       try {
         fs.rmSync(testHomeDir, { recursive: true, force: true });
         console.log('✅ Cleanup successful');

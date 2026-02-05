@@ -12,8 +12,7 @@ const AGENT_TYPES = ['guided', 'unguided'];
 const NUM_RUNS = 3;
 
 // Global log file stream
-/** @type {fs.WriteStream | null} */
-let logStream = null;
+let logStream: fs.WriteStream | null = null;
 
 async function main() {
   const baseDir = __dirname;
@@ -35,7 +34,8 @@ async function main() {
   const logFilePath = path.join(testDir, 'test_suite.log');
   const originalConsoleMethods = setupLogging(logFilePath);
 
-  console.log(`\n=== Test Suite Starting with ID: ${testID} ===\n`);
+  console.log(`\n=== Test Suite Starting with ID: ${testID} ===
+`);
   console.log(`Results will be saved to: ${testDir}\n`);
   console.log(`Log file: ${logFilePath}\n`);
 
@@ -48,10 +48,12 @@ async function main() {
 
     try {
       // Default to guided for single tasks
-      await runCommand('node', ['jetski-agent.js', path.resolve(argDir), JSON.stringify(argPrompt), 'guided']);
+      // Using --experimental-strip-types to run the TS agent directly
+      await runCommand('node', ['--experimental-strip-types', 'jetski-agent.ts', path.resolve(argDir), JSON.stringify(argPrompt), 'guided']);
       console.log(`\n✅ Single task complete!`);
     } catch (error) {
-      console.error(`\n❌ Single task failed:`, error);
+      console.error(`
+❌ Single task failed:`, error);
     }
     restoreLogging(originalConsoleMethods);
     return;
@@ -96,8 +98,8 @@ async function main() {
 
             console.log(`\n>>> Running Scenario: ${scenario} | Prompt: ${promptType} | Agent: ${agentType} | Run: ${runNumber}`);
             try {
-              // Pass agentType so jetski-agent.js can configure its own isolated MCP
-              await runCommand('node', ['jetski-agent.js', targetDir, JSON.stringify(promptContent), agentType]);
+              // Pass agentType so jetski-agent.ts can configure its own isolated MCP
+              await runCommand('node', ['--experimental-strip-types', 'jetski-agent.ts', targetDir, JSON.stringify(promptContent), agentType]);
               console.log(`✅ Completed: ${scenario}/${promptType}/${agentType} (Run ${runNumber})`);
             } catch (error) {
               console.error(`❌ Failed: ${scenario}/${promptType}/${agentType} (Run ${runNumber})`, error);
@@ -108,8 +110,7 @@ async function main() {
     }
 
     const manifestPath = path.join(resultsDir, 'tests.json');
-    /** @type {{ tests: any[] }} */
-    let manifest = { tests: [] };
+    let manifest: { tests: any[] } = { tests: [] };
     if (fs.existsSync(manifestPath)) {
       try {
         manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -129,15 +130,15 @@ async function main() {
   }
 }
 
-/** @param {string} logFilePath */
-function setupLogging(logFilePath) {
+// Hook into console methods to also write to log file
+function setupLogging(logFilePath: string) {
   logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
 
   const originalLog = console.log;
   const originalError = console.error;
   const originalWarn = console.warn;
 
-  console.log = function(...args) {
+  console.log = function(...args: any[]) {
     const message = args.map(arg =>
       typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
     ).join(' ');
@@ -147,7 +148,7 @@ function setupLogging(logFilePath) {
     }
   };
 
-  console.error = function(...args) {
+  console.error = function(...args: any[]) {
     const message = args.map(arg =>
       typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
     ).join(' ');
@@ -157,7 +158,7 @@ function setupLogging(logFilePath) {
     }
   };
 
-  console.warn = function(...args) {
+  console.warn = function(...args: any[]) {
     const message = args.map(arg =>
       typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
     ).join(' ');
@@ -170,8 +171,7 @@ function setupLogging(logFilePath) {
   return { originalLog, originalError, originalWarn };
 }
 
-/** @param {any} originals */
-function restoreLogging(originals) {
+function restoreLogging(originals: any) {
   if (originals) {
     console.log = originals.originalLog;
     console.error = originals.originalError;
@@ -183,12 +183,8 @@ function restoreLogging(originals) {
   }
 }
 
-/**
- * @param {string} command
- * @param {string[]} [args]
- */
-async function runCommand(command, args = []) {
-  return new Promise((/** @type {(value?: any) => void} */ resolve, reject) => {
+async function runCommand(command: string, args: string[] = []) {
+  return new Promise((resolve, reject) => {
     const process = spawn(command, args, {
       stdio: 'inherit',
       shell: true
@@ -196,7 +192,7 @@ async function runCommand(command, args = []) {
 
     process.on('close', (code) => {
       if (code === 0) {
-        resolve();
+        resolve(true);
       } else {
         reject(new Error(`Command failed with code ${code}`));
       }

@@ -1,13 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import * as cheerio from "cheerio";
+import type { ScenarioCheck } from '../lib/metrics.ts';
 
-/**
- * @param {string} dirPath
- * @param {string[]} files
- */
-export default function checkBrownfield(dirPath, files) {
-  const results = [];
+export default async function checkBrownfield(dirPath: string, files: string[]): Promise<ScenarioCheck[]> {
+  const results: ScenarioCheck[] = [];
 
   const htmlFile = files.find(f => f.endsWith('.html'));
   if (!htmlFile) {
@@ -35,8 +32,7 @@ export default function checkBrownfield(dirPath, files) {
         const json = JSON.parse(content);
 
         // Helper to recursively search for "not" -> "href_matches": "/logout"
-        /** @param {any} obj */
-        const hasLogoutExclusion = (obj) => {
+        const hasLogoutExclusion = (obj: any): boolean => {
           if (!obj || typeof obj !== 'object') return false;
 
           // Check if this object is a "not" clause targeting logout

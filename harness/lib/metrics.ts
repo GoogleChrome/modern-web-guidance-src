@@ -1,44 +1,34 @@
-/**
- * @typedef {Object} ScenarioCheck
- * @property {string} id
- * @property {boolean} passed
- * @property {string} message
- */
+export interface ScenarioCheck {
+  id: string;
+  passed: boolean;
+  message: string;
+}
 
-/**
- * @typedef {Object} RunResult
- * @property {number} runNumber
- * @property {ScenarioCheck[]} results
- */
+export interface RunResult {
+  runNumber: number;
+  results: ScenarioCheck[];
+}
 
-/**
- * @typedef {Object} Metrics
- * @property {Object} summary
- * @property {number} summary.unguidedMedian
- * @property {number} summary.guidedMedian
- * @property {number} summary.unguidedPassRate
- * @property {number} summary.guidedPassRate
- * @property {number} summary.unguidedPassed
- * @property {number} summary.unguidedTotal
- * @property {number} summary.guidedPassed
- * @property {number} summary.guidedTotal
- * @property {number} summary.numRuns
- * @property {Record<string, { median: number, rates: number[] }>} testPassRates
- * @property {string[]} sortedKeys
- */
+export interface Metrics {
+  summary: {
+    unguidedMedian: number;
+    guidedMedian: number;
+    unguidedPassRate: number;
+    guidedPassRate: number;
+    unguidedPassed: number;
+    unguidedTotal: number;
+    guidedPassed: number;
+    guidedTotal: number;
+    numRuns: number;
+  };
+  testPassRates: Record<string, { median: number; rates: number[] }>;
+  sortedKeys: string[];
+}
 
-/**
- * @param {Record<string, RunResult[]>} allResults
- * @param {number} numRuns
- * @returns {Metrics}
- */
-export function calculateMetrics(allResults, numRuns) {
-  /** @type {Record<string, number>} */
-  const scenarioOrder = { 'greenfield': 1, 'brownfield': 2, 'redfield': 3 };
-  /** @type {Record<string, number>} */
-  const promptOrder = { 'vague': 1, 'specific': 2 };
-  /** @type {Record<string, number>} */
-  const agentOrder = { 'unguided': 1, 'guided': 2 };
+export function calculateMetrics(allResults: Record<string, RunResult[]>, numRuns: number): Metrics {
+  const scenarioOrder: Record<string, number> = { 'greenfield': 1, 'brownfield': 2, 'redfield': 3 };
+  const promptOrder: Record<string, number> = { 'vague': 1, 'specific': 2 };
+  const agentOrder: Record<string, number> = { 'unguided': 1, 'guided': 2 };
 
   const sortedKeys = Object.keys(allResults).sort((a, b) => {
     const [scenA, promptA, agentA] = a.split(' - ');
@@ -53,33 +43,33 @@ export function calculateMetrics(allResults, numRuns) {
     return (agentOrder[agentA] || 99) - (agentOrder[agentB] || 99);
   });
 
-  /** @type {Record<string, any>} */
-  const testPassRates = {};
+  // Calculate pass rates for each test across all runs
+  const testPassRates: Record<string, { median: number; rates: number[] }> = {};
   for (const name of sortedKeys) {
     const runs = allResults[name];
-    const passRates = runs.map((/** @type {any} */ run) => {
+    const passRates = runs.map(run => {
       const checks = run.results;
-      const passCount = checks.filter((/** @type {any} */ c) => c.passed).length;
+      const passCount = checks.filter(c => c.passed).length;
       const totalCount = checks.length;
       return totalCount > 0 ? (passCount / totalCount) * 100 : 0;
-    }).sort((/** @type {number} */ a, /** @type {number} */ b) => a - b);
-    
+    }).sort((a, b) => a - b);
+
     // Calculate median
     const mid = Math.floor(passRates.length / 2);
-    const median = passRates.length % 2 === 0 
-      ? (passRates[mid - 1] + passRates[mid]) / 2 
+    const median = passRates.length % 2 === 0
+      ? (passRates[mid - 1] + passRates[mid]) / 2
       : passRates[mid];
-    
+
     testPassRates[name] = {
       median: Math.round(median),
-      rates: passRates.map((/** @type {number} */ r) => Math.round(r))
+      rates: passRates.map(r => Math.round(r))
     };
   }
 
   // Calculate overall statistics (Median)
-  let guidedMedians = [];
-  let unguidedMedians = [];
-  
+  let guidedMedians: number[] = [];
+  let unguidedMedians: number[] = [];
+
   for (const [name, stats] of Object.entries(testPassRates)) {
     if (name.includes(' - guided')) {
       guidedMedians.push(stats.median);
@@ -89,13 +79,12 @@ export function calculateMetrics(allResults, numRuns) {
     }
   }
 
-  /** @param {number[]} arr */
-  const calculateMedianFunc = (arr) => {
+  const calculateMedianFunc = (arr: number[]) => {
     if (arr.length === 0) return 0;
     const sorted = [...arr].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 === 0 
-      ? (sorted[mid - 1] + sorted[mid]) / 2 
+    return sorted.length % 2 === 0
+      ? (sorted[mid - 1] + sorted[mid]) / 2
       : sorted[mid];
   };
 
@@ -110,9 +99,9 @@ export function calculateMetrics(allResults, numRuns) {
 
   for (const name of sortedKeys) {
     const runs = allResults[name];
-    runs.forEach((/** @type {any} */ run) => {
+    runs.forEach(run => {
       const checks = run.results;
-      const passCount = checks.filter((/** @type {any} */ c) => c.passed).length;
+      const passCount = checks.filter(c => c.passed).length;
       const totalCount = checks.length;
 
       if (name.includes(' - unguided')) {

@@ -12,7 +12,17 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * machines without requiring hardcoded paths.
  */
 
-const config = {
+interface Config {
+  jetskiDir: string;
+  jetskiBin: string;
+  jetskiDebugPort: number;
+  mcpServerPath: string;
+  numRuns: number;
+  scenarios: string[];
+  types: string[];
+}
+
+const config: Config = {
   // Jetski Configuration
   jetskiDir: process.env.JETSKI_DIR || path.join(os.homedir(), '.gemini/jetski'),
   jetskiBin: process.env.JETSKI_BIN || '/Applications/Jetski.app/Contents/Resources/app/bin/jetski',
@@ -20,6 +30,11 @@ const config = {
 
   // MCP Server Configuration
   mcpServerPath: path.join(__dirname, '../../serving/mcp-server/index.ts'),
+
+  // Suite Configuration
+  numRuns: 3,
+  scenarios: ['specific', 'vague'],
+  types: ['brownfield', 'greenfield', 'redfield']
 };
 
 // Validate critical paths exist during configuration
@@ -32,7 +47,7 @@ function validatePaths() {
   const warnings = [];
 
   for (const [name, dirPath] of Object.entries(criticalPaths)) {
-    if (!fs.existsSync(dirPath)) {
+    if (!fs.existsSync(dirPath as string)) {
       warnings.push(`⚠️  ${name} not found: ${dirPath}`);
     }
   }
@@ -48,3 +63,5 @@ export default {
   ...config,
   validatePaths
 };
+
+export { config };

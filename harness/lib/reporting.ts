@@ -1,13 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import type { Metrics, RunResult, ScenarioCheck } from './metrics.ts';
 
-/** @import {Metrics, RunResult, ScenarioCheck} from './metrics.js' */
-
-/**
- * @param {Metrics} metrics
- * @param {Record<string, RunResult[]>} allResults
- */
-export function generateMarkdownReport(metrics, allResults) {
+export function generateMarkdownReport(metrics: Metrics, allResults: Record<string, RunResult[]>): string {
   const { summary, testPassRates, sortedKeys } = metrics;
   let md = '# Evaluation Results\n\n';
 
@@ -23,14 +18,14 @@ export function generateMarkdownReport(metrics, allResults) {
   for (const name of sortedKeys) {
     const runs = allResults[name];
     const stats = testPassRates[name];
-
+    
     md += `## ${name.toUpperCase()} (Median: ${stats.median}%)\n\n`;
     md += `**Pass rates across runs:** ${stats.rates.join('%, ')}%\n\n`;
 
     // Show the median run's detailed results
-    const medianRunIndex = runs.findIndex((run) => {
+    const medianRunIndex = runs.findIndex((run: RunResult) => {
       const checks = run.results;
-      const passCount = checks.filter((c) => c.passed).length;
+      const passCount = checks.filter((c: ScenarioCheck) => c.passed).length;
       const totalCount = checks.length;
       const rate = Math.round((passCount / totalCount) * 100);
       return rate === stats.median;
@@ -38,7 +33,7 @@ export function generateMarkdownReport(metrics, allResults) {
 
     const displayRun = medianRunIndex >= 0 ? runs[medianRunIndex] : runs[0];
     const checks = displayRun.results;
-    const groupPass = checks.filter((c) => c.passed).length;
+    const groupPass = checks.filter((c: ScenarioCheck) => c.passed).length;
     const groupTotal = checks.length;
 
     md += `### Run ${displayRun.runNumber} Details (${groupPass}/${groupTotal})\n\n`;
@@ -46,7 +41,7 @@ export function generateMarkdownReport(metrics, allResults) {
     const tableHeader = '| Status | Expectation |\n|---|---|\n';
     let tableRows = '';
 
-    checks.forEach((check) => {
+    checks.forEach((check: ScenarioCheck) => {
       const symbol = check.passed ? '✅' : '❌';
       const safeMessage = check.message.replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -62,11 +57,7 @@ export function generateMarkdownReport(metrics, allResults) {
   return md;
 }
 
-/**
- * @param {Metrics} metrics
- * @param {Record<string, RunResult[]>} allResults
- */
-export function generateJsonReport(metrics, allResults) {
+export function generateJsonReport(metrics: Metrics, allResults: Record<string, RunResult[]>) {
   return {
     summary: metrics.summary,
     results: allResults,
@@ -74,12 +65,7 @@ export function generateJsonReport(metrics, allResults) {
   };
 }
 
-/**
- * @param {string} resultsDir
- * @param {string} markdown
- * @param {object} json
- */
-export function saveReports(resultsDir, markdown, json) {
+export function saveReports(resultsDir: string, markdown: string, json: any) {
   fs.mkdirSync(resultsDir, { recursive: true });
   fs.writeFileSync(path.join(resultsDir, 'evals.md'), markdown);
   fs.writeFileSync(path.join(resultsDir, 'evals.json'), JSON.stringify(json, null, 2));

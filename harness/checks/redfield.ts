@@ -1,13 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import * as cheerio from "cheerio";
+import type { ScenarioCheck } from '../lib/metrics.ts';
 
-/**
- * @param {string} dirPath
- * @param {string[]} files
- */
-export default function checkRedfield(dirPath, files) {
-  const results = [];
+export default async function checkRedfield(dirPath: string, files: string[]): Promise<ScenarioCheck[]> {
+  const results: ScenarioCheck[] = [];
 
   const htmlFile = files.find((f) => f.endsWith('.html'));
   if (!htmlFile) {
@@ -34,18 +31,9 @@ export default function checkRedfield(dirPath, files) {
   });
 
   // 2. Imperative JS Removal (Heuristic)
-  // We expect "less" imperative code or specific patterns to be gone.
-  // The user says "Modernization: Agent removes imperative JavaScript code".
-  // We can check if script tags are empty or if specific old functions are missing.
-  // For now, let's verify that we DON'T see manual event listeners for mouseover/focus if interestfor is used.
-  // But searching for 'addEventListener' might be too broad.
-  // Let's rely on the positive presence of the new API as likely indicator of success,
-  // plus maybe checking for the POLYFILL only.
-
   const jsFiles = files.filter((f) => f.endsWith('.js'));
-  /** @type {string[]} */
-  const inlineScripts = [];
-  $('script').each((i, el) => {
+  const inlineScripts: string[] = [];
+  $('script').each((_i, el) => {
     const content = $(el).html();
     if (content && content.trim()) {
       inlineScripts.push(content);
@@ -55,15 +43,13 @@ export default function checkRedfield(dirPath, files) {
   let interestForFeatureDetected = false;
   let imperativePatternFound = false;
 
-  /** @param {string} content */
-  const checkContent = (content) => {
+  const checkContent = (content: string) => {
     // Check for interestfor polyfill / feature detection
     if (/\.hasOwnProperty\(\s*["']interestForElement["']\s*\)/.test(content)) {
       interestForFeatureDetected = true;
     }
 
     // Heuristic: If we see addEventListener('mouseover') or 'mouseenter' it MIGHT be the old way.
-    // This is weak, but let's try.
     if (/\.addEventListener\(\s*["']mouseover["']\s*\)/.test(content)) {
       imperativePatternFound = true;
     }
@@ -84,8 +70,6 @@ export default function checkRedfield(dirPath, files) {
     message: 'Check for interestfor feature detection'
   });
 
-  // This is a "soft" check - having imperative code might be necessary for other things,
-  // but we warn if it looks like the old mousover handlers are still there.
   results.push({
     id: 'redfield-imperative-reduced',
     passed: !imperativePatternFound,
