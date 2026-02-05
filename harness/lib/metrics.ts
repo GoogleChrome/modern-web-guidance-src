@@ -52,7 +52,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, numRun
       const totalCount = checks.length;
       return totalCount > 0 ? (passCount / totalCount) * 100 : 0;
     }).sort((a, b) => a - b);
-    
+
     const mid = Math.floor(passRates.length / 2);
     const median = passRates.length % 2 === 0
       ? (passRates[mid - 1] + passRates[mid]) / 2
@@ -66,14 +66,14 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, numRun
 
   const calcSummary = (keys: string[]) => {
     const medians = keys.map(k => testPassRates[k].median);
-    
+
     const sortedMedians = [...medians].sort((a, b) => a - b);
     const mid = Math.floor(sortedMedians.length / 2);
     const median = sortedMedians.length === 0 ? 0 :
-      (sortedMedians.length % 2 === 0 
-        ? (sortedMedians[mid - 1] + sortedMedians[mid]) / 2 
+      (sortedMedians.length % 2 === 0
+        ? (sortedMedians[mid - 1] + sortedMedians[mid]) / 2
         : sortedMedians[mid]);
-    
+
     let passed = 0;
     let total = 0;
     keys.forEach(k => {

@@ -1,10 +1,11 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import { calculateMetrics } from './metrics.js';
+import { calculateMetrics } from './metrics.ts';
+import type { RunResult } from './metrics.ts';
 
 describe('calculateMetrics', () => {
   test('should calculate correct metrics for a simple result set', () => {
-    const allResults = {
+    const allResults: Record<string, RunResult[]> = {
       'greenfield - specific - guided': [
         {
           runNumber: 1,
