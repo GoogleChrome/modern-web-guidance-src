@@ -64,8 +64,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, numRun
     };
   }
 
-  const calcSummary = (isGuided: boolean) => {
-    const keys = sortedKeys.filter(k => k.includes(' - guided') === isGuided);
+  const calcSummary = (keys: string[]) => {
     const medians = keys.map(k => testPassRates[k].median);
     
     const sortedMedians = [...medians].sort((a, b) => a - b);
@@ -92,8 +91,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, numRun
     };
   };
 
-  const uStats = calcSummary(false);
-  const gStats = calcSummary(true);
+  const uStats = calcSummary(sortedKeys.filter(k => k.includes(' - unguided')));
+  const gStats = calcSummary(sortedKeys.filter(k => k.includes(' - guided')));
 
   return {
     summary: {
