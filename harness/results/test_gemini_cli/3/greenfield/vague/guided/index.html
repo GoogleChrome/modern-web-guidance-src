@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew | Artisanal Coffee</title>
+    <style>
+        :root {
+            --primary: #4e342e;
+            --secondary: #bcaaa4;
+            --accent: #ffab91;
+            --text: #3e2723;
+            --bg: #fafafa;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            color: var(--text);
+            background: var(--bg);
+            line-height: 1.6;
+        }
+
+        header {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .hero-content {
+            z-index: 1;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+        }
+
+        h1 {
+            font-size: 4rem;
+            margin: 0;
+            color: var(--primary);
+        }
+
+        .hero-image-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        .hero-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Scroll-driven animation for hero image */
+        @keyframes fade-and-grow {
+            from {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+        }
+
+        @supports (animation-timeline: view()) {
+            .hero-image {
+                animation: fade-and-grow linear both;
+                animation-timeline: view();
+                animation-range: exit -20% exit 100%;
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .hero-image {
+                    animation: none;
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+        }
+
+        main {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+        }
+
+        section {
+            margin-bottom: 4rem;
+        }
+
+        .product-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .details-trigger {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            anchor-name: --details-btn;
+        }
+
+        /* Tooltip using Popover API and Anchor Positioning */
+        #ingredients-tooltip {
+            position-anchor: --details-btn;
+            position-area: top;
+            position-try-fallbacks: flip-block;
+            width: max-content;
+            margin-inline: auto;
+            background: var(--text);
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            border: none;
+        }
+
+        #ingredients-tooltip ul {
+            margin: 0;
+            padding-left: 1.2rem;
+        }
+
+        .spacer {
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="hero-image-container">
+            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&q=80&w=1000" 
+                 loading-placeholder="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&q=10&w=100"
+                 alt="Coffee beans being roasted" 
+                 class="hero-image">
+        </div>
+        <div class="hero-content">
+            <h1>Bean & Brew</h1>
+            <p>Experience the art of perfect roasting.</p>
+        </div>
+    </header>
+
+    <main>
+        <section>
+            <h2>Our Signature Blend</h2>
+            <div class="product-card">
+                <h3>Midnight Espresso</h3>
+                <p>A bold, dark roast with notes of chocolate and dark cherry.</p>
+                <button class="details-trigger" interestfor="ingredients-tooltip">
+                    Details
+                </button>
+            </div>
+        </section>
+
+        <div id="ingredients-tooltip" popover="hint">
+            <strong>Ingredients:</strong>
+            <ul>
+                <li>100% Arabica Beans</li>
+                <li>Ethically Sourced (Brazil & Ethiopia)</li>
+                <li>Small-batch roasted</li>
+            </ul>
+        </div>
+
+        <section>
+            <h2>Visit Us</h2>
+            <p>Located in the heart of the city, we serve freshly brewed coffee every day from 7 AM to 7 PM.</p>
+        </section>
+        
+        <div class="spacer"></div>
+    </main>
+
+    <!-- Polyfill detection and loading -->
+    <script>
+        (function() {
+            function loadScript(src) {
+                return new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = src;
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+            }
+
+            const polyfills = [];
+
+            // Popover polyfill
+            if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+                polyfills.push('https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js');
+            }
+
+            // Interest Invokers polyfill
+            if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+                polyfills.push('https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js');
+            }
+
+            // Anchor Positioning polyfill
+            if (!("positionAnchor" in document.documentElement.style)) {
+                polyfills.push('https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js');
+            }
+
+            // Adaptive Loading polyfill
+            if (!('loadingPlaceholder' in HTMLImageElement.prototype)) {
+                polyfills.push('http://example.github.io/adaptive-loading-polyfill/adaptive-loading.min.js');
+            }
+
+            if (polyfills.length > 0) {
+                Promise.all(polyfills.map(loadScript)).then(() => {
+                    console.log('Polyfills loaded');
+                }).catch(err => {
+                    console.error('Error loading polyfills', err);
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+I will start by investigating the available guides in the `serving/mcp-server/guides/` directory to ensure I follow the project's best practices for Popover, CSS Anchor Positioning, and Scroll-driven Animations.
+I will list the contents of the `serving/mcp-server/guides/` directory using an absolute path to correctly locate the best practice documentation.
+I will now explore the `ui` and `webperf` subdirectories within the guides to find specific instructions for implementing the requested UI components and performance optimizations.
+I will read the `tooltip.md`, `scroll-driven-animations.md`, and `adaptive-loading.md` guides to understand the recommended implementation patterns for these features.
+I will read the `index.html` file in the current directory to understand the existing structure and where to integrate the new features.
+I will now create the `index.html` file, implementing the coffee shop landing page with the requested features: a hero image that scales and fades in on scroll using Scroll-driven Animations, an Adaptive Loading placeholder, and a 'Details' button that reveals ingredients via a non-modal popover with CSS Anchor Positioning.
+I will check the root `package.json` file to see if any of the polyfills mentioned in the guides are already included as dependencies in the project.
+I will update the `index.html` file to refine the popover's CSS, ensuring it strictly adheres to the best practices for Anchor Positioning as outlined in the guides, specifically including `width: max-content` and `margin-inline: auto`.
+I have completed the product landing page for Brew & Bean. The implementation includes:
+- A **Hero Image** that uses **Scroll-driven Animations** (`animation-timeline: view()`) to fade in and scale up as it enters the viewport.
+- **Adaptive Loading** integration using the `loading-placeholder` attribute on the hero image to serve a low-resolution version on slower networks.
+- A **'Details' button** that triggers a **non-modal popover** on hover using the `interestfor` attribute and `popover="hint"`.
+- **CSS Anchor Positioning** to precisely tether the ingredients popover to the details button.
+- A modern, coffee-themed design using native web platform features and high-quality stock photography.
+
+The code adheres to the project's guidance on using the latest native APIs over third-party libraries.

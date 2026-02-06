@@ -1,0 +1,6 @@
+I will search for "tooltip" in the codebase to locate the existing implementation.
+I'll search for tooltip implementation guides to ensure I follow the modern best practices defined in this project.
+I will now retrieve the implementation guide for the "tooltip" use case to use the Popover API and Interest Invokers correctly.
+I will read the `index.html` file to understand its current structure and prepare for the modernization.
+I will modernize the tooltip implementation in `index.html` by replacing the manual event listeners and CSS positioning with the modern Popover API, Interest Invokers, and CSS Anchor Positioning.
+I have modernized the tooltip implementation in `index.html` by replacing the imperative JavaScript event listeners and manual CSS positioning with the declarative Popover API and Interest Invokers. The tooltip now uses `popover="hint"` and the `interestfor` attribute, while positioning is handled by CSS Anchor Positioning (`anchor-name`, `position-anchor`, and `position-area`), adhering to modern web standards and the project's best practices.

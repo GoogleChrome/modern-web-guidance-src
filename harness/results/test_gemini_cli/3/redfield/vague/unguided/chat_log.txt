@@ -1,0 +1,15 @@
+I will begin by reading the `index.html` file to understand the current tooltip implementation.
+I will read the `index.html` file using its absolute path to understand the existing tooltip logic.
+I will search the `serving/mcp-server/guides/` directory for guidance on modern tooltip implementations using the Popover API and CSS Anchor Positioning.
+I will list the contents of the `/Users/micahjo/guidance/serving/mcp-server/guides/` directory to locate relevant modern web development guides.
+I will explore the `ui` and `webperf` directories within the guides to find specific information on modern UI components and performance best practices.
+I will read the `tooltip.md` guide to understand the recommended approach for modernizing tooltips.
+I will modernize the tooltip by using the Popover API and CSS Anchor Positioning, removing the imperative JavaScript logic and replacing it with declarative attributes as recommended in the project's guides.
+I will list the contents of the `/Users/micahjo/guidance/harness/results/test_gemini_cli/3/redfield/vague/unguided/` directory to verify the file structure and correct any path errors.
+I will correctly update the `index.html` file using its absolute path to ensure the modernization changes are applied to the right file.
+I will remove the accidentally created `harness` directory to maintain a clean project structure.
+I will enhance the tooltip by transforming it into a "User Profile" hovercard, incorporating a stock photo as suggested, to demonstrate a more modern and visually engaging implementation.
+I will search the repository for any existing polyfills to determine if I should include them or reference them in the modernized tooltip implementation.
+I will perform a final review of the `index.html` file to ensure the implementation is correct, modern, and aligns with all provided instructions and guides.
+I will add the polyfill detection and loading script to the `index.html` file to ensure the tooltip is "production ready" and follows the best practices outlined in the project's guidance.
+I have modernized the tooltip implementation by replacing the imperative JavaScript logic with native browser APIs, including the Popover API, CSS Anchor Positioning, and Interest Invokers. The new implementation features a "User Profile" hovercard with a stock photo from Unsplash and includes conditional polyfill loading to ensure compatibility, all while adhering to the project's "Modern Web" and "Guidance is Truth" mandates.

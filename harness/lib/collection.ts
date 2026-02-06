@@ -1,9 +1,9 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
-import checkGreenfield from '../checks/greenfield.ts';
-import checkBrownfield from '../checks/brownfield.ts';
-import checkRedfield from '../checks/redfield.ts';
+import checkGreenfield from '../app_checks/greenfield.js';
+import checkBrownfield from '../app_checks/brownfield.js';
+import checkRedfield from '../app_checks/redfield.js';
 
 export async function collectResults(resultsDir: string) {
   const runDirs = fs.readdirSync(resultsDir)
@@ -21,7 +21,7 @@ export async function collectResults(resultsDir: string) {
 
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
-    
+
     // Structure: results/{testID}/{runNumber}/{scenario}/{type}/{agent}
     const directories = glob.sync('*/*/*/', {
       cwd: runPath,

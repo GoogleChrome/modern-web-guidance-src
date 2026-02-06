@@ -1,0 +1,14 @@
+I will start by examining the contents of `index.html` to identify where the navigation links are defined and how to best implement the Speculation Rules API.
+I will list the files in the current directory to confirm my location and ensure I use the correct file paths.
+I will read the `index.html` file to understand its structure and locate the navigation links.
+I will check the modern web guidance in the project to ensure I follow the recommended practices for implementing the Speculation Rules API.
+I will list the contents of the `serving/mcp-server/guides/webperf/` directory from the project root to find relevant guidance.
+I will read the `preload-prerender.md` file to understand the recommended approach for implementing pre-rendering.
+I will add the Speculation Rules API to the `<head>` of `index.html` to enable pre-rendering for the specified navigation links while explicitly excluding `/logout`.
+I will refine the `old_string` in the `replace` tool call to accurately match the content of `index.html` and correctly insert the Speculation Rules API.
+I will examine the root `package.json` to identify available scripts and testing procedures that I can use to verify my changes.
+I will read the `package.json` from the project root using its absolute path to find the relevant scripts.
+I will read the `harness/package.json` file to see if there are any specific tests or scripts relevant to the evaluator or the current task.
+I will perform a final check of the `index.html` file to ensure the Speculation Rules API is correctly implemented and there are no other issues.
+I will run the `pnpm lint` command from the project root to ensure that my changes comply with the project's coding standards.
+I have implemented the Speculation Rules API in `index.html` to enable pre-rendering for the specified navigation links while ensuring that the `/logout` link is never pre-rendered, as requested.chan-done

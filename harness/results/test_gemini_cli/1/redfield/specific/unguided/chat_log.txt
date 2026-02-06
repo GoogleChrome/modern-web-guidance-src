@@ -1,0 +1,10 @@
+I will start by reading the `index.html` file to understand the current tooltip implementation.
+I will read the `index.html` file in the current directory to examine the existing tooltip code.
+I will search for "Interest Invokers" in the guides to ensure I use the correct modern implementation.
+I will search for "Interest Invokers" in the guides folder within the root directory.
+I will read the `ui/tooltip.md` guide to understand the recommended approach for creating tooltips with the Popover API and Interest Invokers.
+I will modernize the tooltip implementation by updating the `index.html` file to use the declarative Popover API with Interest Invokers and CSS Anchor Positioning, while also adding the recommended polyfills for better compatibility.
+I will check the root `package.json` to identify any relevant linting or build commands that should be run to ensure the changes adhere to the project's standards.
+I will run the `pnpm run lint` command from the root directory to verify that the changes comply with the project's linting standards.
+I will run `pnpm -w run lint` to execute the linting script across the entire workspace.
+I have successfully modernized the tooltip implementation by replacing the manual JavaScript event listeners with the declarative HTML Popover API and Interest Invokers. I also utilized CSS Anchor Positioning for the tooltip's placement and included the recommended polyfills to ensure compatibility across different browsers, as specified in the project's guides.

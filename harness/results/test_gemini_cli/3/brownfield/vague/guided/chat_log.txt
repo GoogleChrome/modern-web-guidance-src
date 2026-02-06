@@ -1,0 +1,14 @@
+I will start by examining the contents of `index.html` and checking for other pages in the current directory to understand the project's structure.
+I will read the content of `index.html` to identify any links to other pages and understand how navigation is currently handled.
+I will search for "Speculation Rules" and "prefetch" in the `search_use_cases` to find the best practices for making page navigations near-instant.
+I will retrieve the best practices for `preload-prerender` to understand how to effectively improve navigation speed.
+I will add a `<script type="speculationrules">` block to `index.html` to enable prerendering for all links except `/logout`, using a `moderate` eagerness to ensure near-instant navigation.
+I will update `index.html` to include Unsplash images for the "Seasonal Favorites" cards and add the necessary styling to ensure they look polished.
+I will now insert the `<img>` tags into the "Seasonal Favorites" cards, using stock photos from Unsplash as requested.
+I will search for "View Transitions" in `search_use_cases` to see if I can further enhance the navigation experience and make it feel truly instant.
+I will check my available skills to see if there's one specifically for implementing View Transitions, which could significantly improve the perceived speed of navigations.
+I will search for "view transitions" in `search_use_cases` again to find any relevant implementation guides or best practices.
+I will add the `<meta name="view-transition" content="same-origin">` tag to `index.html`, as it's a simple and effective way to enable smooth cross-document transitions in supported browsers, further enhancing the "instant" feel of navigations.
+I will add a preconnect link for Unsplash to `index.html` to speed up image loading, which will complement the prerendering and contribute to a faster overall user experience.
+I will now perform a final check of the `index.html` file to ensure that all the changes—Speculation Rules, View Transitions, stock images, and preconnect—have been correctly implemented.
+I have implemented the Speculation Rules API to prerender internal links, making navigations nearly instant. I also added a View Transitions meta tag for smooth cross-document transitions and updated the Seasonal Favorites cards with high-quality stock images from Unsplash.

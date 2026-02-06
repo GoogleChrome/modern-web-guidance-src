@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brew & Bean - Artisanal Coffee</title>
+    <style>
+        :root {
+            --primary: #4e342e;
+            --secondary: #d7ccc8;
+            --text: #212121;
+            --accent: #ffab40;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            color: var(--text);
+            line-height: 1.6;
+            background-color: #fafafa;
+        }
+
+        header {
+            height: 60vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2000&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            color: white;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 4rem;
+            margin: 0;
+            letter-spacing: -1px;
+        }
+
+        .hero-container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 4rem auto;
+            display: flex;
+            justify-content: center;
+            /* SDA: DO NOT use overflow: hidden on parent */
+        }
+
+        .hero-image {
+            width: 90%;
+            height: 600px;
+            object-fit: cover;
+            border-radius: 24px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+        }
+
+        /* Scroll-driven Animations */
+        @keyframes fade-and-scale {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @supports (animation-timeline: view()) {
+            .hero-image {
+                opacity: 0;
+                animation: fade-and-scale linear both;
+                animation-timeline: view();
+                /* Animates as it enters the viewport */
+                animation-range: entry 10% entry 60%;
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .hero-image {
+                    animation: none;
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+        }
+
+        .content {
+            padding: 4rem 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .product-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            margin-bottom: 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #eee;
+        }
+
+        .product-info h3 {
+            margin-top: 0;
+            font-size: 1.8rem;
+            color: var(--primary);
+        }
+
+        .details-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            /* Anchor Positioning name */
+            anchor-name: --details-btn-anchor;
+        }
+
+        .details-btn:hover {
+            background: #3e2723;
+        }
+
+        /* Popover Styling */
+        #ingredients-popover {
+            border: none;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            background: white;
+            color: var(--text);
+            font-size: 1rem;
+            
+            /* Anchor Positioning - following guide best practices */
+            position-anchor: --details-btn-anchor;
+            position-area: top;
+            width: max-content;
+            margin-inline: auto;
+            position-try-fallbacks: flip-block;
+        }
+
+        #ingredients-popover ul {
+            margin: 0.5rem 0 0 0;
+            padding-left: 1.2rem;
+        }
+
+        #ingredients-popover strong {
+            color: var(--primary);
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .scroll-hint {
+            margin-top: 2rem;
+            font-style: italic;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Brew & Bean</h1>
+        <p>Your daily ritual, perfected.</p>
+        <div class="scroll-hint">Scroll down to see our featured brew</div>
+    </header>
+
+    <div class="hero-container">
+        <!-- Adaptive Loading: loading-placeholder attribute -->
+        <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=2000&auto=format&fit=crop" 
+             loading-placeholder="https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=10&w=200&auto=format&fit=crop"
+             alt="Freshly brewed espresso with rich crema" 
+             class="hero-image">
+    </div>
+
+    <main class="content">
+        <section>
+            <div class="product-card">
+                <div class="product-info">
+                    <h3>Signature Macchiato</h3>
+                    <p>Espresso meets velvety foam and a touch of sweetness.</p>
+                </div>
+                <!-- interestfor triggers the popover on hover/focus -->
+                <button class="details-btn" interestfor="ingredients-popover">
+                    Details
+                </button>
+            </div>
+        </section>
+
+        <!-- Non-modal popover for ingredients -->
+        <div id="ingredients-popover" popover="hint">
+            <strong>Key Ingredients:</strong>
+            <ul>
+                <li>Double-shot Arabica Espresso</li>
+                <li>Micro-foamed Organic Milk</li>
+                <li>Hand-crafted Vanilla Bean Syrup</li>
+                <li>Artisanal Sea Salt Caramel</li>
+            </ul>
+        </div>
+        
+        <div style="height: 50vh;"></div>
+    </main>
+
+    <footer>
+        &copy; 2026 Brew & Bean Coffee Co.
+    </footer>
+
+</body>
+</html>

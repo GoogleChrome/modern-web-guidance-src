@@ -46,6 +46,28 @@ pnpm report
 pnpm dashboard
 ```
 
+## Configuration
+
+Configuration variables are defined in [`harness/config.ts`](./harness/config.ts), and environment variables can be set in [`harness/.env`](./harness/.env).
+
+### Flags
+
+Flags for the agent harness reside in [`harness/run_suite.ts`](./harness/run_suite.ts).
+
+```
+# Specify agent and test dir name
+pnpm suite --agent=gemini_cli --name=my_test_run
+# OR
+pnpm task <directory> "<prompt>" --agent=gemini_cli --name=my_test_run
+```
+
+Flags for the report reside in [`harness/evaluate.ts`](./harness/evaluate.ts).
+
+```
+# Specify test dir name to evaluate
+pnpm report --test_dir=my_test_run
+```
+
 ## Quality Control
 
 Run the full preflight suite (typechecking, linting, and tests) from the root:

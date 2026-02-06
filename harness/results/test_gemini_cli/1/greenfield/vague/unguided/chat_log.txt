@@ -1,0 +1,20 @@
+I will start by examining the existing `index.html` and searching the project's guides to identify the recommended modern web APIs for implementation.
+I will list the contents of the `serving/mcp-server/guides/` directory to understand the available guidance for the project.
+I will list the contents of the `/Users/micahjo/guidance/serving/mcp-server/guides/` directory to locate the relevant documentation.
+I will explore the `ui` and `webperf` directories within the guides to find specific modern web development practices.
+I will read the `tooltip.md`, `scroll-driven-animations.md`, and `adaptive-loading.md` guides to understand the recommended implementation details for the landing page features.
+I will read the current content of `index.html` to understand its structure before implementing the new features.
+I will now create the `index.html` file, incorporating the hero section with scroll-driven animations, the "Details" button with a Popover-based tooltip, and adaptive loading for the hero image.
+I will check for a `package.json` file in the current directory to determine if I can manage dependencies for the polyfills.
+I will now update `index.html` to include the conditional polyfill loading as recommended by the guides, ensuring broader browser compatibility for the modern features.
+I will check the root `package.json` to identify any relevant preflight or linting scripts that I should run to verify the project's integrity.
+I will read the root `package.json` to check for available scripts.
+I will add "Our Beans" and "Visit Us" sections to the `index.html` to create a more comprehensive and visually appealing landing page prototype.
+I have built the coffee shop landing page in `index.html` with the following features:
+- A modern "Details" button using the **Popover API** and **Interest Invokers** (`interestfor`) to show ingredients on hover.
+- **CSS Anchor Positioning** to tether the ingredients tooltip to the button.
+- A **Scroll-driven animation** on the main hero image that fades in and grows larger as the user scrolls down the page.
+- **Adaptive Loading** using the `loading-placeholder` attribute for low-quality image fallbacks on slow networks.
+- **Progressive enhancement** with feature detection and conditional polyfill loading for all modern web APIs used.
+- A polished, complete design with additional sections and stock photos from Unsplash.
+- Adherence to the **Guidance Project Context**, including CSS ESM-style imports and native browser APIs.

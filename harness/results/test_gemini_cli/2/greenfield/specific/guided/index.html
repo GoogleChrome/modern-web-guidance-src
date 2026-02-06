@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew | Handcrafted Coffee</title>
+    <style>
+        :root {
+            --primary-color: #4e342e;
+            --secondary-color: #d7ccc8;
+            --accent-color: #ff9800;
+            --text-color: #212121;
+            --bg-color: #fafafa;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem 2rem;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .hero {
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            overflow: visible; /* Important: do not use overflow: hidden for scroll-driven animations */
+            padding: 2rem;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            max-width: 600px;
+        }
+
+        .hero-image-container {
+            margin-top: 2rem;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .hero-image {
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            
+            /* Initial state for scroll animation */
+            opacity: 0;
+            transform: scale(0.8);
+        }
+
+        @supports (animation-timeline: view()) {
+            .hero-image {
+                animation: fade-and-scale linear both;
+                animation-timeline: view();
+                animation-range: entry 10% cover 50%;
+            }
+
+            @keyframes fade-and-scale {
+                from {
+                    opacity: 0;
+                    transform: scale(0.8);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .hero-image {
+                    animation: none;
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+        }
+
+        .product-section {
+            padding: 4rem 2rem;
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .details-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            anchor-name: --details-btn;
+            transition: background-color 0.2s;
+        }
+
+        .details-btn:hover {
+            background-color: #e68a00;
+        }
+
+        #ingredients-popover {
+            position-anchor: --details-btn;
+            position-area: top;
+            position-try-fallbacks: flip-block;
+            margin-bottom: 8px;
+            padding: 1rem;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            width: max-content;
+        }
+
+        #ingredients-popover h3 {
+            margin-top: 0;
+            font-size: 1rem;
+            color: var(--primary-color);
+        }
+
+        #ingredients-popover ul {
+            margin: 0;
+            padding-left: 1.2rem;
+        }
+
+        .extra-content {
+            height: 100vh; /* Ensure there is enough scroll space */
+            padding: 4rem 2rem;
+            background-color: var(--secondary-color);
+            text-align: center;
+        }
+
+        footer {
+            padding: 2rem;
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+        }
+    </style>
+    
+    <!-- Polyfills -->
+    <script>
+        // Feature detection for Popover
+        if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+            const script = document.createElement("script");
+            script.src = "https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js";
+            document.head.appendChild(script);
+        }
+
+        // Feature detection for Interest Invokers
+        if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+            const script = document.createElement("script");
+            script.src = "https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js";
+            document.head.appendChild(script);
+        }
+
+        // Feature detection for Anchor Positioning
+        if (!("positionAnchor" in document.documentElement.style)) {
+            const script = document.createElement("script");
+            script.src = "https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js";
+            document.head.appendChild(script);
+        }
+
+        // Feature detection for Adaptive Loading
+        if (!('loadingPlaceholder' in HTMLImageElement.prototype)) {
+            const script = document.createElement("script");
+            script.src = "http://example.github.io/adaptive-loading-polyfill/adaptive-loading.min.js";
+            document.head.appendChild(script);
+        }
+    </script>
+</head>
+<body>
+
+    <header>
+        <div class="logo">BEAN & BREW</div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1>Artisanal Coffee, Roasted to Perfection</h1>
+            <p>Experience the rich flavors of ethically sourced beans, brewed with passion.</p>
+            <div class="hero-image-container">
+                <img 
+                    src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80" 
+                    loading-placeholder="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=200&q=20" 
+                    alt="Close-up of a perfectly poured latte with latte art" 
+                    class="hero-image"
+                >
+            </div>
+        </section>
+
+        <section class="product-section">
+            <h2>Our Signature Latte</h2>
+            <p>A creamy blend of our finest espresso and silky steamed milk.</p>
+            
+            <button class="details-btn" interestfor="ingredients-popover">
+                Details
+            </button>
+
+            <div id="ingredients-popover" popover="hint">
+                <h3>Ingredients</h3>
+                <ul>
+                    <li>Ethically Sourced Arabica Espresso</li>
+                    <li>Organic Whole Milk</li>
+                    <li>House-made Vanilla Bean Syrup</li>
+                    <li>Dusting of Premium Cocoa</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="extra-content">
+            <h2>Visit Us Today</h2>
+            <p>Scroll more to see our locations and hours.</p>
+            <div style="margin-top: 50vh;">
+                <p>We are located in the heart of the city.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Bean & Brew Coffee Co. All rights reserved.</p>
+    </footer>
+
+</body>
+</html>

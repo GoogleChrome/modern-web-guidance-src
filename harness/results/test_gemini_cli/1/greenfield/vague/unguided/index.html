@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Modern Grind | Coffee Shop</title>
+  <style>
+    :root {
+      --coffee-dark: #2c1810;
+      --coffee-medium: #6f4e37;
+      --coffee-light: #f5ebe0;
+      --accent: #bc6c25;
+      --text: #283618;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--coffee-light);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    header {
+      padding: 2rem;
+      text-align: center;
+      background: white;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--coffee-dark);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .hero {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden; /* Recommended not to have overflow: hidden on parent for view() but this is for centering */
+      position: relative;
+    }
+
+    /* We wrap the image to avoid scroll jail if we use view() but here we use scroll() on root */
+    .hero-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero-image {
+      width: 80%;
+      max-width: 800px;
+      height: auto;
+      border-radius: 2rem;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+      
+      /* Scroll-driven animation */
+      @supports (animation-timeline: scroll()) {
+        opacity: 0;
+        transform: scale(0.8);
+        animation: hero-reveal linear both;
+        animation-timeline: scroll(root);
+        animation-range: 0vh 60vh;
+      }
+    }
+
+    @keyframes hero-reveal {
+      from {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero-image {
+        animation: none;
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .product-details {
+      padding: 4rem 2rem;
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .details-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border-radius: 3rem;
+      cursor: pointer;
+      transition: transform 0.2s;
+      anchor-name: --details-btn;
+    }
+
+    .details-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    #ingredients-tooltip {
+      position-anchor: --details-btn;
+      position-area: top;
+      position-try-fallbacks: flip-block;
+      width: max-content;
+      margin-inline: auto;
+      
+      padding: 1rem;
+      background: var(--coffee-dark);
+      color: white;
+      border-radius: 1rem;
+      border: none;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+
+    #ingredients-tooltip ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      text-align: left;
+    }
+
+    #ingredients-tooltip li {
+      margin-bottom: 0.5rem;
+    }
+
+    #ingredients-tooltip li:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Popover styles */
+    [popover] {
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      transform: translateY(10px);
+    }
+
+    [popover]:popover-open {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @starting-style {
+      [popover]:popover-open {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+    }
+
+    .spacer {
+      height: 100vh;
+    }
+  </style>
+  <script>
+    // Feature detection and polyfill loading according to Guidance rules
+    (function() {
+      const polyfills = [];
+      
+      // Interest Invokers
+      if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+        polyfills.push("https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js");
+      }
+      
+      // Popover
+      if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+        polyfills.push("https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js");
+      }
+      
+      // Anchor Positioning
+      if (!CSS.supports || !CSS.supports("position-anchor: --foo")) {
+        polyfills.push("https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js");
+      }
+      
+      // Adaptive Loading
+      if (!('loadingPlaceholder' in HTMLImageElement.prototype)) {
+        polyfills.push("https://example.github.io/adaptive-loading-polyfill/adaptive-loading.min.js");
+      }
+
+      polyfills.forEach(src => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = false;
+        document.head.appendChild(script);
+      });
+    })();
+  </script>
+</head>
+<body>
+
+  <header>
+    <h1>The Modern Grind</h1>
+  </header>
+
+  <section class="hero">
+    <div class="hero-container">
+      <img 
+        src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=1200&auto=format&fit=crop" 
+        loading-placeholder="https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=10&w=100&auto=format&fit=crop" 
+        alt="Freshly brewed coffee in a ceramic cup" 
+        class="hero-image"
+      >
+    </div>
+  </section>
+
+  <section class="product-details">
+    <h2>Signature Roast</h2>
+    <p>Experience the bold, smooth flavor of our ethically sourced Arabica beans, roasted daily in small batches.</p>
+    
+    <button class="details-btn" interestfor="ingredients-tooltip">
+      Details
+    </button>
+
+    <div id="ingredients-tooltip" popover="hint">
+      <strong>Ingredients:</strong>
+      <ul>
+        <li>✨ Single-origin Arabica Beans</li>
+        <li>💧 Triple-filtered Spring Water</li>
+        <li>🥛 Optional Organic Oat Milk</li>
+        <li>🍯 Touch of Madagascar Vanilla</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="beans-section" style="padding: 4rem 2rem; background: white; text-align: center;">
+    <h2>Our Beans</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto;">
+      <div style="padding: 2rem; background: var(--coffee-light); border-radius: 1.5rem;">
+        <h3>Ethiopian Yirgacheffe</h3>
+        <p>Floral and citrus notes with a tea-like finish.</p>
+      </div>
+      <div style="padding: 2rem; background: var(--coffee-light); border-radius: 1.5rem;">
+        <h3>Colombian Supremo</h3>
+        <p>Nutty, chocolaty, and perfectly balanced.</p>
+      </div>
+      <div style="padding: 2rem; background: var(--coffee-light); border-radius: 1.5rem;">
+        <h3>Sumatran Mandheling</h3>
+        <p>Earthy, full-bodied with a smooth herbal finish.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="visit-section" style="padding: 6rem 2rem; text-align: center;">
+    <h2>Visit The Modern Grind</h2>
+    <p>123 Coffee Lane, Brewtown</p>
+    <p>Open daily: 7am - 7pm</p>
+  </section>
+
+  <footer style="padding: 2rem; background: var(--coffee-dark); color: white; text-align: center;">
+    <p>&copy; 2026 The Modern Grind. All rights reserved.</p>
+  </footer>
+
+  <div class="spacer"></div>
+
+</body>
+</html>

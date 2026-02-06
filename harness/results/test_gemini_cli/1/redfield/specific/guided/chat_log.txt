@@ -1,0 +1,6 @@
+I will search for "tooltip" in the codebase to identify the current implementation that needs modernization.
+I will read the `index.html` file to understand its current structure and search for modern web development best practices related to the Popover API and tooltips.
+I will retrieve the best practices for implementing tooltips using the Popover API and Interest Invokers to ensure the modernization follows recommended patterns.
+I will now modernize the tooltip implementation in `index.html` by replacing the manual event listeners and CSS positioning with the HTML Popover API and CSS Anchor Positioning, as per the modern web best practices.
+I have completed the modernization of the tooltip implementation using the Popover API and Interest Invokers, and I am now performing a final review of the updated `index.html` to ensure it is correctly structured and adheres to modern web standards.
+I have modernized the tooltip implementation by replacing the imperative JavaScript logic with the declarative HTML Popover API and Interest Invokers, using CSS Anchor Positioning for precise placement.

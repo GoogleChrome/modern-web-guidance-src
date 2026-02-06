@@ -1,0 +1,7 @@
+I will start by exploring the `serving/mcp-server/guides/` directory to understand the project's preferred modern web practices for popovers, scroll-driven animations, and adaptive loading.
+I will list the contents of the `serving/mcp-server/guides/` directory to locate relevant documentation for modern web features.
+I will now examine the contents of the `ui` and `webperf` directories to gather specific implementation details for the requested features.
+I will read the `scroll-driven-animations.md`, `tooltip.md`, and `adaptive-loading.md` guides to ensure I follow the project's standards for these features.
+I will read the existing `index.html` file to determine if there is any boilerplate code I should build upon.
+I will now create the `index.html` file, incorporating the hero section with scroll-driven animations, the "Details" button with a popover for ingredients, and the adaptive loading feature for the hero image.
+I have built the product landing page for "The Modern Grind" coffee shop in `index.html`. The page features a hero image with a scroll-driven fade and scale animation, a "Details" button that triggers an ingredients popover using native anchor positioning and interest invokers, and adaptive loading for the hero image to ensure performance on slower networks.

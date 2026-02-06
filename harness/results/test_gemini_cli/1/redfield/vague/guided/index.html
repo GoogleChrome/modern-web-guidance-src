@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Tooltip Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        /* The Button */
+        #tooltip-trigger {
+            anchor-name: --tooltip-trigger;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+        }
+
+        /* The Tooltip */
+        #tooltip {
+            /* Popover defaults */
+            margin: 0;
+            border: none;
+            overflow: visible;
+
+            /* Anchor Positioning */
+            position-anchor: --tooltip-trigger;
+            position-area: top;
+            position-try-fallbacks: flip-block;
+            width: max-content;
+            margin-inline: auto;
+
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Little arrow at the bottom of the tooltip */
+        #tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+
+        /* Fallback for when Popover API is not supported but polyfill hasn't loaded yet or is disabled */
+        #tooltip:not(:popover-open):not([popover]) {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <button id="tooltip-trigger" interestfor="tooltip">Hover over me</button>
+    <div id="tooltip" popover="hint">
+        <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=100&h=100&fit=crop" alt="Info" style="width: 50px; height: 50px; border-radius: 50%; margin-bottom: 8px; display: block; margin-inline: auto;">
+        I'm a modern tooltip!
+    </div>
+
+    <!-- Polyfills for modern features -->
+    <script>
+        // Feature detection and polyfill loading
+        (function() {
+            const polyfills = [];
+
+            // Popover API polyfill
+            if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+                polyfills.push("https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js");
+            }
+
+            // Interest Invokers polyfill
+            if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+                polyfills.push("https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js");
+            }
+
+            // CSS Anchor Positioning polyfill
+            if (!("positionAnchor" in document.documentElement.style)) {
+                polyfills.push("https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js");
+            }
+
+            polyfills.forEach(src => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = false; // Load in order
+                document.head.appendChild(script);
+            });
+        })();
+    </script>
+
+</body>
+</html>

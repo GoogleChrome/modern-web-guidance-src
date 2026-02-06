@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Coffee Nook | Craft Roasters</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-coffee: #6f4e37;
+            --secondary-coffee: #3d2b1f;
+            --accent-coffee: #c0a080;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Playfair Display', serif;
+        }
+
+        .navbar-brand {
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            color: var(--primary-coffee) !important;
+            font-size: 1.5rem;
+        }
+
+        .hero {
+            min-height: 90vh;
+            display: flex;
+            align-items: center;
+            padding-top: 80px;
+            background: linear-gradient(135deg, #fff 0%, #fdfbfb 100%);
+        }
+
+        /* Scroll-driven animation for the hero image */
+        @keyframes fade-and-grow {
+            from {
+                opacity: 0.3;
+                transform: scale(0.8) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1.1) translateY(0);
+            }
+        }
+
+        .hero-img-container {
+            perspective: 1000px;
+        }
+
+        .hero-img {
+            width: 100%;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        @supports (animation-timeline: view()) {
+            .hero-img {
+                opacity: 0.3;
+                animation: fade-and-grow linear both;
+                animation-timeline: view();
+                /* Animation starts as it enters viewport and finishes when fully visible */
+                animation-range: entry 10% cover 50%;
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .hero-img {
+                    animation: none;
+                    opacity: 1;
+                    transform: none;
+                }
+            }
+        }
+
+        /* Tooltip styles using Anchor Positioning */
+        .details-btn {
+            anchor-name: --details-btn;
+            background-color: var(--primary-coffee);
+            border-color: var(--primary-coffee);
+            padding: 12px 30px;
+            font-weight: 500;
+        }
+
+        .details-btn:hover {
+            background-color: var(--secondary-coffee);
+            border-color: var(--secondary-coffee);
+        }
+
+        #ingredients-tooltip {
+            position-anchor: --details-btn;
+            position-area: top;
+            width: 250px;
+            margin-inline: auto;
+            position-try-fallbacks: flip-block;
+            padding: 20px;
+            background: white;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            font-size: 0.95rem;
+            color: #444;
+        }
+
+        #ingredients-tooltip strong {
+            display: block;
+            margin-bottom: 10px;
+            color: var(--primary-coffee);
+            font-size: 1.1rem;
+        }
+
+        #ingredients-tooltip ul {
+            padding-left: 20px;
+            margin-bottom: 0;
+        }
+
+        /* Sections */
+        section {
+            padding: 100px 0;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 60px;
+            position: relative;
+        }
+
+        .section-title::after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 3px;
+            background: var(--accent-coffee);
+            margin: 20px auto 0;
+        }
+
+        .coffee-card {
+            border: none;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+        }
+
+        .coffee-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .btn-outline-coffee {
+            color: var(--primary-coffee);
+            border-color: var(--primary-coffee);
+        }
+
+        .btn-outline-coffee:hover {
+            background-color: var(--primary-coffee);
+            color: white;
+        }
+
+        footer {
+            background-color: #1a1a1a;
+            color: #fff;
+            padding: 60px 0;
+        }
+
+        /* Spacer to allow for scrolling and seeing the animation */
+        .spacer {
+            height: 50vh;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="#">THE COFFEE NOOK</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#menu">Menu</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#visit">Visit</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="container">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-6">
+                    <h1 class="display-2 fw-bold mb-4">Awaken Your <span style="color: var(--accent-coffee);">Senses</span></h1>
+                    <p class="lead mb-5 text-muted">
+                        We don't just serve coffee; we serve moments of clarity. 
+                        Our beans are ethically sourced from small-batch farmers 
+                        and roasted daily in the heart of the city.
+                    </p>
+                    <div class="d-flex gap-3">
+                        <button class="btn btn-primary btn-lg details-btn" interestfor="ingredients-tooltip">
+                            Details
+                        </button>
+                        <a href="#menu" class="btn btn-outline-coffee btn-lg">Order Now</a>
+                    </div>
+                    
+                    <div id="ingredients-tooltip" popover="hint">
+                        <strong>The Morning Ritual Blend</strong>
+                        <ul>
+                            <li>80% Single Origin Arabica</li>
+                            <li>20% Highland Robusta</li>
+                            <li>Washed processing</li>
+                            <li>Notes of dark chocolate and citrus</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-6 hero-img-container text-center">
+                    <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&q=80&w=1200" 
+                         loading-placeholder="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&q=10&w=100"
+                         class="hero-img img-fluid" 
+                         alt="Freshly brewed coffee with latte art">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="spacer"></div>
+
+    <section id="menu" class="bg-light">
+        <div class="container">
+            <h2 class="section-title">Our Signature Brews</h2>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card coffee-card h-100">
+                        <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=600" class="card-img-top" alt="Latte Art">
+                        <div class="card-body">
+                            <h3 class="h5">Velvet Latte</h3>
+                            <p class="card-text text-muted">A silky smooth espresso-based drink with micro-foam milk and a touch of honeycomb.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card coffee-card h-100">
+                        <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&q=80&w=600" class="card-img-top" alt="Pour Over">
+                        <div class="card-body">
+                            <h3 class="h5">Origin Pour-Over</h3>
+                            <p class="card-text text-muted">Experience the distinct notes of our seasonal single-origin beans, brewed to perfection.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card coffee-card h-100">
+                        <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&q=80&w=600" class="card-img-top" alt="Cold Brew">
+                        <div class="card-body">
+                            <h3 class="h5">Midnight Cold Brew</h3>
+                            <p class="card-text text-muted">Steeped for 18 hours for a low-acid, high-caffeine kick with subtle cocoa undertones.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="visit">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-6 mb-4 mb-md-0">
+                    <h2 class="mb-4">Visit Our Roastery</h2>
+                    <p class="mb-4">Come watch our roastmasters at work and enjoy the intoxicating aroma of fresh beans.</p>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><strong>Location:</strong> 123 Espresso Way, Brew City</li>
+                        <li class="mb-2"><strong>Hours:</strong> Mon-Fri: 7am - 7pm | Sat-Sun: 8am - 6pm</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <div class="ratio ratio-16x9 shadow rounded overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&q=80&w=1000" alt="Coffee Shop Interior" class="object-fit-cover">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container text-center">
+            <h2 class="mb-4">THE COFFEE NOOK</h2>
+            <p class="mb-4 text-muted">Crafting the perfect cup, one bean at a time.</p>
+            <div class="social-links mb-4">
+                <a href="#" class="text-white mx-2">Instagram</a>
+                <a href="#" class="text-white mx-2">Twitter</a>
+                <a href="#" class="text-white mx-2">Facebook</a>
+            </div>
+            <p class="small text-muted mb-0">&copy; 2026 The Coffee Nook. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Polyfills -->
+    <script>
+        (function() {
+            function loadScript(src) {
+                const s = document.createElement('script');
+                s.src = src;
+                s.async = false;
+                document.head.appendChild(s);
+            }
+
+            // Interest Invokers Polyfill
+            if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+                loadScript("interestfor.min.js");
+            }
+            // Popover Polyfill
+            if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+                loadScript("popover.min.js");
+            }
+            // Anchor Positioning Polyfill
+            if (!("positionAnchor" in document.documentElement.style)) {
+                loadScript("css-anchor-positioning.js");
+            }
+            // Adaptive Loading Polyfill
+            if (!('loadingPlaceholder' in HTMLImageElement.prototype)) {
+                loadScript("adaptive-loading.min.js");
+            }
+        })();
+    </script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

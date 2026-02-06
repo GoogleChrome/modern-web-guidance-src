@@ -1,0 +1,6 @@
+I will search for best practices regarding tooltips, scroll-driven animations, and optimized image loading to ensure the landing page adheres to modern web standards.
+I will retrieve the detailed implementation guides for tooltips using the Popover API, scroll-driven animations, and adaptive loading to ensure high-quality, modern web code.
+I will now implement the product landing page in `index.html`, incorporating the Popover API for tooltips, scroll-driven animations for the hero image, and adaptive loading for performance, while ensuring a modern, coffee-themed design.
+I have completed the implementation of the coffee shop landing page, featuring a scroll-animated hero image with adaptive loading and a hover-activated ingredients tooltip using modern web APIs and best-practice polyfills.
+I will run the preflight checks from the workspace root as recommended to ensure all code meets the project's quality and style standards.
+I have implemented the coffee shop landing page in `index.html` with modern features like scroll-driven animations, the Popover API for tooltips, and adaptive loading for performance, all while ensuring cross-browser compatibility with appropriate polyfills.

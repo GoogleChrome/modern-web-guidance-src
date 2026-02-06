@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brew & Bean | Artisan Coffee</title>
+    <style>
+        :root {
+            --primary: #4e342e;
+            --accent: #d7ccc8;
+            --text: #212121;
+            --bg: #fafafa;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            color: var(--text);
+            background: var(--bg);
+            line-height: 1.6;
+        }
+
+        nav {
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        nav a {
+            margin-left: 1.5rem;
+            text-decoration: none;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        section {
+            padding: 4rem 2rem;
+            max-width: 1000px;
+            margin: auto;
+            text-align: center;
+        }
+
+        .hero-container {
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-image {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            margin-top: 2rem;
+        }
+
+        /* Scroll-driven animation */
+        @keyframes fade-and-grow {
+            from {
+                opacity: 0;
+                transform: scale(0.7);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1.1);
+            }
+        }
+
+        @supports (animation-timeline: view()) {
+            .hero-image {
+                opacity: 0;
+                animation: fade-and-grow linear both;
+                animation-timeline: view();
+                animation-range: entry 10% entry 70%;
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .hero-image {
+                    animation: none;
+                    opacity: 1;
+                    transform: none;
+                }
+            }
+        }
+
+        .product-section {
+            background: var(--accent);
+            border-radius: 2rem;
+            margin-bottom: 4rem;
+        }
+
+        .product-card {
+            background: white;
+            padding: 3rem;
+            border-radius: 1.5rem;
+            max-width: 500px;
+            margin: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        /* Tooltip & Anchor Positioning */
+        .details-btn {
+            anchor-name: --details-btn;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 2rem;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+
+        .details-btn:hover {
+            background: #3e2723;
+        }
+
+        #ingredients-tooltip {
+            position-anchor: --details-btn;
+            position-area: top;
+            width: max-content;
+            margin-inline: auto;
+            position-try-fallbacks: flip-block;
+            
+            background: #212121;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            font-size: 0.9rem;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            pointer-events: none; /* Tooltips shouldn't block interaction */
+        }
+
+        .spacer {
+            height: 40vh;
+        }
+
+        footer {
+            padding: 2rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #757575;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo">Brew & Bean</div>
+        <div>
+            <a href="#hero">The Craft</a>
+            <a href="#products">Menu</a>
+            <a href="#">Locations</a>
+        </div>
+    </nav>
+
+    <div class="spacer">
+        <h1 style="text-align: center; margin-top: 10vh;">Wake up to something better.</h1>
+        <p style="text-align: center;">Scroll down to discover our craft.</p>
+    </div>
+
+    <section id="hero" class="hero-container">
+        <h2>Hand-Picked, Flame-Roasted</h2>
+        <p>Our beans are sourced directly from sustainable farms in Ethiopia and Colombia.</p>
+        <img 
+            src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=1200&auto=format&fit=crop" 
+            loading-placeholder="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=10&w=100&auto=format&fit=crop"
+            alt="Artisan coffee beans and brewing equipment" 
+            class="hero-image"
+        >
+    </section>
+
+    <section id="products" class="product-section">
+        <div class="product-card">
+            <h2>The Midnight Velvet</h2>
+            <p>Our signature dark roast with deep notes of dark chocolate, toasted walnut, and a hint of smoke.</p>
+            
+            <button class="details-btn" interestfor="ingredients-tooltip">
+                Details
+            </button>
+
+            <div id="ingredients-tooltip" popover="hint">
+                <strong>Ingredients:</strong><ul style="margin: 0.5rem 0 0 1rem; padding: 0; text-align: left;">
+                    <li>100% Single-Origin Arabica</li>
+                    <li>Artisanal Roasting Process</li>
+                    <li>Zero Additives</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <div class="spacer"></div>
+
+    <footer>
+        &copy; 2026 Brew & Bean Coffee Co. Built with Modern Web Standards.
+    </footer>
+
+    <!-- Polyfills for modern features -->
+    <script>
+        /**
+         * Feature detection and conditional polyfill loading
+         * based on project guidance for modern web features.
+         */
+        
+        const polyfills = [
+            {
+                test: () => HTMLButtonElement.prototype.hasOwnProperty("interestForElement"),
+                url: "https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js"
+            },
+            {
+                test: () => HTMLElement.prototype.hasOwnProperty("popover"),
+                url: "https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js"
+            },
+            {
+                test: () => "positionAnchor" in document.documentElement.style,
+                url: "https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js"
+            },
+            {
+                test: () => 'loadingPlaceholder' in HTMLImageElement.prototype,
+                url: "https://unpkg.com/adaptive-loading-polyfill@1.0.0/adaptive-loading.min.js"
+            }
+        ];
+
+        polyfills.forEach(polyfill => {
+            if (!polyfill.test()) {
+                const script = document.createElement('script');
+                script.src = polyfill.url;
+                script.async = true;
+                document.head.appendChild(script);
+            }
+        });
+    </script>
+</body>
+</html>

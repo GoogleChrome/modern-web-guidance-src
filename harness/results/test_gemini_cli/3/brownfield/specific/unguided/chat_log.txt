@@ -1,0 +1,4 @@
+I will read the `index.html` file to understand the current structure of the navigation links.
+I will add the Speculation Rules API to the `<head>` of `index.html` to pre-render the specified navigation links while explicitly excluding the logout link.
+I will read the updated `index.html` to confirm the changes were applied correctly.
+I have implemented pre-rendering for the `/menu`, `/locations`, `/rewards`, and `/account` links using the native Speculation Rules API, while ensuring the `/logout` link is excluded to prevent accidental state changes.

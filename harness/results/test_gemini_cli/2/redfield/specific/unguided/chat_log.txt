@@ -1,0 +1,7 @@
+I will search for the existing tooltip implementation in `index.html` and look for guidance on the Popover API and Interest Invokers in the project's guides.
+I will read the `index.html` file to find the existing tooltip implementation and the `tooltip.md` guide for modern implementation details.
+I will read the `tooltip.md` guide using its absolute path to get the correct guidance on modern tooltip implementations.
+I will read the `index.html` file again to ensure I have the exact content before applying the modern tooltip implementation using the Popover API and Interest Invokers.
+I will replace the contents of `index.html` with the modernized version, utilizing the Popover API and Interest Invokers while removing the manual JavaScript event listeners.
+I will enhance the `index.html` by adding the recommended polyfills for the Popover API and Interest Invokers to ensure cross-browser compatibility, and I'll include a stock photo in the tooltip to give it a more modern, hovercard-like appearance.
+I have modernized the tooltip implementation by replacing the manual JavaScript event listeners and DOM manipulation with the native HTML Popover API and Interest Invokers. The solution uses declarative `interestfor` and `popover="hint"` attributes, leverages CSS Anchor Positioning for tethering, and includes the recommended polyfills for broad compatibility, along with a refreshed visual style featuring a stock photo.

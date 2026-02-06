@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Tooltip Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        /* The Trigger */
+        #tooltip-trigger {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+            
+            /* CSS Anchor Positioning: Define the anchor name */
+            anchor-name: --tooltip-trigger;
+        }
+
+        /* The Tooltip (Modernized with Popover and Anchor Positioning) */
+        #tooltip {
+            /* Basic styling */
+            margin: 0;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            
+            /* Layout styling */
+            width: max-content;
+            margin-inline: auto;
+
+            /* CSS Anchor Positioning: Tether to the trigger */
+            position-anchor: --tooltip-trigger;
+            position-area: top;
+            position-try-fallbacks: flip-block;
+        }
+
+        /* Tooltip arrow using a pseudo-element */
+        #tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+
+        /* Hide popover when not supported and polyfill hasn't loaded yet */
+        [popover]:not(:popover-open):not(.\:popover-open) {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Modern declarative tooltip using interestfor -->
+    <button id="tooltip-trigger" interestfor="tooltip">
+        Hover over me
+    </button>
+
+    <!-- Modern tooltip using popover="hint" -->
+    <div id="tooltip" popover="hint">
+        I'm a modern tooltip!
+    </div>
+
+    <script type="module">
+        /**
+         * Feature detection and conditional polyfill loading.
+         * Adheres to guidance for Popover, Anchor Positioning, and Interest Invokers.
+         */
+        async function loadPolyfills() {
+            const needsInterestFor = !HTMLButtonElement.prototype.hasOwnProperty("interestForElement");
+            const needsPopover = !HTMLElement.prototype.hasOwnProperty("popover");
+            const needsAnchor = !("positionAnchor" in document.documentElement.style);
+
+            const polyfills = [];
+
+            if (needsInterestFor) {
+                polyfills.push(import('https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js'));
+            }
+            if (needsPopover) {
+                // Note: The polyfill might need to be initialized or it might auto-init.
+                polyfills.push(import('https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js'));
+            }
+            if (needsAnchor) {
+                polyfills.push(import('https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js'));
+            }
+
+            if (polyfills.length > 0) {
+                await Promise.all(polyfills);
+            }
+        }
+
+        loadPolyfills();
+    </script>
+
+</body>
+</html>

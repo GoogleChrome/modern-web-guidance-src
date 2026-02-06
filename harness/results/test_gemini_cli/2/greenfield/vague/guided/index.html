@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Coffee Nook - Artisan Brews</title>
+  <style>
+    :root {
+      --primary-color: #4e342e;
+      --secondary-color: #8d6e63;
+      --accent-color: #d7ccc8;
+      --text-color: #212121;
+      --bg-color: #fafafa;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.6;
+    }
+
+    header {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 1rem 2rem;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 4rem 0;
+      overflow: visible; /* Required for scroll-driven animations if not hidden */
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--secondary-color);
+      margin-bottom: 2rem;
+    }
+
+    .hero-image-container {
+      perspective: 1000px;
+      margin-bottom: 2rem;
+    }
+
+    .hero-image {
+      width: 100%;
+      max-width: 800px;
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* Scroll-driven animation for the hero image */
+    @keyframes fade-and-grow {
+      from {
+        opacity: 0.3;
+        transform: scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+    }
+
+    @supports (animation-timeline: view()) {
+      .hero-image {
+        opacity: 0.3;
+        transform: scale(0.8);
+        animation: fade-and-grow linear both;
+        animation-timeline: view();
+        animation-range: entry 10% cover 50%;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .hero-image {
+          animation: none;
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    }
+
+    .product-details {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    .btn {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      anchor-name: --details-btn;
+    }
+
+    .btn:hover {
+      background-color: var(--secondary-color);
+    }
+
+    /* Tooltip styling using Popover and Anchor Positioning */
+    #ingredients-tooltip {
+      position-anchor: --details-btn;
+      position-area: top;
+      position-try-fallbacks: flip-block;
+      width: max-content;
+      padding: 1rem;
+      background-color: white;
+      border: 1px solid var(--accent-color);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      margin-bottom: 10px;
+    }
+
+    #ingredients-tooltip h3 {
+      margin-top: 0;
+      font-size: 1rem;
+      color: var(--primary-color);
+    }
+
+    #ingredients-tooltip ul {
+      margin: 0;
+      padding-left: 1.2rem;
+    }
+
+    /* Spacer for scrolling demo */
+    .spacer {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(to bottom, var(--bg-color), var(--accent-color));
+      margin-top: 4rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      background-color: var(--primary-color);
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>The Coffee Nook</h1>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Artisan Brewed Perfection</h1>
+      <p>Experience the finest beans roasted to perfection, delivered to your cup.</p>
+      
+      <div class="hero-image-container">
+        <!-- Adaptive Loading for slow networks -->
+        <img 
+          src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=1200" 
+          loading-placeholder="https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=20&blur=10"
+          alt="Close up of a freshly brewed cup of coffee with latte art" 
+          class="hero-image"
+        >
+      </div>
+
+      <div class="product-details">
+        <!-- Interest Invoker for Tooltip -->
+        <button class="btn" interestfor="ingredients-tooltip">
+          Ingredients Details
+        </button>
+
+        <div id="ingredients-tooltip" popover="hint">
+          <h3>House Blend Ingredients</h3>
+          <ul>
+            <li>Ethically sourced Arabica beans</li>
+            <li>Organic whole milk</li>
+            <li>Natural cane sugar</li>
+            <li>Filtered spring water</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="spacer">
+      <h2>Scroll down to see the magic</h2>
+    </section>
+
+    <section class="spacer">
+      <p>Your perfect morning starts here.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 The Coffee Nook. All rights reserved.</p>
+  </footer>
+
+  <!-- Polyfills for broader support as per best practices -->
+  <script>
+    // Feature detection and polyfill loading
+    async function loadPolyfills() {
+      const polyfills = [];
+
+      // Interest Invokers
+      if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+        polyfills.push('https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js');
+      }
+
+      // Popover
+      if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+        polyfills.push('https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js');
+      }
+
+      // Anchor Positioning
+      if (!("positionAnchor" in document.documentElement.style)) {
+        polyfills.push('https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js');
+      }
+      
+      // Adaptive Loading Polyfill
+      if (!('loadingPlaceholder' in HTMLImageElement.prototype)) {
+        polyfills.push('https://example.github.io/adaptive-loading-polyfill/adaptive-loading.min.js');
+      }
+
+      for (const src of polyfills) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = src;
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+    }
+
+    loadPolyfills();
+  </script>
+</body>
+</html>

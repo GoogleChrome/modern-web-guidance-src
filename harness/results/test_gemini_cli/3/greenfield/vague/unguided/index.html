@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bean & Brew | Craft Coffee</title>
+  <style>
+    :root {
+      --primary: #4e342e;
+      --secondary: #d7ccc8;
+      --accent: #8d6e63;
+      --text: #3e2723;
+      --bg: #fafafa;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    header {
+      padding: 1rem 2rem;
+      background: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    nav a {
+      margin-left: 1.5rem;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .hero {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      overflow: hidden;
+      padding: 0 1rem;
+    }
+
+    .hero h1 {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      z-index: 1;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      max-width: 600px;
+      margin-bottom: 2rem;
+      z-index: 1;
+    }
+
+    /* Scroll-driven animation for hero image */
+    @keyframes fade-grow {
+      from {
+        opacity: 0.3;
+        transform: scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1.2);
+      }
+    }
+
+    .hero-image-container {
+      width: 100%;
+      max-width: 800px;
+      margin-top: 2rem;
+    }
+
+    .hero-image {
+      width: 100%;
+      height: auto;
+      border-radius: 1rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      
+      /* Base styles for non-supporting browsers */
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    @supports (animation-timeline: scroll()) {
+      .hero-image {
+        animation: fade-grow linear both;
+        animation-timeline: scroll(root block);
+        /* Animation range: from start of scroll to middle of page */
+        animation-range: 0% 50%;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .hero-image {
+          animation: none;
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    }
+
+    .products {
+      padding: 5rem 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .products h2 {
+      text-align: center;
+      font-size: 2.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+    }
+
+    .product-card {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+      text-align: center;
+    }
+
+    .product-card h3 {
+      margin-top: 0;
+    }
+
+    .details-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 2rem;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s;
+      anchor-name: --details-anchor;
+    }
+
+    .details-btn:hover {
+      background: var(--accent);
+    }
+
+    /* Tooltip using Anchor Positioning */
+    #ingredients-tooltip {
+      position-anchor: --details-anchor;
+      position-area: top;
+      width: max-content;
+      margin-inline: auto;
+      position-try-fallbacks: flip-block;
+      
+      background: #333;
+      color: white;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      border: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 1000;
+    }
+
+    #ingredients-tooltip strong {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: var(--secondary);
+      border-bottom: 1px solid #555;
+      padding-bottom: 0.25rem;
+    }
+
+    #ingredients-tooltip ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    #ingredients-tooltip li {
+      margin-bottom: 0.25rem;
+    }
+
+    #ingredients-tooltip::backdrop {
+      background: transparent;
+    }
+
+    footer {
+      padding: 3rem 2rem;
+      text-align: center;
+      background: var(--primary);
+      color: var(--secondary);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="#" class="logo">Bean & Brew</a>
+    <nav>
+      <a href="#about">About</a>
+      <a href="#menu">Menu</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Awaken Your Senses</h1>
+      <p>Experience the finest craft coffee, roasted to perfection in the heart of the city.</p>
+      <div class="hero-image-container">
+        <img 
+          src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&q=80&w=2000" 
+          loading-placeholder="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&q=10&w=200"
+          alt="Warm coffee shop interior" 
+          class="hero-image"
+          fetchpriority="high"
+        >
+      </div>
+    </section>
+
+    <section id="menu" class="products">
+      <h2>Our Signature Blends</h2>
+      <div class="product-grid">
+        <div class="product-card">
+          <h3>Vanilla Oat Latte</h3>
+          <p>Smooth espresso combined with creamy oat milk and a touch of Madagascar vanilla.</p>
+          <button class="details-btn" interestfor="ingredients-tooltip">Details</button>
+        </div>
+        
+        <div class="product-card">
+          <h3>Caramel Macchiato</h3>
+          <p>Rich espresso layered over steamed milk and drizzled with buttery caramel.</p>
+          <button class="details-btn">Details</button>
+        </div>
+
+        <div class="product-card">
+          <h3>Dark Roast Blend</h3>
+          <p>A bold, full-bodied coffee with notes of dark chocolate and toasted nuts.</p>
+          <button class="details-btn">Details</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="ingredients-tooltip" popover="hint">
+      <strong>Ingredients:</strong>
+      <ul>
+        <li>Double Shot Espresso</li>
+        <li>Organic Oat Milk</li>
+        <li>House-made Vanilla Syrup</li>
+        <li>Pinch of Sea Salt</li>
+      </ul>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Bean & Brew Coffee Co. All rights reserved.</p>
+  </footer>
+
+  <!-- Polyfills as per guidance -->
+  <script>
+    // Interest Invokers Polyfill
+    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+      const script = document.createElement("script");
+      script.src = "https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js";
+      document.head.appendChild(script);
+    }
+
+    // Popover Polyfill
+    if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+      const script = document.createElement("script");
+      script.src = "https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js";
+      document.head.appendChild(script);
+    }
+
+    // Anchor Positioning Polyfill
+    if (!("positionAnchor" in document.documentElement.style)) {
+      const script = document.createElement("script");
+      script.src = "https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js";
+      document.head.appendChild(script);
+    }
+
+    // Adaptive Loading Polyfill
+    if (!('loadingPlaceholder' in HTMLImageElement.prototype)) {
+        const script = document.createElement("script");
+        script.src = "https://example.github.io/adaptive-loading-polyfill/adaptive-loading.min.js";
+        document.head.appendChild(script);
+    }
+  </script>
+</body>
+</html>

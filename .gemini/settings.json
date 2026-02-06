@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "Modern Web": {
+      "command": "node",
+      "args": [
+        "$HOME/guidance/serving/mcp-server/index.ts"
+      ]
+    }
+  }
+}

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Modern Grind | Coffee Reimagined</title>
+    <style>
+        :root {
+            --primary-brown: #4e342e;
+            --accent-gold: #c6a700;
+            --bg-cream: #faf9f6;
+            --text-dark: #2c1e1a;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-cream);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        header {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2000&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            color: white;
+        }
+
+        h1 {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .scroll-hint {
+            position: absolute;
+            bottom: 2rem;
+            font-size: 1.2rem;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-10px);}
+            60% {transform: translateY(-5px);}
+        }
+
+        main {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+        }
+
+        section {
+            margin-bottom: 8rem;
+            text-align: center;
+        }
+
+        .hero-container {
+            overflow: clip; /* Avoid 'scroll jail' as per guide */
+            margin-bottom: 4rem;
+        }
+
+        .hero-image {
+            width: 100%;
+            max-width: 800px;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            
+            /* Scroll-driven animation properties */
+            animation: fade-and-scale linear both;
+            animation-timeline: view();
+            animation-range: entry 10% cover 40%;
+        }
+
+        @keyframes fade-and-scale {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .hero-image {
+                animation: none;
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .details-btn {
+            background-color: var(--primary-brown);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            anchor-name: --details-trigger;
+        }
+
+        .details-btn:hover {
+            background-color: #3e2723;
+        }
+
+        #ingredients-popover {
+            position-anchor: --details-trigger;
+            position-area: top;
+            position-try-fallbacks: flip-block;
+            width: max-content;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            background: white;
+            margin-bottom: 10px;
+        }
+
+        #ingredients-popover h3 {
+            margin-top: 0;
+            color: var(--primary-brown);
+        }
+
+        #ingredients-popover ul {
+            text-align: left;
+            margin: 0;
+            padding-left: 1.2rem;
+        }
+
+        footer {
+            padding: 4rem 2rem;
+            background: var(--primary-brown);
+            color: #d7ccc8;
+            text-align: center;
+        }
+
+        /* Feature detection for modern styles */
+        @supports not (animation-timeline: view()) {
+            .hero-image {
+                opacity: 1;
+                transform: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>The Modern Grind</h1>
+        <p>Elevating your daily ritual with precision and craft.</p>
+        <div class="scroll-hint">Scroll to explore &darr;</div>
+    </header>
+
+    <main>
+        <section id="featured-product">
+            <h2>Our Signature Latte</h2>
+            <div class="hero-container">
+                <img 
+                    src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=1000&auto=format&fit=crop" 
+                    loading-placeholder="https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=10&w=100&auto=format&fit=crop"
+                    class="hero-image" 
+                    alt="A perfectly poured latte with heart art"
+                >
+            </div>
+            
+            <p>A harmonious blend of our dark roast espresso and velvety steamed milk.</p>
+            
+            <button class="details-btn" interestfor="ingredients-popover">
+                Details
+            </button>
+
+            <div id="ingredients-popover" popover="hint">
+                <h3>Ingredients</h3>
+                <ul>
+                    <li>Double shot of Arabica espresso</li>
+                    <li>Freshly steamed whole milk (oat available)</li>
+                    <li>Artisanal vanilla bean extract</li>
+                    <li>A light dusting of Ceylon cinnamon</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>Visit Us</h2>
+            <p>123 Modern Way, Silicon Valley, CA</p>
+            <p>Open daily: 6 AM - 8 PM</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 The Modern Grind. Built with the Modern Web Platform.</p>
+    </footer>
+
+    <!-- Polyfills as recommended by the guides -->
+    <script>
+        // Interest For / Popover / Anchor Positioning Polyfills
+        (function() {
+            if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+                const s = document.createElement('script');
+                s.src = "https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js";
+                document.head.appendChild(s);
+            }
+
+            if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+                const s = document.createElement('script');
+                s.src = "https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js";
+                document.head.appendChild(s);
+            }
+
+            if (!("positionAnchor" in document.documentElement.style)) {
+                const s = document.createElement('script');
+                s.src = "https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js";
+                document.head.appendChild(s);
+            }
+
+            // Adaptive Loading Polyfill
+            if (!('loadingPlaceholder' in HTMLImageElement.prototype)) {
+                const s = document.createElement('script');
+                s.src = "https://example.github.io/adaptive-loading-polyfill/adaptive-loading.min.js";
+                document.head.appendChild(s);
+            }
+        })();
+    </script>
+</body>
+</html>

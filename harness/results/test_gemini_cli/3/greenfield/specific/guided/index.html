@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brew & Bean | Artisanal Coffee</title>
+    <style>
+        :root {
+            --primary: #4e342e;
+            --secondary: #d7ccc8;
+            --accent: #8d6e63;
+            --text: #212121;
+            --bg: #fafafa;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background-color: var(--bg);
+        }
+
+        header {
+            padding: 1rem 5%;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+
+        .hero-spacer {
+            height: 20vh;
+        }
+
+        .hero-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 4rem 5%;
+            overflow: visible; /* Important for scroll animations */
+        }
+
+        .hero-image {
+            width: 100%;
+            max-width: 1000px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            
+            /* Initial state for scroll animation */
+            opacity: 0;
+            transform: scale(0.8);
+        }
+
+        @supports (animation-timeline: view()) {
+            .hero-image {
+                animation: fade-scale-in linear both;
+                animation-timeline: view();
+                animation-range: entry 10% entry 80%;
+            }
+
+            @keyframes fade-scale-in {
+                from {
+                    opacity: 0;
+                    transform: scale(0.8);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .hero-image {
+                    animation: none;
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+        }
+
+        .product-section {
+            padding: 4rem 5%;
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .product-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: inline-block;
+            max-width: 400px;
+        }
+
+        .product-image {
+            width: 100%;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        .details-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            anchor-name: --details-trigger;
+        }
+
+        .details-btn:hover {
+            background-color: var(--accent);
+        }
+
+        #ingredients-popover {
+            position-anchor: --details-trigger;
+            position-area: top;
+            position-try-fallbacks: flip-block;
+            margin-bottom: 10px;
+            
+            padding: 1rem;
+            background: white;
+            border: 1px solid var(--secondary);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            font-size: 0.9rem;
+            width: 200px;
+        }
+
+        #ingredients-popover ul {
+            margin: 0;
+            padding-left: 1.2rem;
+        }
+
+        .content-section {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--secondary);
+            color: var(--primary);
+            margin-top: 4rem;
+        }
+
+        footer {
+            padding: 2rem;
+            text-align: center;
+            background: var(--primary);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Brew & Bean</h1>
+        <nav>
+            <a href="#menu" style="text-decoration: none; color: inherit;">Menu</a>
+        </nav>
+    </header>
+
+    <div class="hero-spacer"></div>
+
+    <section class="hero-container">
+        <img 
+            src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&q=80&w=1200" 
+            loading-placeholder="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&q=20&w=100"
+            alt="Artisanal Coffee Shop Interior" 
+            class="hero-image"
+        >
+    </section>
+
+    <section id="menu" class="product-section">
+        <h2>Our Signature Brew</h2>
+        <div class="product-card">
+            <img 
+                src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=600" 
+                alt="Signature Latte" 
+                class="product-image"
+            >
+            <h3>Velvet Oat Latte</h3>
+            <p>A smooth, creamy blend of ethiopean beans and premium oat milk.</p>
+            
+            <button class="details-btn" interestfor="ingredients-popover">
+                Details
+            </button>
+
+            <div id="ingredients-popover" popover="hint">
+                <strong>Ingredients:</strong>
+                <ul>
+                    <li>Single-origin Espresso</li>
+                    <li>Premium Oat Milk</li>
+                    <li>Madagascar Vanilla</li>
+                    <li>Touch of Cinnamon</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section class="content-section">
+        <h2>Roasted with Passion</h2>
+        <p>Experience the finest beans from around the world.</p>
+    </section>
+
+    <footer>
+        <p>&copy; 2026 Brew & Bean Coffee Co.</p>
+    </footer>
+
+    <!-- Polyfills for older browsers -->
+    <script>
+        // Interest Invokers polyfill
+        if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+            const script = document.createElement("script");
+            script.src = "https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js";
+            document.head.appendChild(script);
+        }
+
+        // Popover polyfill
+        if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+            const script = document.createElement("script");
+            script.src = "https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js";
+            document.head.appendChild(script);
+        }
+
+        // Anchor Positioning polyfill
+        if (!("positionAnchor" in document.documentElement.style)) {
+            const script = document.createElement("script");
+            script.src = "https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js";
+            document.head.appendChild(script);
+        }
+
+        // Adaptive Loading polyfill
+        if (!('loadingPlaceholder' in HTMLImageElement.prototype)) {
+            const script = document.createElement("script");
+            script.src = "http://example.github.io/adaptive-loading-polyfill/adaptive-loading.min.js";
+            document.head.appendChild(script);
+        }
+    </script>
+</body>
+</html>

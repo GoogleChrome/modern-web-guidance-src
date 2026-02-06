@@ -1,0 +1,10 @@
+I will search for the best practices for tooltips, scroll-driven animations, and lazy loading images with placeholders to ensure I implement them according to the project's modern web standards.
+I will retrieve the implementation guides for tooltips, scroll-driven animations, lazy loading, and adaptive loading to follow the recommended modern web patterns.
+I will read the current `index.html` to understand its structure before implementing the new features.
+I will implement the product landing page in `index.html` using the Popover API for tooltips, scroll-driven animations for the hero image, and the `loading-placeholder` attribute for adaptive loading, including the necessary polyfills as specified in the best practices.
+I have implemented the coffee shop landing page in `index.html`, incorporating the Popover API for tooltips, scroll-driven animations for the hero image, and adaptive loading with a low-quality placeholder, all while ensuring the necessary polyfills are included for cross-browser compatibility.
+I will run `oxlint` specifically on `index.html` to confirm there are no linting errors in the newly created file.
+I will check the root `package.json` to identify any project-wide scripts, such as `preflight`, that should be run to ensure compliance with the project's standards.
+I will read the `package.json` file in the project root to find relevant scripts for validation and quality checks.
+I will perform a final review of the `index.html` content to ensure all requested features are correctly implemented and follow the project's best practices.
+I have built the coffee shop landing page in `index.html` featuring a scroll-animated hero image that grows and fades as you scroll, a product details button with a hoverable ingredients tooltip using the Popover API and CSS Anchor Positioning, and adaptive loading for the hero image to ensure a smooth experience even on slow networks.

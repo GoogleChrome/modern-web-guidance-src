@@ -1,0 +1,7 @@
+I will search for guidance on pre-rendering and speculation rules in the project's documentation to ensure I'm using the latest native web platform features.
+I will read the `preload-prerender.md` guide to understand the recommended approach for implementing pre-rendering in this project.
+I will read the `preload-prerender.md` guide using its absolute path to correctly access the documentation.
+I will read the `index.html` file to identify the appropriate location for the speculation rules script.
+I will add the Speculation Rules API script to the `<head>` of `index.html`, specifically targeting the requested navigation links while ensuring the `/logout` link is excluded from pre-rendering.
+I will verify the content of `index.html` to ensure the speculation rules were correctly added and the file remains well-formed.
+I have implemented the Speculation Rules API in `index.html` to enable pre-rendering for the `/menu`, `/locations`, `/rewards`, and `/account` links while explicitly excluding `/logout` to prevent accidental state changes, following modern web performance best practices.

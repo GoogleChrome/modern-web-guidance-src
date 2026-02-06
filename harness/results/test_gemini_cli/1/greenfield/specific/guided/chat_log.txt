@@ -1,0 +1,16 @@
+I will search for the relevant implementation guides for the Popover API, scroll-driven animations, and adaptive loading to ensure I follow the project's best practices.
+
+I will retrieve the best practices for tooltips, scroll-driven animations, and adaptive loading to guide my implementation of the coffee shop landing page.
+
+I will now create the `index.html` file for the coffee shop landing page, incorporating the Popover API for the 'Details' button, scroll-driven animations for the hero image, and the Adaptive Loading API for network-responsive image delivery.
+
+I have built the product landing page for "Brew & Bean" coffee shop in `index.html`. 
+
+The page includes:
+- A **hero image** that uses the **Adaptive Loading API** (`loading-placeholder`) to serve a low-fidelity version on slow networks.
+- **Scroll-driven animations** that cause the hero image to fade in and scale up as it enters the viewport, using the native `animation-timeline: view()` property.
+- A **'Details' button** that leverages the **Popover API** and **Interest Invokers** (`interestfor`) to display a non-modal popover containing ingredients when hovered.
+- **CSS Anchor Positioning** to precisely tether the ingredients popover to the button.
+- **Feature detection and polyfills** for all modern APIs (Popover, Interest Invokers, Anchor Positioning, and Adaptive Loading) to ensure functionality across different browsers.
+
+No further action is required as per the instructions.

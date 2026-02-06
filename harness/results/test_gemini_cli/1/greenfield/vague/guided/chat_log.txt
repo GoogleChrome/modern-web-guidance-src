@@ -1,0 +1,18 @@
+I will begin by searching for the established best practices for tooltips, scroll-driven animations, and low-quality image placeholders to ensure the landing page follows the project's modern web standards.
+I will retrieve the detailed implementation guides for tooltips, scroll-driven animations, lazy loading, and adaptive loading to ensure I use the most modern and performant techniques.
+I will examine the current contents of `index.html` to determine the best structure for integrating the new coffee shop landing page features.
+I will download the necessary polyfills for the Popover API, Interest Invokers, CSS Anchor Positioning, and Adaptive Loading to ensure the landing page features work across different browsers.
+I will now construct the complete `index.html` file, incorporating the Bootstrap framework, coffee-themed imagery, and the previously discussed modern web features like scroll-driven animations and the Popover-based tooltip.
+I will check the root `package.json` file to identify any linting or build commands that should be executed to ensure the new code adheres to the project's quality standards.
+I will read the root `package.json` file to identify the appropriate linting and build scripts for the project.
+I will run `oxlint` from the project root on the current working directory to ensure that the newly created `index.html` file meets the project's linting standards.
+I have completed the product landing page for "The Coffee Nook" in `index.html`. 
+
+The implementation features:
+*   **Ingredients Tooltip**: A 'Details' button that uses the **Popover API** (`popover="hint"`) and **Interest Invokers** (`interestfor`) to show ingredients on hover. It is precisely positioned using **CSS Anchor Positioning**.
+*   **Scroll-Driven Animation**: The hero image uses the **Scroll-driven Animations API** (`animation-timeline: view()`) to fade in and grow by 10% as it enters the viewport. It also includes a `prefers-reduced-motion` check for accessibility.
+*   **Adaptive Loading**: The main hero image utilizes the `loading-placeholder` attribute to serve a low-quality placeholder on slow networks (3G or slower).
+*   **Modern Styling**: The page is styled with **Bootstrap 5** and **Material Design principles**, featuring a clean, coffee-themed aesthetic with Google Fonts (Playfair Display and Roboto).
+*   **Progressive Enhancement**: I've included feature-detected polyfills for Popover, Interest Invokers, Anchor Positioning, and Adaptive Loading to ensure a consistent experience across all browsers.
+
+All assets are sourced from Unsplash, and the code follows the "Guidance" project's best practices for modern web development.

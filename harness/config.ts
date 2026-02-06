@@ -16,11 +16,14 @@ interface Config {
   jetskiDir: string;
   jetskiBin: string;
   jetskiDebugPort: number;
+  jetskiProfileDir: string;
   mcpServerPath: string;
   mcpApiKey: string;
   numRuns: number;
   scenarios: string[];
-  types: string[];
+  promptTypes: string[];
+  geminiCliBin: string;
+  geminiDir: string;
 }
 
 const config: Config = {
@@ -28,15 +31,20 @@ const config: Config = {
   jetskiDir: process.env.JETSKI_DIR || path.join(os.homedir(), '.gemini/jetski'),
   jetskiBin: process.env.JETSKI_BIN || '/Applications/Jetski.app/Contents/Resources/app/bin/jetski',
   jetskiDebugPort: parseInt(process.env.JETSKI_DEBUG_PORT || '9226'),
+  jetskiProfileDir: process.env.JETSKI_PROFILE_DIR || path.join(os.homedir(), '.gemini/jetski-profile'),
 
   // MCP Server Configuration
-  mcpServerPath: path.join(__dirname, '../../serving/mcp-server/index.ts'),
+  mcpServerPath: path.join(__dirname, '../serving/mcp-server/index.ts'),
   mcpApiKey: process.env.MCP_API_KEY || '',
 
   // Suite Configuration
   numRuns: 3,
-  scenarios: ['specific', 'vague'],
-  types: ['brownfield', 'greenfield', 'redfield']
+  scenarios: ['brownfield', 'greenfield', 'redfield'],
+  promptTypes: ['specific', 'vague'],
+
+  // Gemini CLI Configuration
+  geminiCliBin: process.env.GEMINI_CLI_BIN || 'gemini',
+  geminiDir: process.env.GEMINI_DIR || path.join(__dirname, '../.gemini'),
 };
 
 // Validate critical paths exist during configuration

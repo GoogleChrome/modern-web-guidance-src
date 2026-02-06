@@ -1,0 +1,17 @@
+I will read the `index.html` file to understand the current JavaScript-based tooltip implementation.
+I will search for tooltip or popover guidance in the `serving/mcp-server/guides/` directory to ensure I follow the project's best practices.
+I will search for tooltip, popover, or anchor positioning guidance in the absolute path of the guidance directory.
+I will read the `serving/mcp-server/guides/ui/tooltip.md` file to understand the recommended implementation details for modern tooltips.
+I will check the `package.json` files in the root and subdirectories to see if the required polyfills are already available in the project.
+I will read the root `package.json` to check for relevant dependencies.
+I will check for the existence of a `node_modules` directory in the current working directory to determine if I should use local or CDN-based polyfills.
+I will update the `index.html` file to modernize the tooltip implementation using the Popover API, Interest Invokers, and CSS Anchor Positioning, while also including necessary polyfills for feature support.
+I will run the `oxlint` command to ensure the updated `index.html` file adheres to the project's linting standards.
+I will run `oxlint` directly on the `index.html` file using `npx` to check for any linting issues.
+The JavaScript-based tooltip implementation has been modernized using the Popover API and CSS Anchor Positioning, adhering to the project's best practices. The manual event listeners and absolute positioning have been replaced with declarative `interestfor` and `popover="hint"` attributes. Additionally, I've implemented feature detection and conditional polyfill loading to ensure broad browser compatibility while leveraging modern browser capabilities where available.
+
+- **Declarative Invocation**: Replaced `mouseover`/`mouseout` listeners with the `interestfor` attribute.
+- **Popover API**: Utilized `popover="hint"` for the tooltip element.
+- **Anchor Positioning**: Tethered the tooltip to the button using `anchor-name` and `position-anchor`.
+- **Progressive Enhancement**: Included a script to conditionally load polyfills for Interest Invokers, Popover, and Anchor Positioning.
+- **Simplified Structure**: Removed the relative-positioned container as it's no longer necessary for tooltip placement.

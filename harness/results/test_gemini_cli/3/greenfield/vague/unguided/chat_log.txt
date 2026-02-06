@@ -1,0 +1,11 @@
+I will start by investigating the available guides to ensure I follow the project's modern web development standards.
+I will list the available guides in the `serving/mcp-server/guides/` directory to understand the project's best practices.
+I will now examine the contents of the `ui` and `webperf` directories within the guides to gather specific implementation details.
+I will read the `tooltip.md`, `scroll-driven-animations.md`, and `adaptive-loading.md` guides to ensure my implementation aligns with the project's standards.
+I will read the current content of `index.html` to understand its structure before implementing the new features.
+I will now write the complete `index.html` file, including the coffee shop landing page structure, the 'Details' button with its popover tooltip, and the scroll-driven animations for the hero image.
+I will read the `preload-prerender.md` guide to see if there are any additional performance optimizations I should implement for the hero image.
+I will read the `lazy-load-images.md` guide to confirm the best practices for loading the hero image and whether I should apply any lazy loading or preloading techniques.
+I will update the `index.html` file to include the `fetchpriority="high"` attribute for the hero image and refine the tooltip's appearance for a better user experience.
+I will rewrite the `index.html` file with the final content, including the `fetchpriority="high"` attribute for the hero image and the improved tooltip styling, to ensure all requirements are met correctly.
+I have successfully built the product landing page for the coffee shop in `index.html`. The page includes a hero section with a scroll-driven animation that fades in and scales up the main image as you scroll, and a 'Details' button that triggers an ingredients tooltip using the Popover API and CSS Anchor Positioning. I've also implemented adaptive loading with a low-quality placeholder for slower networks and included the necessary polyfills to ensure compatibility across browsers, following modern web development best practices.

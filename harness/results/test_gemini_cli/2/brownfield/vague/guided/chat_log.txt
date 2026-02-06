@@ -1,0 +1,16 @@
+I will search for modern web practices related to "instant navigation" and "view transitions" to find the most efficient way to implement this.
+I will now retrieve the implementation guide for "preload-prerender" to understand how to speed up navigations by pre-loading resources.
+I will search for "view transitions" to see if there are additional techniques to make the navigations feel smoother and more instant.
+I will try to find a specific implementation guide for "view transitions" to enhance the perceived speed of page transitions.
+I'll look for view transition guides in the `serving/mcp-server/guides/ui/` and `serving/mcp-server/guides/webperf/` directories.
+I will list the contents of the `serving/mcp-server/guides/ui/` directory using the absolute path to ensure I find the correct files.
+I will now check the `webperf` directory to see if there are any guides related to instant navigation or performance improvements.
+I will read the `index.html` file in the current directory to understand its structure and identify any navigation links.
+I will search for any mention of `view-transition` in the codebase to see if it's already being used or if there's a specific pattern I should follow.
+I will add the Speculation Rules API to the `index.html` file to enable prerendering for most links, which will make navigations feel instant.
+I will add the `@view-transition` CSS rule to the `index.html` file to enable smooth cross-document transitions.
+I will use the `glob` tool to check for any other HTML files in the directory that might also need these improvements.
+I will run `ls -R` to get a better understanding of the directory structure and confirm if there are any other files.
+I will add a preload link for the hero image with high fetch priority to improve the Largest Contentful Paint (LCP) and overall page load performance.
+I'll review the `index.html` file to ensure all the performance and navigation enhancements have been correctly implemented and are working as expected.
+I've implemented the Speculation Rules API for instant prerendering of most links (excluding `/logout` and other state-changing routes) and enabled cross-document View Transitions for smoother perceived navigation. Additionally, I've added a high-priority preload for the hero image to optimize the initial page load performance.

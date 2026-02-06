@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artisan Brews | Handcrafted Coffee</title>
+    <style>
+        :root {
+            --primary: #4e342e;
+            --accent: #d4a373;
+            --bg: #fefae0;
+            --text: #283618;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        header {
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .hero {
+            height: 80vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            background: #000;
+        }
+
+        #hero-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transform: scale(0.8);
+            /* Scroll-driven animation */
+            view-timeline-name: --hero-scroll;
+            view-timeline-axis: block;
+            animation-name: fade-in-scale;
+            animation-fill-mode: both;
+            animation-timeline: --hero-scroll;
+            animation-range: entry 10% cover 50%;
+        }
+
+        @keyframes fade-in-scale {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .hero-content {
+            position: absolute;
+            text-align: center;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .hero-content h1 {
+            font-size: 4rem;
+            margin: 0;
+        }
+
+        section {
+            max-width: 800px;
+            margin: 4rem auto;
+            padding: 0 2rem;
+            text-align: center;
+        }
+
+        .btn-details {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+
+        .btn-details:hover {
+            background-color: var(--accent);
+        }
+
+        /* Popover styling */
+        #ingredients-popover {
+            border: none;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            background: white;
+            color: var(--text);
+            max-width: 250px;
+            margin: 0; /* Important for anchor positioning if used, or JS placement */
+        }
+
+        #ingredients-popover::backdrop {
+            background: transparent;
+        }
+
+        ul {
+            text-align: left;
+            padding-left: 1.2rem;
+        }
+
+        .placeholder {
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-style: italic;
+        }
+
+        footer {
+            background: var(--primary);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 4rem;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo"><strong>ARTISAN BREWS</strong></div>
+    <nav>
+        Menu | Locations | About
+    </nav>
+</header>
+
+<div class="hero" id="hero-container">
+    <img id="hero-image" alt="Freshly brewed coffee">
+    <div class="hero-content">
+        <h1>Wake Up to Quality</h1>
+        <p>Sustainable. Ethical. Delicious.</p>
+    </div>
+</div>
+
+<section>
+    <h2>Our Signature Roast</h2>
+    <p>Discover the rich, velvety notes of our house blend, sourced directly from the Ethiopian highlands.</p>
+    
+    <button id="details-btn" class="btn-details" popovertarget="ingredients-popover">
+        Details
+    </button>
+
+    <div id="ingredients-popover" popover="manual">
+        <h3>Ingredients</h3>
+        <ul>
+            <li>Single-origin Arabica beans</li>
+            <li>Triple-filtered spring water</li>
+            <li>A hint of Madagascar vanilla</li>
+            <li>Love & Passion</li>
+        </ul>
+    </div>
+</section>
+
+<section>
+    <h2>Experience the Aroma</h2>
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+</section>
+
+<footer>
+    &copy; 2026 Artisan Brews Coffee Shop
+</footer>
+
+<script>
+    // 1. Adaptive Loading for Hero Image
+    const heroImg = document.getElementById('hero-image');
+    const heroContainer = document.getElementById('hero-container');
+    
+    // High-res vs Low-res (placeholder) images
+    const HIGH_RES_URL = 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1920&q=80';
+    const LOW_RES_URL = 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=200&q=10'; // Small blurred version
+
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    
+    if (connection) {
+        // If effective type is slow (2g or 3g), use placeholder
+        if (connection.effectiveType === '2g' || connection.effectiveType === '3g' || connection.saveData) {
+            console.log('Slow network detected. Loading placeholder.');
+            heroImg.src = LOW_RES_URL;
+            heroImg.style.filter = 'blur(10px)';
+        } else {
+            heroImg.src = HIGH_RES_URL;
+        }
+    } else {
+        // Fallback for browsers without Network Information API
+        heroImg.src = HIGH_RES_URL;
+    }
+
+    // 2. Non-modal Popover on Hover
+    const detailsBtn = document.getElementById('details-btn');
+    const popover = document.getElementById('ingredients-popover');
+
+    detailsBtn.addEventListener('mouseenter', () => {
+        try {
+            popover.showPopover();
+            
+            // Manual positioning since anchor positioning is still gaining support
+            const rect = detailsBtn.getBoundingClientRect();
+            popover.style.position = 'absolute';
+            popover.style.top = (rect.bottom + window.scrollY + 10) + 'px';
+            popover.style.left = (rect.left + (rect.width / 2) - 125) + 'px';
+        } catch (e) {
+            console.error("Popover API not supported or error showing popover", e);
+        }
+    });
+
+    detailsBtn.addEventListener('mouseleave', (e) => {
+        // Small delay or check if moving into the popover itself if we wanted it to stay open
+        // But for a simple "hover over it" request, we hide on leave.
+        if (!popover.contains(e.relatedTarget)) {
+            popover.hidePopover();
+        }
+    });
+
+    // Ensure popover hides if mouse leaves the popover itself
+    popover.addEventListener('mouseleave', () => {
+        popover.hidePopover();
+    });
+
+</script>
+
+</body>
+</html>

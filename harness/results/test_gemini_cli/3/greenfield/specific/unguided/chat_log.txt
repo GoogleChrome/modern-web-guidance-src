@@ -1,0 +1,7 @@
+I will now create the coffee shop landing page in `index.html`, implementing the native Popover API for ingredients, CSS Scroll-driven Animations for the hero image, and the Network Information API for adaptive loading.
+I have built the coffee shop landing page in `index.html`. It incorporates several modern web platform features:
+
+1.  **Native Popover API**: The 'Details' button uses `popover="manual"` to display ingredients. I've added event listeners for `mouseenter` and `mouseleave` to satisfy the hover requirement, with manual positioning logic.
+2.  **Scroll-Driven Animations**: The hero image uses the CSS `view-timeline` and `animation-timeline` properties. As the user scrolls, the image transitions from `opacity: 0` and `scale: 0.8` to full visibility and scale, creating a smooth entrance effect.
+3.  **Adaptive Loading**: The page checks the `navigator.connection.effectiveType`. On slow connections (2G/3G) or when Data Saver is enabled, it loads a low-resolution placeholder image with a blur effect instead of the high-resolution Unsplash stock photo.
+4.  **Visual Design**: A modern, coffee-themed aesthetic using a natural color palette and system fonts.

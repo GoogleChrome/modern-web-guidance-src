@@ -5,18 +5,16 @@ const __dirname = dirname(__filename);
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
+import { config } from './config.ts';
 
-const SCENARIOS = ['greenfield', 'brownfield', 'redfield'];
-const PROMPT_TYPES = ['specific', 'vague'];
-const AGENT_TYPES = ['guided', 'unguided'];
-const NUM_RUNS = 3;
+const RUN_TYPES = ['guided', 'unguided'];
 
 // Global log file stream
 let logStream: fs.WriteStream | null = null;
 
 async function main() {
   const baseDir = __dirname;
-  const setupDir = path.join(baseDir, 'setup');
+  const baseAppsDir = path.join(baseDir, 'base_apps');
   const resultsDir = path.join(baseDir, 'results');
 
   // Create results directory if it doesn't exist
@@ -24,9 +22,44 @@ async function main() {
     fs.mkdirSync(resultsDir, { recursive: true });
   }
 
-  // Generate a unique testID with timestamp
+  // ===========================================================================
+  // CLI Arguments Configuration
+  // ===========================================================================
+  // Available flags:
+  //   --agent=<type>    : 'jetski' (default) or 'gemini-cli'
+  //   --name=<string>    : Custom name for the test run (defaults to timestamp)
+  //
+  // Examples:
+  //   pnpm suite --agent=gemini-cli --name=benchmark-v1
+  //   pnpm task /path/to/dir "prompt" --agent=gemini-cli
+  // ===========================================================================
+
+  const VALID_AGENTS = ['jetski', 'gemini_cli'];
+
+  const args = process.argv.slice(2);
+  let agent = process.env.AGENT || 'jetski';
+  let customTestName = null;
+  let numRuns = config.numRuns;
+  const positionalArgs = [];
+
+  for (const arg of args) {
+    if (arg.startsWith('--agent=')) {
+      agent = arg.split('=')[1];
+    } else if (arg.startsWith('--name=')) {
+      customTestName = arg.split('=')[1];
+    } else {
+      positionalArgs.push(arg);
+    }
+  }
+
+  if (!VALID_AGENTS.includes(agent)) {
+    console.error(`\n❌ Error: Unknown agent '${agent}'. Supported agents: ${VALID_AGENTS.join(', ')}`);
+    process.exit(1);
+  }
+
+  // Generate a unique testID with timestamp or use custom name
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-  const testID = `test_${timestamp}`;
+  const testID = customTestName ? `test_${customTestName}` : `test_${timestamp}`;
   const testDir = path.join(resultsDir, testID);
   fs.mkdirSync(testDir, { recursive: true });
 
@@ -40,16 +73,22 @@ async function main() {
   console.log(`Log file: ${logFilePath}\n`);
 
   // Single task mode check
-  const [argDir, argPrompt] = process.argv.slice(2);
+  const [argDir, argPrompt] = positionalArgs;
+
   if (argDir && argPrompt) {
     console.log(`\n=== Running Single Task ===`);
+    console.log(`Agent: ${agent}`);
     console.log(`Directory: ${argDir}`);
     console.log(`Prompt: ${argPrompt}\n`);
 
     try {
-      // Default to guided for single tasks
-      // Using --experimental-strip-types to run the TS agent directly
-      await runCommand('node', ['--experimental-strip-types', 'jetski-agent.ts', path.resolve(argDir), JSON.stringify(argPrompt), 'guided']);
+      // Dispatch based on agent
+      if (agent === 'gemini_cli') {
+        // Use experimental-strip-types for running TS directly
+        await runCommand('node', ['--experimental-strip-types', 'agents/gemini-cli-agent.ts', path.resolve(argDir), JSON.stringify(argPrompt), 'guided']);
+      } else {
+        await runCommand('node', ['--experimental-strip-types', 'agents/jetski-agent.ts', path.resolve(argDir), JSON.stringify(argPrompt), 'guided']);
+      }
       console.log(`\n✅ Single task complete!`);
     } catch (error) {
       console.error(`
@@ -60,10 +99,11 @@ async function main() {
   }
 
   try {
-    const endRun = 1 + NUM_RUNS;
-    console.log(`\nStarting execution for ${NUM_RUNS} runs`);
+    const endRun = 1 + numRuns;
+    console.log(`\nStarting execution for ${numRuns} runs`);
 
     for (let runNumber = 1; runNumber < endRun; runNumber++) {
+
       console.log(`\n${'='.repeat(60)}`);
       console.log(`>>> STARTING RUN ${runNumber} <<<`);
       console.log(`${'='.repeat(60)}\n`);
@@ -73,19 +113,19 @@ async function main() {
         fs.mkdirSync(runDir, { recursive: true });
       }
 
-      console.log(`Copying setup to ${runDir}...`);
-      await runCommand(`cp -R "${setupDir}"/* "${runDir}/"`);
-      console.log('✅ Setup copied');
+      console.log(`Copying base apps to ${runDir}...`);
+      await runCommand(`cp -R "${baseAppsDir}"/* "${runDir}/"`);
+      console.log('✅ Base apps copied');
 
-      for (const scenario of SCENARIOS) {
-        for (const promptType of PROMPT_TYPES) {
-          const promptPath = path.join(setupDir, scenario, promptType, 'PROMPT.txt');
+      for (const scenario of config.scenarios) {
+        for (const promptType of config.promptTypes) {
+          const promptPath = path.join(baseAppsDir, scenario, promptType, 'PROMPT.txt');
           if (!fs.existsSync(promptPath)) continue;
 
           let promptContent = fs.readFileSync(promptPath, 'utf8').trim();
           promptContent += ` Don't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
-          for (const agentType of AGENT_TYPES) {
+          for (const agentType of RUN_TYPES) {
             const targetDir = path.join(runDir, scenario, promptType, agentType);
 
             if (!fs.existsSync(targetDir)) {
@@ -96,10 +136,14 @@ async function main() {
               }
             }
 
-            console.log(`\n>>> Running Scenario: ${scenario} | Prompt: ${promptType} | Agent: ${agentType} | Run: ${runNumber}`);
+            console.log(`\n>>> Running Scenario: ${scenario} | Prompt: ${promptType} | Agent: ${agentType} | Run: ${runNumber} | Agent: ${agent}`);
             try {
-              // Pass agentType so jetski-agent.ts can configure its own isolated MCP
-              await runCommand('node', ['--experimental-strip-types', 'jetski-agent.ts', targetDir, JSON.stringify(promptContent), agentType]);
+              // Dispatch to appropriate agent script based on agent
+              if (agent === 'gemini_cli') {
+                await runCommand('node', ['--experimental-strip-types', 'agents/gemini-cli-agent.ts', targetDir, JSON.stringify(promptContent), agentType]);
+              } else {
+                await runCommand('node', ['--experimental-strip-types', 'agents/jetski-agent.ts', targetDir, JSON.stringify(promptContent), agentType]);
+              }
               console.log(`✅ Completed: ${scenario}/${promptType}/${agentType} (Run ${runNumber})`);
             } catch (error) {
               console.error(`❌ Failed: ${scenario}/${promptType}/${agentType} (Run ${runNumber})`, error);
@@ -114,11 +158,11 @@ async function main() {
     if (fs.existsSync(manifestPath)) {
       try {
         manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-      } catch {}
+      } catch { }
     }
 
     if (!manifest.tests.some(t => t.id === testID)) {
-      manifest.tests.push({ id: testID, timestamp: new Date().toISOString(), runCount: NUM_RUNS });
+      manifest.tests.push({ id: testID, timestamp: new Date().toISOString(), runCount: numRuns });
       fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
     }
 
@@ -138,7 +182,7 @@ function setupLogging(logFilePath: string) {
   const originalError = console.error;
   const originalWarn = console.warn;
 
-  console.log = function(...args: any[]) {
+  console.log = function (...args: any[]) {
     const message = args.map(arg =>
       typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
     ).join(' ');
@@ -148,7 +192,7 @@ function setupLogging(logFilePath: string) {
     }
   };
 
-  console.error = function(...args: any[]) {
+  console.error = function (...args: any[]) {
     const message = args.map(arg =>
       typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
     ).join(' ');
@@ -158,7 +202,7 @@ function setupLogging(logFilePath: string) {
     }
   };
 
-  console.warn = function(...args: any[]) {
+  console.warn = function (...args: any[]) {
     const message = args.map(arg =>
       typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
     ).join(' ');

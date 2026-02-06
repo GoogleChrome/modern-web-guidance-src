@@ -1,0 +1,9 @@
+I will start by reading the `index.html` file to understand the current tooltip implementation.
+I will search for tooltip use cases to identify the modern best practices for this implementation.
+I will retrieve the best practices for the "tooltip" use case to guide the modernization process.
+I will modernize the tooltip implementation by using the Popover API, CSS Anchor Positioning, and Interest Invokers as recommended by the best practices. I'll also include the necessary polyfills via CDN to ensure the modern features work across different browsers.
+I have successfully modernized the tooltip implementation using the Popover API, CSS Anchor Positioning, and Interest Invokers. Now, I will check the root `package.json` to identify any relevant linting or build commands that should be executed.
+I'll check the root `package.json` file to identify any relevant scripts.
+I'll run `pnpm lint` from the root to ensure there are no issues with the changes.
+I'll run the `lint` script explicitly from the root directory to avoid issues with `pnpm` trying to execute it in the current non-package directory.
+I have modernized the tooltip implementation by replacing the imperative JavaScript-based approach with modern, declarative web APIs. The new implementation utilizes the **Popover API** (with `popover="hint"`), **CSS Anchor Positioning**, and **Interest Invokers** (`interestfor`). I've also included the necessary polyfills to ensure compatibility while adhering to the mandate of preferring native browser features. Final linting from the root confirmed no issues.

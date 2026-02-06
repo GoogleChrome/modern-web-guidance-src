@@ -1,0 +1,13 @@
+I will search for the best practices for implementing popovers and adaptive loading using native web platform features.
+
+I will retrieve the best practices for tooltips, scroll-driven animations, and adaptive loading to ensure a high-quality implementation.
+
+I will create a modern coffee shop landing page in `index.html` using native web platform features, including the Popover API for ingredients, scroll-driven animations for the hero image, and the Adaptive Loading API for performance.
+
+I have completed the request. The coffee shop landing page is implemented in `index.html` using native web platform features:
+
+- **Popover API & Interest Invokers**: The "Details" button uses the `interestfor` attribute to trigger a non-modal `popover="hint"` on hover, displaying ingredients. CSS Anchor Positioning is used to tether the popover to the button.
+- **Scroll-Driven Animations**: The hero image features a `fade-in` and `scale-up` effect as it enters the viewport, powered by native CSS `animation-timeline: view()`.
+- **Adaptive Loading API**: The hero image includes the `loading-placeholder` attribute to provide a low-fidelity alternative on slow network connections.
+- **Modern Design**: The page is styled with a clean, coffee-themed aesthetic using native CSS variables, Flexbox, and Grid.
+- **Progressive Enhancement**: Conditional polyfills are included to ensure functionality in browsers that do not yet support these cutting-edge APIs.

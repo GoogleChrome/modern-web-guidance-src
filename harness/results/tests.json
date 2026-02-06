@@ -1,21 +1,6 @@
 {
   "tests": [
     {
-      "id": "test_2026-01-06T23-07-34",
-      "timestamp": "2026-01-07T00:33:05.689Z",
-      "runCount": 3
-    },
-    {
-      "id": "test_2026-01-07T00-33-21",
-      "timestamp": "2026-01-07T01:31:04.923Z",
-      "runCount": 3
-    },
-    {
-      "id": "test_2026-01-07T15-03-07",
-      "timestamp": "2026-01-07T16:13:49.005Z",
-      "runCount": 3
-    },
-    {
       "id": "skills",
       "timestamp": "2026-01-16T14:36:47.531Z",
       "runCount": 3
@@ -39,6 +24,26 @@
       "id": "react",
       "timestamp": "2026-01-29T01:16:45.045Z",
       "runCount": 3
+    },
+    {
+      "id": "test_gemini_cli",
+      "timestamp": "2026-02-06T00:22:51.171Z",
+      "runCount": 3
+    },
+    {
+      "id": "test_dry_run",
+      "timestamp": "2026-02-06T20:31:05.139Z",
+      "runCount": 0
+    },
+    {
+      "id": "test_dry_run_verify",
+      "timestamp": "2026-02-06T20:43:09.044Z",
+      "runCount": 3
+    },
+    {
+      "id": "test_dry_run_final",
+      "timestamp": "2026-02-06T20:44:04.260Z",
+      "runCount": 0
     }
   ]
 }

@@ -17,7 +17,7 @@ async function runSmokeTest() {
     // Run the existing agent harness
     // Usage: node jetski-agent.ts <directory> <prompt> [agentType]
     const result = spawnSync('node', [
-      path.join(__dirname, 'jetski-agent.ts'),
+      path.join(__dirname, 'agents/jetski-agent.ts'),
       tempProjectDir,
       prompt
     ], {

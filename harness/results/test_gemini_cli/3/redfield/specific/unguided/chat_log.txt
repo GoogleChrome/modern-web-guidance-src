@@ -1,0 +1,14 @@
+I will read the `index.html` file to identify the current JavaScript-based tooltip implementation.
+I will read the `index.html` file using its absolute path to examine the tooltip implementation.
+I will search the `serving/mcp-server/guides/` directory for any documentation on Interest Invokers or the Popover API to ensure I use the correct implementation.
+I will list the contents of the `serving/mcp-server/guides/ui` directory using its absolute path.
+I will read the `tooltip.md` guide to understand the recommended approach for modernizing tooltips.
+I will modernize the tooltip implementation in `index.html` by replacing the JavaScript event listeners and manual positioning with the Popover API, Interest Invokers, and CSS Anchor Positioning, as recommended in the project's guides.
+I will enhance the tooltip's visual appeal by adding a stock image from Unsplash and refining its styling, while maintaining the modern Popover API and Interest Invoker implementation.
+I will check the `package.json` file in the root directory to identify any available linting or testing commands that I should run.
+I will search the repository for any existing polyfills for the Popover API or Interest Invokers to see if I should use local copies instead of CDN links.
+I will add conditional polyfill loading to `index.html` as mandated by the project's tooltip guide to ensure the modernized implementation works across browsers.
+I will read the finalized `index.html` file to ensure all changes, including the modern API usage, visual enhancements, and polyfills, are correctly implemented.
+I will run `pnpm lint` to ensure the changes adhere to the project's quality standards.
+I will run the lint command from the project root to ensure it executes correctly against the workspace configuration.
+I have modernized the tooltip implementation by replacing the manual JavaScript event listeners with the modern HTML Popover API and Interest Invokers (`interestfor`). I also implemented CSS Anchor Positioning for precise, declarative tethering of the tooltip to its trigger, following the project's specialized UI guidance. Additionally, I enhanced the visual design with a stock image from Unsplash and refined CSS styling, and included conditional polyfill loading to ensure cross-browser compatibility for these modern web features.

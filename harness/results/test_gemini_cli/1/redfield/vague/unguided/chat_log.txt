@@ -1,0 +1,11 @@
+I will start by reading the `index.html` file in the target directory to understand the current tooltip implementation.
+I will read the `index.html` file using its absolute path to examine the current tooltip implementation.
+I will search for any UI-related guides in the `serving/mcp-server/guides/` directory to see if there are specific recommendations for modern tooltip implementations.
+I will list the contents of the `serving/mcp-server/guides/ui` directory using its absolute path to find relevant guidance.
+I will read the `tooltip.md` guide to understand the recommended modern practices for implementing tooltips.
+I will search the codebase for usages of `interestfor` to see if there are any existing implementations or patterns I should follow.
+I will modernize the tooltip implementation in `index.html` by using the native Popover API, CSS Anchor Positioning, and Interest Invokers, while also adding modern styling and a stock image.
+I will correctly write the modernized tooltip implementation to the `index.html` file using its absolute path.
+I will use `run_shell_command` to delete the accidental directory structure I created.
+I will perform a final check of the modernized `index.html` file to ensure the implementation is correct.
+I have modernized the tooltip implementation by replacing the legacy imperative JavaScript with native browser APIs. The new solution uses the **Popover API** (`popover="hint"`) and **Interest Invokers** (`interestfor`) for declarative triggering, and **CSS Anchor Positioning** for precise tethering. I also added modern CSS animations (using `@starting-style` and `allow-discrete`), updated the styling for a more polished look, and included a high-quality stock photo from Unsplash. Progressive enhancement polyfills were also included to ensure compatibility with older browsers.

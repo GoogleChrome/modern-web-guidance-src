@@ -1,0 +1,11 @@
+I will search for the relevant modern web implementation guides for popovers, scroll-driven animations, and adaptive loading to ensure I follow the project's best practices.
+I will now retrieve the implementation guides for tooltips, scroll-driven animations, and adaptive loading to gather the specific code patterns and APIs required for the coffee shop landing page.
+I will read the root `package.json` to check for any existing dependencies or configurations that I should be aware of while building the coffee shop landing page.
+I will read the monorepo's root `package.json` to identify any shared dependencies or scripts that could be useful for my implementation.
+I will read the monorepo's root `package.json` using its absolute path to correctly identify any available project-wide dependencies.
+I will read the existing `index.html` file in the current working directory to understand the starting point for the landing page implementation.
+I will search the codebase for any existing polyfill files to determine if I can link to them locally instead of using a CDN.
+I will now implement the coffee shop landing page in `index.html`, incorporating the hero image with scroll-driven animations and adaptive loading, as well as the 'Details' button with a non-modal popover, using the modern web patterns identified.
+I will correct the typo in the product section and ensure the polyfill URL matches the implementation guide exactly for strict compliance.
+I will update the adaptive loading polyfill URL to use `http` as specified in the implementation guide for exact compliance.
+I have built the coffee shop landing page in `index.html`, implementing a hero image with scroll-driven fade and scale animations, adaptive loading for network-aware image performance, and a hover-triggered non-modal popover for product details using the latest native web platform features. All implementation details follow the project's modern web guidance and best practices.
