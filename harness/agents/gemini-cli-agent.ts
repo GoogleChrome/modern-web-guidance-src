@@ -4,7 +4,8 @@ import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import config from '../config.ts';
-import { updateMcpConfig } from '../lib/mcp.ts';
+
+import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists } from '../lib/agent-shared.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
@@ -23,10 +24,7 @@ const absoluteTargetDir = path.resolve(targetDirectory);
  * @returns {string} The path to the temporary HOME directory.
  */
 function setupIsolatedHome(): string {
-  const tempHome = `/tmp/ghh-gemini-${Math.random().toString(36).substring(7)}`;
-  fs.mkdirSync(tempHome, { recursive: true });
-
-  console.log(`Setting up isolated HOME at ${tempHome}...`);
+  const tempHome = createIsolatedHome('ghh-gemini');
 
   const geminiSource = path.join(os.homedir(), '.gemini');
   const geminiDest = path.join(tempHome, '.gemini');
@@ -43,13 +41,7 @@ function setupIsolatedHome(): string {
 
   for (const file of filesToCopy) {
     const src = path.join(geminiSource, file);
-    if (fs.existsSync(src)) {
-      try {
-        fs.copyFileSync(src, path.join(geminiDest, file));
-      } catch (e) {
-        console.warn(`Warning: Failed to copy ${file}:`, e);
-      }
-    }
+    copyFileIfExists(src, path.join(geminiDest, file));
   }
 
   // Create trustedFolders.json to avoid "untrusted folder" errors
@@ -145,14 +137,8 @@ async function run() {
     console.error("Error during Gemini CLI execution:", err);
     process.exit(1);
   } finally {
-    if (tempHome && fs.existsSync(tempHome)) {
-      console.log(`\n=== Cleaning up isolated HOME ===`);
-      try {
-        fs.rmSync(tempHome, { recursive: true, force: true });
-        console.log('✅ Cleanup successful');
-      } catch (cleanupErr) {
-        console.error('Failed to cleanup isolated HOME:', cleanupErr);
-      }
+    if (tempHome) {
+      cleanupIsolatedHome(tempHome);
     }
   }
 }

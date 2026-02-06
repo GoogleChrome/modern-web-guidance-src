@@ -5,7 +5,8 @@ import puppeteer from 'puppeteer-core';
 import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config } from '../config.ts';
-import { updateMcpConfig } from '../lib/mcp.ts';
+
+import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome } from '../lib/agent-shared.ts';
 import { fileURLToPath } from 'url';
 
 // Parse arguments
@@ -19,7 +20,7 @@ if (args.length < 2) {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
 
-const [targetDirectory, userPrompt, runType = 'guided'] = args;
+const [targetDirectory, userPrompt, runType] = args;
 const absoluteTargetDir = path.resolve(targetDirectory);
 
 /**
@@ -27,12 +28,7 @@ const absoluteTargetDir = path.resolve(targetDirectory);
  * @returns {string} The path to the temporary HOME directory.
  */
 function setupIsolatedHome(): string {
-  // Use /tmp/ deliberately because os.tmpdir() on macOS can return paths that are 
-  // too long for valid Unix socket paths, which causes issues for some JetSki/VS Code components.
-  const tempHome = `/tmp/ghh-${Math.random().toString(36).substring(7)}`;
-  fs.mkdirSync(tempHome, { recursive: true });
-
-  console.log(`Setting up isolated HOME at ${tempHome}...`);
+  const tempHome = createIsolatedHome('ghh');
 
   const appSupportSource = path.join(os.homedir(), 'Library/Application Support/Jetski');
   const appSupportDest = path.join(tempHome, 'Library/Application Support/Jetski');
@@ -406,15 +402,8 @@ async function run(): Promise<void> {
     process.exit(1);
   } finally {
     killProcessOnPort(config.jetskiDebugPort);
-    if (testHomeDir && fs.existsSync(testHomeDir)) {
-      console.log(`
-=== Cleaning up isolated HOME ===`);
-      try {
-        fs.rmSync(testHomeDir, { recursive: true, force: true });
-        console.log('✅ Cleanup successful');
-      } catch (cleanupErr) {
-        console.error('Failed to cleanup isolated HOME:', cleanupErr);
-      }
+    if (testHomeDir) {
+      cleanupIsolatedHome(testHomeDir);
     }
   }
 }
