@@ -6,6 +6,7 @@
     "test": "node --test lib/*.test.ts",
     "report": "node evaluate.ts",
     "suite": "node run_suite.ts",
+    "qsmoke": "node quick-smoke.ts",
     "task": "node run_suite.ts",
     "typecheck": "tsc --noEmit",
     "full-run": "npm run suite && npm run report"

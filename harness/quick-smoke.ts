@@ -2,6 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { spawnSync } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function runSmokeTest() {
   const tempProjectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jetski-smoke-test-'));
@@ -13,7 +17,7 @@ async function runSmokeTest() {
     // Run the existing agent harness
     // Usage: node jetski-agent.ts <directory> <prompt> [agentType]
     const result = spawnSync('node', [
-      'harness/jetski-agent.ts',
+      path.join(__dirname, 'jetski-agent.ts'),
       tempProjectDir,
       prompt
     ], {
