@@ -8,7 +8,7 @@ export function registerModernWebTools(server: McpServer) {
     {
       description: "MANDATORY: Execute this FIRST for each and every web development use case, even if you're implementing that use case in a framework like React, especially for writing modern web code. Returns use case IDs and descriptions. You MUST subsequently call 'get_best_practices' with the most relevant ID to get the implementation guide.",
       inputSchema: {
-        query: z.string().describe("Action-oriented description of the desired use case (e.g., 'lazy load images' or 'create a tooltip'). Avoid 'how to' questions and single-keyword queries (e.g. 'images')."),
+        query: z.string().describe("Action-oriented description of the desired use case (e.g., 'lazy load images' or 'show a tooltip on hover'). Avoid 'how to' questions and single-keyword queries (e.g. 'images'). Capture the abstract, high-level use case, while avoiding content-specific details (e.g. 'display a carousel of images' instead of 'swipe through historical portraits')."),
       },
     },
     async ({ query }) => {
