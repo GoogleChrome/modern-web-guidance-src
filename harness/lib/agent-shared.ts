@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 
 /**
  * Creates a unique isolated HOME directory in /tmp.
@@ -46,6 +47,29 @@ export function copyFileIfExists(src: string, dest: string): void {
 }
 
 /**
+ * Creates a trustedFolders.json file to avoid "untrusted folder" errors.
+ * @param contentsDir Directory to write the trustedFolders.json file to (e.g. .gemini or within .gemini/jetski)
+ * @param folders List of absolute paths to trust
+ */
+export function createTrustedFolders(contentsDir: string, folders: string[]): void {
+  const trustedFolders: Record<string, string> = {};
+  for (const folder of folders) {
+    trustedFolders[folder] = "TRUST_FOLDER";
+  }
+
+  try {
+    fs.mkdirSync(contentsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(contentsDir, 'trustedFolders.json'),
+      JSON.stringify(trustedFolders, null, 2)
+    );
+    console.log(`Created trustedFolders.json in ${contentsDir}`);
+  } catch (e) {
+    console.error('Failed to create trustedFolders.json:', e);
+  }
+}
+
+/**
  * Updates the MCP configuration file to enable or disable the Google Developer Knowledge MCP server.
  * @param configFullPath Full path to the MCP configuration file (e.g. mcp_config.json or settings.json)
  * @param runType 'guided' or 'unguided'
@@ -71,7 +95,7 @@ export function updateMcpConfig(configFullPath: string, runType: string, apiKey:
   // Note: 'guided' enables the server, anything else (like 'unguided') disables it.
   if (runType === 'guided') {
     mcpConfig.mcpServers[serverName] = {
-      "serverUrl": "https://developerknowledge.googleapis.com/mcp",
+      "url": "https://developerknowledge.googleapis.com/mcp",
       "headers": {
         "X-Goog-Api-Key": apiKey
       }

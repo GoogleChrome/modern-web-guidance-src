@@ -5,7 +5,7 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import config from '../config.ts';
 
-import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists } from '../lib/agent-shared.ts';
+import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders } from '../lib/agent-shared.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
@@ -44,20 +44,7 @@ function setupIsolatedHome(): string {
     copyFileIfExists(src, path.join(geminiDest, file));
   }
 
-  // Create trustedFolders.json to avoid "untrusted folder" errors
-  // Format is: { "/path/to/folder": "TRUST_FOLDER" }
-  const trustedFolders = {
-    [absoluteTargetDir]: "TRUST_FOLDER",
-    [projectRoot]: "TRUST_FOLDER"
-  };
-  try {
-    fs.writeFileSync(
-      path.join(geminiDest, 'trustedFolders.json'),
-      JSON.stringify(trustedFolders, null, 2)
-    );
-  } catch (e) {
-    console.error('Failed to create trustedFolders.json:', e);
-  }
+  createTrustedFolders(geminiDest, [absoluteTargetDir, projectRoot]);
 
   // Set environment variables for the current process (and children)
   process.env.HOME = tempHome;

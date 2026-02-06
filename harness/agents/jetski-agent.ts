@@ -5,9 +5,8 @@ import puppeteer from 'puppeteer-core';
 import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config } from '../config.ts';
-
-import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome } from '../lib/agent-shared.ts';
 import { fileURLToPath } from 'url';
+import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders } from '../lib/agent-shared.ts';
 
 // Parse arguments
 // Usage: node jetski-agent.ts <directory> <prompt> [agentType]
@@ -16,12 +15,10 @@ if (args.length < 2) {
   console.error("Usage: node jetski-agent.ts <directory> <prompt> [agentType]");
   process.exit(1);
 }
-
+const [targetDirectory, userPrompt, agentType = 'guided'] = args;
+const absoluteTargetDir = path.resolve(targetDirectory);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
-
-const [targetDirectory, userPrompt, runType] = args;
-const absoluteTargetDir = path.resolve(targetDirectory);
 
 /**
  * Sets up an isolated HOME directory to ensure test isolation while preserving authentication.
@@ -37,6 +34,8 @@ function setupIsolatedHome(): string {
 
   fs.mkdirSync(appSupportDest, { recursive: true });
   fs.mkdirSync(geminiDest, { recursive: true });
+
+  createTrustedFolders(path.dirname(geminiDest), [absoluteTargetDir, projectRoot]);
 
   // Copy minimal authentication state
   const filesToCopy = [
@@ -79,23 +78,6 @@ function setupIsolatedHome(): string {
     if (fs.existsSync(src)) {
       fs.copyFileSync(src, path.join(geminiDest, file));
     }
-  }
-
-  // Create trustedFolders.json to avoid "untrusted folder" errors
-  // Format is: { "/path/to/folder": "TRUST_FOLDER" }
-  const trustedFolders = {
-    [absoluteTargetDir]: "TRUST_FOLDER",
-    [projectRoot]: "TRUST_FOLDER"
-  };
-  try {
-    // geminiDest is .../.gemini/jetski, we need .../.gemini/trustedFolders.json
-    const geminiRootDest = path.dirname(geminiDest);
-    fs.writeFileSync(
-      path.join(geminiRootDest, 'trustedFolders.json'),
-      JSON.stringify(trustedFolders, null, 2)
-    );
-  } catch (e) {
-    console.error('Failed to create trustedFolders.json:', e);
   }
 
   // Set environment variables for the child process and the current process
@@ -156,7 +138,11 @@ async function extractJetskiVersionInfo(page: Page, outputPath: string): Promise
     }
 
     // 8. Write to file
-    fs.writeFileSync(outputPath, JSON.stringify(info, null, 2), 'utf8');
+    try {
+      fs.writeFileSync(outputPath, JSON.stringify(info, null, 2), 'utf8');
+    } catch (e: any) {
+      console.warn(`Warning: Could not save Jetski info to file: ${e.message}`);
+    }
 
     // 9. Close the dialog to leave the IDE in a clean state
     // We try Escape first, then look for an OK button as a backup
@@ -174,7 +160,7 @@ async function extractJetskiVersionInfo(page: Page, outputPath: string): Promise
       }
     }
 
-    console.log(`Successfully saved Jetski info to ${outputPath}`);
+    console.log(`Successfully extracted Jetski info.`);
     return info;
 
   } catch (error: any) {
@@ -195,21 +181,14 @@ function killProcessOnPort(port: number | string): void {
   }
 }
 
-/**
- * @param {string} directory
- * @param {string} profileDir
- */
 async function startJetski(directory: string, profileDir: string): Promise<void> {
   // Kill anything on the debug port first
   killProcessOnPort(config.jetskiDebugPort);
 
   console.log(`Starting Jetski with directory: ${directory}`);
-  console.log(`User Data Directory: ${profileDir}`);
-
   const jetskiProcess = spawn(config.jetskiBin, [
     `--remote-debugging-port=${config.jetskiDebugPort}`,
     `--user-data-dir=${profileDir}`,
-    '--password-store=basic',
     directory
   ], {
     detached: true, // Let it run independently
@@ -217,27 +196,6 @@ async function startJetski(directory: string, profileDir: string): Promise<void>
   });
 
   jetskiProcess.unref(); // Don't wait for it to exit
-
-  // Background task to dismiss the keychain dialog
-  const appleScript = `
-    tell application "System Events"
-      repeat 15 times
-        set found to false
-        -- SecurityAgent is the system process that owns this dialog
-        if exists (process "SecurityAgent") then
-          try
-            if exists (window "Keychain Not Found" of process "SecurityAgent") then
-              click button "Cancel" of window "Keychain Not Found" of process "SecurityAgent"
-              set found to true
-            end if
-          end try
-        end if
-        if found then exit repeat
-        delay 1
-      end repeat
-    end tell
-  `;
-  spawn('osascript', ['-e', appleScript], { detached: true, stdio: 'ignore' }).unref();
 
   // Wait for the debug port to be ready
   console.log("Waiting for Jetski to be ready...");
@@ -263,13 +221,15 @@ async function run(): Promise<void> {
   try {
     // Setup isolated environment and MCP config
     testHomeDir = setupIsolatedHome();
-    updateMcpConfig(path.join(config.jetskiDir, 'mcp_config.json'), runType, config.mcpApiKey);
+    const mcpConfigPath = path.join(config.jetskiDir, 'mcp_config.json');
+    updateMcpConfig(mcpConfigPath, agentType, config.mcpApiKey);
 
     // Use stable user data dir to persist state (welcome screen, etc.)
     const profileDir = config.jetskiProfileDir;
     if (!fs.existsSync(profileDir)) {
       fs.mkdirSync(profileDir, { recursive: true });
     }
+
     await startJetski(absoluteTargetDir, profileDir);
 
     const browserURL = `http://127.0.0.1:${config.jetskiDebugPort}`;
@@ -305,9 +265,10 @@ async function run(): Promise<void> {
       console.log(`Extracting Jetski info to: ${jetskiInfoPath}`);
       try {
         await extractJetskiVersionInfo(page, jetskiInfoPath);
-      } catch (e) {
-        console.error("Failed to extract Jetski info:", e);
-        // Don't crash the run for this, just continue
+      } catch (e: any) {
+        console.error("Failed to extract Jetski info:", e.message);
+        // Ensure we try to close any open dialogs that might be blocking the UI
+        await page.keyboard.press('Escape');
       }
     } else {
       console.log(`Jetski info already exists at: ${jetskiInfoPath}`);
@@ -318,6 +279,7 @@ async function run(): Promise<void> {
     const cancelButtonSelector = '[data-tooltip-id="input-send-button-cancel-tooltip"]';
     const allowOnceButtonSelector = 'button[aria-label="Allow once"]';
 
+    // The double slashes are deliberate. These IDs include the dot.
     const iframeSelector = '#antigravity\\.agentPanel, #antigravity\\.cascadePanel';
 
     console.log(`Waiting for Agent Panel iframe...`);
@@ -402,9 +364,7 @@ async function run(): Promise<void> {
     process.exit(1);
   } finally {
     killProcessOnPort(config.jetskiDebugPort);
-    if (testHomeDir) {
-      cleanupIsolatedHome(testHomeDir);
-    }
+    cleanupIsolatedHome(testHomeDir || '');
   }
 }
 
