@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Tooltip Demo</title>
+    <script src="https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js"></script>
+    <script src="https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js"></script>
+    <script src="https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+
+
+        /* The Button */
+        #tooltip-trigger {
+            anchor-name: --tooltip-trigger;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+        }
+
+        /* The Tooltip */
+        #tooltip {
+            margin: 0;
+            /* Reset default popover margin */
+            position-anchor: --tooltip-trigger;
+            position-area: top center;
+            position-try-fallbacks: flip-block;
+
+            /* Styles */
+            border: none;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+            /* Animation */
+            opacity: 0;
+            transition: opacity 0.2s, display 0.2s allow-discrete, overlay 0.2s allow-discrete;
+        }
+
+        #tooltip:popover-open {
+            opacity: 1;
+        }
+
+        /* Little arrow */
+        #tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+
+        /* Fallback for anchor positioning if needed, though polyfill handles it better usually */
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <!-- interestfor handles the behavior, popover="hint" is the type -->
+        <button id="tooltip-trigger" interestfor="tooltip">Hover over me</button>
+        <div id="tooltip" popover="hint">I'm a modern popover tooltip!</div>
+    </div>
+
+</body>
+
+</html>

@@ -1,0 +1,207 @@
+:root {
+    --color-bg: #fdfbf7;
+    --color-text: #2c241b;
+    --color-accent: #c07a40;
+    --color-overlay: rgba(0, 0, 0, 0.4);
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Lato', sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-body);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.6;
+    overflow-x: hidden; /* Prevent scrollbar flash if scale > 1 */
+}
+
+/* Hero Section */
+.hero-section {
+    position: relative;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    text-align: center;
+    color: #fff;
+}
+
+.hero-image-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.hero-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: filter 1s ease-out, transform 0.1s linear, opacity 0.1s linear;
+    will-change: transform, opacity, filter;
+    /* Initial state for JS animation: 
+       We will set initial inline styles in JS or here. 
+       Let's start it visible but maybe we want the "fade in" effect? 
+       The user said "fade in and grow larger as I scroll down". 
+       So initial state at scroll 0 should be: scale 1, opacity 1 (or 0 if checking "fade in").
+       Wait, "fade in... as I scroll down" usually implies it starts hidden?
+       But it's a hero image. If it starts hidden, the top of the page is empty.
+       Use-case: Maybe they mean a parallax fade?
+       "fade in and grow larger as I scroll down" -> scroll increases -> opacity increases.
+       So at scroll 0, opacity is low? That contradicts "Hero".
+       Maybe they mean "fade OUT" as I scroll down? 
+       No, "fade IN and grow LARGER".
+       Okay, I will assume it starts with Scale 1, Opacity 0.2 (low) and grows to Scale 1.2, Opacity 1 as you scroll? 
+       Or maybe it starts Small and Transparent and grows/fades in?
+       Let's interpret: Starts at Scale 1, Opacity 0.5. As you scroll (user goes deeper), it Scales UP and Opacity UP?
+       That is weird for a hero that is leaving the viewport.
+       
+       Alternative: The hero is BELOW the fold? 
+       The user said "Main hero image". Main heroes are usually at the top.
+       
+       Let's try this interpretation:
+       Start: Scale 1.2, Opacity 1.
+       Scroll Down: Scale INCREASES, Opacity FADES OUT? 
+       User said: "fade in and grow larger as I scroll down".
+       
+       Okay, maybe they mean it behaves like a "reveal". 
+       I will set it to: Start Opacity 0.5, Scale 1.0.
+       Scroll Down -> Opacity goes to 1, Scale goes to 1.1.
+       This fulfills the literal request even if unusual.
+    */
+    opacity: 0.4; /* Starting low to allow "fade in" */
+    transform: scale(1);
+}
+
+.hero-image.loaded {
+    filter: blur(0);
+}
+
+.lazy-hero {
+    filter: blur(20px); /* Low quality blur effect */
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--color-overlay);
+    z-index: 1;
+}
+
+.hero-content {
+    z-index: 2;
+    padding: 2rem;
+    animation: contentFadeIn 1.5s ease-out;
+}
+
+@keyframes contentFadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-title {
+    font-family: var(--font-heading);
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+.hero-subtitle {
+    font-size: 1.5rem;
+    font-weight: 300;
+}
+
+/* Product Section */
+.product-details {
+    padding: 5rem 2rem;
+    background: #fff;
+    text-align: center;
+}
+
+.product-details h2 {
+    font-family: var(--font-heading);
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: var(--color-text);
+}
+
+.product-desc {
+    font-size: 1.2rem;
+    color: #666;
+    margin-bottom: 3rem;
+}
+
+/* Tooltip & Button */
+.tooltip-container {
+    position: relative;
+    display: inline-block;
+}
+
+.btn-details {
+    background: var(--color-accent);
+    color: #fff;
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.3s;
+}
+
+.btn-details:hover {
+    background: #a06330;
+}
+
+.tooltip {
+    position: absolute;
+    bottom: 100%; /* Above the button */
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    padding: 1rem;
+    border-radius: 4px;
+    width: 200px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s, transform 0.3s;
+    pointer-events: none;
+    margin-bottom: 10px;
+    z-index: 10;
+    font-size: 0.9rem;
+    text-align: left;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+}
+
+/* Show tooltip on hover over container (so it stays open if we hover the tooltip? User said "when you hover over IT" referring to button)
+   But usually generic tooltips are hover-only. */
+.tooltip-container:hover .tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-5px);
+}

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artisan Coffee</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="main.js"></script>
+  <!-- Preload fonts if possible, using system fonts for now -->
+</head>
+<body>
+
+  <header>
+    <h1>Artisan Coffee</h1>
+  </header>
+
+  <main>
+    <section class="content">
+      <p>Experience the finest blend of roasted beans from around the world.</p>
+    </section>
+
+    <div class="hero-section">
+      <!-- Image src will be set by JS for adaptive loading, but we need a default for NO-JS or fast start -->
+      <!-- We use a tiny data URI or transparent pixel initially to avoid double fetch if possible, or just default to high and let JS swap if fast enough?
+           Better to default to low or nothing? 
+           Actually, for SEO and No-JS, we should probably set src to highResSrc, 
+           but since requirement is "load low-quality... if slow", JS is needed to detect speed first.
+           We'll set a placeholder or let JS handle it. 
+           To avoid Layout Shift, we should set dimensions. 
+      -->
+      <img id="hero-img" alt="Cozy Coffee Shop" width="800" height="400" class="hero-img">
+    </div>
+
+    <section class="details-section">
+      <button class="details-btn" interestfor="ingredients-popover">
+        View Ingredients
+      </button>
+
+      <div id="ingredients-popover" class="ingredient-tooltip" popover="hint">
+        <h3>Our Secret Blend</h3>
+        <ul>
+          <li>Arabica Beans (80%)</li>
+          <li>Robusta Beans (20%)</li>
+          <li>Dash of Cocoa</li>
+          <li>Love</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="content">
+      <p>Scroll down to see the magic happen.</p>
+      <p>More content to ensure scrolling...</p>
+      <div style="height: 100vh;"></div>
+      <p>Enjoy your coffee!</p>
+    </section>
+  </main>
+
+</body>
+</html>

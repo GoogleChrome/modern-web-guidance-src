@@ -1,0 +1,241 @@
+:root {
+    --color-bg: #FDFBF7;
+    --color-text: #2C2420;
+    --color-accent: #D4A373;
+    --color-secondary: #E9EDC9;
+    --color-surface: #FFFFFF;
+    
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Outfit', sans-serif;
+    
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* Header */
+.header {
+    padding: 2rem 4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-decoration: none;
+    color: var(--color-text);
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 2rem;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--color-text);
+    font-weight: 400;
+    transition: color 0.2s;
+}
+
+.nav-links a:hover {
+    color: var(--color-accent);
+}
+
+/* Hero Section */
+.hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    padding: 4rem;
+    min-height: 90vh;
+    align-items: center;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.hero-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    max-width: 600px;
+}
+
+.hero h1 {
+    font-family: var(--font-heading);
+    font-size: 4.5rem;
+    line-height: 1.1;
+    color: var(--color-text);
+}
+
+.hero p {
+    font-size: 1.25rem;
+    color: #665D55;
+    max-width: 400px;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.btn {
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 50px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform 0.2s var(--ease-out-expo), opacity 0.2s;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+}
+
+.btn-primary {
+    background-color: var(--color-text);
+    color: var(--color-surface);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    border: 2px solid var(--color-text);
+    color: var(--color-text);
+    /* Anchor name for the popover trigger */
+    anchor-name: --details-btn;
+}
+
+/* Hero Image & Animation */
+.hero-image-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: visible; /* Don't hide overflow to allow scaling */
+}
+
+.hero-image {
+    width: 100%;
+    height: auto;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    
+    /* Scroll Driven Animation */
+    /* Starting state */
+    opacity: 0;
+    scale: 0.9;
+    
+    animation: fade-scale-in linear both;
+    animation-timeline: view();
+    /* Animate as it enters: start at 10% entry, end at 40% entry */
+    animation-range: entry 10% entry 40%;
+}
+
+@keyframes fade-scale-in {
+    to {
+        opacity: 1;
+        scale: 1;
+    }
+}
+
+/* Disclaimer / Spacer */
+.content-spacer {
+    height: 150vh; /* To allow scrolling */
+    background: linear-gradient(to bottom, var(--color-bg), #F0EBE0);
+    display: flex;
+    justify-content: center;
+    padding-top: 4rem;
+    color: #888;
+}
+
+/* Popover Styles */
+.popover-card {
+    border: none;
+    padding: 1.5rem;
+    border-radius: 12px;
+    background: var(--color-surface);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    font-family: var(--font-body);
+    color: var(--color-text);
+    max-width: 300px;
+    
+    /* Anchor Positioning */
+    position-anchor: --details-btn;
+    position-area: top span-right; /* Position above and span to the right */
+    position-try-fallbacks: flip-block, flip-inline;
+    margin-bottom: 10px; /* Spacing from button */
+    
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.2s, transform 0.2s, display 0.2s allow-discrete;
+}
+
+.popover-card:popover-open {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Starting style for the popover (for enter animation) */
+@starting-style {
+    .popover-card:popover-open {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+}
+
+.popover-card h3 {
+    font-family: var(--font-heading);
+    margin-bottom: 0.5rem;
+    font-size: 1.25rem;
+}
+
+.popover-card ul {
+    list-style: none;
+    padding: 0;
+}
+
+.popover-card li {
+    margin-bottom: 0.25rem;
+    font-size: 0.95rem;
+}
+
+@media (max-width: 900px) {
+    .hero {
+        grid-template-columns: 1fr;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .hero-content {
+        align-items: center;
+        margin: 0 auto;
+    }
+    
+    .hero h1 {
+        font-size: 3rem;
+    }
+    
+    .hero-actions {
+        justify-content: center;
+    }
+}

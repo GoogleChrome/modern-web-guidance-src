@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Espresso Emporium</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="hero">
+        <div class="hero-image-wrapper">
+            <img id="hero-img" class="hero-image"
+                src="/hero-high.jpg"
+                loading-placeholder="/hero-low.jpg"
+                alt="Cozy Coffee Shop Atmosphere" />
+        </div>
+        <div class="hero-content">
+          <h1>Espresso Emporium</h1>
+          <p>Experience the finest brew in town.</p>
+          <!-- Tooltip Trigger using interestfor -->
+          <button id="details-btn" class="btn primary" interestfor="details-popover">
+            Details
+          </button>
+          
+          <!-- Tooltip Popover -->
+          <div id="details-popover" popover="hint">
+            <h3>Our Secret Blend</h3>
+            <ul>
+              <li>100% Arabica Beans</li>
+              <li>Ethically Sourced</li>
+              <li>Roasted in-house</li>
+            </ul>
+          </div>
+        </div>
+      </header>
+      
+      <section class="content">
+        <h2>Our Menu</h2>
+        <div class="menu-grid">
+            <div class="menu-item">Latte</div>
+            <div class="menu-item">Cappuccino</div>
+            <div class="menu-item">Espresso</div>
+            <div class="menu-item">Mocha</div>
+        </div>
+        <p>Scroll down to see the magic...</p>
+        <div style="height: 150vh; background: linear-gradient(to bottom, #fff, #f5f5dc);"></div>
+      </section>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

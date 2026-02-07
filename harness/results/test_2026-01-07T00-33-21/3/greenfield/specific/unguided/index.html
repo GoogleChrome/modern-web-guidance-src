@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velvet Brew | Artisan Coffee</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Preconnect to fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="logo">VELVET BREW</div>
+        <nav>
+            <!-- Navigation items could go here -->
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-image-wrapper">
+                <!-- Image source will be updated by JS based on connection -->
+                <img src="hero.svg" alt="Artisan Latte" class="hero-img">
+            </div>
+            <div class="hero-content">
+                <h1>Brewed for <br>Momentum.</h1>
+                <p>Experience the finest beans, roasted to perfection in small batches.</p>
+            </div>
+        </section>
+
+        <section class="product">
+            <div class="product-card">
+                <div class="product-visual">
+                    <!-- Placeholder visual for product -->
+                    <div style="width: 100%; aspect-ratio: 1; background: linear-gradient(135deg, #2a2622, #1f1c18); border-radius: 24px;"></div>
+                </div>
+                <div class="product-info">
+                    <h2>Signature Latte</h2>
+                    <p>Our signature blend features notes of dark chocolate, caramel, and a hint of hazelnut. Perfectly balanced for the modern connoisseur.</p>
+                    
+                    <button id="details-btn" class="btn" aria-haspopup="dialog">
+                        View Details
+                    </button>
+
+                    <!-- Popover Element -->
+                    <div id="ingredients-popover" popover="manual">
+                        <h3>Ingredients</h3>
+                        <ul class="ingredient-list">
+                            <li><span>Espresso</span> <span>2 shots</span></li>
+                            <li><span>Steamed Milk</span> <span>8 oz</span></li>
+                            <li><span>Micro-foam</span> <span>Top Layer</span></li>
+                            <li><span>Cane Sugar</span> <span>Optional</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espresso Art API Shop</title>
+    <meta name="description" content="Experience the finest artisanal coffee at Espresso Art API Shop.">
+    <link rel="stylesheet" href="index.css">
+    
+    <!-- Polyfill for Popover API -->
+    <script src="https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js" type="module"></script>
+    
+    <!-- Polyfill for Anchor Positioning -->
+    <script src="https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js" type="module"></script>
+    
+    <!-- Polyfill for Interest Invokers -->
+    <script src="https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js" type="module"></script>
+
+    <!-- Adaptive Loading Script (Simple Feature Detection & Placeholder Logic) -->
+    <script>
+        // Simple script to simulate adaptive loading if browser doesn't support it natively
+        // logic for 'loading-placeholder' if not supported natively could go here, 
+        // but for now we rely on the attribute and a small script to swap if network is slow.
+        (function() {
+            if ('connection' in navigator) {
+                const connection = navigator.connection;
+                if (connection.saveData || connection.effectiveType === '2g' || connection.effectiveType === '3g') {
+                    document.documentElement.classList.add('low-bandwidth');
+                }
+            }
+        })();
+    </script>
+</head>
+<body>
+    <header class="site-header">
+        <nav>
+            <h1>Espresso Art</h1>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h2>Brewed to Perfection</h2>
+                <p>Start your day with the finest beans.</p>
+            </div>
+            <!-- 
+                Hero Image with Adaptive Loading 
+                We use 'loading-placeholder' which is the experimental attribute.
+                We also standard 'src' for high quality.
+            -->
+            <div class="hero-image-wrapper">
+                <img 
+                    src="assets/hero-high.svg" 
+                    loading-placeholder="assets/hero-low.svg"
+                    alt="Latte Art Coffee" 
+                    class="hero-img fade-in-scale"
+                    width="800"
+                    height="600"
+                >
+            </div>
+        </section>
+
+        <section class="product-details">
+            <h3>Signature Latte</h3>
+            <p>Our signature blend of Ethiopian Yirgacheffe and Colombian Supremo.</p>
+            
+            <!-- Interest Invoker for Details Popover -->
+            <button class="details-btn" interestfor="ingredients-popover">
+                Details
+            </button>
+
+            <!-- Popover Content -->
+            <div id="ingredients-popover" class="ingredients-popover" popover="hint">
+                <h4>Ingredients</h4>
+                <ul>
+                    <li>Double Shot Espresso</li>
+                    <li>Steamed Oat Milk</li>
+                    <li>Vanilla Bean Syrup</li>
+                    <li>Cinnamon Dusting</li>
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Espresso Art API Shop</p>
+    </footer>
+
+    <!-- Adaptive Loading Polyfill/Handler -->
+    <script>
+        // Basic polyfill for loading-placeholder
+        // If the browser doesn't support it, we can manually check network and swap src.
+        // NOTE: Real support is rare, so this ensures it works for the demo if 'low-bandwidth' class is present
+        // or if navigator.connection indicates slow speed.
+        document.addEventListener('DOMContentLoaded', () => {
+            const imgs = document.querySelectorAll('img[loading-placeholder]');
+            imgs.forEach(img => {
+                // If native support exists, do nothing (assuming browser handles it)
+                if ('loadingPlaceholder' in HTMLImageElement.prototype) return;
+
+                // Check network status
+                const connection = navigator.connection;
+                const isSlow = connection && (connection.saveData || connection.effectiveType === '2g' || connection.effectiveType === '3g');
+                
+                if (isSlow) {
+                    const placeholder = img.getAttribute('loading-placeholder');
+                    if (placeholder) {
+                        img.src = placeholder;
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

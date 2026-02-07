@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Tooltip Demo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <!-- 
+            We use data-tooltip attribute to define the content.
+            The JS will handle creating the tooltip element.
+        -->
+        <button id="tooltip-trigger" data-tooltip="I'm a modern, accessible tooltip!">
+            Hover or Focus me
+        </button>
+    </div>
+
+    <script type="module">
+        import { Tooltip } from './tooltip.js';
+
+        const trigger = document.getElementById('tooltip-trigger');
+        new Tooltip(trigger);
+    </script>
+
+</body>
+</html>

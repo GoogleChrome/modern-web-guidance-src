@@ -1,0 +1,221 @@
+:root {
+    --color-bg: #0f0e0d;
+    --color-text: #f0e6d2;
+    --color-primary: #d4a373;
+    --color-secondary: #faedcd;
+    --color-accent: #bc6c25;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    
+    --font-main: 'Outfit', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-main);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+.site-header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    padding: 1.5rem 2rem;
+    background: linear-gradient(to bottom, rgba(15,14,13,0.9), transparent);
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.logo {
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--color-primary);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 2rem;
+}
+
+.nav-links a {
+    color: var(--color-text);
+    text-decoration: none;
+    font-weight: 300;
+    transition: color 0.3s ease;
+}
+
+.nav-links a:hover {
+    color: var(--color-primary);
+}
+
+.hero-section {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 6rem 2rem 2rem;
+}
+
+.hero-content h1 {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, var(--color-secondary), var(--color-primary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.hero-content p {
+    font-size: 1.25rem;
+    color: rgba(240, 230, 210, 0.8);
+    margin-bottom: 3rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Scroll-driven Animation */
+@keyframes hero-reveal {
+    from {
+        opacity: 0.5;
+        transform: scale(0.9);
+        filter: blur(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+    }
+}
+
+.hero-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    
+    /* Native Scroll Animation */
+    /* Only works in browsers supporting animation-timeline, usually Chrome 115+ */
+    animation: hero-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 40%;
+}
+
+.products-section {
+    padding: 4rem 2rem;
+    background: linear-gradient(to bottom, var(--color-bg), #1a1512);
+}
+
+.product-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 400px;
+    margin: 0 auto;
+    text-align: center;
+    backdrop-filter: blur(10px);
+}
+
+.product-card h2 {
+    color: var(--color-primary);
+    margin-bottom: 0.5rem;
+}
+
+.price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.desc {
+    margin-bottom: 2rem;
+    color: rgba(240, 230, 210, 0.7);
+}
+
+.btn {
+    padding: 0.75rem 2rem;
+    border: none;
+    border-radius: 50px;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn.primary {
+    background-color: var(--color-primary);
+    color: #1a1512;
+}
+
+.btn.primary:hover {
+    background-color: var(--color-secondary);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(212, 163, 115, 0.3);
+}
+
+/* Popover Styling */
+#ingredients-popover {
+    background: rgba(20, 15, 12, 0.95);
+    color: var(--color-text);
+    border: 1px solid var(--color-primary);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    
+    /* Position loosely */
+    max-width: 300px;
+    margin: auto;
+    
+    /* Animation (new Popover entry animations) */
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateY(10px);
+}
+
+#ingredients-popover:popover-open {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Backdrop */
+#ingredients-popover::backdrop {
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+}
+
+ul {
+    list-style-position: inside;
+    text-align: left;
+    margin-top: 0.5rem;
+}
+
+li {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: rgba(240, 230, 210, 0.9);
+}
+
+footer {
+    text-align: center;
+    padding: 2rem;
+    color: rgba(240, 230, 210, 0.5);
+    font-size: 0.9rem;
+}

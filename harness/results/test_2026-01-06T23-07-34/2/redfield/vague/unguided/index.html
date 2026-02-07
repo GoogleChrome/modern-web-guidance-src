@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modernized Tooltip Demo</title>
+    <style>
+        :root {
+            --tooltip-bg-color: #333;
+            --tooltip-text-color: #fff;
+            --tooltip-border-radius: 6px;
+            --tooltip-padding: 8px 12px;
+            --tooltip-width: fit-content;
+            --tooltip-max-width: 200px;
+            --tooltip-font-size: 14px;
+            --tooltip-arrow-size: 6px;
+            --tooltip-offset: 10px;
+            --trigger-color: #007bff;
+            --trigger-text-color: white;
+            --bg-color: #f4f4f9;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: var(--bg-color);
+        }
+
+        .container {
+            position: relative;
+            display: inline-block;
+        }
+
+        /* The Button */
+        #tooltip-trigger {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid var(--trigger-color);
+            background-color: var(--trigger-color);
+            color: var(--trigger-text-color);
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+        }
+
+        #tooltip-trigger:hover,
+        #tooltip-trigger:focus-visible {
+            background-color: #0056b3;
+            outline: 2px solid #0056b3;
+            outline-offset: 2px;
+        }
+
+        /* The Tooltip */
+        .tooltip {
+            position: absolute;
+            bottom: calc(100% + var(--tooltip-offset));
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            width: max-content;
+            max-width: var(--tooltip-max-width);
+            background-color: var(--tooltip-bg-color);
+            color: var(--tooltip-text-color);
+            text-align: center;
+            padding: var(--tooltip-padding);
+            border-radius: var(--tooltip-border-radius);
+            z-index: 100;
+            font-size: var(--tooltip-font-size);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            
+            /* Hidden state */
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+
+        /* Arrow */
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: calc(-1 * var(--tooltip-arrow-size));
+            border-width: var(--tooltip-arrow-size);
+            border-style: solid;
+            border-color: var(--tooltip-bg-color) transparent transparent transparent;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <button id="tooltip-trigger" type="button">Hover or Focus me</button>
+        <!-- Tooltip element, hidden by default -->
+        <div id="tooltip" class="tooltip">I'm a modern, accessible tooltip!</div>
+    </div>
+
+    <script>
+        class Tooltip {
+            constructor(triggerUrlOrElement, tooltipUrlOrElement) {
+                this.trigger = typeof triggerUrlOrElement === 'string' 
+                    ? document.querySelector(triggerUrlOrElement) 
+                    : triggerUrlOrElement;
+                
+                this.tooltip = typeof tooltipUrlOrElement === 'string' 
+                    ? document.querySelector(tooltipUrlOrElement) 
+                    : tooltipUrlOrElement;
+
+                if (!this.trigger || !this.tooltip) {
+                    console.error('Tooltip: Trigger or Tooltip element not found.');
+                    return;
+                }
+
+                this.init();
+            }
+
+            init() {
+                // Accessibility setup
+                const tooltipId = this.tooltip.id || `tooltip-${Math.random().toString(36).substr(2, 9)}`;
+                this.tooltip.id = tooltipId;
+                this.tooltip.setAttribute('role', 'tooltip');
+                this.tooltip.setAttribute('aria-hidden', 'true');
+                this.trigger.setAttribute('aria-describedby', tooltipId);
+
+                // Bind methods to this
+                this.show = this.show.bind(this);
+                this.hide = this.hide.bind(this);
+                this.toggle = this.toggle.bind(this);
+                this.handleKeydown = this.handleKeydown.bind(this);
+
+                // Event Listeners
+                this.addEventListeners();
+            }
+
+            addEventListeners() {
+                // Mouse
+                this.trigger.addEventListener('mouseenter', this.show);
+                this.trigger.addEventListener('mouseleave', this.hide);
+
+                // Keyboard (Focus)
+                this.trigger.addEventListener('focus', this.show);
+                this.trigger.addEventListener('blur', this.hide);
+
+                // Keyboard (Escape to close)
+                document.addEventListener('keydown', this.handleKeydown);
+            }
+
+            removeEventListeners() {
+                this.trigger.removeEventListener('mouseenter', this.show);
+                this.trigger.removeEventListener('mouseleave', this.hide);
+                this.trigger.removeEventListener('focus', this.show);
+                this.trigger.removeEventListener('blur', this.hide);
+                document.removeEventListener('keydown', this.handleKeydown);
+            }
+
+            show() {
+                this.tooltip.classList.add('visible');
+                this.tooltip.setAttribute('aria-hidden', 'false');
+            }
+
+            hide() {
+                this.tooltip.classList.remove('visible');
+                this.tooltip.setAttribute('aria-hidden', 'true');
+            }
+
+            toggle() {
+                if (this.tooltip.classList.contains('visible')) {
+                    this.hide();
+                } else {
+                    this.show();
+                }
+            }
+
+            handleKeydown(e) {
+                if (e.key === 'Escape' && this.tooltip.classList.contains('visible')) {
+                    this.hide();
+                    // Optional: return focus to trigger if it was lost? 
+                    // Usually if tooltip is visible via hover, we might not want to steal focus, 
+                    // but if via focus, the trigger already has focus.
+                }
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            new Tooltip('#tooltip-trigger', '#tooltip');
+        });
+    </script>
+
+</body>
+</html>

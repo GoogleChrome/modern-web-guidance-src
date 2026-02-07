@@ -1,0 +1,12 @@
+<svg width="800" height="400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="grad1" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+      <stop offset="0%" style="stop-color:rgb(255,255,255);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:rgb(100,60,30);stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  <rect width="800" height="400" fill="url(#grad1)" />
+  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="serif" font-size="48" fill="white">Premium Coffee</text>
+  <circle cx="100" cy="100" r="50" fill="rgba(255,255,255,0.1)"/>
+  <circle cx="700" cy="300" r="80" fill="rgba(255,255,255,0.1)"/>
+</svg>

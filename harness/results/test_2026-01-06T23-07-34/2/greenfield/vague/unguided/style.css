@@ -1,0 +1,276 @@
+:root {
+    --color-bg: #0f0f0f;
+    --color-text: #e0e0e0;
+    --color-accent: #d4a373;
+    --color-surface: #1a1a1a;
+    
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Outfit', sans-serif;
+    
+    --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    overflow-x: hidden;
+    line-height: 1.6;
+}
+
+/* Header */
+header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    padding: 2rem 4rem;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(to bottom, rgba(15,15,15,0.9), transparent);
+}
+
+.logo {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-accent);
+    letter-spacing: 0.1em;
+}
+
+nav ul {
+    display: flex;
+    gap: 3rem;
+    list-style: none;
+}
+
+nav a {
+    color: var(--color-text);
+    text-decoration: none;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+nav a:hover {
+    opacity: 1;
+    color: var(--color-accent);
+}
+
+/* Hero Section */
+.hero {
+    position: relative;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-image-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+    transition: transform 0.1s linear, opacity 1.5s var(--transition-smooth);
+    will-change: transform, opacity;
+}
+
+.hero-img.placeholder {
+    filter: blur(20px);
+    transform: scale(1.1);
+    opacity: 1;
+    z-index: 2;
+}
+
+.hero-img.main-img {
+    opacity: 0;
+    z-index: 3;
+    /* Initial state for scroll animation */
+    transform: scale(1); 
+}
+
+/* Class to trigger fade in of main image */
+.hero-img.main-img.loaded {
+    opacity: 1;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    mix-blend-mode: overlay; /* Cool effect over image */
+}
+
+/* Fallback for mix-blend-mode text readability without it */
+.hero-content h1, .hero-content p {
+    text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.hero-content h1 {
+    font-family: var(--font-heading);
+    font-size: 5rem;
+    font-weight: 400;
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeUp 1s var(--transition-smooth) 0.5s forwards;
+    color: #fff;
+}
+
+.hero-content p {
+    font-size: 1.2rem;
+    font-weight: 300;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeUp 1s var(--transition-smooth) 0.8s forwards;
+    color: #ddd;
+}
+
+@keyframes fadeUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Product Section */
+.product-details {
+    position: relative;
+    padding: 8rem 2rem;
+    background-color: var(--color-bg);
+    z-index: 20; /* Sit above hero */
+    text-align: center;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+h2 {
+    font-family: var(--font-heading);
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+    color: var(--color-accent);
+}
+
+.product-details p {
+    font-size: 1.1rem;
+    opacity: 0.8;
+    margin-bottom: 3rem;
+}
+
+/* Tooltip Button */
+.tooltip-container {
+    position: relative;
+    display: inline-block;
+}
+
+.details-btn {
+    padding: 1rem 2.5rem;
+    background: transparent;
+    border: 1px solid var(--color-accent);
+    color: var(--color-accent);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.details-btn:hover {
+    background: var(--color-accent);
+    color: var(--color-bg);
+}
+
+/* Tooltip Styling */
+.tooltip {
+    position: absolute;
+    bottom: 120%; /* Position above button */
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--color-surface);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 1.5rem;
+    width: 280px;
+    text-align: left;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+}
+
+.tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 8px;
+    border-style: solid;
+    border-color: var(--color-surface) transparent transparent transparent;
+}
+
+/* Show Tooltip on Hover */
+.details-btn:hover + .tooltip,
+.tooltip:hover { /* Allow hovering the tooltip itself if needed, though button hover works best */
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+}
+
+.tooltip h3 {
+    font-family: var(--font-heading);
+    color: var(--color-accent);
+    font-size: 1.2rem;
+    margin-bottom: 0.8rem;
+}
+
+.tooltip ul {
+    list-style: none;
+}
+
+.tooltip li {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0.9;
+}
+
+.tooltip li::before {
+    content: '•';
+    color: var(--color-accent);
+}
+
+/* Scroll Triggered classes */
+.scroll-grow {
+    /* We will manipulate scale in JS for smoother effect or use scroll-timeline in future CSS */
+}

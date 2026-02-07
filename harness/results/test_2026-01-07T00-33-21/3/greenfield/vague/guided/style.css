@@ -1,0 +1,260 @@
+/* Reset & Base */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --color-bg: #1a1512; /* Deep coffee brown/black */
+    --color-text: #e8dcc5; /* Cream */
+    --color-accent: #d4a373; /* Gold/Latte */
+    --color-surface: rgba(255, 255, 255, 0.05);
+    
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Outfit', sans-serif;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* Typography */
+h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(3rem, 10vw, 8rem);
+    line-height: 0.9;
+    font-weight: 400;
+    color: var(--color-text);
+    margin-bottom: 1rem;
+}
+
+h1 em {
+    font-style: italic;
+    color: var(--color-accent);
+}
+
+h2 {
+    font-family: var(--font-heading);
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--color-accent);
+}
+
+p {
+    font-size: 1.125rem;
+    color: rgba(232, 220, 197, 0.8);
+}
+
+/* Layout */
+main {
+    padding-bottom: 50vh; /* Extra space to scroll */
+}
+
+.hero {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 2rem;
+    text-align: center;
+    overflow: hidden;
+}
+
+.hero-content {
+    z-index: 2;
+    margin-bottom: 4rem;
+}
+
+.hero-image-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    border-radius: 24px;
+    overflow: hidden;
+    position: relative;
+    /* Box shadow for depth */
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+}
+
+/* Scroll Animation - Grow & Fade In */
+/* 
+   We want the image to fade in and grow as it stays in the viewport 
+   or as we scroll down? 
+   The request: "make the main hero image fade in and grow larger as I scroll down the page"
+   
+   If it's at the top, it might already be visible. 
+   Let's assume the user starts at the top, and as they scroll down, maybe it grows?
+   OR maybe it starts small and fades in as we scroll TO it (if it was lower).
+   
+   Since it's in the hero (top), maybe we want it to grow as we scroll DOWN (parallax-like)
+   or fade IN on load?
+   
+   Let's interpret "fade in and grow larger as I scroll down" as an effect where the image 
+   reacts to scroll position.
+   
+   We will use animation-timeline: view().
+*/
+
+@keyframes reveal-image {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes grow-on-scroll {
+    from {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+    to {
+        transform: scale(1.1);
+        filter: brightness(0.8);
+    }
+}
+
+.hero-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    
+    /* Reveal animation on entry/load */
+    animation: reveal-image 1s ease-out forwards;
+}
+
+@supports (animation-timeline: view()) {
+    .hero-img {
+        /* 
+           As we scroll down (body scroll), we can control the image scale.
+           Let's use animation-timeline: scroll() for the page scroll effect.
+        */
+        animation: grow-on-scroll linear both;
+        animation-timeline: scroll();
+        animation-range: 0 100vh; /* Effect happens over the first viewport height of scroll */
+    }
+}
+
+/* Details Section */
+.details-section {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at center, #2a221d 0%, var(--color-bg) 100%);
+    padding: 2rem;
+}
+
+.product-card {
+    background: var(--color-surface);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 3rem;
+    border-radius: 24px;
+    text-align: center;
+    max-width: 500px;
+}
+
+.details-btn {
+    margin-top: 2rem;
+    background: var(--color-accent);
+    color: var(--color-bg);
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    
+    /* Anchor Name for Tooltip */
+    anchor-name: --details-btn;
+}
+
+.details-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(212, 163, 115, 0.3);
+}
+
+/* Tooltip / Popover */
+.ingredients-tooltip {
+    /* Popover styles - Hidden by default, shown by [popover] logic */
+    padding: 1.5rem;
+    background: rgba(20, 20, 20, 0.95);
+    color: var(--color-text);
+    border: 1px solid var(--color-accent);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    font-size: 0.9rem;
+    min-width: 200px;
+    
+    /* Anchor Positioning */
+    position-anchor: --details-btn;
+    position-area: top; /* Standard property for newer Chrome */
+    margin-bottom: 10px;
+    
+    /* Fallback/Polyfill anchor positioning */
+    top: anchor(top);
+    left: anchor(center);
+    transform: translate(-50%, -100%);
+    margin-top: -10px;
+}
+
+.ingredients-tooltip h3 {
+    margin-bottom: 0.5rem;
+    color: var(--color-accent);
+    font-family: var(--font-heading);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 0.5rem;
+}
+
+.ingredients-tooltip ul {
+    list-style: none;
+    text-align: left;
+}
+
+.ingredients-tooltip li {
+    margin-bottom: 0.25rem;
+    padding-left: 1rem;
+    position: relative;
+}
+
+.ingredients-tooltip li::before {
+    content: '•';
+    color: var(--color-accent);
+    position: absolute;
+    left: 0;
+}
+
+/* Fade in the popover */
+.ingredients-tooltip:popover-open {
+    animation: fade-in 0.2s ease-out;
+}
+
+@keyframes fade-in {
+    from { opacity: 0; transform: translate(-50%, -90%); } /* simple slide up effect */
+    to { opacity: 1; transform: translate(-50%, -100%); }
+}
+
+.spacer {
+    height: 50vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+    font-size: 0.9rem;
+}

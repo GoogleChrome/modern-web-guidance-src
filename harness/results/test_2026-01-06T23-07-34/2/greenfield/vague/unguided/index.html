@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espresso & Oak | Artisanal Coffee</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">E&O</div>
+            <ul>
+                <li><a href="#">Shop</a></li>
+                <li><a href="#">Our Story</a></li>
+                <li><a href="#">Brew Guides</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-image-container">
+                <!-- Low Quality Placeholder (visible initially) -->
+                <img src="assets/hero-small.jpg" alt="Cozy Coffee Shop Interior" class="hero-img placeholder" id="hero-placeholder">
+                <!-- High Quality Image (loaded lazily) -->
+                <img data-src="assets/hero.jpg" alt="Cozy Coffee Shop Interior" class="hero-img main-img" id="hero-main">
+            </div>
+            <div class="hero-content">
+                <h1>Experience the warmth.</h1>
+                <p>Taste the craftsmanship in every cup.</p>
+            </div>
+        </section>
+
+        <section class="product-details">
+            <div class="container">
+                <h2>Signature House Blend</h2>
+                <p>A rich, full-bodied blend with notes of dark chocolate and caramel.</p>
+                
+                <div class="tooltip-container">
+                    <button class="details-btn">Details</button>
+                    <div class="tooltip" role="tooltip">
+                        <h3>Ingredients</h3>
+                        <ul>
+                            <li>100% Arabica Beans</li>
+                            <li>Sourced from Ethiopia & Colombia</li>
+                            <li>Medium-Dark Roast</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="more-content">
+            <p>Scroll down to see the effect...</p>
+            <div style="height: 100vh;"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Espresso & Oak.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

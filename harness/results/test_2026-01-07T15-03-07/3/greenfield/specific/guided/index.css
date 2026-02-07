@@ -1,0 +1,132 @@
+:root {
+  --color-bg: #fdfbf7;
+  --color-text: #2c241b;
+  --color-primary: #8c6b4b;
+  --color-secondary: #d4b895;
+  --color-accent: #e67e22;
+  --font-main: system-ui, -apple-system, sans-serif;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-main);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+header {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+h1 {
+  font-size: 4rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-primary);
+}
+
+.subtitle {
+  font-size: 1.5rem;
+  color: var(--color-secondary);
+  margin-bottom: 2rem;
+}
+
+/* Scroll-driven Animation for Hero Image */
+@keyframes fade-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.hero-image-container {
+  margin-top: 2rem;
+  width: 100%;
+  max-width: 800px;
+  /* Ensure we have space to scroll to see the effect if it was lower down, 
+     but request says "fade into view and scale up as the user scrolls down".
+     Usually this implies the element is initially off-screen or we are scrolling *content* over it.
+     If it's in the header (100vh), it might be visible immediately. 
+     I will place it in a section BELOW the fold or have a timeline that reacts to it entering.
+  */
+}
+
+.hero-image {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  
+  /* The animation */
+  animation: fade-scale-in linear both;
+  animation-timeline: view();
+  animation-range: entry 25% cover 50%; 
+  /* Starts when 25% enters, finishes when 50% covered (fully visible roughly) */
+}
+
+section.content {
+  padding: 4rem 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+  min-height: 150vh; /* Make sure there is scrolling */
+}
+
+/* Popover & Anchor Positioning */
+.product-card {
+  border: 1px solid var(--color-secondary);
+  padding: 2rem;
+  border-radius: 8px;
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.details-btn {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 1rem;
+  
+  anchor-name: --details-btn;
+}
+
+.ingredients-popover {
+  border: none;
+  background: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  font-size: 0.9rem;
+  color: var(--color-text);
+  
+  /* Anchor positioning */
+  position-anchor: --details-btn;
+  position-area: top;
+  margin-bottom: 0.5rem;
+  
+  /* Popover styles */
+  margin: 0;
+}
+
+/* Fallback for browsers not supporting anchor positioning yet (if polyfill fails or plain CSS fallback needed) */
+@supports not (position-anchor: --details-btn) {
+  .ingredients-popover {
+    /* Basic positioning relative to viewport or just centered if possible */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+}

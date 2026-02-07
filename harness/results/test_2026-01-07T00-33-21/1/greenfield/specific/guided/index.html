@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Daily Grind | Artisan Coffee</title>
+    <meta name="description" content="Experience the finest artisan coffee in a cozy atmosphere. The Daily Grind - where every cup tells a story.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="site-header">
+        <nav>
+            <div class="logo">The Daily Grind</div>
+            <ul class="nav-links">
+                <li><a href="#menu">Menu</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#location">Visit Us</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero-section">
+            <div class="hero-content">
+                <h1>Brewed to Perfection</h1>
+                <p>Start your day with the finest beans, roasted locally and brewed with passion.</p>
+                <div class="cta-group">
+                    <button class="btn btn-primary">Order Now</button>
+                    <!-- Trigger for Non-Modal Popover -->
+                    <button class="btn btn-secondary" interestfor="ingredients-popover">Details</button>
+                </div>
+            </div>
+            
+            <!-- Hero Image with Adaptive Loading & Scroll-Driven Animation -->
+            <div class="hero-image-container">
+                <img id="hero-img" 
+                     src="assets/hero-high.svg" 
+                     loading-placeholder="assets/hero-low.svg"
+                     alt="Cozy coffee shop interior with warm lighting"
+                     class="hero-image">
+            </div>
+        </section>
+
+        <!-- Popover Content -->
+        <div id="ingredients-popover" class="ingredients-popover" popover="hint">
+            <h3>Our Signature Blend</h3>
+            <ul>
+                <li>100% Arabica Beans</li>
+                <li>Notes of Chocalate & Hazelnut</li>
+                <li>Sourced from Ethiopia</li>
+                <li>Medium Roast</li>
+            </ul>
+        </div>
+
+        <section id="menu" class="menu-section">
+            <h2>Our Menu</h2>
+            <div class="menu-grid">
+                <!-- Placeholders for more content to make page scrollable -->
+                <div class="menu-item">Espresso</div>
+                <div class="menu-item">Cappuccino</div>
+                <div class="menu-item">Latte</div>
+                <div class="menu-item">Mocha</div>
+                <div class="menu-item">Cold Brew</div>
+                <div class="menu-item">Pour Over</div>
+            </div>
+        </section>
+        
+         <section class="spacer">
+            <p>Scroll down to see the effect...</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 The Daily Grind. All rights reserved.</p>
+    </footer>
+
+    <script src="https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js"></script>
+    <!-- Fallback for Popover API if needed, though Chrome supports it -->
+    <script src="script.js"></script>
+</body>
+</html>

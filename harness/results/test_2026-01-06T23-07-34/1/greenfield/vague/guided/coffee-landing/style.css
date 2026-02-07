@@ -1,0 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --color-bg: #0f0e0e;
+  --color-text: #e0dcd5;
+  --color-accent: #c08552;
+  --color-accent-hover: #d49a6a;
+  --color-surface: #1f1d1d;
+  --font-body: 'Outfit', sans-serif;
+  --font-heading: 'Playfair Display', serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: #fff;
+}
+
+/* Header */
+header {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  padding: 1.5rem 2rem;
+  z-index: 100;
+  background: linear-gradient(to bottom, rgba(15, 14, 14, 0.9), transparent);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--color-accent);
+}
+
+/* Hero Section */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 6rem 2rem;
+  position: relative;
+}
+
+.hero-content {
+  z-index: 2;
+  margin-bottom: 3rem;
+  max-width: 800px;
+}
+
+.hero h1 {
+  font-size: clamp(3rem, 8vw, 6rem);
+  margin-bottom: 1rem;
+  line-height: 1.1;
+  opacity: 0;
+  animation: fade-in-up 1s ease-out forwards;
+}
+
+.hero p {
+  font-size: 1.25rem;
+  opacity: 0.9;
+  max-width: 600px;
+  margin: 0 auto 2rem;
+  opacity: 0;
+  animation: fade-in-up 1s ease-out 0.3s forwards;
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scroll-Driven Animation & Image */
+.hero-visual {
+  width: 100%;
+  max-width: 1000px;
+  position: relative;
+  /* Ensure no overflow hidden on parents if possible for scroll anims, but stickiness needs it sometimes. 
+     Here we just want standard flow animations. */
+}
+
+/* The prompt asked for: "main hero image fade in and grow larger as I scroll down" */
+/* We'll assume this means as we scroll FROM the top DOWN into the page, or as it enters? 
+   Usually "grow larger as I scroll down" implies a scroll-linked effect where scrolling moves the timeline.
+   If it's the hero image at the top, scrolling down usually moves it OUT of view.
+   Maybe they mean a parallax effect or a grow effect as you scroll *away*? 
+   OR maybe the image is further down?
+   Let's assume the image is below the text and we want it to grow/fade in as it enters or as we scroll.
+   If it's already in view (top of page), 'entry' might have already happened.
+   Let's use `view()` with a range that covers its initial appearance or a `scroll()` timeline if we want it tied to page progress.
+   Given "fade in and grow larger as I scroll down", if it's the Main Hero Image at the TOP, strictly speaking, scrolling down hides it.
+   Maybe they mean "Grow as I scroll" like a zoom-out/zoom-in parallax?
+   I will implement an "entry" animation that plays as it comes into view (or is in view). 
+   Actually, let's make it more dynamic: 
+   As you scroll down, the image scales UP (parallax zoom).
+   `animation-timeline: scroll()` is perfect for this if we scope it to the hero section view.
+*/
+
+@supports (animation-timeline: view()) {
+  .hero-img {
+    /* Initial state */
+    opacity: 0.8;
+    scale: 0.9;
+    
+    /* Animation */
+    animation: auto linear scroll-grow both;
+    animation-timeline: view();
+    /* Range: As it crosses the viewport. */
+    animation-range: entry 0% cover 50%; /* Start scaling as soon as it enters, finish when halfway covered? */
+    /* Wait, if it's at the top, `entry` is done. `exit` is what happens. */
+    /* If it's at the top, we want it to grow as we scroll DOWN (it exiting). */
+    animation-range: exit -20% exit 100%; 
+    /* Let's try to make it grow as it LEAVES the screen (standard hero parallax zoom). */
+  }
+}
+
+@keyframes scroll-grow {
+  to {
+    opacity: 0; /* Fade out eventually */
+    scale: 1.1; /* Grow larger */
+  }
+}
+
+.hero-img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+}
+
+/* Details Section & Tooltips */
+.details-section {
+  padding: 4rem 2rem;
+  background: var(--color-surface);
+  text-align: center;
+}
+
+.btn-details {
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-weight: 700;
+  transition: background 0.2s;
+  
+  /* Anchor setup */
+  anchor-name: --details-btn;
+}
+
+.btn-details:hover {
+  background: var(--color-accent-hover);
+}
+
+/* Components: Tooltip using Popover API + Anchor Positioning */
+[popover] {
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(30, 30, 30, 0.95);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  
+  /* Positioning */
+  position-anchor: --details-btn;
+  position-area: top; /* Modern shorthand */
+  position-try-fallbacks: flip-block;
+  
+  /* Animation */
+  opacity: 0;
+  transition: opacity 0.2s, display 0.2s allow-discrete;
+}
+
+[popover]:popover-open {
+  opacity: 1;
+}
+
+/* Feature detection fallback styles could go here if polyfills fail, but we have polyfills. */
+
+/* Spacer for scrolling */
+.spacer {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-img, .hero h1, .hero p {
+    animation: none;
+    opacity: 1;
+    transition: none;
+  }
+}

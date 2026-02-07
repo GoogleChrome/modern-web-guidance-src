@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Espresso & Elevate</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="hero">
+        <div class="hero-image-container">
+          <!-- LQIP (Low Quality Image Placeholder) loaded first -->
+          <img src="/assets/hero-small.svg" alt="Coffee Counter Placeholder" class="hero-img placeholder" id="hero-placeholder">
+          <!-- High Res Image loaded via JS -->
+          <img data-src="/assets/hero.svg" alt="Premium Coffee Counter" class="hero-img full-res" id="hero-image" style="opacity: 0;">
+        </div>
+        <div class="hero-content">
+          <h1>Espresso & Elevate</h1>
+          <p>Experience the art of coffee in a minimalist sanctuary.</p>
+          <div class="tooltip-container">
+            <button class="details-btn">Details</button>
+            <div class="tooltip">
+              <h3>Signature Blend</h3>
+              <ul>
+                <li>100% Arabica Beans</li>
+                <li>Notes of Dark Chocolate</li>
+                <li>Hint of Roasted Almond</li>
+                <li>Velvety Crema</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </header>
+      
+      <section class="content">
+        <h2>Our Philosophy</h2>
+        <p>We believe in the purity of the bean. Sourced from the highlands of Ethiopia and roasted to perfection, every cup tells a story of tradition and precision.</p>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+        <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+      </section>
+
+      <footer>
+        <p>&copy; 2026 Espresso & Elevate. All rights reserved.</p>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

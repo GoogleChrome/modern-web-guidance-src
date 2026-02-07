@@ -1,0 +1,331 @@
+/* CSS Reset & Variables */
+:root {
+  --color-bg-dark: #120C0A;
+  --color-primary: #D4AF37;
+  /* Gold */
+  --color-secondary: #E8DCCA;
+  /* Cream */
+  --color-text-main: #E8DCCA;
+  --color-text-muted: #A89F91;
+  --color-accent: #C25B3D;
+  /* Rust/Dried Cherry */
+
+  --font-heading: 'Playfair Display', serif;
+  --font-body: 'Outfit', sans-serif;
+
+  --gap-md: 1.5rem;
+  --gap-lg: 3rem;
+
+  --easing-premium: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Ease out quint-ish */
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-bg-dark);
+  color: var(--color-text-main);
+  font-family: var(--font-body);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 400;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Header */
+header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 2rem 5%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+  background: rgba(18, 12, 10, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.logo {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+nav ul {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
+}
+
+nav a {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+nav a:hover {
+  opacity: 1;
+  color: var(--color-primary);
+}
+
+/* Hero Section */
+.hero {
+  min-height: 120vh;
+  /* Make it tall enough to scroll */
+  padding: 8rem 5% 4rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.hero-content {
+  max-width: 600px;
+  z-index: 10;
+}
+
+.hero-content h1 {
+  font-size: 4rem;
+  line-height: 1.1;
+  margin-bottom: 1.5rem;
+}
+
+.hero-content h1 em {
+  color: var(--color-primary);
+  font-style: italic;
+}
+
+.hero-content p {
+  color: var(--color-text-muted);
+  font-size: 1.2rem;
+  margin-bottom: 2.5rem;
+  max-width: 400px;
+}
+
+.cta-group {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.btn {
+  padding: 1rem 2rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  /* Minimal rounding */
+  font-family: var(--font-body);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.3s var(--easing-premium);
+  background: transparent;
+  color: var(--color-text-main);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-bg-dark);
+}
+
+.btn-primary:hover {
+  background: #bfa035;
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  border-color: rgba(232, 220, 202, 0.3);
+  /* For Anchor Positioning */
+  anchor-name: --ingredients-trigger;
+}
+
+.btn-secondary:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Tooltip - Popover & Anchor Positioning */
+.ingredients-tooltip {
+  /* Popover styles */
+  border: none;
+  padding: 1.5rem;
+  background: rgba(30, 25, 22, 0.95);
+  backdrop-filter: blur(12px);
+  color: var(--color-text-main);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  /* Anchor Positioning */
+  position-anchor: --ingredients-trigger;
+  position-area: top span-right;
+  margin-bottom: 1rem;
+
+  /* Animation */
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s, transform 0.3s, display 0.3s allow-discrete;
+}
+
+.ingredients-tooltip:popover-open {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Fallback for anchor positioning if polyfill fails visually is usually acceptable, 
+   but specific `top` fallback is good practice */
+
+
+.ingredients-tooltip h3 {
+  font-size: 1rem;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ingredients-tooltip ul {
+  list-style: none;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.ingredients-tooltip li {
+  margin-bottom: 0.25rem;
+}
+
+.ingredients-tooltip strong {
+  color: var(--color-text-main);
+}
+
+/* Hero Image & Scroll Animation */
+.hero-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: auto;
+  border-radius: 20px;
+  overflow: hidden;
+  /* Only subtle rounding, don't hide overflow if using view-timeline on child if child scales?? Actually view() needs to be on element */
+}
+
+/* 
+   Scroll-driven animation:
+   Fade in and scale up as it enters the view.
+*/
+@keyframes hero-reveal {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(50px);
+    filter: blur(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+.hero-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 20px;
+
+  /* Default state */
+  opacity: 1;
+}
+
+@supports (animation-timeline: view()) {
+  .hero-img {
+    animation: hero-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 10% cover 50%;
+    /* Start animating when 10% enters, finish when 50% covered (or similar logic) */
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-img {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Other Sections */
+.menu-preview,
+.story-section {
+  padding: 6rem 5%;
+  background: #0e0908;
+}
+
+.menu-preview h2,
+.story-section h2 {
+  font-size: 3rem;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.menu-preview p,
+.story-section p {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 1.2rem;
+  margin-bottom: 4rem;
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+}
+
+.menu-item {
+  height: 300px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero {
+    grid-template-columns: 1fr;
+    text-align: center;
+    padding-top: 6rem;
+  }
+
+  .hero-content {
+    margin: 0 auto;
+  }
+
+  .cta-group {
+    justify-content: center;
+  }
+
+  .hero-content h1 {
+    font-size: 3rem;
+  }
+}

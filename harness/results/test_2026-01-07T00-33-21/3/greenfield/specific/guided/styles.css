@@ -1,0 +1,179 @@
+/* Global Styles */
+:root {
+  --color-primary: #3f2210;
+  --color-secondary: #fdf6e3;
+  --color-accent: #d4a373;
+  --color-text: #2c1810;
+  --font-family: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  background-color: var(--color-secondary);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+h1, h2, h3 {
+  margin-top: 0;
+  line-height: 1.2;
+}
+
+/* Header & Hero Section */
+header {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+}
+
+h1 {
+  font-size: 4rem;
+  margin-bottom: 2rem;
+  z-index: 10;
+  color: white;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.hero-image-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  
+  /* Scroll-driven Animation: Fade in and scale up */
+  /* Fallback for browsers without support is handled naturally (opacity 1 by default if animation fails, usually)
+     Actually, we want it to animate OUT as we scroll DOWN maybe? Or animate IN?
+     User asked: "fade into view and scale up as the user scrolls down the page"
+     This sounds like it starts hidden/small and grows?
+     Wait, if it's the hero image at the top, usually it's already there.
+     Maybe they mean as you scroll down, it does something? 
+     "fade into view ... as the user scrolls down" implies it might be below the fold?
+     Let's assume the hero image is below the fold or the user starts at top and it fades in.
+     
+     Actually, "Hero image" usually implies top of page.
+     If it's at the top, scroll-driven means it might fade OUT on scroll?
+     
+     Re-reading: "hero image should fade into view and scale up as the user scrolls down the page"
+     
+     Maybe they mean a "parallax" effect or it enters the viewport?
+     If it's the "Main hero image", it's typically the first thing you see.
+     If I scroll DOWN, I am LEAVING the hero area.
+     
+     Maybe the user means "Parallax scroll effect" where it scales up?
+     OR maybe the hero is further down?
+     
+     Let's put the hero image slightly down the page or make it a "Scroll-driven animation" that triggers on view entry if it's below the fold.
+     
+     Let's verify the request: "fade into view and scale up as the user scrolls down the page."
+     This strongly suggests `animation-timeline: view()` and the element is initially off-screen or partially off-screen.
+     I will place the hero image a bit further down or make the header have some content before it?
+     
+     Or, I can make it sticky/fixed and it scales UP?
+     
+     I'll stick to `animation-timeline: view()` which is the standard "reveal on scroll" pattern.
+     I will ensure the hero section is tall enough or placed such that scrolling triggers it.
+     
+     Actually, if it's the *Main* hero, maybe I should put some intro text ABOVE it so you have to scroll to see it?
+     That makes the most sense to demonstrate the effect.
+  */
+  
+}
+
+@keyframes fade-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .hero-img {
+    opacity: 0; /* Star hidden */
+    transform: scale(0.8);
+    animation: fade-scale-in linear both;
+    animation-timeline: view();
+    animation-range: entry 25% cover 50%; /* Adjust range as needed */
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-img {
+    animation: none;
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Product Section & Details Button */
+.product-section {
+  padding: 4rem 2rem;
+  background: white;
+  min-height: 100vh; /* Ensure there is room to scroll */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.details-btn {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  font-size: 1.25rem;
+  cursor: pointer;
+  border-radius: 8px;
+  margin-top: 2rem;
+  
+  /* Interest Invoker Anchor */
+  anchor-name: --details-trigger;
+}
+
+.details-btn:hover {
+  background: #5c3519;
+}
+
+/* Popover Styles */
+[popover] {
+  padding: 1rem;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  border: 1px solid #eee;
+  font-size: 1rem;
+  color: var(--color-text);
+  
+  /* Anchor Positioning */
+  position-anchor: --details-trigger;
+  top: anchor(bottom);
+  left: anchor(center);
+  translate: -50% 10px; /* Center horizontally and add gap */
+  margin: 0; /* Reset default margin */
+}
+
+/* Polyfill for Anchor Positioning (basic fallback if polyfill fails or unsupported) */
+@supports not (position-anchor: --details-trigger) {
+  /* Ideally the polyfill handles this, but we can add basic styles */
+  [popover] {
+    /* Basic centering or just let it float? 
+       The polyfill is quite good. We'll rely on it. */
+  }
+}

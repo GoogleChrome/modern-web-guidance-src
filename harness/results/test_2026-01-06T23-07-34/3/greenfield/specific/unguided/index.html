@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espresso & Oak | Premium Coffee</title>
+    <meta name="description" content="Experience the finest artisanal coffee at Espresso & Oak.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header>
+        <nav>
+            <div class="logo">Espresso & Oak</div>
+            <ul>
+                <li><a href="#">Shop</a></li>
+                <li><a href="#">Locations</a></li>
+                <li><a href="#">Our Story</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Brewed for the <br><em>Bold</em></h1>
+                <p>Artisanal beans, roasted to perfection in the heart of the city.</p>
+            </div>
+            <!-- The src will be set by JS based on connection speed -->
+            <img id="hero-img" alt="Cozy coffee shop interior with warm lighting" class="hero-image">
+        </section>
+
+        <section class="product-feature">
+            <div class="product-card">
+                <h2>Signature Latte</h2>
+                <p>Our flagship blend with velvety steamed milk and a hint of vanilla.</p>
+                
+                <button id="details-btn">View Ingredients</button>
+                
+                <!-- Popover API Element -->
+                <div id="ingredients-popover" popover="manual">
+                    <h3>Ingredients</h3>
+                    <ul>
+                        <li><span class="icon">☕</span> Ethically sourced Espresso</li>
+                        <li><span class="icon">🥛</span> Oat Milk (Optional)</li>
+                        <li><span class="icon">🍦</span> Madagascar Vanilla Bean</li>
+                        <li><span class="icon">🍯</span> Organic Agave Syrup</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="spacer" style="height: 100vh;"></div> <!-- Just to allow scrolling -->
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Espresso & Oak. All rights reserved.</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

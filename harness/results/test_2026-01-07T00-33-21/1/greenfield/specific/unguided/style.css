@@ -1,0 +1,263 @@
+/* Reset & Variables */
+:root {
+    --color-bg: #1a1a1a;
+    --color-text: #f0f0f0;
+    --color-accent: #d4a373;
+    --color-accent-hover: #faedcd;
+    --color-card-bg: #2a2a2a;
+    
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Outfit', sans-serif;
+    
+    --spacing-sm: 1rem;
+    --spacing-md: 2rem;
+    --spacing-lg: 4rem;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+h1, h2, h3 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--color-accent);
+}
+
+/* Header */
+.site-header {
+    padding: var(--spacing-md);
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    background: rgba(26, 26, 26, 0.8);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-accent);
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+/* Hero Section */
+.hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: var(--spacing-lg) var(--spacing-md);
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-content {
+    max-width: 800px;
+    z-index: 2;
+    margin-bottom: var(--spacing-lg);
+}
+
+.hero h1 {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-sm);
+    line-height: 1.1;
+}
+
+.hero .accent {
+    color: var(--color-accent);
+    font-style: italic;
+}
+
+.hero p {
+    font-size: 1.25rem;
+    opacity: 0.9;
+    margin-bottom: var(--spacing-md);
+}
+
+.cta-group {
+    display: flex;
+    gap: var(--spacing-sm);
+    justify-content: center;
+    position: relative; /* For popover positioning context if needed */
+}
+
+.btn {
+    padding: 0.75rem 2rem;
+    border-radius: 50px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: var(--color-accent);
+    color: var(--color-bg);
+}
+
+.btn-primary:hover {
+    background-color: var(--color-accent-hover);
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    border: 1px solid var(--color-text);
+    color: var(--color-text);
+}
+
+.btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Hero Image & Scroll Animation */
+.hero-image-container {
+    width: 100%;
+    max-width: 1000px;
+    margin-top: var(--spacing-md);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    
+    /* Animation Trigger */
+    animation: fade-scale-in linear both;
+    animation-timeline: view();
+    animation-range: entry 10% cover 50%; /* Starts when 10% enters, finishes at 50% */
+}
+
+@keyframes fade-scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.hero-image-container img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: opacity 0.5s ease;
+}
+
+/* Popover Styles */
+.ingredients-popover {
+    background: var(--color-card-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-accent);
+    padding: var(--spacing-md);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    max-width: 300px;
+    
+    /* Native Popover Positioning Defaults override or custom positioning logic usually needed for exact placement */
+    /* But standard Top Layer behavior handles z-index */
+}
+
+/* To position it nicely, we might use Anchor Positioning in the future, 
+   but for now we rely on the default centered or JS-based positioning or simple absolute if not using popover anchor API (which is very new).
+   The prompt asks for "popover when a user hovers". Native popover centers by default or uses top-layer. 
+   We will treat it as a top-layer element. 
+*/
+
+/* If using native popover, we can style the ::backdrop */
+.ingredients-popover::backdrop {
+    background: transparent;
+}
+
+.ingredients-popover h3 {
+    color: var(--color-accent);
+    margin-bottom: var(--spacing-sm);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 0.5rem;
+}
+
+.ingredients-popover ul {
+    list-style: none;
+}
+
+.ingredients-popover li {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* Other Sections */
+.content-section {
+    padding: var(--spacing-lg) var(--spacing-md);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.content-section h2 {
+    font-size: 2.5rem;
+    margin-bottom: var(--spacing-md);
+    text-align: center;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.card {
+    background: var(--color-card-bg);
+    padding: var(--spacing-md);
+    border-radius: 12px;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card h3 {
+    color: var(--color-accent);
+    margin-bottom: var(--spacing-sm);
+}
+
+.spacer {
+    height: 50vh; /* Just to allow scrolling */
+}
+
+@media (max-width: 768px) {
+    .hero h1 {
+        font-size: 2.5rem;
+    }
+}

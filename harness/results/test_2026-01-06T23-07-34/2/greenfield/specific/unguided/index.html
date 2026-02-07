@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brew & Bloom - Artisan Coffee</title>
+    <meta name="description" content="Experience the finest artisan coffee at Brew & Bloom. Sustainably sourced, roasted to perfection.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="site-header">
+        <nav>
+            <div class="logo">Brew & Bloom</div>
+            <ul class="nav-links">
+                <li><a href="#products">Roasts</a></li>
+                <li><a href="#about">Story</a></li>
+                <li><a href="#visit">Visit</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero-section">
+            <div class="hero-content">
+                <h1>Awaken Your Senses</h1>
+                <p>Ethically sourced, masterfully roasted.</p>
+                <!-- Image source will be set by JS for adaptive loading -->
+                <img id="hero-img" class="hero-image" alt="A steaming cup of artisan coffee" width="800" height="600">
+            </div>
+        </section>
+
+        <section id="products" class="products-section">
+            <div class="product-card">
+                <h2>Midnight Velvet blend</h2>
+                <p class="price">$18.00</p>
+                <p class="desc">Dark, rich, and ridiculously smooth.</p>
+                
+                <button id="details-btn" class="btn primary" popovertarget="ingredients-popover">Details</button>
+                
+                <div id="ingredients-popover" popover>
+                    <h3>Ingredients & Notes</h3>
+                    <ul>
+                        <li>100% Arabica Beans</li>
+                        <li>Origin: Ethiopia & Colombia</li>
+                        <li>Notes: Dark Chocolate, Blackberry</li>
+                        <li>Roast Level: Dark</li>
+                    </ul>
+                </div>
+            </div>
+            
+             <!-- Scroll spacer to allow scrolling for animation testing -->
+            <div style="height: 150vh; display: grid; place-content: center; opacity: 0.5;">
+                <p>Scroll down to see more...</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Brew & Bloom. All rights reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

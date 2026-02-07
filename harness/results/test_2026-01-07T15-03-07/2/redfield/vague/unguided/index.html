@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Tooltip Demo</title>
+    <style>
+        :root {
+            --tooltip-bg: #333;
+            --tooltip-text: #fff;
+            --primary-color: #007bff;
+            --tooltip-arrow-size: 6px;
+            --tooltip-offset: 10px;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+
+        /* Button Styles */
+        .btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid var(--primary-color);
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            filter: brightness(1.1);
+        }
+
+        /* Tooltip Container */
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        /* The Tooltip */
+        .tooltip {
+            position: absolute;
+            bottom: calc(100% + var(--tooltip-offset));
+            left: 50%;
+            transform: translateX(-50%) translateY(5px);
+            background-color: var(--tooltip-bg);
+            color: var(--tooltip-text);
+            text-align: center;
+            padding: 8px 12px;
+            border-radius: 6px;
+            z-index: 10;
+            font-size: 14px;
+            white-space: nowrap;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            
+            /* Hidden state */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+            pointer-events: none;
+        }
+
+        /* Tooltip Arrow */
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: calc(-1 * var(--tooltip-arrow-size));
+            border-width: var(--tooltip-arrow-size);
+            border-style: solid;
+            border-color: var(--tooltip-bg) transparent transparent transparent;
+        }
+
+        /* Active State */
+        .tooltip.is-visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Example 1: Button with data-tooltip -->
+        <div class="tooltip-container">
+            <button class="btn" id="btn1" data-tooltip="I'm a modern tooltip!">Hover me</button>
+        </div>
+
+        <!-- Example 2: Another element -->
+        <div class="tooltip-container">
+            <button class="btn" id="btn2" data-tooltip="I work with keyboard focus too!">Focus me</button>
+        </div>
+    </div>
+
+    <script>
+        class TooltipManager {
+            constructor() {
+                this.tooltips = new WeakMap(); // Store references if needed
+                this.init();
+            }
+
+            init() {
+                // Find all elements with data-tooltip
+                const triggers = document.querySelectorAll('[data-tooltip]');
+                triggers.forEach(trigger => this.attach(trigger));
+            }
+
+            attach(trigger) {
+                const text = trigger.getAttribute('data-tooltip');
+                if (!text) return;
+
+                // Create tooltip element
+                const tooltip = document.createElement('div');
+                tooltip.className = 'tooltip';
+                tooltip.textContent = text;
+                tooltip.id = `tooltip-${Math.random().toString(36).substr(2, 9)}`;
+                tooltip.setAttribute('role', 'tooltip');
+                tooltip.setAttribute('aria-hidden', 'true');
+
+                // ARIA linkage
+                trigger.setAttribute('aria-describedby', tooltip.id);
+                
+                // Append to the container (parent of trigger)
+                // Note: Expecting a wrapper for relative positioning in this simple implementation
+                trigger.parentNode.appendChild(tooltip);
+
+                // Event Listeners
+                ['mouseenter', 'focus'].forEach(event => {
+                    trigger.addEventListener(event, () => this.show(tooltip));
+                });
+
+                ['mouseleave', 'blur'].forEach(event => {
+                    trigger.addEventListener(event, () => this.hide(tooltip));
+                });
+                
+                // Handle Escape key to close
+                trigger.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') this.hide(tooltip);
+                });
+            }
+
+            show(tooltip) {
+                tooltip.classList.add('is-visible');
+                tooltip.setAttribute('aria-hidden', 'false');
+            }
+
+            hide(tooltip) {
+                tooltip.classList.remove('is-visible');
+                tooltip.setAttribute('aria-hidden', 'true');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            new TooltipManager();
+        });
+    </script>
+
+</body>
+</html>

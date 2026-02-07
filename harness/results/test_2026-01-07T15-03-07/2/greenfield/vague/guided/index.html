@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espresso & Dreams | Premium Coffee</title>
+    <meta name="description" content="Experience the finest artisanal coffee at Espresso & Dreams. Hand-picked beans, roasted to perfection.">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">Brewed for <span class="accent-text">Dreamers</span></h1>
+            <p class="hero-subtitle">Taste the passion in every cup.</p>
+        </div>
+        
+        <div class="hero-image-container">
+            <!-- 
+                loading-placeholder is a non-standard experimental attribute for Adaptive Loading.
+                It will be handled by our script if the browser supports it or via polyfill logic.
+            -->
+            <img 
+                src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=2000&auto=format&fit=crop" 
+                loading-placeholder="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=20&w=100&auto=format&fit=crop"
+                alt="A warm, inviting cup of latte with beautiful latte art on a wooden table" 
+                class="hero-image"
+                width="1200"
+                height="800"
+            >
+        </div>
+    </header>
+
+    <main class="product-showcase">
+        <section class="coffee-details">
+            <h2>Signature Latte</h2>
+            <p class="description">Velvety steamed milk poured over a double shot of our house espresso blend.</p>
+            
+            <!-- Tooltip using Popover API and Interest Invokers (if supported/polyfilled) -->
+            <button class="details-btn" interestfor="ingredients-popover">
+                View Ingredients
+                <span class="icon">ℹ️</span>
+            </button>
+
+            <!-- Popover content -->
+            <div id="ingredients-popover" class="ingredients-tooltip" popover="hint">
+                <h3>Ingredients</h3>
+                <ul>
+                    <li>Double Shot Espresso</li>
+                    <li>Steamed Whole Milk</li>
+                    <li>Micro-foam</li>
+                    <li>Love</li>
+                </ul>
+            </div>
+        </section>
+        
+        <section class="more-info">
+            <p>Scroll down to see the magic happen.</p>
+            <div class="spacer"></div>
+        </section>
+    </main>
+
+    <script src="script.js" type="module"></script>
+</body>
+</html>

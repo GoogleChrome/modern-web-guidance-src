@@ -1,0 +1,143 @@
+/* Modern Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-bg: #1a1a1a;
+  --color-text: #f0f0f0;
+  --color-primary: #d4a373;
+  --color-secondary: #ccd5ae;
+  --font-main: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+header {
+  padding: 2rem;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(26, 26, 26, 0.8);
+  backdrop-filter: blur(10px);
+}
+
+h1 {
+  font-size: 2.5rem;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+}
+
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rem;
+}
+
+/* Scroll Animation for Hero Image */
+@keyframes fade-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.hero-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  min-height: 80vh; /* Ensure enough scroll space */
+  align-items: center;
+}
+
+.hero-img {
+  width: 100%;
+  max-width: 800px;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  
+  /* Feature: Scroll Driven Animation */
+  /* Fallback for browsers without support is just plain opacity: 1 via CSS cascade or @supports */
+  opacity: 1; 
+}
+
+@supports (animation-timeline: view()) {
+  .hero-img {
+    opacity: 0; /* Start hidden for animation */
+    animation: fade-grow linear both;
+    animation-timeline: view();
+    animation-range: entry 10% cover 30%;
+  }
+}
+
+/* Content Section to allow scrolling */
+.content {
+  padding: 2rem;
+  text-align: center;
+  max-width: 600px;
+}
+
+/* Tooltip / Popover */
+.details-btn {
+  background-color: var(--color-primary);
+  color: #1a1a1a;
+  border: none;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: transform 0.2s;
+  anchor-name: --details-btn;
+}
+
+.details-btn:hover {
+  transform: translateY(-2px);
+}
+
+.ingredient-tooltip {
+  background: #333;
+  color: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  border: 1px solid var(--color-primary);
+  font-size: 0.9rem;
+  max-width: 200px;
+  
+  /* Popover styles */
+  position-anchor: --details-btn;
+  position-area: top;
+  margin-bottom: 0.5rem;
+  
+  /* Transition for popover */
+  opacity: 0;
+  transition: opacity 0.2s, display 0.2s allow-discrete;
+}
+
+.ingredient-tooltip:popover-open {
+  opacity: 1;
+}
+
+/* Fallback for position-area if needed (though polyfill handles it) */
+.ingredient-tooltip {
+  /* position-try-fallbacks: flip-block; */
+}

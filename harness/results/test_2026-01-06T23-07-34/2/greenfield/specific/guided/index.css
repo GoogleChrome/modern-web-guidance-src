@@ -1,0 +1,173 @@
+/* Global Styles */
+:root {
+    --color-coffee-dark: #3e2723;
+    --color-coffee-medium: #795548;
+    --color-coffee-light: #d7ccc8;
+    --color-warm-bg: #efebe9;
+    --color-text-main: #212121;
+    --font-heading: 'Georgia', serif;
+    --font-body: system-ui, -apple-system, sans-serif;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-body);
+    background-color: var(--color-warm-bg);
+    color: var(--color-text-main);
+    line-height: 1.6;
+}
+
+h1, h2, h3, h4 {
+    font-family: var(--font-heading);
+    color: var(--color-coffee-dark);
+}
+
+.site-header {
+    background: var(--color-coffee-dark);
+    color: white;
+    padding: 1rem 2rem;
+    text-align: center;
+}
+
+.site-header h1 {
+    color: white; /* Override default */
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* Hero Section */
+.hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 4rem;
+    min-height: 100vh; /* Ensure enough scroll space */
+}
+
+.hero-content {
+    margin-bottom: 2rem;
+}
+
+.hero-img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Scroll-driven Animation: Fade & Scale */
+/* Feature detection for support */
+@supports (animation-timeline: view()) {
+    @keyframes fade-scale-in {
+        from {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .fade-in-scale {
+        /* Start somewhat invisible so it fades in */
+        opacity: 0; 
+        
+        animation: fade-scale-in linear both;
+        
+        /* 
+           view() progress:
+           entry 0% -> starts when top of element enters viewport
+           contain 50% -> fully visible
+        */
+        animation-timeline: view();
+        animation-range: entry 10% contain 40%;
+    }
+}
+
+/* Fallback for no scroll-animation support */
+@supports not (animation-timeline: view()) {
+    .fade-in-scale {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Product Section */
+.product-details {
+    text-align: center;
+    padding: 2rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom: 200px; /* Extra space to allow scrolling past */
+}
+
+.details-btn {
+    background-color: var(--color-coffee-medium);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    
+    /* Anchor Positioning Hook */
+    anchor-name: --details-trigger;
+}
+
+.details-btn:hover {
+    background-color: var(--color-coffee-dark);
+}
+
+/* Popover & Anchor Positioning */
+.ingredients-popover {
+    padding: 1rem;
+    border: 1px solid var(--color-coffee-light);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    background: white;
+    color: var(--color-text-main);
+    
+    /* Anchor Positioning */
+    position-anchor: --details-trigger;
+    position-area: top; /* Shorthand for top center */
+    margin-bottom: 10px; /* Spacing from button */
+    
+    /* Styling */
+    width: max-content;
+    max-width: 300px;
+    
+    /* Popover default override */
+    inset: auto; /* Required for anchor positioning to take over */
+    margin: 0; /* Clear defaults */
+}
+
+/* NOTE: Popover API handles display:none/block automatically */
+.ingredients-popover:popover-open {
+    /* Optional transition for popover */
+    opacity: 1;
+}
+
+.ingredients-popover ul {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0 0;
+}
+
+.ingredients-popover li {
+    padding: 0.25rem 0;
+    border-bottom: 1px dashed var(--color-coffee-light);
+}
+
+.ingredients-popover li:last-child {
+    border-bottom: none;
+}

@@ -1,0 +1,126 @@
+/* Base Styles using modern CSS */
+:root {
+    --primary-color: #3e2723;
+    --text-color: #ECEFF1;
+    --bg-color: #121212;
+    --accent-color: #d7ccc8;
+}
+
+body {
+    margin: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+header {
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0,0,0,0.8);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+}
+
+h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--accent-color);
+}
+
+.details-btn {
+    background: var(--accent-color);
+    color: var(--primary-color);
+    border: none;
+    padding: 0.5rem 1.5rem;
+    border-radius: 2rem;
+    cursor: pointer;
+    font-weight: bold;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.details-btn:hover {
+    background: #fff;
+    transform: scale(1.05);
+}
+
+/* Popover Styling */
+[popover] {
+    background: #2c2c2c;
+    color: #fff;
+    border: 1px solid var(--accent-color);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    /* Basic positioning handled by browser, but we can refine */
+    margin-top: 1rem;
+}
+
+[popover]::backdrop {
+    background: transparent; /* Non-modal feel */
+}
+
+/* Hero Section */
+.intro {
+    height: 50vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.hero-container {
+    height: 100vh; /* Give it space to be scrolled into */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    perspective: 1000px;
+}
+
+.hero-image {
+    width: 90%;
+    max-width: 1200px;
+    height: auto;
+    border-radius: 1rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    
+    /* Scroll-driven Animation */
+    /* View Timeline: As element enters viewport */
+    animation-name: fade-in-scale-up;
+    animation-fill-mode: both;
+    animation-timing-function: linear;
+    animation-timeline: view();
+    animation-range: entry 10% cover 50%;
+}
+
+@keyframes fade-in-scale-up {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.content {
+    padding: 4rem 2rem;
+    text-align: center;
+    font-size: 1.2rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+footer {
+    text-align: center;
+    padding: 2rem;
+    opacity: 0.5;
+    font-size: 0.9rem;
+}

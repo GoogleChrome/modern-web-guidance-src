@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Velvet Brew | Artisan Coffee</title>
+    <meta name="description" content="Experience the finest artisan coffee with Velvet Brew. Premium beans, roasted to perfection.">
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <header>
+      <div class="logo">VELVET BREW</div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-content">
+          <h1>Experience the Perfect Cup</h1>
+          <p>Sourced from the highlands, roasted with passion, and brewed for the moment.</p>
+          
+          <!-- Details Button with Tooltip -->
+          <!-- Using 'interestfor' for declarative hover/focus behavior (Interest Invokers) -->
+          <button class="btn-details" interestfor="ingredients-popover">
+            View Ingredients
+          </button>
+          
+          <!-- The Popover Tooltip -->
+          <div id="ingredients-popover" popover="hint">
+            <strong>Signature Blend:</strong><br>
+            • 100% Arabica Beans<br>
+            • Notes of Dark Chocolate<br>
+            • Hint of Caramel<br>
+            • Ethically Sourced
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <!-- Adaptive Loading Image -->
+          <!-- loading-placeholder points to the LQIP -->
+          <img 
+            class="hero-img"
+            src="/hero.svg" 
+            loading-placeholder="/hero-small.svg" 
+            alt="Cinematic view of a warm, cozy coffee shop interior"
+            width="1200"
+            height="800"
+          >
+        </div>
+      </section>
+
+      <section class="details-section">
+        <h2>Our Story</h2>
+        <p>Scroll down to see the hero image animation in action (if you look back up).</p>
+      </section>
+
+      <div class="spacer">
+        <p>Keep scrolling...</p>
+      </div>
+      <div class="spacer">
+        <p>More content here.</p>
+      </div>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

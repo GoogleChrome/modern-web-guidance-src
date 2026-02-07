@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bean & Brew - Premium Coffee</title>
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Adaptive Loading Polyfill -->
+  <script>
+    if (!('loadingPlaceholder' in HTMLImageElement.prototype)) {
+      document.write('<script src="https://unpkg.com/adaptive-loading-polyfill@0.2.0/dist/adaptive-loading.min.js"><\/script>');
+    }
+  </script>
+</head>
+<body>
+
+  <header>
+    <h1>Welcome to Bean & Brew</h1>
+    <p style="z-index: 10; font-size: 1.5rem; max-width: 600px; margin-bottom: 250px;">
+      Experience the finest beans roasted to perfection. <br>
+      (Scroll down to see the magic)
+    </p>
+    
+    <div class="hero-image-container">
+      <img src="assets/hero.svg" 
+           loading class="hero-img" 
+           alt="Cozy Coffee Shop Interior"
+           loading-placeholder="assets/hero-placeholder.svg">
+    </div>
+  </header>
+
+  <main class="product-section">
+    <h2>Our Signature Blend</h2>
+    <p>Rich, bold, and smooth. The perfect start to your day.</p>
+    
+    <!-- Interest Invoker Trigger -->
+    <button class="details-btn" interestfor="ingredients-popover">
+      View Ingredients
+    </button>
+    
+    <!-- Popover Content -->
+    <div id="ingredients-popover" popover="hint">
+      <h3>Ingredients</h3>
+      <ul>
+        <li>100% Arabica Beans</li>
+        <li>Notes of Chocolate</li>
+        <li>Hint of Vanilla</li>
+      </ul>
+    </div>
+    
+  </main>
+  
+  <!-- Polyfills for modern features -->
+  <script type="module">
+    // Polyfill for Popover API
+    if (!HTMLDivElement.prototype.hasOwnProperty("popover")) {
+       await import('https://unpkg.com/@oddbird/popover-polyfill@0.6.1/dist/popover.min.js');
+    }
+
+    // Polyfill for Interest Invokers
+    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+       await import('https://unpkg.com/interestfor@1.0.7/src/interestfor.min.js');
+    }
+    
+    // Polyfill for CSS Anchor Positioning
+    if (!('positionAnchor' in document.documentElement.style)) {
+      await import('https://unpkg.com/@oddbird/css-anchor-positioning@0.8.0/dist/css-anchor-positioning.js');
+    }
+  </script>
+  
+</body>
+</html>

@@ -1,0 +1,11 @@
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3c2f2f;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#be9b7b;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#grad)" />
+  <text x="50%" y="50%" font-family="Arial" font-size="64" fill="white" text-anchor="middle" dy=".3em">Premium Coffee</text>
+  <text x="50%" y="60%" font-family="Arial" font-size="32" fill="white" text-anchor="middle" dy=".3em">Warmth in every cup</text>
+</svg>

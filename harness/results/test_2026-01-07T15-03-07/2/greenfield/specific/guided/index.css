@@ -1,0 +1,239 @@
+:root {
+    --color-bg: #f8f5f2;
+    --color-text: #2c2420;
+    --color-accent: #d4a373;
+    --color-primary-btn: #2c2420;
+    --color-white: #ffffff;
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Outfit', sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    overflow-x: hidden;
+    line-height: 1.6;
+}
+
+/* Header */
+header {
+    padding: 2rem 5%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: 0.05em;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    gap: 2rem;
+}
+
+nav a {
+    text-decoration: none;
+    color: var(--color-text);
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+nav a:hover {
+    color: var(--color-accent);
+}
+
+/* Hero Section */
+.hero {
+    min-height: 120vh; /* Make it tall enough to scroll */
+    padding: 4rem 5%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 4rem;
+    position: relative;
+}
+
+.hero-content {
+    z-index: 10;
+}
+
+h1 {
+    font-family: var(--font-heading);
+    font-size: 4.5rem;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+}
+
+p {
+    font-size: 1.1rem;
+    opacity: 0.8;
+    margin-bottom: 2.5rem;
+    max-width: 50ch;
+}
+
+.cta-container {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.primary-btn {
+    background-color: var(--color-primary-btn);
+    color: var(--color-white);
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    cursor: pointer;
+    font-family: var(--font-body);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    transition: transform 0.2s;
+}
+
+.primary-btn:hover {
+    transform: translateY(-2px);
+}
+
+.ph-details-btn {
+    background: none;
+    border: 2px solid var(--color-text);
+    padding: 0.9rem 1.9rem;
+    font-size: 1rem;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-weight: 600;
+    /* Anchor helper */
+    anchor-name: --details-btn;
+}
+
+/* Scroll-driven Animation */
+@keyframes fade-scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.hero-image-wrapper {
+    position: relative;
+    width: 100%;
+    height: auto;
+    display: flex;
+    justify-content: center;
+}
+
+.hero-img {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    
+    /* Initially hidden for animation */
+    /* Wait, we shouldn't hide it for fallback reasons if JS fails, 
+       but here we use pure CSS animation-timeline so it's fine 
+       provided we wrap it in @supports */
+    
+    /* Default state for no support: visible */
+    opacity: 1; 
+}
+
+@supports (animation-timeline: view()) {
+    .hero-img.scroll-animate {
+        opacity: 0; /* Start hidden */
+        animation: fade-scale-in linear both;
+        animation-timeline: view();
+        /* Range: Start animating when it enters, finish when it's fully in (or slightly passed) */
+        animation-range: entry 10% contain 50%;
+    }
+}
+
+/* Popover Styles */
+.ingredients-popover {
+    /* Basic Popover reset */
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,0,0,0.05);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    
+    /* Anchor Positioning */
+    position-anchor: --details-btn;
+    /* Fallback position if anchor not supported: roughly center or just rely on default popover centering */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0; /* reset popover margin */
+}
+
+@supports (position-anchor: --details-btn) {
+    .ingredients-popover {
+        position-area: bottom center; 
+        /* Reset manual centering */
+        top: unset;
+        left: unset;
+        transform: unset;
+        margin-top: 10px; /* spacing */
+        position-try-fallbacks: flip-block;
+    }
+}
+
+.ingredients-popover h3 {
+    font-family: var(--font-heading);
+    margin-bottom: 0.5rem;
+}
+
+.ingredients-popover ul {
+    list-style-type: none;
+    padding-left: 0.5rem;
+}
+
+.ingredients-popover li {
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+/* Extra section to allow scrolling */
+.details {
+    padding: 5rem 5%;
+    text-align: center;
+}
+
+.spacer {
+    height: 100vh;
+}
+
+@media (max-width: 768px) {
+    .hero {
+        grid-template-columns: 1fr;
+        padding-top: 2rem;
+        gap: 2rem;
+    }
+    
+    h1 {
+        font-size: 3rem;
+    }
+    
+    .hero-image-wrapper {
+        order: -1;
+    }
+}

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espresso Artistry - Premium Coffee</title>
+    <meta name="description" content="Experience the finest artisanal coffee at Espresso Artistry. Sustainably sourced, expertly roasted.">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">Espresso Artistry</div>
+            <ul>
+                <li><a href="#">Shop</a></li>
+                <li><a href="#">Locations</a></li>
+                <li><button id="details-btn" popovertarget="ingredients-popover">Details</button></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Wake Up to Perfection</h1>
+                <p>Ethically sourced. Expertly roasted. Crafted for you.</p>
+                <div class="image-container">
+                    <!-- Image src will be set by JS via Adaptive Loading -->
+                    <img id="hero-img" alt="A steaming cup of artisanal coffee in a cozy setting" hidden>
+                </div>
+            </div>
+        </section>
+
+        <section class="content">
+            <h2>Our Story</h2>
+            <p>Founded in 2025, Espresso Artistry brings the world's best beans to your cup.</p>
+            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+        </section>
+    </main>
+
+    <!-- Popover Content -->
+    <div id="ingredients-popover" popover>
+        <h3>Our Signature Blend Ingredients</h3>
+        <ul>
+            <li>100% Arabica Beans</li>
+            <li>Notes of Dark Chocolate</li>
+            <li>Hint of Caramel</li>
+            <li>Roasted with Love</li>
+        </ul>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
