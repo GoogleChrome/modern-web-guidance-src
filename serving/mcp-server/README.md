@@ -36,7 +36,18 @@ pnpm run dev
 
 ## Usage
 
-Configure your MCP client to use the local server.  (UPDATE the path below!):
+Configure your MCP client to use the local server.
+
+> [!IMPORTANT]
+> The location of your MCP configuration depends on which agent you are testing. These paths are determined by [`harness/config.ts`](../../harness/config.ts).
+
+- **Jetski**: `[JETSKI_DIR]/mcp_config.json`
+- **Gemini CLI**: `[GEMINI_DIR]/settings.json`
+
+Example configuration:
+
+> [!WARNING]
+> Update the path below to match your local setup
 
 ```json
 {

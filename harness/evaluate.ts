@@ -28,9 +28,34 @@ async function main() {
     return;
   }
 
-  // Get the latest test
-  const latestTest = manifest.tests[manifest.tests.length - 1];
-  const testID = latestTest.id;
+  // ===========================================================================
+  // CLI Arguments Configuration
+  // ===========================================================================
+  // Available flags:
+  // --test_dir=<test_id>  : Specify a specific test ID to evaluate (e.g., 'test_gemini_cli').
+  //                         If not provided, defaults to the most recent test in results/tests.json.
+  //
+  // Examples:
+  //   pnpm report --test_dir=test_gemini_cli
+  // ===========================================================================
+
+  const args = process.argv.slice(2);
+  let specificTestId = null;
+  for (const arg of args) {
+    if (arg.startsWith('--test_dir=')) {
+      specificTestId = arg.split('=')[1];
+      break;
+    }
+  }
+
+  let testID;
+  if (specificTestId) {
+    testID = specificTestId;
+  } else {
+    // Get the latest test if no specific test ID is provided
+    const latestTest = manifest.tests[manifest.tests.length - 1];
+    testID = latestTest.id;
+  }
   const resultsDir = path.join('results', testID);
 
   console.log(`Evaluating test: ${testID}`.cyan);

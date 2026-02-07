@@ -4,7 +4,9 @@ import path from 'path';
 import puppeteer from 'puppeteer-core';
 import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
-import { config } from './config.ts';
+import { config } from '../config.ts';
+import { fileURLToPath } from 'url';
+import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders } from '../lib/agent-shared.ts';
 
 // Parse arguments
 // Usage: node jetski-agent.ts <directory> <prompt> [agentType]
@@ -15,18 +17,15 @@ if (args.length < 2) {
 }
 const [targetDirectory, userPrompt, agentType = 'guided'] = args;
 const absoluteTargetDir = path.resolve(targetDirectory);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, '../..');
 
 /**
  * Sets up an isolated HOME directory to ensure test isolation while preserving authentication.
  * @returns {string} The path to the temporary HOME directory.
  */
 function setupIsolatedHome(): string {
-  // Use /tmp/ deliberately because os.tmpdir() on macOS can return paths that are
-  // too long for valid Unix socket paths, which causes issues for some JetSki/VS Code components.
-  const tempHome = `/tmp/ghh-${Math.random().toString(36).substring(7)}`;
-  fs.mkdirSync(tempHome, { recursive: true });
-
-  console.log(`Setting up isolated HOME at ${tempHome}...`);
+  const tempHome = createIsolatedHome('ghh');
 
   const appSupportSource = path.join(os.homedir(), 'Library/Application Support/Jetski');
   const appSupportDest = path.join(tempHome, 'Library/Application Support/Jetski');
@@ -35,6 +34,8 @@ function setupIsolatedHome(): string {
 
   fs.mkdirSync(appSupportDest, { recursive: true });
   fs.mkdirSync(geminiDest, { recursive: true });
+
+  createTrustedFolders(path.dirname(geminiDest), [absoluteTargetDir, projectRoot]);
 
   // Copy minimal authentication state
   const filesToCopy = [
@@ -71,7 +72,7 @@ function setupIsolatedHome(): string {
   }
 
   // Copy essential .gemini state
-  const geminiFiles = ['installation_id', 'user_settings.pb'];
+  const geminiFiles = ['installation_id', 'user_settings.pb', 'mcp_config.json'];
   for (const file of geminiFiles) {
     const src = path.join(geminiSource, file);
     if (fs.existsSync(src)) {
@@ -88,50 +89,6 @@ function setupIsolatedHome(): string {
   config.jetskiDir = geminiDest;
 
   return tempHome;
-}
-
-/**
- * Updates the MCP configuration in the current isolated home.
- * @param {string} type - 'guided' or 'unguided'
- */
-function updateMcpConfig(type: string): void {
-  const configPath = path.join(config.jetskiDir, 'mcp_config.json');
-  let mcpConfig: { mcpServers?: Record<string, any> } = { mcpServers: {} };
-
-  try {
-    if (fs.existsSync(configPath)) {
-      const content = fs.readFileSync(configPath, 'utf8');
-      if (content.trim()) {
-        mcpConfig = JSON.parse(content);
-      }
-    }
-  } catch (e) {
-    console.error('Failed to read MCP config:', e);
-  }
-
-  if (!mcpConfig.mcpServers) mcpConfig.mcpServers = {};
-
-  const serverName = 'google-developer-knowledge-mcp';
-  if (type === 'guided') {
-    mcpConfig.mcpServers[serverName] = {
-      "serverUrl": "https://developerknowledge.googleapis.com/mcp",
-      "headers": {
-        "X-Goog-Api-Key": config.mcpApiKey
-      }
-    };
-    console.log('Enabled google-developer-knowledge-mcp MCP server');
-  } else {
-    if (mcpConfig.mcpServers[serverName]) {
-      delete mcpConfig.mcpServers[serverName];
-      console.log('Disabled google-developer-knowledge-mcp MCP server');
-    }
-  }
-
-  try {
-    fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
-  } catch (e) {
-    console.error('Failed to write MCP config:', e);
-  }
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -224,13 +181,14 @@ function killProcessOnPort(port: number | string): void {
   }
 }
 
-async function startJetski(directory: string): Promise<void> {
+async function startJetski(directory: string, profileDir: string): Promise<void> {
   // Kill anything on the debug port first
   killProcessOnPort(config.jetskiDebugPort);
 
   console.log(`Starting Jetski with directory: ${directory}`);
   const jetskiProcess = spawn(config.jetskiBin, [
     `--remote-debugging-port=${config.jetskiDebugPort}`,
+    `--user-data-dir=${profileDir}`,
     directory
   ], {
     detached: true, // Let it run independently
@@ -263,9 +221,16 @@ async function run(): Promise<void> {
   try {
     // Setup isolated environment and MCP config
     testHomeDir = setupIsolatedHome();
-    updateMcpConfig(agentType);
+    const mcpConfigPath = path.join(config.jetskiDir, 'mcp_config.json');
+    updateMcpConfig(mcpConfigPath, agentType, config.mcpApiKey, 'jetski');
 
-    await startJetski(absoluteTargetDir);
+    // Use stable user data dir to persist state (welcome screen, etc.)
+    const profileDir = config.jetskiProfileDir;
+    if (!fs.existsSync(profileDir)) {
+      fs.mkdirSync(profileDir, { recursive: true });
+    }
+
+    await startJetski(absoluteTargetDir, profileDir);
 
     const browserURL = `http://127.0.0.1:${config.jetskiDebugPort}`;
     const browser = await puppeteer.connect({
@@ -399,16 +364,7 @@ async function run(): Promise<void> {
     process.exit(1);
   } finally {
     killProcessOnPort(config.jetskiDebugPort);
-    if (testHomeDir && fs.existsSync(testHomeDir)) {
-      console.log(`
-=== Cleaning up isolated HOME ===`);
-      try {
-        fs.rmSync(testHomeDir, { recursive: true, force: true });
-        console.log('✅ Cleanup successful');
-      } catch (cleanupErr) {
-        console.error('Failed to cleanup isolated HOME:', cleanupErr);
-      }
-    }
+    cleanupIsolatedHome(testHomeDir || '');
   }
 }
 
