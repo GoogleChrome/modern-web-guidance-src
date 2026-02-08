@@ -79,6 +79,26 @@ function setupTabs() {
         tab.addEventListener('click', () => {
             activateTab(tab.dataset.tab);
         });
+
+        tab.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                e.preventDefault();
+                const currentIdx = Array.from(tabs).indexOf(e.target);
+                let nextIdx;
+
+                if (e.key === 'ArrowLeft') {
+                    nextIdx = currentIdx - 1;
+                    if (nextIdx < 0) nextIdx = tabs.length - 1;
+                } else {
+                    nextIdx = currentIdx + 1;
+                    if (nextIdx >= tabs.length) nextIdx = 0;
+                }
+
+                const nextTab = tabs[nextIdx];
+                activateTab(nextTab.dataset.tab);
+                nextTab.focus();
+            }
+        });
     });
 }
 
@@ -86,24 +106,34 @@ function activateTab(tabName, updateUrl = true) {
     if (updateUrl && currentTab === tabName) return;
 
     const tabs = document.querySelectorAll('.tab-button');
+    const contents = document.querySelectorAll('.tab-content');
 
     // Update active tab state
     tabs.forEach(t => {
-        if (t.dataset.tab === tabName) {
+        const isActive = t.dataset.tab === tabName;
+        if (isActive) {
             t.classList.add('active');
+            t.setAttribute('aria-selected', 'true');
+            t.removeAttribute('tabindex');
         } else {
             t.classList.remove('active');
+            t.setAttribute('aria-selected', 'false');
+            t.setAttribute('tabindex', '-1');
         }
     });
 
-    // Hide all content
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    // Update content visibility
+    contents.forEach(c => {
+        c.classList.remove('active');
+        c.setAttribute('hidden', '');
+    });
 
     // Show selected content
     const targetId = `${tabName}-tab`;
     const targetContent = document.getElementById(targetId);
     if (targetContent) {
         targetContent.classList.add('active');
+        targetContent.removeAttribute('hidden');
     }
 
     currentTab = tabName;

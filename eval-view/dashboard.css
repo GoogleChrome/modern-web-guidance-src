@@ -143,11 +143,15 @@ h1 {
 }
 
 .close-modal {
+    background: none;
+    border: none;
     color: var(--text-secondary);
     float: right;
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
 }
 
 .close-modal:hover {

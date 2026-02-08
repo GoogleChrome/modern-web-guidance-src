@@ -39,14 +39,17 @@
       </div>
     </header>
 
-    <nav class="dashboard-tabs">
-      <button class="tab-button active" data-tab="overview">Overview</button>
-      <button class="tab-button" data-tab="explorer">Explorer</button>
-      <button class="tab-button" data-tab="trends">Trends</button>
-    </nav>
+    <div role="tablist" aria-label="Dashboard views" class="dashboard-tabs">
+      <button role="tab" aria-selected="true" aria-controls="overview-tab" id="tab-overview" class="tab-button active"
+        data-tab="overview">Overview</button>
+      <button role="tab" aria-selected="false" aria-controls="explorer-tab" id="tab-explorer" class="tab-button"
+        tabindex="-1" data-tab="explorer">Explorer</button>
+      <button role="tab" aria-selected="false" aria-controls="trends-tab" id="tab-trends" class="tab-button"
+        tabindex="-1" data-tab="trends">Trends</button>
+    </div>
 
     <!-- Overview Tab -->
-    <div id="overview-tab" class="tab-content active">
+    <div role="tabpanel" id="overview-tab" aria-labelledby="tab-overview" class="tab-content active" tabindex="0">
       <div class="overview-grid">
         <div class="overview-card">
           <h3>Latest Guided Pass Rate</h3>
@@ -66,7 +69,7 @@
     </div>
 
     <!-- Explorer Tab -->
-    <div id="explorer-tab" class="tab-content">
+    <div role="tabpanel" id="explorer-tab" aria-labelledby="tab-explorer" class="tab-content" tabindex="0" hidden>
       <div class="explorer-container">
         <aside class="explorer-sidebar">
           <div class="filter-group">
@@ -85,7 +88,7 @@
     </div>
 
     <!-- Trends Tab -->
-    <div id="trends-tab" class="tab-content">
+    <div role="tabpanel" id="trends-tab" aria-labelledby="tab-trends" class="tab-content" tabindex="0" hidden>
       <div id="timeline-section" class="timeline-section">
         <div class="timeline-header">
           <h2>Overall Pass Rate Timeline</h2>
