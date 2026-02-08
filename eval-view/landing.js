@@ -79,26 +79,6 @@ function setupTabs() {
         tab.addEventListener('click', () => {
             activateTab(tab.dataset.tab);
         });
-
-        tab.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-                e.preventDefault();
-                const currentIdx = Array.from(tabs).indexOf(e.target);
-                let nextIdx;
-
-                if (e.key === 'ArrowLeft') {
-                    nextIdx = currentIdx - 1;
-                    if (nextIdx < 0) nextIdx = tabs.length - 1;
-                } else {
-                    nextIdx = currentIdx + 1;
-                    if (nextIdx >= tabs.length) nextIdx = 0;
-                }
-
-                const nextTab = tabs[nextIdx];
-                activateTab(nextTab.dataset.tab);
-                nextTab.focus();
-            }
-        });
     });
 }
 
