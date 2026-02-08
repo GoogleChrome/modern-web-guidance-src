@@ -1,3 +1,5 @@
+import { getRunStats, getColor, escapeHtml, formatTestName } from './utils.js';
+
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         // Get testID from query string
@@ -420,29 +422,6 @@ async function viewDiff(setupPath, resultPath) {
     }
 }
 
-function getRunStats(checks) {
-    if (!checks || !checks.length) return { rate: 0, passed: 0, total: 0 };
-    const passed = checks.filter(c => c.passed).length;
-    const total = checks.length;
-    const rate = Math.round((passed / total) * 100);
-    return { rate, passed, total };
-}
-
-function getColor(percentage) {
-    if (percentage >= 90) return 'var(--accent-success)'; // Green
-    if (percentage >= 50) return '#dbab09'; // Yellow/Orange
-    return 'var(--accent-failure)'; // Red
-}
-
-function formatTestName(name) {
-    return name.split(' - ').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' / ');
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
 
 async function findBestEntryPoint(basePath) {
     const candidates = [
