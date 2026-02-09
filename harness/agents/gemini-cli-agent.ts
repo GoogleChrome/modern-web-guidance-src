@@ -62,7 +62,6 @@ async function run() {
   let tempHome: string | null = null;
   try {
     console.log(`Starting Gemini CLI agent in: ${absoluteTargetDir}`);
-    // console.log(`Included workspace: ${projectRoot}`); // No longer including projectRoot
 
     // Setup isolated environment
     tempHome = setupIsolatedHome();
