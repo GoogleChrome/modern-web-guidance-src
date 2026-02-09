@@ -1,9 +1,9 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
-import checkGreenfield from '../app_checks/greenfield.js';
-import checkBrownfield from '../app_checks/brownfield.js';
-import checkRedfield from '../app_checks/redfield.js';
+import checkGreenfield from '../app_checks/greenfield.ts';
+import checkBrownfield from '../app_checks/brownfield.ts';
+import checkRedfield from '../app_checks/redfield.ts';
 
 export async function collectResults(resultsDir: string) {
   const runDirs = fs.readdirSync(resultsDir)

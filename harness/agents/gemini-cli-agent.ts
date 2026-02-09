@@ -5,7 +5,7 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import config from '../config.ts';
 
-import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders } from '../lib/agent-shared.ts';
+import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders, copyGeminiContext } from '../lib/agent-shared.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
@@ -44,7 +44,7 @@ function setupIsolatedHome(): string {
     copyFileIfExists(src, path.join(geminiDest, file));
   }
 
-  createTrustedFolders(geminiDest, [absoluteTargetDir, projectRoot]);
+  createTrustedFolders(geminiDest, [absoluteTargetDir]);
 
   // Set environment variables for the current process (and children)
   process.env.HOME = tempHome;
@@ -62,7 +62,7 @@ async function run() {
   let tempHome: string | null = null;
   try {
     console.log(`Starting Gemini CLI agent in: ${absoluteTargetDir}`);
-    console.log(`Included workspace: ${projectRoot}`);
+    // console.log(`Included workspace: ${projectRoot}`); // No longer including projectRoot
 
     // Setup isolated environment
     tempHome = setupIsolatedHome();
@@ -72,15 +72,19 @@ async function run() {
       fs.mkdirSync(absoluteTargetDir, { recursive: true });
     }
 
+    // Copy GEMINI.md to the target directory
+    if (runType === 'guided') {
+      copyGeminiContext(projectRoot, absoluteTargetDir);
+    }
+
     updateMcpConfig(path.join(config.geminiDir, 'settings.json'), runType, config.mcpApiKey, 'gemini_cli');
 
     const command = config.geminiCliBin;
     const commandArgs = [
       '-p', userPrompt,
       '--yolo',
-      '--include-directories', projectRoot
+      '--include-directories', absoluteTargetDir
     ];
-
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 

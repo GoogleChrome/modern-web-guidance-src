@@ -6,7 +6,7 @@ import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config } from '../config.ts';
 import { fileURLToPath } from 'url';
-import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders } from '../lib/agent-shared.ts';
+import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, copyGeminiContext } from '../lib/agent-shared.ts';
 
 // Parse arguments
 // Usage: node jetski-agent.ts <directory> <prompt> [agentType]
@@ -35,7 +35,7 @@ function setupIsolatedHome(): string {
   fs.mkdirSync(appSupportDest, { recursive: true });
   fs.mkdirSync(geminiDest, { recursive: true });
 
-  createTrustedFolders(path.dirname(geminiDest), [absoluteTargetDir, projectRoot]);
+  createTrustedFolders(path.dirname(geminiDest), [absoluteTargetDir]);
 
   // Copy minimal authentication state
   const filesToCopy = [
@@ -228,6 +228,11 @@ async function run(): Promise<void> {
     const profileDir = config.jetskiProfileDir;
     if (!fs.existsSync(profileDir)) {
       fs.mkdirSync(profileDir, { recursive: true });
+    }
+
+    // Copy GEMINI.md to the target directory
+    if (agentType === 'guided') {
+      copyGeminiContext(projectRoot, absoluteTargetDir);
     }
 
     await startJetski(absoluteTargetDir, profileDir);

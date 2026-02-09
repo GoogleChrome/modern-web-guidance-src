@@ -111,15 +111,38 @@ export function updateMcpConfig(configFullPath: string, runType: string, apiKey:
     }
     console.log(`Enabled ${serverName} MCP server in ${configFullPath}`);
   } else {
-    if (mcpConfig.mcpServers[serverName]) {
-      delete mcpConfig.mcpServers[serverName];
-      console.log(`Disabled ${serverName} MCP server in ${configFullPath}`);
-    }
+    // For unguided runs (or any other type), clear all MCP servers to ensure a clean slate.
+    mcpConfig.mcpServers = {};
+    console.log(`Cleared all MCP servers in ${configFullPath} (runType: ${runType})`);
   }
 
   try {
     fs.writeFileSync(configFullPath, JSON.stringify(mcpConfig, null, 2));
   } catch (e) {
     console.error(`Failed to write MCP config to ${configFullPath}:`, e);
+  }
+}
+
+/**
+ * Copies the GEMINI.md context file to the target directory.
+ * @param projectRoot The root of the guidance project
+ * @param targetDir The target directory for the test project
+ */
+export function copyGeminiContext(projectRoot: string, targetDir: string): void {
+  const geminiMdSource = path.join(projectRoot, 'harness', 'GEMINI.md');
+  const geminiMdDest = path.join(targetDir, 'GEMINI.md');
+
+  if (fs.existsSync(geminiMdSource)) {
+    try {
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+      fs.copyFileSync(geminiMdSource, geminiMdDest);
+      console.log(`Copied GEMINI.md to ${geminiMdDest}`);
+    } catch (e: any) {
+      console.warn(`Warning: Failed to copy GEMINI.md: ${e.message}`);
+    }
+  } else {
+    console.warn(`Warning: GEMINI.md not found at ${geminiMdSource}`);
   }
 }
