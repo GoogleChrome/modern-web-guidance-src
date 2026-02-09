@@ -3,7 +3,7 @@ import path from 'path';
 
 /**
  * Creates a unique isolated HOME directory in /tmp.
- * @param prefix The prefix for the directory name (e.g. 'ghh' or 'ghh-gemini').
+ * @param prefix The prefix for the directory name
  * @returns The path to the created directory.
  */
 export function createIsolatedHome(prefix: string): string {
@@ -123,19 +123,15 @@ export function updateMcpConfig(configFullPath: string, runType: string, apiKey:
   }
 }
 
-/**
- * Copies the GEMINI.md context file to the target directory.
- * @param projectRoot The root of the guidance project
- * @param targetDir The target directory for the test project
- */
 export function copyGeminiContext(projectRoot: string, targetDir: string): void {
   const geminiMdSource = path.join(projectRoot, 'harness', 'GEMINI.md');
-  const geminiMdDest = path.join(targetDir, 'GEMINI.md');
+  const agentDir = path.join(targetDir, '.agent');
+  const geminiMdDest = path.join(agentDir, 'GEMINI.md');
 
   if (fs.existsSync(geminiMdSource)) {
     try {
-      if (!fs.existsSync(targetDir)) {
-        fs.mkdirSync(targetDir, { recursive: true });
+      if (!fs.existsSync(agentDir)) {
+        fs.mkdirSync(agentDir, { recursive: true });
       }
       fs.copyFileSync(geminiMdSource, geminiMdDest);
       console.log(`Copied GEMINI.md to ${geminiMdDest}`);

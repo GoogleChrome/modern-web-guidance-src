@@ -15,7 +15,7 @@ if (args.length < 2) {
   console.error("Usage: node jetski-agent.ts <directory> <prompt> [agentType]");
   process.exit(1);
 }
-const [targetDirectory, userPrompt, agentType = 'guided'] = args;
+const [targetDirectory, userPrompt, agentType] = args;
 const absoluteTargetDir = path.resolve(targetDirectory);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
@@ -25,7 +25,7 @@ const projectRoot = path.resolve(__dirname, '../..');
  * @returns {string} The path to the temporary HOME directory.
  */
 function setupIsolatedHome(): string {
-  const tempHome = createIsolatedHome('ghh');
+  const tempHome = createIsolatedHome('ghh-jetski');
 
   const appSupportSource = path.join(os.homedir(), 'Library/Application Support/Jetski');
   const appSupportDest = path.join(tempHome, 'Library/Application Support/Jetski');
