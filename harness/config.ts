@@ -46,7 +46,7 @@ const config: Config = {
 
   // Suite Configuration
   numRuns: 3,
-  scenarios: ['brownfield', 'greenfield', 'redfield'],
+  scenarios: ['brownfield'],
   promptTypes: ['specific', 'vague'],
 };
 

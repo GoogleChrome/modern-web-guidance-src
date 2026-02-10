@@ -1,9 +1,7 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
-import checkGreenfield from '../app_checks/greenfield.ts';
 import checkBrownfield from '../app_checks/brownfield.ts';
-import checkRedfield from '../app_checks/redfield.ts';
 
 export async function collectResults(resultsDir: string) {
   const runDirs = fs.readdirSync(resultsDir)
@@ -41,12 +39,8 @@ export async function collectResults(resultsDir: string) {
 
       let scenarioResults = [];
 
-      if (scenario === 'greenfield') {
-        scenarioResults = await checkGreenfield(dir, files);
-      } else if (scenario === 'brownfield') {
+      if (scenario === 'brownfield') {
         scenarioResults = await checkBrownfield(dir, files);
-      } else if (scenario === 'redfield') {
-        scenarioResults = await checkRedfield(dir, files);
       } else {
         console.warn(`Unknown scenario type: ${scenario}`);
         continue;

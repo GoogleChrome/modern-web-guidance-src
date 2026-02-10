@@ -6,7 +6,7 @@ import type { RunResult } from './metrics.ts';
 describe('calculateMetrics', () => {
   test('should calculate correct metrics for a simple result set', () => {
     const allResults: Record<string, RunResult[]> = {
-      'greenfield - specific - guided': [
+      'brownfield - specific - guided': [
         {
           runNumber: 1,
           results: [
@@ -22,7 +22,7 @@ describe('calculateMetrics', () => {
           ]
         }
       ],
-      'greenfield - specific - unguided': [
+      'brownfield - specific - unguided': [
         {
           runNumber: 1,
           results: [
@@ -57,8 +57,8 @@ describe('calculateMetrics', () => {
 
     // Sorted keys
     assert.deepStrictEqual(metrics.sortedKeys, [
-      'greenfield - specific - unguided',
-      'greenfield - specific - guided'
+      'brownfield - specific - unguided',
+      'brownfield - specific - guided'
     ]);
   });
 

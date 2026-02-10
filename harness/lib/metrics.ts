@@ -26,7 +26,7 @@ export interface Metrics {
 }
 
 export function calculateMetrics(allResults: Record<string, RunResult[]>, numRuns: number): Metrics {
-  const scenarioOrder: Record<string, number> = { 'greenfield': 1, 'brownfield': 2, 'redfield': 3 };
+  const scenarioOrder: Record<string, number> = { 'brownfield': 1 };
   const promptOrder: Record<string, number> = { 'vague': 1, 'specific': 2 };
   const agentOrder: Record<string, number> = { 'unguided': 1, 'guided': 2 };
 
