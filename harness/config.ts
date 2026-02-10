@@ -19,7 +19,8 @@ interface Config {
   jetskiProfileDir: string;
   geminiCliBin: string;
   geminiDir: string;
-  mcpServerPath: string;
+  mcpServersToEnable: string[];
+  modernWebServerPath: string;
   mcpApiKey: string;
   numRuns: number;
   scenarios: string[];
@@ -38,7 +39,9 @@ const config: Config = {
   geminiDir: process.env.GEMINI_DIR || path.join(os.homedir(), '.gemini'),
 
   // MCP Server Configuration
-  mcpServerPath: path.join(__dirname, '../serving/mcp-server/index.ts'),
+  // Available servers: 'modern-web', 'google-developer-knowledge-mcp'
+  mcpServersToEnable: ['modern-web'],
+  modernWebServerPath: path.join(__dirname, '../serving/mcp-server/index.ts'),
   mcpApiKey: process.env.MCP_API_KEY || '',
 
   // Suite Configuration

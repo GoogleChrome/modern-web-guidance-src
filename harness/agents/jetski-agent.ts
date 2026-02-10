@@ -5,20 +5,11 @@ import puppeteer from 'puppeteer-core';
 import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config } from '../config.ts';
-import { fileURLToPath } from 'url';
-import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, copyGeminiContext } from '../lib/agent-shared.ts';
+
+import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, copyGeminiContext, sleep, killProcessOnPort, parseAgentArgs } from '../lib/agent-shared.ts';
 
 // Parse arguments
-// Usage: node jetski-agent.ts <directory> <prompt> [agentType]
-const args = process.argv.slice(2);
-if (args.length < 2) {
-  console.error("Usage: node jetski-agent.ts <directory> <prompt> [agentType]");
-  process.exit(1);
-}
-const [targetDirectory, userPrompt, agentType] = args;
-const absoluteTargetDir = path.resolve(targetDirectory);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, '../..');
+const { userPrompt, runType, absoluteTargetDir, projectRoot } = parseAgentArgs('jetski-agent.ts');
 
 /**
  * Sets up an isolated HOME directory to ensure test isolation while preserving authentication.
@@ -72,7 +63,7 @@ function setupIsolatedHome(): string {
   }
 
   // Copy essential .gemini state
-  const geminiFiles = ['installation_id', 'user_settings.pb', 'mcp_config.json'];
+  const geminiFiles = ['installation_id', 'user_settings.pb'];
   for (const file of geminiFiles) {
     const src = path.join(geminiSource, file);
     if (fs.existsSync(src)) {
@@ -84,16 +75,23 @@ function setupIsolatedHome(): string {
   process.env.HOME = tempHome;
   process.env.JETSKI_DIR = geminiDest;
 
-  // Re-sync config's jetskiDir now that environment variables are set
-  // (In TS we import it so we update the object)
-  config.jetskiDir = geminiDest;
+  // Add GEMINI context and MCP servers for guided runs
+  if (runType === 'guided') {
+    copyGeminiContext(projectRoot, tempHome);
+
+    updateMcpConfig(
+      path.join(geminiDest, 'mcp_config.json'),
+      config.mcpServersToEnable,
+      config.modernWebServerPath,
+      config.mcpApiKey,
+      'jetski'
+    );
+  }
 
   return tempHome;
 }
 
-async function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+
 
 async function extractJetskiVersionInfo(page: Page, outputPath: string): Promise<any> {
   try {
@@ -169,17 +167,7 @@ async function extractJetskiVersionInfo(page: Page, outputPath: string): Promise
   }
 }
 
-function killProcessOnPort(port: number | string): void {
-  try {
-    const pid = execSync(`lsof -t -i :${port}`).toString().trim();
-    if (pid) {
-      console.log(`Killing process ${pid} on port ${port}...`);
-      execSync(`kill -9 ${pid}`);
-    }
-  } catch {
-    // Ignore error if no process found (grep/lsof returns exit code 1 if empty)
-  }
-}
+
 
 async function startJetski(directory: string, profileDir: string): Promise<void> {
   // Kill anything on the debug port first
@@ -221,18 +209,11 @@ async function run(): Promise<void> {
   try {
     // Setup isolated environment and MCP config
     testHomeDir = setupIsolatedHome();
-    const mcpConfigPath = path.join(config.jetskiDir, 'mcp_config.json');
-    updateMcpConfig(mcpConfigPath, agentType, config.mcpApiKey, 'jetski');
 
     // Use stable user data dir to persist state (welcome screen, etc.)
     const profileDir = config.jetskiProfileDir;
     if (!fs.existsSync(profileDir)) {
       fs.mkdirSync(profileDir, { recursive: true });
-    }
-
-    // Copy GEMINI.md to the target directory
-    if (agentType === 'guided') {
-      copyGeminiContext(projectRoot, absoluteTargetDir);
     }
 
     await startJetski(absoluteTargetDir, profileDir);

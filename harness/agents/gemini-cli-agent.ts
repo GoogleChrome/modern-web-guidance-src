@@ -2,22 +2,13 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { spawn } from 'child_process';
-import { fileURLToPath } from 'url';
+
 import config from '../config.ts';
 
-import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders, copyGeminiContext } from '../lib/agent-shared.ts';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, '../..');
+import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders, copyGeminiContext, parseAgentArgs } from '../lib/agent-shared.ts';
 
 // Usage: node gemini-cli-agent.ts <directory> <prompt> [runType]
-const args = process.argv.slice(2);
-if (args.length < 2) {
-  console.error("Usage: node gemini-cli-agent.ts <directory> <prompt> [runType]");
-  process.exit(1);
-}
-const [targetDirectory, userPrompt, runType] = args;
-const absoluteTargetDir = path.resolve(targetDirectory);
+const { userPrompt, runType, absoluteTargetDir, projectRoot } = parseAgentArgs('gemini-cli-agent.ts');
 
 /**
  * Sets up an isolated HOME directory to ensure test isolation while preserving authentication.
@@ -35,8 +26,7 @@ function setupIsolatedHome(): string {
   const filesToCopy = [
     'oauth_creds.json',
     'google_accounts.json',
-    'installation_id',
-    'settings.json'
+    'installation_id'
   ];
 
   for (const file of filesToCopy) {
@@ -49,8 +39,18 @@ function setupIsolatedHome(): string {
   // Set environment variables for the current process (and children)
   process.env.HOME = tempHome;
 
-  // Point config to the isolated .gemini
-  config.geminiDir = geminiDest;
+  // Add GEMINI context and MCP servers for guided runs
+  if (runType === 'guided') {
+    copyGeminiContext(projectRoot, tempHome);
+
+    updateMcpConfig(
+      path.join(geminiDest, 'settings.json'),
+      config.mcpServersToEnable,
+      config.modernWebServerPath,
+      config.mcpApiKey,
+      'gemini_cli'
+    );
+  }
 
   return tempHome;
 }
@@ -70,13 +70,6 @@ async function run() {
     if (!fs.existsSync(absoluteTargetDir)) {
       fs.mkdirSync(absoluteTargetDir, { recursive: true });
     }
-
-    // Copy GEMINI.md to the target directory
-    if (runType === 'guided') {
-      copyGeminiContext(projectRoot, absoluteTargetDir);
-    }
-
-    updateMcpConfig(path.join(config.geminiDir, 'settings.json'), runType, config.mcpApiKey, 'gemini_cli');
 
     const command = config.geminiCliBin;
     const commandArgs = [

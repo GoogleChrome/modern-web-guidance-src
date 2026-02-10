@@ -36,32 +36,7 @@ pnpm run dev
 
 ## Usage
 
-Configure your MCP client to use the local server.
-
-> [!IMPORTANT]
-> The location of your MCP configuration depends on which agent you are testing. These paths are determined by [`harness/config.ts`](../../harness/config.ts).
-
-- **Jetski**: `[JETSKI_DIR]/mcp_config.json`
-- **Gemini CLI**: `[GEMINI_DIR]/settings.json`
-
-Example configuration:
-
-> [!WARNING]
-> Update the path below to match your local setup
-
-```json
-{
-  "mcpServers": {
-    "Modern Web": {
-      "command": "node",
-      "args": [
-        "$HOME/code/guidance/serving/mcp-server/index.ts"
-      ]
-    }
-  }
-}
-```
-
+The MCP config is automatically configured using variables in [`harness/config.ts`](../../harness/config.ts).
 
 ## Testing Semantic Search
 

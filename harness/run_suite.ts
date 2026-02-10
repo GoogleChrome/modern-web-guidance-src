@@ -57,20 +57,6 @@ async function main() {
     process.exit(1);
   }
 
-  // Generate a unique testID with timestamp or use custom name
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-  const testID = customTestName ? `test_${customTestName}` : `test_${timestamp}`;
-  const testDir = path.join(resultsDir, testID);
-  fs.mkdirSync(testDir, { recursive: true });
-
-  // Setup logging to file
-  const logFilePath = path.join(testDir, 'test_suite.log');
-  const originalConsoleMethods = setupLogging(logFilePath);
-
-  console.log(`\n=== Test Suite Starting with ID: ${testID} ===
-`);
-  console.log(`Results will be saved to: ${testDir}\n`);
-  console.log(`Log file: ${logFilePath}\n`);
 
   // Single task mode check
   const [argDir, argPrompt] = positionalArgs;
@@ -80,6 +66,11 @@ async function main() {
     console.log(`Agent: ${agent}`);
     console.log(`Directory: ${argDir}`);
     console.log(`Prompt: ${argPrompt}\n`);
+
+    if (!fs.existsSync(argDir)) {
+      console.log(`Creating directory: ${argDir}`);
+      fs.mkdirSync(argDir, { recursive: true });
+    }
 
     try {
       // Dispatch based on agent
@@ -91,12 +82,24 @@ async function main() {
       }
       console.log(`\n✅ Single task complete!`);
     } catch (error) {
-      console.error(`
-❌ Single task failed:`, error);
+      console.error(`❌ Single task failed:`, error);
     }
-    restoreLogging(originalConsoleMethods);
     return;
   }
+
+  // Generate a unique testID with timestamp or use custom name
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+  const testID = customTestName ? `test_${customTestName}` : `test_${timestamp}`;
+  const testDir = path.join(resultsDir, testID);
+  fs.mkdirSync(testDir, { recursive: true });
+
+  // Setup logging to file
+  const logFilePath = path.join(testDir, 'test_suite.log');
+  const originalConsoleMethods = setupLogging(logFilePath);
+
+  console.log(`\n=== Test Suite Starting with ID: ${testID} ===`);
+  console.log(`Results will be saved to: ${testDir}\n`);
+  console.log(`Log file: ${logFilePath}\n`);
 
   try {
     const endRun = 1 + numRuns;

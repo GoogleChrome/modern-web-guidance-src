@@ -1,5 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
 
 /**
  * Creates a unique isolated HOME directory in /tmp.
@@ -70,75 +72,140 @@ export function createTrustedFolders(contentsDir: string, folders: string[]): vo
 }
 
 /**
- * Updates the MCP configuration file to enable or disable the Google Developer Knowledge MCP server.
- * @param configFullPath Full path to the MCP configuration file
- * @param runType 'guided' or 'unguided'
+ * Updates the MCP configuration file to enable MCP servers.
+ * 
+ * @param configPath Full path to the MCP configuration file
+ * @param serversToEnable List of enabled MCP server names
+ * @param modernWebServerPath Path to the Modern Web MCP server
  * @param apiKey The API key for the MCP server
+ * @param agent The agent type
+ * @returns True if the config was written successfully, false otherwise.
  */
-export function updateMcpConfig(configFullPath: string, runType: string, apiKey: string, agent: string): void {
-  let mcpConfig: { mcpServers?: Record<string, any> } = { mcpServers: {} };
+export function updateMcpConfig(
+  configPath: string,
+  serversToEnable: string[],
+  modernWebServerPath: string,
+  apiKey: string,
+  agent: string
+): boolean {
+  const mcpConfig: { mcpServers: Record<string, any> } = { mcpServers: {} };
 
-  try {
-    if (fs.existsSync(configFullPath)) {
-      const content = fs.readFileSync(configFullPath, 'utf8');
-      if (content.trim()) {
-        mcpConfig = JSON.parse(content);
+  for (const serverName of serversToEnable) {
+    if (serverName === 'modern-web') {
+      if (!modernWebServerPath || !fs.existsSync(modernWebServerPath)) {
+        throw new Error(`Example MCP server path not found: ${modernWebServerPath}`);
       }
-    }
-  } catch (e) {
-    console.error(`Failed to read MCP config at ${configFullPath}:`, e);
-  }
+      mcpConfig.mcpServers['modern-web'] = {
+        command: 'node',
+        args: [modernWebServerPath]
+      };
+    } else if (serverName === 'google-developer-knowledge-mcp') {
+      if (!apiKey) {
+        throw new Error('MCP_API_KEY is required for google-developer-knowledge-mcp but was not provided.');
+      }
+      const url = 'https://developerknowledge.googleapis.com/mcp';
 
-  if (!mcpConfig.mcpServers) mcpConfig.mcpServers = {};
+      // Jetski requires 'serverUrl' for the urlKey header
+      const urlKey = agent === 'jetski' ? 'serverUrl' : 'url';
 
-  const serverName = 'google-developer-knowledge-mcp';
-  // Note: 'guided' enables the server, anything else (like 'unguided') disables it.
-  if (runType === 'guided') {
-    if (agent === 'gemini_cli') {
-      mcpConfig.mcpServers[serverName] = {
-        "url": "https://developerknowledge.googleapis.com/mcp",
-        "headers": {
-          "X-Goog-Api-Key": apiKey
+      mcpConfig.mcpServers['google-developer-knowledge-mcp'] = {
+        [urlKey]: url,
+        headers: {
+          'X-Goog-Api-Key': apiKey
         }
       };
-    } else if (agent === 'jetski') {
-      mcpConfig.mcpServers[serverName] = {
-        "serverUrl": "https://developerknowledge.googleapis.com/mcp",
-        "headers": {
-          "X-Goog-Api-Key": apiKey
-        }
-      };
+    } else {
+      console.warn(`Warning: Unknown MCP server name '${serverName}' in config. Skipping.`);
     }
-    console.log(`Enabled ${serverName} MCP server in ${configFullPath}`);
-  } else {
-    // For unguided runs (or any other type), clear all MCP servers to ensure a clean slate.
-    mcpConfig.mcpServers = {};
-    console.log(`Cleared all MCP servers in ${configFullPath} (runType: ${runType})`);
   }
 
   try {
-    fs.writeFileSync(configFullPath, JSON.stringify(mcpConfig, null, 2));
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
+    console.log(`Enabled MCP servers in ${configPath}: ${Object.keys(mcpConfig.mcpServers).join(', ')}`);
+    return true;
   } catch (e) {
-    console.error(`Failed to write MCP config to ${configFullPath}:`, e);
+    console.error(`Failed to write MCP config to ${configPath}:`, e);
+    return false;
   }
 }
 
-export function copyGeminiContext(projectRoot: string, targetDir: string): void {
+export function copyGeminiContext(projectRoot: string, homeDir: string): boolean {
   const geminiMdSource = path.join(projectRoot, 'harness', 'GEMINI.md');
-  const agentDir = path.join(targetDir, '.agent');
-  const geminiMdDest = path.join(agentDir, 'GEMINI.md');
+  const geminiDir = path.join(homeDir, '.gemini');
+  const geminiMdDest = path.join(geminiDir, 'GEMINI.md');
 
-  if (fs.existsSync(geminiMdSource)) {
-    try {
-      if (!fs.existsSync(agentDir)) {
-        fs.mkdirSync(agentDir, { recursive: true });
-      }
-      fs.copyFileSync(geminiMdSource, geminiMdDest);
-      console.log(`Copied GEMINI.md to ${geminiMdDest}`);
-    } catch (e: any) {
-      console.warn(`Warning: Failed to copy GEMINI.md: ${e.message}`);
-    }
-  } else {
+  if (!fs.existsSync(geminiMdSource)) {
     console.warn(`Warning: GEMINI.md not found at ${geminiMdSource}`);
+    return false;
   }
+
+  try {
+    if (!fs.existsSync(geminiDir)) {
+      fs.mkdirSync(geminiDir, { recursive: true });
+    }
+    fs.copyFileSync(geminiMdSource, geminiMdDest);
+    console.log(`Copied GEMINI.md to ${geminiMdDest}`);
+    return true;
+  } catch (e: any) {
+    console.warn(`Warning: Failed to copy GEMINI.md: ${e.message}`);
+    return false;
+  }
+}
+
+/**
+ * Sleeps for the specified number of milliseconds.
+ * @param ms Number of milliseconds to sleep
+ */
+export async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Kills any process running on the specified port.
+ * @param port The port number to check and kill processes on
+ */
+export function killProcessOnPort(port: number | string): void {
+  try {
+    const pid = execSync(`lsof -t -i :${port}`).toString().trim();
+    if (pid) {
+      console.log(`Killing process ${pid} on port ${port}...`);
+      execSync(`kill -9 ${pid}`);
+    }
+  } catch {
+    // Ignore error if no process found (grep/lsof returns exit code 1 if empty)
+  }
+}
+
+export interface AgentArgs {
+  userPrompt: string;
+  runType: string; // 'guided' or 'unguided'
+  absoluteTargetDir: string;
+  projectRoot: string;
+}
+
+/**
+ * Parses command line arguments for agents.
+ * Usage: node <agent-script> <directory> <prompt> [runType]
+ * 
+ * @param scriptName Name of the script for usage message
+ * @returns Parsed arguments
+ */
+export function parseAgentArgs(scriptName: string): AgentArgs {
+  const args = process.argv.slice(2);
+  if (args.length < 2) {
+    console.error(`Usage: node ${scriptName} <directory> <prompt> [runType]`);
+    process.exit(1);
+  }
+  const [targetDirectory, userPrompt, runType] = args;
+  const absoluteTargetDir = path.resolve(targetDirectory);
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const projectRoot = path.resolve(__dirname, '../..');
+
+  return {
+    userPrompt,
+    runType,
+    absoluteTargetDir,
+    projectRoot
+  };
 }
