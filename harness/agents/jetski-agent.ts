@@ -6,27 +6,29 @@ import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config } from '../config.ts';
 
-import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, copyGeminiContext, sleep, killProcessOnPort, parseAgentArgs } from '../lib/agent-shared.ts';
+import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, copyAgentContext, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir } from '../lib/agent-shared.ts';
 
-// Parse arguments
-const { userPrompt, runType, absoluteTargetDir, projectRoot } = parseAgentArgs('jetski-agent.ts');
+// Usage: node jetski-agent.ts <prompt> <runType> <targetDir> <templateDir>
+const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-agent.ts');
 
 /**
- * Sets up an isolated HOME directory to ensure test isolation while preserving authentication.
- * @returns {string} The path to the temporary HOME directory.
+ * Sets up an isolated HOME and work directory to ensure test isolation.
+ * @returns {string} The path to the temporary work directory.
  */
-function setupIsolatedHome(): string {
+function setupIsolatedWorkDir(): string {
   const tempHome = createIsolatedHome('ghh-jetski');
+  const workDir = createWorkDir(templateDir, tempHome, runType);
 
   const appSupportSource = path.join(os.homedir(), 'Library/Application Support/Jetski');
   const appSupportDest = path.join(tempHome, 'Library/Application Support/Jetski');
-  const geminiSource = path.join(os.homedir(), '.gemini/jetski');
-  const geminiDest = path.join(tempHome, '.gemini/jetski');
+  const jetskiSource = path.join(os.homedir(), '.gemini/jetski');
+  const jetskiDest = path.join(tempHome, '.gemini/jetski');
 
   fs.mkdirSync(appSupportDest, { recursive: true });
-  fs.mkdirSync(geminiDest, { recursive: true });
+  fs.mkdirSync(jetskiDest, { recursive: true });
 
-  createTrustedFolders(path.dirname(geminiDest), [absoluteTargetDir]);
+  // To bypass trusted folder checks
+  createTrustedFolders(path.dirname(jetskiDest), [tempHome]);
 
   // Copy minimal authentication state
   const filesToCopy = [
@@ -65,22 +67,22 @@ function setupIsolatedHome(): string {
   // Copy essential .gemini state
   const geminiFiles = ['installation_id', 'user_settings.pb'];
   for (const file of geminiFiles) {
-    const src = path.join(geminiSource, file);
+    const src = path.join(jetskiSource, file);
     if (fs.existsSync(src)) {
-      fs.copyFileSync(src, path.join(geminiDest, file));
+      fs.copyFileSync(src, path.join(jetskiDest, file));
     }
   }
 
-  // Set environment variables for the child process and the current process
+  // Set environment variables
   process.env.HOME = tempHome;
-  process.env.JETSKI_DIR = geminiDest;
+  process.env.JETSKI_DIR = jetskiDest;
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
-    copyGeminiContext(projectRoot, tempHome);
+    copyAgentContext(tempHome, 'jetski');
 
     updateMcpConfig(
-      path.join(geminiDest, 'mcp_config.json'),
+      path.join(jetskiDest, 'mcp_config.json'),
       config.mcpServersToEnable,
       config.modernWebServerPath,
       config.mcpApiKey,
@@ -88,7 +90,7 @@ function setupIsolatedHome(): string {
     );
   }
 
-  return tempHome;
+  return workDir;
 }
 
 
@@ -167,8 +169,6 @@ async function extractJetskiVersionInfo(page: Page, outputPath: string): Promise
   }
 }
 
-
-
 async function startJetski(directory: string, profileDir: string): Promise<void> {
   // Kill anything on the debug port first
   killProcessOnPort(config.jetskiDebugPort);
@@ -205,18 +205,20 @@ async function startJetski(directory: string, profileDir: string): Promise<void>
 }
 
 async function run(): Promise<void> {
-  let testHomeDir: string | null = null;
-  try {
-    // Setup isolated environment and MCP config
-    testHomeDir = setupIsolatedHome();
+  const workDir = setupIsolatedWorkDir();
 
+  if (!workDir || !fs.existsSync(workDir)) {
+    throw new Error(`Failed to initialize working directory: ${workDir}`);
+  }
+
+  try {
     // Use stable user data dir to persist state (welcome screen, etc.)
     const profileDir = config.jetskiProfileDir;
     if (!fs.existsSync(profileDir)) {
       fs.mkdirSync(profileDir, { recursive: true });
     }
 
-    await startJetski(absoluteTargetDir, profileDir);
+    await startJetski(workDir, profileDir);
 
     const browserURL = `http://127.0.0.1:${config.jetskiDebugPort}`;
     const browser = await puppeteer.connect({
@@ -241,8 +243,8 @@ async function run(): Promise<void> {
     // Attempt to save Jetski info (only once per Test ID, effectively)
     // If we are in the results structure (results/<testID>/<runNumber>/...), go up to the testID folder.
     // Otherwise, just put it in the target directory.
-    let jetskiInfoPath = path.join(absoluteTargetDir, 'jetski_info.json');
-    const resultsMatch = absoluteTargetDir.match(/(.*[/\\]results[/\\]test_[^/\\]+)/);
+    let jetskiInfoPath = path.join(targetDir, 'jetski_info.json');
+    const resultsMatch = targetDir.match(/(.*[/\\]results[/\\]test_[^/\\]+)/);
     if (resultsMatch) {
       jetskiInfoPath = path.join(resultsMatch[1], 'jetski_info.json');
     }
@@ -324,7 +326,7 @@ async function run(): Promise<void> {
       // Ensure #chat exists in the target frame
       await targetFrame.waitForSelector('#chat', { timeout: 5000 });
       const chatText = await targetFrame.$eval('#chat', (el: any) => el.innerText || '');
-      const chatLogPath = path.resolve(absoluteTargetDir, 'chat_log.txt');
+      const chatLogPath = path.resolve(targetDir, 'chat_log.txt');
       fs.writeFileSync(chatLogPath, chatText, 'utf8');
       console.log(`Saved chat log to: ${chatLogPath}`);
     } catch (e: any) {
@@ -345,12 +347,14 @@ async function run(): Promise<void> {
     await browser.disconnect();
     console.log("Disconnected.");
 
+    copyResultsToTarget(workDir, targetDir);
+
   } catch (err) {
     console.error("Error during execution:", err);
     process.exit(1);
   } finally {
     killProcessOnPort(config.jetskiDebugPort);
-    cleanupIsolatedHome(testHomeDir || '');
+    cleanupIsolatedHome(path.dirname(workDir));
   }
 }
 

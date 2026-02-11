@@ -1,6 +1,6 @@
 # Agent Instructions
 
-You may have access to an MCP server called "modern-web".
+You might have access to an MCP server called "modern-web".
 
 If you have access to this server and use a guide from it to help you with the task, you MUST record the filename of the guide and the timestamp when you accessed it.
 After completing the task, if you used any guides, create a file named `guides_used.json` in the root of the project directory.

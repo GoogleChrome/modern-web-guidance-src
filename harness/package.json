@@ -12,6 +12,9 @@
     "full-run": "npm run suite && npm run report"
   },
   "dependencies": {
+    "@anthropic-ai/claude-code": "^2.1.38",
+    "@anthropic-ai/vertex-sdk": "^0.14.3",
+    "@google/gemini-cli": "^0.28.0",
     "cheerio": "^1.0.0",
     "colors": "^1.4.0",
     "dotenv": "^16.4.7",

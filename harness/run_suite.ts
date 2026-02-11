@@ -26,15 +26,15 @@ async function main() {
   // CLI Arguments Configuration
   // ===========================================================================
   // Available flags:
-  //   --agent=<type>    : 'jetski' (default) or 'gemini-cli'
+  //   --agent=<type>    : 'jetski' (default) or 'gemini_cli'
   //   --name=<string>    : Custom name for the test run (defaults to timestamp)
   //
   // Examples:
-  //   pnpm suite --agent=gemini-cli --name=benchmark-v1
-  //   pnpm task /path/to/dir "prompt" --agent=gemini-cli
+  //   pnpm suite --agent=gemini_cli --name=benchmark-v1
+  //   pnpm task /path/to/dir "prompt" --agent=gemini_cli
   // ===========================================================================
 
-  const VALID_AGENTS = ['jetski', 'gemini_cli'];
+  const VALID_AGENTS = ['jetski', 'gemini_cli', 'claude_code'];
 
   const args = process.argv.slice(2);
   let agent = process.env.AGENT || 'jetski';
@@ -57,7 +57,6 @@ async function main() {
     process.exit(1);
   }
 
-
   // Single task mode check
   const [argDir, argPrompt] = positionalArgs;
 
@@ -76,9 +75,11 @@ async function main() {
       // Dispatch based on agent
       if (agent === 'gemini_cli') {
         // Use experimental-strip-types for running TS directly
-        await runCommand('node', ['--experimental-strip-types', 'agents/gemini-cli-agent.ts', path.resolve(argDir), JSON.stringify(argPrompt), 'guided']);
+        await runCommand('node', ['--experimental-strip-types', 'agents/gemini-cli-agent.ts', JSON.stringify(argPrompt), 'guided', path.resolve(argDir)]);
+      } else if (agent === 'claude_code') {
+        await runCommand('node', ['--experimental-strip-types', 'agents/claude-code-agent.ts', JSON.stringify(argPrompt), 'guided', path.resolve(argDir)]);
       } else {
-        await runCommand('node', ['--experimental-strip-types', 'agents/jetski-agent.ts', path.resolve(argDir), JSON.stringify(argPrompt), 'guided']);
+        await runCommand('node', ['--experimental-strip-types', 'agents/jetski-agent.ts', JSON.stringify(argPrompt), 'guided', path.resolve(argDir)]);
       }
       console.log(`\n✅ Single task complete!`);
     } catch (error) {
@@ -116,10 +117,6 @@ async function main() {
         fs.mkdirSync(runDir, { recursive: true });
       }
 
-      console.log(`Copying base apps to ${runDir}...`);
-      await runCommand(`cp -R "${baseAppsDir}"/* "${runDir}/"`);
-      console.log('✅ Base apps copied');
-
       for (const scenario of config.scenarios) {
         for (const promptType of config.promptTypes) {
           const promptPath = path.join(baseAppsDir, scenario, promptType, 'PROMPT.txt');
@@ -128,28 +125,31 @@ async function main() {
           let promptContent = fs.readFileSync(promptPath, 'utf8').trim();
           promptContent += ` Don't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
-          for (const agentType of RUN_TYPES) {
-            const targetDir = path.join(runDir, scenario, promptType, agentType);
+          for (const runType of RUN_TYPES) {
+            const templateDir = path.join(baseAppsDir, scenario, promptType, runType);
+            const targetDir = path.join(runDir, scenario, promptType, runType);
 
-            if (!fs.existsSync(targetDir)) {
-              if (scenario === 'greenfield') {
-                fs.mkdirSync(targetDir, { recursive: true });
-              } else {
-                continue;
-              }
+            if (!fs.existsSync(templateDir)) {
+              throw new Error(`Template directory not found: ${templateDir}`);
             }
 
-            console.log(`\n>>> Running Scenario: ${scenario} | Prompt: ${promptType} | Agent: ${agentType} | Run: ${runNumber} | Agent: ${agent}`);
+            if (!fs.existsSync(targetDir)) {
+              fs.mkdirSync(targetDir, { recursive: true });
+            }
+
+            console.log(`\n>>> Running Scenario: ${scenario} | Prompt: ${promptType} | Run Type: ${runType} | Run #: ${runNumber} | Agent: ${agent}`);
             try {
               // Dispatch to appropriate agent script based on agent
               if (agent === 'gemini_cli') {
-                await runCommand('node', ['--experimental-strip-types', 'agents/gemini-cli-agent.ts', targetDir, JSON.stringify(promptContent), agentType]);
+                await runCommand('node', ['--experimental-strip-types', 'agents/gemini-cli-agent.ts', JSON.stringify(promptContent), runType, targetDir, templateDir]);
+              } else if (agent === 'claude_code') {
+                await runCommand('node', ['--experimental-strip-types', 'agents/claude-code-agent.ts', JSON.stringify(promptContent), runType, targetDir, templateDir]);
               } else {
-                await runCommand('node', ['--experimental-strip-types', 'agents/jetski-agent.ts', targetDir, JSON.stringify(promptContent), agentType]);
+                await runCommand('node', ['--experimental-strip-types', 'agents/jetski-agent.ts', JSON.stringify(promptContent), runType, targetDir, templateDir]);
               }
-              console.log(`✅ Completed: ${scenario}/${promptType}/${agentType} (Run ${runNumber})`);
+              console.log(`✅ Completed: ${scenario}/${promptType}/${runType} (Run ${runNumber})`);
             } catch (error) {
-              console.error(`❌ Failed: ${scenario}/${promptType}/${agentType} (Run ${runNumber})`, error);
+              console.error(`❌ Failed: ${scenario}/${promptType}/${runType} (Run ${runNumber})`, error);
             }
           }
         }

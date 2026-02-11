@@ -19,11 +19,13 @@ interface Config {
   jetskiProfileDir: string;
   geminiCliBin: string;
   geminiDir: string;
+  claudeCodeCliBin: string;
+  gcpCredentials: string;
   mcpServersToEnable: string[];
   modernWebServerPath: string;
   mcpApiKey: string;
   numRuns: number;
-  scenarios: string[];
+  scenarios: string[]; 
   promptTypes: string[];
 }
 
@@ -35,18 +37,22 @@ const config: Config = {
   jetskiProfileDir: process.env.JETSKI_PROFILE_DIR || path.join(os.homedir(), '.gemini/jetski-profile'),
 
   // Gemini CLI Configuration
-  geminiCliBin: process.env.GEMINI_CLI_BIN || 'gemini',
+  geminiCliBin: process.env.GEMINI_CLI_BIN || path.join(__dirname, 'node_modules/.bin/gemini'),
   geminiDir: process.env.GEMINI_DIR || path.join(os.homedir(), '.gemini'),
 
+  // Claude Code Configuration (through GCP Vertex AI)
+  claudeCodeCliBin: process.env.CLAUDE_CODE_CLI_BIN || path.join(__dirname, 'node_modules/.bin/claude'),
+  gcpCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(os.homedir(), '.config/gcloud/application_default_credentials.json'),
+
   // MCP Server Configuration
-  // Available servers: 'modern-web', 'google-developer-knowledge-mcp'
+  // Available servers: 'modern-web', 'google-developer-knowledge'
   mcpServersToEnable: ['modern-web'],
   modernWebServerPath: path.join(__dirname, '../serving/mcp-server/index.ts'),
   mcpApiKey: process.env.MCP_API_KEY || '',
 
   // Suite Configuration
   numRuns: 3,
-  scenarios: ['brownfield', 'greenfield', 'redfield'],
+  scenarios: ['greenfield'],
   promptTypes: ['specific', 'vague'],
 };
 

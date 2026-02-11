@@ -1,54 +1,38 @@
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import { spawn } from 'child_process';
-
+import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, copyAgentContext, copyResultsToTarget, createWorkDir } from '../lib/agent-shared.ts';
 import config from '../config.ts';
 
-import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, copyAgentContext, parseAgentArgs, createWorkDir, copyResultsToTarget } from '../lib/agent-shared.ts';
-
-// Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
-const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('gemini-cli-agent.ts');
+// Usage: node claude-code-agent.ts <prompt> <runType> <targetDir> <templateDir>
+const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
 
 /**
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
 function setupIsolatedWorkDir(): string {
-  const tempHome = createIsolatedHome('ghh-gemini');
+  const tempHome = createIsolatedHome('ghh-claude');
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
-  const geminiSource = path.join(os.homedir(), '.gemini');
-  const geminiDest = path.join(tempHome, '.gemini');
-
-  fs.mkdirSync(geminiDest, { recursive: true });
-
-  // Copy necessary auth and identification files
-  const filesToCopy = [
-    'oauth_creds.json',
-    'google_accounts.json',
-    'installation_id'
-  ];
-
-  for (const file of filesToCopy) {
-    const src = path.join(geminiSource, file);
-    copyFileIfExists(src, path.join(geminiDest, file));
-  }
+  // Copy GCP credentials (for Vertex auth)
+  const gcloudConfigDest = path.join(tempHome, '.config/gcloud');
+  fs.mkdirSync(gcloudConfigDest, { recursive: true });
+  copyFileIfExists(config.gcpCredentials, path.join(gcloudConfigDest, 'application_default_credentials.json'));
 
   // Set environment variables
   process.env.HOME = tempHome;
 
-  // Add GEMINI context and MCP servers for guided runs
+  // Add CLAUDE context and MCP servers for guided runs
   if (runType === 'guided') {
-    copyAgentContext(tempHome, 'gemini_cli');
+    copyAgentContext(tempHome, 'claude_code');
 
-    // Update MCP config in isolated home
     updateMcpConfig(
-      path.join(geminiDest, 'settings.json'),
+      path.join(tempHome, '.claude.json'),
       config.mcpServersToEnable,
       config.modernWebServerPath,
       config.mcpApiKey,
-      'gemini_cli'
+      'claude_code'
     );
   }
 
@@ -56,7 +40,7 @@ function setupIsolatedWorkDir(): string {
 }
 
 /**
- * Executes the Gemini CLI command and captures output.
+ * Executes the Claude CLI command and captures output.
  */
 async function run() {
   const workDir = setupIsolatedWorkDir();
@@ -66,18 +50,19 @@ async function run() {
   }
 
   try {
-    console.log(`Starting Gemini CLI agent in ${workDir}`);
+    console.log(`Starting Claude Code agent in: ${workDir}`);
 
-    const command = config.geminiCliBin;
+    const command = config.claudeCodeCliBin;
     const commandArgs = [
       '-p', userPrompt,
-      '--yolo'
+      '--dangerously-skip-permissions',
+      '--verbose'
     ];
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
     const child = spawn(command, commandArgs, {
-      cwd: workDir,
+      cwd: workDir, // Run in the isolated project directory
       env: { ...process.env }, // Pass through environment variables (including new HOME)
       stdio: ['ignore', 'pipe', 'pipe'] // Capture stdout/stderr
     });
@@ -102,7 +87,7 @@ async function run() {
     });
 
     if (exitCode !== 0) {
-      throw new Error(`Gemini CLI exited with code ${exitCode}`);
+      throw new Error(`Claude Code exited with code ${exitCode}`);
     }
 
     copyResultsToTarget(workDir, targetDir);
@@ -112,10 +97,10 @@ async function run() {
     fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
     console.log(`Saved output to: ${chatLogPath}`);
 
-    console.log("Gemini CLI agent finished successfully.");
+    console.log("Claude Code agent finished successfully.");
 
   } catch (err) {
-    console.error("Error during Gemini CLI execution:", err);
+    console.error("Error during Claude Code execution:", err);
     process.exit(1);
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));

@@ -17,7 +17,9 @@ pnpm install
 pnpm setup:playwright
 ```
 
-### 1. Modern Web MCP (Serving)
+### 1. MCP (Serving)
+
+#### modern-web
 
 The MCP server allows AI agents to access high-quality implementation patterns and browser compatibility data.
 
@@ -27,6 +29,11 @@ pnpm start
 ```
 
 For more details, see the [Serving README](./serving/mcp-server/README.md).
+
+#### google-developer-knowledge
+
+The [Developer Knowledge MCP server](https://developers.google.com/knowledge/mcp) can be enabled in the [`harness/config.ts`](./harness/config.ts) file.
+It requires the `MCP_API_KEY` to be set to a GCP API key with access enabled for the Developer Knowledge API.
 
 ### 2. Eval Harness & Dashboard
 
@@ -77,6 +84,25 @@ Jetski is the default agent that will be used. When running, be sure to update t
 #### Gemini CLI
 
 When using Gemini CLI, set the `GEMINI_API_KEY` environment variable with your API key.
+
+Set the Gemini model with the environment variable (e.g. `GEMINI_MODEL='gemini-3-pro-preview'`).
+
+#### Claude
+
+Implemented with [Claude Code on Vertex AI](https://code.claude.com/docs/en/google-vertex-ai).
+
+Log in with `gcloud` and set project ID with `gcloud config set project <YOUR-GCP-PROJECT-ID>`.
+The GCP project must enable the Vertex AI API and `Claude Opus 4.6` in the Model Garden.
+
+Set the following environment variables:
+
+```
+CLAUDE_CODE_USE_VERTEX=1
+CLOUD_ML_REGION=global
+ANTHROPIC_VERTEX_PROJECT_ID=<YOUR-GCP-PROJECT-ID>
+DISABLE_PROMPT_CACHING=1
+ANTHROPIC_MODEL='claude-opus-4-6'
+```
 
 ## Quality Control
 
