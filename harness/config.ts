@@ -25,7 +25,7 @@ interface Config {
   modernWebServerPath: string;
   mcpApiKey: string;
   numRuns: number;
-  scenarios: string[]; 
+  scenarios: string[];
   promptTypes: string[];
 }
 
@@ -52,7 +52,7 @@ const config: Config = {
 
   // Suite Configuration
   numRuns: 3,
-  scenarios: ['greenfield'],
+  scenarios: ['brownfield', 'greenfield', 'redfield'],
   promptTypes: ['specific', 'vague'],
 };
 
