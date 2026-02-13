@@ -17,7 +17,7 @@ pnpm install
 pnpm setup:playwright
 ```
 
-### 1. MCP (Serving)
+### 1. Serving
 
 #### modern-web
 
@@ -30,10 +30,17 @@ pnpm start
 
 For more details, see the [Serving README](./serving/mcp-server/README.md).
 
+This server can be enabled in the [`harness/config.ts`](./harness/config.ts) file by adding it to the `mcpServersToEnable` list.
+
 #### google-developer-knowledge
 
-The [Developer Knowledge MCP server](https://developers.google.com/knowledge/mcp) can be enabled in the [`harness/config.ts`](./harness/config.ts) file.
+The [Developer Knowledge MCP server](https://developers.google.com/knowledge/mcp) can be enabled in the [`harness/config.ts`](./harness/config.ts) file by adding it to the `mcpServersToEnable` list.
+
 It requires the `MCP_API_KEY` to be set to a GCP API key with access enabled for the Developer Knowledge API.
+
+#### Skills
+
+Skills live in the `skills/` directory, and they are copied directly into the agent harness working directory when the `enableSkills` flag is set to true in the [`harness/config.ts`](./harness/config.ts) file.
 
 ### 2. Eval Harness & Dashboard
 
@@ -76,6 +83,8 @@ pnpm report --test_dir=my_test_run
 ```
 
 ### Agents
+
+Supported agents are defined in the `Agents` object in [`harness/config.ts`](./harness/config.ts).
 
 #### Jetski
 

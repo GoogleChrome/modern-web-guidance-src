@@ -5,7 +5,7 @@ const __dirname = dirname(__filename);
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
-import { config } from './config.ts';
+import { config, Agents } from './config.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -26,7 +26,7 @@ async function main() {
   // CLI Arguments Configuration
   // ===========================================================================
   // Available flags:
-  //   --agent=<type>    : 'jetski' (default) or 'gemini_cli'
+  //   --agent=<type>    : Agent name (default: jetski)
   //   --name=<string>    : Custom name for the test run (defaults to timestamp)
   //
   // Examples:
@@ -34,10 +34,10 @@ async function main() {
   //   pnpm task /path/to/dir "prompt" --agent=gemini_cli
   // ===========================================================================
 
-  const VALID_AGENTS = ['jetski', 'gemini_cli', 'claude_code'];
+  const VALID_AGENTS: string[] = Object.values(Agents);
 
   const args = process.argv.slice(2);
-  let agent = process.env.AGENT || 'jetski';
+  let agent = process.env.AGENT || Agents.JETSKI;
   let customTestName = null;
   let numRuns = config.numRuns;
   const positionalArgs = [];
@@ -73,10 +73,10 @@ async function main() {
 
     try {
       // Dispatch based on agent
-      if (agent === 'gemini_cli') {
+      if (agent === Agents.GEMINI_CLI) {
         // Use experimental-strip-types for running TS directly
         await runCommand('node', ['--experimental-strip-types', 'agents/gemini-cli-agent.ts', JSON.stringify(argPrompt), 'guided', path.resolve(argDir)]);
-      } else if (agent === 'claude_code') {
+      } else if (agent === Agents.CLAUDE_CODE) {
         await runCommand('node', ['--experimental-strip-types', 'agents/claude-code-agent.ts', JSON.stringify(argPrompt), 'guided', path.resolve(argDir)]);
       } else {
         await runCommand('node', ['--experimental-strip-types', 'agents/jetski-agent.ts', JSON.stringify(argPrompt), 'guided', path.resolve(argDir)]);
@@ -90,7 +90,7 @@ async function main() {
 
   // Generate a unique testID with timestamp or use custom name
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-  const testID = customTestName ? `test_${customTestName}` : `test_${timestamp}`;
+  const testID = customTestName || `test_${timestamp}`;
   const testDir = path.join(resultsDir, testID);
   fs.mkdirSync(testDir, { recursive: true });
 
@@ -137,12 +137,12 @@ async function main() {
               fs.mkdirSync(targetDir, { recursive: true });
             }
 
-            console.log(`\n>>> Running Scenario: ${scenario} | Prompt: ${promptType} | Run Type: ${runType} | Run #: ${runNumber} | Agent: ${agent}`);
+            console.log(`\n>>> Running Scenario: ${scenario} | Prompt: ${promptType} | Run Type: ${runType} | Run: ${runNumber} | Agent: ${agent}`);
             try {
               // Dispatch to appropriate agent script based on agent
-              if (agent === 'gemini_cli') {
+              if (agent === Agents.GEMINI_CLI) {
                 await runCommand('node', ['--experimental-strip-types', 'agents/gemini-cli-agent.ts', JSON.stringify(promptContent), runType, targetDir, templateDir]);
-              } else if (agent === 'claude_code') {
+              } else if (agent === Agents.CLAUDE_CODE) {
                 await runCommand('node', ['--experimental-strip-types', 'agents/claude-code-agent.ts', JSON.stringify(promptContent), runType, targetDir, templateDir]);
               } else {
                 await runCommand('node', ['--experimental-strip-types', 'agents/jetski-agent.ts', JSON.stringify(promptContent), runType, targetDir, templateDir]);

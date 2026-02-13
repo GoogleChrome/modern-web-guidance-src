@@ -4,9 +4,9 @@ import path from 'path';
 import puppeteer from 'puppeteer-core';
 import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
-import { config } from '../config.ts';
+import { config, Agents } from '../config.ts';
 
-import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, copyAgentContext, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir } from '../lib/agent-shared.ts';
+import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, copyAgentContext, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills } from '../lib/agent-shared.ts';
 
 // Usage: node jetski-agent.ts <prompt> <runType> <targetDir> <templateDir>
 const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-agent.ts');
@@ -79,14 +79,18 @@ function setupIsolatedWorkDir(): string {
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
-    copyAgentContext(tempHome, 'jetski');
+    copyAgentContext(tempHome, Agents.JETSKI);
+
+    if (config.enableSkills) {
+      copySkills(tempHome, Agents.JETSKI)
+    }
 
     updateMcpConfig(
       path.join(jetskiDest, 'mcp_config.json'),
       config.mcpServersToEnable,
       config.modernWebServerPath,
       config.mcpApiKey,
-      'jetski'
+      Agents.JETSKI
     );
   }
 

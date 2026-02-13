@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
+import { Agents } from '../config.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -145,6 +146,7 @@ export function updateMcpConfig(
   }
 }
 
+
 export function copyAgentContext(homeDir: string, agent: string): boolean {
   const harnessRoot = path.resolve(__dirname, '..');
   const instructionsSource = path.join(harnessRoot, 'INSTRUCTIONS.md');
@@ -157,7 +159,7 @@ export function copyAgentContext(homeDir: string, agent: string): boolean {
   let destDir = '';
   let destFile = '';
 
-  if (agent === 'claude_code') {
+  if (agent === Agents.CLAUDE_CODE) {
     destDir = path.join(homeDir, '.claude');
     destFile = 'CLAUDE.md';
   } else {
@@ -176,6 +178,40 @@ export function copyAgentContext(homeDir: string, agent: string): boolean {
     return true;
   } catch (e: any) {
     console.warn(`Warning: Failed to copy INSTRUCTIONS.md: ${e.message}`);
+    return false;
+  }
+}
+
+/**
+ * Copies the skills directory to the isolated home directory.
+ * @param homeDir Path to the isolated home directory
+ * @returns True if successful, false otherwise
+ */
+export function copySkills(homeDir: string, agent: string): boolean {
+  const harnessRoot = path.resolve(__dirname, '..');
+  const skillsSource = path.join(harnessRoot, '..', 'skills');
+
+  let destDir = '';
+  if (agent === Agents.CLAUDE_CODE) {
+    destDir = path.join(homeDir, '.claude', 'skills');
+  } else if (agent === Agents.JETSKI) {
+    destDir = path.join(homeDir, '.gemini', 'jetski', 'skills');
+  } else {
+    destDir = path.join(homeDir, '.gemini', 'skills');
+  }
+
+  if (!fs.existsSync(skillsSource)) {
+    console.warn(`Warning: Skills directory not found at ${skillsSource}`);
+    return false;
+  }
+
+  try {
+    fs.mkdirSync(destDir, { recursive: true });
+    execSync(`cp -R "${skillsSource}/." "${destDir}/"`);
+    console.log(`Copied skills to ${destDir}`);
+    return true;
+  } catch (e: any) {
+    console.error(`Failed to copy skills: ${e.message}`);
     return false;
   }
 }

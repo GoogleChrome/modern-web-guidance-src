@@ -24,6 +24,7 @@ interface Config {
   mcpServersToEnable: string[];
   modernWebServerPath: string;
   mcpApiKey: string;
+  enableSkills: boolean;
   numRuns: number;
   scenarios: string[];
   promptTypes: string[];
@@ -45,15 +46,15 @@ const config: Config = {
   gcpCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(os.homedir(), '.config/gcloud/application_default_credentials.json'),
 
   // MCP Server Configuration
-  // Available servers: 'modern-web', 'google-developer-knowledge'
-  mcpServersToEnable: ['modern-web'],
-  modernWebServerPath: path.join(__dirname, '../serving/mcp-server/index.ts'),
-  mcpApiKey: process.env.MCP_API_KEY || '',
+  modernWebServerPath: path.join(__dirname, '../serving/mcp-server/index.ts'), // For modern-web MCP server
+  mcpApiKey: process.env.MCP_API_KEY || '', // For google-developer-knowledge MCP server
 
   // Suite Configuration
   numRuns: 3,
   scenarios: ['brownfield', 'greenfield', 'redfield'],
   promptTypes: ['specific', 'vague'],
+  mcpServersToEnable: [], // Available servers: 'modern-web', 'google-developer-knowledge'
+  enableSkills: true,
 };
 
 // Validate critical paths exist during configuration
@@ -77,6 +78,12 @@ function validatePaths() {
     console.warn('\nPlease check your .env file or set the appropriate environment variables.\n');
   }
 }
+
+export const Agents = {
+  JETSKI: 'jetski',
+  GEMINI_CLI: 'gemini_cli',
+  CLAUDE_CODE: 'claude_code'
+} as const;
 
 export default {
   ...config,
