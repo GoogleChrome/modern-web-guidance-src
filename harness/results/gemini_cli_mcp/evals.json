@@ -112,7 +112,28 @@
             "passed": true,
             "message": "No addEventListener(\"mouseover\") detected"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "tooltip",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T19:15:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 2,
@@ -137,7 +158,28 @@
             "passed": true,
             "message": "No addEventListener(\"mouseover\") detected"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "tooltip",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T10:00:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 3,
@@ -162,7 +204,28 @@
             "passed": true,
             "message": "No addEventListener(\"mouseover\") detected"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "tooltip",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T19:43:49Z"
+            }
+          ]
+        }
       }
     ],
     "redfield - specific - unguided": [
@@ -266,7 +329,28 @@
             "passed": true,
             "message": "No addEventListener(\"mouseover\") detected"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "tooltip",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T10:00:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 2,
@@ -291,7 +375,28 @@
             "passed": true,
             "message": "No addEventListener(\"mouseover\") detected"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "tooltip",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T12:00:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 3,
@@ -316,7 +421,28 @@
             "passed": true,
             "message": "No addEventListener(\"mouseover\") detected"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "tooltip",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T10:00:00Z"
+            }
+          ]
+        }
       }
     ],
     "greenfield - vague - unguided": [
@@ -480,7 +606,48 @@
             "passed": true,
             "message": "CSS respects prefers-reduced-motion"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-adaptive-loading",
+              "passed": true,
+              "message": "Guide \"adaptive-loading\" used"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            },
+            {
+              "id": "guide-scroll-driven-animations",
+              "passed": true,
+              "message": "Guide \"scroll-driven-animations\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "tooltip",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T12:00:00Z"
+            },
+            {
+              "name": "scroll-driven-animations",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T12:00:00Z"
+            },
+            {
+              "name": "adaptive-loading",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T12:00:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 2,
@@ -520,7 +687,17 @@
             "passed": true,
             "message": "CSS respects prefers-reduced-motion"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": false,
+              "message": "resources_used.json not found"
+            }
+          ],
+          "resourcesUsed": null
+        }
       },
       {
         "runNumber": 3,
@@ -560,7 +737,48 @@
             "passed": true,
             "message": "CSS respects prefers-reduced-motion"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-adaptive-loading",
+              "passed": true,
+              "message": "Guide \"adaptive-loading\" used"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            },
+            {
+              "id": "guide-scroll-driven-animations",
+              "passed": true,
+              "message": "Guide \"scroll-driven-animations\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "tooltip",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T12:00:00Z"
+            },
+            {
+              "name": "scroll-driven-animations",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T12:00:00Z"
+            },
+            {
+              "name": "adaptive-loading",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T12:00:00Z"
+            }
+          ]
+        }
       }
     ],
     "greenfield - specific - unguided": [
@@ -724,7 +942,48 @@
             "passed": true,
             "message": "CSS respects prefers-reduced-motion"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-adaptive-loading",
+              "passed": true,
+              "message": "Guide \"adaptive-loading\" used"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            },
+            {
+              "id": "guide-scroll-driven-animations",
+              "passed": true,
+              "message": "Guide \"scroll-driven-animations\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "tooltip",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T10:00:00Z"
+            },
+            {
+              "name": "scroll-driven-animations",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T10:05:00Z"
+            },
+            {
+              "name": "adaptive-loading",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T10:10:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 2,
@@ -764,7 +1023,48 @@
             "passed": false,
             "message": "CSS respects prefers-reduced-motion"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-adaptive-loading",
+              "passed": true,
+              "message": "Guide \"adaptive-loading\" used"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            },
+            {
+              "id": "guide-scroll-driven-animations",
+              "passed": true,
+              "message": "Guide \"scroll-driven-animations\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "tooltip",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T10:00:00Z"
+            },
+            {
+              "name": "scroll-driven-animations",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T10:00:05Z"
+            },
+            {
+              "name": "adaptive-loading",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T10:00:10Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 3,
@@ -804,7 +1104,48 @@
             "passed": true,
             "message": "CSS respects prefers-reduced-motion"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-adaptive-loading",
+              "passed": true,
+              "message": "Guide \"adaptive-loading\" used"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            },
+            {
+              "id": "guide-scroll-driven-animations",
+              "passed": true,
+              "message": "Guide \"scroll-driven-animations\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "tooltip",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T10:00:00Z"
+            },
+            {
+              "name": "scroll-driven-animations",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T10:00:00Z"
+            },
+            {
+              "name": "adaptive-loading",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T10:00:00Z"
+            }
+          ]
+        }
       }
     ],
     "brownfield - vague - unguided": [
@@ -888,7 +1229,28 @@
             "passed": true,
             "message": "No deprecated <link rel=\"prerender\"> tag found"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-preload-prerender",
+              "passed": true,
+              "message": "Guide \"preload-prerender\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "preload-prerender",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T12:00:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 2,
@@ -908,7 +1270,28 @@
             "passed": true,
             "message": "No deprecated <link rel=\"prerender\"> tag found"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-preload-prerender",
+              "passed": true,
+              "message": "Guide \"preload-prerender\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "preload-prerender",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T12:00:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 3,
@@ -928,7 +1311,28 @@
             "passed": true,
             "message": "No deprecated <link rel=\"prerender\"> tag found"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-preload-prerender",
+              "passed": true,
+              "message": "Guide \"preload-prerender\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "preload-prerender",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T19:32:16Z"
+            }
+          ]
+        }
       }
     ],
     "brownfield - specific - unguided": [
@@ -1012,7 +1416,28 @@
             "passed": true,
             "message": "No deprecated <link rel=\"prerender\"> tag found"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-preload-prerender",
+              "passed": true,
+              "message": "Guide \"preload-prerender\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "preload-prerender",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T12:00:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 2,
@@ -1032,7 +1457,28 @@
             "passed": true,
             "message": "No deprecated <link rel=\"prerender\"> tag found"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-preload-prerender",
+              "passed": true,
+              "message": "Guide \"preload-prerender\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "preload-prerender",
+              "source": "modern-web",
+              "timestamp": "2026-02-13T12:00:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 3,
@@ -1052,7 +1498,17 @@
             "passed": true,
             "message": "No deprecated <link rel=\"prerender\"> tag found"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": false,
+              "message": "resources_used.json not found"
+            }
+          ],
+          "resourcesUsed": null
+        }
       }
     ]
   },

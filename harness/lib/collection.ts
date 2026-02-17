@@ -5,6 +5,8 @@ import checkGreenfield from '../app_checks/greenfield.ts';
 import checkBrownfield from '../app_checks/brownfield.ts';
 import checkRedfield from '../app_checks/redfield.ts';
 
+import { checkGuides } from './guide_validation.ts';
+
 export async function collectResults(resultsDir: string) {
   const runDirs = fs.readdirSync(resultsDir)
     .filter(name => {
@@ -52,12 +54,18 @@ export async function collectResults(resultsDir: string) {
         continue;
       }
 
+      let guideResults = undefined;
+      if (agentType === 'guided') {
+        guideResults = await checkGuides(dir, scenario);
+      }
+
       if (!allResults[testName]) {
         allResults[testName] = [];
       }
       allResults[testName].push({
         runNumber: parseInt(runDir),
-        results: scenarioResults
+        results: scenarioResults,
+        guideResults
       });
     }
   }
