@@ -228,6 +228,8 @@ function renderGrid(data, testID) {
                     const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
                     const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
 
+                    // REMOVED: Guide Validation Validation progress bar from Grid View as per request
+
                     // Display totals to ensure the percentage mathematically matches the fraction
                     card.onclick = () => showDetails(testName, runData, testStats, testID);
                     card.innerHTML = `
@@ -252,11 +254,21 @@ function renderGrid(data, testID) {
     });
 }
 
+// Keep track of current details state for "Back" navigation
+let currentDetails = null;
+
 async function showDetails(testName, runs, stats, testID) {
+    // Store current details for back navigation
+    currentDetails = { testName, runs, stats, testID };
+
     const modal = document.getElementById('modal');
     const title = document.getElementById('modal-title');
+    const contentDiv = document.querySelector('.modal-content');
     const body = document.getElementById('modal-body');
     const [scenario, prompt, agent] = testName.split(' - ');
+
+    // Reset modifier classes
+    contentDiv.classList.remove('diff-modal');
 
     title.textContent = formatTestName(testName);
 
@@ -279,7 +291,7 @@ async function showDetails(testName, runs, stats, testID) {
     }
 
     // Check for setup file asynchronously for each run to show View Diff button if applicable
-    const runDetailsPromises = runs.map(async run => {
+    const runDetailsPromises = runs.map(async (run, index) => {
         const s = getRunStats(run.results);
         const basePath = `results/${testID}/${run.runNumber}/${scenario}/${prompt}/${agent}`;
         const resultPath = await findBestEntryPoint(basePath);
@@ -287,6 +299,46 @@ async function showDetails(testName, runs, stats, testID) {
         // Calculate relative path (e.g., "src/App.jsx" or "index.html")
         const relativePath = resultPath.replace(basePath + '/', '');
         const setupPath = `setup/${scenario}/${prompt}/${agent}/${relativePath}`;
+
+        let guideSection = '';
+        if (run.guideResults && run.guideResults.checks) {
+            const guideStats = getRunStats(run.guideResults.checks);
+            // Toggle ID
+            const toggleId = `guide-toggle-${run.runNumber}`;
+            const contentId = `guide-content-${run.runNumber}`;
+
+            // Professional Look: Clean styling, no raw arrows
+            // Using SVG for chevron
+            const chevronRight = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="transition: transform 0.2s; margin-right: 8px;"><path d="M4 2L8 6L4 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+            guideSection = `
+                <div class="guide-section" style="margin-top: 15px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--border-color); overflow: hidden;">
+                    <div id="${toggleId}" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; cursor: pointer; user-select: none; background: rgba(255,255,255,0.02); transition: background 0.1s;">
+                        <div style="display: flex; align-items: center;">
+                            <span class="toggle-icon-wrapper" style="display: flex; align-items: center;">${chevronRight}</span>
+                            <strong style="font-size: 0.9em; font-weight: 600;">Guide Validation</strong>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 0.85em; color: ${getColor(guideStats.rate)}; font-weight: 600; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 10px;">${guideStats.rate}% Match</span>
+                        </div>
+                    </div>
+                    
+                    <div id="${contentId}" style="display: none; padding: 0 15px 15px 15px; border-top: 1px solid var(--border-color);">
+                        <div style="padding-top: 10px; margin-bottom: 10px; text-align: right;">
+                             <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">View resources_used.json</a>
+                        </div>
+                        <ul class="check-list" style="border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden;">
+                            ${run.guideResults.checks.map(check => `
+                                <li class="check-item" style="padding: 8px 12px; font-size: 0.9em;">
+                                    <span class="check-status" style="font-size: 1rem;">${check.passed ? '✅' : '❌'}</span>
+                                    <span class="check-message" style="color: var(--text-primary); font-family: -apple-system, sans-serif;">${escapeHtml(check.message)}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        }
 
         const runDetail = document.createElement('div');
         runDetail.className = 'run-detail';
@@ -306,7 +358,36 @@ async function showDetails(testName, runs, stats, testID) {
                     </li>
                 `).join('')}
             </ul>
+            ${guideSection}
         `;
+
+        // Handle Guide Toggle
+        const toggleBtn = runDetail.querySelector(`#guide-toggle-${run.runNumber}`);
+        const contentArea = runDetail.querySelector(`#guide-content-${run.runNumber}`);
+        if (toggleBtn && contentArea) {
+            toggleBtn.onclick = () => {
+                const isHidden = contentArea.style.display === 'none';
+                contentArea.style.display = isHidden ? 'block' : 'none';
+                const icon = toggleBtn.querySelector('svg');
+                if (icon) {
+                    icon.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+                }
+                toggleBtn.style.background = isHidden ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)';
+            };
+
+            // Hover effect for header
+            toggleBtn.onmouseenter = () => { toggleBtn.style.background = 'rgba(255,255,255,0.05)'; };
+            toggleBtn.onmouseleave = () => { if (contentArea.style.display === 'none') toggleBtn.style.background = 'rgba(255,255,255,0.02)'; };
+        }
+
+        const viewResourcesLink = runDetail.querySelector('.view-resources-link');
+        if (viewResourcesLink) {
+            viewResourcesLink.onclick = (e) => {
+                e.preventDefault();
+                const resourcesPath = `results/${testID}/${run.runNumber}/${scenario}/${prompt}/${agent}/resources_used.json`;
+                viewContent('resources_used.json', resourcesPath);
+            };
+        }
 
         const diffButton = document.createElement('button');
         diffButton.className = 'secondary-btn small-btn';
@@ -322,6 +403,50 @@ async function showDetails(testName, runs, stats, testID) {
     body.innerHTML = promptHtml;
     runDetails.forEach(detail => body.appendChild(detail));
     modal.classList.add('show');
+}
+
+function renderBackButton() {
+    const btn = document.createElement('button');
+    btn.innerHTML = '← Back';
+    btn.className = 'secondary-btn';
+    btn.style.cssText = 'margin-bottom: 20px; padding: 5px 15px; font-size: 0.9em;';
+    btn.onclick = () => {
+        if (currentDetails) {
+            showDetails(currentDetails.testName, currentDetails.runs, currentDetails.stats, currentDetails.testID);
+        }
+    };
+    return btn;
+}
+
+async function viewContent(fileName, filePath) {
+    const title = document.getElementById('modal-title');
+    const body = document.getElementById('modal-body');
+
+    title.textContent = fileName;
+    body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading content...</div>';
+
+    try {
+        const res = await fetch(filePath);
+        if (!res.ok) throw new Error('Failed to fetch file');
+        const text = await res.text();
+
+        body.innerHTML = '';
+        body.appendChild(renderBackButton());
+
+        const content = document.createElement('div');
+        content.className = 'log-content';
+        content.textContent = text;
+        body.appendChild(content);
+
+    } catch (e) {
+        body.innerHTML = '';
+        body.appendChild(renderBackButton());
+        const error = document.createElement('div');
+        error.style.color = 'var(--accent-failure)';
+        error.style.padding = '20px';
+        error.textContent = `Error loading file: ${e.message}`;
+        body.appendChild(error);
+    }
 }
 
 async function viewDiff(setupPath, resultPath) {
@@ -414,10 +539,21 @@ async function viewDiff(setupPath, resultPath) {
 
         diffHtml += '</div>';
 
-        body.innerHTML = diffHtml;
+        body.innerHTML = '';
+        body.appendChild(renderBackButton());
+
+        const container = document.createElement('div');
+        container.innerHTML = diffHtml;
+        body.appendChild(container);
 
     } catch (e) {
-        body.innerHTML = `<div style="color: var(--accent-failure); padding: 20px;">Error loading diff: ${e.message}</div>`;
+        body.innerHTML = '';
+        body.appendChild(renderBackButton());
+        const error = document.createElement('div');
+        error.style.color = 'var(--accent-failure)';
+        error.style.padding = '20px';
+        error.textContent = `Error loading diff: ${e.message}`;
+        body.appendChild(error);
         contentDiv.classList.remove('diff-modal');
     }
 }

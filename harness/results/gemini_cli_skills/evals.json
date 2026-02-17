@@ -112,7 +112,33 @@
             "passed": true,
             "message": "No addEventListener(\"mouseover\") detected"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-ui",
+              "source": "skills",
+              "timestamp": "2026-02-13T00:00:00Z"
+            },
+            {
+              "name": "guides/tooltip.md",
+              "source": "web-dev-ui",
+              "timestamp": "2026-02-13T00:00:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 2,
@@ -137,7 +163,33 @@
             "passed": true,
             "message": "No addEventListener(\"mouseover\") detected"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-ui",
+              "source": "skills",
+              "timestamp": "2026-02-13T12:00:00Z"
+            },
+            {
+              "name": "tooltip.md",
+              "source": "web-dev-ui/guides",
+              "timestamp": "2026-02-13T12:05:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 3,
@@ -162,7 +214,33 @@
             "passed": true,
             "message": "No addEventListener(\"mouseover\") detected"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-ui",
+              "source": "skills",
+              "timestamp": "2026-02-13T16:15:00Z"
+            },
+            {
+              "name": "guides/tooltip.md",
+              "source": "web-dev-ui/guides",
+              "timestamp": "2026-02-13T16:16:00Z"
+            }
+          ]
+        }
       }
     ],
     "redfield - specific - unguided": [
@@ -266,7 +344,33 @@
             "passed": true,
             "message": "No addEventListener(\"mouseover\") detected"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-ui",
+              "source": "skills",
+              "timestamp": "2026-02-13T09:00:00Z"
+            },
+            {
+              "name": "guides/tooltip.md",
+              "source": "web-dev-ui/guides",
+              "timestamp": "2026-02-13T09:00:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 2,
@@ -291,7 +395,33 @@
             "passed": true,
             "message": "No addEventListener(\"mouseover\") detected"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-ui",
+              "source": "skills",
+              "timestamp": "2026-02-13T10:00:00Z"
+            },
+            {
+              "name": "guides/tooltip.md",
+              "source": "web-dev-ui",
+              "timestamp": "2026-02-13T10:05:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 3,
@@ -316,7 +446,33 @@
             "passed": true,
             "message": "No addEventListener(\"mouseover\") detected"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-ui",
+              "source": "skills",
+              "timestamp": "2026-02-13T00:00:00Z"
+            },
+            {
+              "name": "guides/tooltip.md",
+              "source": "web-dev-ui/guides",
+              "timestamp": "2026-02-13T00:00:00Z"
+            }
+          ]
+        }
       }
     ],
     "greenfield - vague - unguided": [
@@ -480,7 +636,58 @@
             "passed": false,
             "message": "CSS respects prefers-reduced-motion"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-adaptive-loading",
+              "passed": true,
+              "message": "Guide \"adaptive-loading\" used"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            },
+            {
+              "id": "guide-scroll-driven-animations",
+              "passed": true,
+              "message": "Guide \"scroll-driven-animations\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-ui",
+              "source": "skills",
+              "timestamp": "2026-02-13T10:00:00Z"
+            },
+            {
+              "name": "guides/scroll-driven-animations.md",
+              "source": "web-dev-ui",
+              "timestamp": "2026-02-13T10:00:00Z"
+            },
+            {
+              "name": "guides/tooltip.md",
+              "source": "web-dev-ui",
+              "timestamp": "2026-02-13T10:00:00Z"
+            },
+            {
+              "name": "web-dev-performance",
+              "source": "skills",
+              "timestamp": "2026-02-13T10:00:00Z"
+            },
+            {
+              "name": "guides/adaptive-loading.md",
+              "source": "web-dev-performance",
+              "timestamp": "2026-02-13T10:00:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 2,
@@ -520,7 +727,58 @@
             "passed": true,
             "message": "CSS respects prefers-reduced-motion"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-adaptive-loading",
+              "passed": true,
+              "message": "Guide \"adaptive-loading\" used"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            },
+            {
+              "id": "guide-scroll-driven-animations",
+              "passed": true,
+              "message": "Guide \"scroll-driven-animations\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-ui",
+              "source": "skills",
+              "timestamp": "2026-02-13T21:01:52Z"
+            },
+            {
+              "name": "guides/tooltip.md",
+              "source": "web-dev-ui/guides",
+              "timestamp": "2026-02-13T21:01:52Z"
+            },
+            {
+              "name": "guides/scroll-driven-animations.md",
+              "source": "web-dev-ui/guides",
+              "timestamp": "2026-02-13T21:01:52Z"
+            },
+            {
+              "name": "web-dev-performance",
+              "source": "skills",
+              "timestamp": "2026-02-13T21:01:52Z"
+            },
+            {
+              "name": "guides/adaptive-loading.md",
+              "source": "web-dev-performance/guides",
+              "timestamp": "2026-02-13T21:01:52Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 3,
@@ -560,7 +818,58 @@
             "passed": false,
             "message": "CSS respects prefers-reduced-motion"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-adaptive-loading",
+              "passed": true,
+              "message": "Guide \"adaptive-loading\" used"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            },
+            {
+              "id": "guide-scroll-driven-animations",
+              "passed": true,
+              "message": "Guide \"scroll-driven-animations\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-ui",
+              "source": "skills",
+              "timestamp": "2026-02-13T12:00:00Z"
+            },
+            {
+              "name": "web-dev-performance",
+              "source": "skills",
+              "timestamp": "2026-02-13T12:00:00Z"
+            },
+            {
+              "name": "guides/scroll-driven-animations.md",
+              "source": "web-dev-ui",
+              "timestamp": "2026-02-13T12:05:00Z"
+            },
+            {
+              "name": "guides/tooltip.md",
+              "source": "web-dev-ui",
+              "timestamp": "2026-02-13T12:05:00Z"
+            },
+            {
+              "name": "guides/adaptive-loading.md",
+              "source": "web-dev-performance",
+              "timestamp": "2026-02-13T12:05:00Z"
+            }
+          ]
+        }
       }
     ],
     "greenfield - specific - unguided": [
@@ -724,7 +1033,58 @@
             "passed": true,
             "message": "CSS respects prefers-reduced-motion"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-adaptive-loading",
+              "passed": true,
+              "message": "Guide \"adaptive-loading\" used"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            },
+            {
+              "id": "guide-scroll-driven-animations",
+              "passed": true,
+              "message": "Guide \"scroll-driven-animations\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-ui",
+              "source": "skills",
+              "timestamp": "2026-02-13T12:00:00Z"
+            },
+            {
+              "name": "guides/tooltip.md",
+              "source": "web-dev-ui",
+              "timestamp": "2026-02-13T12:05:00Z"
+            },
+            {
+              "name": "guides/scroll-driven-animations.md",
+              "source": "web-dev-ui",
+              "timestamp": "2026-02-13T12:05:00Z"
+            },
+            {
+              "name": "web-dev-performance",
+              "source": "skills",
+              "timestamp": "2026-02-13T12:00:00Z"
+            },
+            {
+              "name": "guides/adaptive-loading.md",
+              "source": "web-dev-performance",
+              "timestamp": "2026-02-13T12:05:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 2,
@@ -764,7 +1124,58 @@
             "passed": false,
             "message": "CSS respects prefers-reduced-motion"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-adaptive-loading",
+              "passed": true,
+              "message": "Guide \"adaptive-loading\" used"
+            },
+            {
+              "id": "guide-tooltip",
+              "passed": true,
+              "message": "Guide \"tooltip\" used"
+            },
+            {
+              "id": "guide-scroll-driven-animations",
+              "passed": true,
+              "message": "Guide \"scroll-driven-animations\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-ui",
+              "source": "skills",
+              "timestamp": "2026-02-13T10:00:00Z"
+            },
+            {
+              "name": "guides/tooltip.md",
+              "source": "web-dev-ui",
+              "timestamp": "2026-02-13T10:05:00Z"
+            },
+            {
+              "name": "guides/scroll-driven-animations.md",
+              "source": "web-dev-ui",
+              "timestamp": "2026-02-13T10:10:00Z"
+            },
+            {
+              "name": "web-dev-performance",
+              "source": "skills",
+              "timestamp": "2026-02-13T10:15:00Z"
+            },
+            {
+              "name": "guides/adaptive-loading.md",
+              "source": "web-dev-performance",
+              "timestamp": "2026-02-13T10:20:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 3,
@@ -804,7 +1215,17 @@
             "passed": true,
             "message": "CSS respects prefers-reduced-motion"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": false,
+              "message": "resources_used.json not found"
+            }
+          ],
+          "resourcesUsed": null
+        }
       }
     ],
     "brownfield - vague - unguided": [
@@ -888,7 +1309,33 @@
             "passed": true,
             "message": "No deprecated <link rel=\"prerender\"> tag found"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-preload-prerender",
+              "passed": true,
+              "message": "Guide \"preload-prerender\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-performance",
+              "source": "skills",
+              "timestamp": "2026-02-13T12:00:00Z"
+            },
+            {
+              "name": "preload-prerender.md",
+              "source": "web-dev-performance/guides",
+              "timestamp": "2026-02-13T12:05:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 2,
@@ -908,7 +1355,33 @@
             "passed": true,
             "message": "No deprecated <link rel=\"prerender\"> tag found"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-preload-prerender",
+              "passed": true,
+              "message": "Guide \"preload-prerender\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-performance",
+              "source": "skills",
+              "timestamp": "2026-02-13T00:00:00Z"
+            },
+            {
+              "name": "guides/preload-prerender.md",
+              "source": "web-dev-performance",
+              "timestamp": "2026-02-13T00:00:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 3,
@@ -928,7 +1401,33 @@
             "passed": true,
             "message": "No deprecated <link rel=\"prerender\"> tag found"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-preload-prerender",
+              "passed": true,
+              "message": "Guide \"preload-prerender\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-performance",
+              "source": "skills",
+              "timestamp": "2026-02-13T12:00:00Z"
+            },
+            {
+              "name": "preload-prerender.md",
+              "source": "web-dev-performance/guides",
+              "timestamp": "2026-02-13T12:05:00Z"
+            }
+          ]
+        }
       }
     ],
     "brownfield - specific - unguided": [
@@ -1012,7 +1511,33 @@
             "passed": true,
             "message": "No deprecated <link rel=\"prerender\"> tag found"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-preload-prerender",
+              "passed": true,
+              "message": "Guide \"preload-prerender\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-performance",
+              "source": "skills",
+              "timestamp": "2026-02-13T10:00:00Z"
+            },
+            {
+              "name": "preload-prerender.md",
+              "source": "web-dev-performance/guides",
+              "timestamp": "2026-02-13T10:00:00Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 2,
@@ -1032,7 +1557,33 @@
             "passed": true,
             "message": "No deprecated <link rel=\"prerender\"> tag found"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-preload-prerender",
+              "passed": true,
+              "message": "Guide \"preload-prerender\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-performance",
+              "source": "skills",
+              "timestamp": "2026-02-13T12:00:00Z"
+            },
+            {
+              "name": "guides/preload-prerender.md",
+              "source": "web-dev-performance",
+              "timestamp": "2026-02-13T12:00:05Z"
+            }
+          ]
+        }
       },
       {
         "runNumber": 3,
@@ -1052,7 +1603,33 @@
             "passed": true,
             "message": "No deprecated <link rel=\"prerender\"> tag found"
           }
-        ]
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-preload-prerender",
+              "passed": true,
+              "message": "Guide \"preload-prerender\" used"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-performance",
+              "source": "skills",
+              "timestamp": "2026-02-13T12:00:00Z"
+            },
+            {
+              "name": "preload-prerender.md",
+              "source": "web-dev-performance/guides",
+              "timestamp": "2026-02-13T12:01:00Z"
+            }
+          ]
+        }
       }
     ]
   },

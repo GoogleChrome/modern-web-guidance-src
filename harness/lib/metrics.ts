@@ -7,6 +7,10 @@ export interface ScenarioCheck {
 export interface RunResult {
   runNumber: number;
   results: ScenarioCheck[];
+  guideResults?: {
+    checks: { id: string; passed: boolean; message: string; }[];
+    resourcesUsed: any[] | null;
+  };
 }
 
 export interface Metrics {
