@@ -13,3 +13,5 @@ This skill provides guides for creating modern, high-quality UI components and e
 - **Color Systems**: Implement modern color palettes and themes. See [guides/color-systems.md](guides/color-systems.md).
 - **Scroll-driven Animations**: Create animations linked to scroll position. See [guides/scroll-driven-animations.md](guides/scroll-driven-animations.md).
 - **Tooltip**: Build accessible tooltips with Popover API and Anchor Positioning. See [guides/tooltip.md](guides/tooltip.md).
+- **Customizable Select**: Build a customizable select dropdown using the `<select>` element and CSS. See [guides/customizable-select.md](guides/customizable-select.md).
+- **Top-Level Await**: Use `await` at the module top level to initialize resources. See [guides/top-level-await.md](guides/top-level-await.md).
