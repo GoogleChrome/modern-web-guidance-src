@@ -45,12 +45,12 @@ select::picker(select) {
 }
 ```
 
-**DO** use `<selectedcontent>` inside your custom button to automatically reflect the selected option.
-**DO NOT** restrict the `select` width unnecessarily; let it adapt to content or layout.
+* **DO** use `<selectedcontent>` inside your custom button to automatically reflect the selected option.
+* **DO NOT** restrict the `select` width unnecessarily; let it adapt to content or layout.
 
 ## Baseline Status
 
-Baseline: Limited availability (Experimental)
+Baseline: **Limited availability (Experimental)**
 
 - **Status**: Limited availability (Experimental).
 - **Documentation**: [Web Platform Status](https://webstatus.dev/features/customizable-select?q=customizable+select)
