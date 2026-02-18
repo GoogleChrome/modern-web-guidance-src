@@ -50,10 +50,12 @@ select::picker(select) {
 
 ## Baseline Status
 
-Baseline: **Not yet Baseline** (Experimental)
+Baseline: Limited availability (Experimental)
 
-- This feature is not yet widely available across all browsers.
-- See [Can I Use](https://caniuse.com/mdn-css_properties_appearance_base-select) for up-to-date support tables.
+- **Status**: Limited availability (Experimental).
+- **Documentation**: [Web Platform Status](https://webstatus.dev/features/customizable-select?q=customizable+select)
+- **Availability**: Not yet widely available across all browsers.
+- **Caveats**: Requires `--experimental-web-platform-features` flag in some browsers or specific versions. See [Can I Use](https://caniuse.com/mdn-css_properties_appearance_base-select) for details.
 
 ## Fallback strategies
 
