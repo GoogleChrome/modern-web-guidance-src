@@ -1,7 +1,7 @@
 ---
 description: Detect when a page is hidden or visible to optimize performance and user experience
 web-feature-ids:
-  - page-visibility
+  - page-visibility-state
   - visibility-state
 ---
 
@@ -15,7 +15,7 @@ Reference docs:
 
 ## Best Practices
 
-The Page Visibility API allows you to know when a page is visible to the user. This is crucial for saving resources and improving performance when the user is not actively viewing your page.
+The Page Visibility State API allows you to know when a page is visible to the user. This is crucial for saving resources and improving performance when the user is not actively viewing your page.
 
 **DO** use `visibilitychange` to pause expensive operations:
 
