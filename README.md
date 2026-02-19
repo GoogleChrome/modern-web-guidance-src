@@ -62,25 +62,13 @@ pnpm dashboard
 
 ## Configuration
 
-Configuration variables are defined in [`harness/config.ts`](./harness/config.ts), and environment variables can be set in [`harness/.env`](./harness/.env).
+All configuration is centralized in [`harness/config.ts`](./harness/config.ts). This file controls:
 
-### Flags
+-   **Environment**: Paths to binaries (Jetski, Gemini CLI, Claude Code), API keys, and server locations.
+-   **Suite**: Agent selection, number of runs, base apps, enabled MCP servers, and skills.
+-   **Evaluation**: Target suite name and specific guides to run evaluation for.
 
-Flags for the agent harness reside in [`harness/run_suite.ts`](./harness/run_suite.ts).
-
-```
-# Specify agent and test dir name
-pnpm suite --agent=gemini_cli --name=my_test_run
-# OR
-pnpm task <directory> "<prompt>" --agent=gemini_cli --name=my_test_run
-```
-
-Flags for the report reside in [`harness/evaluate.ts`](./harness/evaluate.ts).
-
-```
-# Specify test dir name to evaluate
-pnpm report --test_dir=my_test_run
-```
+All settings must be adjusted in `harness/config.ts` or via environment variables in `harness/.env`.
 
 ### Agents
 
@@ -112,6 +100,20 @@ ANTHROPIC_VERTEX_PROJECT_ID=<YOUR-GCP-PROJECT-ID>
 DISABLE_PROMPT_CACHING=1
 ANTHROPIC_MODEL='claude-opus-4-6'
 ```
+
+## Adding Guides
+
+Guides specific to agent tasks can be added from the `use-cases` directory to either the `skills` folder or the MCP server, depending on your architecture.
+
+1.  **Select a Guide**: Choose a guide from the `use-cases` folder.
+2.  **Add to Architecture**:
+    *   **Skills**: Add the guide to the relevant `skills/` folder, and update the `SKILL.md` file to include the new guide.
+    *   **MCP Server**: Add the guide to `serving/mcp-server/guides/`. **Important**: Run `pnpm build:mcp` after adding to update the server.
+3.  **Enable Evaluation**:
+    *   Ensure the guide has an associated `.grader.js` file for scoring.
+    *   Add the guide name to the `guidesToTest` array in the `EvalConfig` object in [`harness/config.ts`](./harness/config.ts) to run the grader during suite evaluation.
+
+For details on running tests independently for the specific use cases, see the [Use Cases README](./use-cases/README.md).
 
 ## Quality Control
 

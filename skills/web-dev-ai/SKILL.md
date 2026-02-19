@@ -5,7 +5,7 @@ description: Contains guides for web development AI related features. Integrate 
 
 # Web Dev AI
 
-This skill provides guides for integrating AI features into web applications using Chrome's built-in AI APIs.
+This skill provides guides for integrating AI features into web applications using Chrome's built-in AI APIs. Review the following descriptions and read the guides if they are relevant to the request.
 
 ## Available Guides
 

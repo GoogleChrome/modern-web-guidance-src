@@ -1,0 +1,375 @@
+{
+  "config": {
+    "configFile": "/Users/micahjo/guidance/use-cases/playwright.config.js",
+    "rootDir": "/Users/micahjo/guidance/use-cases",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/var/folders/n4/hdjd4w_16rx_brdqh7qh49hm010x59/T/playwright-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/micahjo/guidance/use-cases",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.grader.js"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.57.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "content-vis/content-vis.grader.js",
+      "file": "content-vis/content-vis.grader.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "content-visibility Expectations: index.html",
+          "file": "content-vis/content-vis.grader.js",
+          "line": 9,
+          "column": 8,
+          "specs": [
+            {
+              "title": "Should contain content-visibility: auto",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1263,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-19T00:42:45.712Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0dfd02c1dda9e673d88f-2dead05d3ffec5fc687f",
+              "file": "content-vis/content-vis.grader.js",
+              "line": 12,
+              "column": 5
+            },
+            {
+              "title": "Should contain contain-intrinsic-size",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2077,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-19T00:42:47.211Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0dfd02c1dda9e673d88f-a2a0806454f5766415c8",
+              "file": "content-vis/content-vis.grader.js",
+              "line": 21,
+              "column": 5
+            },
+            {
+              "title": "Cards below the fold should have content-visibility: auto",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 30031,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/Users/micahjo/guidance/use-cases/content-vis/content-vis.grader.js",
+                            "column": 38,
+                            "line": 42
+                          },
+                          "message": "Error: locator.evaluate: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.card').nth(99)\u001b[22m\n\n\n  40 |       // Check a card that is definitely off-screen (e.g., the 100th card)\n  41 |       const offscreenCard = cards.nth(99);\n> 42 |       const cv = await offscreenCard.evaluate(el => getComputedStyle(el).contentVisibility);\n     |                                      ^\n  43 |\n  44 |       if (expectSuccess) {\n  45 |         expect(cv).toBe('auto');\n    at /Users/micahjo/guidance/use-cases/content-vis/content-vis.grader.js:42:38"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-19T00:42:49.292Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/var/folders/n4/hdjd4w_16rx_brdqh7qh49hm010x59/T/playwright-results/content-vis-content-vis.gr-7f22d-ave-content-visibility-auto-chromium/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "0dfd02c1dda9e673d88f-db56d606792702df10a7",
+              "file": "content-vis/content-vis.grader.js",
+              "line": 37,
+              "column": 5
+            },
+            {
+              "title": "Cards should have contain-intrinsic-size set",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1255,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-19T00:43:32.041Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0dfd02c1dda9e673d88f-e0f6cdeb6f8ee3946431",
+              "file": "content-vis/content-vis.grader.js",
+              "line": 51,
+              "column": 5
+            },
+            {
+              "title": "Initial render should be FAST (<150ms)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2034,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "index.html Initial Render: 13ms\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-19T00:43:33.539Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0dfd02c1dda9e673d88f-58eeba72f92bb2d89eb8",
+              "file": "content-vis/content-vis.grader.js",
+              "line": 63,
+              "column": 5
+            },
+            {
+              "title": "Off-screen content remains in A11y tree",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 1354,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected substring: \u001b[32m\"Item #500\"\u001b[39m\nReceived string:    \u001b[31m\"Item #20\"\u001b[39m",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected substring: \u001b[32m\"Item #500\"\u001b[39m\nReceived string:    \u001b[31m\"Item #20\"\u001b[39m\n    at /Users/micahjo/guidance/use-cases/content-vis/content-vis.grader.js:80:20",
+                        "location": {
+                          "file": "/Users/micahjo/guidance/use-cases/content-vis/content-vis.grader.js",
+                          "column": 20,
+                          "line": 80
+                        },
+                        "snippet": "  78 |       // Should be findable regardless of CV setting\n  79 |       const text = await lastCardBadge.textContent();\n> 80 |       expect(text).toContain('Item #500');\n     |                    ^\n  81 |     });\n  82 |\n  83 |     if (expectSuccess) {"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/Users/micahjo/guidance/use-cases/content-vis/content-vis.grader.js",
+                            "column": 20,
+                            "line": 80
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected substring: \u001b[32m\"Item #500\"\u001b[39m\nReceived string:    \u001b[31m\"Item #20\"\u001b[39m\n\n  78 |       // Should be findable regardless of CV setting\n  79 |       const text = await lastCardBadge.textContent();\n> 80 |       expect(text).toContain('Item #500');\n     |                    ^\n  81 |     });\n  82 |\n  83 |     if (expectSuccess) {\n    at /Users/micahjo/guidance/use-cases/content-vis/content-vis.grader.js:80:20"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-19T00:43:35.578Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/var/folders/n4/hdjd4w_16rx_brdqh7qh49hm010x59/T/playwright-results/content-vis-content-vis.gr-f54f3-ontent-remains-in-A11y-tree-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/Users/micahjo/guidance/use-cases/content-vis/content-vis.grader.js",
+                        "column": 20,
+                        "line": 80
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "0dfd02c1dda9e673d88f-4124aac3634088ed8379",
+              "file": "content-vis/content-vis.grader.js",
+              "line": 76,
+              "column": 5
+            },
+            {
+              "title": "No console warnings for forced layout",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1754,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-19T00:43:37.363Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0dfd02c1dda9e673d88f-386420878963137f5c42",
+              "file": "content-vis/content-vis.grader.js",
+              "line": 84,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-02-19T00:42:45.453Z",
+    "duration": 55308.310000000005,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

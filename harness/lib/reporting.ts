@@ -43,7 +43,7 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
 
     checks.forEach((check: ScenarioCheck) => {
       const symbol = check.passed ? '✅' : '❌';
-      const safeMessage = check.message.replace(/&/g, "&amp;")
+      const safeMessage = (check.message || '').replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")

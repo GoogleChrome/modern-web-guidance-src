@@ -53,8 +53,8 @@ const server = http.createServer((req, res) => {
   // Map results and setup to the harness directory
   if (decodedPath.startsWith('/results/')) {
     filePath = path.join('../harness/results', decodedPath.substring(9));
-  } else if (decodedPath.startsWith('/setup/')) {
-    filePath = path.join('../harness/setup', decodedPath.substring(7));
+  } else if (decodedPath.startsWith('/base_apps/')) {
+    filePath = path.join('../harness/base_apps', decodedPath.substring(11));
   } else {
     // Default to serving from current directory (eval-view)
     // Remove leading slash to ensure path.join treats it as relative to '.'

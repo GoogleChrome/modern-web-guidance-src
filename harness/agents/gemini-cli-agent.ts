@@ -42,16 +42,16 @@ function setupIsolatedWorkDir(): string {
   if (runType === 'guided') {
     copyAgentContext(tempHome, Agents.GEMINI_CLI);
 
-    if (config.enableSkills) {
+    if (config.suite.enableSkills) {
       copySkills(tempHome, Agents.GEMINI_CLI)
     }
 
     // Update MCP config in isolated home
     updateMcpConfig(
       path.join(geminiDest, 'settings.json'),
-      config.mcpServersToEnable,
-      config.modernWebServerPath,
-      config.mcpApiKey,
+      config.suite.mcpServersToEnable,
+      config.environment.modernWebServerPath,
+      config.environment.mcpApiKey,
       Agents.GEMINI_CLI
     );
   }
@@ -72,7 +72,7 @@ async function run() {
   try {
     console.log(`Starting Gemini CLI agent in ${workDir}`);
 
-    const command = config.geminiCliBin;
+    const command = config.environment.geminiCliBin;
     const commandArgs = [
       '-p', userPrompt,
       '--yolo'

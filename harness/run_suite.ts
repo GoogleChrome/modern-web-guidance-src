@@ -22,42 +22,11 @@ async function main() {
     fs.mkdirSync(resultsDir, { recursive: true });
   }
 
-  // ===========================================================================
-  // CLI Arguments Configuration
-  // ===========================================================================
-  // Available flags:
-  //   --agent=<type>    : Agent name (default: jetski)
-  //   --name=<string>    : Custom name for the test run (defaults to timestamp)
-  //
-  // Examples:
-  //   pnpm suite --agent=gemini_cli --name=benchmark-v1
-  //   pnpm task /path/to/dir "prompt" --agent=gemini_cli
-  // ===========================================================================
-
-  const VALID_AGENTS: string[] = Object.values(Agents);
-
-  const args = process.argv.slice(2);
-  let agent = process.env.AGENT || Agents.JETSKI;
-  let customTestName = null;
-  let numRuns = config.numRuns;
-  const positionalArgs = [];
-
-  for (const arg of args) {
-    if (arg.startsWith('--agent=')) {
-      agent = arg.split('=')[1];
-    } else if (arg.startsWith('--name=')) {
-      customTestName = arg.split('=')[1];
-    } else {
-      positionalArgs.push(arg);
-    }
-  }
-
-  if (!VALID_AGENTS.includes(agent)) {
-    console.error(`\n❌ Error: Unknown agent '${agent}'. Supported agents: ${VALID_AGENTS.join(', ')}`);
-    process.exit(1);
-  }
+  const agent = config.suite.agent;
 
   // Single task mode check
+  const args = process.argv.slice(2);
+  const positionalArgs = args.filter(arg => !arg.startsWith('--'));
   const [argDir, argPrompt] = positionalArgs;
 
   if (argDir && argPrompt) {
@@ -73,14 +42,13 @@ async function main() {
 
     try {
       // Dispatch based on agent
-      if (agent === Agents.GEMINI_CLI) {
-        // Use experimental-strip-types for running TS directly
-        await runCommand('node', ['--experimental-strip-types', 'agents/gemini-cli-agent.ts', JSON.stringify(argPrompt), 'guided', path.resolve(argDir)]);
-      } else if (agent === Agents.CLAUDE_CODE) {
-        await runCommand('node', ['--experimental-strip-types', 'agents/claude-code-agent.ts', JSON.stringify(argPrompt), 'guided', path.resolve(argDir)]);
-      } else {
-        await runCommand('node', ['--experimental-strip-types', 'agents/jetski-agent.ts', JSON.stringify(argPrompt), 'guided', path.resolve(argDir)]);
-      }
+      const agentScript = path.join(__dirname, 'agents',
+        agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
+          agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
+            'jetski-agent.ts'
+      );
+
+      await runCommand('node', ['--experimental-strip-types', agentScript, JSON.stringify(argPrompt), 'guided', path.resolve(argDir)]);
       console.log(`\n✅ Single task complete!`);
     } catch (error) {
       console.error(`❌ Single task failed:`, error);
@@ -90,7 +58,7 @@ async function main() {
 
   // Generate a unique testID with timestamp or use custom name
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-  const testID = customTestName || `test_${timestamp}`;
+  const testID = config.suite.name || `test_${timestamp}`;
   const testDir = path.join(resultsDir, testID);
   fs.mkdirSync(testDir, { recursive: true });
 
@@ -103,8 +71,8 @@ async function main() {
   console.log(`Log file: ${logFilePath}\n`);
 
   try {
-    const endRun = 1 + numRuns;
-    console.log(`\nStarting execution for ${numRuns} runs`);
+    const endRun = 1 + config.suite.numRuns;
+    console.log(`\nStarting execution for ${config.suite.numRuns} runs`);
 
     for (let runNumber = 1; runNumber < endRun; runNumber++) {
 
@@ -117,40 +85,48 @@ async function main() {
         fs.mkdirSync(runDir, { recursive: true });
       }
 
-      for (const scenario of config.scenarios) {
-        for (const promptType of config.promptTypes) {
-          const promptPath = path.join(baseAppsDir, scenario, promptType, 'PROMPT.txt');
-          if (!fs.existsSync(promptPath)) continue;
+      for (const baseApp of config.suite.baseApps) {
+        // Read prompt from base app
+        const promptPath = path.join(baseAppsDir, baseApp, 'PROMPT.txt');
+        if (!fs.existsSync(promptPath)) {
+          console.warn(`Skipping base app ${baseApp}: PROMPT.txt not found at ${promptPath}`);
+          continue;
+        }
 
-          let promptContent = fs.readFileSync(promptPath, 'utf8').trim();
-          promptContent += ` Don't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
+        let promptContent = fs.readFileSync(promptPath, 'utf8').trim();
+        // Append instruction to use stock photos if needed
+        promptContent += ` Don't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
-          for (const runType of RUN_TYPES) {
-            const templateDir = path.join(baseAppsDir, scenario, promptType, runType);
-            const targetDir = path.join(runDir, scenario, promptType, runType);
+        for (const runType of RUN_TYPES) {
+          const templateDir = path.join(baseAppsDir, baseApp, runType);
 
-            if (!fs.existsSync(templateDir)) {
-              throw new Error(`Template directory not found: ${templateDir}`);
-            }
+          if (!fs.existsSync(templateDir)) {
+            throw new Error(`Template directory not found: ${templateDir}`);
+          }
 
-            if (!fs.existsSync(targetDir)) {
-              fs.mkdirSync(targetDir, { recursive: true });
-            }
+          const targetDir = path.join(runDir, baseApp, runType);
+          if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+          }
 
-            console.log(`\n>>> Running Scenario: ${scenario} | Prompt: ${promptType} | Run Type: ${runType} | Run: ${runNumber} | Agent: ${agent}`);
-            try {
-              // Dispatch to appropriate agent script based on agent
-              if (agent === Agents.GEMINI_CLI) {
-                await runCommand('node', ['--experimental-strip-types', 'agents/gemini-cli-agent.ts', JSON.stringify(promptContent), runType, targetDir, templateDir]);
-              } else if (agent === Agents.CLAUDE_CODE) {
-                await runCommand('node', ['--experimental-strip-types', 'agents/claude-code-agent.ts', JSON.stringify(promptContent), runType, targetDir, templateDir]);
-              } else {
-                await runCommand('node', ['--experimental-strip-types', 'agents/jetski-agent.ts', JSON.stringify(promptContent), runType, targetDir, templateDir]);
-              }
-              console.log(`✅ Completed: ${scenario}/${promptType}/${runType} (Run ${runNumber})`);
-            } catch (error) {
-              console.error(`❌ Failed: ${scenario}/${promptType}/${runType} (Run ${runNumber})`, error);
-            }
+          console.log(`\n>>> Running App: ${baseApp} | Run Type: ${runType} | Run: ${runNumber} | Agent: ${agent}`);
+          try {
+          // Dispatch to appropriate agent script based on agent
+            const agentArgs = [
+              '--experimental-strip-types',
+              path.join(__dirname, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
+                agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
+                  'jetski-agent.ts'),
+              JSON.stringify(promptContent),
+              runType,
+              targetDir,
+              templateDir
+            ];
+
+            await runCommand('node', agentArgs);
+            console.log(`✅ Completed: ${baseApp}/${runType} (Run ${runNumber})`);
+          } catch (error) {
+            console.error(`❌ Failed: ${baseApp}/${runType} (Run ${runNumber})`, error);
           }
         }
       }
@@ -165,7 +141,7 @@ async function main() {
     }
 
     if (!manifest.tests.some(t => t.id === testID)) {
-      manifest.tests.push({ id: testID, timestamp: new Date().toISOString(), runCount: numRuns });
+      manifest.tests.push({ id: testID, timestamp: new Date().toISOString(), runCount: config.suite.numRuns });
       fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
     }
 

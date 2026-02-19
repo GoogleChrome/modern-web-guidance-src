@@ -18,7 +18,7 @@ function setupIsolatedWorkDir(): string {
   // Copy GCP credentials (for Vertex auth)
   const gcloudConfigDest = path.join(tempHome, '.config/gcloud');
   fs.mkdirSync(gcloudConfigDest, { recursive: true });
-  copyFileIfExists(config.gcpCredentials, path.join(gcloudConfigDest, 'application_default_credentials.json'));
+  copyFileIfExists(config.environment.gcpCredentials, path.join(gcloudConfigDest, 'application_default_credentials.json'));
 
   // Set environment variables
   process.env.HOME = tempHome;
@@ -27,15 +27,15 @@ function setupIsolatedWorkDir(): string {
   if (runType === 'guided') {
     copyAgentContext(tempHome, Agents.CLAUDE_CODE);
 
-    if (config.enableSkills) {
+    if (config.suite.enableSkills) {
       copySkills(tempHome, Agents.CLAUDE_CODE);
     }
 
     updateMcpConfig(
       path.join(tempHome, '.claude.json'),
-      config.mcpServersToEnable,
-      config.modernWebServerPath,
-      config.mcpApiKey,
+      config.suite.mcpServersToEnable,
+      config.environment.modernWebServerPath,
+      config.environment.mcpApiKey,
       Agents.CLAUDE_CODE
     );
   }
@@ -56,7 +56,7 @@ async function run() {
   try {
     console.log(`Starting Claude Code agent in: ${workDir}`);
 
-    const command = config.claudeCodeCliBin;
+    const command = config.environment.claudeCodeCliBin;
     const commandArgs = [
       '-p', userPrompt,
       '--dangerously-skip-permissions',

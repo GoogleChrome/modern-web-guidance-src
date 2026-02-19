@@ -81,15 +81,15 @@ function setupIsolatedWorkDir(): string {
   if (runType === 'guided') {
     copyAgentContext(tempHome, Agents.JETSKI);
 
-    if (config.enableSkills) {
+    if (config.suite.enableSkills) {
       copySkills(tempHome, Agents.JETSKI)
     }
 
     updateMcpConfig(
       path.join(jetskiDest, 'mcp_config.json'),
-      config.mcpServersToEnable,
-      config.modernWebServerPath,
-      config.mcpApiKey,
+      config.suite.mcpServersToEnable,
+      config.environment.modernWebServerPath,
+      config.environment.mcpApiKey,
       Agents.JETSKI
     );
   }
@@ -175,11 +175,11 @@ async function extractJetskiVersionInfo(page: Page, outputPath: string): Promise
 
 async function startJetski(directory: string, profileDir: string): Promise<void> {
   // Kill anything on the debug port first
-  killProcessOnPort(config.jetskiDebugPort);
+  killProcessOnPort(config.environment.jetskiDebugPort);
 
   console.log(`Starting Jetski with directory: ${directory}`);
-  const jetskiProcess = spawn(config.jetskiBin, [
-    `--remote-debugging-port=${config.jetskiDebugPort}`,
+  const jetskiProcess = spawn(config.environment.jetskiBin, [
+    `--remote-debugging-port=${config.environment.jetskiDebugPort}`,
     `--user-data-dir=${profileDir}`,
     directory
   ], {
@@ -194,7 +194,7 @@ async function startJetski(directory: string, profileDir: string): Promise<void>
   for (let i = 0; i < 30; i++) {
     try {
       const browser = await puppeteer.connect({
-        browserURL: `http://127.0.0.1:${config.jetskiDebugPort}`,
+        browserURL: `http://127.0.0.1:${config.environment.jetskiDebugPort}`,
         defaultViewport: null
       });
       browser.disconnect();
@@ -217,14 +217,14 @@ async function run(): Promise<void> {
 
   try {
     // Use stable user data dir to persist state (welcome screen, etc.)
-    const profileDir = config.jetskiProfileDir;
+    const profileDir = config.environment.jetskiProfileDir;
     if (!fs.existsSync(profileDir)) {
       fs.mkdirSync(profileDir, { recursive: true });
     }
 
     await startJetski(workDir, profileDir);
 
-    const browserURL = `http://127.0.0.1:${config.jetskiDebugPort}`;
+    const browserURL = `http://127.0.0.1:${config.environment.jetskiDebugPort}`;
     const browser = await puppeteer.connect({
       browserURL,
       defaultViewport: null
@@ -357,7 +357,7 @@ async function run(): Promise<void> {
     console.error("Error during execution:", err);
     process.exit(1);
   } finally {
-    killProcessOnPort(config.jetskiDebugPort);
+    killProcessOnPort(config.environment.jetskiDebugPort);
     cleanupIsolatedHome(path.dirname(workDir));
   }
 }

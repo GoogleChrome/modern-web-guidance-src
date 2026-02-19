@@ -33,5 +33,5 @@ export function capitalize(s) {
 
 export function formatTestName(name) {
     if (!name) return name;
-    return name.split(' - ').map(capitalize).join(' / ');
+    return name.split(' - ').join(' / ');
 }

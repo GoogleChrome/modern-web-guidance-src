@@ -6,31 +6,16 @@ import "dotenv/config";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/**
- * Configuration module that loads settings from environment variables
- * with sensible defaults. This allows the project to work on different
- * machines without requiring hardcoded paths.
- */
+export const Agents = {
+  JETSKI: 'jetski',
+  GEMINI_CLI: 'gemini_cli',
+  CLAUDE_CODE: 'claude_code'
+} as const;
 
-interface Config {
-  jetskiDir: string;
-  jetskiBin: string;
-  jetskiDebugPort: number;
-  jetskiProfileDir: string;
-  geminiCliBin: string;
-  geminiDir: string;
-  claudeCodeCliBin: string;
-  gcpCredentials: string;
-  mcpServersToEnable: string[];
-  modernWebServerPath: string;
-  mcpApiKey: string;
-  enableSkills: boolean;
-  numRuns: number;
-  scenarios: string[];
-  promptTypes: string[];
-}
-
-const config: Config = {
+// *************************************
+// *** Set environment configuration ***
+// *************************************
+export const environmentConfig: EnvironmentConfig = {
   // Jetski Configuration
   jetskiDir: process.env.JETSKI_DIR || path.join(os.homedir(), '.gemini/jetski'),
   jetskiBin: process.env.JETSKI_BIN || '/Applications/Jetski.app/Contents/Resources/app/bin/jetski',
@@ -48,19 +33,72 @@ const config: Config = {
   // MCP Server Configuration
   modernWebServerPath: path.join(__dirname, '../serving/mcp-server/index.ts'), // For modern-web MCP server
   mcpApiKey: process.env.MCP_API_KEY || '', // For google-developer-knowledge MCP server
+};
 
-  // Suite Configuration
-  numRuns: 3,
-  scenarios: ['brownfield', 'greenfield', 'redfield'],
-  promptTypes: ['specific', 'vague'],
+// *******************************
+// *** Set suite configuration ***
+// *** Run with: `pnpm suite`  ***
+// *******************************
+export const suiteConfig: SuiteConfig = {
+  name: 'cards-claude-skills-sample',
+  numRuns: 1,
+  baseApps: ['cards-app'],
   mcpServersToEnable: [], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: true,
+  agent: Agents.CLAUDE_CODE,
+};
+
+// ************************************
+// *** Set evaluation configuration ***
+// *** Run with: `pnpm report`      ***
+// ************************************
+export const evalConfig: EvalConfig = {
+  suiteName: 'cards-claude-skills-sample',
+  guidesToTest: ['content-vis', 'preload-prerender'],
+  expectedGuides: {
+    // Structure: { <baseApp name>: <list of expected guides> }
+    'cards-app': ['content-vis', 'preload-prerender'],
+  }
+};
+
+export interface EnvironmentConfig {
+  jetskiDir: string;
+  jetskiBin: string;
+  jetskiDebugPort: number;
+  jetskiProfileDir: string;
+  geminiCliBin: string;
+  geminiDir: string;
+  claudeCodeCliBin: string;
+  gcpCredentials: string;
+  modernWebServerPath: string;
+  mcpApiKey: string;
+}
+
+export interface SuiteConfig {
+  name: string | null;
+  numRuns: number;
+  baseApps: string[];
+  mcpServersToEnable: string[];
+  enableSkills: boolean;
+  agent: string;
+}
+
+export interface EvalConfig {
+  suiteName: string | null;
+  guidesToTest: string[];
+  expectedGuides: Record<string, string[]>;
+}
+
+export const config = {
+  environment: environmentConfig,
+  suite: suiteConfig,
+  eval: evalConfig,
 };
 
 // Validate critical paths exist during configuration
 const criticalPaths = {
-  'Jetski binary': config.jetskiBin,
-  'Jetski directory': config.jetskiDir,
+  'Jetski binary': config.environment.jetskiBin,
+  'Jetski directory': config.environment.jetskiDir,
 };
 
 function validatePaths() {
@@ -79,15 +117,7 @@ function validatePaths() {
   }
 }
 
-export const Agents = {
-  JETSKI: 'jetski',
-  GEMINI_CLI: 'gemini_cli',
-  CLAUDE_CODE: 'claude_code'
-} as const;
-
 export default {
   ...config,
   validatePaths
 };
-
-export { config };
