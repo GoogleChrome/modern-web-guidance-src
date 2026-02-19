@@ -77,40 +77,13 @@ Use `animation-timeline: view()` to fade an image in as it enters the viewport:
 
 **DO NOT** style the image's parent element with `overflow: hidden`, as this will put the image in "scroll jail" and prevent the animation from working.
 
-## JavaScript API
+## Fallback strategies
 
-You can also create scroll-driven animations using the Web Animations API with `ScrollTimeline` and `ViewTimeline`.
-
-To create a scroll progress timeline, instantiate the `ScrollTimeline` class and pass it to the `animate()` method:
-
-```javascript
-const progress = document.querySelector('#progress');
-progress.style.transformOrigin = '0% 50%';
-
-// Create a ScrollTimeline linked to the root scroller
-const timeline = new ScrollTimeline({
-  source: document.documentElement,
-});
-
-// Animate the progress bar using the scroll timeline
-progress.animate(
-  {
-    transform: ['scaleX(0)', 'scaleX(1)'],
-  },
-  {
-    fill: 'forwards',
-    timeline: timeline,
-  }
-);
-```
+If the user's Baseline target (or Widely available, if unavailable) does not support any of the required features, the following fallback strategies MUST be used.
 
 ### Scroll-driven animations
 
-Baseline status: **Limited availability**
+Baseline status: Limited availability
 
-The `animation-timeline` property and `ScrollTimeline` / `ViewTimeline` interfaces are not yet supported in all browsers.
-
-- **DO** use the [Scroll-driven Animations Polyfill](https://github.com/flackr/scroll-timeline) to provide support for browsers that do not implement the specification.
-- **DO** use `@supports (animation-timeline: view())` for feature detection in CSS.
-- **DO NOT** set the starting state of an animated element to hidden in unsupported browsers unless you are using a polyfill or JavaScript fallback.
-- **DO** consider using a manual JavaScript fallback (e.g., `scroll` event listener) if the polyfill cannot be used.
+- **DO** use `@supports (animation-timeline: view())` for feature detection
+- **DO NOT** set the starting state of an animated element to hidden in unsupported browsers
