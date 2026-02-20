@@ -1,0 +1,5 @@
+- The `aria-invalid` attribute must NOT be present (or set to `false`) on page load, even for required empty fields.
+- Tabbing through a field without typing (focus then blur) should NOT trigger `aria-invalid="true"` (unless the browser implementation of `:user-invalid` triggers here, which it typically doesn't for empty required fields until interaction happens).
+- Typing an invalid value (e.g., "bad-email") and blurring MUST set `aria-invalid="true"`.
+- Correcting the value to a valid format MUST remove the `aria-invalid` attribute (or set it to `false`) immediately (on input).
+- The visual error message visibility must match the `aria-invalid` state.
