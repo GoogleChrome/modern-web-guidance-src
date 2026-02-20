@@ -61,12 +61,16 @@ export async function collectResults(resultsDir: string) {
 
       const targetFile = path.join(dir, 'index.html');
 
-      // Run the tests for each use case
+      // Run the tests for each guide
       for (const guide of config.eval.guidesToTest) {
         const testName = `${baseApp} - ${guide} - ${runType}`;
 
-        const useCasesDir = path.resolve(__dirname, '../../use-cases');
-        const graderPath = path.join(useCasesDir, guide, `${guide}.grader.js`);
+        const guidesDir = path.resolve(__dirname, '../../guides');
+        const graderMatches = glob.sync(`**/${guide}/grader.ts`, {
+          cwd: guidesDir,
+          absolute: true
+        });
+        const graderPath = graderMatches.length > 0 ? graderMatches[0] : path.join(guidesDir, guide, `grader.ts`);
 
         let scenarioResults: any[] = [];
         const graderResults = path.join(dir, `${guide}_results.json`);

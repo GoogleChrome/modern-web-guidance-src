@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Negative content-visibility Demo (Anti-Patterns)</title>
+    <style>
+        :root {
+            --primary: #ef4444; /* Red for danger/bad */
+            --bg: #fef2f2;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* Control Panel */
+        .controls {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            border-bottom: 2px solid var(--primary);
+            padding: 1rem;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .warning-box {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            border: 1px solid #f87171;
+            text-align: center;
+        }
+
+        .feed {
+            max-width: 800px;
+            margin: 8rem auto 2rem;
+            padding: 0 1rem;
+        }
+
+        /* ================================================================= */
+        /* VIOLATION SECTION                                                 */
+        /* ================================================================= */
+
+        /* VIOLATION 1: Granular Application & LCP Interference
+           Applying content-visibility to small, nested elements creates unnecessary overhead.
+           Applying it to everything ensures the LCP element (top of page) is also affected,
+           potentially delaying the first meaningful paint.
+        */
+        .card-content div, 
+        .card-header,
+        .avatar,
+        .line {
+            content-visibility: auto;
+            /* VIOLATION 2: No contain-intrinsic-size
+               This is the most visible error. Without a placeholder size, 
+               elements collapse to 0x0 when off-screen.
+               As you scroll, they expand to their full size, pushing all 
+               subsequent content down. This causes the scrollbar to "jump" 
+               erratically and prevents the user from reaching the bottom easily.
+            */
+        }
+
+        /* Applying to the main cards without size estimates */
+        .card {
+            content-visibility: auto;
+            /* Missing contain-intrinsic-size: auto 500px; */
+            
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            
+            /* Expensive effects to justify needing optimization, 
+               but implemented poorly here */
+            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.1));
+        }
+
+        /* ================================================================= */
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(45deg, #fca5a5, #f87171);
+            border-radius: 50%;
+        }
+
+        .card-title {
+            height: 1.2rem;
+            background: #e2e8f0;
+            border-radius: 4px;
+            width: 60%;
+        }
+
+        .line {
+            height: 0.8rem;
+            background: #f1f5f9;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .line.short { width: 40%; }
+        
+        .expensive-element {
+            /* Variable height will make the jumping even worse */
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            margin-top: 1rem;
+            border-radius: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Simulating complex paint work */
+        .expensive-element::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(239, 68, 68, 0.1), transparent);
+        }
+
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="warning-box">
+            <strong>⚠ Anti-Pattern Demo</strong>
+            <br>
+            Scroll quickly to experience layout shifts (CLS).
+            <br>
+            Open Console to see forced reflow warnings.
+        </div>
+    </div>
+
+    <div class="feed" id="feed">
+        <div style="margin-bottom: 2rem; text-align: center;">
+            <h1>The "Jumpy" Feed</h1>
+            <p>This page demonstrates how <strong>NOT</strong> to use <code>content-visibility</code>.</p>
+            <p style="font-size: 0.9rem; color: #64748b;">Notice the scrollbar handle changing size and position erratically.</p>
+        </div>
+        <!-- Cards injected here -->
+    </div>
+
+    <script>
+        const feed = document.getElementById('feed');
+        const cardCount = 200; 
+
+        function createCard(index) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            // Random height to make the layout shifts unpredictable and severe
+            const heightVariance = Math.floor(Math.random() * 300) + 100;
+            
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="avatar"></div>
+                    <div class="card-title"></div>
+                </div>
+                <div class="card-content">
+                    <div class="line"></div>
+                    <div class="line"></div>
+                    <div class="line short"></div>
+                    <div class="expensive-element" style="height: ${heightVariance}px"></div>
+                    <div style="margin-top: 1rem; color: #999; font-size: 0.8rem;">Item #${index + 1} (Height: ${heightVariance}px)</div>
+                </div>
+            `;
+            return card;
+        }
+
+        // Generate cards
+        const fragment = document.createDocumentFragment();
+        for (let i = 0; i < cardCount; i++) {
+            fragment.appendChild(createCard(i));
+        }
+        feed.appendChild(fragment);
+
+        /* VIOLATION 3: Forced Synchronous Layout (Thrashing) on Skipped Elements
+           
+           The Guide says: "DO NOT call JavaScript APIs that force synchronous layout... 
+           on elements within a skipped subtree."
+           
+           This script deliberately violates this by reading layout properties 
+           (getBoundingClientRect) on every scroll event.
+        */
+        let framePending = false;
+        
+        window.addEventListener('scroll', () => {
+            if (framePending) return;
+            framePending = true;
+            
+            requestAnimationFrame(() => {
+                const cards = document.querySelectorAll('.card');
+                let dummyCalculation = 0;
+                
+                // This loop accesses layout properties of every card, including off-screen ones.
+                // Because content-visibility: auto is trying to skip rendering, 
+                // this forces the browser to do the work anyway, often causing main thread blocking.
+                cards.forEach(card => {
+                    // Accessing .height forces layout
+                    dummyCalculation += card.getBoundingClientRect().height; 
+                });
+                
+                // We log sparingly to avoid crashing the browser too hard, 
+                // but the work above is already done.
+                if (Math.random() > 0.95) {
+                    console.warn(`[Anti-Pattern] Forced layout on ${cards.length} cards. Total height: ${Math.floor(dummyCalculation)}px`);
+                }
+                
+                framePending = false;
+            });
+        }, { passive: true });
+
+    </script>
+</body>
+</html>

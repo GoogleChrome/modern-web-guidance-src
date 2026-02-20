@@ -16,7 +16,10 @@
     "dashboard": "pnpm --filter eval-view start",
     "build:mcp": "pnpm --filter modern-web-mcp build",
     "test:mcp": "pnpm --filter modern-web-mcp test",
-    "setup:playwright": "pnpm --filter eval-view exec playwright install"
+    "test:guide": "playwright test -c guides/playwright.config.ts",
+    "setup:playwright": "pnpm --filter eval-view exec playwright install",
+    "generate-negative": "node --env-file=.env guides/negative-gen.ts",
+    "generate-grader": "node --env-file=.env guides/grader-gen.ts"
   },
   "keywords": [],
   "author": "",
@@ -31,6 +34,7 @@
     ]
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "oxlint": "^1.46.0"
   }
 }
