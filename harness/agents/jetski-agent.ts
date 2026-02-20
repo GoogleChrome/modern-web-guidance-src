@@ -266,7 +266,7 @@ async function run(): Promise<void> {
       console.log(`Jetski info already exists at: ${jetskiInfoPath}`);
     }
 
-    const inputSelector = '#conversation [contenteditable="true"][role="textbox"]';
+    const inputSelector = ':is(#chat, #conversation) [contenteditable="true"][role="textbox"]';
     const sendButtonSelector = '#conversation button[data-tooltip-id="input-send-button-send-tooltip"]';
     const cancelButtonSelector = '[data-tooltip-id="input-send-button-cancel-tooltip"]';
     const allowOnceButtonSelector = 'button[aria-label="Allow once"]';
