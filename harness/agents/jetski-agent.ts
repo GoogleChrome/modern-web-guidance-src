@@ -266,43 +266,43 @@ async function run(): Promise<void> {
       console.log(`Jetski info already exists at: ${jetskiInfoPath}`);
     }
 
-    const inputSelector = '#chat [contenteditable="true"][role="textbox"]';
-    const sendButtonSelector = '#chat button[data-tooltip-id="input-send-button-send-tooltip"]';
+    const inputSelector = '#conversation [contenteditable="true"][role="textbox"]';
+    const sendButtonSelector = '#conversation button[data-tooltip-id="input-send-button-send-tooltip"]';
     const cancelButtonSelector = '[data-tooltip-id="input-send-button-cancel-tooltip"]';
     const allowOnceButtonSelector = 'button[aria-label="Allow once"]';
+    const agentPanelSelector = '.antigravity-agent-side-panel';
 
-    // The double slashes are deliberate. These IDs include the dot.
-    const iframeSelector = '#antigravity\\.agentPanel, #antigravity\\.cascadePanel';
+    console.log(`Waiting for Agent Panel conversation box...`);
 
-    console.log(`Waiting for Agent Panel iframe...`);
-    let targetFrame: any = null;
+    let targetPanel: any = null;
+    let targetInputBox: any = null;
+
     for (let i = 0; i < 20; i++) {
-      const iframeElement = await page.$(iframeSelector);
-      if (iframeElement) {
-        targetFrame = await iframeElement.contentFrame();
-        if (targetFrame && await targetFrame.$(inputSelector)) {
-          break;
-        }
+      targetPanel = await page.$(agentPanelSelector);
+      targetInputBox = await targetPanel.$(inputSelector);
+      if (targetPanel && targetInputBox) {
+        break;
       }
-      console.log(`... Agent Panel iframe not found or loading, checking again in 3s (Attempt ${i + 1}/20)`);
-      targetFrame = null;
+      console.log(`... Agent Panel conversation box not found or loading, checking again in 3s (Attempt ${i + 1}/20)`)
       await sleep(3000);
     }
 
-    if (!targetFrame) {
-      throw new Error("Could not find Agent Panel iframe after 60 seconds.");
+    if (!targetPanel) {
+      throw new Error("Could not find Agent Panel conversation panel after 60 seconds.");
     }
 
     // Focus and type
     console.log(`Typing prompt: "${userPrompt}"`);
-    await targetFrame.type(inputSelector, userPrompt);
+    await targetInputBox.type(userPrompt);
+    await sleep(1000);
+
     console.log("Submitting...");
-    await targetFrame.click(sendButtonSelector);
+    await targetPanel.click(sendButtonSelector);
 
     // Wait for completion (cancel button to disappear)
     // First, wait for the cancel button to APPEAR (meaning it started)
     try {
-      await targetFrame.waitForSelector(cancelButtonSelector, { timeout: 10000 });
+      await targetPanel.waitForSelector(cancelButtonSelector, { timeout: 10000 });
       console.log("Agent started working...");
     } catch {
       console.log("Warning: Cancel button didn't appear quickly. Agent might have finished very fast or failed to start.");
@@ -311,12 +311,12 @@ async function run(): Promise<void> {
     // Now wait for it to disappear
     console.log("Waiting for agent to finish...");
     while (true) {
-      const cancelButton = await targetFrame.$(cancelButtonSelector);
+      const cancelButton = await targetPanel.$(cancelButtonSelector);
       if (!cancelButton) {
         console.log("Agent finished.");
         break;
       }
-      const allowOnceButton = await targetFrame.$(allowOnceButtonSelector);
+      const allowOnceButton = await targetPanel.$(allowOnceButtonSelector);
       if (allowOnceButton) {
         console.log("Found 'Allow once' button, clicking it...");
         await allowOnceButton.click();
@@ -328,8 +328,8 @@ async function run(): Promise<void> {
     try {
       console.log("Saving chat log...");
       // Ensure #chat exists in the target frame
-      await targetFrame.waitForSelector('#chat', { timeout: 5000 });
-      const chatText = await targetFrame.$eval('#chat', (el: any) => el.innerText || '');
+      await targetPanel.waitForSelector('#conversation', { timeout: 5000 });
+      const chatText = await targetPanel.$eval('#conversation', (el: any) => el.innerText || '');
       const chatLogPath = path.resolve(targetDir, 'chat_log.txt');
       fs.writeFileSync(chatLogPath, chatText, 'utf8');
       console.log(`Saved chat log to: ${chatLogPath}`);
