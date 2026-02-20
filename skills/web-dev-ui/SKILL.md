@@ -13,3 +13,4 @@ This skill provides guides for creating modern, high-quality UI components and e
 - **Color Systems**: Implement modern color palettes and themes. See [guides/color-systems.md](guides/color-systems.md).
 - **Scroll-driven Animations**: Create animations linked to scroll position. See [guides/scroll-driven-animations.md](guides/scroll-driven-animations.md).
 - **Tooltip**: Build accessible tooltips with Popover API and Anchor Positioning. See [guides/tooltip.md](guides/tooltip.md).
+- **Scroll Initial Target**: Set the initial scroll position of a container to a specific child. See [guides/scroll-initial-target.md](guides/scroll-initial-target.md).
