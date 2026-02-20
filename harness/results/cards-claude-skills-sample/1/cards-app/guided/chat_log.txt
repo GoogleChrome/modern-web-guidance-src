@@ -1,0 +1,11 @@
+Here's what I did to optimize the page:
+
+**Applied `content-visibility: auto`** to the `.card` elements (`index.html:99-102`). This is a CSS property that tells the browser to skip the layout and paint work for cards that are off-screen. Since the page renders 500 cards — each with expensive SVG filters, drop shadows, blur effects, and blend modes — only the few cards visible in the viewport will actually be rendered on initial load. The rest are deferred until the user scrolls to them.
+
+Key details of the change:
+
+- **`content-visibility: auto`** — the browser skips rendering for off-screen cards entirely, dramatically reducing initial layout/paint cost
+- **`contain-intrinsic-size: auto 400px`** — provides an estimated height for unrendered cards so scrollbars remain stable and layout shifts are avoided. The `auto` keyword means once a card has been rendered, the browser remembers its actual size
+- **`@supports` guard** — wraps the optimization so browsers without support simply render normally (progressive enhancement)
+
+This is a pure CSS solution — no JavaScript changes were needed. The page's existing render timer should show a significant improvement in initial render time.

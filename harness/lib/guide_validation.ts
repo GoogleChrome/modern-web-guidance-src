@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { config } from '../config.ts';
 
 export interface GuideCheck {
   id: string;
@@ -12,13 +13,7 @@ export interface GuideValidationResult {
   resourcesUsed: any[] | null;
 }
 
-const EXPECTED_GUIDES: Record<string, string[]> = {
-  greenfield: ['adaptive-loading', 'tooltip', 'scroll-driven-animations'],
-  brownfield: ['preload-prerender'],
-  redfield: ['tooltip']
-};
-
-export async function checkGuides(dirPath: string, scenario: string): Promise<GuideValidationResult> {
+export async function checkGuides(dirPath: string, appName: string): Promise<GuideValidationResult> {
   const resourcesPath = path.join(dirPath, 'resources_used.json');
   
   if (!fs.existsSync(resourcesPath)) {
@@ -52,7 +47,7 @@ export async function checkGuides(dirPath: string, scenario: string): Promise<Gu
     message: 'resources_used.json found'
   }];
 
-  const expected = EXPECTED_GUIDES[scenario] || [];
+  const expected = config.eval.expectedGuides[appName] || [];
   
   // Extract all resource names for easier searching
   const resourceNames = resources.map(r => r.name || '').filter(Boolean);

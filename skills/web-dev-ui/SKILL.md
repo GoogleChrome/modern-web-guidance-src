@@ -5,7 +5,7 @@ description: Contains guides for web development UI related features. Used for m
 
 # Web Dev UI
 
-This skill provides guides for creating modern, high-quality UI components and effects.
+This skill provides guides for creating modern, high-quality UI components and effects. Review the following descriptions and read the guides if they are relevant to the request.
 
 ## Available Guides
 

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .controls {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      padding: 1rem;
+      border-bottom: 1px solid #e2e8f0;
+      z-index: 100;
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      align-items: center;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+
+    .toggle-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.5rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .toggle-btn:hover {
+      opacity: 0.9;
+    }
+
+    .toggle-btn.off {
+      background: #64748b;
+    }
+
+    .toggle-btn.secondary {
+      background: #e2e8f0;
+      color: var(--text);
+    }
+
+    .toggle-btn.secondary:hover {
+      background: #cbd5e1;
+    }
+
+    .metric {
+      font-family: monospace;
+      font-weight: bold;
+    }
+
+    .feed {
+      max-width: 800px;
+      margin: 6rem auto 2rem;
+      padding: 0 1rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border: 1px solid #e2e8f0;
+      transition: transform 0.3s ease;
+      /* Stacked expensive drop-shadows */
+      filter:
+        drop-shadow(0 10px 20px rgba(0, 0, 0, 0.1)) drop-shadow(0 20px 40px rgba(0, 0, 0, 0.1)) drop-shadow(0 30px 60px rgba(0, 0, 0, 0.1));
+      will-change: transform;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+    }
+
+    @supports (content-visibility: auto) {
+      .card {
+        content-visibility: auto;
+        contain-intrinsic-size: auto 400px;
+      }
+    }
+
+    .nested-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      mix-blend-mode: multiply;
+      opacity: 0.1;
+      background: repeating-conic-gradient(from 0deg, var(--primary) 0deg 10deg, transparent 10deg 20deg);
+      filter: blur(20px);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      filter: blur(15px) contrast(1.1);
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .avatar {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(45deg, var(--primary), #818cf8);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .card-title {
+      height: 1.2rem;
+      background: #e2e8f0;
+      border-radius: 4px;
+      width: 60%;
+    }
+
+    .card-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .line {
+      height: 0.8rem;
+      background: #f1f5f9;
+      border-radius: 4px;
+    }
+
+    .line.short {
+      width: 40%;
+    }
+
+    .expensive-element {
+      height: 150px;
+      margin-top: 1rem;
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      border-radius: 0.5rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+      filter: blur(1px) url(#expensiveFilter);
+      transform: translateZ(0);
+    }
+
+    .expensive-element::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(37, 99, 235, 0.05) 0%, transparent 70%);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background: #dcfce7;
+      color: #166534;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      margin-top: 1rem;
+    }
+
+    .info-text {
+      max-width: 600px;
+      margin: 2rem auto;
+      text-align: center;
+      color: #64748b;
+    }
+  </style>
+</head>
+
+<body>
+  <svg style="position: absolute; width: 0; height: 0;" aria-hidden="true">
+    <filter id="expensiveFilter">
+      <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="5" result="noise" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="20" xChannelSelector="R" yChannelSelector="G"
+        result="distorted" />
+      <feGaussianBlur in="distorted" stdDeviation="2" result="blurred" />
+      <feComponentTransfer in="blurred">
+        <feFuncR type="gamma" amplitude="1" exponent="2" />
+        <feFuncG type="gamma" amplitude="1" exponent="2" />
+        <feFuncB type="gamma" amplitude="1" exponent="2" />
+      </feComponentTransfer>
+    </filter>
+  </svg>
+
+  <div class="controls">
+
+    <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
+    <div>
+      Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+        style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+    </div>
+  </div>
+
+  <div class="feed" id="feed">
+    <div class="info-text">
+      <h1>Optimized Demo: content-visibility</h1>
+      <p>This page contains 500 complex cards with <code>content-visibility: auto</code>
+        applied. Off-screen cards are skipped during rendering, improving initial load time.</p>
+    </div>
+  </div>
+
+  <script>
+    const feed = document.getElementById('feed');
+    const regenBtn = document.getElementById('regenerate');
+    const timerSpan = document.getElementById('timer');
+    const detectedSpan = document.getElementById('detected');
+    const cardCount = 500;
+
+
+
+    function createCard(index) {
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const layer = document.createElement('div');
+      layer.className = 'nested-layer';
+      card.appendChild(layer);
+
+      const inner = document.createElement('div');
+      inner.style.position = 'relative';
+      inner.innerHTML = `
+                <div class="card-header">
+                    <div class="avatar" style="filter: drop-shadow(0 0 10px var(--primary))"></div>
+                    <div class="card-title"></div>
+                </div>
+                <div class="card-content">
+                    <div class="line"></div>
+                    <div class="line"></div>
+                    <div class="line short"></div>
+                    <!-- Nested multiple expensive sub-elements -->
+                    <div class="sub-expensive-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 10px;">
+                        ${Array(12).fill('<div class="expensive-element" style="height: 30px; margin-top: 0; filter: url(#expensiveFilter) blur(0.5px);"></div>').join('')}
+                    </div>
+                    <div>
+                        <span class="badge" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.2)">Item #${index + 1}</span>
+                    </div>
+                </div>
+            `;
+      card.appendChild(inner);
+      return card;
+    }
+
+    function measureRender(startTime, suffix = '') {
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const duration = Math.round(performance.now() - startTime);
+          timerSpan.textContent = `${duration}ms${suffix}`;
+
+          if (duration < 75) {
+            detectedSpan.textContent = 'content-visibility: detected';
+            detectedSpan.style.color = '#16a34a';
+          } else {
+            detectedSpan.textContent = 'content-visibility: NOT detected';
+            detectedSpan.style.color = '#dc2626';
+          }
+        });
+      });
+    }
+
+    function renderCards() {
+      const info = feed.querySelector('.info-text');
+      feed.innerHTML = '';
+      feed.appendChild(info);
+
+      const startTime = performance.now();
+      const fragment = document.createDocumentFragment();
+      for (let i = 0; i < cardCount; i++) {
+        fragment.appendChild(createCard(i));
+      }
+      feed.appendChild(fragment);
+
+      measureRender(startTime);
+    }
+
+    window.addEventListener('load', () => {
+      setTimeout(renderCards, 500);
+    });
+
+    regenBtn.addEventListener('click', renderCards);
+
+
+  </script>
+</body>
+
+</html>

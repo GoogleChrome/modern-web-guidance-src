@@ -88,6 +88,12 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)(tsx@4.21.0)
 
+  use-cases:
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+
 packages:
 
   '@a2a-js/sdk@0.3.10':

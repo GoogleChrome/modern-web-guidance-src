@@ -183,13 +183,13 @@ function renderSummary(data, _testID) {
     `;
 }
 
-function calculateGroupTotalStats(results, groupType) {
+function calculateGroupTotalStats(results, runType) {
     let passed = 0;
     let total = 0;
 
     Object.keys(results).forEach(key => {
-        // key format: "scenario - prompt - agent"
-        if (key.endsWith(` - ${groupType}`)) {
+        // key format: "appName - guide - runType"
+        if (key.endsWith(` - ${runType}`)) {
             results[key].forEach(run => {
                 const s = getRunStats(run.results);
                 passed += s.passed;
@@ -206,47 +206,51 @@ function renderGrid(data, testID) {
     const results = data.results;
     const stats = data.stats;
 
-    // Define the order explicitly to ensure Unguided (Left) vs Guided (Right) alignment
-    const scenarios = ['greenfield', 'brownfield', 'redfield'];
-    const prompts = ['vague', 'specific'];
-    // We want Unguided first (Left Column), then Guided (Right Column)
-    const agents = ['unguided', 'guided'];
+    // Extract dimensions dynamically from data keys
+    const keys = Object.keys(results);
+    const partsMap = keys.map(k => k.split(' - '));
 
-    scenarios.forEach(scenario => {
-        prompts.forEach(prompt => {
-            agents.forEach(agent => {
-                const testName = `${scenario} - ${prompt} - ${agent}`;
+    // Assume 3 parts: [appName, guide, runType]
+    const validParts = partsMap.filter(p => p.length === 3);
+
+    const sortedAppNames = [...new Set(validParts.map(p => p[0]))].sort();
+    const sortedGuides = [...new Set(validParts.map(p => p[1]))].sort();
+
+    // Sort runTypes: unguided first, then guided, then alphabetical
+    const sortedRunTypes = [...new Set(validParts.map(p => p[2]))].sort((a, b) => {
+        if (a === 'unguided' && b === 'guided') return -1;
+        if (a === 'guided' && b === 'unguided') return 1;
+        return a.localeCompare(b);
+    });
+
+    sortedAppNames.forEach(appName => {
+        sortedGuides.forEach(guide => {
+            sortedRunTypes.forEach(runType => {
+                const testName = `${appName} - ${guide} - ${runType}`;
                 const runData = results[testName];
                 const testStats = stats[testName];
+
+                if (!runData) return; // Skip combinations that don't exist
 
                 const card = document.createElement('div');
                 card.className = 'test-card';
 
-                if (runData && testStats) {
-                    // Calculate Total/Average Pass Rate for this specific test configuration
-                    const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
-                    const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
-                    const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
+                // Calculate Total/Average Pass Rate for this specific test configuration
+                const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
+                const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
+                const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
 
-                    // REMOVED: Guide Validation Validation progress bar from Grid View as per request
-
-                    // Display totals to ensure the percentage mathematically matches the fraction
-                    card.onclick = () => showDetails(testName, runData, testStats, testID);
-                    card.innerHTML = `
-                        <h3>${formatTestName(testName)}</h3>
-                        <div class="pass-rate-bar">
-                            <div class="pass-rate-fill" style="width: ${avgRate}%; background-color: ${getColor(avgRate)}"></div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 0.9em; color: var(--text-secondary);">
-                            <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
-                            <span>Runs: ${testStats.rates.length}</span>
-                        </div>
-                    `;
-                } else {
-                    // Render placeholder or empty state if data is missing to maintain grid alignment
-                    card.style.opacity = '0.5';
-                    card.innerHTML = `<h3>${formatTestName(testName)}</h3><p>No Data</p>`;
-                }
+                card.onclick = () => showDetails(testName, runData, testStats, testID);
+                card.innerHTML = `
+                    <h3>${formatTestName(testName)}</h3>
+                    <div class="pass-rate-bar">
+                        <div class="pass-rate-fill" style="width: ${avgRate}%; background-color: ${getColor(avgRate)}"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.9em; color: var(--text-secondary);">
+                        <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
+                        <span>Runs: ${testStats.rates.length}</span>
+                    </div>
+                `;
 
                 grid.appendChild(card);
             });
@@ -265,7 +269,7 @@ async function showDetails(testName, runs, stats, testID) {
     const title = document.getElementById('modal-title');
     const contentDiv = document.querySelector('.modal-content');
     const body = document.getElementById('modal-body');
-    const [scenario, prompt, agent] = testName.split(' - ');
+    const [appName, guide, runType] = testName.split(' - ');
 
     // Reset modifier classes
     contentDiv.classList.remove('diff-modal');
@@ -275,16 +279,16 @@ async function showDetails(testName, runs, stats, testID) {
     // Fetch prompt text
     let promptHtml = '';
     try {
-        const promptPath = `setup/${scenario}/${prompt}/PROMPT.txt`;
+        const promptPath = `base_apps/${appName}/PROMPT.txt`;
         const res = await fetch(promptPath);
         if (res.ok) {
             const text = await res.text();
             promptHtml = `
-                <div class="prompt-section" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--text-secondary);">
+                    <div class="prompt-section" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--text-secondary);">
                     <h4 style="margin-top: 0; margin-bottom: 10px;">Prompt</h4>
-                    <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; color: var(--text-primary);">${escapeHtml(text)}</pre>
-                </div>
-            `;
+                        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; color: var(--text-primary);">${escapeHtml(text)}</pre>
+                    </div>
+                `;
         }
     } catch (e) {
         console.error('Failed to fetch prompt', e);
@@ -293,12 +297,21 @@ async function showDetails(testName, runs, stats, testID) {
     // Check for setup file asynchronously for each run to show View Diff button if applicable
     const runDetailsPromises = runs.map(async (run, index) => {
         const s = getRunStats(run.results);
-        const basePath = `results/${testID}/${run.runNumber}/${scenario}/${prompt}/${agent}`;
-        const resultPath = await findBestEntryPoint(basePath);
+
+        // Cover cases for new use case format and old (greenfield, brownfield, redfield) format
+        const basePaths = [
+            `results/${testID}/${run.runNumber}/${appName}/${runType}`,
+            `results/${testID}/${run.runNumber}/${appName}/${guide}/${runType}`
+        ];
+
+        const resultPath = await findBestEntryPoint(basePaths);
+
+        // Determine which base path was used
+        const usedBasePath = basePaths.find(bp => resultPath.startsWith(bp)) || basePaths[0];
 
         // Calculate relative path (e.g., "src/App.jsx" or "index.html")
-        const relativePath = resultPath.replace(basePath + '/', '');
-        const setupPath = `setup/${scenario}/${prompt}/${agent}/${relativePath}`;
+        const relativePath = resultPath.replace(usedBasePath + '/', '');
+        const setupPath = `base_apps/${appName}/${runType}/${relativePath}`;
 
         let guideSection = '';
         if (run.guideResults && run.guideResults.checks) {
@@ -384,8 +397,10 @@ async function showDetails(testName, runs, stats, testID) {
         if (viewResourcesLink) {
             viewResourcesLink.onclick = (e) => {
                 e.preventDefault();
-                const resourcesPath = `results/${testID}/${run.runNumber}/${scenario}/${prompt}/${agent}/resources_used.json`;
-                viewContent('resources_used.json', resourcesPath);
+                // usedBasePath is like "results/testID/runNumber/appName/guide/runType"
+                // resources_used.json is usually in that same directory
+                const resourcesPath = `${usedBasePath}/resources_used.json`;
+                viewContent(resourcesPath, resourcesPath);
             };
         }
 
@@ -394,6 +409,24 @@ async function showDetails(testName, runs, stats, testID) {
         diffButton.textContent = 'View Diff';
         diffButton.style.cssText = 'margin-left: 10px; font-size: 0.8em; padding: 2px 8px;';
         diffButton.onclick = () => viewDiff(setupPath, resultPath);
+
+        const rawResultsPath = `${usedBasePath}/${guide}_results.json`;
+        let showRawResults = false;
+        try {
+            const rawRes = await fetch(rawResultsPath, { method: 'HEAD' });
+            if (rawRes.ok) showRawResults = true;
+        } catch (e) {
+            console.log('Error checking raw results:', e);
+        }
+
+        if (showRawResults) {
+            const rawResultsBtn = document.createElement('button');
+            rawResultsBtn.className = 'secondary-btn small-btn';
+            rawResultsBtn.textContent = 'View Raw Results';
+            rawResultsBtn.style.cssText = 'margin-left: 10px; font-size: 0.8em; padding: 2px 8px;';
+            rawResultsBtn.onclick = () => viewContent(rawResultsPath, rawResultsPath);
+            runDetail.querySelector('.run-actions').appendChild(rawResultsBtn);
+        }
 
         runDetail.querySelector('.run-actions').appendChild(diffButton);
         return runDetail;
@@ -559,7 +592,10 @@ async function viewDiff(setupPath, resultPath) {
 }
 
 
-async function findBestEntryPoint(basePath) {
+async function findBestEntryPoint(basePaths) {
+    // basePaths can be a string or array of strings
+    const pathsToCheck = Array.isArray(basePaths) ? basePaths : [basePaths];
+
     const candidates = [
         'dist/index.html',
         'src/App.jsx',
@@ -571,16 +607,19 @@ async function findBestEntryPoint(basePath) {
         'index.html'
     ];
 
-    const checks = candidates.map(candidate =>
-        fetch(`${basePath}/${candidate}`, { method: 'HEAD' })
-            .then(res => res.ok ? candidate : null)
-            .catch(() => null)
-    );
+    for (const basePath of pathsToCheck) {
+        const checks = candidates.map(candidate =>
+            fetch(`${basePath}/${candidate}`, { method: 'HEAD' })
+                .then(res => res.ok ? `${basePath}/${candidate}` : null)
+                .catch(() => null)
+        );
 
-    const results = await Promise.all(checks);
-    const best = results.find(result => result !== null);
+        const results = await Promise.all(checks);
+        const best = results.find(result => result !== null);
 
-    if (best) return `${basePath}/${best}`;
-    // Fallback
-    return `${basePath}/index.html`;
+        if (best) return best;
+    }
+
+    // Fallback to first base path index.html if nothing found
+    return `${pathsToCheck[0]}/index.html`;
 }

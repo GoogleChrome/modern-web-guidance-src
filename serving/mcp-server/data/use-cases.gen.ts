@@ -42,6 +42,11 @@ export const USE_CASES: UseCase[] = [
     "category": "webperf"
   },
   {
+    "id": "content-vis",
+    "description": "Improve initial page load and interaction responsiveness by deferring the rendering work of off-screen components until they are needed.",
+    "category": "webperf"
+  },
+  {
     "id": "lazy-load-images",
     "description": "Defer loading of off-screen images to minimize network contention and improve LCP.",
     "category": "webperf"

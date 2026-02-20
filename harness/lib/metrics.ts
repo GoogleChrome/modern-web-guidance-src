@@ -30,21 +30,28 @@ export interface Metrics {
 }
 
 export function calculateMetrics(allResults: Record<string, RunResult[]>, numRuns: number): Metrics {
-  const scenarioOrder: Record<string, number> = { 'greenfield': 1, 'brownfield': 2, 'redfield': 3 };
-  const promptOrder: Record<string, number> = { 'vague': 1, 'specific': 2 };
-  const agentOrder: Record<string, number> = { 'unguided': 1, 'guided': 2 };
+  // Dynamic sorting: Base apps alphabetically, then Guide alphabetically, then Run Type (unguided first if present)
+  const runTypeOrder: Record<string, number> = { 'unguided': 1, 'guided': 2 };
 
   const sortedKeys = Object.keys(allResults).sort((a, b) => {
-    const [scenA, promptA, agentA] = a.split(' - ');
-    const [scenB, promptB, agentB] = b.split(' - ');
+    const [baseAppA, guideA, runTypeA] = a.split(' - ');
+    const [baseAppB, guideB, runTypeB] = b.split(' - ');
 
-    if (scenA !== scenB) {
-      return (scenarioOrder[scenA] || 99) - (scenarioOrder[scenB] || 99);
+    if (baseAppA !== baseAppB) {
+      return baseAppA.localeCompare(baseAppB);
     }
-    if (promptA !== promptB) {
-      return (promptOrder[promptA] || 99) - (promptOrder[promptB] || 99);
+    if (guideA !== guideB) {
+      return guideA.localeCompare(guideB);
     }
-    return (agentOrder[agentA] || 99) - (agentOrder[agentB] || 99);
+
+    // Sort known run types first, others alphabetically
+    const orderA = runTypeOrder[runTypeA] || 99;
+    const orderB = runTypeOrder[runTypeB] || 99;
+
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    return runTypeA.localeCompare(runTypeB);
   });
 
   const testPassRates: Record<string, { median: number; rates: number[] }> = {};

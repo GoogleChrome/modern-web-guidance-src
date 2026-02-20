@@ -1,11 +1,27 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
-import checkGreenfield from '../app_checks/greenfield.ts';
-import checkBrownfield from '../app_checks/brownfield.ts';
-import checkRedfield from '../app_checks/redfield.ts';
-
 import { checkGuides } from './guide_validation.ts';
+import { fileURLToPath } from 'url';
+import { config } from '../config.ts';
+import readline from 'readline';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+async function promptUser(question: string): Promise<string> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  return new Promise(resolve => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
 
 export async function collectResults(resultsDir: string) {
   const runDirs = fs.readdirSync(resultsDir)
@@ -24,8 +40,8 @@ export async function collectResults(resultsDir: string) {
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
 
-    // Structure: results/{testID}/{runNumber}/{scenario}/{type}/{agent}
-    const directories = glob.sync('*/*/*/', {
+    // Structure: results/{testID}/{runNumber}/{baseApp}/{runType}
+    const directories = glob.sync('*/*/', {
       cwd: runPath,
       absolute: true
     });
@@ -34,39 +50,94 @@ export async function collectResults(resultsDir: string) {
       const relPath = path.relative(runPath, dir);
       const parts = relPath.split(path.sep);
 
-      if (parts.length < 3) continue;
+      if (parts.length < 2) continue;
 
-      const [scenario, promptType, agentType] = parts;
-      const testName = `${scenario} - ${promptType} - ${agentType}`;
-
-      const files = glob.sync('**/*', { cwd: dir, nodir: true });
-
-      let scenarioResults = [];
-
-      if (scenario === 'greenfield') {
-        scenarioResults = await checkGreenfield(dir, files);
-      } else if (scenario === 'brownfield') {
-        scenarioResults = await checkBrownfield(dir, files);
-      } else if (scenario === 'redfield') {
-        scenarioResults = await checkRedfield(dir, files);
-      } else {
-        console.warn(`Unknown scenario type: ${scenario}`);
-        continue;
-      }
+      const [baseApp, runType] = parts;
 
       let guideResults = undefined;
-      if (agentType === 'guided') {
-        guideResults = await checkGuides(dir, scenario);
+      if (runType === 'guided') {
+        guideResults = await checkGuides(dir, baseApp);
       }
 
-      if (!allResults[testName]) {
-        allResults[testName] = [];
+      const targetFile = path.join(dir, 'index.html');
+
+      // Run the tests for each use case
+      for (const guide of config.eval.guidesToTest) {
+        const testName = `${baseApp} - ${guide} - ${runType}`;
+
+        const useCasesDir = path.resolve(__dirname, '../../use-cases');
+        const graderPath = path.join(useCasesDir, guide, `${guide}.grader.js`);
+
+        let scenarioResults: any[] = [];
+        const graderResults = path.join(dir, `${guide}_results.json`);
+
+        if (!fs.existsSync(graderPath)) {
+          console.warn(`Grader not found for ${guide} at ${graderPath}`);
+          scenarioResults.push({ name: 'Configuration', status: 'fail', message: 'Grader not found' });
+        } else if (!fs.existsSync(targetFile)) {
+          scenarioResults.push({ name: 'File Check', status: 'fail', message: 'index.html not found' });
+        } else {
+          try {
+            let json: any = null;
+            let useExistingResults = false;
+
+            // Check if existing results are found
+            if (fs.existsSync(graderResults)) {
+              const answer = await promptUser(`Found existing grader results for ${testName} run ${runDir}. Re-use results? [y/n] `);
+              useExistingResults = answer.toLowerCase() === 'y';
+            }
+
+            if (useExistingResults) {
+              json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
+            } else {
+              console.log(`Running grader for ${guide} in ${dir}...`);
+              // Use spawnSync to handle exit codes without throwing
+              const { spawnSync } = await import('child_process');
+              const result = spawnSync('pnpm', ['--silent', '--filter', 'use-cases', 'exec', 'playwright', 'test', graderPath, '--reporter=json'], {
+                encoding: 'utf-8',
+                stdio: 'pipe',
+                env: { ...process.env, TARGET_FILE: targetFile },
+                maxBuffer: 10 * 1024 * 1024 // 10MB
+              });
+
+              if (result.error) throw result.error;
+
+              const output = result.stdout;
+              json = JSON.parse(output);
+              fs.writeFileSync(graderResults, JSON.stringify(json, null, 2));
+            }
+
+            if (json.suites && json.suites.length > 0) {
+              const specs: any[] = [];
+              const traverse = (suite: any) => {
+                if (suite.specs) specs.push(...suite.specs);
+                if (suite.suites) suite.suites.forEach(traverse);
+              };
+              json.suites.forEach(traverse);
+
+              scenarioResults = specs.map((spec: any) => {
+                const lastResult = spec.tests[0].results[spec.tests[0].results.length - 1];
+                return {
+                  passed: lastResult.status === 'passed',
+                  message: spec.title
+                };
+              });
+            }
+          } catch (err: any) {
+            console.error(`Error processing results for ${dir}:`, err);
+            scenarioResults.push({ name: 'System Error', status: 'fail', message: err.message });
+          }
+        }
+
+        if (!allResults[testName]) {
+          allResults[testName] = [];
+        }
+        allResults[testName].push({
+          runNumber: parseInt(runDir),
+          results: scenarioResults,
+          guideResults
+        });
       }
-      allResults[testName].push({
-        runNumber: parseInt(runDir),
-        results: scenarioResults,
-        guideResults
-      });
     }
   }
 
