@@ -62,6 +62,28 @@ h1 {
     font-size: 0.875rem;
 }
 
+.chart-container {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 40px;
+    height: 600px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.chart-container.hidden {
+    display: none;
+}
+
+#radar-chart {
+    width: 100%;
+    height: 100%;
+    max-width: 600px;
+}
 #dashboard-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -109,49 +131,115 @@ h1 {
     font-size: 0.9rem;
 }
 
-/* Modal */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(5px);
+/* Modern Dialog */
+dialog#modal {
+    background: transparent;
+    border: none;
+    padding: 0;
+    max-width: 900px;
+    width: 90%;
+    max-height: 90vh;
+    border-radius: 12px;
+    color: var(--text-primary);
+    overflow: visible;
 }
 
-.modal.show {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+dialog#modal:focus-visible {
+    outline: none;
+}
+
+dialog#modal::-moz-focus-inner {
+    border: 0;
+}
+
+.modal-content:focus {
+    outline: none !important;
+}
+
+dialog#modal:not([open]) {
+    display: none !important;
+}
+
+dialog#modal::backdrop {
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    opacity: 0;
+        animation: fade-in 0.3s ease-out forwards;
+        will-change: opacity;
+}
+
+dialog#modal[open] {
+    animation: slide-up 0.3s ease-out;
+    display: block;
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .modal-content {
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    width: 90%;
-    max-width: 900px;
+    padding: 30px;
+        position: relative;
     max-height: 90vh;
     overflow-y: auto;
-    padding: 30px;
-    position: relative;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
 }
 
 .close-modal {
+    background: transparent;
+        border: none;
     color: var(--text-secondary);
-    float: right;
+    position: absolute;
+        top: 20px;
+        right: 20px;
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
+    line-height: 1;
+        padding: 5px;
+        border-radius: 50%;
+        transition: background 0.2s, color 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
 }
 
 .close-modal:hover {
     color: var(--text-primary);
+    background: var(--hover-bg);
+    }
+    
+    .close-modal:focus {
+        outline: none !important;
+    }
+    
+    .close-modal:focus-visible {
+        background: var(--hover-bg);
+        color: var(--text-primary);
 }
 
 /* Run Details in Modal */
@@ -219,6 +307,7 @@ h1 {
 .bg-red {
     background-color: var(--accent-failure);
 }
+
 .dashboard-footer {
     margin-top: 40px;
     padding-top: 20px;
@@ -254,16 +343,20 @@ h1 {
     overflow-x: auto;
     border: 1px solid var(--border-color);
 }
+
 /* Diff View Styles */
 .diff-container {
-    font-family: monospace;
+    font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     white-space: pre-wrap;
+    word-break: break-word;
+        overflow-wrap: anywhere;
     background: #0d1117;
     color: #c9d1d9;
-    padding: 10px;
+    padding: 15px;
     border-radius: 6px;
     overflow-x: auto;
     border: 1px solid var(--border-color);
+    line-height: 1.4;
 }
 
 .diff-added {
@@ -285,9 +378,14 @@ h1 {
     display: block;
 }
 
+/* Widening the dialog for diff view */
+dialog#modal.diff-modal {
+    max-width: 1200px;
+    width: 95vw;
+}
 .modal-content.diff-modal {
-    max-width: 90%;
-    width: 1200px;
+    width: 100%;
+        padding: 20px;
 }
 
 .diff-separator {
@@ -298,4 +396,35 @@ h1 {
     font-size: 0.85em;
     user-select: none;
     opacity: 0.7;
+}
+/* Radar Chart & Tooltip */
+.radar-tooltip {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(4px);
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    pointer-events: none;
+    display: none;
+    z-index: 2000;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+    line-height: 1.4;
+}
+
+#radar-chart circle {
+    cursor: pointer;
+    transition: r 0.2s cubic-bezier(0.4, 0, 0.2, 1), stroke-width 0.2s ease;
+}
+
+#radar-chart text {
+    cursor: pointer;
+    transition: fill 0.2s ease, font-size 0.2s ease, filter 0.2s ease;
+    user-select: none;
+}
+
+.radar-legend-item {
+    cursor: pointer;
 }
