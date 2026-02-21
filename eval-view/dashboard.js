@@ -110,13 +110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Close function that also cleans up URL
     const closeModal = () => {
-        modal.close();
-        const url = new URL(window.location.href);
-        url.searchParams.delete('testName');
-        url.searchParams.delete('checkId');
-        url.searchParams.delete('view');
-        url.searchParams.delete('run');
-        window.history.pushState({}, '', url);
+        if (modal.open) modal.close();
     };
 
     closeBtn.onclick = closeModal;
@@ -140,9 +134,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         if (changed) {
-            window.history.pushState({}, '', url);
+            window.history.replaceState({}, '', url);
         }
     });
+
+    // We no longer need popstate for modal state because we use replaceState exclusively.
+    // Full page deep links are handled via DOMContentLoaded.
 
     // View Log Handler
     const viewLogBtn = document.getElementById('view-log-btn');
@@ -383,7 +380,7 @@ async function showDetails(testName, runs, stats, testID) {
     url.searchParams.set('testName', testName);
     url.searchParams.delete('view');
     url.searchParams.delete('run');
-    window.history.pushState({ testName }, '', url);
+    window.history.replaceState({ testName }, '', url);
 
     // Store current details for back navigation
     currentDetails = { testName, runs, stats, testID };
@@ -392,7 +389,7 @@ async function showDetails(testName, runs, stats, testID) {
     const title = document.getElementById('modal-title');
     const contentDiv = document.querySelector('.modal-content');
     const body = document.getElementById('modal-body');
-    const [appName, guide, runType] = testName.split(' - ');
+    const [appName, guide] = testName.split(' - ');
 
     // Reset modifier classes
     modal.classList.remove('diff-modal');
@@ -420,7 +417,7 @@ async function showDetails(testName, runs, stats, testID) {
     }
 
     // Check for setup file asynchronously for each run to show View Diff button if applicable
-    const runDetailsPromises = runs.map(async (run, index) => {
+    const runDetailsPromises = runs.map(async (run) => {
         const s = getRunStats(run.results);
         const { setupPath, resultPath, usedBasePath } = await getResultPaths(testID, run, testName);
 
@@ -599,11 +596,14 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     const url = new URL(window.location.href);
     url.searchParams.set('view', 'diff');
     url.searchParams.set('run', runNumber);
-    window.history.pushState({}, '', url);
+    window.history.replaceState({}, '', url);
 
+    const modal = document.getElementById('modal');
     const title = document.getElementById('modal-title');
     const body = document.getElementById('modal-body');
     const contentDiv = document.querySelector('.modal-content');
+
+    modal.dataset.runNumber = runNumber;
 
     title.textContent = `Diff: ${formatTestName(testName)} (Run ${runNumber})`;
     body.innerHTML = '<div style="text-align:center; padding: 20px;">Computing diff...</div>';
