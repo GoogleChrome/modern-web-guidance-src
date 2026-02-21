@@ -5,8 +5,8 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-import config, { Agents } from '../harness/config.ts';
-import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders } from '../harness/lib/agent-shared.ts';
+import config from '../harness/config.ts';
+import { createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders } from '../harness/lib/agent-shared.ts';
 
 // Get the path to the guide folder from the command line arguments
 const args = process.argv.slice(2);
@@ -69,6 +69,7 @@ ${templateContent}
 </template.grader.ts>
 
 Generate a set of robust tests with functional and browser assertions to accurately grade an implementation against these expectations.
+The demo.html should pass all tests, and the negative-demo.html should fail all tests.
 The output should be a single file named grader.ts. Do not modify any other files. Do this now.
 `;
 
@@ -82,7 +83,8 @@ function setupIsolatedWorkDir(baseDir: string): string {
   fs.mkdirSync(workDir, { recursive: true });
 
   // copy files from target dir to work dir
-  fs.readdirSync(baseDir).forEach(file => {
+  const filesToStage = ['guide.md', 'demo.html', 'expectations.md', 'negative-demo.html'];
+  filesToStage.forEach(file => {
     copyFileIfExists(path.join(baseDir, file), path.join(workDir, file));
   });
 

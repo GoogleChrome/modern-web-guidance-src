@@ -48,7 +48,29 @@ async function main() {
             'jetski-agent.ts'
       );
 
-      await runCommand('node', ['--experimental-strip-types', agentScript, JSON.stringify(argPrompt), 'guided', path.resolve(argDir)]);
+      let templateDir = '';
+      let targetDir = '';
+
+      if (args.includes('--with-template')) {
+        // In this mode, the argDir is the template directory
+        // The target directory is the template directory + "-result"
+        templateDir = path.resolve(argDir);
+        targetDir = path.resolve(argDir.replace(/\/+$/, '') + '-result');
+      } else {
+        // In standard task mode, the argDir is the target directory
+        targetDir = path.resolve(argDir);
+        // No template directory
+        templateDir = '';
+      }
+
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+
+      console.log(`Template Directory: ${templateDir || '(none)'}`);
+      console.log(`Target Directory: ${targetDir}`);
+
+      await runCommand('node', ['--experimental-strip-types', agentScript, JSON.stringify(argPrompt), 'guided', targetDir, templateDir]);
       console.log(`\n✅ Single task complete!`);
     } catch (error) {
       console.error(`❌ Single task failed:`, error);

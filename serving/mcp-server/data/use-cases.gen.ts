@@ -7,53 +7,8 @@ export interface UseCase {
 
 export const USE_CASES: UseCase[] = [
   {
-    "id": "image-to-text",
-    "description": "Turn images into text, captions, or structured data using the built-in Prompt API",
-    "category": "ai"
-  },
-  {
-    "id": "carousel",
-    "description": "Build responsive, accessible carousels with CSS Scroll Snap",
-    "category": "ui"
-  },
-  {
-    "id": "color-systems",
-    "description": "Create dynamic, accessible color systems using modern color syntax and relative colors",
-    "category": "ui"
-  },
-  {
-    "id": "scroll-driven-animations",
-    "description": "Create animations linked to scroll position",
-    "category": "ui"
-  },
-  {
-    "id": "tooltip",
-    "description": "Create tooltips with Popover API and Interest Invokers",
-    "category": "ui"
-  },
-  {
-    "id": "adaptive-loading",
-    "description": "Load a fallback image when network conditions are poor using the Adaptive Loading API",
-    "category": "webperf"
-  },
-  {
-    "id": "break-long-tasks",
-    "description": "Improve interaction responsiveness (INP) by yielding to the main thread.",
-    "category": "webperf"
-  },
-  {
     "id": "content-vis",
     "description": "Improve initial page load and interaction responsiveness by deferring the rendering work of off-screen components until they are needed.",
-    "category": "webperf"
-  },
-  {
-    "id": "lazy-load-images",
-    "description": "Defer loading of off-screen images to minimize network contention and improve LCP.",
-    "category": "webperf"
-  },
-  {
-    "id": "preload-prerender",
-    "description": "Improve navigation speed by preloading key resources or prerendering pages before the user clicks.",
-    "category": "webperf"
+    "category": "performance"
   }
 ];

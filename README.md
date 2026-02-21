@@ -103,7 +103,7 @@ ANTHROPIC_MODEL='claude-opus-4-6'
 
 ## Guides
 
-For adding and testing guides, see [Testing Guides](./guides/README.md).
+For adding and testing guides, see the [guides README](./guides/README.md).
 
 ## Quality Control
 

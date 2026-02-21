@@ -1,0 +1,3 @@
+The following agent skills are available:
+
+*   **skill-creator**: Guide for creating effective skills. Use this when you want to create a new skill or update an existing one to extend Gemini CLI's capabilities.

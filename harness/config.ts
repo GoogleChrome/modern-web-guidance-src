@@ -48,9 +48,9 @@ export const suiteConfig: SuiteConfig = {
   name: 'cards-claude-skills-sample',
   numRuns: 1,
   baseApps: ['cards-app'],
-  mcpServersToEnable: [], // Available servers: 'modern-web', 'google-developer-knowledge'
-  enableSkills: true,
-  agent: Agents.CLAUDE_CODE,
+  mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
+  enableSkills: false,
+  agent: Agents.GEMINI_CLI,
 };
 
 // ************************************
