@@ -51,7 +51,7 @@ The grader should pass at 100% for `demo.html`, and 0% for `negative-demo.html`.
 ```
 mcpServersToEnable: ['modern-web'],
 enableSkills: false,
-agent: <agent>
+agent: Agents.GEMINI_CLI
 ```
 
 > Note: to test the agent without any guide access, set `mcpServersToEnable` to `[]` (and step `2` can be skipped).
