@@ -33,29 +33,15 @@ if (!fs.existsSync(guidePath) || !fs.existsSync(demoPath) || !fs.existsSync(expe
   process.exit(1);
 }
 
-const guideContent = fs.readFileSync(guidePath, 'utf8');
-const demoContent = fs.readFileSync(demoPath, 'utf8');
-const expectationsContent = fs.readFileSync(expectationsPath, 'utf8');
-
 // Formulate prompt
 const userPrompt = `
-Based on guide.md and expectations.md, the demo.html is a perfect working example (golden).
+Read the guide.md and expectations.md files to understand the guidance and expectations.
+Then read the demo.html file, which represents a perfect working example of the guides and expectations.
 
-<guide.md>
-${guideContent}
-</guide.md>
+With this information, create another example file that represents an anti-example of what is outlined in guide.md and expectations.md.
+Make sure that it does not fulfill anything that the expectations and guide suggest.
 
-<expectations.md>
-${expectationsContent}
-</expectations.md>
-
-<demo.html>
-${demoContent}
-</demo.html>
-
-Create a similar app as demo.html, but it should represent an anti-example of what is outlined in guide.md and expectations.md.
-Make sure that it does not fulfill anything that the guide suggests, nor fulfill any of the expectations.
-The output should be a single file named negative-demo.html. Do not modify any other files. Do this now.
+The output should be a single file named negative-demo.html. Do not modify any other files.
 `;
 
 /**

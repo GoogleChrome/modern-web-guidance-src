@@ -44,16 +44,28 @@ async function run() {
 
   const playwrightConfig = path.join(__dirname, 'playwright.config.ts');
 
-  const child = spawn('npx', ['playwright', 'test', '-c', playwrightConfig, graderPath], {
+  // Output the HTML report to a grade-report folder inside the target file's directory
+  const outputDirPath = path.join(path.dirname(targetFileAbs), 'grade-report');
+
+  const child = spawn('npx', ['playwright', 'test', '-c', playwrightConfig, graderPath, '--reporter=html'], {
     stdio: 'inherit',
     env: {
       ...process.env,
-      TARGET_FILE: targetFileAbs
+      TARGET_FILE: targetFileAbs,
+      PLAYWRIGHT_HTML_OUTPUT_DIR: outputDirPath
     }
   });
 
   child.on('close', (code) => {
-    process.exit(code || 0);
+    // Automatically show the report if tests completed or failed
+    console.log(`\nTests finished with code ${code}. Opening HTML report...`);
+    const showReportChild = spawn('npx', ['playwright', 'show-report', outputDirPath], {
+      stdio: 'inherit'
+    });
+
+    showReportChild.on('close', () => {
+      process.exit(code || 0); // Keep original exit code
+    });
   });
 }
 

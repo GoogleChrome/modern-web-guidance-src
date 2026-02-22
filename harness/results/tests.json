@@ -54,16 +54,6 @@
       "id": "cards-jetski-mcp-sample",
       "timestamp": "2026-02-19T00:40:41.239Z",
       "runCount": 1
-    },
-    {
-      "id": "cards-claude-mcp-sample",
-      "timestamp": "2026-02-19T00:45:26.876Z",
-      "runCount": 1
-    },
-    {
-      "id": "cards-claude-skills-sample",
-      "timestamp": "2026-02-19T01:04:33.345Z",
-      "runCount": 1
     }
   ]
 }

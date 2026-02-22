@@ -35,42 +35,20 @@ if (!fs.existsSync(guidePath) || !fs.existsSync(demoPath) || !fs.existsSync(expe
   process.exit(1);
 }
 
-const guideContent = fs.readFileSync(guidePath, 'utf8');
-const demoContent = fs.readFileSync(demoPath, 'utf8');
-const negativeDemoContent = fs.readFileSync(negativeDemoPath, 'utf8');
-const expectationsContent = fs.readFileSync(expectationsPath, 'utf8');
-const templateContent = fs.readFileSync(templatePath, 'utf8');
-
-// Formulate prompt
 const userPrompt = `
-Based on guide.md and expectations.md, generate a Playwright test script to model the expectations.md requirements.
-You should use template.grader.ts as the framework for the test.
-The demo.html is a perfect working example (golden).
-The negative-demo.html is an anti-example that fails the expectations.
+Read the guide.md and expectations.md files to understand the guidance and expectations.
+Then, read the demo.html file, which represents a perfect working example of the guides and expectations, and the negative-demo.html file, which represents an anti-example that fails the expectations.
 
-<guide.md>
-${guideContent}
-</guide.md>
+Using template.grader.ts as a framework, write a Playwright test script to model the expectations.md requirements.
+You should generate a set of robust tests with functional and browser assertions.
+Design it so that the demo.html passes all tests at 100% success rate, and the negative-demo.html fails all tests at 0% success rate.
 
-<expectations.md>
-${expectationsContent}
-</expectations.md>
+The grader can be run with the following commands:
 
-<demo.html>
-${demoContent}
-</demo.html>
+TARGET_FILE=$(pwd)/demo.html npx playwright test grader.ts
+TARGET_FILE=$(pwd)/negative-demo.html npx playwright test grader.ts
 
-<negative-demo.html>
-${negativeDemoContent}
-</negative-demo.html>
-
-<template.grader.ts>
-${templateContent}
-</template.grader.ts>
-
-Generate a set of robust tests with functional and browser assertions to accurately grade an implementation against these expectations.
-The demo.html should pass all tests, and the negative-demo.html should fail all tests.
-The output should be a single file named grader.ts. Do not modify any other files. Do this now.
+The output should be a single file named grader.ts. Do not modify any other files.
 `;
 
 /**
@@ -87,6 +65,12 @@ function setupIsolatedWorkDir(baseDir: string): string {
   filesToStage.forEach(file => {
     copyFileIfExists(path.join(baseDir, file), path.join(workDir, file));
   });
+
+  // copy template.grader.ts from the guides directory
+  copyFileIfExists(path.join(__dirname, 'template.grader.ts'), path.join(workDir, 'template.grader.ts'));
+
+  // Provide testing config to the agent
+  copyFileIfExists(path.join(__dirname, 'playwright.config.ts'), path.join(workDir, 'playwright.config.ts'));
 
   const geminiSource = path.join(path.resolve(process.env.HOME || process.cwd()), '.gemini');
   const geminiDest = path.join(tempHome, '.gemini');
@@ -116,6 +100,13 @@ async function run() {
   const workDir = setupIsolatedWorkDir(targetDir);
 
   try {
+    console.log(`Setting up Playwright in isolated environment...`);
+    // Provide isolated Playwright install to the directory
+    const { execSync } = await import('child_process');
+    execSync('npm init -y', { cwd: workDir, stdio: 'ignore' });
+    execSync('npm install -D @playwright/test', { cwd: workDir, stdio: 'ignore' });
+    execSync('npx playwright install chromium', { cwd: workDir, stdio: 'ignore', env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: path.join(workDir, '.cache', 'ms-playwright') } });
+
     console.log(`Starting Gemini CLI agent for grader generation in ${workDir}`);
 
     const command = config.environment.geminiCliBin;

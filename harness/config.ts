@@ -45,7 +45,7 @@ export const environmentConfig: EnvironmentConfig = {
 // *** Run with: `pnpm suite`  ***
 // *******************************
 export const suiteConfig: SuiteConfig = {
-  name: 'cards-claude-skills-sample',
+  name: 'validate_changes',
   numRuns: 1,
   baseApps: ['cards-app'],
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
@@ -58,7 +58,7 @@ export const suiteConfig: SuiteConfig = {
 // *** Run with: `pnpm report`      ***
 // ************************************
 export const evalConfig: EvalConfig = {
-  suiteName: 'cards-claude-skills-sample',
+  suiteName: 'validate_changes',
   guidesToTest: ['content-vis'],
   expectedGuides: {
     // Structure: { <baseApp name>: <list of expected guides> }
