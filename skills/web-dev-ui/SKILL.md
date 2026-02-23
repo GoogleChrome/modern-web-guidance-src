@@ -13,4 +13,3 @@ This skill provides guides for creating modern, high-quality UI components and e
 - **Color Systems**: Implement modern color palettes and themes. See [guides/color-systems.md](guides/color-systems.md).
 - **Scroll-driven Animations**: Create animations linked to scroll position. See [guides/scroll-driven-animations.md](guides/scroll-driven-animations.md).
 - **Tooltip**: Build accessible tooltips with Popover API and Anchor Positioning. See [guides/tooltip.md](guides/tooltip.md).
-- **Page Visibility State**: Detect when a page is hidden or visible. See [guides/page-visibility-state.md](guides/page-visibility-state.md).
