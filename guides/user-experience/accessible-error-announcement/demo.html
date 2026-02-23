@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Accessible Error Announcement Demo (Polyfilled)</title>
+  <title>Accessible Error Announcement Demo (Fallbacked)</title>
   <style>
     body {
       font-family: system-ui, sans-serif;
@@ -40,10 +41,10 @@
 
     /* 
       Visual State - Native Browser Logic 
-      We duplicate styles for the polyfill class to ensure consistency
+      We duplicate styles for the fallback class to ensure consistency
     */
     input:user-invalid,
-    input.user-invalid-polyfill {
+    input.user-invalid-fallback {
       border-color: #d93025;
       background-color: #fce8e6;
     }
@@ -60,9 +61,9 @@
       font-weight: bold;
     }
 
-    /* Show error if native selector matches OR polyfill class is present */
-    input:user-invalid + .error-message,
-    input.user-invalid-polyfill + .error-message {
+    /* Show error if native selector matches OR fallback class is present */
+    input:user-invalid+.error-message,
+    input.user-invalid-fallback+.error-message {
       display: block;
     }
 
@@ -78,36 +79,32 @@
     }
   </style>
 </head>
+
 <body>
 
   <h1>Accessible Error Announcement</h1>
-  <p>This demo synchronizes the visual <code>:user-invalid</code> state with the semantic <code>aria-invalid</code> attribute. It includes a robust polyfill for older browsers.</p>
-  
+  <p>This demo synchronizes the visual <code>:user-invalid</code> state with the semantic <code>aria-invalid</code>
+    attribute. It includes a robust fallback for older browsers.</p>
+
   <div style="margin-bottom: 1rem;">
-    <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; background: #f0f0f0; padding: 0.5rem 1rem; border-radius: 4px;">
-      <input type="checkbox" id="force-polyfill">
-      <strong>Force Polyfill Mode</strong> (Simulate older browser)
+    <label
+      style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; background: #f0f0f0; padding: 0.5rem 1rem; border-radius: 4px;">
+      <input type="checkbox" id="force-fallback">
+      <strong>Force Fallback Mode</strong> (Simulate older browser)
     </label>
   </div>
 
-  <div id="polyfill-status" style="padding: 1rem; background: #eee; margin-bottom: 1rem; border-radius: 4px;">
+  <div id="fallback-status" style="padding: 1rem; background: #eee; margin-bottom: 1rem; border-radius: 4px;">
     Checking support...
   </div>
 
-  <form id="demo-form" novalidate>
-    
+  <form id="demo-form" action="#" onsubmit="event.preventDefault();" novalidate>
+
     <div class="form-group">
       <label for="username">Username (Required, min 3 chars)</label>
       <span class="hint" id="username-hint">Type 1-2 chars and tab away to see error.</span>
-      <input 
-        type="text" 
-        id="username" 
-        name="username" 
-        required 
-        minlength="3"
-        aria-describedby="username-hint"
-        aria-errormessage="username-error"
-      >
+      <input type="text" id="username" name="username" required minlength="3" aria-describedby="username-hint"
+        aria-errormessage="username-error">
       <div id="username-error" class="error-message">
         Username must be at least 3 characters long.
       </div>
@@ -116,126 +113,177 @@
 
     <div class="form-group">
       <label for="email">Email Address</label>
-      <input 
-        type="email" 
-        id="email" 
-        name="email" 
-        required
-        aria-errormessage="email-error"
-      >
+      <input type="email" id="email" name="email" required aria-errormessage="email-error">
       <div id="email-error" class="error-message">
         Please enter a valid email address.
       </div>
       <div class="debug-info" id="email-debug">aria-invalid: null</div>
     </div>
 
-    <button type="submit">Submit</button>
+    <div style="display: flex; gap: 1rem;">
+      <button type="submit">Submit</button>
+      <button type="reset">Reset</button>
+      </div>
   </form>
 
   <script>
     const form = document.getElementById('demo-form');
-    const statusDiv = document.getElementById('polyfill-status');
-    const forcePolyfillCheckbox = document.getElementById('force-polyfill');
-    
-    // State to track if we are using native or polyfill logic
+    const statusDiv = document.getElementById('fallback-status');
+    const forceFallbackCheckbox = document.getElementById('force-fallback');
+
+    // State to track if we are using native or fallback logic
     let useNativeLogic = false;
 
-    const updateFeatureState = () => {
-      // 1. Feature Detection
-      // Check if the browser supports the :user-invalid selector
-      // AND if the user hasn't forced the polyfill mode
+                // 1. Feature Detection & Mode Switching
+                const updateFeatureState = () => {
       const nativelySupported = CSS.supports('selector(:user-invalid)');
-      const forced = forcePolyfillCheckbox.checked;
-      
+      const forced = forceFallbackCheckbox.checked;
+
       useNativeLogic = nativelySupported && !forced;
-      
+
       if (useNativeLogic) {
         statusDiv.textContent = "✅ Native :user-invalid supported. Using browser logic.";
         statusDiv.style.background = "#e6f4ea";
         statusDiv.style.color = "#137333";
-        document.body.classList.remove('polyfill-active');
       } else {
         const reason = forced ? "(Forced)" : "(Not supported)";
-        statusDiv.textContent = `⚠️ Using JS polyfill logic ${reason}.`;
+        statusDiv.textContent = `⚠️ Using JS fallback logic ${reason}.`;
         statusDiv.style.background = "#fff8e1";
         statusDiv.style.color = "#b06000";
-        document.body.classList.add('polyfill-active');
       }
 
-      // Re-run validation on all inputs to match the new mode
-      document.querySelectorAll('input').forEach(input => {
-        // If switching back to native, clear polyfill artifacts
-        if (useNativeLogic) {
-          input.classList.remove('user-invalid-polyfill');
-        }
-        // Re-calculate state
-        updateAriaState({ target: input, type: 'mode-change' });
+                // Reset when switching modes
+                form.querySelectorAll('input').forEach(input => {
+          input.classList.remove('user-invalid-fallback');
+                input.classList.remove('user-valid-fallback');
+                input.removeAttribute('aria-invalid');
+                updateDebugInfo(input);
       });
+
+                // Initialize fallback if needed
+                if (!useNativeLogic) {
+                  UserInvalidFallback.init(form);
+                }
     };
 
-    // Listen for toggle
-    forcePolyfillCheckbox.addEventListener('change', updateFeatureState);
+                const updateDebugInfo = (input) => {
+                  const debugEl = document.getElementById(`${input.id}-debug`);
+                  if (debugEl) {
+                    debugEl.textContent = `aria-invalid: ${input.getAttribute('aria-invalid') || 'null'}`;
+                  }
+                };
 
-    const updateAriaState = (event) => {
-      const input = event.target;
-      
-      // Only run on form controls
-      if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(input.tagName)) return;
+                forceFallbackCheckbox.addEventListener('change', () => {
+                  updateFeatureState();
+                });
 
-      let isInvalidState = false;
+                // 2. The Fallback (Synced from guide.md)
+                const UserInvalidFallback = (() => {
+                  const dirtyState = new WeakMap();
 
-      if (useNativeLogic) {
-        // --- NATIVE PATH ---
-        // Rely purely on the browser's internal logic
-        isInvalidState = input.matches(':user-invalid');
-      } else {
-        // --- POLYFILL PATH ---
-        // We need to manually track "user interaction" (dirty state)
-        
-        // Mark as dirty if the user blurs the field
-        if (event.type === 'blur') {
-          input.dataset.dirty = 'true';
-        }
-        
-        // If the field is dirty, check its validity using the Constraint Validation API
-        if (input.dataset.dirty === 'true') {
-           // checkValidity() returns true if valid, false if invalid
-           // We want isInvalidState to be true if checkValidity() is false
-           isInvalidState = !input.checkValidity();
-           
-           // Toggle the polyfill class for visual styling
-           if (isInvalidState) {
-             input.classList.add('user-invalid-polyfill');
-           } else {
-             input.classList.remove('user-invalid-polyfill');
-           }
-        }
-      }
+                const updateState = (input) => {
+                  const isValid = input.checkValidity();
 
-      // --- SYNC ARIA ---
-      if (isInvalidState) {
-        input.setAttribute('aria-invalid', 'true');
-      } else {
-        // We remove it (or set to false) when not invalid
-        input.removeAttribute('aria-invalid');
-      }
+                // Update both visual and ARIA state
+                input.classList.toggle('user-invalid-fallback', !isValid);
+                input.classList.toggle('user-valid-fallback', isValid);
 
-      // Update Debug Info
-      const debugEl = document.getElementById(`${input.id}-debug`);
-      if (debugEl) {
-        debugEl.textContent = `aria-invalid: ${input.getAttribute('aria-invalid') || 'null'}`;
-      }
-    };
+                if (!isValid) {
+                  input.setAttribute('aria-invalid', 'true');
+                } else {
+                  input.removeAttribute('aria-invalid');
+                }
+              };
 
-    // Use Event Delegation
-    // 'blur' is critical for both native (state commit) and polyfill (dirty tracking)
-    form.addEventListener('blur', updateAriaState, true); // Capture phase
-    
-    // 'input' captures real-time corrections
-    form.addEventListener('input', updateAriaState);
+                const handleEvent = (event) => {
+                  const input = event.target;
 
-    // Initial check
+                  if (event.type === 'reset') {
+                    const controls = input.elements || [];
+                    for (const control of controls) {
+                      dirtyState.delete(control);
+                      control.classList.remove('user-invalid-fallback');
+                      control.classList.remove('user-valid-fallback');
+                      control.removeAttribute('aria-invalid');
+                    }
+                    return;
+                  }
+
+                if (!input.checkValidity) return;
+
+                // Track if user has interacted with the field at all.
+                const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
+
+                if (event.type === 'input' || event.type === 'change') {
+                  state.hasInteracted = true;
+                  dirtyState.set(input, state);
+                
+                  // Only update live if they've already blurred once (mimicking native behavior)
+                  if (state.hasBlurred) {
+                    updateState(input);
+                  }
+                } else if (event.type === 'blur') {
+                  state.hasBlurred = true;
+                  dirtyState.set(input, state);
+
+                  // Validate on blur only if they meaningfully interacted
+                  if (state.hasInteracted) {
+                    updateState(input);
+                  }
+                }
+                };
+
+                const init = (root = document) => {
+                  const nativelySupported = CSS.supports('selector(:user-invalid)');
+                  if (nativelySupported && !forceFallbackCheckbox.checked) return;
+
+                  root.addEventListener('blur', handleEvent, true); // Capture phase
+                  root.addEventListener('input', handleEvent);
+                  root.addEventListener('change', handleEvent);
+                  root.addEventListener('reset', handleEvent, true); // Capture resets
+                };
+
+                return { init };
+              })();
+
+                // 3. For native support, we still need to sync ARIA state
+                // because :user-invalid exists but aria-invalid doesn't auto-sync.
+                form.addEventListener('blur', (e) => {
+                  if (useNativeLogic && e.target.checkValidity) {
+                    const isInvalid = e.target.matches(':user-invalid');
+                    if (isInvalid) {
+                      e.target.setAttribute('aria-invalid', 'true');
+                    } else {
+                    e.target.removeAttribute('aria-invalid');
+                  }
+                }
+                // Update debug info for the demo
+                updateDebugInfo(e.target);
+              }, true);
+
+                form.addEventListener('input', (e) => {
+                  if (useNativeLogic && e.target.checkValidity) {
+                    if (e.target.hasAttribute('aria-invalid')) {
+                      const isInvalid = e.target.matches(':user-invalid');
+                      if (!isInvalid) e.target.removeAttribute('aria-invalid');
+                    }
+                }
+                // Update debug info for the demo
+                updateDebugInfo(e.target);
+              });
+
+                form.addEventListener('reset', (e) => {
+                  setTimeout(() => {
+                    Array.from(e.target.elements).forEach(el => {
+                      if (useNativeLogic) el.removeAttribute('aria-invalid');
+                      updateDebugInfo(el);
+                    });
+                  }, 0);
+                });
+
+                // Init
     updateFeatureState();
   </script>
 </body>
+
 </html>

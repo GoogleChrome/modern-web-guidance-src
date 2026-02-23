@@ -29,18 +29,20 @@ See [MDN aria-invalid](https://developer.mozilla.org/en-US/docs/Web/Accessibilit
 Link your input to its error message using `aria-errormessage` (or `aria-describedby` for broader support).
 
 ```html
-<div class="field">
-  <label for="email">Email</label>
-  <input 
-    type="email" 
-    id="email" 
-    required 
-    aria-errormessage="email-error"
-  >
-  <span id="email-error" class="error-msg">
-    Please enter a valid email address.
-  </span>
-</div>
+<form>
+  <div class="field">
+    <label for="email">Email</label>
+    <input 
+      type="email" 
+      id="email" 
+      required 
+      aria-errormessage="email-error"
+    >
+    <span id="email-error" class="error-msg">
+      Please enter a valid email address.
+    </span>
+  </div>
+</form>
 ```
 
 ### 2. CSS
@@ -97,7 +99,7 @@ inputs.forEach(input => {
 });
 ```
 
-## Polyfilling & Browser Support
+## Fallbacking & Browser Support
 
 The `:user-invalid` pseudo-class is widely supported (Baseline 2023), but older browsers need a fallback.
 
@@ -111,43 +113,93 @@ if (!CSS.supports('selector(:user-invalid)')) {
 }
 ```
 
-### CSS for Polyfill
-To ensure your fallback logic is visually indistinguishable from the native behavior, you must apply your error styles to both the pseudo-class and your polyfill class.
+### CSS for Fallback
+To ensure your fallback logic is visually indistinguishable from the native behavior, you must apply your error styles to both the pseudo-class and your fallback class.
 
 ```css
-/* Apply error styles to both native selector and polyfill class */
+/* Apply error styles to both native selector and fallback class */
 input:user-invalid,
-input.user-invalid-polyfill {
+input.user-invalid-fallback {
   border-color: #d93025;
   background-color: #fce8e6;
 }
 
 /* Show error message for both cases */
 input:user-invalid ~ .error-msg,
-input.user-invalid-polyfill ~ .error-msg {
+input.user-invalid-fallback ~ .error-msg {
   display: block;
 }
 ```
 
 ### Fallback Logic
-If `:user-invalid` is missing, you must manually track the "dirty" (interacted) state.
+If `:user-invalid` is missing manually track the interaction state using a `WeakMap`.
 
 ```javascript
-const handleFallback = (event) => {
-  const input = event.target;
-  // Simple "dirty" tracking: once blurred, it's visited.
-  if (event.type === 'blur') {
-    input.classList.add('dirty');
-  }
-  
-  // If dirty, check validity standard way
-  if (input.classList.contains('dirty')) {
-    const isInvalid = !input.checkValidity();
-    input.setAttribute('aria-invalid', isInvalid);
-    // Toggle a class for CSS to use instead of :user-invalid
-    input.classList.toggle('user-invalid-polyfill', isInvalid);
-  }
-};
+const UserInvalidFallback = (() => {
+  const dirtyState = new WeakMap();
+
+  const updateState = (input) => {
+    const isValid = input.checkValidity();
+
+    // Update both visual and ARIA state
+    input.classList.toggle('user-invalid-fallback', !isValid);
+    input.classList.toggle('user-valid-fallback', isValid);
+
+    if (!isValid) {
+      input.setAttribute('aria-invalid', 'true');
+    } else {
+      input.removeAttribute('aria-invalid');
+    }
+  };
+
+  const handleEvent = (event) => {
+    const input = event.target;
+
+    if (event.type === 'reset') {
+      const controls = input.elements || [];
+      for (const control of controls) {
+        dirtyState.delete(control);
+        control.classList.remove('user-invalid-fallback');
+        control.classList.remove('user-valid-fallback');
+        control.removeAttribute('aria-invalid');
+      }
+      return;
+    }
+
+    if (!input.checkValidity) return;
+
+    if (event.type === 'input' || event.type === 'change') {
+      const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
+      state.hasInteracted = true;
+      dirtyState.set(input, state);
+      if (state.hasBlurred) {
+        updateState(input);
+      }
+    } else if (event.type === 'blur') {
+      const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
+      state.hasBlurred = true;
+      dirtyState.set(input, state);
+      if (state.hasInteracted) {
+        updateState(input);
+      }
+    }
+  };
+
+  const init = (root = document) => {
+    if (CSS.supports('selector(:user-invalid)')) return;
+
+    root.addEventListener('blur', handleEvent, true); // Capture phase
+    root.addEventListener('input', handleEvent);
+    root.addEventListener('change', handleEvent);
+    root.addEventListener('reset', handleEvent, true); // Capture resets
+  };
+
+  return { init };
+})();
+
+// Initialize for a specific form
+const form = document.querySelector('#demo-form');
+UserInvalidFallback.init(form);
 ```
 
 ## Other Considerations
