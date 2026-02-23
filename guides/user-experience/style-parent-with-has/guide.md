@@ -176,3 +176,7 @@ form.addEventListener('reset', () => {
   });
 });
 ```
+
+## Other Considerations
+
+1.  **Accessibility**: While the fallback script automatically toggles `aria-invalid`, native `:user-invalid` does not automatically sync with ARIA attributes. To ensure a consistent accessibility experience for all users, see the [Accessible Error Announcement](../accessible-error-announcement/guide.md) guide.
