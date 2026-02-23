@@ -2,4 +2,3 @@ packages:
   - 'serving'
   - 'harness'
   - 'eval-view'
-  - 'use-cases'

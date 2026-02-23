@@ -45,7 +45,7 @@ export const environmentConfig: EnvironmentConfig = {
 // *** Run with: `pnpm suite`  ***
 // *******************************
 export const suiteConfig: SuiteConfig = {
-  name: 'validate_changes',
+  name: 'cards-gemini-mcp',
   numRuns: 1,
   baseApps: ['cards-app'],
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
@@ -58,7 +58,7 @@ export const suiteConfig: SuiteConfig = {
 // *** Run with: `pnpm report`      ***
 // ************************************
 export const evalConfig: EvalConfig = {
-  suiteName: 'validate_changes',
+  suiteName: 'cards-gemini-mcp',
   guidesToTest: ['content-vis'],
   expectedGuides: {
     // Structure: { <baseApp name>: <list of expected guides> }

@@ -97,7 +97,8 @@ export async function collectResults(resultsDir: string) {
               console.log(`Running grader for ${guide} in ${dir}...`);
               // Use spawnSync to handle exit codes without throwing
               const { spawnSync } = await import('child_process');
-              const result = spawnSync('pnpm', ['--silent', '--filter', 'use-cases', 'exec', 'playwright', 'test', graderPath, '--reporter=json'], {
+              const playwrightConfig = path.join(guidesDir, 'playwright.config.ts');
+              const result = spawnSync('npx', ['playwright', 'test', '-c', playwrightConfig, graderPath, '--reporter=json'], {
                 encoding: 'utf-8',
                 stdio: 'pipe',
                 env: { ...process.env, TARGET_FILE: targetFile },
