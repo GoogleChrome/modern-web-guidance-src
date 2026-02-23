@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Demo</title>
+  <title>Positive Demo (With content-visibility)</title>
   <style>
     :root {
       --primary: #2563eb;
@@ -21,6 +21,7 @@
       line-height: 1.5;
     }
 
+    /* Control Panel */
     .controls {
       position: fixed;
       top: 0;
@@ -71,13 +72,19 @@
       font-weight: bold;
     }
 
+    /* The Feed */
     .feed {
       max-width: 800px;
       margin: 6rem auto 2rem;
       padding: 0 1rem;
     }
 
+
+
+    /* Complex Card to make rendering expensive */
     .card {
+      content-visibility: auto;
+      contain-intrinsic-size: auto 400px; /* Approximate height of a card */
       background: var(--card-bg);
       border-radius: 1rem;
       padding: 1.5rem;
@@ -96,6 +103,7 @@
       transform: translateY(-4px);
     }
 
+    /* Nested elements to increase DOM depth and painting */
     .nested-layer {
       position: absolute;
       inset: 0;
@@ -111,6 +119,7 @@
       align-items: center;
       gap: 1rem;
       margin-bottom: 1rem;
+      /* Expensive backdrop-filter */
       filter: blur(15px) contrast(1.1);
       padding: 0.5rem;
       border-radius: 0.5rem;
@@ -148,6 +157,7 @@
       width: 40%;
     }
 
+    /* Decorative "expensive" elements */
     .expensive-element {
       height: 150px;
       margin-top: 1rem;
@@ -156,8 +166,10 @@
       position: relative;
       overflow: hidden;
       box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+      /* Add heavy filters to increase paint/layout cost */
       filter: blur(1px) url(#expensiveFilter);
       transform: translateZ(0);
+      /* Force layer creation */
     }
 
     .expensive-element::after {
@@ -191,6 +203,7 @@
 </head>
 
 <body>
+  <!-- Ultra-Heavy SVG Filter for extreme rendering stress -->
   <svg style="position: absolute; width: 0; height: 0;" aria-hidden="true">
     <filter id="expensiveFilter">
       <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="5" result="noise" />
@@ -216,10 +229,11 @@
 
   <div class="feed" id="feed">
     <div class="info-text">
-      <h1>Negative Demo: No content-visibility</h1>
-      <p>This page contains 500 complex cards. This page has <strong>no</strong> <code>content-visibility</code>
-        optimizations applied. It will render all cards on load.</p>
+      <h1>Positive Demo: With content-visibility optimization</h1>
+      <p>This page contains 500 complex cards. This page has <strong>now</strong> <code>content-visibility: auto</code>
+        optimizations applied. It should render much faster.</p>
     </div>
+    <!-- Cards will be injected here -->
   </div>
 
   <script>
@@ -235,6 +249,7 @@
       const card = document.createElement('div');
       card.className = 'card';
 
+      // Add a nested expensive layer
       const layer = document.createElement('div');
       layer.className = 'nested-layer';
       card.appendChild(layer);
@@ -281,6 +296,7 @@
     }
 
     function renderCards() {
+      // Keep the info-text
       const info = feed.querySelector('.info-text');
       feed.innerHTML = '';
       feed.appendChild(info);
@@ -295,6 +311,7 @@
       measureRender(startTime);
     }
 
+    // Initial render 500ms after onload
     window.addEventListener('load', () => {
       setTimeout(renderCards, 500);
     });

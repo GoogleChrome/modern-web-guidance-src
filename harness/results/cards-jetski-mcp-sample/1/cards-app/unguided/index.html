@@ -216,9 +216,8 @@
 
   <div class="feed" id="feed">
     <div class="info-text">
-      <h1>Negative Demo: No content-visibility</h1>
-      <p>This page contains 500 complex cards. This page has <strong>no</strong> <code>content-visibility</code>
-        optimizations applied. It will render all cards on load.</p>
+      <h1>Optimized Demo: Infinite Scroll</h1>
+      <p>This page contains 500 complex cards. This page uses <strong>IntersectionObserver</strong> to load cards as you scroll, significantly improving initial load time.</p>
     </div>
   </div>
 
@@ -269,37 +268,91 @@
           const duration = Math.round(performance.now() - startTime);
           timerSpan.textContent = `${duration}ms${suffix}`;
 
-          if (duration < 75) {
-            detectedSpan.textContent = 'content-visibility: detected';
+          if (duration < 100) {
+            detectedSpan.textContent = 'Optimization: Active';
             detectedSpan.style.color = '#16a34a';
           } else {
-            detectedSpan.textContent = 'content-visibility: NOT detected';
+            detectedSpan.textContent = 'Optimization: Slow';
             detectedSpan.style.color = '#dc2626';
           }
         });
       });
     }
 
-    function renderCards() {
-      const info = feed.querySelector('.info-text');
-      feed.innerHTML = '';
-      feed.appendChild(info);
+    const BATCH_SIZE = 20;
+    let currentIndex = 0;
+    let observer;
 
-      const startTime = performance.now();
+    function loadBatch(startTime) {
       const fragment = document.createDocumentFragment();
-      for (let i = 0; i < cardCount; i++) {
+      const endIndex = Math.min(currentIndex + BATCH_SIZE, cardCount);
+      
+      for (let i = currentIndex; i < endIndex; i++) {
         fragment.appendChild(createCard(i));
       }
-      feed.appendChild(fragment);
+      
+      const sentinel = document.getElementById('sentinel');
+      if (sentinel) {
+        feed.insertBefore(fragment, sentinel);
+      } else {
+        feed.appendChild(fragment);
+      }
+      
+      currentIndex = endIndex;
+      
+      if (currentIndex >= cardCount) {
+        if (observer && sentinel) observer.unobserve(sentinel);
+        if (sentinel) {
+            sentinel.textContent = 'All cards loaded';
+            sentinel.style.padding = '20px';
+        }
+      }
 
-      measureRender(startTime);
+      if (startTime) measureRender(startTime, ' (initial batch)');
+    }
+
+    function initInfiniteScroll() {
+      const info = feed.querySelector('.info-text');
+      feed.innerHTML = '';
+      if (info) feed.appendChild(info);
+      
+      currentIndex = 0;
+      
+      let sentinel = document.getElementById('sentinel');
+      if (!sentinel) {
+          sentinel = document.createElement('div');
+          sentinel.id = 'sentinel';
+          sentinel.style.height = '40px';
+          sentinel.style.textAlign = 'center';
+          sentinel.style.padding = '10px';
+          sentinel.style.color = '#94a3b8';
+          sentinel.textContent = 'Loading more...';
+          feed.appendChild(sentinel);
+      } else {
+          sentinel.textContent = 'Loading more...';
+          sentinel.style.display = 'block';
+          feed.appendChild(sentinel);
+      }
+
+      if (observer) observer.disconnect();
+      
+      observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && currentIndex < cardCount) {
+          loadBatch();
+        }
+      }, { rootMargin: '400px' });
+      
+      observer.observe(sentinel);
+
+      const startTime = performance.now();
+      loadBatch(startTime);
     }
 
     window.addEventListener('load', () => {
-      setTimeout(renderCards, 500);
+      setTimeout(initInfiniteScroll, 500);
     });
 
-    regenBtn.addEventListener('click', renderCards);
+    regenBtn.addEventListener('click', initInfiniteScroll);
 
 
   </script>

@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Demo</title>
+  <title>Negative Demo (No content-visibility)</title>
   <style>
     :root {
       --primary: #2563eb;
@@ -21,6 +21,7 @@
       line-height: 1.5;
     }
 
+    /* Control Panel */
     .controls {
       position: fixed;
       top: 0;
@@ -71,12 +72,16 @@
       font-weight: bold;
     }
 
+    /* The Feed */
     .feed {
       max-width: 800px;
       margin: 6rem auto 2rem;
       padding: 0 1rem;
     }
 
+
+
+    /* Complex Card to make rendering expensive */
     .card {
       background: var(--card-bg);
       border-radius: 1rem;
@@ -96,6 +101,7 @@
       transform: translateY(-4px);
     }
 
+    /* Nested elements to increase DOM depth and painting */
     .nested-layer {
       position: absolute;
       inset: 0;
@@ -111,6 +117,7 @@
       align-items: center;
       gap: 1rem;
       margin-bottom: 1rem;
+      /* Expensive backdrop-filter */
       filter: blur(15px) contrast(1.1);
       padding: 0.5rem;
       border-radius: 0.5rem;
@@ -148,6 +155,7 @@
       width: 40%;
     }
 
+    /* Decorative "expensive" elements */
     .expensive-element {
       height: 150px;
       margin-top: 1rem;
@@ -156,8 +164,10 @@
       position: relative;
       overflow: hidden;
       box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+      /* Add heavy filters to increase paint/layout cost */
       filter: blur(1px) url(#expensiveFilter);
       transform: translateZ(0);
+      /* Force layer creation */
     }
 
     .expensive-element::after {
@@ -191,6 +201,7 @@
 </head>
 
 <body>
+  <!-- Ultra-Heavy SVG Filter for extreme rendering stress -->
   <svg style="position: absolute; width: 0; height: 0;" aria-hidden="true">
     <filter id="expensiveFilter">
       <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="5" result="noise" />
@@ -220,6 +231,7 @@
       <p>This page contains 500 complex cards. This page has <strong>no</strong> <code>content-visibility</code>
         optimizations applied. It will render all cards on load.</p>
     </div>
+    <!-- Cards will be injected here -->
   </div>
 
   <script>
@@ -231,10 +243,22 @@
 
 
 
+    const loadedCountSpan = document.createElement('span');
+    loadedCountSpan.className = 'metric';
+    loadedCountSpan.style.marginLeft = '1rem';
+    loadedCountSpan.textContent = '0/500';
+    document.querySelector('.controls > div').appendChild(loadedCountSpan);
+
+    let currentIndex = 0;
+    const BATCH_SIZE = 20;
+    let observer;
+    let sentinel;
+
     function createCard(index) {
       const card = document.createElement('div');
       card.className = 'card';
 
+      // Add a nested expensive layer
       const layer = document.createElement('div');
       layer.className = 'nested-layer';
       card.appendChild(layer);
@@ -270,31 +294,75 @@
           timerSpan.textContent = `${duration}ms${suffix}`;
 
           if (duration < 75) {
-            detectedSpan.textContent = 'content-visibility: detected';
+            detectedSpan.textContent = 'Fast Render';
             detectedSpan.style.color = '#16a34a';
           } else {
-            detectedSpan.textContent = 'content-visibility: NOT detected';
+            detectedSpan.textContent = 'Slow Render';
             detectedSpan.style.color = '#dc2626';
           }
         });
       });
     }
 
+    function loadMoreCards() {
+      if (currentIndex >= cardCount) return;
+
+      const startTime = performance.now();
+      const fragment = document.createDocumentFragment();
+      const endIndex = Math.min(currentIndex + BATCH_SIZE, cardCount);
+
+      for (let i = currentIndex; i < endIndex; i++) {
+        fragment.appendChild(createCard(i));
+      }
+      
+      // Insert before sentinel
+      feed.insertBefore(fragment, sentinel);
+      
+      currentIndex = endIndex;
+      loadedCountSpan.textContent = `${currentIndex}/${cardCount}`;
+      
+      measureRender(startTime, ' (batch)');
+
+      if (currentIndex >= cardCount) {
+        observer.unobserve(sentinel);
+        sentinel.remove();
+      }
+    }
+
     function renderCards() {
+      // Cleanup previous observer
+      if (observer && sentinel) {
+        observer.unobserve(sentinel);
+      }
+      
+      // Reset state
+      currentIndex = 0;
+      
+      // Keep the info-text
       const info = feed.querySelector('.info-text');
       feed.innerHTML = '';
       feed.appendChild(info);
 
-      const startTime = performance.now();
-      const fragment = document.createDocumentFragment();
-      for (let i = 0; i < cardCount; i++) {
-        fragment.appendChild(createCard(i));
-      }
-      feed.appendChild(fragment);
+      // Create Sentinel
+      sentinel = document.createElement('div');
+      sentinel.style.height = '20px';
+      sentinel.style.marginTop = '20px';
+      feed.appendChild(sentinel);
 
-      measureRender(startTime);
+      // Setup Observer
+      observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+          loadMoreCards();
+        }
+      }, { rootMargin: '400px' });
+
+      observer.observe(sentinel);
+      
+      // Load initial batch immediately
+      loadMoreCards();
     }
 
+    // Initial render 500ms after onload
     window.addEventListener('load', () => {
       setTimeout(renderCards, 500);
     });

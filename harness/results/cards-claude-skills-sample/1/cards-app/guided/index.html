@@ -96,6 +96,13 @@
       transform: translateY(-4px);
     }
 
+    @supports (content-visibility: auto) {
+      .card {
+        content-visibility: auto;
+        contain-intrinsic-size: auto 400px;
+      }
+    }
+
     .nested-layer {
       position: absolute;
       inset: 0;
@@ -216,9 +223,9 @@
 
   <div class="feed" id="feed">
     <div class="info-text">
-      <h1>Negative Demo: No content-visibility</h1>
-      <p>This page contains 500 complex cards. This page has <strong>no</strong> <code>content-visibility</code>
-        optimizations applied. It will render all cards on load.</p>
+      <h1>Optimized Demo: content-visibility</h1>
+      <p>This page contains 500 complex cards with <code>content-visibility: auto</code>
+        applied. Off-screen cards are skipped during rendering, improving initial load time.</p>
     </div>
   </div>
 

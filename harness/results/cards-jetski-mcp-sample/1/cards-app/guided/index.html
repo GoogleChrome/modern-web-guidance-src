@@ -90,6 +90,10 @@
       will-change: transform;
       position: relative;
       overflow: hidden;
+      /* Optimization: content-visibility */
+      content-visibility: auto;
+      contain-intrinsic-size: auto 500px;
+      /* 'auto' allows recalling rendered size */
     }
 
     .card:hover {
@@ -120,10 +124,14 @@
     .avatar {
       width: 48px;
       height: 48px;
-      background: linear-gradient(45deg, var(--primary), #818cf8);
       border-radius: 50%;
       flex-shrink: 0;
+      object-fit: cover;
+      background: #e2e8f0;
+      /* Placeholder while loading */
     }
+
+    /* ... rest of styles ... */
 
     .card-title {
       height: 1.2rem;
@@ -187,6 +195,16 @@
       text-align: center;
       color: #64748b;
     }
+
+    .loading-sentinel {
+      height: 50px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #64748b;
+      font-style: italic;
+    }
   </style>
 </head>
 
@@ -216,9 +234,10 @@
 
   <div class="feed" id="feed">
     <div class="info-text">
-      <h1>Negative Demo: No content-visibility</h1>
-      <p>This page contains 500 complex cards. This page has <strong>no</strong> <code>content-visibility</code>
-        optimizations applied. It will render all cards on load.</p>
+      <h1>Optimized Demo: Infinite Scroll & content-visibility</h1>
+      <p>This page initially loads 20 cards. As you scroll, more cards are loaded.
+        <code>content-visibility: auto</code> is applied to skip rendering off-screen content.
+      </p>
     </div>
   </div>
 
@@ -227,9 +246,15 @@
     const regenBtn = document.getElementById('regenerate');
     const timerSpan = document.getElementById('timer');
     const detectedSpan = document.getElementById('detected');
-    const cardCount = 500;
 
+    // Config
+    const TOTAL_CARDS = 500;
+    const BATCH_SIZE = 20;
+    let loadedCount = 0;
 
+    // Intersection Observer for Infinite Scroll
+    let observer;
+    let sentinel;
 
     function createCard(index) {
       const card = document.createElement('div');
@@ -241,9 +266,15 @@
 
       const inner = document.createElement('div');
       inner.style.position = 'relative';
+
+      // Use a consistent random image based on index to avoid flickering on re-render if we were doing that,
+      // but here we just want a nice image.
+      const imgId = 100 + (index % 50); // cycle through 50 images
+      const imgUrl = `https://picsum.photos/id/${imgId}/200/200`;
+
       inner.innerHTML = `
                 <div class="card-header">
-                    <div class="avatar" style="filter: drop-shadow(0 0 10px var(--primary))"></div>
+                    <img class="avatar" src="${imgUrl}" loading="lazy" alt="Avatar" style="filter: drop-shadow(0 0 10px var(--primary))">
                     <div class="card-title"></div>
                 </div>
                 <div class="card-content">
@@ -263,43 +294,101 @@
       return card;
     }
 
-    function measureRender(startTime, suffix = '') {
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          const duration = Math.round(performance.now() - startTime);
-          timerSpan.textContent = `${duration}ms${suffix}`;
-
-          if (duration < 75) {
-            detectedSpan.textContent = 'content-visibility: detected';
-            detectedSpan.style.color = '#16a34a';
-          } else {
-            detectedSpan.textContent = 'content-visibility: NOT detected';
-            detectedSpan.style.color = '#dc2626';
-          }
-        });
-      });
+    function checkVisibilitySupport() {
+      // Simple check to see if the browser supports content-visibility
+      if (CSS.supports('content-visibility', 'auto')) {
+        detectedSpan.textContent = 'content-visibility: supported';
+        detectedSpan.style.color = '#16a34a';
+      } else {
+        detectedSpan.textContent = 'content-visibility: NOT supported';
+        detectedSpan.style.color = '#dc2626';
+      }
     }
 
-    function renderCards() {
+    function loadNextBatch() {
+      if (loadedCount >= TOTAL_CARDS) {
+        if (sentinel) {
+          sentinel.remove();
+          sentinel = null;
+        }
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      const limit = Math.min(loadedCount + BATCH_SIZE, TOTAL_CARDS);
+
+      for (let i = loadedCount; i < limit; i++) {
+        fragment.appendChild(createCard(i));
+      }
+
+      // Insert before sentinel if it exists, otherwise append
+      if (sentinel && sentinel.parentNode === feed) {
+        feed.insertBefore(fragment, sentinel);
+      } else {
+        feed.appendChild(fragment);
+      }
+
+      loadedCount = limit;
+
+      if (loadedCount >= TOTAL_CARDS && sentinel) {
+        sentinel.textContent = 'No more cards.';
+      }
+    }
+
+    function setupIntersectionObserver() {
+      if (observer) observer.disconnect();
+
+      const options = {
+        root: null, // viewport
+        rootMargin: '200px', // load before the user actually hits the bottom
+        threshold: 0.1
+      };
+
+      observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            loadNextBatch();
+          }
+        });
+      }, options);
+    }
+
+    function init() {
       const info = feed.querySelector('.info-text');
       feed.innerHTML = '';
       feed.appendChild(info);
 
-      const startTime = performance.now();
-      const fragment = document.createDocumentFragment();
-      for (let i = 0; i < cardCount; i++) {
-        fragment.appendChild(createCard(i));
-      }
-      feed.appendChild(fragment);
+      loadedCount = 0;
 
-      measureRender(startTime);
+      const startTime = performance.now();
+
+      // Initial load
+      loadNextBatch();
+
+      // Create Sentinel
+      sentinel = document.createElement('div');
+      sentinel.className = 'loading-sentinel';
+      sentinel.textContent = 'Loading more artifacts...';
+      feed.appendChild(sentinel);
+
+      setupIntersectionObserver();
+      observer.observe(sentinel);
+
+      // Measure initial render time (only relevant for the first batch now)
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const duration = Math.round(performance.now() - startTime);
+          timerSpan.textContent = `${duration}ms (1st batch)`;
+          checkVisibilitySupport();
+        });
+      });
     }
 
     window.addEventListener('load', () => {
-      setTimeout(renderCards, 500);
+      setTimeout(init, 500);
     });
 
-    regenBtn.addEventListener('click', renderCards);
+    regenBtn.addEventListener('click', init);
 
 
   </script>

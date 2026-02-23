@@ -1,0 +1,211 @@
+{
+  "summary": {
+    "unguidedMedian": 31,
+    "guidedMedian": 67,
+    "unguidedPassRate": 30,
+    "guidedPassRate": 80,
+    "unguidedPassed": 3,
+    "unguidedTotal": 10,
+    "guidedPassed": 8,
+    "guidedTotal": 10,
+    "numRuns": 1
+  },
+  "results": {
+    "cards-app - content-vis - unguided": [
+      {
+        "runNumber": 1,
+        "results": [
+          {
+            "passed": false,
+            "message": "Should contain content-visibility: auto"
+          },
+          {
+            "passed": false,
+            "message": "Should contain contain-intrinsic-size"
+          },
+          {
+            "passed": false,
+            "message": "Cards below the fold should have content-visibility: auto"
+          },
+          {
+            "passed": false,
+            "message": "Cards should have contain-intrinsic-size set"
+          },
+          {
+            "passed": true,
+            "message": "Initial render should be FAST (<150ms)"
+          },
+          {
+            "passed": false,
+            "message": "Off-screen content remains in A11y tree"
+          },
+          {
+            "passed": true,
+            "message": "No console warnings for forced layout"
+          }
+        ]
+      }
+    ],
+    "cards-app - preload-prerender - unguided": [
+      {
+        "runNumber": 1,
+        "results": [
+          {
+            "passed": false,
+            "message": "Should have <script type=\"speculationrules\">"
+          },
+          {
+            "passed": false,
+            "message": "Speculation rules should exclude /logout"
+          },
+          {
+            "passed": true,
+            "message": "Should NOT have deprecated <link rel=\"prerender\"> tag"
+          }
+        ]
+      }
+    ],
+    "cards-app - content-vis - guided": [
+      {
+        "runNumber": 1,
+        "results": [
+          {
+            "passed": true,
+            "message": "Should contain content-visibility: auto"
+          },
+          {
+            "passed": true,
+            "message": "Should contain contain-intrinsic-size"
+          },
+          {
+            "passed": true,
+            "message": "Cards below the fold should have content-visibility: auto"
+          },
+          {
+            "passed": true,
+            "message": "Cards should have contain-intrinsic-size set"
+          },
+          {
+            "passed": true,
+            "message": "Initial render should be FAST (<150ms)"
+          },
+          {
+            "passed": true,
+            "message": "Off-screen content remains in A11y tree"
+          },
+          {
+            "passed": true,
+            "message": "No console warnings for forced layout"
+          }
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-content-vis",
+              "passed": true,
+              "message": "Guide \"content-vis\" used"
+            },
+            {
+              "id": "guide-preload-prerender",
+              "passed": false,
+              "message": "Guide \"preload-prerender\" NOT found in resources"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-performance",
+              "source": "skills",
+              "timestamp": "2026-02-18T19:24:55-05:00"
+            },
+            {
+              "name": "content-vis.md",
+              "source": "web-dev-performance/guides",
+              "timestamp": "2026-02-18T19:24:55-05:00"
+            }
+          ]
+        }
+      }
+    ],
+    "cards-app - preload-prerender - guided": [
+      {
+        "runNumber": 1,
+        "results": [
+          {
+            "passed": false,
+            "message": "Should have <script type=\"speculationrules\">"
+          },
+          {
+            "passed": false,
+            "message": "Speculation rules should exclude /logout"
+          },
+          {
+            "passed": true,
+            "message": "Should NOT have deprecated <link rel=\"prerender\"> tag"
+          }
+        ],
+        "guideResults": {
+          "checks": [
+            {
+              "id": "resources-exist",
+              "passed": true,
+              "message": "resources_used.json found"
+            },
+            {
+              "id": "guide-content-vis",
+              "passed": true,
+              "message": "Guide \"content-vis\" used"
+            },
+            {
+              "id": "guide-preload-prerender",
+              "passed": false,
+              "message": "Guide \"preload-prerender\" NOT found in resources"
+            }
+          ],
+          "resourcesUsed": [
+            {
+              "name": "web-dev-performance",
+              "source": "skills",
+              "timestamp": "2026-02-18T19:24:55-05:00"
+            },
+            {
+              "name": "content-vis.md",
+              "source": "web-dev-performance/guides",
+              "timestamp": "2026-02-18T19:24:55-05:00"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "stats": {
+    "cards-app - content-vis - unguided": {
+      "median": 29,
+      "rates": [
+        29
+      ]
+    },
+    "cards-app - content-vis - guided": {
+      "median": 100,
+      "rates": [
+        100
+      ]
+    },
+    "cards-app - preload-prerender - unguided": {
+      "median": 33,
+      "rates": [
+        33
+      ]
+    },
+    "cards-app - preload-prerender - guided": {
+      "median": 33,
+      "rates": [
+        33
+      ]
+    }
+  }
+}
