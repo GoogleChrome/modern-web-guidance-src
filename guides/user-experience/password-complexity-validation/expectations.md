@@ -1,0 +1,7 @@
+- On page load, the password field should appear neutral (no red border).
+- The password requirements list should be visible and neutral (or informational).
+- Clicking into the empty password field and clicking away (blur) without typing MUST NOT trigger the `:user-invalid` state.
+- Typing a partial password (e.g., "Pass") and clicking away (blur) MUST trigger the `:user-invalid` state (red border).
+- The requirements list text should change color (e.g., to red) to indicate the error context.
+- Typing a valid password (e.g., "Password123!") should remove the error state immediately (on input) or after blur, depending on the browser's exact implementation of `:user-valid`.
+- If "Force Fallback Mode" is active, the behavior must be identical using the `.user-invalid-fallback` class.
