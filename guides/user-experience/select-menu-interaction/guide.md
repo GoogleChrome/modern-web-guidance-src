@@ -11,13 +11,14 @@ web-feature-ids:
 For mandatory dropdowns (e.g., "Choose a Country"), standard validation flags the field as invalid immediately if the default option has an empty value. This can create visual noise. We want to show the error only if the user opens the menu and closes it without choosing an option, or attempts to submit the form.
 
 ## The Solution
-The `:user-invalid` pseudo-class works seamlessly with `<select>` elements. It respects the user's interaction flow: simply loading the page doesn't count as an interaction, so the field stays neutral.
+## The Solution
+The `:user-invalid` pseudo-class works seamlessly with `<select>` elements. It respects the user's interaction flow: simply loading the page or focusing/blurring without making a change doesn't count as an interaction, so the field stays neutral until they actively attempt a selection.
 
 ### Implementation Strategy
 
 1.  **HTML Constraint**: Use a `<select>` with `required`. The first option should have `value=""` and ideally be disabled/hidden to force a valid choice.
 2.  **Visual Feedback**: Use `:user-invalid` to style the select box border.
-3.  **Timing**: The browser considers the field "interacted" if the user changes the value or (crucially) if they focus and blur the control.
+3.  **Timing**: The browser considers the field "interacted" if the user changes the value (even back to the default invalid state) before they blur the control, or upon form submission.
 
 ## Implementation Guide
 
