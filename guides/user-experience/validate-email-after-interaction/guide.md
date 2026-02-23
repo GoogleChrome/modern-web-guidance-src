@@ -35,7 +35,7 @@ Relies on standard HTML5 attributes.
       required
       autocomplete="email"
       placeholder="you@example.com"
-      aria-describedby="email-error"
+      aria-errormessage="email-error"
     >
     <div id="email-error" class="error-msg">
       Please enter a valid email address (e.g. name@domain.com).

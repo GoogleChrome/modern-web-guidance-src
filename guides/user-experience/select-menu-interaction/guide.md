@@ -32,7 +32,7 @@ The "placeholder" option is key here.
       id="country" 
       name="country" 
       required
-      aria-describedby="country-error"
+      aria-errormessage="country-error"
     >
       <option value="" disabled selected>Select a country...</option>
       <option value="us">United States</option>
