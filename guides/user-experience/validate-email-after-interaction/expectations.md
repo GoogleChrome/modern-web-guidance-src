@@ -1,0 +1,5 @@
+- On page load, the email input must have a neutral border (not red), even though it is required and empty.
+- Typing "incomplete@" and clicking away (blur) MUST trigger the error state (red border, visible error message).
+- Typing "valid@email.com" MUST remove the error state immediately (on input) or after blur.
+- Submitting the form with an empty email field MUST trigger the error state.
+- "Force Fallback Mode" must replicate this behavior exactly using the `.user-invalid-fallback` class.
