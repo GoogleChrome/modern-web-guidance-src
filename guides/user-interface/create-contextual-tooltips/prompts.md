@@ -1,0 +1,3 @@
+- Create an accessible tooltip for each action bar button
+- Create an info icon with more information and a contextual tooltip that appears when a user hovers over it
+- Build a simple UI tooltip using modern CSS and HTML

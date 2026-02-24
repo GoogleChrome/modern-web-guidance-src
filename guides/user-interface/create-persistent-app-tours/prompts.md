@@ -1,0 +1,3 @@
+- Implement an interactive product tour or onboarding flow for my application
+- Build a step-by-step app tour that highlights different UI elements and explains how to use them
+- Create a guided, persistent tutorial overlay to onboard new users

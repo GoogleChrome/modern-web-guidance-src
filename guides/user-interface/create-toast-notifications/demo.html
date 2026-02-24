@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <style>
+    .toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    [popover="manual"] {
+      position: relative;
+      inset: auto;
+      margin: 0;
+      padding: 12px 20px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      transition: opacity 0.3s, transform 0.3s, display 0.3s, overlay 0.3s;
+      transition-behavior: allow-discrete;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    [popover="manual"]:popover-open {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    @starting-style {
+      [popover="manual"]:popover-open { opacity: 0; transform: translateY(20px); }
+    }
+  </style>
+</head>
+<body>
+  <button onclick="showToast()">Trigger Toast</button>
+  <div class="toast-container">
+    <div id="toast" popover="manual">
+      Success!
+      <button popovertarget="toast" popovertargetaction="hide" style="color:white; background:none; border:none; cursor:pointer;">×</button>
+    </div>
+  </div>
+  <script>
+    function showToast() {
+      const t = document.getElementById('toast');
+      t.showPopover();
+      setTimeout(() => { if (t.matches(':popover-open')) t.hidePopover(); }, 3000);
+    }
+  </script>
+</body>
+</html>

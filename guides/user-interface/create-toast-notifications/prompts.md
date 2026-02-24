@@ -1,0 +1,3 @@
+- Build a toast notification component
+- Create a non-blocking snackbar or alert message
+- Implement accessible, stackable toast notifications
