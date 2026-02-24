@@ -1,17 +1,17 @@
 ---
-name: speculation-rules
+name: improve-loading-speed-of-links-with-speculation-rules
 description: Use speculation rules to prefetch and prerender pages that the user is likely to visit next, improving page load performance.
 web-feature-ids:
   - speculation-rules
 ---
 
-# Speculative loading
+# Improve loading speed of links with speculation rules
 
 Speculative loading is a technique that allows you to prefetch and prerender pages that the user is likely to visit next, improving page load performance.
 
 ## How it works
 
-Speculative loading works by using JSON-based speculation rules to prefetch and prerender pages that the user is likely to visit next, improving page load performance.
+Speculative loading works by using JSON-based speculation rules to tell the browser about links that can be prefetched or prerendered improving page load performance when user clicks on them.
 
 The rules can either be a hardcoded list of URLs a `urls` key (known as a list rule), or with a `where` key containing a set of href and CSS selectors used to find links on the page (known as a `document` rule).
 
