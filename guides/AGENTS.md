@@ -1,5 +1,7 @@
 # Instructions for AI Agents: Creating Web Feature Guidance
 
+The goal of this project is to create Modern Web Guidance for web platform features. This guidance will be used by other AI agents to create web pages.
+
 This document provides explicit instructions for an AI agent (like Claude, Gemini, or Antigravity) to create and format Developer Guidance for web platform features. Your output (`guide.md`) will be read by *other* coding agents, demo.html will be used to validate the output of agentic tools is correct, and expectations.md will be used to drive the testing of the output of agentic tools. Therefore, your writing must be highly structured, deterministic, and command-oriented.
 
 ## 📚 Primary Resources for Feature Research
