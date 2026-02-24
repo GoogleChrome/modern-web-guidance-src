@@ -66,7 +66,7 @@ test.describe('Eval View Dashboard', () => {
 
     // Verify modal is shown
     const modal = page.locator('#modal');
-    await expect(modal).toHaveClass(/show/);
+    await expect(modal).toBeVisible();
 
     // Verify "View Diff" button exists and click it
     const diffButton = page.locator('button:has-text("View Diff")').first();
@@ -74,8 +74,8 @@ test.describe('Eval View Dashboard', () => {
     await diffButton.click();
 
     // Verify diff content is displayed
-    // The title changes to "Diff View"
-    await expect(page.locator('#modal-title')).toContainText('Diff View');
+    // The title changes to "Diff: ..."
+    await expect(page.locator('#modal-title')).toContainText('Diff:');
     
     // Check for diff-container and some expected diff classes
     const diffContainer = page.locator('.diff-container');

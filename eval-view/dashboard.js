@@ -1,4 +1,5 @@
 import { getRunStats, getColor, escapeHtml, formatTestName } from './utils.js';
+import { RadarChart } from './radar.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -14,6 +15,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const response = await fetch(evalsPath);
         if (!response.ok) throw new Error(`Failed to load data from ${evalsPath}`);
         const data = await response.json();
+
+        // Capture data for navigation
+        allTestData = data;
+        currentTestID = testID;
 
         // Fetch jetski info (optional)
         let jetskiVersion = null;
@@ -45,6 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderTestHeader(testID, jetskiVersion, timestamp);
         renderSummary(data, testID);
         renderGrid(data, testID);
+        renderRadarChart(data, testID);
 
         // Check for deep link to modal
         const testName = params.get('testName');
@@ -57,8 +63,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             const testStats = stats[testName];
 
             if (runData && testStats) {
-                // Auto-open modal
-                await showDetails(testName, runData, testStats, testID);
+                const view = params.get('view');
+                const runNumber = parseInt(params.get('run'));
+
+                if (view === 'diff' && runNumber) {
+                    const run = runData.find(r => r.runNumber === runNumber);
+                    if (run) {
+                        currentDetails = { testName, runs: runData, stats: testStats, testID };
+                        await showDetails(testName, runData, testStats, testID);
+
+                        const { setupPath, resultPath } = await getResultPaths(testID, run, testName);
+                        await viewDiff(setupPath, resultPath, testName, run.runNumber);
+                    } else {
+                        await showDetails(testName, runData, testStats, testID);
+                    }
+                } else {
+                    // Auto-open modal
+                    await showDetails(testName, runData, testStats, testID);
+                }
 
                 // If checkId is provided, try to scroll to it
                 if (checkId) {
@@ -82,13 +104,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;">Error loading dashboard data: ${error.message}</div>`;
     }
 
-    // Modal close handlers
+    // Modal control
     const modal = document.getElementById('modal');
     const closeBtn = document.querySelector('.close-modal');
-    closeBtn.onclick = () => modal.classList.remove('show');
-    window.onclick = (event) => {
-        if (event.target == modal) modal.classList.remove('show');
-    }
+
+    // Close function that also cleans up URL
+    const closeModal = () => {
+        if (modal.open) modal.close();
+    };
+
+    closeBtn.onclick = closeModal;
+
+    // Close on backdrop click
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+
+    // Handle Esc key or dialog close API
+    modal.addEventListener('close', () => {
+        const url = new URL(window.location.href);
+        const params = ['testName', 'checkId', 'view', 'run'];
+        let changed = false;
+        params.forEach(p => {
+            if (url.searchParams.has(p)) {
+                url.searchParams.delete(p);
+                changed = true;
+            }
+        });
+        if (changed) {
+            window.history.replaceState({}, '', url);
+        }
+    });
+
+    // We no longer need popstate for modal state because we use replaceState exclusively.
+    // Full page deep links are handled via DOMContentLoaded.
 
     // View Log Handler
     const viewLogBtn = document.getElementById('view-log-btn');
@@ -112,7 +163,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     title.textContent = 'Test Suite Run Log';
                     body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading log...</div>';
-                    modal.classList.add('show');
+                    modal.dataset.view = 'log';
+                    modal.showModal();
 
                     try {
                         const res = await fetch(logPath);
@@ -129,6 +181,58 @@ document.addEventListener('DOMContentLoaded', async () => {
             viewLogBtn.style.display = 'none';
         }
     }
+
+    // Arrow key navigation
+    document.addEventListener('keydown', (e) => {
+        const modal = document.getElementById('modal');
+        if (!modal || !modal.open || modal.dataset.view !== 'details') return;
+
+        if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+            if (!currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
+
+            const parts = currentDetails.testName.split(' - ');
+            if (parts.length !== 3) return;
+            const [appName, guide, runType] = parts;
+            const currentScenario = `${appName} - ${guide}`;
+
+            let sIdx = sortedScenarios.indexOf(currentScenario);
+            let rIdx = currentRunTypes.indexOf(runType);
+
+            if (sIdx === -1 || rIdx === -1) return;
+
+            const oldSIdx = sIdx;
+            const oldRIdx = rIdx;
+
+            if (e.key === 'ArrowLeft') rIdx--;
+            if (e.key === 'ArrowRight') rIdx++;
+            if (e.key === 'ArrowUp') sIdx--;
+            if (e.key === 'ArrowDown') sIdx++;
+
+            // Circular navigation (wrap around)
+            sIdx = (sIdx + sortedScenarios.length) % sortedScenarios.length;
+            rIdx = (rIdx + currentRunTypes.length) % currentRunTypes.length;
+
+            if (sIdx === oldSIdx && rIdx === oldRIdx) return;
+
+            const nextScenario = sortedScenarios[sIdx];
+            const nextRunType = currentRunTypes[rIdx];
+            const nextTestName = `${nextScenario} - ${nextRunType}`;
+
+            if (nextTestName !== currentDetails.testName && allTestData.results[nextTestName]) {
+                e.preventDefault();
+                showDetails(
+                    nextTestName,
+                    allTestData.results[nextTestName],
+                    allTestData.stats[nextTestName],
+                    currentTestID
+                );
+
+                // Scroll to top
+                const contentDiv = modal.querySelector('.modal-content');
+                if (contentDiv) contentDiv.scrollTop = 0;
+            }
+        }
+    });
 });
 
 function renderTestHeader(testID, jetskiVersion, timestamp) {
@@ -206,6 +310,9 @@ function renderGrid(data, testID) {
     const results = data.results;
     const stats = data.stats;
 
+    sortedScenarios = [];
+    currentRunTypes = [];
+
     // Extract dimensions dynamically from data keys
     const keys = Object.keys(results);
     const partsMap = keys.map(k => k.split(' - '));
@@ -222,9 +329,11 @@ function renderGrid(data, testID) {
         if (a === 'guided' && b === 'unguided') return 1;
         return a.localeCompare(b);
     });
+    currentRunTypes = sortedRunTypes;
 
     sortedAppNames.forEach(appName => {
         sortedGuides.forEach(guide => {
+            sortedScenarios.push(`${appName} - ${guide}`);
             sortedRunTypes.forEach(runType => {
                 const testName = `${appName} - ${guide} - ${runType}`;
                 const runData = results[testName];
@@ -258,10 +367,21 @@ function renderGrid(data, testID) {
     });
 }
 
-// Keep track of current details state for "Back" navigation
+// Keep track of current details state for navigation
 let currentDetails = null;
+let allTestData = null;
+let sortedScenarios = [];
+let currentRunTypes = [];
+let currentTestID = null;
 
 async function showDetails(testName, runs, stats, testID) {
+    // Update URL without reloading
+    const url = new URL(window.location.href);
+    url.searchParams.set('testName', testName);
+    url.searchParams.delete('view');
+    url.searchParams.delete('run');
+    window.history.replaceState({ testName }, '', url);
+
     // Store current details for back navigation
     currentDetails = { testName, runs, stats, testID };
 
@@ -269,10 +389,12 @@ async function showDetails(testName, runs, stats, testID) {
     const title = document.getElementById('modal-title');
     const contentDiv = document.querySelector('.modal-content');
     const body = document.getElementById('modal-body');
-    const [appName, guide, runType] = testName.split(' - ');
+    const [appName, guide] = testName.split(' - ');
 
     // Reset modifier classes
+    modal.classList.remove('diff-modal');
     contentDiv.classList.remove('diff-modal');
+    modal.dataset.view = 'details';
 
     title.textContent = formatTestName(testName);
 
@@ -295,23 +417,9 @@ async function showDetails(testName, runs, stats, testID) {
     }
 
     // Check for setup file asynchronously for each run to show View Diff button if applicable
-    const runDetailsPromises = runs.map(async (run, index) => {
+    const runDetailsPromises = runs.map(async (run) => {
         const s = getRunStats(run.results);
-
-        // Cover cases for new use case format and old (greenfield, brownfield, redfield) format
-        const basePaths = [
-            `results/${testID}/${run.runNumber}/${appName}/${runType}`,
-            `results/${testID}/${run.runNumber}/${appName}/${guide}/${runType}`
-        ];
-
-        const resultPath = await findBestEntryPoint(basePaths);
-
-        // Determine which base path was used
-        const usedBasePath = basePaths.find(bp => resultPath.startsWith(bp)) || basePaths[0];
-
-        // Calculate relative path (e.g., "src/App.jsx" or "index.html")
-        const relativePath = resultPath.replace(usedBasePath + '/', '');
-        const setupPath = `base_apps/${appName}/${runType}/${relativePath}`;
+        const { setupPath, resultPath, usedBasePath } = await getResultPaths(testID, run, testName);
 
         let guideSection = '';
         if (run.guideResults && run.guideResults.checks) {
@@ -408,7 +516,7 @@ async function showDetails(testName, runs, stats, testID) {
         diffButton.className = 'secondary-btn small-btn';
         diffButton.textContent = 'View Diff';
         diffButton.style.cssText = 'margin-left: 10px; font-size: 0.8em; padding: 2px 8px;';
-        diffButton.onclick = () => viewDiff(setupPath, resultPath);
+        diffButton.onclick = () => viewDiff(setupPath, resultPath, testName, run.runNumber);
 
         const rawResultsPath = `${usedBasePath}/${guide}_results.json`;
         let showRawResults = false;
@@ -435,7 +543,7 @@ async function showDetails(testName, runs, stats, testID) {
     const runDetails = await Promise.all(runDetailsPromises);
     body.innerHTML = promptHtml;
     runDetails.forEach(detail => body.appendChild(detail));
-    modal.classList.add('show');
+    modal.showModal();
 }
 
 function renderBackButton() {
@@ -454,8 +562,10 @@ function renderBackButton() {
 async function viewContent(fileName, filePath) {
     const title = document.getElementById('modal-title');
     const body = document.getElementById('modal-body');
+    const modal = document.getElementById('modal');
 
     title.textContent = fileName;
+    modal.dataset.view = 'content';
     body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading content...</div>';
 
     try {
@@ -482,16 +592,26 @@ async function viewContent(fileName, filePath) {
     }
 }
 
-async function viewDiff(setupPath, resultPath) {
+async function viewDiff(setupPath, resultPath, testName, runNumber) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', 'diff');
+    url.searchParams.set('run', runNumber);
+    window.history.replaceState({}, '', url);
+
+    const modal = document.getElementById('modal');
     const title = document.getElementById('modal-title');
     const body = document.getElementById('modal-body');
     const contentDiv = document.querySelector('.modal-content');
 
-    title.textContent = 'Diff View';
+    modal.dataset.runNumber = runNumber;
+
+    title.textContent = `Diff: ${formatTestName(testName)} (Run ${runNumber})`;
     body.innerHTML = '<div style="text-align:center; padding: 20px;">Computing diff...</div>';
 
     // Optional: Make modal wider for diff
+    modal.classList.add('diff-modal');
     contentDiv.classList.add('diff-modal');
+    modal.dataset.view = 'diff';
 
     try {
         const [setupRes, resultRes] = await Promise.all([
@@ -591,6 +711,116 @@ async function viewDiff(setupPath, resultPath) {
     }
 }
 
+function renderRadarChart(data, testID) {
+    const results = data.results;
+    const apps = {};
+
+    Object.keys(results).forEach(key => {
+        const parts = key.split(' - ');
+        if (parts.length !== 3) return;
+
+        const [appName, guide, runType] = parts;
+        const scenarioName = `${appName} (${guide})`;
+
+        if (!apps[scenarioName]) {
+            apps[scenarioName] = { guided: [], unguided: [] };
+        }
+
+        const runData = results[key];
+        const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
+        const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
+        const avgRate = totalChecks > 0 ? (totalPassed / totalChecks) * 100 : 0;
+
+        if (runType === 'guided') {
+            apps[scenarioName].guided.push(avgRate);
+        } else if (runType === 'unguided') {
+            apps[scenarioName].unguided.push(avgRate);
+        }
+    });
+
+    const labels = Object.keys(apps).sort();
+    if (labels.length < 3) {
+        document.getElementById('chart-section').classList.add('hidden');
+        return;
+    }
+
+    document.getElementById('chart-section').classList.remove('hidden');
+
+    const guidedData = labels.map(label => {
+        const scores = apps[label].guided;
+        return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    });
+    const unguidedData = labels.map(label => {
+        const scores = apps[label].unguided;
+        return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    });
+
+    const chart = new RadarChart('radar-chart', {
+        size: 600,
+        levels: 5,
+        padding: 80
+    });
+
+    const handlePointClick = (index, type) => {
+        const scenarioName = labels[index]; // e.g. "redfield (vague)"
+        const runType = type.toLowerCase(); // "guided" or "unguided"
+
+        // Find the original key in the results
+        const originalKey = Object.keys(results).find(key => {
+            const parts = key.split(' - ');
+            return `${parts[0]} (${parts[1]})` === scenarioName && parts[2] === runType;
+        });
+
+        if (originalKey) {
+            const testName = originalKey;
+            const runData = results[testName];
+            const testStats = data.stats[testName];
+            showDetails(testName, runData, testStats, testID);
+        }
+    };
+
+    chart.render({
+        labels: labels,
+        datasets: [
+            {
+                label: 'Unguided',
+                data: unguidedData,
+                backgroundColor: 'rgba(218, 54, 51, 0.2)',
+                borderColor: '#da3633',
+                onClick: handlePointClick
+            },
+            {
+                label: 'Guided',
+                data: guidedData,
+                backgroundColor: 'rgba(35, 134, 54, 0.2)',
+                borderColor: '#238636',
+                onClick: handlePointClick
+            }
+        ]
+    });
+}
+
+
+async function getResultPaths(testID, run, testName) {
+    const [appName, guide, runType] = testName.split(' - ');
+
+    // Cover cases for new use case format and old (greenfield, brownfield, redfield) format
+    const basePaths = [
+        `results/${testID}/${run.runNumber}/${appName}/${runType}`,
+        `results/${testID}/${run.runNumber}/${appName}/${guide}/${runType}`
+    ];
+
+    const resultPath = await findBestEntryPoint(basePaths);
+
+    // Determine which base path was used
+    const usedBasePath = basePaths.find(bp => resultPath.startsWith(bp)) || basePaths[0];
+
+    // Calculate relative path (e.g., "src/App.jsx" or "index.html")
+    const relativePath = resultPath.replace(usedBasePath + '/', '');
+    const setupPath = `base_apps/${appName}/${runType}/${relativePath}`;
+
+    return { setupPath, resultPath, usedBasePath };
+}
 
 async function findBestEntryPoint(basePaths) {
     // basePaths can be a string or array of strings

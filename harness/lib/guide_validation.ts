@@ -30,7 +30,7 @@ export async function checkGuides(dirPath: string, appName: string): Promise<Gui
   let resources: any[];
   try {
     resources = JSON.parse(fs.readFileSync(resourcesPath, 'utf8'));
-  } catch (e) {
+  } catch {
     return {
       checks: [{
         id: 'resources-valid-json',
