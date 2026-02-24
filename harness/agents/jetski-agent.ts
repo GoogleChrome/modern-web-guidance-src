@@ -266,11 +266,12 @@ async function run(): Promise<void> {
       console.log(`Jetski info already exists at: ${jetskiInfoPath}`);
     }
 
-    const inputSelector = ':is(#chat, #conversation) [contenteditable="true"][role="textbox"]';
-    const sendButtonSelector = '#conversation button[data-tooltip-id="input-send-button-send-tooltip"]';
-    const cancelButtonSelector = '[data-tooltip-id="input-send-button-cancel-tooltip"]';
+    const inputSelector = '[contenteditable="true"][role="textbox"]';
+    const sendButtonSelector = '[data-tooltip-id="input-send-button-send-tooltip"]';
+    const cancelButtonSelector = 'button[data-tooltip-id="input-send-button-cancel-tooltip"]';
     const allowOnceButtonSelector = 'button[aria-label="Allow once"]';
-    const agentPanelSelector = '.antigravity-agent-side-panel';
+    // The double slashes are deliberate. These IDs include the dot.
+    const agentPanelSelector = ':is(#chat, #conversation) #antigravity\\.agentSidePanelInputBox';
 
     console.log(`Waiting for Agent Panel conversation box...`);
 
@@ -279,7 +280,15 @@ async function run(): Promise<void> {
 
     for (let i = 0; i < 20; i++) {
       targetPanel = await page.$(agentPanelSelector);
-      targetInputBox = await targetPanel.$(inputSelector);
+
+      if (targetPanel) {
+        try {
+          targetInputBox = await targetPanel.$(inputSelector);
+        } catch (e: any) {
+          console.error("Failed to find input box:", e.message);
+        }
+      }
+
       if (targetPanel && targetInputBox) {
         break;
       }
@@ -296,13 +305,18 @@ async function run(): Promise<void> {
     await targetInputBox.type(userPrompt);
     await sleep(1000);
 
-    console.log("Submitting...");
-    await targetPanel.click(sendButtonSelector);
-
+    try {
+      const sendBtn = await targetPanel.waitForSelector(sendButtonSelector, { timeout: 1000 });
+      console.log("Submitting...");
+      await sendBtn.click();
+    } catch {
+      console.log("Warning: Submit button didn't appear.");
+    }
+    
     // Wait for completion (cancel button to disappear)
     // First, wait for the cancel button to APPEAR (meaning it started)
     try {
-      await targetPanel.waitForSelector(cancelButtonSelector, { timeout: 10000 });
+      await targetPanel.waitForSelector(cancelButtonSelector, { timeout: 1000 });
       console.log("Agent started working...");
     } catch {
       console.log("Warning: Cancel button didn't appear quickly. Agent might have finished very fast or failed to start.");
@@ -328,8 +342,8 @@ async function run(): Promise<void> {
     try {
       console.log("Saving chat log...");
       // Ensure #chat exists in the target frame
-      await targetPanel.waitForSelector('#conversation', { timeout: 5000 });
-      const chatText = await targetPanel.$eval('#conversation', (el: any) => el.innerText || '');
+      await page.waitForSelector(':is(#chat, #conversation)', { timeout: 5000 });
+      const chatText = await page.$eval(':is(#chat, #conversation)', (el: any) => el.innerText || '');
       const chatLogPath = path.resolve(targetDir, 'chat_log.txt');
       fs.writeFileSync(chatLogPath, chatText, 'utf8');
       console.log(`Saved chat log to: ${chatLogPath}`);
