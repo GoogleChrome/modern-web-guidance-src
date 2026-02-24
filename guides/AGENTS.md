@@ -32,7 +32,7 @@ When researching a feature to write guidance, consult:
 
 ---
 
-## Step 2: Authoring `guide.md`
+## Step 2: Authoring or reviewing `guide.md`
 
 **MANDATORY RULES FOR WRITING `guide.md`:**
 
@@ -54,7 +54,7 @@ sources:
 
 ### 2. Tone and Formatting
 * **MANDATORY:** Use strict imperative directives. Start instructions with `MANDATORY:`, `DO`, and `DO NOT`. Coding agents respond best to rigid constraints.
-* **Focus:** Keep it abstract but short. No fluff. No conversational text.
+* **Focus:** Keep it abstract but short. No fluff. No conversational text. Include a brief overview of the feature and why it is useful for the use-case.
 * **Self-Contained:** DO NOT require the reading agent to click external links to understand the code. All required knowledge to use the feature MUST be fully synthesized into the markdown body.
 
 ### 3. Code Snippets
