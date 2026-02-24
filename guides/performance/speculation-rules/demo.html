@@ -1,0 +1,29 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Prerendering demo</title>
+  <link id="favicon" rel="icon" href="./favicon.ico" type="image/x-icon" />
+</head>
+<body>
+
+  <h1>Start page</h1>
+
+  <p><a href="./?page=next">This link should be prerendered.</a></p>
+  <p><a href="./?page=next2">This link should also be prerendered</a></p>
+
+  <p>The link above is the same as this page, just with a different query parameter to simulate different pages.</p>
+
+  <script type="speculationrules">
+    {
+      "prerender": [
+        {
+          "tag": "prerender-spec-rules",
+          "urls": ["./?page=next", "./?page=next2"]
+        }
+      ]
+    }
+  </script>
+</body>
+</html>
