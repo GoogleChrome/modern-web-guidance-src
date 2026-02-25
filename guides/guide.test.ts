@@ -5,7 +5,7 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import { features } from 'web-features';
 
-const guidesDir = path.resolve(import.meta.dirname, '..');
+const guidesDir = path.resolve(import.meta.dirname, '.');
 
 function getMdFiles(dir: string, fileList: string[] = []) {
   const files = fs.readdirSync(dir);
@@ -48,9 +48,10 @@ test('all web-feature-ids in guides are valid', async (t) => {
         : [parsed['web-feature-ids']];
 
       for (const id of featureIds) {
-        await t.test(`File ${path.relative(guidesDir, file)} has valid feature ID: ${id}`, () => {
-          assert.ok(validFeatures.has(id), `Invalid web-feature-id '${id}' found in ${path.relative(guidesDir, file)}`);
-        });
+        if (!validFeatures.has(id)) {
+          assert.fail(`'${id}' is an INVALID web-feature-id. Found in ${path.relative(guidesDir, file)}`);
+        }
+        // Don't log success, it's too noisy
       }
     }
   }
