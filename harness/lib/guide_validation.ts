@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { config } from '../config.ts';
-import { ResourceUsed } from './metrics.ts';
+import type { ResourceUsed } from './metrics.ts';
 
 export interface GuideCheck {
   id: string;

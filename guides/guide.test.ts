@@ -22,7 +22,7 @@ function getMdFiles(dir: string, fileList: string[] = []) {
   return fileList;
 }
 
-test('all web-feature-ids in guides are valid', async (t) => {
+test('all web-feature-ids in guides are valid', async () => {
   const mdFiles = getMdFiles(guidesDir);
   const validFeatures = new Set(Object.keys(features));
 

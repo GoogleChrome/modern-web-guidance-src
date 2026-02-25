@@ -389,7 +389,7 @@ async function showDetails(testName, runs, stats, testID) {
     const title = document.getElementById('modal-title');
     const contentDiv = document.querySelector('.modal-content');
     const body = document.getElementById('modal-body');
-    const [appName, guide] = testName.split(' - ');
+    const [, guide] = testName.split(' - ');
 
     // Reset modifier classes
     modal.classList.remove('diff-modal');
