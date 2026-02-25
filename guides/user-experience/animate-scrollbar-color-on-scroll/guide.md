@@ -8,6 +8,8 @@ web-features:
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/CSS/scrollbar-color
   - https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timeline
+  - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Properties_and_values_API/Registering_properties
+  
   - https://developer.chrome.com/docs/css-ui/scroll-driven-animations
 ---
 
