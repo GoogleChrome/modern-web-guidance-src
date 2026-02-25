@@ -32,15 +32,18 @@ jobs:
 
       # Fail if any changes were written to any source files or generated untracked files
       - run: git add -A && git diff --cached --exit-code
-      
-      - name: Generate guides diagram and commit
-        run: |
-          node scripts/guide-features-diagram.mjs
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add guides/features-and-use-cases.md
-          git commit -m "Auto-generate features-and-use-cases.md" || echo "No changes to commit"
-          git push
+
+      #  TODO(paulirish): restore this after fixing:
+      #      fatal: You are not currently on a branch. To push the history leading to the current (detached HEAD) state now, use git push origin HEAD:<name-of-remote-branch>       
+      #
+      # - name: Generate guides diagram and commit
+      #   run: |
+      #     node scripts/guide-features-diagram.mjs
+      #     git config user.name "github-actions[bot]"
+      #     git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      #     git add guides/features-and-use-cases.md
+      #     git commit -m "Auto-generate features-and-use-cases.md" || echo "No changes to commit"
+      #     git push
 
   browser:
     runs-on: ubuntu-latest
