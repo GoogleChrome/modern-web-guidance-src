@@ -69,7 +69,7 @@ export async function collectResults(resultsDir: string) {
       // baseApp above was misleadingly named from legacy code. Let's rename it implicitly here:
       const taskName = baseApp; 
 
-      const taskPath = path.resolve(__dirname, `../../tasks/${taskName}.md`);
+      const taskPath = path.resolve(__dirname, `../tasks/${taskName}.md`);
       if (!fs.existsSync(taskPath)) {
         console.warn(`Skipping grading: Task ${taskName} not found at ${taskPath}`);
         continue;
@@ -120,7 +120,7 @@ export async function collectResults(resultsDir: string) {
             // Use spawnSync to handle exit codes without throwing
             const { spawnSync } = await import('child_process');
             const playwrightConfig = path.join(guidesDir, 'playwright.config.ts');
-            const result = spawnSync('npx', ['playwright', 'test', '-c', playwrightConfig, graderPath, '--reporter=json'], {
+            const result = spawnSync('pnpm', ['--silent', '--filter', 'guides', 'exec', 'playwright', 'test', '-c', playwrightConfig, graderPath, '--reporter=json'], {
               encoding: 'utf-8',
               stdio: 'pipe',
               env: { ...process.env, TARGET_FILE: targetFile },

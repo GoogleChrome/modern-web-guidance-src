@@ -29,6 +29,9 @@ importers:
 
   guides:
     devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
@@ -38,6 +41,9 @@ importers:
       js-yaml:
         specifier: ^4.1.1
         version: 4.1.1
+      playwright:
+        specifier: ^1.57.0
+        version: 1.57.0
       type-fest:
         specifier: ^5.4.4
         version: 5.4.4
