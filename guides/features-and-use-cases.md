@@ -6,16 +6,16 @@
 ├── blocking-render
 │   ├── consistent-cross-document-transitions
 │   └── flicker-free-client-side-ab-testing
+├── content-visibility
+│   └── content-vis
 ├── fetchlater
 │   ├── batch-analytics-events
 │   └── full-session-analytics
 ├── hidden-until-found
 │   ├── deep-link-to-hidden-content
 │   └── search-hidden-content
-├── scroll-initial-target
-│   ├── chat-message-search
-│   ├── focus-item-in-carousel
-│   └── pull-to-reveal
-└── (No web features)
-    └── content-vis
+└── scroll-initial-target
+    ├── chat-message-search
+    ├── focus-item-in-carousel
+    └── pull-to-reveal
 ```
