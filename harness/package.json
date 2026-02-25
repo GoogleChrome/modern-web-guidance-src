@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "full-run": "npm run suite && npm run report"
   },
+  "packageManager": "pnpm@10.28.1",
   "dependencies": {
     "@anthropic-ai/claude-code": "^2.1.38",
     "@anthropic-ai/vertex-sdk": "^0.14.3",
@@ -20,5 +21,8 @@
     "dotenv": "^16.4.7",
     "glob": "^10.4.5",
     "puppeteer-core": "^24.34.0"
+  },
+  "devDependencies": {
+    "js-yaml": "^4.1.1"
   }
 }

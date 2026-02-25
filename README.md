@@ -51,7 +51,8 @@ The evaluation suite measures how effectively AI models use modern web APIs.
 pnpm suite
 
 # To run a single isolated task
-pnpm task <directory> "<prompt>"
+pnpm task <task_name>
+# Example: pnpm task content-vis
 
 # To generate reports from results
 pnpm report

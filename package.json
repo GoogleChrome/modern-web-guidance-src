@@ -31,6 +31,7 @@
     ]
   },
   "devDependencies": {
-    "oxlint": "^1.46.0"
+    "oxlint": "^1.46.0",
+    "typescript": "^5.9.3"
   }
 }
