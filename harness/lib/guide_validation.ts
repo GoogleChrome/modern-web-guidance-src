@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { config } from '../config.ts';
+import { ResourceUsed } from './metrics.ts';
 
 export interface GuideCheck {
   id: string;
@@ -10,7 +11,7 @@ export interface GuideCheck {
 
 export interface GuideValidationResult {
   checks: GuideCheck[];
-  resourcesUsed: any[] | null;
+  resourcesUsed: ResourceUsed[] | null;
 }
 
 export async function checkGuides(dirPath: string, appName: string): Promise<GuideValidationResult> {
@@ -27,7 +28,7 @@ export async function checkGuides(dirPath: string, appName: string): Promise<Gui
     };
   }
 
-  let resources: any[];
+  let resources: ResourceUsed[];
   try {
     resources = JSON.parse(fs.readFileSync(resourcesPath, 'utf8'));
   } catch {
