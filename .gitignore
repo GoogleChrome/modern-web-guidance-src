@@ -7,7 +7,8 @@ serving/mcp-server/data/use-cases.gen.ts
 serving/mcp-server/.mcp-data/
 
 # Test artifacts
-harness/results/
+eval-view/test-results/
+harness/results
 
 # Environment and Logs
 .env
@@ -19,4 +20,7 @@ harness/results/
 
 # Coverage
 coverage/
+
+# Serving
 serving/.mcp-data
+serving/mcp-server/data/use-cases.gen.ts

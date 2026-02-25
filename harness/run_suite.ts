@@ -25,19 +25,19 @@ async function main() {
 
   const agent = config.suite.agent;
 
-  // Single task mode check
   const args = process.argv.slice(2);
   const positionalArgs = args.filter(arg => !arg.startsWith('--'));
   
   const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.\n\nThe output should be a single HTML file. Do not modify any other files.`;
 
-  // Direct task or Single task mode check
+  // Single task mode check
   if (positionalArgs.length === 1 || (positionalArgs.length === 2 && args.includes('--with-template'))) {
     let templateDir: string;
     let targetDir: string;
     let promptContent: string;
     let taskNameLabel: string;
 
+    // pnpm run-agent mode
     if (positionalArgs.length === 2) {
       templateDir = positionalArgs[0];
       if (!path.isAbsolute(templateDir)) {
@@ -46,8 +46,8 @@ async function main() {
       const cleanTemplateDir = templateDir.replace(/\/$/, '');
       targetDir = path.join(path.dirname(cleanTemplateDir), path.basename(cleanTemplateDir) + '-results');
       promptContent = positionalArgs[1];
-      taskNameLabel = "Guide Test";
-    } else {
+      taskNameLabel = "Agent Test";
+    } else { // pnpm task mode
       const task = positionalArgs[0];
       taskNameLabel = `Single Task: ${task}`;
       const taskPath = path.join(tasksDir, `${task}.md`);
