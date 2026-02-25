@@ -39,14 +39,20 @@ async function main() {
     }
 
     const fileContent = fs.readFileSync(taskPath, 'utf8');
-    const frontmatterMatch = fileContent.match(/^---\nbase_app:\s*(.+)\n---\n([\s\S]*)$/);
+    const frontmatterMatch = fileContent.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
     
     if (!frontmatterMatch) {
       console.error(`❌ Invalid frontmatter format in ${taskPath}`);
       return;
     }
 
-    const baseApp = frontmatterMatch[1].trim();
+    const baseAppMatch = frontmatterMatch[1].match(/^base_app:\s*(.+)$/m);
+    if (!baseAppMatch) {
+      console.error(`❌ Missing base_app in frontmatter in ${taskPath}`);
+      return;
+    }
+
+    const baseApp = baseAppMatch[1].trim();
     let promptContent = frontmatterMatch[2].trim();
 
     const templateDir = path.join(baseAppsDir, baseApp);
@@ -127,14 +133,20 @@ async function main() {
         }
 
         const fileContent = fs.readFileSync(taskPath, 'utf8');
-        const frontmatterMatch = fileContent.match(/^---\nbase_app:\s*(.+)\n---\n([\s\S]*)$/);
+        const frontmatterMatch = fileContent.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
         
         if (!frontmatterMatch) {
           console.warn(`Skipping task ${task}: Invalid frontmatter format in ${taskPath}`);
           continue;
         }
 
-        const baseApp = frontmatterMatch[1].trim();
+        const baseAppMatch = frontmatterMatch[1].match(/^base_app:\s*(.+)$/m);
+        if (!baseAppMatch) {
+          console.warn(`Skipping task ${task}: Missing base_app in frontmatter in ${taskPath}`);
+          continue;
+        }
+
+        const baseApp = baseAppMatch[1].trim();
         let promptContent = frontmatterMatch[2].trim();
 
         // Append instruction to use stock photos if needed
