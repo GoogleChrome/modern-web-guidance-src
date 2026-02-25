@@ -259,7 +259,6 @@ async function run() {
   console.log(`Found ${guideFiles.length} guide.md files.`);
 
   for (const guidePath of guideFiles) {
-    const relativePath = path.relative(REPO_ROOT, guidePath);
     const subdir = path.dirname(guidePath);
 
     const { errors, data, body } = validateGuide(guidePath);
