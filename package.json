@@ -5,7 +5,7 @@
   "main": "index.js",
   "private": true,
   "scripts": {
-    "test": "pnpm --filter !use-cases -r test",
+    "test": "pnpm -r test",
     "lint": "oxlint --ignore-path .oxlintignore",
     "typecheck": "pnpm -r typecheck",
     "preflight": "pnpm typecheck && pnpm lint && pnpm test",
@@ -31,6 +31,7 @@
     ]
   },
   "devDependencies": {
-    "oxlint": "^1.46.0"
+    "oxlint": "^1.46.0",
+    "typescript": "^5.9.3"
   }
 }

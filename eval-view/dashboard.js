@@ -398,13 +398,20 @@ async function showDetails(testName, runs, stats, testID) {
 
     title.textContent = formatTestName(testName);
 
-    // Fetch prompt text
+    // Fetch prompt text from tasks directory
     let promptHtml = '';
     try {
-        const promptPath = `base_apps/${appName}/PROMPT.txt`;
-        const res = await fetch(promptPath);
+        const taskPath = `tasks/${guide}.md`;
+        const res = await fetch(taskPath);
         if (res.ok) {
-            const text = await res.text();
+            let text = await res.text();
+            
+            // Strip frontmatter if present
+            const frontmatterMatch = text.match(/^---\n(?:[\s\S]*?)\n---\n([\s\S]*)$/);
+            if (frontmatterMatch) {
+                text = frontmatterMatch[1].trim();
+            }
+
             promptHtml = `
                     <div class="prompt-section" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--text-secondary);">
                     <h4 style="margin-top: 0; margin-bottom: 10px;">Prompt</h4>

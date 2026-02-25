@@ -42,10 +42,10 @@ export const environmentConfig: EnvironmentConfig = {
 export const suiteConfig: SuiteConfig = {
   name: 'cards-claude-skills-sample',
   numRuns: 1,
-  baseApps: ['cards-app'],
+  tasks: ['content-vis'],
   mcpServersToEnable: [], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: true,
-  agent: Agents.CLAUDE_CODE,
+  agent: Agents.GEMINI_CLI,
 };
 
 // ************************************
@@ -77,7 +77,7 @@ export interface EnvironmentConfig {
 export interface SuiteConfig {
   name: string | null;
   numRuns: number;
-  baseApps: string[];
+  tasks: string[];
   mcpServersToEnable: string[];
   enableSkills: boolean;
   agent: string;

@@ -3,3 +3,4 @@ packages:
   - 'harness'
   - 'eval-view'
   - 'use-cases'
+  - 'guides'
