@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Focus Chat Message Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: #f1f5f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .device-mockup {
+      width: 375px;
+      height: 667px;
+      background: white;
+      border-radius: 40px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      border: 8px solid #cbd5e1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .header {
+      background: #0f172a;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-weight: bold;
+      z-index: 10;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .chat-container {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      scroll-behavior: smooth;
+    }
+
+    .message {
+      padding: 12px 18px;
+      border-radius: 20px;
+      max-width: 80%;
+      font-size: 15px;
+      line-height: 1.4;
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+
+    .message.received {
+      background: #e2e8f0;
+      color: #1e293b;
+      align-self: flex-start;
+      border-bottom-left-radius: 5px;
+    }
+
+    .message.sent {
+      background: #3b82f6;
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 5px;
+    }
+
+    /* 
+     * The target message we want to scroll to on initial render.
+     */
+    .message.target {
+      scroll-initial-target: nearest;
+      background: #fdf6e3;
+      color: #b45309;
+      border: 2px solid #fbbf24;
+      position: relative;
+    }
+
+    .message.target::before {
+      content: '📌 Focus Target';
+      position: absolute;
+      top: -20px;
+      left: 10px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #b45309;
+    }
+
+    .input-area {
+      padding: 15px;
+      background: white;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      gap: 10px;
+    }
+
+    .input-field {
+      flex: 1;
+      padding: 10px 15px;
+      border: 1px solid #cbd5e1;
+      border-radius: 20px;
+      outline: none;
+    }
+
+    .send-btn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="device-mockup">
+    <div class="header">Design Chat</div>
+
+    <div class="chat-container" id="chat">
+      <!-- Old messages (out of view initially) -->
+      <div class="message received">Hey team, have we finalized the new UI colors?</div>
+      <div class="message sent">Yes, we decided on Slate and Blue for the primary theme.</div>
+      <div class="message received">Looks great! What about the typography?</div>
+      <div class="message sent">We're sticking with standard system fonts for better performance.</div>
+      <div class="message received">Got it. Can someone send over the latest wireframes?</div>
+      <div class="message sent">I'll have them ready by tomorrow morning.</div>
+      <div class="message received">Awesome, looking forward to it.</div>
+      <div class="message sent">Did we review the accessibility report?</div>
+      <div class="message received">Not yet, scheduling a meeting for Thursday.</div>
+      <div class="message sent">Perfect. I'll prepare some notes for that.</div>
+      <div class="message received">Let's also discuss the mobile navigation.</div>
+      <div class="message sent">Agreed, the current drawer feels a bit clunky.</div>
+
+      <!-- The specific target message -->
+      <div class="message received target">
+        We need to make sure the chat container automatically scrolls to the most relevant message when a user clicks a
+        notification.
+      </div>
+
+      <!-- Newer messages (also out of view initially depending on screen size) -->
+      <div class="message sent">I heard there's a new CSS property for that!</div>
+      <div class="message received">Really? What is it?</div>
+      <div class="message sent">It's called `scroll-initial-target`.</div>
+      <div class="message received">That sounds so much better than using JavaScript to scroll.</div>
+      <div class="message sent">Definitely, less code and better performance.</div>
+      <div class="message received">I'll add it to our experimental tech list.</div>
+      <div class="message sent">Awesome, let's test it out today.</div>
+      <div class="message received">I'll push a branch in a bit.</div>
+      <div class="message sent">Great, I'll review it once it's up.</div>
+    </div>
+
+    <div class="input-area">
+      <input type="text" class="input-field" placeholder="Type a message...">
+      <button class="send-btn">➔</button>
+    </div>
+  </div>
+
+  <script>
+    // Fallback strategy for browsers that don't support scroll-initial-target
+    document.addEventListener("DOMContentLoaded", () => {
+      const targetMessage = document.querySelector('.message.target');
+
+      if (targetMessage && !CSS.supports('scroll-initial-target', 'nearest')) {
+        // Fallback for browsers that don't support the CSS property
+        targetMessage.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+      }
+    });
+  </script>
+</body>
+
+</html>
