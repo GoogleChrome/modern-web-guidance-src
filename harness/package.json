@@ -18,7 +18,7 @@
     "@google/gemini-cli": "^0.30.0",
     "cheerio": "^1.0.0",
     "colors": "^1.4.0",
-    "dotenv": "^17.3.1",
+    "dotenv": "^16.4.7",
     "glob": "^10.4.5",
     "puppeteer-core": "^24.37.5"
   },
