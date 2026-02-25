@@ -216,9 +216,7 @@
 
   <div class="feed" id="feed">
     <div class="info-text">
-      <h1>Negative Demo: No content-visibility</h1>
-      <p>This page contains 500 complex cards. This page has <strong>no</strong> <code>content-visibility</code>
-        optimizations applied. It will render all cards on load.</p>
+      <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
     </div>
   </div>
 
@@ -270,10 +268,10 @@
           timerSpan.textContent = `${duration}ms${suffix}`;
 
           if (duration < 75) {
-            detectedSpan.textContent = 'content-visibility: detected';
+            detectedSpan.textContent = 'fast rendering! :)';
             detectedSpan.style.color = '#16a34a';
           } else {
-            detectedSpan.textContent = 'content-visibility: NOT detected';
+            detectedSpan.textContent = 'slow rendering!!! :(';
             detectedSpan.style.color = '#dc2626';
           }
         });

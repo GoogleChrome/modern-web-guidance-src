@@ -52,7 +52,7 @@ pnpm suite
 
 # To run a single isolated task
 pnpm task <task_name>
-# Example: pnpm task content-vis
+# Example: pnpm task cards-render
 
 # To generate reports from results
 pnpm report

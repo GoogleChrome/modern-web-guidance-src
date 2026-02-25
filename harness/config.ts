@@ -45,9 +45,9 @@ export const environmentConfig: EnvironmentConfig = {
 // *** Run with: `pnpm suite`  ***
 // *******************************
 export const suiteConfig: SuiteConfig = {
-  name: 'cards-claude-skills-sample',
+  name: 'good-effort',
   numRuns: 1,
-  tasks: ['content-vis'],
+  tasks: ['cards-render'],
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: false,
   agent: Agents.GEMINI_CLI,
@@ -58,11 +58,11 @@ export const suiteConfig: SuiteConfig = {
 // *** Run with: `pnpm report`      ***
 // ************************************
 export const evalConfig: EvalConfig = {
-  suiteName: 'cards-claude-skills-sample',
-  guidesToTest: ['content-vis', 'preload-prerender'],
+  suiteName: 'good-effort',
+  guidesToTest: ['cards-render', 'preload-prerender'],
   expectedGuides: {
     // Structure: { <baseApp name>: <list of expected guides> }
-    'cards-app': ['content-vis', 'preload-prerender'],
+    'cards-app': ['cards-render', 'preload-prerender'],
   }
 };
 
