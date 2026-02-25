@@ -74,14 +74,14 @@ async function main() {
             'jetski-agent.ts'
       );
 
+
+
       await runCommand('node', [
         '--experimental-strip-types', 
         agentScript, 
         JSON.stringify(promptContent), 
         'guided', // Default to guided for single task runs
-        targetDir,
-        templateDir
-      ]);
+        targetDir, templateDir]);
       console.log(`\n✅ Single task complete! Results in ${targetDir}`);
     } catch (error) {
       console.error(`❌ Single task failed:`, error);
