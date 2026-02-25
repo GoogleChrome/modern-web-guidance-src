@@ -83,6 +83,10 @@ export async function collectResults(resultsDir: string) {
       }
 
       const guide = frontmatterMatch[1].trim();
+
+      const baseAppMatch = fileContent.match(/^base_app:\s*(.+)$/m);
+      const actualBaseApp = baseAppMatch ? baseAppMatch[1].trim() : taskName;
+
       const testName = `${taskName} - ${guide} - ${runType}`;
 
       const guidesDir = path.resolve(__dirname, '../../guides');
@@ -161,7 +165,9 @@ export async function collectResults(resultsDir: string) {
       allResults[testName].push({
         runNumber: parseInt(runDir),
         results: scenarioResults,
-        guideResults
+        guideResults,
+        baseApp: actualBaseApp,
+        taskName: taskName
       });
     }
   }

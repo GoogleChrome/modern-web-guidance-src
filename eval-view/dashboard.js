@@ -810,6 +810,7 @@ function renderRadarChart(data, testID) {
 
 async function getResultPaths(testID, run, testName) {
     const [appName, guide, runType] = testName.split(' - ');
+    const actualBaseApp = run.baseApp || appName;
 
     // Cover cases for new use case format and old (greenfield, brownfield, redfield) format
     const basePaths = [
@@ -824,7 +825,23 @@ async function getResultPaths(testID, run, testName) {
 
     // Calculate relative path (e.g., "src/App.jsx" or "index.html")
     const relativePath = resultPath.replace(usedBasePath + '/', '');
-    const setupPath = `base_apps/${appName}/${runType}/${relativePath}`;
+    
+    // Check old style path and new style path
+    const candidateSetupPaths = [
+        `base_apps/${actualBaseApp}/${runType}/${relativePath}`,
+        `base_apps/${actualBaseApp}/${relativePath}`
+    ];
+    let setupPath = candidateSetupPaths[candidateSetupPaths.length - 1]; // Assume new style by default
+    
+    for (const path of candidateSetupPaths) {
+        try {
+            const res = await fetch(path, { method: 'HEAD' });
+            if (res.ok) {
+                setupPath = path;
+                break;
+            }
+        } catch(e) {}
+    }
 
     return { setupPath, resultPath, usedBasePath };
 }

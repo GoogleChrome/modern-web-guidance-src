@@ -59,7 +59,7 @@ export const suiteConfig: SuiteConfig = {
 // ************************************
 export const evalConfig: EvalConfig = {
   suiteName: 'good-effort',
-  guidesToTest: ['cards-render', 'preload-prerender'],
+  tasksToComplete: ['cards-render', 'preload-prerender'],
   expectedGuides: {
     // Structure: { <baseApp name>: <list of expected guides> }
     'cards-app': ['cards-render', 'preload-prerender'],
@@ -90,7 +90,7 @@ export interface SuiteConfig {
 
 export interface EvalConfig {
   suiteName: string | null;
-  guidesToTest: string[];
+  tasksToComplete: string[];
   expectedGuides: Record<string, string[]>;
 }
 
