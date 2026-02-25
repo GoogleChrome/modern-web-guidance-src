@@ -1,6 +1,6 @@
 ---
-name: inject-sharp-pseudo-element-icons
-description: Inject sharp, resolution-optimized UI icons into ::before and ::after pseudo-elements without adding unnecessary DOM nodes using the image-set() CSS functional notation within the content property
+name: resolution-optimized-pseudo-elements
+description: "Use resolution-optimized images in CSS pseudo-elements (such as `::before` and `::after`) to reduce the number of DOM nodes."
 web-feature-ids: 
   - image-set
 ---
