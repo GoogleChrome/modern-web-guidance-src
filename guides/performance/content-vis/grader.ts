@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import * as path from 'path';
+import * as fs from 'fs';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -9,6 +10,16 @@ if (!targetFile) {
 const filePath = path.resolve(targetFile);
 const demoUrl = `file://${filePath}`;
 const demoName = path.basename(filePath);
+
+// TODO: add testing to ensure this grader fails against the negative demo. (it currently passes.)
+
+// TODO: also determine if we want to dynamically generate these assertions based on the base or base+updated app.
+
+test.describe(`Content-Visibility usage: ${demoName}`, () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(html).toContain('content-visibility: auto');
+});
+
 
 test.describe(`Content-Visibility Best Practices: ${demoName}`, () => {
     
