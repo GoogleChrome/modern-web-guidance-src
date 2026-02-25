@@ -3,6 +3,7 @@ name: adapt-scrollbar-to-contrast-preferences
 description: Enhance scrollbar visibility for users who prefer high-contrast interfaces
 web-features:
   - scrollbar-color
+  - prefers-contrast
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/CSS/scrollbar-color
   - https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-contrast
