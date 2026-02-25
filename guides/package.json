@@ -1,0 +1,15 @@
+{
+  "name": "guides",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/guide-test.ts"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.19.7",
+    "js-yaml": "^4.1.1",
+    "type-fest": "^5.4.4",
+    "web-features": "^3.14.0"
+  }
+}
