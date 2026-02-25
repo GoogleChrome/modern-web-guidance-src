@@ -8,13 +8,16 @@ serving/mcp-server/.mcp-data/
 
 # Test artifacts
 eval-view/test-results/
+harness/results
 
 # Environment and Logs
 .env
 *.log
+.vscode
 
 # OS Junk
 .DS_Store
+
 
 # Coverage
 coverage/

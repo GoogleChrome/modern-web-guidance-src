@@ -138,14 +138,17 @@ export function updateMcpConfig(
   try {
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
-    console.log(`Added MCP server config(s) to ${configPath}: ${Object.keys(mcpConfig.mcpServers).join(', ')}`);
+    if (serversToEnable.length > 0) {
+      console.log(`Added MCP server config(s) to ${configPath}: ${Object.keys(mcpConfig.mcpServers).join(', ')}`);
+    } else {
+      console.log(`No MCP servers enabled in ${configPath}`);
+    }
     return true;
   } catch (e) {
     console.error(`Failed to write MCP config to ${configPath}:`, e);
     return false;
   }
 }
-
 
 export function copyAgentContext(homeDir: string, agent: string): boolean {
   const harnessRoot = path.resolve(__dirname, '..');

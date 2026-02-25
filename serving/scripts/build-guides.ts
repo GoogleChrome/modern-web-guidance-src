@@ -21,10 +21,11 @@ interface UseCase {
   category: string;
 }
 
-// Ensure build/guides exists
-if (!fs.existsSync(BUILD_GUIDES_DIR)) {
-  fs.mkdirSync(BUILD_GUIDES_DIR, { recursive: true });
+// Ensure clean build/guides exists
+if (fs.existsSync(BUILD_GUIDES_DIR)) {
+  fs.rmSync(BUILD_GUIDES_DIR, { recursive: true, force: true });
 }
+fs.mkdirSync(BUILD_GUIDES_DIR, { recursive: true });
 
 async function processGuides() {
   const useCases: UseCase[] = [];
@@ -38,55 +39,35 @@ async function processGuides() {
   console.log("Initializing Store...");
   const store = new Store();
 
-  for (const category of categories) {
-    const categoryDir = path.join(GUIDES_DIR, category);
-    if (!fs.statSync(categoryDir).isDirectory()) continue;
+  // Check for target guide argument
+  const targetGuidePath = process.argv[2];
 
-    // Create category dir in build/guides
-    const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
-    if (!fs.existsSync(buildCategoryDir)) {
-      fs.mkdirSync(buildCategoryDir, { recursive: true });
+  if (targetGuidePath) {
+    // Single guide mode
+    let absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
+    console.log(`Building single guide from: ${absoluteTargetPath}`);
+
+    const guidePath = path.join(absoluteTargetPath, "guide.md");
+    if (!fs.existsSync(guidePath)) {
+      throw new Error(`guide.md not found in ${absoluteTargetPath}.`);
     }
 
-    const files = fs.readdirSync(categoryDir);
-    for (const file of files) {
-      if (!file.endsWith(".md")) continue;
+    const category = path.basename(path.dirname(absoluteTargetPath));
+    const id = path.basename(absoluteTargetPath);
+    await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
+  } else {
+    for (const category of categories) {
+      const categoryDir = path.join(GUIDES_DIR, category);
+      if (!fs.statSync(categoryDir).isDirectory()) continue;
 
-      const id = path.basename(file, ".md");
-      const filePath = path.join(categoryDir, file);
-      const content = fs.readFileSync(filePath, "utf-8");
+      const files = fs.readdirSync(categoryDir);
+      for (const file of files) {
+        if (!file.endsWith(".md")) continue;
 
-      const { data, content: markdownBody, matter: frontmatter } = matter(content);
-
-      if (!data.description || !frontmatter) {
-        throw new Error(`Missing frontmatter or description in ${filePath}`);
+        const id = path.basename(file, ".md");
+        const filePath = path.join(categoryDir, file);
+        await processSingleGuideFile(filePath, category, id, useCases, storeUseCases);
       }
-
-      useCases.push({
-        id,
-        description: data.description,
-        category,
-      });
-
-      const chunks = chunkMarkdown(markdownBody);
-      chunks.push(frontmatter);
-
-      for (const chunk of chunks) {
-        const embeddingText = `${id} (${category})\n\n${chunk}`;
-        const vector = await embedder.embed(embeddingText);
-
-        storeUseCases.push({
-          id,
-          description: data.description,
-          category,
-          chunkContent: chunk,
-          vector
-        });
-      }
-
-      // Write clean markdown to build dir
-      const buildFilePath = path.join(buildCategoryDir, file);
-      fs.writeFileSync(buildFilePath, markdownBody.trimStart());
     }
   }
 
@@ -132,6 +113,56 @@ function chunkMarkdown(markdown: string): string[] {
   }
 
   return chunks.filter(chunk => chunk.trim().length > 0);
+}
+
+
+async function processSingleGuideFile(
+  filePath: string,
+  category: string,
+  id: string,
+  useCases: UseCase[],
+  storeUseCases: StoreUseCase[]
+) {
+  const content = fs.readFileSync(filePath, "utf-8");
+  const { data, content: markdownBody, matter: frontmatter } = matter(content);
+
+  if (!data.description || !frontmatter) {
+    throw new Error(`Missing frontmatter or description in ${filePath}`);
+  }
+
+  useCases.push({
+    id,
+    description: data.description,
+    category,
+  });
+
+  const chunks = chunkMarkdown(markdownBody);
+  chunks.push(frontmatter);
+
+  const embedder = Embedder.getInstance(); // Singleton, already init
+
+  for (const chunk of chunks) {
+    const embeddingText = `${id} (${category})\n\n${chunk}`;
+    const vector = await embedder.embed(embeddingText);
+
+    storeUseCases.push({
+      id,
+      description: data.description,
+      category,
+      chunkContent: chunk,
+      vector
+    });
+  }
+
+  // Create category dir in build/guides
+  const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
+  if (!fs.existsSync(buildCategoryDir)) {
+    fs.mkdirSync(buildCategoryDir, { recursive: true });
+  }
+
+  // Write clean markdown to build dir
+  const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
+  fs.writeFileSync(buildFilePath, markdownBody.trimStart());
 }
 
 processGuides().catch(console.error);
