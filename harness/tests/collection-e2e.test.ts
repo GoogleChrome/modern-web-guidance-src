@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const testDir = path.dirname(__filename);
 const harnessDir = path.resolve(testDir, '..');
 
-test('collectResults extracts explicit baseApp, taskName, and guide from new data structures', async (t) => {
+test('collectResults extracts explicit baseApp, taskName, and guide from new data structures', async (_t) => {
     // 1. Setup mock paths and unique names
     const tasksDir = path.resolve(harnessDir, 'tasks');
     const guidesDir = path.resolve(harnessDir, '../guides');

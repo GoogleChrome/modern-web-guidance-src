@@ -840,7 +840,7 @@ async function getResultPaths(testID, run, testName) {
                 setupPath = path;
                 break;
             }
-        } catch(e) {}
+        } catch {}
     }
 
     return { setupPath, resultPath, usedBasePath };
