@@ -24,10 +24,7 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright Browsers
-        run: pnpm run setup:playwright --with-deps
-
-      - name: Preflight
+      - name: Preflight (Typecheck, Lint, Tests)
         run: pnpm run preflight
 
       # Fail if any changes were written to any source files or generated untracked files
@@ -41,3 +38,9 @@ jobs:
           git add guides/features-and-use-cases.md
           git commit -m "Auto-generate features-and-use-cases.md" || echo "No changes to commit"
           git push
+
+      - name: Install Playwright Browsers
+        run: pnpm run setup:playwright --with-deps
+
+      - name: Playwright E2E Tests
+        run: pnpm --filter eval-view run test:e2e
