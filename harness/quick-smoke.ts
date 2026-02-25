@@ -14,13 +14,13 @@ async function runSmokeTest() {
   console.log(`🚀 Starting smoke test in: ${tempProjectDir}`);
   
   try {
-    // Run the existing agent harness
-    // Usage: node jetski-agent.ts <prompt> <runType> <targetDir> <templateDir>
     const result = spawnSync('node', [
+      '--experimental-strip-types',
       path.join(__dirname, 'agents/jetski-agent.ts'),
       prompt,
-      'smoke',
-      tempProjectDir
+      'guided', // runType expects guided or unguided
+      tempProjectDir, // targetDir
+      tempProjectDir  // templateDir (both are temp dir for smoke test)
     ], {
       stdio: 'inherit',
       env: { ...process.env }

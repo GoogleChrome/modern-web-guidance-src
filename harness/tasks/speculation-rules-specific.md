@@ -1,0 +1,4 @@
+---
+base_app: daily-grind
+---
+I have a list of navigation links in my header: /menu, /locations, /rewards, /account, and /logout. Please implement pre-rendering for these links to speed up navigation using native web platform features, but ensure that the /logout link is never pre-rendered to avoid accidental state changes.

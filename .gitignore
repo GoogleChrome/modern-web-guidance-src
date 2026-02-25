@@ -8,6 +8,7 @@ serving/mcp-server/.mcp-data/
 
 # Test artifacts
 eval-view/test-results/
+harness/results
 
 # Environment and Logs
 .env

@@ -15,6 +15,7 @@ let logStream: fs.WriteStream | null = null;
 async function main() {
   const baseDir = __dirname;
   const baseAppsDir = path.join(baseDir, 'base_apps');
+  const tasksDir = path.join(baseDir, 'tasks');
   const resultsDir = path.join(baseDir, 'results');
 
   // Create results directory if it doesn't exist
@@ -27,29 +28,61 @@ async function main() {
   // Single task mode check
   const args = process.argv.slice(2);
   const positionalArgs = args.filter(arg => !arg.startsWith('--'));
-  const [argDir, argPrompt] = positionalArgs;
+  
+  if (positionalArgs.length === 1) {
+    const task = positionalArgs[0];
+    const taskPath = path.join(tasksDir, `${task}.md`);
 
-  if (argDir && argPrompt) {
-    console.log(`\n=== Running Single Task ===`);
+    if (!fs.existsSync(taskPath)) {
+      console.error(`❌ Task '${task}' not found at ${taskPath}`);
+      return;
+    }
+
+    const fileContent = fs.readFileSync(taskPath, 'utf8');
+    const frontmatterMatch = fileContent.match(/^---\nbase_app:\s*(.+)\n---\n([\s\S]*)$/);
+    
+    if (!frontmatterMatch) {
+      console.error(`❌ Invalid frontmatter format in ${taskPath}`);
+      return;
+    }
+
+    const baseApp = frontmatterMatch[1].trim();
+    let promptContent = frontmatterMatch[2].trim();
+
+    const templateDir = path.join(baseAppsDir, baseApp);
+    if (!fs.existsSync(templateDir)) {
+      console.error(`❌ Template directory not found: ${templateDir}`);
+      return;
+    }
+
+    console.log(`\n=== Running Single Task: ${task} ===`);
     console.log(`Agent: ${agent}`);
-    console.log(`Directory: ${argDir}`);
-    console.log(`Prompt: ${argPrompt}\n`);
+    console.log(`Template: ${baseApp}`);
+    
+    // Create a target directory in results/single_task
+    const targetDir = path.join(resultsDir, 'single_task', task);
+    console.log(`Target: ${targetDir}\n`);
 
-    if (!fs.existsSync(argDir)) {
-      console.log(`Creating directory: ${argDir}`);
-      fs.mkdirSync(argDir, { recursive: true });
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
     }
 
     try {
-      // Dispatch based on agent
       const agentScript = path.join(__dirname, 'agents',
         agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
           agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
             'jetski-agent.ts'
       );
 
-      await runCommand('node', ['--experimental-strip-types', agentScript, JSON.stringify(argPrompt), 'guided', path.resolve(argDir)]);
-      console.log(`\n✅ Single task complete!`);
+      await runCommand('node', [
+        '--experimental-strip-types', 
+        agentScript, 
+        JSON.stringify(promptContent), 
+        'guided', // Default to guided for single task runs
+        targetDir,
+        templateDir
+      ]);
+      console.log(`\n✅ Single task complete! Results in ${targetDir}`);
     } catch (error) {
       console.error(`❌ Single task failed:`, error);
     }
@@ -85,31 +118,41 @@ async function main() {
         fs.mkdirSync(runDir, { recursive: true });
       }
 
-      for (const baseApp of config.suite.baseApps) {
-        // Read prompt from base app
-        const promptPath = path.join(baseAppsDir, baseApp, 'PROMPT.txt');
-        if (!fs.existsSync(promptPath)) {
-          console.warn(`Skipping base app ${baseApp}: PROMPT.txt not found at ${promptPath}`);
+      for (const task of config.suite.tasks) {
+        // Read prompt from task
+        const taskPath = path.join(tasksDir, `${task}.md`);
+        if (!fs.existsSync(taskPath)) {
+          console.warn(`Skipping task ${task}: ${taskPath} not found`);
           continue;
         }
 
-        let promptContent = fs.readFileSync(promptPath, 'utf8').trim();
+        const fileContent = fs.readFileSync(taskPath, 'utf8');
+        const frontmatterMatch = fileContent.match(/^---\nbase_app:\s*(.+)\n---\n([\s\S]*)$/);
+        
+        if (!frontmatterMatch) {
+          console.warn(`Skipping task ${task}: Invalid frontmatter format in ${taskPath}`);
+          continue;
+        }
+
+        const baseApp = frontmatterMatch[1].trim();
+        let promptContent = frontmatterMatch[2].trim();
+
         // Append instruction to use stock photos if needed
         promptContent += ` Don't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
         for (const runType of RUN_TYPES) {
-          const templateDir = path.join(baseAppsDir, baseApp, runType);
+          const templateDir = path.join(baseAppsDir, baseApp);
 
           if (!fs.existsSync(templateDir)) {
             throw new Error(`Template directory not found: ${templateDir}`);
           }
 
-          const targetDir = path.join(runDir, baseApp, runType);
+          const targetDir = path.join(runDir, task, runType);
           if (!fs.existsSync(targetDir)) {
             fs.mkdirSync(targetDir, { recursive: true });
           }
 
-          console.log(`\n>>> Running App: ${baseApp} | Run Type: ${runType} | Run: ${runNumber} | Agent: ${agent}`);
+          console.log(`\n>>> Running Task: ${task} | Template: ${baseApp} | Run Type: ${runType} | Run: ${runNumber} | Agent: ${agent}`);
           try {
           // Dispatch to appropriate agent script based on agent
             const agentArgs = [
@@ -124,9 +167,9 @@ async function main() {
             ];
 
             await runCommand('node', agentArgs);
-            console.log(`✅ Completed: ${baseApp}/${runType} (Run ${runNumber})`);
+            console.log(`✅ Completed: ${task}/${runType} (Run ${runNumber})`);
           } catch (error) {
-            console.error(`❌ Failed: ${baseApp}/${runType} (Run ${runNumber})`, error);
+            console.error(`❌ Failed: ${task}/${runType} (Run ${runNumber})`, error);
           }
         }
       }
