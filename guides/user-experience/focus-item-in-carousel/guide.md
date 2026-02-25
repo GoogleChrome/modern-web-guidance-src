@@ -59,7 +59,7 @@ You can leave the default scroll position as a safe fallback for progressive enh
 
 ## Strategic implementation
 
-- **DO** use `scroll-initial-target: nearest` when you want to draw the user's attention to a specific part of a scrollable area upon load (e.g., starting an image gallery at a specific image, like the middle item).
+- **DO** use `scroll-initial-target: nearest` when you want to draw the user's attention to a specific part of a scrollable area upon load (e.g., automatically scrolling a plant gallery to feature the "Nano Banana").
 - **DO NOT** use this as a replacement for standard accessibility focus. This property only affects the visual scroll position; it does not move keyboard focus.
 - **DO NOT** use it if you need to animate the scroll position on load; this property sets the *initial* position instantly.
 - **DO** understand that the property is only effective on the *initial* render or when the scroll container's content changes significantly.
