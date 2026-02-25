@@ -79,3 +79,6 @@ sources:
 ## Ask questions
 
 * If you are unsure about any of the above instructions, ask the user for clarification.
+
+## Grading Note
+* Graders (`grader.ts`) live within their respective guide folders. These are Playwright test files, but they are permitted to perform non-browser tests (like `str.includes()` on file contents) as well as actual browser automation checks.
