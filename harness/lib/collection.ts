@@ -3,13 +3,12 @@ import path from 'path';
 import fs from 'fs';
 import { checkGuides } from './guide_validation.ts';
 import { fileURLToPath } from 'url';
-import { config } from '../config.ts';
 import readline from 'readline';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function promptUser(question: string): Promise<string> {
+async function _promptUser(question: string): Promise<string> {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
