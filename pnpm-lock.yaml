@@ -54,8 +54,8 @@ importers:
   harness:
     dependencies:
       '@anthropic-ai/claude-code':
-        specifier: ^2.1.55
-        version: 2.1.55
+        specifier: ^2.1.38
+        version: 2.1.38
       '@anthropic-ai/vertex-sdk':
         specifier: ^0.14.4
         version: 0.14.4(zod@3.25.76)
@@ -148,7 +148,7 @@ packages:
     resolution: {integrity: sha512-3NX/MpTdroi0aKz134A6RC2Gb2iXVECN4QaAXnvCIxxIm3C3AVB1mkUe8NaaiyvOpDfsrqWhYtj+Q6a62RrTsw==}
     engines: {node: '>=18'}
 
-  '@anthropic-ai/claude-code@2.1.55':
+  '@anthropic-ai/claude-code@2.1.38':
     resolution: {integrity: sha512-q1tNAm1Vm0mQ5Qjc34KFATMlCjO1ZrBGv/pc4KP2I+0S+AcTboUuYpLI5eaiDC+sCW+tBxwmPME8/qJjOflxNA==}
     engines: {node: '>=18.0.0'}
     hasBin: true
@@ -3846,7 +3846,7 @@ snapshots:
       ansi-styles: 6.2.3
       is-fullwidth-code-point: 5.1.0
 
-  '@anthropic-ai/claude-code@2.1.55':
+  '@anthropic-ai/claude-code@2.1.38':
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.34.5
       '@img/sharp-darwin-x64': 0.34.5

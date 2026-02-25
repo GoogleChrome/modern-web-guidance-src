@@ -13,7 +13,7 @@
   },
   "packageManager": "pnpm@10.28.1",
   "dependencies": {
-    "@anthropic-ai/claude-code": "^2.1.55",
+    "@anthropic-ai/claude-code": "^2.1.38",
     "@anthropic-ai/vertex-sdk": "^0.14.4",
     "@google/gemini-cli": "^0.30.0",
     "cheerio": "^1.0.0",

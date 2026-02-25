@@ -3,15 +3,17 @@ import { describe, it, expect, vi } from "vitest";
 // Mocking McpServer to verify registration
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", async () => {
   const actual = await vi.importActual("@modelcontextprotocol/sdk/server/mcp.js");
-  const McpServer = vi.fn().mockImplementation(() => ({
-    tool: vi.fn(),
-    resource: vi.fn(),
-    registerResource: vi.fn(),
-    registerTool: vi.fn(),
-    registerPrompt: vi.fn(),
-    connect: vi.fn(),
-  }));
-  return { ...actual, McpServer };
+  const McpServer = vi.fn().mockImplementation(function () {
+    return {
+      tool: vi.fn(),
+      resource: vi.fn(),
+      registerResource: vi.fn(),
+      registerTool: vi.fn(),
+      registerPrompt: vi.fn(),
+      connect: vi.fn(),
+    };
+  });
+  return { ...actual as object, McpServer };
 });
 
 describe("Server Registration", () => {
