@@ -2,3 +2,4 @@ packages:
   - 'serving'
   - 'harness'
   - 'eval-view'
+  - 'guides'

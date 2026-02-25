@@ -51,7 +51,8 @@ The evaluation suite measures how effectively AI models use modern web APIs.
 pnpm suite
 
 # To run a single isolated task
-pnpm task <directory> "<prompt>"
+pnpm task <task_name>
+# Example: pnpm task content-vis
 
 # To generate reports from results
 pnpm report
@@ -97,7 +98,6 @@ Set the following environment variables:
 CLAUDE_CODE_USE_VERTEX=1
 CLOUD_ML_REGION=global
 ANTHROPIC_VERTEX_PROJECT_ID=<YOUR-GCP-PROJECT-ID>
-DISABLE_PROMPT_CACHING=1
 ANTHROPIC_MODEL='claude-opus-4-6'
 ```
 

@@ -4,12 +4,18 @@ export interface ScenarioCheck {
   message: string;
 }
 
+export interface ResourceUsed {
+  name: string;
+  source?: string;
+  timestamp?: string;
+}
+
 export interface RunResult {
   runNumber: number;
   results: ScenarioCheck[];
   guideResults?: {
     checks: { id: string; passed: boolean; message: string; }[];
-    resourcesUsed: any[] | null;
+    resourcesUsed: ResourceUsed[] | null;
   };
 }
 
