@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Custom Shapes Demo</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    background-color: #f0f0f0;
+  }
+  .custom-shape {
+    width: 220px;
+    height: 220px;
+    /* Using a gradient as placeholder content instead of external image for reliability */
+    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+    
+    /* Uses the local SVG heart shape */
+    -webkit-mask-image: url('heart.svg');
+    mask-image: url('heart.svg');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+  }
+</style>
+</head>
+<body>
+  <div class="custom-shape"></div>
+</body>
+</html>
