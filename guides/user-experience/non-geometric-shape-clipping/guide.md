@@ -1,6 +1,6 @@
 ---
 name: non-geometric-shape-clipping
-description: Clip elements into non-geometric shapes such as hearts, brush strokes, or organic textures for more expressive designs.
+description: Clip elements and their content to any free-form shape, like a symbol, brush stroke, or organic texture for more expressive designs.
 web-feature-ids:
   - masks
   - svg

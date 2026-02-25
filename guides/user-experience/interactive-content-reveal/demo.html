@@ -28,7 +28,6 @@
       box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
     }
 
-    /* The "dimmed" base image */
     .product-image {
       width: 100%;
       height: 100%;
@@ -43,7 +42,6 @@
       font-size: 80px;
     }
 
-    /* The "hidden" bright image that will be revealed */
     .reveal-layer {
       position: absolute;
       top: 0;
@@ -51,13 +49,10 @@
       width: 100%;
       height: 100%;
       background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
-      /* Revealed content */
       display: flex;
       justify-content: center;
       align-items: center;
       font-size: 80px;
-
-      /* Initially hidden by an empty mask */
       mask-image: radial-gradient(circle at var(--x, 50%) var(--y, 50%), black 0%, transparent 0%);
       mask-repeat: no-repeat;
       mask-size: 100% 100%;
@@ -65,7 +60,6 @@
     }
 
     .product-card:hover .reveal-layer {
-      /* Reveal a 150px circle on hover */
       mask-image: radial-gradient(circle at var(--x, 50%) var(--y, 50%), black 100px, transparent 120px);
     }
 
