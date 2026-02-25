@@ -38,13 +38,13 @@ test.describe('Eval View Dashboard', () => {
   });
 
   test('should load specific test dashboard', async ({ page }) => {
-    await page.goto('/dashboard.html?testID=react');
+    await page.goto('/dashboard.html?testID=example-result');
 
     // Check title
     await expect(page.locator('h1')).toContainText('Eval Dashboard');
 
     // Check header info
-    await expect(page.locator('#test-header')).toContainText('react');
+    await expect(page.locator('#test-header')).toContainText('example-result');
 
     // Check grid exists and has content
     await expect(page.locator('#dashboard-grid')).toBeVisible();
@@ -58,7 +58,7 @@ test.describe('Eval View Dashboard', () => {
   });
 
   test('should show details and toggle diff view', async ({ page }) => {
-    await page.goto('/dashboard.html?testID=react');
+    await page.goto('/dashboard.html?testID=example-result');
 
     // Wait for cards and click the first one
     const firstCard = page.locator('.test-card').first();
@@ -81,7 +81,7 @@ test.describe('Eval View Dashboard', () => {
     const diffContainer = page.locator('.diff-container');
     await expect(diffContainer).toBeVisible();
     
-    // Since we're using real data (react test), we should see some diff parts
+    // Since we're using real data (example-result test), we should see some diff parts
     // We expect either added or unchanged lines
     const diffParts = page.locator('.diff-added, .diff-removed, .diff-unchanged');
     const partsCount = await diffParts.count();

@@ -1,0 +1,9 @@
+Here's what I did to optimize the page:
+
+**Added two CSS properties to `.card`** (`index.html:93-94`):
+
+- **`content-visibility: auto`** — Tells the browser to skip layout, paint, and rendering work for cards that are off-screen. Only the cards visible in the viewport get fully rendered on initial load. As the user scrolls, cards are rendered just before they come into view.
+
+- **`contain-intrinsic-size: auto 400px`** — Provides a placeholder height estimate (400px) for off-screen cards so the scrollbar remains stable. The `auto` keyword means once a card has been rendered, the browser remembers its actual size, preventing layout shifts when scrolling back up.
+
+This is a pure CSS progressive enhancement — no JavaScript changes needed. Browsers that don't support `content-visibility` will simply render all cards as before. For supporting browsers (all modern Chromium, Firefox, and Safari), the initial render should drop from rendering all 500 cards to only the handful visible in the viewport.
