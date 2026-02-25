@@ -1,9 +1,0 @@
-I will read the `index.html` file to understand the current page structure.
-I will search for use cases related to "instant navigation" to find the recommended approach.
-I will get the best practices for the `preload-prerender` use case.
-I will add the Speculation Rules API script to the `index.html` file to enable instant navigation.
-I will verify the changes to `index.html` by reading the file.
-I will write the `resources_used.json` file to document the resources used during the task.
-I will verify the content of `index.html` and `resources_used.json` to ensure the changes are correct.
-I have implemented the Speculation Rules API in `index.html` to enable instant navigation by prerendering pages (excluding the logout link). I also documented the resource usage in `resources_used.json`.
-The Speculation Rules API has been added to `index.html`, configuring prerendering for all local links (excluding `/logout`) with "moderate" eagerness to ensure near-instant navigation. The use of this web performance pattern was logged in `resources_used.json`.

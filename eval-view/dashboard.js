@@ -429,40 +429,17 @@ async function showDetails(testName, runs, stats, testID) {
         const { setupPath, resultPath, usedBasePath } = await getResultPaths(testID, run, testName);
 
         let guideSection = '';
-        if (run.guideResults && run.guideResults.checks) {
-            const guideStats = getRunStats(run.guideResults.checks);
-            // Toggle ID
-            const toggleId = `guide-toggle-${run.runNumber}`;
-            const contentId = `guide-content-${run.runNumber}`;
-
-            // Professional Look: Clean styling, no raw arrows
-            // Using SVG for chevron
-            const chevronRight = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="transition: transform 0.2s; margin-right: 8px;"><path d="M4 2L8 6L4 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        if (run.guideUsed !== undefined) {
+            const passed = run.guideUsed;
 
             guideSection = `
-                <div class="guide-section" style="margin-top: 15px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--border-color); overflow: hidden;">
-                    <div id="${toggleId}" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; cursor: pointer; user-select: none; background: rgba(255,255,255,0.02); transition: background 0.1s;">
-                        <div style="display: flex; align-items: center;">
-                            <span class="toggle-icon-wrapper" style="display: flex; align-items: center;">${chevronRight}</span>
-                            <strong style="font-size: 0.9em; font-weight: 600;">Guide Validation</strong>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 0.85em; color: ${getColor(guideStats.rate)}; font-weight: 600; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 10px;">${guideStats.rate}% Match</span>
-                        </div>
+                <div class="guide-section" style="margin-top: 15px; padding: 10px 15px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1rem;">${passed ? '✅' : '❌'}</span>
+                        <strong style="font-size: 0.9em; font-weight: 600;">${guide} used by agent</strong>
                     </div>
-                    
-                    <div id="${contentId}" style="display: none; padding: 0 15px 15px 15px; border-top: 1px solid var(--border-color);">
-                        <div style="padding-top: 10px; margin-bottom: 10px; text-align: right;">
-                             <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">View resources_used.json</a>
-                        </div>
-                        <ul class="check-list" style="border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden;">
-                            ${run.guideResults.checks.map(check => `
-                                <li class="check-item" style="padding: 8px 12px; font-size: 0.9em;">
-                                    <span class="check-status" style="font-size: 1rem;">${check.passed ? '✅' : '❌'}</span>
-                                    <span class="check-message" style="color: var(--text-primary); font-family: -apple-system, sans-serif;">${escapeHtml(check.message)}</span>
-                                </li>
-                            `).join('')}
-                        </ul>
+                    <div>
+                        <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">View resources_used.json</a>
                     </div>
                 </div>
             `;
@@ -488,25 +465,6 @@ async function showDetails(testName, runs, stats, testID) {
             </ul>
             ${guideSection}
         `;
-
-        // Handle Guide Toggle
-        const toggleBtn = runDetail.querySelector(`#guide-toggle-${run.runNumber}`);
-        const contentArea = runDetail.querySelector(`#guide-content-${run.runNumber}`);
-        if (toggleBtn && contentArea) {
-            toggleBtn.onclick = () => {
-                const isHidden = contentArea.style.display === 'none';
-                contentArea.style.display = isHidden ? 'block' : 'none';
-                const icon = toggleBtn.querySelector('svg');
-                if (icon) {
-                    icon.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
-                }
-                toggleBtn.style.background = isHidden ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)';
-            };
-
-            // Hover effect for header
-            toggleBtn.onmouseenter = () => { toggleBtn.style.background = 'rgba(255,255,255,0.05)'; };
-            toggleBtn.onmouseleave = () => { if (contentArea.style.display === 'none') toggleBtn.style.background = 'rgba(255,255,255,0.02)'; };
-        }
 
         const viewResourcesLink = runDetail.querySelector('.view-resources-link');
         if (viewResourcesLink) {
@@ -577,7 +535,12 @@ async function viewContent(fileName, filePath) {
 
     try {
         const res = await fetch(filePath);
-        if (!res.ok) throw new Error('Failed to fetch file');
+        if (!res.ok) {
+            if (res.status === 404) {
+                throw new Error('Resources file not found.');
+            }
+            throw new Error(`Failed to fetch file (Status: ${res.status})`);
+        }
         const text = await res.text();
 
         body.innerHTML = '';

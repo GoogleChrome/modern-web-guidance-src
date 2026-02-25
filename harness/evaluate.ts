@@ -36,17 +36,17 @@ async function main() {
     return;
   }
 
-  let testID;
+  let suiteName;
   if (config.eval.suiteName) {
-    testID = config.eval.suiteName;
+    suiteName = config.eval.suiteName;
   } else {
     // Get the latest test if no specific test ID is provided
     const latestTest = manifest.tests[manifest.tests.length - 1];
-    testID = latestTest.id;
+    suiteName = latestTest.id;
   }
-  const resultsDir = path.join(resultsDirBase, testID);
+  const resultsDir = path.join(resultsDirBase, suiteName);
 
-  console.log(`Evaluating test: ${testID}`.cyan);
+  console.log(`Evaluating suite: ${suiteName}`.cyan);
   console.log(`Results directory: ${resultsDir}`.cyan);
 
   if (!fs.existsSync(resultsDir)) {

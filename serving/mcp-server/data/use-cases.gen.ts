@@ -7,53 +7,58 @@ export interface UseCase {
 
 export const USE_CASES: UseCase[] = [
   {
-    "id": "image-to-text",
-    "description": "Turn images into text, captions, or structured data using the built-in Prompt API",
-    "category": "ai"
+    "id": "search-hidden-content",
+    "description": "Hide content from view using patterns such as accordions, tabs, and \"Read more\" sections, and enable native \"Find in page\" search to show hidden regions, while ensuring content can be indexed for search and referenced by `aria` attributes for accessibility.",
+    "category": "user-experience"
   },
   {
-    "id": "carousel",
-    "description": "Build responsive, accessible carousels with CSS Scroll Snap",
-    "category": "ui"
+    "id": "pull-to-reveal",
+    "description": "Build a pull-to-reveal feature that would enable the user to pull down on the screen to reveal more content, like a search bar.",
+    "category": "user-experience"
   },
   {
-    "id": "color-systems",
-    "description": "Create dynamic, accessible color systems using modern color syntax and relative colors",
-    "category": "ui"
+    "id": "form-fields-automatically-fit-contents",
+    "description": "Allow form fields to grow and shrink to fit the user input, e.g. as the user types or selects a different option. Apply maximum and minimum size limits to create dynamic and responsive form fields that conform with the page design.",
+    "category": "user-experience"
   },
   {
-    "id": "scroll-driven-animations",
-    "description": "Create animations linked to scroll position",
-    "category": "ui"
+    "id": "focus-item-in-carousel",
+    "description": "Build a scrollable carousel that centers on a specific image or other visual components in the viewport on initial page load.",
+    "category": "user-experience"
   },
   {
-    "id": "tooltip",
-    "description": "Create tooltips with Popover API and Interest Invokers",
-    "category": "ui"
+    "id": "focus-chat-message",
+    "description": "Build a chat message feature that can display a conversation automatically scrolled to a specific message (e.g. matching a search query) on initial render.",
+    "category": "user-experience"
   },
   {
-    "id": "adaptive-loading",
-    "description": "Load a fallback image when network conditions are poor using the Adaptive Loading API",
-    "category": "webperf"
+    "id": "flicker-free-client-side-ab-testing",
+    "description": "Deliver and render A/B tests, multi-variate tests, or other experiments using client-side JavaScript to alter or inject HTML, CSS, and JavaScript without the original content showing first before flickering or flashing to show the experiment content.",
+    "category": "user-experience"
   },
   {
-    "id": "break-long-tasks",
-    "description": "Improve interaction responsiveness (INP) by yielding to the main thread.",
-    "category": "webperf"
+    "id": "deep-link-to-hidden-content",
+    "description": "Deep-link to visually hidden content (for example in collapsed accordions, closed tabs, or below \"Read more\" sections) using URL fragments and \"Scroll to Text Fragment\" links.",
+    "category": "user-experience"
+  },
+  {
+    "id": "consistent-cross-document-transitions",
+    "description": "Ensure critical page state is loaded and stable before initiating a cross-document view transition. This means critical CSS styles are loaded and applied, critical JavaScript is loaded and run, and the HTML visible for the user's initial view of the page has been parsed before the transition runs.",
+    "category": "user-experience"
+  },
+  {
+    "id": "full-session-analytics",
+    "description": "Reliably track analytics, errors, and telemetry data across the user's entire page visit, and defer sending of the data until the user leaves the page.",
+    "category": "performance"
   },
   {
     "id": "content-vis",
     "description": "Improve initial page load and interaction responsiveness by deferring the rendering work of off-screen components until they are needed.",
-    "category": "webperf"
+    "category": "performance"
   },
   {
-    "id": "lazy-load-images",
-    "description": "Defer loading of off-screen images to minimize network contention and improve LCP.",
-    "category": "webperf"
-  },
-  {
-    "id": "preload-prerender",
-    "description": "Improve navigation speed by preloading key resources or prerendering pages before the user clicks.",
-    "category": "webperf"
+    "id": "batch-analytics-events",
+    "description": "Debounce and batch multiple analytics events together in a single beacon to minimize network contention and reduce server load, while still delivering real-time updates.",
+    "category": "performance"
   }
 ];
