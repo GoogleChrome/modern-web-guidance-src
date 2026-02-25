@@ -53,7 +53,7 @@ async function main() {
     }
 
     const baseApp = baseAppMatch[1].trim();
-    let promptContent = frontmatterMatch[2].trim();
+    const promptContent = frontmatterMatch[2].trim() + "\n\nThe output should be a single HTML file. Do not modify any other files.";
 
     const templateDir = path.join(baseAppsDir, baseApp);
     if (!fs.existsSync(templateDir)) {
@@ -79,8 +79,6 @@ async function main() {
           agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
             'jetski-agent.ts'
       );
-
-
 
       await runCommand('node', [
         '--experimental-strip-types', 
