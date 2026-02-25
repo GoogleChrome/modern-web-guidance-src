@@ -65,9 +65,9 @@ describe("Server Registration", () => {
       );
       const handler = getPracticesCall[2];
 
-      const result = await handler({ use_case_id: "tooltip" });
+      const result = await handler({ use_case_id: "content-vis" });
       expect(result.content[0].type).toBe("text");
-      expect(result.content[0].text).toContain("Tooltip");
+      expect(result.content[0].text).toContain("Optimize Rendering of Long Pages");
     });
   });
 });
