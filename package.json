@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "private": true,
   "scripts": {
     "test": "pnpm -r test",
@@ -12,11 +13,15 @@
     "suite": "pnpm --filter harness suite",
     "qsmoke": "pnpm --filter harness qsmoke",
     "task": "pnpm --filter harness task",
+    "run-agent": "node harness/run_suite.ts --with-template",
     "report": "pnpm --filter harness report",
     "dashboard": "pnpm --filter eval-view start",
     "build:mcp": "pnpm --filter modern-web-mcp build",
     "test:mcp": "pnpm --filter modern-web-mcp test",
-    "setup:playwright": "pnpm --filter eval-view exec playwright install"
+    "setup:playwright": "pnpm --filter eval-view exec playwright install",
+    "generate-negative": "node --env-file=.env guides/negative-gen.ts",
+    "generate-grader": "node --env-file=.env guides/grader-gen.ts",
+    "grade": "node --experimental-strip-types guides/run-grader.ts"
   },
   "keywords": [],
   "author": "",
@@ -31,6 +36,7 @@
     ]
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "oxlint": "^1.46.0",
     "typescript": "^5.9.3"
   }
