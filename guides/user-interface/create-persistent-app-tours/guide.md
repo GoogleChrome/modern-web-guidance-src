@@ -1,13 +1,13 @@
 ---
 name: create-persistent-app-tours
 
-description: Create persistent onboarding walkthroughs using the popover="manual" state to ensure tour steps stay open during user interaction. By tethering steps to UI elements with CSS Anchor Positioning, developers can create robust guided experiences immune to z-index issues.
+description: Create persistent onboarding walkthroughs using the popover="manual" state to ensure tour steps stay open during user interaction.
 
 web-feature-ids:
 * popover
 * anchor-positioning
-  sources:
-* https://developer.mozilla.org/en-US/docs/Web/API/Popover_API/Using
+sources:
+* https://developer.mozilla.org/docs/Web/API/Popover_API/Using
 * https://developer.chrome.com/blog/introducing-popover-api
 ---
 
@@ -27,3 +27,7 @@ Onboarding tours require overlays that persist while users interact with the hig
 #### popover
 
 * **Guidance:** Use position: fixed and manually calculate coordinates via JavaScript getBoundingClientRect() for legacy support.
+
+#### anchor-positioning
+
+* **Guidance:** Use the [CSS Anchor Positioning Polyfill](https://github.com/oddbird/css-anchor-positioning). For a non-polyfill fallback, default the tooltip to a fixed position at the bottom of the viewport using `@supports not (anchor-name: --foo)`.

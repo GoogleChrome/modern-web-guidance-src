@@ -8,7 +8,8 @@ web-feature-ids:
 * anchor-positioning
 * popover-hint
 * interest-invokers
-  sources:
+
+sources:
 * https://developer.mozilla.org/docs/Web/API/Popover_API
 * https://developer.mozilla.org/docs/Web/CSS/Guides/Anchor_positioning
 * https://developer.mozilla.org/docs/Web/API/Popover_API/Using_interest_invokers

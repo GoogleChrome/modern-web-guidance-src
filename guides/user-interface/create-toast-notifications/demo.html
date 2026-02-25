@@ -3,33 +3,50 @@
 <head>
   <style>
     .toast-container {
+      anchor-name: --toast-container;
       position: fixed;
-      bottom: 20px;
-      right: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+      width: 100cqi;
+      height: 4rem;
+      bottom: 1rem;
     }
+
     [popover="manual"] {
-      position: relative;
-      inset: auto;
-      margin: 0;
-      padding: 12px 20px;
-      background: #28a745;
-      color: white;
-      border: none;
+      position-anchor: --toast-container;
+      position-area: bottom;
+      margin-bottom: calc(sibling-index() * 1rem);
+      padding: 0.5rem 1rem;
+      background: lightgreen;
+      border: 1px solid green;
       border-radius: 8px;
       transition: opacity 0.3s, transform 0.3s, display 0.3s, overlay 0.3s;
       transition-behavior: allow-discrete;
       opacity: 0;
       transform: translateY(20px);
     }
+
     [popover="manual"]:popover-open {
       opacity: 1;
       transform: translateY(0);
     }
+
     @starting-style {
-      [popover="manual"]:popover-open { opacity: 0; transform: translateY(20px); }
+      [popover="manual"]:popover-open { 
+        opacity: 0; 
+        transform: translateY(20px);
+      }
+    }
+
+    button[popovertargetaction="hide"] {
+      background:none;
+      border:none;
+      cursor:pointer;
+    }
+
+    body {
+      min-height: 100dvh;
+      min-width: 100dvw;
+      padding: 0;
+      margin: 0;
     }
   </style>
 </head>
@@ -38,7 +55,7 @@
   <div class="toast-container">
     <div id="toast" popover="manual">
       Success!
-      <button popovertarget="toast" popovertargetaction="hide" style="color:white; background:none; border:none; cursor:pointer;">×</button>
+      <button popovertarget="toast" popovertargetaction="hide" aria-label="close">x</button>
     </div>
   </div>
   <script>
