@@ -63,10 +63,10 @@ export async function collectResults(resultsDir: string) {
 
 
       // We determine what to grade by looking up the task used for this directory
-      // The task name is actually baseApp in the current dir traversal because 
+      // The task name is actually baseApp in the current dir traversal because
       // the structure is actually results/{testID}/{runNumber}/{taskName}/{runType}
       // baseApp above was misleadingly named from legacy code. Let's rename it implicitly here:
-      const taskName = baseApp; 
+      const taskName = baseApp;
 
       const taskPath = path.resolve(__dirname, `../tasks/${taskName}.md`);
       if (!fs.existsSync(taskPath)) {
@@ -76,7 +76,7 @@ export async function collectResults(resultsDir: string) {
 
       const fileContent = fs.readFileSync(taskPath, 'utf8');
       const frontmatterMatch = fileContent.match(/^---\n(?:[\s\S]*?)grader:\s*(.+)\n(?:[\s\S]*?)---\n([\s\S]*)$/m);
-      
+
       if (!frontmatterMatch) {
          console.warn(`Skipping grading: No 'grader:' found in frontmatter for task ${taskName}`);
          continue;
