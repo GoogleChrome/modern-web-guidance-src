@@ -29,17 +29,20 @@ More eager speculative loading is a good choice for pages that are likely to be 
 
 Less eager speculative loading is a good choice when it is less obvious what the user will do next, when there are many links on the page, each equally likely to be visited. By waiting for more signals, such as hovering, or starting to click on the page, you can get a head-start on the next page and improve the user experience, even if it is not fully prefetched or prerender.
 
-Similarly, prefetch is a more conservative choice than prerender, using less resources (on both the client and the server side) but providing less benefit to the user. It is a good choice for initial implementation, expanding to prerender later if appropriate.
+Similarly, prefetch is a more conservative choice than prerender, using less resources (on both the client and the server side) but providing less benefit to the user. It is a good choice for initial implementation, expanding to prerender later when the developer explicitly requests it.
 
 ## How to use it
 
 Speculation rules have a JSON-based format and can be included in a `<script type="speculationrules">` tag. The rules can be included in the `<head>` or `<body>` of the document, or can be dynamically added using JavaScript.
+
+A `tag` can also be used, either at a global level or on a per-rule basis. This allows identification of which speuclations (and which rules) server-side and is a best practice.
 
 ### Example of a simple URL list rule of specific for prefetching
 
 ```html
 <script type="speculationrules">
   {
+    "tag": "product-page-speculations",
     "prefetch": [
       {
         "urls": ["/product/1", "/product/2", "/product/3"]
@@ -54,6 +57,7 @@ Speculation rules have a JSON-based format and can be included in a `<script typ
 ```html
 <script type="speculationrules">
   {
+    "tag": "all-links-speculations",
     "prerender": [{
       "where": { "href_matches": "/*" }
     }]
@@ -66,6 +70,7 @@ Speculation rules have a JSON-based format and can be included in a `<script typ
 ```html
 <script type="speculationrules">
   {
+    "tag": "speculations-with-exclusions",
     "prerender": [{
       "where": {
         "and": [
@@ -88,18 +93,16 @@ This example shows a rule set that prefetches all links eagerly, and then goes f
 ```html
 <script type="speculationrules">
   {
-    "prefetch": [
-      {
-        "where": { "href_matches": "/*" },
-        "eagerness": "eager"
-      }
-    ],
-    "prerender": [
-      {
-        "where": { "href_matches": "/*" },
-        "eagerness": "moderate"
-      }
-    ]
+    "prefetch": [{
+      "tag": "prefetch-speculations",
+      "where": { "href_matches": "/*" },
+      "eagerness": "eager"
+    }],
+    "prerender": [{
+      "tag": "prerender-speculations",
+      "where": { "href_matches": "/*" },
+      "eagerness": "moderate"
+    }]
   }
 </script>
 ```
@@ -122,6 +125,4 @@ Speculative loading is a new feature, and as such, browser support is limited, p
 
 Speculative loading can be seen as a progressive enhancement, where the browser will use the speculation rules if supported, and will ignore them if not supported. This means that you do not need to provide a fallback strategy, as the browser will handle it for you.
 
-### Speculation rules polyfill
-
-A polyfill for speculation does not exist but libraries like [Quicklink](https://github.com/GoogleChrome/quicklink) provide similar functionality for prefetching with cross-browser support.
+If you wish to also support other browsers, libraries like [Quicklink](https://github.com/GoogleChrome/quicklink) provide similar functionality for prefetching with cross-browser support, though do not support the speculation rules syntax, nor prerendering.
