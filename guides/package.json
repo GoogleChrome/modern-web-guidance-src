@@ -6,12 +6,12 @@
     "test": "node --test **.test.ts"
   },
   "devDependencies": {
-    "@playwright/test": "^1.57.0",
+    "@playwright/test": "^1.58.2",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.19.7",
     "js-yaml": "^4.1.1",
-    "playwright": "^1.57.0",
+    "playwright": "^1.58.2",
     "type-fest": "^5.4.4",
-    "web-features": "^3.14.0"
+    "web-features": "^3.18.0"
   }
 }

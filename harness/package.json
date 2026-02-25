@@ -13,14 +13,14 @@
   },
   "packageManager": "pnpm@10.28.1",
   "dependencies": {
-    "@anthropic-ai/claude-code": "^2.1.38",
-    "@anthropic-ai/vertex-sdk": "^0.14.3",
-    "@google/gemini-cli": "^0.28.0",
+    "@anthropic-ai/claude-code": "^2.1.55",
+    "@anthropic-ai/vertex-sdk": "^0.14.4",
+    "@google/gemini-cli": "^0.30.0",
     "cheerio": "^1.0.0",
     "colors": "^1.4.0",
     "dotenv": "^16.4.7",
     "glob": "^10.4.5",
-    "puppeteer-core": "^24.34.0"
+    "puppeteer-core": "^24.37.5"
   },
   "devDependencies": {
     "js-yaml": "^4.1.1"
