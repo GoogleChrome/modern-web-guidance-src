@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "DRY_RUN=true node --env-file=../.env --experimental-strip-types ./sync-use-cases.ts"
+    "test": "DRY_RUN=true node --experimental-strip-types ./sync-use-cases.ts"
   },
   "devDependencies": {
     "@octokit/rest": "^21.1.1",

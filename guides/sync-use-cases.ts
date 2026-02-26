@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { Octokit } from '@octokit/rest';
@@ -8,6 +8,8 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
+dotenv.config({ path: path.join(REPO_ROOT, '.env') });
+
 
 interface GuideData {
   name?: string;

@@ -47,6 +47,16 @@ export const USE_CASES: UseCase[] = [
     "category": "user-experience"
   },
   {
+    "id": "prioritized-preloading",
+    "description": "Orchestrate low priority work, such as background network requests, without competing with critical rendering.",
+    "category": "performance"
+  },
+  {
+    "id": "prioritized-continuation-after-yielding",
+    "description": "Yield execution of a long-running task to the main thread while guaranteeing its continuation is immediately prioritized and resumed, preventing queue jumping.",
+    "category": "performance"
+  },
+  {
     "id": "full-session-analytics",
     "description": "Reliably track analytics, errors, and telemetry data across the user's entire page visit, and defer sending of the data until the user leaves the page.",
     "category": "performance"
@@ -54,6 +64,11 @@ export const USE_CASES: UseCase[] = [
   {
     "id": "content-vis",
     "description": "Improve initial page load and interaction responsiveness by deferring the rendering work of off-screen components until they are needed.",
+    "category": "performance"
+  },
+  {
+    "id": "complex-computations-and-loops",
+    "description": "Break up heavy synchronous processing or DOM updates, to let the browser handle user input and repaint the screen.",
     "category": "performance"
   },
   {
