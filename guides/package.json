@@ -3,14 +3,13 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "DRY_RUN=true tsx ./sync-use-cases.ts"
+    "test": "DRY_RUN=true node --env-file=../.env --experimental-strip-types ./sync-use-cases.ts"
   },
   "devDependencies": {
     "@octokit/rest": "^21.1.1",
     "@playwright/test": "^1.58.2",
     "dotenv": "^16.4.7",
     "gray-matter": "^4.0.3",
-    "tsx": "^4.21.0",
     "web-features": "latest"
   }
 }

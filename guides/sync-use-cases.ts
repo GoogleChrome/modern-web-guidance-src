@@ -102,13 +102,11 @@ function validateGuide(filePath: string): ValidationResult {
 }
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const OWNER = 'GoogleChrome';
+const ORG = 'GoogleChrome';
 const REPO = 'guidance';
 const PROJECT_NUMBER = 30;
-const ORG = 'GoogleChrome';
 
 const IS_DRY_RUN = process.env.DRY_RUN === 'true';
-const PR_NUMBER = process.env.PR_NUMBER ? parseInt(process.env.PR_NUMBER) : undefined;
 
 if (IS_DRY_RUN) {
   console.log('🏃 Dry run mode enabled. No changes will be made to GitHub.');
@@ -165,93 +163,86 @@ async function getProjectDetails(org: string, number: number) {
   }
 }
 
-async function getRenamedPaths(owner: string, repo: string, prNumber: number) {
-  console.log(`Fetching renamed files for PR #${prNumber}...`);
-  const renamedMap = new Map<string, string>();
-  try {
-    const files = await octokit.paginate(octokit.rest.pulls.listFiles, {
-      owner,
-      repo,
-      pull_number: prNumber
-    });
-    for (const file of files) {
-      if (file.status === 'renamed' && file.previous_filename) {
-        const newDir = path.dirname(file.filename);
-        const oldDir = path.dirname(file.previous_filename);
-        renamedMap.set(newDir, oldDir);
-      }
-    }
-  } catch (err: any) {
-    console.warn(`⚠️ Could not fetch PR file list to detect renames: ${err.message}`);
-  }
-  return renamedMap;
-}
 
 async function run() {
   console.log('🚀 Starting use case sync...');
 
   let hasError = false;
 
-  const projectDetails = await getProjectDetails(ORG, PROJECT_NUMBER);
-  if (!projectDetails) {
-    console.warn('⚠️ Could not fetch project details. Project updates will be skipped.');
-  }
-
-  // Fetch renames if running in a PR context
-  const renamedPaths = PR_NUMBER ? await getRenamedPaths(OWNER, REPO, PR_NUMBER) : null;
-
-  // 1. Fetch all 'new-feature' issues to build Feature ID -> Issue Number mapping
-  console.log('Fetching "new-feature" issues...');
-  let featureToIssueMap = new Map<string, number>();
-  try {
-    const featureIssues = await octokit.paginate(octokit.rest.issues.listForRepo, {
-      owner: OWNER,
-      repo: REPO,
-      labels: 'new-feature',
-      state: 'all'
-    });
-
-    for (const issue of featureIssues) {
-      const match = issue.body?.match(/Feature ID: ([a-z0-9-]+)/);
-      if (match) {
-        featureToIssueMap.set(match[1], issue.number);
-      }
+  let projectDetails = null;
+  if (GITHUB_TOKEN) {
+    projectDetails = await getProjectDetails(ORG, PROJECT_NUMBER);
+    if (!projectDetails) {
+      console.warn('⚠️ Could not fetch project details. Project updates will be skipped.');
     }
-    console.log(`Found ${featureToIssueMap.size} features with issues.`);
-  } catch (err: any) {
-    console.warn('⚠️ Could not fetch "new-feature" issues. Issue relation updates will be skipped.');
-    if (!IS_DRY_RUN) throw err;
+  } else if (IS_DRY_RUN) {
+    console.warn('⚠️ GITHUB_TOKEN is not set. Project status updates will be skipped in this dry run.');
   }
 
-  // 2. Fetch all existing 'new-use-case' issues
-  console.log('Fetching existing "new-use-case" issues...');
-  let nameToIssueMap = new Map<string, any>();
-  let subdirToIssueMap = new Map<string, any>();
-  try {
-    const existingUseCases = await octokit.paginate(octokit.rest.issues.listForRepo, {
-      owner: OWNER,
-      repo: REPO,
-      labels: 'new-use-case',
-      state: 'all'
-    });
+  const featureToIssueMap = new Map<string, number>();
+  const nameToIssueMap = new Map<string, any>();
+  const subdirToIssueMap = new Map<string, any>();
+  let allUseCases: any[] = [];
 
-    for (const issue of existingUseCases) {
-      // 1. Map by name from the title
-      const titleMatch = issue.title.match(/Create guide and evals for the (.+) use case/);
-      if (titleMatch) {
-        nameToIssueMap.set(titleMatch[1].trim(), issue);
-      }
+  if (GITHUB_TOKEN) {
+    // 1. Fetch all 'new-feature' issues to build Feature ID -> Issue Number mapping
+    console.log('Fetching "new-feature" issues...');
+    try {
+      const featureIssues = await octokit.paginate(octokit.rest.issues.listForRepo, {
+        owner: ORG,
+        repo: REPO,
+        labels: 'new-feature',
+        state: 'all'
+      });
 
-      // 2. Map by subdirectory from the body
-      const bodyMatch = issue.body?.match(/Use case subdir: \[([^\]]+)\]/);
-      if (bodyMatch) {
-        subdirToIssueMap.set(bodyMatch[1].trim(), issue);
+      for (const issue of featureIssues) {
+        const match = issue.body?.match(/Feature ID: ([a-z0-9-]+)/);
+        if (match) {
+          featureToIssueMap.set(match[1], issue.number);
+        }
       }
+      console.log(`Found ${featureToIssueMap.size} features with issues.`);
+    } catch (err: any) {
+      console.warn('⚠️ Could not fetch "new-feature" issues. Issue relation updates will be skipped.');
+      if (!IS_DRY_RUN) throw err;
     }
-  } catch (err: any) {
-    console.warn('⚠️ Could not fetch existing "new-use-case" issues. Issue creation/updates will be skipped.');
-    if (!IS_DRY_RUN) throw err;
+  } else if (IS_DRY_RUN) {
+    console.log('ℹ️ Skipping "new-feature" issue fetch (no GITHUB_TOKEN set).');
   }
+
+  if (GITHUB_TOKEN) {
+    // 2. Fetch all existing 'new-use-case' issues
+    console.log('Fetching existing "new-use-case" issues...');
+    try {
+      allUseCases = await octokit.paginate(octokit.rest.issues.listForRepo, {
+        owner: ORG,
+        repo: REPO,
+        labels: 'new-use-case',
+        state: 'all'
+      });
+
+      for (const issue of allUseCases) {
+        // 1. Map by name from the title
+        const titleMatch = issue.title.match(/Create guide and evals for the (.+) use case/);
+        if (titleMatch) {
+          nameToIssueMap.set(titleMatch[1].trim(), issue);
+        }
+
+        // 2. Map by subdirectory from the body
+        const bodyMatch = issue.body?.match(/Use case subdir: \[([^\]]+)\]/);
+        if (bodyMatch) {
+          subdirToIssueMap.set(bodyMatch[1].trim(), issue);
+        }
+      }
+    } catch (err: any) {
+      console.warn('⚠️ Could not fetch existing "new-use-case" issues. Issue creation/updates will be skipped.');
+      if (!IS_DRY_RUN) throw err;
+    }
+  } else if (IS_DRY_RUN) {
+    console.log('ℹ️ Skipping existing "new-use-case" issue fetch (no GITHUB_TOKEN set).');
+  }
+
+  const activeIssueNumbers = new Set<number>();
 
   // 3. Find and validate all guide.md files
   const guidesDir = path.resolve(REPO_ROOT, 'guides');
@@ -297,40 +288,26 @@ async function run() {
     const relatedFeaturesStr = relatedLinks.length > 0 ? `\n\nRelated features: ${relatedLinks.join(' ')}` : '';
 
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
-    const subdirUrl = `https://github.com/${OWNER}/${REPO}/tree/main/${relativeSubdir}`;
+    const subdirUrl = `https://github.com/${ORG}/${REPO}/tree/main/${relativeSubdir}`;
     const linkedFeatures = (featureIds as string[]).map(id => `[${id}](https://webstatus.dev/features/${id})`).join(', ');
 
     const issueTitle = `Create guide and evals for the ${name} use case`;
     const issueBody = `${description}\n\nAffected web-feature IDs: ${linkedFeatures}\n\nUse case subdir: [${relativeSubdir}](${subdirUrl})${relatedFeaturesStr}`;
 
-    let existingIssue = nameToIssueMap.get(name);
-
-    if (!existingIssue) {
-      let lookupSubdir = relativeSubdir;
-      // If we are in a PR and this path was renamed, look up by the OLD path
-      if (renamedPaths && renamedPaths.has(relativeSubdir)) {
-        lookupSubdir = renamedPaths.get(relativeSubdir)!;
-        console.log(`🔍 Detected directory move for ${relativeSubdir} (formerly ${lookupSubdir}). Searching for existing issue...`);
-      }
-
-      existingIssue = subdirToIssueMap.get(lookupSubdir);
-      if (existingIssue) {
-        const oldName = existingIssue.title.match(/the (.+) use case/)?.[1] || 'unknown';
-        console.log(`ℹ️ Detected rename/move for use case "${name}" (formerly "${oldName}" in ${lookupSubdir}). Updating existing issue #${existingIssue.number}.`);
-      }
-    }
+    let existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
 
     let issueNumber: number;
 
     if (existingIssue) {
       const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody;
       issueNumber = existingIssue.number;
+      activeIssueNumbers.add(issueNumber);
 
       if (needsUpdate) {
         console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"...`);
         if (!IS_DRY_RUN) {
           await octokit.rest.issues.update({
-            owner: OWNER,
+            owner: ORG,
             repo: REPO,
             issue_number: issueNumber,
             title: issueTitle,
@@ -348,13 +325,14 @@ async function run() {
       console.log(`${IS_DRY_RUN ? '[DRY RUN] Would create' : 'Creating'} new issue for "${name}"...`);
       if (!IS_DRY_RUN) {
         const newIssue = await octokit.rest.issues.create({
-          owner: OWNER,
+          owner: ORG,
           repo: REPO,
           title: issueTitle,
           body: issueBody,
           labels: ['new-use-case']
         });
         issueNumber = newIssue.data.number;
+        activeIssueNumbers.add(issueNumber);
       } else {
         console.log(`[DRY RUN] Title: ${issueTitle}`);
         console.log(`[DRY RUN] Labels: new-use-case`);
@@ -381,6 +359,31 @@ async function run() {
     }
   }
 
+  if (GITHUB_TOKEN) {
+    // 4. Cleanup: Close issues for use cases that no longer exist
+    console.log('🧹 Checking for orphaned issues to close...');
+    for (const issue of allUseCases) {
+      if (issue.state === 'open' && !activeIssueNumbers.has(issue.number)) {
+        console.log(`${IS_DRY_RUN ? '[DRY RUN] Would close' : 'Closing'} orphaned issue #${issue.number} ("${issue.title}")...`);
+        if (!IS_DRY_RUN) {
+          try {
+            await octokit.rest.issues.update({
+              owner: ORG,
+              repo: REPO,
+              issue_number: issue.number,
+              state: 'closed',
+              state_reason: 'not_planned'
+            });
+          } catch (err: any) {
+            console.warn(`⚠️ Could not close orphaned issue #${issue.number}: ${err.message}`);
+          }
+        }
+      }
+    }
+  } else if (IS_DRY_RUN) {
+    console.log('ℹ️ Skipping orphaned issue cleanup (no GITHUB_TOKEN set).');
+  }
+
   if (hasError) {
     console.error('\n🛑 Sync failed due to validation errors.');
     process.exit(1);
@@ -394,7 +397,7 @@ async function updateProjectItemStatus(issueNumber: number, projectId: string, f
     // First, find the item ID in the project
     // This is tricky because we need the global node ID of the issue
     const issueResponse = await octokit.rest.issues.get({
-      owner: OWNER,
+      owner: ORG,
       repo: REPO,
       issue_number: issueNumber
     });
