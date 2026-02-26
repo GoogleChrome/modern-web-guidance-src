@@ -6,7 +6,8 @@ import path from "path";
 
 function logToolResult(toolName: string, result: { id: string; distance?: string | number }[]) {
   try {
-    const logPath = path.join(process.cwd(), "mcp_tool_calls.log");
+    const logDir = process.env.MCP_LOG_DIR || process.cwd();
+    const logPath = path.join(logDir, "mcp_tool_calls.log");
     const logEntry = {
       timestamp: new Date().toISOString(),
       tool: toolName,
