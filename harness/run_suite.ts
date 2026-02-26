@@ -25,48 +25,68 @@ async function main() {
 
   const agent = config.suite.agent;
 
-  // Single task mode check
   const args = process.argv.slice(2);
   const positionalArgs = args.filter(arg => !arg.startsWith('--'));
   
-  if (positionalArgs.length === 1) {
-    const task = positionalArgs[0];
-    const taskPath = path.join(tasksDir, `${task}.md`);
+  const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.\n\nThe output should be a single HTML file. Do not modify any other files.`;
 
-    if (!fs.existsSync(taskPath)) {
-      console.error(`❌ Task '${task}' not found at ${taskPath}`);
-      return;
+  // Single task mode check
+  if (positionalArgs.length === 1 || (positionalArgs.length === 2 && args.includes('--with-template'))) {
+    let templateDir: string;
+    let targetDir: string;
+    let promptContent: string;
+    let taskNameLabel: string;
+
+    // pnpm run-agent mode
+    if (positionalArgs.length === 2) {
+      templateDir = positionalArgs[0];
+      if (!path.isAbsolute(templateDir)) {
+        templateDir = path.resolve(process.cwd(), templateDir);
+      }
+      const cleanTemplateDir = templateDir.replace(/\/$/, '');
+      targetDir = path.join(path.dirname(cleanTemplateDir), path.basename(cleanTemplateDir) + '-results');
+      promptContent = positionalArgs[1];
+      taskNameLabel = "Agent Test";
+    } else { // pnpm task mode
+      const task = positionalArgs[0];
+      taskNameLabel = `Single Task: ${task}`;
+      const taskPath = path.join(tasksDir, `${task}.md`);
+
+      if (!fs.existsSync(taskPath)) {
+        console.error(`❌ Task '${task}' not found at ${taskPath}`);
+        return;
+      }
+
+      const fileContent = fs.readFileSync(taskPath, 'utf8');
+      const frontmatterMatch = fileContent.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+
+      if (!frontmatterMatch) {
+        console.error(`❌ Invalid frontmatter format in ${taskPath}`);
+        return;
+      }
+
+      const baseAppMatch = frontmatterMatch[1].match(/^base_app:\s*(.+)$/m);
+      if (!baseAppMatch) {
+        console.error(`❌ Missing base_app in frontmatter in ${taskPath}`);
+        return;
+      }
+
+      const baseApp = baseAppMatch[1].trim();
+      templateDir = path.join(baseAppsDir, baseApp);
+      targetDir = path.join(resultsDir, 'single_task', task);
+      promptContent = frontmatterMatch[2].trim();
     }
 
-    const fileContent = fs.readFileSync(taskPath, 'utf8');
-    const frontmatterMatch = fileContent.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-    
-    if (!frontmatterMatch) {
-      console.error(`❌ Invalid frontmatter format in ${taskPath}`);
-      return;
-    }
-
-    const baseAppMatch = frontmatterMatch[1].match(/^base_app:\s*(.+)$/m);
-    if (!baseAppMatch) {
-      console.error(`❌ Missing base_app in frontmatter in ${taskPath}`);
-      return;
-    }
-
-    const baseApp = baseAppMatch[1].trim();
-    let promptContent = frontmatterMatch[2].trim();
-
-    const templateDir = path.join(baseAppsDir, baseApp);
     if (!fs.existsSync(templateDir)) {
       console.error(`❌ Template directory not found: ${templateDir}`);
       return;
     }
 
-    console.log(`\n=== Running Single Task: ${task} ===`);
+    promptContent += COMMON_APPEND_PROMPT;
+
+    console.log(`\n=== Running ${taskNameLabel} ===`);
     console.log(`Agent: ${agent}`);
-    console.log(`Template: ${baseApp}`);
-    
-    // Create a target directory in results/single_task
-    const targetDir = path.join(resultsDir, 'single_task', task);
+    console.log(`Template: ${templateDir}`);
     console.log(`Target: ${targetDir}\n`);
 
     if (!fs.existsSync(targetDir)) {
@@ -80,17 +100,17 @@ async function main() {
             'jetski-agent.ts'
       );
 
-
-
       await runCommand('node', [
         '--experimental-strip-types', 
         agentScript, 
         JSON.stringify(promptContent), 
         'guided', // Default to guided for single task runs
-        targetDir, templateDir]);
-      console.log(`\n✅ Single task complete! Results in ${targetDir}`);
+        targetDir,
+        templateDir
+      ]);
+      console.log(`\n✅ ${taskNameLabel} complete! Results in ${targetDir}`);
     } catch (error) {
-      console.error(`❌ Single task failed:`, error);
+      console.error(`❌ ${taskNameLabel} failed:`, error);
     }
     return;
   }
@@ -149,8 +169,7 @@ async function main() {
         const baseApp = baseAppMatch[1].trim();
         let promptContent = frontmatterMatch[2].trim();
 
-        // Append instruction to use stock photos if needed
-        promptContent += ` Don't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
+        promptContent += COMMON_APPEND_PROMPT;
 
         for (const runType of RUN_TYPES) {
           const templateDir = path.join(baseAppsDir, baseApp);

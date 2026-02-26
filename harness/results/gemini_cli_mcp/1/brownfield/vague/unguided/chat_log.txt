@@ -1,9 +1,0 @@
-I will read the `index.html` file to understand its current structure.
-I will add the Speculation Rules API script to the `<head>` of `index.html` to enable instant navigation functionality.
-I will create the `menu` and `locations` directories to organize the site structure.
-I will create the `menu/index.html` file, including the Speculation Rules API script and the site's styles, to ensure instant navigation and consistent design.
-I will create the `locations/index.html` file, including the Speculation Rules API script and the site's styles, to ensure instant navigation and consistent design across the site.
-I will read `index.html` to confirm that the changes were applied correctly and the file structure remains intact.
-I have implemented the Speculation Rules API on the main page and created supporting `menu` and `locations` pages with the same optimization. This ensures that navigations to other pages on the site are handled with "moderate" eagerness, effectively making them instant for users on modern browsers. I have also verified the file content and structure.
-
-I'm now ready for the next request.

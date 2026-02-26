@@ -33,11 +33,21 @@
       "onnxruntime-node",
       "protobufjs",
       "sharp"
-    ]
+    ],
+    "packageExtensions": {
+      "@google/gemini-cli": {
+        "dependencies": {
+          "semver": "*"
+        }
+      }
+    }
   },
   "devDependencies": {
     "@types/node": "^22.19.11",
     "oxlint": "^1.50.0",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "glob": "^10.5.0"
   }
 }

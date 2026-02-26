@@ -1,72 +1,45 @@
 import fs from 'fs';
 import path from 'path';
-import { config } from '../config.ts';
-import type { ResourceUsed } from './metrics.ts';
+import { fileURLToPath } from 'url';
 
-export interface GuideCheck {
-  id: string;
-  passed: boolean;
-  message: string;
-}
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-export interface GuideValidationResult {
-  checks: GuideCheck[];
-  resourcesUsed: ResourceUsed[] | null;
-}
-
-export async function checkGuides(dirPath: string, appName: string): Promise<GuideValidationResult> {
+export async function guideUsed(dirPath: string, appName: string): Promise<boolean> {
   const resourcesPath = path.join(dirPath, 'resources_used.json');
   
   if (!fs.existsSync(resourcesPath)) {
-    return {
-      checks: [{
-        id: 'resources-exist',
-        passed: false,
-        message: 'resources_used.json not found'
-      }],
-      resourcesUsed: null
-    };
+    return false;
   }
 
-  let resources: ResourceUsed[];
+  let resources: { name?: string }[];
   try {
     resources = JSON.parse(fs.readFileSync(resourcesPath, 'utf8'));
   } catch {
-    return {
-      checks: [{
-        id: 'resources-valid-json',
-        passed: false,
-        message: 'resources_used.json is not valid JSON'
-      }],
-      resourcesUsed: null
-    };
+    return false;
   }
 
-  const checks: GuideCheck[] = [{
-    id: 'resources-exist',
-    passed: true,
-    message: 'resources_used.json found'
-  }];
+  const taskPath = path.resolve(__dirname, `../tasks/${appName}.md`);
+  if (!fs.existsSync(taskPath)) {
+    console.error(`Task ${appName} not found at ${taskPath}`);
+    return false;
+  }
 
-  const expected = config.eval.expectedGuides[appName] || [];
-  
+  const fileContent = fs.readFileSync(taskPath, 'utf8');
+  const frontmatterMatch = fileContent.match(/^---\n(?:[\s\S]*?)grader:\s*(.+)\n(?:[\s\S]*?)---\n([\s\S]*)$/m);
+
+  if (!frontmatterMatch) {
+    console.error(`No 'grader:' found in frontmatter for task ${appName}`);
+    return false;
+  }
+
+  const guide = frontmatterMatch[1].trim();
+
   // Extract all resource names for easier searching
   const resourceNames = resources.map(r => r.name || '').filter(Boolean);
 
-  for (const guide of expected) {
-    // Check if any resource name contains the guide name
-    const found = resourceNames.some(name => name.includes(guide));
-    checks.push({
-      id: `guide-${guide}`,
-      passed: found,
-      message: found 
-        ? `Guide "${guide}" used` 
-        : `Guide "${guide}" NOT found in resources`
-    });
-  }
+  const found = resourceNames.some(name => name.includes(guide));
+  const isOnlyOne = resourceNames.length === 1;
 
-  return {
-    checks,
-    resourcesUsed: resources
-  };
+  return found && isOnlyOne;
 }

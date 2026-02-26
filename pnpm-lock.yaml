@@ -4,9 +4,15 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+packageExtensionsChecksum: sha256-zoVQtLk99xd43KIGx1/gkbHDDqSxAbzIRHakKJnWc8U=
+
 importers:
 
   .:
+    dependencies:
+      glob:
+        specifier: ^10.5.0
+        version: 10.5.0
     devDependencies:
       '@types/node':
         specifier: ^22.19.11
@@ -1309,6 +1315,10 @@ packages:
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
+
+  '@types/glob@9.0.0':
+    resolution: {integrity: sha512-00UxlRaIUvYm4R4W9WYkN8/J+kV8fmOQ7okeH6YFtGWFMt3odD45tpG5yA5wnL7HE6lLgjaTW5n14ju2hl2NNA==}
+    deprecated: This is a stub types definition. glob provides its own type definitions, so you do not need this installed.
 
   '@types/gradient-string@1.1.6':
     resolution: {integrity: sha512-LkaYxluY4G5wR1M4AKQUal2q61Di1yVVCw42ImFTuaIoQVgmV0WP1xUaLB8zwb47mp82vWTpePI9JmrjEnJ7nQ==}
@@ -4037,6 +4047,7 @@ snapshots:
       prompts: 2.4.2
       proper-lockfile: 4.1.2
       react: 19.2.4
+      semver: 7.7.4
       shell-quote: 1.8.3
       simple-git: 3.32.2
       string-width: 8.2.0
@@ -4932,6 +4943,10 @@ snapshots:
   '@types/deep-eql@4.0.2': {}
 
   '@types/estree@1.0.8': {}
+
+  '@types/glob@9.0.0':
+    dependencies:
+      glob: 10.5.0
 
   '@types/gradient-string@1.1.6':
     dependencies:

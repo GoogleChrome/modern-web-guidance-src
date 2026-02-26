@@ -4,10 +4,9 @@ import { getGuide } from "./modern-practices.ts";
 
 describe("getGuide", () => {
   it("should retrieve full guide when no section is provided", async () => {
-    const guide = await getGuide("carousel");
+    const guide = await getGuide("content-vis");
     expect(guide).toBeTruthy();
-    expect(guide).toContain("# Modern Carousel");
-    expect(guide).toContain("## Key Features");
+    expect(guide).toContain("# Optimize Rendering of Long Pages");
   });
 
   it("should return null for non-existent guide", async () => {
