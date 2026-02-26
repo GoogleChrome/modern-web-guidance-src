@@ -1,1 +1,0 @@
-Modernize this existing JavaScript-based tooltip implementation. Replace the event listeners and manual DOM manipulation with the modern HTML Popover API using Interest Invokers.

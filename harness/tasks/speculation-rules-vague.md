@@ -1,0 +1,5 @@
+---
+base_app: daily-grind
+grader: speculation-rules
+---
+Ensure that navigations to other pages on this site are as instant as possible

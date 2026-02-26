@@ -122,6 +122,7 @@ async function run() {
     console.error("Error during Gemini CLI execution:", err);
     process.exit(1);
   } finally {
+    // Comment out if you need to inspect trajectories.
     cleanupIsolatedHome(path.dirname(workDir));
   }
 }

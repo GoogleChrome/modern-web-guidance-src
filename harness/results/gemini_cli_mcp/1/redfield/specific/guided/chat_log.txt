@@ -1,8 +1,0 @@
-I will read the `index.html` file to understand the current tooltip implementation.
-I will search for "interest invokers" or "popover api" use cases to find relevant implementation guides.
-I will retrieve the best practices for the "tooltip" use case to understand how to implement the modern tooltip.
-I will replace the existing CSS, HTML, and JS in `index.html` with the modern Popover API and Interest Invokers implementation.
-I will retry replacing the content of `index.html` with a single replacement operation, setting `expected_replacements` to 1.
-I will create the `resources_used.json` file to document the usage of the "tooltip" resource from the "modern-web" server.
-I will read the `index.html` file to verify that the changes have been applied correctly.
-I have modernized the tooltip implementation by replacing the manual JavaScript logic with the HTML Popover API and CSS Anchor Positioning. I also documented the resource usage in `resources_used.json`.

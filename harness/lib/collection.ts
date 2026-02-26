@@ -1,27 +1,11 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
-import { checkGuides } from './guide_validation.ts';
+import { guideUsed } from './guide_validation.ts';
 import { fileURLToPath } from 'url';
-import { config } from '../config.ts';
-import readline from 'readline';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-async function promptUser(question: string): Promise<string> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
-  return new Promise(resolve => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
-}
 
 export async function collectResults(resultsDir: string) {
   const runDirs = fs.readdirSync(resultsDir)
@@ -40,7 +24,7 @@ export async function collectResults(resultsDir: string) {
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
 
-    // Structure: results/{testID}/{runNumber}/{baseApp}/{runType}
+    // Structure: results/{suiteName}/{runNumber}/{taskName}/{runType}
     const directories = glob.sync('*/*/', {
       cwd: runPath,
       absolute: true
@@ -52,92 +36,115 @@ export async function collectResults(resultsDir: string) {
 
       if (parts.length < 2) continue;
 
-      const [baseApp, runType] = parts;
+      const [taskName, runType] = parts;
 
-      let guideResults = undefined;
+      let guideUsedResult = undefined;
       if (runType === 'guided') {
-        guideResults = await checkGuides(dir, baseApp);
+        guideUsedResult = await guideUsed(dir, taskName);
       }
 
       const targetFile = path.join(dir, 'index.html');
 
-      // Run the tests for each use case
-      for (const guide of config.eval.guidesToTest) {
-        const testName = `${baseApp} - ${guide} - ${runType}`;
-
-        const useCasesDir = path.resolve(__dirname, '../../use-cases');
-        const graderPath = path.join(useCasesDir, guide, `${guide}.grader.js`);
-
-        let scenarioResults: any[] = [];
-        const graderResults = path.join(dir, `${guide}_results.json`);
-
-        if (!fs.existsSync(graderPath)) {
-          console.warn(`Grader not found for ${guide} at ${graderPath}`);
-          scenarioResults.push({ name: 'Configuration', status: 'fail', message: 'Grader not found' });
-        } else if (!fs.existsSync(targetFile)) {
-          scenarioResults.push({ name: 'File Check', status: 'fail', message: 'index.html not found' });
-        } else {
-          try {
-            let json: any = null;
-            let useExistingResults = false;
-
-            // Check if existing results are found
-            if (fs.existsSync(graderResults)) {
-              const answer = await promptUser(`Found existing grader results for ${testName} run ${runDir}. Re-use results? [y/n] `);
-              useExistingResults = answer.toLowerCase() === 'y';
-            }
-
-            if (useExistingResults) {
-              json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
-            } else {
-              console.log(`Running grader for ${guide} in ${dir}...`);
-              // Use spawnSync to handle exit codes without throwing
-              const { spawnSync } = await import('child_process');
-              const result = spawnSync('pnpm', ['--silent', '--filter', 'use-cases', 'exec', 'playwright', 'test', graderPath, '--reporter=json'], {
-                encoding: 'utf-8',
-                stdio: 'pipe',
-                env: { ...process.env, TARGET_FILE: targetFile },
-                maxBuffer: 10 * 1024 * 1024 // 10MB
-              });
-
-              if (result.error) throw result.error;
-
-              const output = result.stdout;
-              json = JSON.parse(output);
-              fs.writeFileSync(graderResults, JSON.stringify(json, null, 2));
-            }
-
-            if (json.suites && json.suites.length > 0) {
-              const specs: any[] = [];
-              const traverse = (suite: any) => {
-                if (suite.specs) specs.push(...suite.specs);
-                if (suite.suites) suite.suites.forEach(traverse);
-              };
-              json.suites.forEach(traverse);
-
-              scenarioResults = specs.map((spec: any) => {
-                const lastResult = spec.tests[0].results[spec.tests[0].results.length - 1];
-                return {
-                  passed: lastResult.status === 'passed',
-                  message: spec.title
-                };
-              });
-            }
-          } catch (err: any) {
-            console.error(`Error processing results for ${dir}:`, err);
-            scenarioResults.push({ name: 'System Error', status: 'fail', message: err.message });
-          }
-        }
-
-        if (!allResults[testName]) {
-          allResults[testName] = [];
-        }
-        allResults[testName].push({
-          runNumber: parseInt(runDir),
-          results: scenarioResults,
-          guideResults
-        });
+      const taskPath = path.resolve(__dirname, `../tasks/${taskName}.md`);
+      if (!fs.existsSync(taskPath)) {
+        console.warn(`Skipping grading: Task ${taskName} not found at ${taskPath}`);
+        continue;
       }
+
+      const fileContent = fs.readFileSync(taskPath, 'utf8');
+      const frontmatterMatch = fileContent.match(/^---\n(?:[\s\S]*?)grader:\s*(.+)\n(?:[\s\S]*?)---\n([\s\S]*)$/m);
+
+      if (!frontmatterMatch) {
+         console.warn(`Skipping grading: No 'grader:' found in frontmatter for task ${taskName}`);
+         continue;
+      }
+
+      const guide = frontmatterMatch[1].trim();
+
+      const baseAppMatch = fileContent.match(/^base_app:\s*(.+)$/m);
+      const actualBaseApp = baseAppMatch ? baseAppMatch[1].trim() : taskName;
+
+      const testName = `${taskName} - ${guide} - ${runType}`;
+
+      const guidesDir = path.resolve(__dirname, '../../guides');
+      const graderMatches = glob.sync(`**/${guide}/grader.ts`, {
+        cwd: guidesDir,
+        absolute: true
+      });
+      const graderPath = graderMatches.length > 0 ? graderMatches[0] : path.join(guidesDir, guide, `grader.ts`);
+
+      let scenarioResults: any[] = [];
+      const graderResults = path.join(dir, `${guide}_results.json`);
+
+      if (!fs.existsSync(graderPath)) {
+        console.warn(`Grader not found for ${guide} at ${graderPath}`);
+        scenarioResults.push({ name: 'Configuration', status: 'fail', message: 'Grader not found' });
+      } else if (!fs.existsSync(targetFile)) {
+        scenarioResults.push({ name: 'File Check', status: 'fail', message: 'index.html not found' });
+      } else {
+        try {
+          let json: any = null;
+          let useExistingResults = false;
+
+          // Check if existing results are found
+          if (fs.existsSync(graderResults)) {
+            console.log(`Using existing results for ${guide} in ${dir}`);
+            useExistingResults = true;
+          }
+
+          if (useExistingResults) {
+            json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
+          } else {
+            console.log(`Running grader for ${guide} in ${dir}...`);
+            // Use spawnSync to handle exit codes without throwing
+            const { spawnSync } = await import('child_process');
+            const playwrightConfig = path.join(guidesDir, 'playwright.config.ts');
+            const result = spawnSync('pnpm', ['--silent', '--filter', 'guides', 'exec', 'playwright', 'test', '-c', playwrightConfig, graderPath, '--reporter=json'], {
+              encoding: 'utf-8',
+              stdio: 'pipe',
+              env: { ...process.env, TARGET_FILE: targetFile },
+              maxBuffer: 10 * 1024 * 1024 // 10MB
+            });
+
+            if (result.error) throw result.error;
+
+            const output = result.stdout;
+            json = JSON.parse(output);
+            fs.writeFileSync(graderResults, JSON.stringify(json, null, 2));
+          }
+
+          if (json && json.suites && json.suites.length > 0) {
+            const specs: any[] = [];
+            const traverse = (suite: any) => {
+              if (suite.specs) specs.push(...suite.specs);
+              if (suite.suites) suite.suites.forEach(traverse);
+            };
+            json.suites.forEach(traverse);
+
+            scenarioResults = specs.map((spec: any) => {
+              const lastResult = spec.tests[0].results[spec.tests[0].results.length - 1];
+              return {
+                passed: lastResult.status === 'passed',
+                message: spec.title
+              };
+            });
+          }
+        } catch (err: any) {
+          console.error(`Error processing results for ${dir}:`, err);
+          scenarioResults.push({ name: 'System Error', status: 'fail', message: err.message });
+        }
+      }
+
+      if (!allResults[testName]) {
+        allResults[testName] = [];
+      }
+      allResults[testName].push({
+        runNumber: parseInt(runDir),
+        results: scenarioResults,
+        guideUsed: guideUsedResult,
+        baseApp: actualBaseApp,
+        taskName: taskName
+      });
     }
   }
 
