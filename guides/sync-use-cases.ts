@@ -329,6 +329,12 @@ async function run() {
         console.log(`✅ Issue #${issueNumber} for "${name}" is up to date.`);
       }
     } else {
+      if (statusName === null) {
+        // This is a completed guide, so we don't need to create an issue just to immediately close it.
+        console.log(`ℹ️ Skipping issue creation for "${name}" (already complete).`);
+        continue;
+      }
+
       console.log(`${IS_DRY_RUN ? '[DRY RUN] Would create' : 'Creating'} new issue for "${name}"...`);
       if (!IS_DRY_RUN) {
         const newIssue = await octokit.rest.issues.create({
