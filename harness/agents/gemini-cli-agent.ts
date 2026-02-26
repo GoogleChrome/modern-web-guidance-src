@@ -5,7 +5,7 @@ import { spawn } from 'child_process';
 
 import config, { Agents } from '../config.ts';
 
-import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copyResultsToTarget, copySkills } from '../lib/agent-shared.ts';
+import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copyResultsToTarget, copySkills, generateExportHtml } from '../lib/agent-shared.ts';
 
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
 const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('gemini-cli-agent.ts');
@@ -113,6 +113,32 @@ async function run() {
     const chatLogPath = path.join(targetDir, 'chat_log.txt');
     fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
     console.log(`Saved output to: ${chatLogPath}`);
+
+    // Extract trajectory JSON from isolated home
+    const tmpDir = path.join(path.dirname(workDir), '.gemini', 'tmp');
+    if (fs.existsSync(tmpDir)) {
+      const jsonFiles = fs.globSync('*/chats/*.json', { cwd: tmpDir });
+      
+      for (const relativeSrc of jsonFiles as string[]) {
+        const srcFile = path.join(tmpDir, relativeSrc);
+        const file = path.basename(srcFile);
+        const destFile = path.join(targetDir, file);
+        fs.copyFileSync(srcFile, destFile);
+        console.log(`Copied trajectory: ${file} to ${targetDir}`);
+
+        // Generate HTML export
+        try {
+          const trajectoryId = file.replace(/\.json$/, '');
+          const fileBuffer = fs.readFileSync(srcFile);
+          const htmlContent = generateExportHtml(new Uint8Array(fileBuffer), file);
+          const htmlDest = path.join(targetDir, `${trajectoryId}.html`);
+          fs.writeFileSync(htmlDest, htmlContent, 'utf8');
+          console.log(`Generated HTML export: ${trajectoryId}.html`);
+        } catch (e) {
+          console.error(`Failed to generate HTML for ${file}:`, e);
+        }
+      }
+    }
 
     console.log("Gemini CLI agent finished successfully.");
 
