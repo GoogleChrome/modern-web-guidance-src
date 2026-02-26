@@ -5,23 +5,28 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export async function guideUsed(dirPath: string, appName: string): Promise<boolean> {
-  const resourcesPath = path.join(dirPath, 'resources_used.json');
+export async function guideUsed(dirPath: string, taskName: string): Promise<boolean> {
+  const logPath = path.join(dirPath, 'mcp_tool_calls.log');
   
-  if (!fs.existsSync(resourcesPath)) {
+  if (!fs.existsSync(logPath)) {
     return false;
   }
 
-  let resources: { name?: string }[];
-  try {
-    resources = JSON.parse(fs.readFileSync(resourcesPath, 'utf8'));
-  } catch {
-    return false;
+  const logContent = fs.readFileSync(logPath, 'utf8').trim();
+  let toolCalls: any[] = [];
+
+  if (logContent) {
+    try {
+      const jsonString = '[' + logContent.replace(/}\s*\{/g, '},{') + ']';
+      toolCalls = JSON.parse(jsonString);
+    } catch (e) {
+      console.error(`Failed to parse ${logPath}:`, e);
+    }
   }
 
-  const taskPath = path.resolve(__dirname, `../tasks/${appName}.md`);
+  const taskPath = path.resolve(__dirname, `../tasks/${taskName}.md`);
   if (!fs.existsSync(taskPath)) {
-    console.error(`Task ${appName} not found at ${taskPath}`);
+    console.error(`Task ${taskName} not found at ${taskPath}`);
     return false;
   }
 
@@ -29,17 +34,17 @@ export async function guideUsed(dirPath: string, appName: string): Promise<boole
   const frontmatterMatch = fileContent.match(/^---\n(?:[\s\S]*?)grader:\s*(.+)\n(?:[\s\S]*?)---\n([\s\S]*)$/m);
 
   if (!frontmatterMatch) {
-    console.error(`No 'grader:' found in frontmatter for task ${appName}`);
+    console.error(`No 'grader:' found in frontmatter for task ${taskName}`);
     return false;
   }
 
   const guide = frontmatterMatch[1].trim();
 
-  // Extract all resource names for easier searching
-  const resourceNames = resources.map(r => r.name || '').filter(Boolean);
+  // Extract all use case IDs requested via get_best_practices
+  const requestedGuides = toolCalls
+    .filter(call => call.tool === 'get_best_practices' && Array.isArray(call.result))
+    .flatMap(call => call.result.map((r: any) => r.id || ''))
+    .filter(Boolean);
 
-  const found = resourceNames.some(name => name.includes(guide));
-  const isOnlyOne = resourceNames.length === 1;
-
-  return found && isOnlyOne;
+  return requestedGuides.some(id => id === guide);
 }

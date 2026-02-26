@@ -1,6 +1,24 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getGuide } from "../data/modern-practices.ts";
+import { appendFileSync } from "fs";
+import path from "path";
+
+function logToolResult(toolName: string, result: { id: string; distance?: string | number }[]) {
+  try {
+    const logDir = process.env.MCP_LOG_DIR || process.cwd();
+    const logPath = path.join(logDir, "mcp_tool_calls.log");
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      tool: toolName,
+      result
+    };
+    appendFileSync(logPath, JSON.stringify(logEntry, null, 2) + "\n\n", "utf8");
+  } catch (err) {
+    // Ignore error
+    console.error(err);
+  }
+}
 
 export function registerModernWebTools(server: McpServer) {
   server.registerTool(
@@ -20,6 +38,8 @@ export function registerModernWebTools(server: McpServer) {
 
       const vector = await embedder.embed(query);
       const results = await store.search(vector);
+
+      logToolResult("search_use_cases", results.map(r => ({ id: r.id, distance: r.distance })));
 
       return {
         content: [
@@ -53,6 +73,8 @@ export function registerModernWebTools(server: McpServer) {
           isError: true,
         };
       }
+
+      logToolResult("get_best_practices", [{ id: use_case_id }]);
 
       return {
         content: [
