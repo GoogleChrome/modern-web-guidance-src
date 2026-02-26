@@ -9,7 +9,7 @@
     "test": "pnpm -r test",
     "lint": "oxlint --ignore-path .oxlintignore",
     "typecheck": "pnpm -r typecheck",
-    "preflight": "pnpm typecheck && pnpm lint && pnpm test",
+    "preflight": "pnpm build:mcp && pnpm typecheck && pnpm lint && pnpm test",
     "suite": "pnpm --filter harness suite",
     "qsmoke": "pnpm --filter harness qsmoke",
     "task": "pnpm --filter harness task",
