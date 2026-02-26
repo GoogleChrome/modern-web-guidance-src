@@ -28,18 +28,18 @@
   "license": "ISC",
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
-    "@lancedb/lancedb": "^0.23.0",
-    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@lancedb/lancedb": "^0.26.2",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "apache-arrow": "18.1.0",
-    "marked": "^17.0.1",
-    "web-features": "^3.12.0",
-    "zod": "^3.23.8"
+    "marked": "^17.0.3",
+    "web-features": "^3.18.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^22.19.11",
     "gray-matter": "^4.0.3",
-    "tsx": "^4.7.1",
-    "typescript": "^5.3.3",
-    "vitest": "^3.2.4"
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }

@@ -4,10 +4,10 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "playwright test"
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "^1.57.0",
-    "playwright": "^1.57.0"
+    "@playwright/test": "^1.58.2",
+    "playwright": "^1.58.2"
   }
 }

@@ -3,6 +3,7 @@ import path from "path";
 import matter from "gray-matter";
 import { fileURLToPath } from "url";
 import { marked } from "marked";
+import { glob } from "glob";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
 
@@ -10,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const ROOT_DIR = path.resolve(__dirname, "..");
-const GUIDES_DIR = path.join(ROOT_DIR, "mcp-server/guides");
+const GUIDES_DIR = path.resolve(ROOT_DIR, "../guides");
 const BUILD_GUIDES_DIR = path.join(ROOT_DIR, "build/guides");
 const DATA_DIR = path.join(ROOT_DIR, "mcp-server/data");
 const OUTPUT_FILE = path.join(DATA_DIR, "use-cases.gen.ts");
@@ -21,15 +22,15 @@ interface UseCase {
   category: string;
 }
 
-// Ensure build/guides exists
-if (!fs.existsSync(BUILD_GUIDES_DIR)) {
-  fs.mkdirSync(BUILD_GUIDES_DIR, { recursive: true });
+// Ensure clean build/guides exists
+if (fs.existsSync(BUILD_GUIDES_DIR)) {
+  fs.rmSync(BUILD_GUIDES_DIR, { recursive: true, force: true });
 }
+fs.mkdirSync(BUILD_GUIDES_DIR, { recursive: true });
 
 async function processGuides() {
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
-  const categories = fs.readdirSync(GUIDES_DIR);
 
   console.log("Initializing Embedder...");
   const embedder = Embedder.getInstance();
@@ -38,55 +39,43 @@ async function processGuides() {
   console.log("Initializing Store...");
   const store = new Store();
 
-  for (const category of categories) {
-    const categoryDir = path.join(GUIDES_DIR, category);
-    if (!fs.statSync(categoryDir).isDirectory()) continue;
+  // Check for target guide argument
+  const targetGuidePath = process.argv[2];
 
-    // Create category dir in build/guides
-    const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
-    if (!fs.existsSync(buildCategoryDir)) {
-      fs.mkdirSync(buildCategoryDir, { recursive: true });
+  if (targetGuidePath) {
+    // Single guide mode
+    let absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
+    console.log(`Building single guide from: ${absoluteTargetPath}`);
+
+    const guidePath = path.join(absoluteTargetPath, "guide.md");
+    if (!fs.existsSync(guidePath)) {
+      throw new Error(`guide.md not found in ${absoluteTargetPath}.`);
     }
 
-    const files = fs.readdirSync(categoryDir);
-    for (const file of files) {
-      if (!file.endsWith(".md")) continue;
+    const category = path.basename(path.dirname(absoluteTargetPath));
+    const id = path.basename(absoluteTargetPath);
+    await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
+  } else {
+    // Batch process all guides
+    console.log(`Scanning for guides in: ${GUIDES_DIR}`);
+    const guideFiles = glob.sync("**/guide.md", {
+      cwd: GUIDES_DIR,
+      absolute: true
+    });
 
-      const id = path.basename(file, ".md");
-      const filePath = path.join(categoryDir, file);
-      const content = fs.readFileSync(filePath, "utf-8");
+    if (guideFiles.length === 0) {
+      console.log("No guides found.");
+    }
 
-      const { data, content: markdownBody, matter: frontmatter } = matter(content);
+    for (const guidePath of guideFiles) {
+      const guideDir = path.dirname(guidePath);
+      // Derive category and id from folder structure
+      // Example structure: guides/performance/content-vis/guide.md
+      // id becomes "content-vis", category becomes "performance"
+      const id = path.basename(guideDir);
+      const category = path.basename(path.dirname(guideDir));
 
-      if (!data.description || !frontmatter) {
-        throw new Error(`Missing frontmatter or description in ${filePath}`);
-      }
-
-      useCases.push({
-        id,
-        description: data.description,
-        category,
-      });
-
-      const chunks = chunkMarkdown(markdownBody);
-      chunks.push(frontmatter);
-
-      for (const chunk of chunks) {
-        const embeddingText = `${id} (${category})\n\n${chunk}`;
-        const vector = await embedder.embed(embeddingText);
-
-        storeUseCases.push({
-          id,
-          description: data.description,
-          category,
-          chunkContent: chunk,
-          vector
-        });
-      }
-
-      // Write clean markdown to build dir
-      const buildFilePath = path.join(buildCategoryDir, file);
-      fs.writeFileSync(buildFilePath, markdownBody.trimStart());
+      await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
     }
   }
 
@@ -132,6 +121,56 @@ function chunkMarkdown(markdown: string): string[] {
   }
 
   return chunks.filter(chunk => chunk.trim().length > 0);
+}
+
+
+async function processSingleGuideFile(
+  filePath: string,
+  category: string,
+  id: string,
+  useCases: UseCase[],
+  storeUseCases: StoreUseCase[]
+) {
+  const content = fs.readFileSync(filePath, "utf-8");
+  const { data, content: markdownBody, matter: frontmatter } = matter(content);
+
+  if (!data.description || !frontmatter) {
+    throw new Error(`Missing frontmatter or description in ${filePath}`);
+  }
+
+  useCases.push({
+    id,
+    description: data.description,
+    category,
+  });
+
+  const chunks = chunkMarkdown(markdownBody);
+  chunks.push(frontmatter);
+
+  const embedder = Embedder.getInstance(); // Singleton, already init
+
+  for (const chunk of chunks) {
+    const embeddingText = `${id} (${category})\n\n${chunk}`;
+    const vector = await embedder.embed(embeddingText);
+
+    storeUseCases.push({
+      id,
+      description: data.description,
+      category,
+      chunkContent: chunk,
+      vector
+    });
+  }
+
+  // Create category dir in build/guides
+  const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
+  if (!fs.existsSync(buildCategoryDir)) {
+    fs.mkdirSync(buildCategoryDir, { recursive: true });
+  }
+
+  // Write clean markdown to build dir
+  const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
+  fs.writeFileSync(buildFilePath, markdownBody.trimStart());
 }
 
 processGuides().catch(console.error);
