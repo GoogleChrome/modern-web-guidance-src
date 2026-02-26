@@ -45,12 +45,12 @@ export const environmentConfig: EnvironmentConfig = {
 // *** Run with: `pnpm suite`  ***
 // *******************************
 export const suiteConfig: SuiteConfig = {
-  name: 'suite1',
+  name: 'good-effort1',
   numRuns: 1,
   tasks: ['cards-render'],
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: false,
-  agent: Agents.CLAUDE_CODE,
+  agent: Agents.GEMINI_CLI,
 };
 
 // ************************************
@@ -58,7 +58,7 @@ export const suiteConfig: SuiteConfig = {
 // *** Run with: `pnpm report`      ***
 // ************************************
 export const evalConfig: EvalConfig = {
-  suiteName: 'suite1'
+  suiteName: 'good-effort1'
 };
 
 export interface EnvironmentConfig {
