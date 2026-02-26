@@ -150,41 +150,6 @@ export function updateMcpConfig(
   }
 }
 
-export function copyAgentContext(homeDir: string, agent: string): boolean {
-  const harnessRoot = path.resolve(__dirname, '..');
-  const instructionsSource = path.join(harnessRoot, 'INSTRUCTIONS.md');
-
-  if (!fs.existsSync(instructionsSource)) {
-    console.warn(`Warning: INSTRUCTIONS.md not found at ${instructionsSource}`);
-    return false;
-  }
-
-  let destDir = '';
-  let destFile = '';
-
-  if (agent === Agents.CLAUDE_CODE) {
-    destDir = path.join(homeDir, '.claude');
-    destFile = 'CLAUDE.md';
-  } else {
-    destDir = path.join(homeDir, '.gemini');
-    destFile = 'GEMINI.md';
-  }
-
-  const fullDestPath = path.join(destDir, destFile);
-
-  try {
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
-    }
-    fs.copyFileSync(instructionsSource, fullDestPath);
-    console.log(`Copied INSTRUCTIONS.md to ${fullDestPath}`);
-    return true;
-  } catch (e: any) {
-    console.warn(`Warning: Failed to copy INSTRUCTIONS.md: ${e.message}`);
-    return false;
-  }
-}
-
 /**
  * Copies the skills directory to the isolated home directory.
  * @param homeDir Path to the isolated home directory

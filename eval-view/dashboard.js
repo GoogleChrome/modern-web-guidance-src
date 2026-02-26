@@ -439,7 +439,7 @@ async function showDetails(testName, runs, stats, testID) {
                         <strong style="font-size: 0.9em; font-weight: 600;">${guide} used by agent</strong>
                     </div>
                     <div>
-                        <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">View resources_used.json</a>
+                        <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">View mcp_tool_calls.log</a>
                     </div>
                 </div>
             `;
@@ -470,9 +470,7 @@ async function showDetails(testName, runs, stats, testID) {
         if (viewResourcesLink) {
             viewResourcesLink.onclick = (e) => {
                 e.preventDefault();
-                // usedBasePath is like "results/testID/runNumber/appName/guide/runType"
-                // resources_used.json is usually in that same directory
-                const resourcesPath = `${usedBasePath}/resources_used.json`;
+                const resourcesPath = `${usedBasePath}/mcp_tool_calls.log`;
                 viewContent(resourcesPath, resourcesPath);
             };
         }
