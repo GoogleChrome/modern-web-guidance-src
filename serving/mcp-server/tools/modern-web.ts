@@ -16,6 +16,7 @@ function logToolResult(toolName: string, result: { id: string; distance?: string
     appendFileSync(logPath, JSON.stringify(logEntry, null, 2) + "\n\n", "utf8");
   } catch (err) {
     // Ignore error
+    console.error(err);
   }
 }
 
