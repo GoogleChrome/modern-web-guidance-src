@@ -41,6 +41,7 @@ Then read the demo.html file, which represents a perfect working example of the 
 With this information, create another example file that represents an anti-example of what is outlined in guide.md and expectations.md.
 Make sure that it does not fulfill anything that the expectations and guide suggest.
 
+Within the generated code, do not include any comments, and do not indicate in any way that this is a negative example.
 The output should be a single file named negative-demo.html. Do not modify any other files.
 `;
 

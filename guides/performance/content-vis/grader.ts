@@ -16,8 +16,10 @@ const demoName = path.basename(filePath);
 // TODO: also determine if we want to dynamically generate these assertions based on the base or base+updated app.
 
 test.describe(`Content-Visibility usage: ${demoName}`, () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toContain('content-visibility: auto');
+    test('has content-visibility: auto', () => {
+        const html = fs.readFileSync(filePath, 'utf-8');
+        expect(html).toContain('content-visibility: auto');
+    });
 });
 
 

@@ -1,79 +1,9 @@
 {
   "tests": [
     {
-      "id": "skills",
+      "id": "example-result",
       "timestamp": "2026-01-16T14:36:47.531Z",
       "runCount": 3
-    },
-    {
-      "id": "smoke-test-fast-mode",
-      "timestamp": "2026-01-21T15:57:50.175Z",
-      "runCount": 3
-    },
-    {
-      "id": "smoke-test-planning-mode",
-      "timestamp": "2026-01-21T19:47:27.309Z",
-      "runCount": 3
-    },
-    {
-      "id": "smoke-test-skills",
-      "timestamp": "2026-01-24T01:08:07.391Z",
-      "runCount": 3
-    },
-    {
-      "id": "react",
-      "timestamp": "2026-01-29T01:16:45.045Z",
-      "runCount": 3
-    },
-    {
-      "id": "test_jetski",
-      "timestamp": "2026-02-10T06:05:42.951Z",
-      "runCount": 3
-    },
-    {
-      "id": "test_claude_code",
-      "timestamp": "2026-02-11T22:47:35.922Z",
-      "runCount": 3
-    },
-    {
-      "id": "gemini_cli_mcp",
-      "timestamp": "2026-02-13T19:45:34.273Z",
-      "runCount": 3
-    },
-    {
-      "id": "gemini_cli_skills",
-      "timestamp": "2026-02-13T21:21:04.722Z",
-      "runCount": 3
-    },
-    {
-      "id": "cards-jetski-skills-sample",
-      "timestamp": "2026-02-19T00:24:22.692Z",
-      "runCount": 1
-    },
-    {
-      "id": "cards-jetski-mcp-sample",
-      "timestamp": "2026-02-19T00:40:41.239Z",
-      "runCount": 1
-    },
-    {
-      "id": "cards-claude-mcp-sample",
-      "timestamp": "2026-02-19T00:45:26.876Z",
-      "runCount": 1
-    },
-    {
-      "id": "cards-claude-skills-sample",
-      "timestamp": "2026-02-19T01:04:33.345Z",
-      "runCount": 1
-    },
-    {
-      "id": "yah1",
-      "timestamp": "2026-02-25T04:59:50.155Z",
-      "runCount": 1
-    },
-    {
-      "id": "good-effort",
-      "timestamp": "2026-02-25T05:21:01.879Z",
-      "runCount": 1
     }
   ]
 }

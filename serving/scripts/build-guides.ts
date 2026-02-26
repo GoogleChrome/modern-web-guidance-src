@@ -3,6 +3,7 @@ import path from "path";
 import matter from "gray-matter";
 import { fileURLToPath } from "url";
 import { marked } from "marked";
+import { glob } from "glob";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
 
@@ -10,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const ROOT_DIR = path.resolve(__dirname, "..");
-const GUIDES_DIR = path.join(ROOT_DIR, "mcp-server/guides");
+const GUIDES_DIR = path.resolve(ROOT_DIR, "../guides");
 const BUILD_GUIDES_DIR = path.join(ROOT_DIR, "build/guides");
 const DATA_DIR = path.join(ROOT_DIR, "mcp-server/data");
 const OUTPUT_FILE = path.join(DATA_DIR, "use-cases.gen.ts");
@@ -30,7 +31,6 @@ fs.mkdirSync(BUILD_GUIDES_DIR, { recursive: true });
 async function processGuides() {
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
-  const categories = fs.readdirSync(GUIDES_DIR);
 
   console.log("Initializing Embedder...");
   const embedder = Embedder.getInstance();
@@ -56,18 +56,26 @@ async function processGuides() {
     const id = path.basename(absoluteTargetPath);
     await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
   } else {
-    for (const category of categories) {
-      const categoryDir = path.join(GUIDES_DIR, category);
-      if (!fs.statSync(categoryDir).isDirectory()) continue;
+    // Batch process all guides
+    console.log(`Scanning for guides in: ${GUIDES_DIR}`);
+    const guideFiles = glob.sync("**/guide.md", {
+      cwd: GUIDES_DIR,
+      absolute: true
+    });
 
-      const files = fs.readdirSync(categoryDir);
-      for (const file of files) {
-        if (!file.endsWith(".md")) continue;
+    if (guideFiles.length === 0) {
+      console.log("No guides found.");
+    }
 
-        const id = path.basename(file, ".md");
-        const filePath = path.join(categoryDir, file);
-        await processSingleGuideFile(filePath, category, id, useCases, storeUseCases);
-      }
+    for (const guidePath of guideFiles) {
+      const guideDir = path.dirname(guidePath);
+      // Derive category and id from folder structure
+      // Example structure: guides/performance/content-vis/guide.md
+      // id becomes "content-vis", category becomes "performance"
+      const id = path.basename(guideDir);
+      const category = path.basename(path.dirname(guideDir));
+
+      await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
     }
   }
 
