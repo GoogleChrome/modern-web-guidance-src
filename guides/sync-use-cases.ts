@@ -267,12 +267,12 @@ async function run() {
     const featureIds = data['web-feature-ids'] || [];
 
     // Determine project status
-    let statusName = 'Needs guidance';
-    if (body.trim().length > 0) {
+    let statusName: string | null = null;
+    if (body.trim().length === 0) {
+      statusName = 'Needs guidance';
+    } else {
       const graderPath = path.join(subdir, 'grader.ts');
-      if (fs.existsSync(graderPath)) {
-        statusName = 'Done';
-      } else {
+      if (!fs.existsSync(graderPath)) {
         statusName = 'Needs evals';
       }
     }
@@ -299,23 +299,28 @@ async function run() {
     let issueNumber: number;
 
     if (existingIssue) {
-      const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody;
+      const shouldBeOpen = statusName !== null;
+      const needsReopen = shouldBeOpen && existingIssue.state === 'closed';
+      const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody || needsReopen;
+
       issueNumber = existingIssue.number;
       activeIssueNumbers.add(issueNumber);
 
       if (needsUpdate) {
-        console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"...`);
+        console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"${needsReopen ? ' (reopening)' : ''}...`);
         if (!IS_DRY_RUN) {
           await octokit.rest.issues.update({
             owner: ORG,
             repo: REPO,
             issue_number: issueNumber,
             title: issueTitle,
-            body: issueBody
+            body: issueBody,
+            ...(needsReopen ? { state: 'open' } : {})
           });
         } else {
           console.log(`[DRY RUN] Title: ${issueTitle}`);
           console.log(`[DRY RUN] Labels: new-use-case`);
+          if (needsReopen) console.log(`[DRY RUN] State: open`);
           console.log(`[DRY RUN] Body:\n${issueBody}\n`);
         }
       } else {
@@ -342,7 +347,7 @@ async function run() {
     }
 
     // Update Project Status
-    if (issueNumber > 0 || IS_DRY_RUN) {
+    if (statusName && (issueNumber > 0 || IS_DRY_RUN)) {
       if (projectDetails) {
         const option = projectDetails.statusOptions.find((o: any) => o.name.toLowerCase() === statusName.toLowerCase());
         if (option) {
