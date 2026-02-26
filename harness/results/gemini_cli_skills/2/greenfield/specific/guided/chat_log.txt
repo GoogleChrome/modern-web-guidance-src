@@ -1,8 +1,0 @@
-The product landing page for "Bean & Brew" has been created in `index.html`.
-
-It includes:
-1.  **'Details' Button:** Utilizes the `interestfor` and `popover` attributes to show ingredients on hover. This is a native web platform feature (Interest Invokers) with a fallback polyfill.
-2.  **Scroll-Driven Animation:** The hero image fades in and scales up as you scroll down, powered by `animation-timeline: view()`. It degrades gracefully on browsers that don't support it (image remains visible).
-3.  **Adaptive Loading:** The hero image uses the `loading-placeholder` attribute to serve a lightweight image on slow networks, with a polyfill for wider support.
-
-The required `resources_used.json` file has also been created to track the skills and guides utilized.

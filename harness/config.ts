@@ -45,7 +45,7 @@ export const environmentConfig: EnvironmentConfig = {
 // *** Run with: `pnpm suite`  ***
 // *******************************
 export const suiteConfig: SuiteConfig = {
-  name: 'good-effort',
+  name: 'good-effort1',
   numRuns: 1,
   tasks: ['cards-render'],
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
@@ -58,12 +58,7 @@ export const suiteConfig: SuiteConfig = {
 // *** Run with: `pnpm report`      ***
 // ************************************
 export const evalConfig: EvalConfig = {
-  suiteName: 'good-effort',
-  tasksToComplete: ['cards-render', 'preload-prerender'],
-  expectedGuides: {
-    // Structure: { <baseApp name>: <list of expected guides> }
-    'cards-app': ['cards-render', 'preload-prerender'],
-  }
+  suiteName: 'good-effort1'
 };
 
 export interface EnvironmentConfig {
@@ -90,8 +85,6 @@ export interface SuiteConfig {
 
 export interface EvalConfig {
   suiteName: string | null;
-  tasksToComplete: string[];
-  expectedGuides: Record<string, string[]>;
 }
 
 export const config = {

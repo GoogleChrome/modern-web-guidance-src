@@ -1,7 +1,0 @@
-Done. I added a `<script type="speculationrules">` block to the `<head>` that:
-
-- **Pre-renders** `/menu`, `/locations`, `/rewards`, and `/account` using the browser's native [Speculation Rules API](https://developer.chrome.com/docs/web-platform/prerender-pages).
-- **Excludes** `/logout` via a `not` / `href_matches` predicate, preventing any accidental pre-rendering of the logout action.
-- Uses `"eagerness": "moderate"`, which triggers pre-rendering when the user hovers over or focuses a matching link — a good balance between speed and resource usage.
-
-This is a purely declarative, zero-JavaScript approach that leverages the native web platform. Browsers that don't support speculation rules will simply ignore the `<script type="speculationrules">` block with no adverse effects.

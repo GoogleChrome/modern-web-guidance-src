@@ -4,19 +4,10 @@ export interface ScenarioCheck {
   message: string;
 }
 
-export interface ResourceUsed {
-  name: string;
-  source?: string;
-  timestamp?: string;
-}
-
 export interface RunResult {
   runNumber: number;
   results: ScenarioCheck[];
-  guideResults?: {
-    checks: { id: string; passed: boolean; message: string; }[];
-    resourcesUsed: ResourceUsed[] | null;
-  };
+  guideUsed?: boolean;
 }
 
 export interface Metrics {
@@ -36,15 +27,15 @@ export interface Metrics {
 }
 
 export function calculateMetrics(allResults: Record<string, RunResult[]>, numRuns: number): Metrics {
-  // Dynamic sorting: Base apps alphabetically, then Guide alphabetically, then Run Type (unguided first if present)
+  // Dynamic sorting: Tasks alphabetically, then Guides alphabetically, then Run Type (unguided first if present)
   const runTypeOrder: Record<string, number> = { 'unguided': 1, 'guided': 2 };
 
   const sortedKeys = Object.keys(allResults).sort((a, b) => {
-    const [baseAppA, guideA, runTypeA] = a.split(' - ');
-    const [baseAppB, guideB, runTypeB] = b.split(' - ');
+    const [taskA, guideA, runTypeA] = a.split(' - ');
+    const [taskB, guideB, runTypeB] = b.split(' - ');
 
-    if (baseAppA !== baseAppB) {
-      return baseAppA.localeCompare(baseAppB);
+    if (taskA !== taskB) {
+      return taskA.localeCompare(taskB);
     }
     if (guideA !== guideB) {
       return guideA.localeCompare(guideB);

@@ -66,8 +66,8 @@ pnpm dashboard
 All configuration is centralized in [`harness/config.ts`](./harness/config.ts). This file controls:
 
 -   **Environment**: Paths to binaries (Jetski, Gemini CLI, Claude Code), API keys, and server locations.
--   **Suite**: Agent selection, number of runs, base apps, enabled MCP servers, and skills.
--   **Evaluation**: Target suite name and specific guides to run evaluation for.
+-   **Suite**: Agent selection, number of runs, tasks to run, enabled MCP servers, and skills.
+-   **Evaluation**: Name of suite to evaluate.
 
 All settings must be adjusted in `harness/config.ts` or via environment variables in `.env` at the `guidance/` root.
 

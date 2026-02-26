@@ -39,9 +39,9 @@ const userPrompt = `
 Read the guide.md and expectations.md files to understand the guidance and expectations.
 Then, read the demo.html file, which represents a perfect working example of the guides and expectations, and the negative-demo.html file, which represents an anti-example that fails the expectations.
 
-Using template.grader.ts as a framework, write a Playwright test script to model the expectations.md requirements.
-You should generate a set of robust tests with functional and browser assertions.
-Design it so that the demo.html passes all tests at 100% success rate, and the negative-demo.html fails all tests at 0% success rate.
+Using template.grader.ts as a framework, write a Playwright test script that directly models the expectations.md requirements.
+You should generate both functional and browser tests, with each test containing only one assertion.
+Design it so that the demo.html passes all tests (100% success rate), and the negative-demo.html fails all tests (0% success rate).
 
 The grader can be run with the following commands:
 
