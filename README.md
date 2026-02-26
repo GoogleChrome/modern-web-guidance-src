@@ -83,7 +83,7 @@ Jetski is the default agent that will be used. When running, be sure to update t
 
 When using Gemini CLI, set the `GEMINI_API_KEY` environment variable with your API key.
 
-Set the Gemini model with the environment variable (e.g. `GEMINI_MODEL='gemini-3-pro-preview'`).
+Set the Gemini model with the environment variable (e.g. `GEMINI_MODEL='gemini-3.1-pro-preview'`).
 
 #### Claude
 

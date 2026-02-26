@@ -5,7 +5,7 @@ import { spawn } from 'child_process';
 
 import config, { Agents } from '../config.ts';
 
-import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, copyAgentContext, parseAgentArgs, createWorkDir, copyResultsToTarget, copySkills } from '../lib/agent-shared.ts';
+import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copyResultsToTarget, copySkills } from '../lib/agent-shared.ts';
 
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
 const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('gemini-cli-agent.ts');
@@ -40,8 +40,6 @@ function setupIsolatedWorkDir(): string {
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
-    copyAgentContext(tempHome, Agents.GEMINI_CLI);
-
     if (config.suite.enableSkills) {
       copySkills(tempHome, Agents.GEMINI_CLI)
     }
