@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rich Media Picker Demo</title>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #10b981, #3b82f6);
+      color: #333;
+    }
+
+    .hero {
+      text-align: center;
+      color: white;
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+      font-size: 2.5rem;
+    }
+
+    p {
+      opacity: 0.9;
+      font-size: 1.1rem;
+    }
+
+    .form-container {
+      background: white;
+      padding: 2.5rem;
+      border-radius: 20px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #475569;
+    }
+
+    /* Customizable Select Styles */
+    select.rich-select {
+      appearance: base-select;
+      width: 100%;
+      padding: 1rem;
+      font-size: 1rem;
+      background-color: #f8fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    select.rich-select:hover {
+      border-color: #cbd5e1;
+    }
+
+    select.rich-select:focus-visible {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+
+    /* Target the picker popup itself */
+    select.rich-select::picker(select) {
+      padding: 0.5rem;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      margin-top: 0.5rem;
+      max-height: 400px;
+      /* Allow scrolling if many options */
+    }
+
+    /* Option Layout - Grid approach for the rich media */
+    select.rich-select option {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      grid-template-areas:
+        "icon title"
+        "icon subtitle";
+      gap: 0 1rem;
+      align-items: center;
+      padding: 1rem;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    select.rich-select option:hover,
+    select.rich-select option:focus-visible,
+    select.rich-select option:hover:not(:checked) {
+      background-color: #f1f5f9;
+      outline: none;
+    }
+
+    select.rich-select option:checked {
+      background-color: #eff6ff;
+      border: 1px solid #bfdbfe;
+    }
+
+    /* Mapping HTML elements within the option to the grid areas */
+    /* Note: In standard implementation of appearance: base-select, 
+       we inject spans or divs inside the <option>. If the browser doesn't 
+       fully support child elements inside option, we can style the parts 
+       we *can* target, or rely on a polyfill/future-facing syntax. 
+       For the sake of this demo showcasing `base-select`'s rich media capabilities, 
+       we assume true DOM elements are allowed inside <option>. */
+
+    .flag-icon {
+      grid-area: icon;
+      font-size: 2rem;
+      /* Using emoji flags for simplicity in this demo, but could be <img> */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 1px solid #f1f5f9;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .country-name {
+      grid-area: title;
+      font-weight: 600;
+      color: #0f172a;
+      font-size: 1.05rem;
+    }
+
+    .country-meta {
+      grid-area: subtitle;
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+
+    /* 
+      Specific styles for when the option is selected (shown in the main select box). 
+      We want it to look tight and clean.
+    */
+    select.rich-select>option:checked {
+      padding: 0;
+      /* Remove padding when displaying in the trigger button */
+      background: transparent;
+      border: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="hero">
+    <h1>Rich Media Picker</h1>
+    <p>Using <code>appearance: base-select</code> with grid layout.</p>
+  </div>
+
+  <div class="form-container">
+    <div class="form-group">
+      <label for="countrySelect">Select Destination</label>
+      <select id="countrySelect" class="rich-select">
+
+        <option value="jp">
+          <div class="flag-icon">🇯🇵</div>
+          <span class="country-name">Japan</span>
+          <span class="country-meta">Asia • Pop 125M</span>
+        </option>
+
+        <option value="fr">
+          <div class="flag-icon">🇫🇷</div>
+          <span class="country-name">France</span>
+          <span class="country-meta">Europe • Pop 67M</span>
+        </option>
+
+        <option value="br">
+          <div class="flag-icon">🇧🇷</div>
+          <span class="country-name">Brazil</span>
+          <span class="country-meta">South America • Pop 214M</span>
+        </option>
+
+        <option value="us">
+          <div class="flag-icon">🇺🇸</div>
+          <span class="country-name">United States</span>
+          <span class="country-meta">North America • Pop 331M</span>
+        </option>
+
+        <option value="za">
+          <div class="flag-icon">🇿🇦</div>
+          <span class="country-name">South Africa</span>
+          <span class="country-meta">Africa • Pop 60M</span>
+        </option>
+
+      </select>
+    </div>
+  </div>
+
+</body>
+
+</html>
