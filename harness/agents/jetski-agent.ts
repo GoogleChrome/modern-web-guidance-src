@@ -6,7 +6,7 @@ import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config, Agents } from '../config.ts';
 
-import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills } from '../lib/agent-shared.ts';
+import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, generateExportHtml } from '../lib/agent-shared.ts';
 
 // Usage: node jetski-agent.ts <prompt> <runType> <targetDir> <templateDir>
 const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-agent.ts');
@@ -350,6 +350,32 @@ async function run(): Promise<void> {
     console.log("Disconnected.");
 
     copyResultsToTarget(workDir, targetDir);
+
+    // Extract trajectory pb from isolated home
+    const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
+    if (fs.existsSync(conversationsDir)) {
+      const pbFiles = fs.globSync('*.pb', { cwd: conversationsDir });
+      
+      for (const relativeSrc of pbFiles as string[]) {
+        const srcFile = path.join(conversationsDir, relativeSrc);
+        const file = path.basename(srcFile);
+        const destFile = path.join(targetDir, file);
+        fs.copyFileSync(srcFile, destFile);
+        console.log(`Copied trajectory: ${file} to ${targetDir}`);
+
+        // Generate HTML export
+        try {
+          const trajectoryId = file.replace(/\.(json|pb)$/, '');
+          const fileBuffer = fs.readFileSync(srcFile);
+          const htmlContent = generateExportHtml(new Uint8Array(fileBuffer), file);
+          const htmlDest = path.join(targetDir, `${trajectoryId}.html`);
+          fs.writeFileSync(htmlDest, htmlContent, 'utf8');
+          console.log(`Generated HTML export: ${trajectoryId}.html`);
+        } catch (e) {
+          console.error(`Failed to generate HTML for ${file}:`, e);
+        }
+      }
+    }
 
   } catch (err) {
     console.error("Error during execution:", err);
