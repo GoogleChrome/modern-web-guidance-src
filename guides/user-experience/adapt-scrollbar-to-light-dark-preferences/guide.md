@@ -31,7 +31,7 @@ MANDATORY: Define `color-scheme` on the `:root` pseudo-class.
 
 ## 2. Custom Color Adaptation
 
-If you are using `scrollbar-color` or the legacy `::-webkit-scrollbar` pseudo-elements to explicitly define custom scrollbar colors, you MUST ensure these colors are legible and appropriate in both light and dark modes.
+If you are using `scrollbar-color` or the non-standard `::-webkit-scrollbar` pseudo-elements to explicitly define custom scrollbar colors, you MUST ensure these colors are legible and appropriate in both light and dark modes.
 
 MANDATORY: Use CSS custom properties (variables) to define your colors and update them within a `prefers-color-scheme` media query to avoid repetition.
 MANDATORY: To prevent conflicts between standard properties and legacy WebKit selectors in browsers that support both natively (like modern Chrome), you MUST wrap legacy WebKit fallbacks in an `@supports not (scrollbar-color: auto)` block.
