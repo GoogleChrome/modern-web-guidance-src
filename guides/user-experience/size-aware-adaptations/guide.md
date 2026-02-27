@@ -1,6 +1,6 @@
 ---
-name: Size-Aware Adaptations
-description: Have a component adapt based on its own size, typically width, instead of tying them to the viewport with media queries and without JavaScript. Common usecases include card components that can change their layouts depending on how large they are, or removing or adding helper text next to an icon in a call-to-action button.
+name: size-aware-adaptations
+description: Build a component whose styles can be conditionally dependent on its own width or height, rather than the width or height of the viewport. For example a card component that can change its layouts depending on how large it is, or a call-to-action button that can conditionally display helper text based on its width.
 web-features-id:
   - container-queries
 ---
