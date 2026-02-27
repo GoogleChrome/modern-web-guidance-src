@@ -59,8 +59,7 @@ MANDATORY: Create a standard `@keyframes` animation block that alters the regist
 
 ## 3. Support Legacy WebKit Browsers
 
-To ensure this visual effect also works on legacy WebKit implementations (or instances where the standard `scrollbar-color` track is invisible on macOS without `scrollbar-gutter`), you must pass the animated variable into the pseudo-element fallback.
-
+MANDATORY: This feature relies on the `registered-custom-properties` and `scroll-driven-animations` Web Features, if they are not availble in the users Baseline target, you should not use this feature and let the user know.
 MANDATORY: Pass the animated variable into the `::-webkit-scrollbar-thumb` background color securely isolated behind an `@supports not` block. You MUST include a static fallback color inside the `var()` function (e.g., `var(--thumb-color, hotpink)`) so the scrollbar remains visible on legacy WebKit browsers that do not support `@property`.
 
 ```css
