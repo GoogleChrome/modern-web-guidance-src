@@ -281,6 +281,29 @@ export function copyResultsToTarget(workDir: string, targetDir: string, subPath:
   console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
 }
 
+/**
+ * Watches a log file and prints new lines to stdout.
+ * @param logPath The path to the log file
+ * @returns A function to stop watching
+ */
+export function watchLogFile(logPath: string): () => void {
+  let prevData = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : '';
+  const interval = setInterval(() => {
+    if (!fs.existsSync(logPath)) return;
+    try {
+      const currentData = fs.readFileSync(logPath, 'utf8');
+      if (currentData.length > prevData.length) {
+        const newLogs = currentData.slice(prevData.length).trim();
+        if (newLogs) console.log(`\x1b[33m[MCP Server Log]:\x1b[0m\n${newLogs}`);
+        prevData = currentData;
+      }
+    } catch (e) {
+      // Ignore read errors
+    }
+  }, 500);
+  return () => clearInterval(interval);
+}
+
 const DEFAULT_PROD_BASE = 'https://trajectory-dev.corp.goog/';
 
 /**
