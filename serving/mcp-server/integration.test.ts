@@ -17,6 +17,7 @@ describe("MCP Server Integration (Functional)", () => {
     const transport = new StdioClientTransport({
       command: "node",
       args: [path.resolve(__dirname, "index.ts")],
+      env: { ...process.env, MCP_LOG_DIR: (await import("os")).tmpdir() }
     });
 
     const client = new Client(
