@@ -1,4 +1,5 @@
 ---
+name: content-vis
 description: Improve initial page load and interaction responsiveness by deferring the rendering work of off-screen components until they are needed.
 web-feature-ids:
   - content-visibility
