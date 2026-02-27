@@ -45,12 +45,12 @@ export const environmentConfig: EnvironmentConfig = {
 // *** Run with: `pnpm suite`  ***
 // *******************************
 export const suiteConfig: SuiteConfig = {
-  name: 'good-effort1',
+  name: 'jetski-test',
   numRuns: 1,
   tasks: ['cards-render'],
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: false,
-  agent: Agents.GEMINI_CLI,
+  agent: Agents.JETSKI,
 };
 
 // ************************************
@@ -58,7 +58,7 @@ export const suiteConfig: SuiteConfig = {
 // *** Run with: `pnpm report`      ***
 // ************************************
 export const evalConfig: EvalConfig = {
-  suiteName: 'good-effort1'
+  suiteName: 'jetski-test'
 };
 
 export interface EnvironmentConfig {

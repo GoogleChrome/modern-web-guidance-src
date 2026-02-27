@@ -95,8 +95,6 @@ function setupIsolatedWorkDir(): string {
   return workDir;
 }
 
-
-
 async function extractJetskiVersionInfo(page: Page, outputPath: string): Promise<any> {
   try {
     // 1. Ensure the window is focused to receive keyboard events
@@ -267,9 +265,13 @@ async function run(): Promise<void> {
     const inputSelector = '[contenteditable="true"][role="textbox"]';
     const sendButtonSelector = '[data-tooltip-id="input-send-button-send-tooltip"]';
     const cancelButtonSelector = 'button[data-tooltip-id="input-send-button-cancel-tooltip"]';
-    const allowOnceButtonSelector = 'button[aria-label="Allow once"]';
+    //const allowOnceButtonSelector = 'button[aria-label="Allow once"]';
+    const allowOnceButtonSelector = 'button::-p-text("Allow Once")';
+
     // The double slashes are deliberate. These IDs include the dot.
     const agentPanelSelector = ':is(#chat, #conversation) #antigravity\\.agentSidePanelInputBox';
+    const modelSelector = 'div[role="dialog"][aria-modal="false"].bg-ide-chat-background.text-editor-foreground.origin-bottom';
+    const optionSelector = 'div.flex.items-center.justify-between.cursor-pointer';
 
     console.log(`Waiting for Agent Panel conversation box...`);
 
@@ -297,6 +299,20 @@ async function run(): Promise<void> {
     if (!targetPanel) {
       throw new Error("Could not find Agent Panel conversation panel after 60 seconds.");
     }
+    //-------------------------
+    try {
+      const selectedLowerModel = await page.waitForSelector(`${modelSelector}`, { timeout: 1000 });
+      selectedLowerModel && await selectedLowerModel.click();
+
+      const selectedLowerModelOption = await page.waitForSelector(`${optionSelector}:nth-of-type(2)`, { timeout: 1000 });
+      selectedLowerModelOption && await selectedLowerModelOption.click();
+            
+      console.log("Clicked model selector")
+
+      await sleep(2000);
+    } catch {
+      console.log("Warning: Model selector didn't appear.");
+    }
 
     // Focus and type
     console.log(`Typing prompt: "${userPrompt}"`);
@@ -310,7 +326,7 @@ async function run(): Promise<void> {
     } catch {
       console.log("Warning: Submit button didn't appear.");
     }
-    
+
     // Wait for completion (cancel button to disappear)
     // First, wait for the cancel button to APPEAR (meaning it started)
     try {
@@ -323,16 +339,18 @@ async function run(): Promise<void> {
     // Now wait for it to disappear
     console.log("Waiting for agent to finish...");
     while (true) {
-      const cancelButton = await targetPanel.$(cancelButtonSelector);
-      if (!cancelButton) {
-        console.log("Agent finished.");
-        break;
-      }
-      const allowOnceButton = await targetPanel.$(allowOnceButtonSelector);
-      if (allowOnceButton) {
-        console.log("Found 'Allow once' button, clicking it...");
-        await allowOnceButton.click();
-      }
+      const cancelButton = await targetPanel.waitForSelector(cancelButtonSelector, { timeout: 1000 });
+
+        if (!cancelButton) {
+          console.log("Agent finished.");
+          break;
+        }
+
+      const allowOnceButton = await targetPanel.waitForSelector(allowOnceButtonSelector, { timeout: 1000 });
+        if (allowOnceButton) {
+          console.log("Found 'Allow once' button, clicking it...");
+          await allowOnceButton.click();
+        }
       await sleep(1000);
     }
 
