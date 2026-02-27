@@ -97,9 +97,10 @@ export function updateMcpConfig(
       if (!modernWebServerPath || !fs.existsSync(modernWebServerPath)) {
         throw new Error(`Example MCP server path not found: ${modernWebServerPath}`);
       }
+      const logPath = path.join(process.cwd(), 'mcp-modern-web-error.log');
       mcpConfig.mcpServers['modern-web'] = {
         command: 'node',
-        args: [modernWebServerPath]
+        args: [modernWebServerPath, '--log-file', logPath]
       };
     } else if (serverName === 'google-developer-knowledge') {
       if (!apiKey) {

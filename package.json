@@ -10,7 +10,7 @@
     "lint": "oxlint --ignore-path .oxlintignore",
     "typecheck": "pnpm -r typecheck",
     "preflight": "pnpm typecheck && pnpm lint && pnpm test",
-    "suite": "pnpm --filter harness suite",
+    "suite": "pnpm build:mcp && pnpm --filter harness suite",
     "qsmoke": "pnpm --filter harness qsmoke",
     "task": "pnpm --filter harness task",
     "run-agent": "node harness/run_suite.ts --with-template",
