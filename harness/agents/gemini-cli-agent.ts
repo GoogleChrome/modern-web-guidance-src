@@ -5,7 +5,7 @@ import { spawn } from 'child_process';
 
 import config, { Agents } from '../config.ts';
 
-import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copyResultsToTarget, copySkills } from '../lib/agent-shared.ts';
+import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copyResultsToTarget, copySkills, watchLogFile } from '../lib/agent-shared.ts';
 
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
 const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('gemini-cli-agent.ts');
@@ -78,6 +78,10 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
+    process.env.MCP_LOG_DIR = targetDir;
+    const stopWatchingErr = watchLogFile(path.join(targetDir, 'mcp-server-error.log'));
+    const stopWatchingTool = watchLogFile(path.join(targetDir, 'mcp_tool_calls.log'));
+
     const child = spawn(command, commandArgs, {
       cwd: workDir,
       env: { ...process.env }, // Pass through environment variables (including new HOME)
@@ -102,6 +106,9 @@ async function run() {
     const exitCode = await new Promise((resolve) => {
       child.on('close', resolve);
     });
+
+    stopWatchingErr();
+    stopWatchingTool();
 
     if (exitCode !== 0) {
       throw new Error(`Gemini CLI exited with code ${exitCode}`);
