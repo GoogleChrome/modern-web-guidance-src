@@ -1,6 +1,6 @@
 ---
 name: build-quantity-responsive-layouts
-description: Build quantity-responsive layouts and adaptive typography components by calculating fluid widths or adjusting font sizes dynamically based on the total number of sibling elements present, eliminating the need for complex CSS quantity queries or JavaScript.
+description: Build layouts and typography for content that varies in quantity (quantity-responsive) by dynamically calculating fluid widths or adjusting font sizes based on the total number of sibling items present, eliminating the need for complex CSS rules or JavaScript.
 web-feature-ids: 
   - sibling-count
   - sibling-index
