@@ -78,6 +78,29 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
+    const logPath = path.join(process.cwd(), 'mcp-modern-web-error.log');
+    let prevLogSize = fs.existsSync(logPath) ? fs.statSync(logPath).size : 0;
+    const logWatcher = setInterval(() => {
+      if (fs.existsSync(logPath)) {
+        try {
+          const stats = fs.statSync(logPath);
+          if (stats.size > prevLogSize) {
+            const buffer = Buffer.alloc(stats.size - prevLogSize);
+            const fd = fs.openSync(logPath, 'r');
+            fs.readSync(fd, buffer, 0, buffer.length, prevLogSize);
+            fs.closeSync(fd);
+            const newLogs = buffer.toString();
+            if (newLogs.trim()) {
+              console.log(`\x1b[33m[MCP Server Log]:\x1b[0m\n${newLogs.trim()}`);
+            }
+            prevLogSize = stats.size;
+          }
+        } catch (e) {
+          // Ignore read errors during execution
+        }
+      }
+    }, 500);
+
     const child = spawn(command, commandArgs, {
       cwd: workDir,
       env: { ...process.env }, // Pass through environment variables (including new HOME)
@@ -102,6 +125,8 @@ async function run() {
     const exitCode = await new Promise((resolve) => {
       child.on('close', resolve);
     });
+
+    clearInterval(logWatcher);
 
     if (exitCode !== 0) {
       throw new Error(`Gemini CLI exited with code ${exitCode}`);
