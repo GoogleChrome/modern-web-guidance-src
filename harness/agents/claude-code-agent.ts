@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
-import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, copyAgentContext, copyResultsToTarget, createWorkDir, copySkills } from '../lib/agent-shared.ts';
+import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, copyResultsToTarget, createWorkDir, copySkills } from '../lib/agent-shared.ts';
 import config, { Agents } from '../config.ts';
 
 // Usage: node claude-code-agent.ts <prompt> <runType> <targetDir> <templateDir>
@@ -25,8 +25,6 @@ function setupIsolatedWorkDir(): string {
 
   // Add CLAUDE context and MCP servers for guided runs
   if (runType === 'guided') {
-    copyAgentContext(tempHome, Agents.CLAUDE_CODE);
-
     if (config.suite.enableSkills) {
       copySkills(tempHome, Agents.CLAUDE_CODE);
     }

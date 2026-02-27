@@ -19,7 +19,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'PORT=11432 NO_OPEN=true node server.js',
+    command: 'PORT=11432 NO_OPEN=true USE_MOCK_RESULTS=true node server.js',
     url: 'http://localhost:11432',
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
