@@ -78,8 +78,9 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    const logPath = path.join(process.cwd(), 'mcp-modern-web-error.log');
-    const stopWatchingLog = watchLogFile(logPath);
+    process.env.MCP_LOG_DIR = targetDir;
+    const stopWatchingErr = watchLogFile(path.join(targetDir, 'mcp-server-error.log'));
+    const stopWatchingTool = watchLogFile(path.join(targetDir, 'mcp_tool_calls.log'));
 
     const child = spawn(command, commandArgs, {
       cwd: workDir,
@@ -106,7 +107,8 @@ async function run() {
       child.on('close', resolve);
     });
 
-    stopWatchingLog();
+    stopWatchingErr();
+    stopWatchingTool();
 
     if (exitCode !== 0) {
       throw new Error(`Gemini CLI exited with code ${exitCode}`);

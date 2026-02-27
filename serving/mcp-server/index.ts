@@ -1,18 +1,17 @@
 import fs from 'fs';
+import path from 'path';
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-const logFileIndex = process.argv.indexOf("--log-file");
-if (logFileIndex !== -1 && logFileIndex + 1 < process.argv.length) {
-  const logPath = process.argv[logFileIndex + 1];
-  
-  const originalConsoleError = console.error;
-  console.error = (...args) => {
-    // Basic formatting for the log file
-    const message = args.map(a => (a instanceof Error ? a.stack : typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
-    fs.appendFileSync(logPath, message + '\n');
-    originalConsoleError(...args);
-  };
-}
+const logDir = process.env.MCP_LOG_DIR || process.cwd();
+const logPath = path.join(logDir, "mcp-server-error.log");
+
+const originalConsoleError = console.error;
+console.error = (...args) => {
+  // Basic formatting for the log file
+  const message = args.map(a => (a instanceof Error ? a.stack : typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+  fs.appendFileSync(logPath, message + '\n');
+  originalConsoleError(...args);
+};
 
 async function main() {
   try {
