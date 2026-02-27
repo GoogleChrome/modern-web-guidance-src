@@ -1,6 +1,6 @@
 ---
 name: light-dismiss-a-dialog
-description: Allow closing a `<dialog>` element by clicking outside of it with the `closedby="any"` attribute.
+description: Create a modal dialog that can be closed via light dismiss (i.e. clicking or tapping outside of the dialog)
 web-feature-ids:
   - dialog-closedby
 ---

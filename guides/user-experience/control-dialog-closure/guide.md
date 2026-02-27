@@ -1,6 +1,6 @@
 ---
-name: control-dialog-closure
-description: Restrict closure of a `<dialog>` element to be a platform-specific user action or a developer-specified mechanism excluding a light-dismissal by using the `closedby="closerequest"` attribute.
+name: platform-controls-dismiss-dialog
+description: Create a modal dialog that can be closed via standard platform-specific user actions, such as pressing the `Esc` key on desktop platforms, or a "back" or "dismiss" gesture on mobile platforms
 web-feature-ids:
   - dialog-closedby
 ---
