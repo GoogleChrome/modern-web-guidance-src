@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Email Validation Demo</title>
+  <title>Validate Input After Interaction Demo</title>
   <style>
     body {
       font-family: system-ui, sans-serif;
@@ -30,6 +30,7 @@
       font-size: 1rem;
       border: 2px solid #ccc;
       border-radius: 4px;
+      margin-bottom: 0.5rem;
     }
 
     /* 
@@ -48,7 +49,7 @@
       background-color: #e6f4ea;
     }
 
-    /* Error Message Visibility */
+    /* Error Message Visibility (Email) */
     .error-msg {
       display: none;
       color: #d93025;
@@ -59,6 +60,29 @@
     input:user-invalid+.error-msg,
     input.user-invalid-fallback+.error-msg {
       display: block;
+    }
+
+    /* Rules List Styling (Password) */
+    .rules-list {
+      margin: 0;
+      padding-left: 1.5rem;
+      color: #5f6368;
+      font-size: 0.875rem;
+      transition: color 0.2s;
+    }
+
+    /* If invalid (after interaction), highlight rules in red */
+    input:user-invalid+.rules-list,
+    input.user-invalid-fallback+.rules-list {
+      color: #d93025;
+    }
+
+    /* If valid, strike through or green */
+    input:user-valid+.rules-list,
+    input.user-valid-fallback+.rules-list {
+      color: #188038;
+      text-decoration: line-through;
+      opacity: 0.6;
     }
 
     .status-banner {
@@ -72,8 +96,8 @@
 
 <body>
 
-  <h1>Validate Email After Interaction</h1>
-  <p>Demonstrates using <code>:user-invalid</code> to validate an email field without showing errors prematurely.</p>
+  <h1>Validate Input After Interaction</h1>
+  <p>Uses <code>:user-invalid</code> to validate an email field and enforce password complexity without showing errors prematurely.</p>
 
   <div style="margin-bottom: 1rem;">
     <label
@@ -88,6 +112,8 @@
   </div>
 
   <form id="demo-form" action="#" onsubmit="event.preventDefault();" novalidate>
+    
+    <!-- Use Case 1: Email Validation -->
     <div class="form-group">
       <label for="email">Email Address</label>
       <input type="email" id="email" name="email" autocomplete="email" required placeholder="you@example.com"
@@ -97,8 +123,22 @@
       </div>
     </div>
 
+    <!-- Use Case 2: Password Complexity -->
+    <div class="form-group">
+      <label for="password">New Password</label>
+      <input type="password" id="password" name="password" autocomplete="new-password" required minlength="8"
+        pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}" aria-describedby="password-rules">
+      <ul id="password-rules" class="rules-list">
+        <li>At least 8 characters</li>
+        <li>One uppercase letter</li>
+        <li>One lowercase letter</li>
+        <li>One number</li>
+        <li>One special character</li>
+      </ul>
+    </div>
+
     <div style="display: flex; gap: 1rem;">
-      <button type="submit">Subscribe</button>
+      <button type="submit">Create Account</button>
       <button type="reset">Reset</button>
     </div>
   </form>
