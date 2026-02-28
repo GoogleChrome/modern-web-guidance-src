@@ -45,9 +45,9 @@ export const environmentConfig: EnvironmentConfig = {
 // *** Run with: `pnpm suite`  ***
 // *******************************
 export const suiteConfig: SuiteConfig = {
-  name: 'good-effort1',
+  name: 'analytics-suite',
   numRuns: 1,
-  tasks: ['cards-render'],
+  tasks: ['batch-analytics-events-task', 'full-session-analytics-task'],
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: false,
   agent: Agents.GEMINI_CLI,
@@ -58,7 +58,7 @@ export const suiteConfig: SuiteConfig = {
 // *** Run with: `pnpm report`      ***
 // ************************************
 export const evalConfig: EvalConfig = {
-  suiteName: 'good-effort1'
+  suiteName: 'analytics-suite'
 };
 
 export interface EnvironmentConfig {

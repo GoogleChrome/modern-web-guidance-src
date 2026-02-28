@@ -294,11 +294,14 @@ export function watchLogFile(logPath: string): () => void {
       const currentData = fs.readFileSync(logPath, 'utf8');
       if (currentData.length > prevData.length) {
         const newLogs = currentData.slice(prevData.length).trim();
-        if (newLogs) console.log(`\x1b[33m[MCP Server Log]:\x1b[0m\n${newLogs}`);
+        if (newLogs) {
+          const formattedLogs = newLogs.split('\n').map(line => `\x1b[33m[MCP Server Log]:\x1b[0m ${line}`).join('\n');
+          console.log(formattedLogs);
+        }
         prevData = currentData;
       }
     } catch (e) {
-      // Ignore read errors
+      console.error('Failed to read log file:', e);
     }
   }, 500);
   return () => clearInterval(interval);
