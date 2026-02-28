@@ -80,8 +80,12 @@ function validateGuide(filePath: string): ValidationResult {
     errors.push(`Missing "description" in frontmatter for ${relativePath}.`);
   }
 
-  const featureIds = data['web-feature-ids'] || [];
-  if (!Array.isArray(featureIds)) {
+  const featureIds = data['web-feature-ids'];
+  if (featureIds === undefined) {
+    errors.push(
+      `Missing "web-feature-ids" in frontmatter for ${relativePath}.`,
+    );
+  } else if (!Array.isArray(featureIds)) {
     errors.push(`"web-feature-ids" must be an array in ${relativePath}.`);
   } else {
     for (const id of featureIds) {
