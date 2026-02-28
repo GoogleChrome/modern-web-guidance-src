@@ -1,7 +1,7 @@
 ---
 name: animate-scrollbar-color-on-scroll
 description: Animate the scrollbar color dynamically as the user scrolls down the page
-web-features:
+web-feature-ids:
   - scrollbar-color
   - scroll-driven-animations
   - registered-custom-properties
@@ -9,7 +9,6 @@ sources:
   - https://developer.mozilla.org/en-US/docs/Web/CSS/scrollbar-color
   - https://developer.mozilla.org/en-US/docs/Web/CSS/animation-timeline
   - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Properties_and_values_API/Registering_properties
-  
   - https://developer.chrome.com/docs/css-ui/scroll-driven-animations
 ---
 

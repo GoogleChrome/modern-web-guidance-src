@@ -1,7 +1,7 @@
 ---
 name: adapt-scrollbar-to-contrast-preferences
 description: Enhance scrollbar visibility for users who prefer high-contrast interfaces
-web-features:
+web-feature-ids:
   - scrollbar-color
   - prefers-contrast
 sources:

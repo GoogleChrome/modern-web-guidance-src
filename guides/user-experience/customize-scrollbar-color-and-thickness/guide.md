@@ -1,7 +1,7 @@
 ---
 name: customize-scrollbar-color-and-thickness
 description: Customize the color or thickness of a scrollbar
-web-features:
+web-feature-ids:
   - scrollbar-color
   - scrollbar-width
 sources:

@@ -1,7 +1,7 @@
 ---
 name: adapt-scrollbar-to-light-dark-preferences
 description: Ensure the scrollbar visually matches the user's operating system light/dark mode preference
-web-features:
+web-feature-ids:
   - scrollbar-color
   - color-scheme
   - prefers-color-scheme
