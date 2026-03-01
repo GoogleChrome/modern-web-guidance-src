@@ -57,6 +57,8 @@ Use `content-visibility: auto` to allow the browser to skip layout and paint wor
 
 ## Fallback strategies
 
+{{ BASELINE_STATUS("content-visibility") }}
+
 `content-visibility` is a progressive enhancement. Browsers that do not support the property will simply render the content as normal (defaulting to `visible`).
 
 ### Feature Detection

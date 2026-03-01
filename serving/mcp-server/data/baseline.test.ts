@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline } from './baseline.js';
+import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatusMessage } from './baseline.js';
 
 describe('baseline data', () => {
   describe('getBaselineStatus', () => {
@@ -21,6 +21,22 @@ describe('baseline data', () => {
 
     it('returns undefined for unknown features', () => {
       expect(getBaselineStatus('non-existent-feature')).toBeUndefined();
+    });
+  });
+
+  describe('getStatusMessage', () => {
+    it('returns status message for a feature', () => {
+      // grid low_date is 2017-10-17
+      expect(getStatusMessage('grid')).toBe('Grid has been Baseline since 2017-10-17 (Widely available)');
+    });
+
+    it('returns status message for a BCD key', () => {
+      expect(getStatusMessage('grid', 'css.properties.grid-template-columns')).toBe('The css.properties.grid-template-columns capability has been Baseline since 2017-10-17 (Widely available)');
+    });
+
+    it('returns undefined for unknown features or keys', () => {
+      expect(getStatusMessage('non-existent')).toBeUndefined();
+      expect(getStatusMessage('grid', 'unknown.key')).toBeUndefined();
     });
   });
 

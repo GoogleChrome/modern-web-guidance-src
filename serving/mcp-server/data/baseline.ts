@@ -5,6 +5,17 @@ export type BaselineStatus = 'Limited availability' | `Baseline since ${string}`
 type Feature = typeof features[string];
 
 /**
+ * Result of a feature validation check.
+ */
+export interface FeatureValidationResult {
+  isValid: boolean;
+  error?: 'not_found' | 'invalid_kind';
+  kind?: string;
+  suggestion?: string;
+  errorMessage?: string;
+}
+
+/**
  * Gets the Baseline status for a specific feature.
  * @param featureId - The ID of the web feature
  * @returns The Baseline status of the feature ('Limited availability' or 'Baseline since YYYY-MM-DD')
@@ -114,6 +125,84 @@ export function resolveFeatureId(featureId: string): string[] {
 }
 
 /**
+ * Validates a feature ID.
+ */
+export function validateFeature(id: string): FeatureValidationResult {
+  const feature = features[id] as Feature | undefined;
+  if (!feature) {
+    return {
+      isValid: false,
+      error: 'not_found',
+      errorMessage: `Web feature ID "${id}" not found in web-features package`
+    };
+  }
+  if (feature.kind !== 'feature') {
+    let suggestion: string | undefined;
+    let suggestionStr = '';
+    if (feature.kind === 'moved') {
+      suggestion = feature.redirect_target;
+      suggestionStr = ` (It has been moved to "${suggestion}")`;
+    } else if (feature.kind === 'split') {
+      suggestion = feature.redirect_targets.join(', ');
+      suggestionStr = ` (It has been split into: ${suggestion})`;
+    }
+    return {
+      isValid: false,
+      error: 'invalid_kind',
+      kind: feature.kind,
+      suggestion,
+      errorMessage: `Web feature ID "${id}" is a ${feature.kind} record, not a primary feature${suggestionStr}`
+    };
+  }
+  return { isValid: true };
+}
+
+/**
+ * Internal helper to format status messages consistently.
+ */
+function formatStatusMessage(subject: string, status: { baseline?: string | boolean; baseline_low_date?: string }): string {
+  const { baseline, baseline_low_date } = status;
+
+  if ((baseline === 'low' || baseline === 'high') && baseline_low_date) {
+    const isWidely = baseline === 'high' || (baseline_low_date <= subtractMonths(new Date().toISOString().split('T')[0], 30));
+    const statusName = isWidely ? 'Widely available' : 'Newly available';
+    return `${subject} has been Baseline since ${baseline_low_date} (${statusName})`;
+  }
+
+  return `${subject} is not supported across all major browsers`;
+}
+
+/**
+ * Gets a formatted status message for a feature or a specific BCD key.
+ */
+export function getStatusMessage(featureId: string, bcdKey?: string): string | undefined {
+  if (bcdKey) {
+    const status = getStatus(featureId, bcdKey);
+    if (!status) return;
+    return formatStatusMessage(`The ${bcdKey} capability`, status);
+  }
+
+  const feature = features[featureId] as Feature | undefined;
+  if (!feature) return;
+
+  const baselineStatus = getBaselineStatus(featureId);
+  if (!baselineStatus) return;
+
+  const subject = (feature as any).name || featureId;
+
+  if (baselineStatus === 'Limited availability') {
+    return formatStatusMessage(subject, { baseline: false });
+  }
+
+  const date = baselineStatus.replace('Baseline since ', '');
+  return formatStatusMessage(subject, { baseline: 'low', baseline_low_date: date });
+}
+
+type FeatureData = Extract<Feature, { kind: "feature" }>;
+type Status = NonNullable<FeatureData["status"]>;
+type CompatStatus = NonNullable<Status["by_compat_key"]>[string];
+
+/**
  * Gets the baseline status for a specific browser compatibility key.
  * @param featureId - Optional feature ID to search within (improves performance if known)
  * @param bcdKey - The browser compatibility data key (e.g., "api.HTMLElement.focus")
@@ -122,7 +211,7 @@ export function resolveFeatureId(featureId: string): string[] {
 export function getStatus(
   featureId: string | undefined,
   bcdKey: string,
-): { baseline?: 'high' | 'low' | false } | undefined {
+): CompatStatus | undefined {
   // Direct lookup when feature ID is provided
   if (featureId) {
     // Handle splits and redirects

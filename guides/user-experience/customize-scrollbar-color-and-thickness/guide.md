@@ -38,7 +38,9 @@ MANDATORY: Use `scrollbar-color` and `scrollbar-width` on the scrollable contain
 
 ## Fallbacks & Browser Support
 
-MANDATORY: These features are "Baseline Newly Available" (as of 2024/2025). If the user's Baseline target is "Baseline Widely Available" or earlier, you SHOULD include the non-standard `::-webkit-scrollbar` pseudo-elements as fallbacks.
+{{ BASELINE_STATUS("scrollbar-color") }}
+
+MANDATORY: If the user's Baseline target is "Baseline Widely Available" or earlier, you SHOULD include the non-standard `::-webkit-scrollbar` pseudo-elements as fallbacks.
 MANDATORY: To prevent conflicts between standard properties and legacy WebKit selectors in browsers that support both natively (like modern Chrome), you MUST wrap legacy WebKit fallbacks in an `@supports not (scrollbar-color: auto)` block.
 MANDATORY: On macOS, `scrollbar-color` (standard) and `::-webkit-scrollbar` (legacy) properties are ignored by default because macOS uses native "overlay" scrollbars. You MUST apply `scrollbar-width` (e.g., `thin` or `auto`) to force macOS to render custom colors.
 MANDATORY: Even with `scrollbar-width` applied, macOS overlay scrollbars render the track (gutter) as transparent by default. If your design requires a visible track background color on MacOS, you MUST apply `scrollbar-gutter: stable;` to the scrollable container.
