@@ -44,18 +44,22 @@ You MUST start `guide.md` with EXACTLY this YAML frontmatter structure:
 ```yaml
 ---
 name: slugified-use-case-name
-description: <do thing> <with feature> (e.g., "Create dynamic color systems using modern color syntax")
+description: <achieve outcome> <in specific scenario> (e.g., "Improve search engine visibility by providing structured data")
 web-feature-ids:
   - webstatus-feature-id
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/API/Feature
 ---
 ```
+* **description**: Focus on the **functional goal** or **user intent**. Avoid naming specific APIs or technical mechanisms here, as they are captured in `web-feature-ids`. 
+    * **BAD:** "Use the fetchpriority attribute on images"
+    * **GOOD:** "Optimize Largest Contentful Paint (LCP) by prioritizing critical images"
 * **web-features**: Must be a list of accurate IDs found via webstatus.dev. If the ID is missing, inform the USER.
 * **sources**: Must be a list of primary source URLs used to synthesize the document.
 
 ### 2. Tone and Formatting
 * **MANDATORY:** Use strict imperative directives. Start instructions with `MANDATORY:`, `DO`, and `DO NOT`. Coding agents respond best to rigid constraints.
+* **Semantic Discovery:** Word the `description` to match how a developer would describe their *problem* (e.g., "prevent layout shift" instead of "use aspect-ratio"). This ensures the guide is discoverable via semantic search.
 * **Focus:** Keep it abstract but short. No fluff. No conversational text. Include a brief overview of the feature and why it is useful for the use-case.
 * **Self-Contained:** DO NOT require the reading agent to click external links to understand the code. All required knowledge to use the feature MUST be fully synthesized into the markdown body.
 
