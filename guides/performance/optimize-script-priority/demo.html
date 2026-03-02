@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Optimize Script Priority Demo</title>
+</head>
+
+<body>
+  <h1>Optimize Script Priority</h1>
+
+  <!-- 
+    1. Boosted Async Script: 
+    Explicitly set to high priority. Use this for scripts critical to 
+    user interactivity so they download fast without blocking the parser.
+  -->
+  <script src="https://httpbin.org/get?name=critical-interactive.js" async fetchpriority="high"></script>
+
+  <!-- 
+    2. Default Async Script: 
+    Implicitly "Low" priority. Perfect for background analytics or 
+    non-essential widgets.
+  -->
+  <script src="https://httpbin.org/get?name=background-analytics.js" async></script>
+
+  <!-- Simulating an LCP image that needs bandwidth -->
+  <img src="https://picsum.photos/id/10/600/400" alt="LCP Image" width="600" height="400" fetchpriority="high">
+
+  <!-- 
+    3. Deprioritized Late-Body Script: 
+    Normally, standard scripts get a High/Medium priority. 
+    Using fetchpriority="low" helps ensure this doesn't delay higher priority resources.
+  -->
+  <script src="https://httpbin.org/get?name=non-critical-ui.js" fetchpriority="low"></script>
+
+</body>
+
+</html>

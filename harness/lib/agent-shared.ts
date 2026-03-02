@@ -280,3 +280,29 @@ export function copyResultsToTarget(workDir: string, targetDir: string, subPath:
   execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
   console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
 }
+
+/**
+ * Watches a log file and prints new lines to stdout.
+ * @param logPath The path to the log file
+ * @returns A function to stop watching
+ */
+export function watchLogFile(logPath: string): () => void {
+  let prevData = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : '';
+  const interval = setInterval(() => {
+    if (!fs.existsSync(logPath)) return;
+    try {
+      const currentData = fs.readFileSync(logPath, 'utf8');
+      if (currentData.length > prevData.length) {
+        const newLogs = currentData.slice(prevData.length).trim();
+        if (newLogs) {
+          const formattedLogs = newLogs.split('\n').map(line => `\x1b[33m[MCP Server Log]:\x1b[0m ${line}`).join('\n');
+          console.log(formattedLogs);
+        }
+        prevData = currentData;
+      }
+    } catch (e) {
+      console.error('Failed to read log file:', e);
+    }
+  }, 500);
+  return () => clearInterval(interval);
+}
