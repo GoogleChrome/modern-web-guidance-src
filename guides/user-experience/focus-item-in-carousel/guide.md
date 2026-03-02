@@ -4,10 +4,9 @@ description: Build a scrollable carousel that centers on a specific image or oth
 web-feature-ids:
   - scroll-initial-target
 ---
-
 # Focus Item in Carousel
 
-Prior to `scroll-initial-target`, developers heavily relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#item-id`) to scroll a carousel container to a specific item on initial load. The experimental CSS property `scroll-initial-target` offers a declarative CSS-only way to achieve this, bringing a specific child element into the visible area of its scroll container as soon as the container is rendered.
+The CSS property `scroll-initial-target` offers a declarative CSS-only way to bring a specific child element into the visible area of its scroll container as soon as the container is rendered. Previously, developers heavily relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#item-id`) to scroll a carousel container to a specific item on initial load.
 
 ## How to implement
 
@@ -22,27 +21,37 @@ When multiple elements specify an initial target within the same container, the 
 ## Example code
 
 ```css
-/* The scroll container */
+/**  
+ * PARENT: scroll container
+ * Includes mandatory scroll snap on parent.
+ */
 .carousel {
   display: flex;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
 }
 
-/* The specific item to focus on initial render */
+/** 
+ * CHILD: Focused item
+ * The specific item to focus on initial render that holds
+ * scroll snap alignment.
+ */
 .item.target {
   scroll-initial-target: nearest;
   scroll-snap-align: center;
 }
 ```
+## Strategic implementation
+
+- **DO** use `scroll-initial-target: nearest` when you want to draw the user's attention to a specific part of a scrollable area upon load (e.g., automatically scrolling a plant gallery to feature the "Monstera Deliciosa").
+- **DO NOT** use this as a replacement for standard accessibility focus. This property only affects the visual scroll position; it does not move keyboard focus.
+- **DO NOT** use it if you need to animate the scroll position on load; this property sets the *initial* position instantly.
+- **DO** understand that the property is only effective on the *initial* render or when the scroll container's content changes significantly.
+- **DO** note that it will not override fragment navigation (if a URL has a `#hash` identifier it takes precedence).
 
 ## Fallback strategies
 
-`scroll-initial-target` is an experimental feature and is not yet supported across all major browsers. A fallback strategy using JavaScript is recommended for cross-browser compatibility.
-
-### Feature Detection & Polyfill
-
-Use `@supports` to check for support in CSS, or check the CSS property in JavaScript to conditionally run a `scrollIntoView()` fallback. Note that for a horizontal carousel, you typically want to center the item inline.
+For browsers that have yet to support `scroll-initial-target`, leverage `scrollIntoView()` as a fallback for cross-browser compatibility. Note that for a horizontal carousel, you typically want to center the item inline.
 
 ```javascript
 document.addEventListener("DOMContentLoaded", () => {
@@ -56,14 +65,6 @@ document.addEventListener("DOMContentLoaded", () => {
 ```
 
 You can leave the default scroll position as a safe fallback for progressive enhancement if the specific target content isn't critical for the initial view.
-
-## Strategic implementation
-
-- **DO** use `scroll-initial-target: nearest` when you want to draw the user's attention to a specific part of a scrollable area upon load (e.g., automatically scrolling a plant gallery to feature the "Nano Banana").
-- **DO NOT** use this as a replacement for standard accessibility focus. This property only affects the visual scroll position; it does not move keyboard focus.
-- **DO NOT** use it if you need to animate the scroll position on load; this property sets the *initial* position instantly.
-- **DO** understand that the property is only effective on the *initial* render or when the scroll container's content changes significantly.
-- **DO** note that it will not override fragment navigation (if a URL has a `#hash` identifier it takes precedence).
 
 ## References
 

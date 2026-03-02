@@ -7,7 +7,7 @@ web-feature-ids:
 
 # Focus Chat Message
 
-Prior to `scroll-initial-target`, developers heavily relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#message-id`) to scroll a chat container to a specific message on initial load. The experimental CSS property `scroll-initial-target` offers a declarative CSS-only way to achieve this, bringing a specific child element into the visible area of its scroll container as soon as the container is rendered.
+The CSS property `scroll-initial-target` offers a declarative CSS-only way to bring a specific child element into the visible area of its scroll container as soon as the container is rendered. Previously, developers heavily relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#message-id`) to scroll a chat container to a specific message on initial load.
 
 ## How to implement
 
@@ -22,25 +22,34 @@ When multiple elements specify an initial target within the same container, the 
 ## Example code
 
 ```css
-/* The scroll container */
+/**  
+ * PARENT: scroll container
+ */
 .chat-window {
   height: 400px;
   overflow-y: auto;
 }
 
-/* The specific message to focus on initial render */
+/** 
+ * CHILD: Focused item
+ * The specific message to focus on initial render.
+ */
 .message.target {
   scroll-initial-target: nearest;
 }
 ```
 
+## Strategic implementation
+
+- **DO** use `scroll-initial-target: nearest` when you want to draw the user's attention to a specific part of a scrollable area upon load (e.g., highlighting a search result within a chat log).
+- **DO NOT** use this as a replacement for standard accessibility focus. This property only affects the visual scroll position; it does not move keyboard focus.
+- **DO NOT** use it if you need to animate the scroll position on load; this property sets the *initial* position instantly.
+- **DO** understand that the property is only effective on the *initial* render or when the scroll container's content changes significantly.
+- **DO** note that it will not override fragment navigation (if a URL has a `#hash` identifier it takes precedence).
+
 ## Fallback strategies
 
-`scroll-initial-target` is an experimental feature and is not yet supported across all major browsers. A fallback strategy using JavaScript is recommended for cross-browser compatibility.
-
-### Feature Detection & Polyfill
-
-Use `@supports` to check for support in CSS, or check the CSS property in JavaScript to conditionally run a `scrollIntoView()` fallback.
+For browsers that have yet to support `scroll-initial-target`, leverage `scrollIntoView()` as a fallback for cross-browser compatibility.
 
 ```javascript
 document.addEventListener("DOMContentLoaded", () => {
@@ -54,14 +63,6 @@ document.addEventListener("DOMContentLoaded", () => {
 ```
 
 You can leave the default scroll position as a safe fallback for progressive enhancement if the specific target content isn't critical for the initial view.
-
-## Strategic implementation
-
-- **DO** use `scroll-initial-target: nearest` when you want to draw the user's attention to a specific part of a scrollable area upon load (e.g., highlighting a search result within a chat log, or starting an image gallery at a specific image).
-- **DO NOT** use this as a replacement for standard accessibility focus. This property only affects the visual scroll position; it does not move keyboard focus.
-- **DO NOT** use it if you need to animate the scroll position on load; this property sets the *initial* position instantly.
-- **DO** understand that the property is only effective on the *initial* render or when the scroll container's content changes significantly.
-- **DO** note that it will not override fragment navigation (if a URL has a `#hash` identifier it takes precedence).
 
 ## References
 
