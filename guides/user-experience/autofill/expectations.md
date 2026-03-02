@@ -1,8 +1,54 @@
 # Expectations: `autofill`
 
-- In browsers that support the `:autofill` CSS pseudo-class, the `:autofill` CSS pseudo-class can be used to style autofilled `<input>` elements as required. JavaScript or other mechanisms SHOULD NOT be used to style autofilled `<input>` elements in browsers where the `:autofill` CSS pseudo-class is supported.
+- `<input>`, `<select>`, and `<textarea>` elements **MUST** be within a `<form>` element.
+- Every `<input>`, `<select>`, and `<textarea>` element **MUST** have an `autocomplete` attribute with a valid value. For example, `autocomplete="name"` or `autocomplete="tel"`. https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/autocomplete#token_list_tokens provides a list of valid values.
+- An `<input>` element **MUST** include a `type` attribute if available, for example for email, password, telephone, or  URL entry.
+- Every `<input>`, `<select>`, or `<textarea>` element in a form **MUST** have an `id` attribute and a `name` attribute with a non-empty value.
+- `id` and `name` attributes **MUST** be unique to each element. `id` and `name` attributes **MUST NOT** be the same for multiple elements.
+- The value of the `id` and `name` attributes of a form element **SHOULD** be the same.
+- A `pattern` attribute **SHOULD** be provided when appropriate to validate data entry.
+- Every `<input>`, `<select>`, or `<textarea>` element in a form **MUST** be visually labeled using a `<label>` element.
+- Every `<label>` element **MUST** have a `for` attribute with a value that matches the `id` attribute value of an adjacent `<input>`, `<select>`, or `<textarea>` element element.
+- An `<input>` element **MAY** use placeholder text to help the user enter text, but the `placeholder` attribute **MUST NOT** be used to provide a visual UI label for an `<input>` element. A `<label>` element should be used instead.
+- Each form element label provided using a `<label>` element **SHOULD** be displayed above its associated form element, and **MUST** be clearly associated visually with the form element.
+- The vertical margin (whitespace) between a form element's label and the form element itself **MUST** be less than the vertical margin (whitespace) between the form element and the form element that follows it.
+- The `type="number"` attribute **MUST NOT** be used for numbers that are not meant to be incremented, such as payment card numbers or telephone numbers. `type="text"` or `inputmode="numeric"` (**NOT** `type="number"`) **MUST** be used for user input of numbers that are not meant to be incremented.
+- To help browsers autofill forms, every `<input>` element **MUST** have a `name` and `id` attribute that is stable and does not change between page loads or website deployments.
+- A `<button>` element (not a `<div>` element) **MUST** be used for every button in a form.
+- A form submit button **SHOULD** be disabled once it has been tapped or clicked.
+- Data in a form **MUST** be validated during entry, as well as when the user attempts to submit the form.
+- Progress through a multi-page form **MUST** be clearly displayed to the user, showing progress steps with clear labels and calls to action. A user **MUST** be able to navigate backwards and forwards between pages on a multi-page form.
+- Avoid clutter and distractions in forms, to reduce the likelihood of a user abandoning form completion. Keep form pages visually simple, with clear calls to action.
+- Where possible, ask for personal names with a single `<input>`. Do not assume that all users have a first name and a last name.
+- **DO NOT** enforce Latin-only characters for names and usernames.
+- In forms that request an address, allow for a variety of international address formats. https://www.columbia.edu/%7Efdc/postal/ provides information about addresses in different locales.
+- The autocomplete **MUST** be used for billing address form fields.
+- Internationalize and localize form labels where necessary.
+- Appropriate payment card autocomplete values **MUST** be used. https://web.dev/articles/payment-and-address-form-best-practices provides more information about address and payment form best practice.
+- A single `<input>` element **MUST** be used for entry of payment card numbers.
+- Custom elements **SHOULD** be avoided if they break the autofill experience.
+- An `<input>` element **MUST** have a `maxlength` attribute if the value associated with element has a maximum character length.
+- An `<input>`, `<select>`, or `<textarea>` element **MUST** have a `required` attribute if it is mandatory for the user to provide a value for that form field.
+- An `<input>` elements used for password entry **MUST** have `aria-label` and `aria-describedby` attributes.
+- Password visibility toggle UI **MUST** be provided for an `<input>` element used for password entry. https://codepen.io/web-dot-dev/pen/VYvvJpj provides an example.
+- `autocomplete="new-password"` and `id="new-password"` attributes **MUST** be included in an `<input>` element used for entry of a new password in a sign-up form, or for the new password in a change-password form.
+- `autocomplete="current-password"` and `id="current-password"` attributes **MUST** be provided in an `<input>` element used for entry of a password in a sign-in form, or for input of the user's old password in a change-password form.
+- Forms **SHOULD** be designed so that the mobile keyboard does not obscure inputs or buttons. https://web.dev/articles/sign-in-form-best-practices#keyboard-obstruction provides more information.
+- Do not double-up form fields for passwords or email addresses: do not make the user enter passwords and email addresses twice. Instead, ensure that users confirm their email address, and make it easy for users to reset their password if necessary.
+- An `<input>` element used for password entry **MUST** have a `type="password"`attribute.
+- The `type="password"`attribute **MUST** only be included on `<input>` elements used for password entry: the `type="password"`attribute **MUST NOT** be used on other types of form fields, such as for OTP entry.
+- The `type="email"` attribute **MUST** be included in an `<input>` element used for email entry, to ensure mobile users are provided with an appropriate keyboard.
+- An `inputmode="numeric"` attribute **MUST** be provided in an `<input>` element used for entry of a PIN number. https://css-tricks.com/everything-you-ever-wanted-to-know-about-inputmode/ provides more information about `inputmode`.
+- Inputs and buttons **MUST** be large enough for easy user interaction and data entry on mobile and desktop. Use CSS to add at least 2 px of padding (preferably at least 5 px) to all `<input>` elements. According to Android accessibility guidance the recommended target size for touchscreen objects is 7–10 mm. Apple interface guidelines suggest 48x48 px, and the W3C suggest at least 44x44 CSS pixels. On that basis, add (at least) 15 px of padding to input elements and buttons for mobile, and around 10 px on desktop. Users should comfortably be able to tap each input or button with their thumb.
+- Text in form labels and form fields **MUST** be large enough to be legible on mobile and desktop. https://web.dev/articles/sign-in-form-best-practices#size-text-correctly provides more information about text sizing.
+- Adequate vertical margin (whitespace) between form elements **MUST** be provided to make inputs work well as touch targets on mobile. Provided at least one finger width of vertical margin (whitespace) between each form field.
+- Form fields **MUST** be clearly visible. The default border styling for inputs makes them hard to see. As well as padding, add a border to `<input>` elements: on a white background, a good general rule is to use CSS to add a border color of `#ccc` or darker.
+- Use the `:invalid` CSS selector to highlight invalid data.
+- For forms, use well-known and easily understood names such as "Sign In", "Create Account", "Register".
+- For form fields, use well-known and easily understood label values such as "Name", "Email", "Telephone", and "Password".
+- Include the logo and name of your company or organization on your signup and sign-in pages. Make sure that explanatory language, fonts and styles used in forms follow  branding and match the style and tone used elsewhere on your site.
+- In browsers that support the `:autofill` CSS pseudo-class, the `:autofill` CSS pseudo-class can be used to style autofilled `<input>` elements as required. In browsers that support the `:autofill` CSS pseudo-class, JavaScript or other mechanisms  to style autofilled `<input>` elements **SHOULD NOT** be used.
 - The `:autofill` CSS pseudo-class **MAY** be used in combination with the `:-webkit-autofill` pseudo-class, in order to maximize compatibility with older browsers. The vendor-prefixed `:-webkit-autofill` pseudo-class is an alias of `:autofill`.
-- The `:autofill` CSS pseudo-class **CAN ONLY** be used to style `<input>` elements. The `:autofill` CSS pseudo-class **CANNOT** be used to style elements other than the `<input>` element. The `:autofill` CSS pseudo-class CAN ONLY be used with the `input:autofill` selector.
-- The `:autofill` CSS pseudo-class **SHOULD NOT** be used on its own to style `<input>` elements. Instead, the `input:autofill` selector **MUST** be used, which specifies both the `<input>` element and the `:autofill` CSS pseudo-class.
-- `input:autofill` **MAY** be used in combination with other selectors, or with classes or IDs. For example, both of the following selectors are correct: `input.address:autofill` and `section#shipping input.address:autofill`.
-- `:auto-fill` used as a CSS pseudo-class (with a hyphen between "auto" and "fill") is incorrect. The correct CSS pseudo-class is `:autofill`, with no hyphen. The information on the page https://css-tricks.com/almanac/pseudo-selectors/a/autofill is correct, but the use of `:auto-fill` is incorrect.
+- The `:autofill` CSS pseudo-class **CAN ONLY** be used to style `<input>`, `<select>`, and `<textarea>` elements. The `:autofill` CSS pseudo-class **CANNOT** be used to style elements other than the `<input>`, `<select>`, and `<textarea>` elements.
+- `input:autofill` **MAY** be used in combination with other selectors, or with classes or IDs. For example, both of the following selectors are correct: `input.address:autofill` and `section#shipping input:autofill`.
+- `:auto-fill` used as a CSS pseudo-class (with a hyphen between "auto" and "fill") is incorrect. The correct CSS pseudo-class is `:autofill`, with no hyphen. The use of `:auto-fill` as a CSS pseudo-class is **INCORRECT**, for example on the page https://css-tricks.com/almanac/pseudo-selectors/a/autofill. Other information on that page is correct.

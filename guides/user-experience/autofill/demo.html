@@ -23,12 +23,11 @@ SPDX-License-Identifier: Apache-2.0 -->
       --desktop-font-size: 22px;
     }
 
-    :-webkit-autofill {
-      border: 2px solid blue;
-    }
-
-    :autofill {
+    :-webkit-autofill, :autofill {
       border-style: dotted;
+      font-family: sans-serif;
+      font-size: 22px; /* fallback */
+      font-size: var(--small-mobile-font-size);
     }
 
     :autofill:hover,
