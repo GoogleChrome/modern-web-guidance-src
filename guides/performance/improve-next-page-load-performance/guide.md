@@ -123,4 +123,4 @@ This example shows a rule set that prefetches all links eagerly, and then goes f
 
 Speculative loading is a new feature, and as such, is not supported in all modern browsers (Baseline limited availability).
 
-However, speculative loading is a progressive enhancement. It is perfectly safe to use an enhancement, and is highly recommended given the potential performance benefits. If a browser does not support speculation rules, it will simply ignore them.
+However, speculative loading is a progressive enhancement. It is perfectly safe to use as an enhancement, and is highly recommended given the potential performance benefits. If a browser does not support speculation rules, it will simply ignore them.
