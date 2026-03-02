@@ -8,7 +8,7 @@ serving/mcp-server/.mcp-data/
 
 # Test artifacts
 eval-view/test-results/
-harness/results
+harness/results/
 
 # Environment and Logs
 .env
@@ -18,7 +18,6 @@ harness/results
 # OS Junk
 .DS_Store
 
-
 # Coverage
 coverage/
-serving/.mcp-data
+serving/.mcp-data/

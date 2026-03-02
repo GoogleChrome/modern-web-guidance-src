@@ -21,7 +21,7 @@
     "start": "tsx mcp-server/index.ts",
     "dev": "tsx scripts/build-guides.ts && tsx --watch mcp-server/index.ts",
     "test": "tsx scripts/build-guides.ts && vitest run mcp-server/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "npm run build && tsc --noEmit"
   },
   "keywords": [],
   "author": "",

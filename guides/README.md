@@ -5,7 +5,7 @@
 
 ```
 GEMINI_API_KEY=api-key
-GEMINI_MODEL=gemini-3-pro-preview
+GEMINI_MODEL=gemini-3.1-pro-preview
 ```
 
 Then, from `guidance/` root:

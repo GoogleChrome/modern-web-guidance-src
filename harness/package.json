@@ -21,8 +21,5 @@
     "dotenv": "^16.6.1",
     "glob": "^10.5.0",
     "puppeteer-core": "^24.37.5"
-  },
-  "devDependencies": {
-    "js-yaml": "^4.1.1"
   }
 }

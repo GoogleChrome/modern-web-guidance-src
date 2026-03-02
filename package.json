@@ -10,7 +10,7 @@
     "lint": "oxlint --ignore-path .oxlintignore",
     "typecheck": "pnpm -r typecheck",
     "preflight": "pnpm typecheck && pnpm lint && pnpm test",
-    "suite": "pnpm --filter harness suite",
+    "suite": "pnpm build:mcp && pnpm --filter harness suite",
     "qsmoke": "pnpm --filter harness qsmoke",
     "task": "pnpm --filter harness task",
     "run-agent": "node harness/run_suite.ts --with-template",
@@ -33,11 +33,21 @@
       "onnxruntime-node",
       "protobufjs",
       "sharp"
-    ]
+    ],
+    "packageExtensions": {
+      "@google/gemini-cli": {
+        "dependencies": {
+          "semver": "*"
+        }
+      }
+    }
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
+    "@types/node": "^22.19.11",
     "oxlint": "^1.50.0",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "glob": "^10.5.0"
   }
 }

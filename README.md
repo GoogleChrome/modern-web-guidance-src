@@ -66,8 +66,8 @@ pnpm dashboard
 All configuration is centralized in [`harness/config.ts`](./harness/config.ts). This file controls:
 
 -   **Environment**: Paths to binaries (Jetski, Gemini CLI, Claude Code), API keys, and server locations.
--   **Suite**: Agent selection, number of runs, base apps, enabled MCP servers, and skills.
--   **Evaluation**: Target suite name and specific guides to run evaluation for.
+-   **Suite**: Agent selection, number of runs, tasks to run, enabled MCP servers, and skills.
+-   **Evaluation**: Name of suite to evaluate.
 
 All settings must be adjusted in `harness/config.ts` or via environment variables in `.env` at the `guidance/` root.
 
@@ -83,7 +83,7 @@ Jetski is the default agent that will be used. When running, be sure to update t
 
 When using Gemini CLI, set the `GEMINI_API_KEY` environment variable with your API key.
 
-Set the Gemini model with the environment variable (e.g. `GEMINI_MODEL='gemini-3-pro-preview'`).
+Set the Gemini model with the environment variable (e.g. `GEMINI_MODEL='gemini-3.1-pro-preview'`).
 
 #### Claude
 
