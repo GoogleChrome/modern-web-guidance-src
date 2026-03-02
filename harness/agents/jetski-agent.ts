@@ -324,9 +324,9 @@ async function run(): Promise<void> {
     await targetInputBox.type(userPrompt);
 
     try {
-      const sendBtn = await targetPanel.waitForSelector(sendButtonSelector, { timeout: 1000 });
-      console.log("Submitting...");
-      await sendBtn.click();
+      const sendButton = await targetPanel.waitForSelector(sendButtonSelector, { timeout: 1000 });
+      console.log("Submitting prompt...");
+      await sendButton.click();
     } catch {
       console.log("Warning: Submit button didn't appear.");
     }
@@ -334,10 +334,10 @@ async function run(): Promise<void> {
     // Wait for completion (cancel button to disappear)
     // First, wait for the cancel button to APPEAR (meaning it started)
     try {
-      await targetPanel.waitForSelector(cancelButtonSelector, { timeout: 1000 });
+      await targetPanel.waitForSelector(cancelButtonSelector, { timeout: 10000 });
       console.log("Agent started working...");
     } catch {
-      console.log("Warning: Cancel button didn't appear quickly 1. Agent might have finished very fast or failed to start.");
+      console.log("Warning: Cancel button didn't appear quickly. Agent might have finished very fast or failed to start.");
     }
 
     // Now wait for it to disappear
@@ -366,7 +366,7 @@ async function run(): Promise<void> {
     // Attempt to preserve chat log before closing Jetski
     try {
       console.log("Saving chat log...");
-      // Ensure #chat exists in the target frame
+      // Ensure agent conversation exists in the target frame
       await page.waitForSelector(':is(#chat, #conversation)', { timeout: 1000 });
       const chatText = await page.$eval(':is(#chat, #conversation)', (el: any) => el.innerText || '');
       const chatLogPath = path.resolve(targetDir, 'chat_log.txt');
