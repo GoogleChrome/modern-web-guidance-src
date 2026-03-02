@@ -1,7 +1,0 @@
-The plan is ready for your review. In summary, I'll modernize the tooltip by:
-
-1. **Replacing imperative JS with CSS** — `:hover` and `:focus-visible` drive show/hide instead of `mouseover`/`mouseout` event listeners
-2. **Adding smooth animations** — opacity + translate transitions with `prefers-reduced-motion` support
-3. **Making it accessible** — ARIA attributes, keyboard focus support
-4. **Making it reusable** — `data-tooltip` and `data-tooltip-position` attributes instead of hardcoded IDs
-5. **Building a richer demo** — multiple tooltip positions, icon buttons, an image gallery with stock photos from `picsum.photos`, and theme customization via CSS custom properties

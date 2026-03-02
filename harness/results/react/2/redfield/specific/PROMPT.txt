@@ -1,1 +1,0 @@
-Modernize this existing React tooltip implementation. Replace the imperative event listeners and state management with the modern HTML Popover API using Interest Invokers directly in JSX.

@@ -1,9 +1,0 @@
-The implementation is done. Here's what was added:
-
-**Speculation Rules API** (`<script type="speculationrules">`) in the `<head>` — this is the native web platform feature for pre-rendering pages. The rule:
-
-- **Pre-renders** `/menu`, `/locations`, `/rewards`, and `/account` using an explicit `href_matches` list.
-- **Excludes** `/logout` via a `not` condition, ensuring the browser never pre-renders that URL (which would trigger an accidental logout/state change).
-- Uses `"eagerness": "moderate"` so pre-rendering happens when the user hovers over or shows intent to navigate to one of those links, balancing performance with resource usage.
-
-The Speculation Rules API is supported in Chromium-based browsers (Chrome 109+, Edge 109+) and is gracefully ignored by browsers that don't support it — no JavaScript required, no polyfills needed.
