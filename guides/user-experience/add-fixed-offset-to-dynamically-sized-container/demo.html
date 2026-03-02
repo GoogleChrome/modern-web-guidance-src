@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>calc-size() Intrinsic Offset Demo</title>
+    <style>
+        :root {
+            font-family: system-ui, -apple-system, sans-serif;
+            --pink-accent: #ff69b4;
+            --bg: #1a1a1a;
+        }
+
+        body {
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .stage {
+            text-align: center;
+            background: white;
+            padding: 4rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        /* THE TOOLTIP */
+        .smart-tooltip {
+            position: relative;
+            background: var(--bg);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            margin: 20px auto;
+            border: 2px solid var(--pink-accent);
+
+            /* 1. Offset calculation
+               Normally 'width: calc(max-content + 60px)' is invalid.
+               Here, we take the max-content (size) and add a fixed 60px buffer. */
+            width: calc-size(max-content, size + 60px);
+
+            /* 2. Animation
+               Because calc-size returns a numeric value,
+               intrinsic sizes are now animatable */
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+            overflow: hidden;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Decorative "Action Zone" in the reserved 60px space */
+        .smart-tooltip::after {
+            content: '→';
+            position: absolute;
+            right: 0;
+            width: 60px;
+            height: 100%;
+            background: var(--pink-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 2rem;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            border-color: var(--pink-accent);
+            background: #fff0f5;
+        }
+
+        code {
+            color: #d63384;
+            background: #eee;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="stage">
+        <h1>Intrinsic Offset Demo</h1>
+        <p>The tooltip width is <code>calc-size(max-content, size + 60px)</code>.</p>
+
+        <div class="smart-tooltip" id="tooltip">
+            <span id="tooltip-text">Hover a button...</span>
+        </div>
+
+        <div class="controls">
+            <button onmouseover="update('Short')">Short</button>
+            <button onmouseover="update('A medium length label')">Medium Label</button>
+            <button onmouseover="update('The maximum possible length for this demo')">Long Label</button>
+        </div>
+
+        <p style="margin-top: 2rem; font-size: 0.85rem; color: #666; max-width: 400px; line-height: 1.4;">
+            Notice how the <strong>pink action zone</strong> on the right is always exactly 60px, while the black area
+            perfectly wraps the text. This uses a single <code>width</code> property instead of complex nested divs or
+            padding hacks.
+        </p>
+    </div>
+
+    <script>
+        function update(text) {
+            document.getElementById('tooltip-text').innerText = text;
+        }
+    </script>
+</body>
+
+</html>
