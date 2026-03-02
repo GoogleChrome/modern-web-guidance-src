@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0 -->
 <html lang="en">
 
 <head>
-  <title>:autofill background color</title>
+  <title>Highlight :autofill inputs</title>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,7 +15,8 @@ SPDX-License-Identifier: Apache-2.0 -->
     font-family: sans-serif;
   }
   input {
-    border: 1px solid;
+    border: 2px solid;
+    border-color: #cccccc;
     border-radius: 2px;
     margin: 0 0 2rem 0;
     padding: 0.5rem;
@@ -32,12 +33,12 @@ SPDX-License-Identifier: Apache-2.0 -->
   }
   input:autofill,
   input:-webkit-autofill,
+  input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus {
-    -webkit-text-fill-color: black;
     -webkit-box-shadow: 0 0 0px 40rem #efe inset;
     border-color: green;
-    color: black;
+    outline: none;
   }
   </style>
 
