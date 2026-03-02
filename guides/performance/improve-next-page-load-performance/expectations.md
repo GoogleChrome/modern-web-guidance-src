@@ -1,4 +1,4 @@
-# Expectations: `improve-loading-speed-of-links-with-speculation-rules`
+# Expectations: `improve-next-page-load-performance`
 
 - The rule is included in a `<script type="speculationrules"></script>` unless referenced from an `Speculation-Rules` HTTP header.
 - The rule is valid JSON.

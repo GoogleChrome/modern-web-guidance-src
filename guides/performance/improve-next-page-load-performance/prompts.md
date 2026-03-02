@@ -1,4 +1,4 @@
-# Prompts: `improve-loading-speed-of-links-with-speculation-rules`
+# Prompts: `improve-next-page-load-performance`
 
 - Improve the speed of my website
 - Improve the speed of navigating around my website
