@@ -268,12 +268,13 @@ async function run(): Promise<void> {
 
     const inputSelector = '[contenteditable="true"][role="textbox"]';
     const sendButtonSelector = '[data-tooltip-id="input-send-button-send-tooltip"]';
-    const cancelButtonSelector = 'button[data-tooltip-id="input-send-button-cancel-tooltip"]';
-    //const allowOnceButtonSelector = 'button[aria-label="Allow once"]';
-    const allowOnceButtonSelector = 'button::-p-text("Allow Once")';
+    const cancelButtonSelector = '[data-tooltip-id="input-send-button-cancel-tooltip"]';
+    const allowOnceButtonSelector = 'button.bg-ide-button-background';
 
     // The double slashes are deliberate. These IDs include the dot.
     const agentPanelSelector = ':is(#chat, #conversation) #antigravity\\.agentSidePanelInputBox';
+
+    // TODO: Remove these variables once the default model is stable. (Part of patch)
     const modelSelector = 'div[role="dialog"][aria-modal="false"].bg-ide-chat-background.text-editor-foreground.origin-bottom';
     const optionSelector = 'div.flex.items-center.justify-between.cursor-pointer';
 
@@ -297,13 +298,15 @@ async function run(): Promise<void> {
         break;
       }
       console.log(`... Agent Panel conversation box not found or loading, checking again in 3s (Attempt ${i + 1}/20)`)
-      await sleep(3000);
+      await sleep(1000);
     }
 
     if (!targetPanel) {
       throw new Error("Could not find Agent Panel conversation panel after 60 seconds.");
     }
-    //-------------------------
+   
+    // Patch: This intends to select the lower model for the agent rather than the latest.
+    // TODO: Remove this patch once the default model is stable.
     try {
       const selectedLowerModel = await page.waitForSelector(`${modelSelector}`, { timeout: 1000 });
       selectedLowerModel && await selectedLowerModel.click();
@@ -311,17 +314,14 @@ async function run(): Promise<void> {
       const selectedLowerModelOption = await page.waitForSelector(`${optionSelector}:nth-of-type(2)`, { timeout: 1000 });
       selectedLowerModelOption && await selectedLowerModelOption.click();
             
-      console.log("Clicked model selector")
-
-      await sleep(2000);
+      console.log("Selected model ...")
     } catch {
       console.log("Warning: Model selector didn't appear.");
     }
-
+    
     // Focus and type
     console.log(`Typing prompt: "${userPrompt}"`);
     await targetInputBox.type(userPrompt);
-    await sleep(1000);
 
     try {
       const sendBtn = await targetPanel.waitForSelector(sendButtonSelector, { timeout: 1000 });
@@ -337,24 +337,29 @@ async function run(): Promise<void> {
       await targetPanel.waitForSelector(cancelButtonSelector, { timeout: 1000 });
       console.log("Agent started working...");
     } catch {
-      console.log("Warning: Cancel button didn't appear quickly. Agent might have finished very fast or failed to start.");
+      console.log("Warning: Cancel button didn't appear quickly 1. Agent might have finished very fast or failed to start.");
     }
 
     // Now wait for it to disappear
     console.log("Waiting for agent to finish...");
+
     while (true) {
-      const cancelButton = await targetPanel.waitForSelector(cancelButtonSelector, { timeout: 1000 });
-
-        if (!cancelButton) {
-          console.log("Agent finished.");
-          break;
-        }
-
-      const allowOnceButton = await targetPanel.waitForSelector(allowOnceButtonSelector, { timeout: 1000 });
+      const cancelButton = await targetPanel.$(cancelButtonSelector);
+      if (!cancelButton) {
+        console.log("Agent finished.");
+        break;
+      }
+      
+      try {
+        const allowOnceButton = await page.waitForSelector(allowOnceButtonSelector, { timeout: 5000 });
         if (allowOnceButton) {
           console.log("Found 'Allow once' button, clicking it...");
           await allowOnceButton.click();
         }
+      } catch {
+        console.log("Warning: 'Allow once' button didn't appear.");
+      }
+
       await sleep(1000);
     }
 
@@ -362,7 +367,7 @@ async function run(): Promise<void> {
     try {
       console.log("Saving chat log...");
       // Ensure #chat exists in the target frame
-      await page.waitForSelector(':is(#chat, #conversation)', { timeout: 5000 });
+      await page.waitForSelector(':is(#chat, #conversation)', { timeout: 1000 });
       const chatText = await page.$eval(':is(#chat, #conversation)', (el: any) => el.innerText || '');
       const chatLogPath = path.resolve(targetDir, 'chat_log.txt');
       fs.writeFileSync(chatLogPath, chatText, 'utf8');
