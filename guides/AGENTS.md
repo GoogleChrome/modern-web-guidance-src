@@ -45,7 +45,7 @@ You MUST start `guide.md` with EXACTLY this YAML frontmatter structure:
 ---
 name: slugified-use-case-name
 description: <do thing> <with feature> (e.g., "Create dynamic color systems using modern color syntax")
-web-features:
+web-feature-ids:
   - webstatus-feature-id
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/API/Feature

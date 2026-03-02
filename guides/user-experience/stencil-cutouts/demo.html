@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stencil Cutouts</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #f0f2f5;
+    }
+
+    .avatar-container {
+      position: relative;
+      width: 100px;
+      height: 100px;
+    }
+
+    .avatar {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+      border-radius: 50%;
+      mask-image:
+        radial-gradient(circle at center, black 100%, transparent 100%),
+        radial-gradient(circle at 82% 82%, black 18px, transparent 19px);
+      mask-composite: exclude;
+    }
+
+    .status-badge {
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      width: 24px;
+      height: 24px;
+      background: #2ecc71;
+      border-radius: 50%;
+      border: 2px solid #f0f2f5;
+    }
+
+    .avatar-label {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-weight: bold;
+      font-size: 24px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="avatar-container">
+    <div class="avatar"></div>
+    <div class="avatar-label">JD</div>
+    <div class="status-badge"></div>
+  </div>
+</body>
+
+</html>

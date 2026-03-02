@@ -150,41 +150,6 @@ export function updateMcpConfig(
   }
 }
 
-export function copyAgentContext(homeDir: string, agent: string): boolean {
-  const harnessRoot = path.resolve(__dirname, '..');
-  const instructionsSource = path.join(harnessRoot, 'INSTRUCTIONS.md');
-
-  if (!fs.existsSync(instructionsSource)) {
-    console.warn(`Warning: INSTRUCTIONS.md not found at ${instructionsSource}`);
-    return false;
-  }
-
-  let destDir = '';
-  let destFile = '';
-
-  if (agent === Agents.CLAUDE_CODE) {
-    destDir = path.join(homeDir, '.claude');
-    destFile = 'CLAUDE.md';
-  } else {
-    destDir = path.join(homeDir, '.gemini');
-    destFile = 'GEMINI.md';
-  }
-
-  const fullDestPath = path.join(destDir, destFile);
-
-  try {
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
-    }
-    fs.copyFileSync(instructionsSource, fullDestPath);
-    console.log(`Copied INSTRUCTIONS.md to ${fullDestPath}`);
-    return true;
-  } catch (e: any) {
-    console.warn(`Warning: Failed to copy INSTRUCTIONS.md: ${e.message}`);
-    return false;
-  }
-}
-
 /**
  * Copies the skills directory to the isolated home directory.
  * @param homeDir Path to the isolated home directory
@@ -314,4 +279,30 @@ export function copyResultsToTarget(workDir: string, targetDir: string, subPath:
   const sourceDir = path.join(workDir, subPath);
   execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
   console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
+}
+
+/**
+ * Watches a log file and prints new lines to stdout.
+ * @param logPath The path to the log file
+ * @returns A function to stop watching
+ */
+export function watchLogFile(logPath: string): () => void {
+  let prevData = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : '';
+  const interval = setInterval(() => {
+    if (!fs.existsSync(logPath)) return;
+    try {
+      const currentData = fs.readFileSync(logPath, 'utf8');
+      if (currentData.length > prevData.length) {
+        const newLogs = currentData.slice(prevData.length).trim();
+        if (newLogs) {
+          const formattedLogs = newLogs.split('\n').map(line => `\x1b[33m[MCP Server Log]:\x1b[0m ${line}`).join('\n');
+          console.log(formattedLogs);
+        }
+        prevData = currentData;
+      }
+    } catch (e) {
+      console.error('Failed to read log file:', e);
+    }
+  }, 500);
+  return () => clearInterval(interval);
 }
