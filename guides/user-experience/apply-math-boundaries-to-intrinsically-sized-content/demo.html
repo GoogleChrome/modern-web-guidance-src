@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>calc-size() + Clamp</title>
+    <style>
+        :root {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            --bg: #f0f2f5;
+            --sidebar-color: #ffffff;
+            --accent: #ff69b4;
+        }
+
+        body {
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .dynamic-sidebar {
+            background: var(--sidebar-color);
+            border-right: 4px solid var(--accent);
+            padding: 2rem 1rem;
+            /* Reduced horizontal padding slightly */
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow: hidden;
+
+            /* 1. Initial State: Icon only */
+            width: 60px;
+
+            /* 2. Transition */
+            transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .dynamic-sidebar:hover {
+            /*
+               3. THE BOUNDARIES:
+               - Content based (fit-content)
+               - Min width 180px
+               - Max width 35vw (The "Clamp")
+            */
+            width: calc-size(fit-content, clamp(180px, size, 35vw));
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            /* min-width: 0 is critical for ellipsis in flexbox */
+            min-width: 0;
+        }
+
+        .icon {
+            min-width: 24px;
+            height: 24px;
+            background: var(--accent);
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+
+        .label {
+            font-weight: 600;
+            color: #333;
+            opacity: 0;
+            transition: opacity 0.3s;
+
+            /* THE ELLIPSIS LOGIC */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            /* Ensure the label takes up the remaining space so it knows when to truncate */
+            flex: 1;
+        }
+
+        .dynamic-sidebar:hover .label {
+            opacity: 1;
+        }
+
+        main {
+            flex: 1;
+            padding: 3rem;
+            overflow-y: auto;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            max-width: 700px;
+        }
+
+        code {
+            background: #eee;
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: #d63384;
+            font-size: 0.95em;
+        }
+
+        .controls {
+            margin-top: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background: white;
+            border-radius: 6px;
+        }
+
+        button:hover {
+            border-color: var(--accent);
+            background: #fff0f5;
+        }
+    </style>
+</head>
+
+<body>
+    <aside class="dynamic-sidebar">
+        <div class="nav-item">
+            <div class="icon"></div>
+            <span class="label" id="target-label">User: Alex</span>
+        </div>
+        <div class="nav-item">
+            <div class="icon" style="background: #333;"></div>
+            <span class="label">Project: Alpha System</span>
+        </div>
+        <div class="nav-item">
+            <div class="icon" style="background: #666;"></div>
+            <span class="label">System Settings</span>
+        </div>
+    </aside>
+
+    <main>
+        <div class="card">
+            <h1>Clamping & Ellipsis with <code>calc-size()</code></h1>
+            <p>This sidebar dynamically adjusts to its content but enforces a strict <code>35vw</code> limit.</p>
+
+            <p><strong>Current Rule:</strong><br>
+                <code>width: calc-size(fit-content, clamp(180px, size, 35vw));</code>
+            </p>
+
+            <p>When the name becomes too long, <code>calc-size</code> stops expanding the parent, and the child's
+                <code>text-overflow: ellipsis</code> kicks in.</p>
+
+            <div class="controls">
+                <button onclick="changeName('Bob')">Short Name (Min 180px applied)</button>
+                <button onclick="changeName('Alexander the Great')">Normal Name (Fit-content)</button>
+                <button onclick="changeName('Hubert Wolfeschlegelsteinhausenbergerdorff the Third')">Very Long Name
+                    (Clamped + Ellipsis)</button>
+            </div>
+
+            <p style="margin-top: 2rem; color: #666; font-size: 0.9rem;">
+                <em>Note: Hover the sidebar to expand it. Try resizing your browser window while the "Very Long Name" is
+                    active to see the ellipsis respond dynamically to the 35vw limit.</em>
+            </p>
+        </div>
+    </main>
+
+    <script>
+        function changeName(newName) {
+            document.getElementById('target-label').innerText = "User: " + newName;
+        }
+    </script>
+</body>
+
+</html>
