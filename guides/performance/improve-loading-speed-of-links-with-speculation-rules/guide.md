@@ -1,13 +1,13 @@
 ---
-name: improve-loading-speed-of-links-with-speculation-rules
-description: Use speculation rules to prefetch and prerender pages that the user is likely to visit next, improving page load performance.
+name: improve-next-page-load-performance
+description: Improve page load performance by prefetching or prerendering pages that the user is likely to visit next.
 web-feature-ids:
   - speculation-rules
 ---
 
-# Improve loading speed of links with speculation rules
+# Improve next page load performance
 
-Speculative loading is a technique that allows you to prefetch and prerender pages that the user is likely to visit next, improving page load performance.
+One of the most effective ways to improve page load performance for users navigating a site is to initiate loading the next page they're about to visit *before* they visit it. This can be done through a technique called speculative loading using the Speculation Rules API.
 
 ## How it works
 
@@ -27,7 +27,7 @@ Speculative loading is typically used for same-origin links, though more advance
 
 More eager speculative loading is a good choice for pages that are likely to be visited next, such as a headline article or the next page in a stepped process like a learning a course.
 
-Less eager speculative loading is a good choice when it is less obvious what the user will do next, when there are many links on the page, each equally likely to be visited. By waiting for more signals, such as hovering, or starting to click on the page, you can get a head-start on the next page and improve the user experience, even if it is not fully prefetched or prerender.
+Less eager speculative loading is a good choice when it is less obvious what the user will do next, when there are many links on the page, each equally likely to be visited. By waiting for more signals, such as hovering, or starting to click on the page, you can get a head-start on the next page and improve the user experience, even if it is not fully prefetched or prerendered.
 
 Similarly, prefetch is a more conservative choice than prerender, using less resources (on both the client and the server side) but providing less benefit to the user. It is a good choice for initial implementation, expanding to prerender later when the developer explicitly requests it.
 
@@ -35,7 +35,7 @@ Similarly, prefetch is a more conservative choice than prerender, using less res
 
 Speculation rules have a JSON-based format and can be included in a `<script type="speculationrules">` tag. The rules can be included in the `<head>` or `<body>` of the document, or can be dynamically added using JavaScript.
 
-A `tag` can also be used, either at a global level or on a per-rule basis. This allows identification of which speuclations (and which rules) server-side and is a best practice.
+A `tag` can also be used, either at a global level or on a per-rule basis. When set, this tag will be included in the `Sec-Speculation-Tags` header, and allows you to identify server-side which speculations were made.
 
 ### Example of a simple URL list rule of specific for prefetching
 
