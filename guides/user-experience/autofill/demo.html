@@ -42,7 +42,7 @@ SPDX-License-Identifier: Apache-2.0 -->
     }
 
     button,
-    input#submit {
+    input#submit-button {
       background-color: black;
       border: 1px solid #cccccc;
       border-radius: 2px;
@@ -257,43 +257,6 @@ SPDX-License-Identifier: Apache-2.0 -->
     }
 
   </style>
-  <script>
-    /* Copyright 2026 Google LLC.
-    SPDX-License-Identifier: Apache-2.0 */
-
-    const form = document.querySelector("form");
-    const saveAddressButton = document.querySelector("button#save-address");
-    const submitInput = document.querySelector("input#submit");
-
-    form.addEventListener("submit", handleFormSubmission);
-
-    function handleFormSubmission(event) {
-      event.preventDefault();
-      // validate();
-      form.reportValidity();
-      if (form.checkValidity() === false) {
-        // Handle invalid form data.
-      } else {
-        // On a production site do form submission.
-        saveAddressButton.textContent = "Saving...";
-        saveAddressButton.disabled = "true";
-        submitInput.value = "Saving...";
-        submitInput.disabled = "true";
-        form.submit();
-      }
-    }
-
-    // Do form validation.
-    function validate() {
-      let message = "";
-      // if (!/someregex/.test(someInput.value)) {
-      //   console.log(`Invalid value ${someInput.value} for someInput`);
-      // message = 'Explain how to enter a valid value';
-      // }
-      // someInput.setCustomValidity(message);
-    }
-
-  </script>
 
 </head>
 
@@ -301,7 +264,7 @@ SPDX-License-Identifier: Apache-2.0 -->
 
   <main>
 
-    <form id="form" name="form">
+    <form action="." id="form" name="form">
 
       <h1>Address form</h1>
 
@@ -593,12 +556,52 @@ SPDX-License-Identifier: Apache-2.0 -->
         <label for="tel">Telephone</label>
         <input id="tel" name="tel" autocomplete="tel" type="tel" maxlength="30" pattern="[\d \-\+]+" required>
       </section>
-      <input type="submit" value="Submit" id="submit">
+      <input type="submit" value="Submit" id="submit-button">
       <!--       <button id="save-address" type="submit">Save address</button> -->
 
     </form>
 
   </main>
+
+  <script>
+    /* Copyright 2026 Google LLC.
+    SPDX-License-Identifier: Apache-2.0 */
+
+    const form = document.querySelector("form");
+    console.log(form);
+    console.log(form.submit);
+    // const saveAddressButton = document.querySelector("button#save-address");
+    const submitInput = document.querySelector("input#submit-button");
+
+    form.addEventListener("submit", handleFormSubmission);
+
+    function handleFormSubmission(event) {
+      event.preventDefault();
+      // validate();
+      form.reportValidity();
+      if (form.checkValidity() === false) {
+        // Handle invalid form data.
+      } else {
+        // On a production site do form submission.
+        // saveAddressButton.textContent = "Saving...";
+        // saveAddressButton.disabled = "true";
+        submitInput.value = "Saving...";
+        submitInput.disabled = "true";
+        form.submit();
+      }
+    }
+
+    // Do form validation.
+    function validate() {
+      let message = "";
+      // if (!/someregex/.test(someInput.value)) {
+      //   console.log(`Invalid value ${someInput.value} for someInput`);
+      // message = 'Explain how to enter a valid value';
+      // }
+      // someInput.setCustomValidity(message);
+    }
+
+  </script>
 
 </body>
 
