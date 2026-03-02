@@ -6,7 +6,8 @@ import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config, Agents } from '../config.ts';
 
-import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills } from '../lib/agent-shared.ts';
+import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, watchLogFile } from '../lib/agent-shared.ts';
+import { MCP_LOG_FILE } from '../../constants.ts';
 
 // Usage: node jetski-agent.ts <prompt> <runType> <targetDir> <templateDir>
 const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-agent.ts');
@@ -262,6 +263,9 @@ async function run(): Promise<void> {
       console.log(`Jetski info already exists at: ${jetskiInfoPath}`);
     }
 
+    process.env.MCP_LOG_DIR = targetDir;
+    const stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
+
     const inputSelector = '[contenteditable="true"][role="textbox"]';
     const sendButtonSelector = '[data-tooltip-id="input-send-button-send-tooltip"]';
     const cancelButtonSelector = 'button[data-tooltip-id="input-send-button-cancel-tooltip"]';
@@ -376,6 +380,8 @@ async function run(): Promise<void> {
       await page.keyboard.up('Meta');
       console.log("Sent quit command to Jetski.");
     }
+
+    stopWatchingMcpLog();
 
     await sleep(1000);
     await browser.disconnect();

@@ -60,11 +60,8 @@ function setupIsolatedWorkDir(baseDir: string): string {
   const workDir = path.join(tempHome, 'work');
   fs.mkdirSync(workDir, { recursive: true });
 
-  // copy files from target dir to work dir
-  const filesToStage = ['guide.md', 'demo.html', 'expectations.md', 'negative-demo.html'];
-  filesToStage.forEach(file => {
-    copyFileIfExists(path.join(baseDir, file), path.join(workDir, file));
-  });
+  // copy all files and folders from target dir to work dir
+  fs.cpSync(baseDir, workDir, { recursive: true });
 
   // copy template.grader.ts from the guides directory
   copyFileIfExists(path.join(__dirname, 'template.grader.ts'), path.join(workDir, 'template.grader.ts'));

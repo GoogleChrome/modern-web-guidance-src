@@ -47,7 +47,7 @@ async function run() {
   // Output the HTML report to a grade-report folder inside the target file's directory
   const outputDirPath = path.join(path.dirname(targetFileAbs), 'grade-report');
 
-  const child = spawn('npx', ['playwright', 'test', '-c', playwrightConfig, graderPath, '--reporter=html'], {
+  const child = spawn('pnpm', ['--filter', 'guides', 'exec', 'playwright', 'test', '-c', playwrightConfig, graderPath, '--reporter=html'], {
     stdio: 'inherit',
     env: {
       ...process.env,
@@ -59,7 +59,7 @@ async function run() {
   child.on('close', (code) => {
     // Automatically show the report if tests completed or failed
     console.log(`\nTests finished with code ${code}. Opening HTML report...`);
-    const showReportChild = spawn('npx', ['playwright', 'show-report', outputDirPath], {
+    const showReportChild = spawn('pnpm', ['--filter', 'guides', 'exec', 'playwright', 'show-report', outputDirPath], {
       stdio: 'inherit'
     });
 

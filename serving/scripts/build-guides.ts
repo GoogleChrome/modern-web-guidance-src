@@ -138,6 +138,11 @@ async function processSingleGuideFile(
     throw new Error(`Missing frontmatter or description in ${filePath}`);
   }
 
+  if (markdownBody.trim().length === 0) {
+    console.log(`Skipping ${id} (${category}) as it has no markdown content.`);
+    return;
+  }
+
   useCases.push({
     id,
     description: data.description,

@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
-import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, copyResultsToTarget, createWorkDir, copySkills } from '../lib/agent-shared.ts';
+import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, copyResultsToTarget, createWorkDir, copySkills, watchLogFile } from '../lib/agent-shared.ts';
 import config, { Agents } from '../config.ts';
+import { MCP_LOG_FILE } from '../../constants.ts';
 
 // Usage: node claude-code-agent.ts <prompt> <runType> <targetDir> <templateDir>
 const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
@@ -63,6 +64,9 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
+    process.env.MCP_LOG_DIR = targetDir;
+    const stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
+
     const child = spawn(command, commandArgs, {
       cwd: workDir, // Run in the isolated project directory
       env: { ...process.env }, // Pass through environment variables (including new HOME)
@@ -87,6 +91,8 @@ async function run() {
     const exitCode = await new Promise((resolve) => {
       child.on('close', resolve);
     });
+
+    stopWatchingMcpLog();
 
     if (exitCode !== 0) {
       throw new Error(`Claude Code exited with code ${exitCode}`);

@@ -45,9 +45,13 @@ export const environmentConfig: EnvironmentConfig = {
 // *** Run with: `pnpm suite`  ***
 // *******************************
 export const suiteConfig: SuiteConfig = {
+<<<<<<< HEAD
   name: 'jetski-test',
+=======
+  name: 'analytics-suite',
+>>>>>>> main
   numRuns: 1,
-  tasks: ['cards-render'],
+  tasks: ['batch-analytics-events-task', 'full-session-analytics-task'],
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: false,
   agent: Agents.JETSKI,
@@ -58,7 +62,11 @@ export const suiteConfig: SuiteConfig = {
 // *** Run with: `pnpm report`      ***
 // ************************************
 export const evalConfig: EvalConfig = {
+<<<<<<< HEAD
   suiteName: 'jetski-test'
+=======
+  suiteName: 'analytics-suite'
+>>>>>>> main
 };
 
 export interface EnvironmentConfig {
