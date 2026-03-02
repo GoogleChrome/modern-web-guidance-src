@@ -37,7 +37,7 @@ Speculation rules have a JSON-based format and can be included in a `<script typ
 
 A `tag` can also be used, either at a global level or on a per-rule basis. When set, this tag will be included in the `Sec-Speculation-Tags` header, and allows you to identify server-side which speculations were made.
 
-### Example of a simple URL list rule of specific for prefetching
+### Example of a simple URL list rule for prefetching predefined URLs
 
 ```html
 <script type="speculationrules">
@@ -52,7 +52,7 @@ A `tag` can also be used, either at a global level or on a per-rule basis. When 
 </script>
 ```
 
-### Example of a simple document rule of specific for prerendering all links
+### Example of a simple document rule for prerendering all same-origin links on a page
 
 ```html
 <script type="speculationrules">
@@ -65,7 +65,7 @@ A `tag` can also be used, either at a global level or on a per-rule basis. When 
 </script>
 ```
 
-### Example of a complex document rule of specific for prerendering links with exclusions for interactive sites
+### Example of a complex document rule for prerendering links with exclusions for interactive sites
 
 ```html
 <script type="speculationrules">
@@ -88,7 +88,7 @@ A `tag` can also be used, either at a global level or on a per-rule basis. When 
 
 ### Example of a mixed rule set
 
-This example shows a rule set that prefetches all links eagerly, and then goes further than this to prerender those same links when the user hovers over them for a short period of time.
+This example shows a rule set that prefetches all links eagerly, and then goes further than this to prerender those same links when it gets more signals with `moderate` eagerness.
 
 ```html
 <script type="speculationrules">
@@ -113,16 +113,14 @@ This example shows a rule set that prefetches all links eagerly, and then goes f
 - **DO** use speculation rules for static sites, where the content is not likely to change often, and where pages are cheaper to produce—especially if cached at the edge.
 - **DO** take more care when using speculation rules for dynamic pages, where the content is more likely to change often, may become out of date, and where pages are more expensive to produce.
 - **DO** prefer document rules over list rules, as they are more flexible, allow the same rule to be shared across multiple pages, and can be used to prefetch and prerender pages that are not known in advance.
-- **DO** consider the trade-offs between prefetch and prerender, and choose the appropriate one for your use case. Ask the developer for their preference if unsure.
-- **DO** consider the trade-offs between the different `eagerness` levels, and choose the appropriate one for your use case. Ask the developer for their preference if unsure.
+- **DO** consider the trade-offs between prefetch and prerender, and choose the appropriate one for your use case. Prerender is more expensive than prefetch and can cause more unintended side effects in complex applications that display dynamic state, but provides a better user experience. Ask the developer for their preference if unsure.
+- **DO** consider the trade-offs between the different `eagerness` levels, and choose the appropriate one for your use case. More eager speculation provides a better user experience but uses more resources and can cause more unintended side effects in complex applications that display dynamic state. Ask the developer for their preference if unsure.
 - **DO NOT** overuse speculation rules, for example, to speculate every link on the page. Browsers have limits (2 speculations for non-eager speculations). `immediate` should only be used for a very small number of links.
 - **DO NOT** speculate URLs that likely trigger state changes, like `/logout` or `/add-to-cart`, and explicitly exclude them from your speculation rules if they are likely to be included in document rules.
 - **DO NOT** use speculation rules on Single Page Applications (SPAs). Speculation rules are designed for multi-page applications (MPAs) where the browser navigates to a new document on each navigation. In SPAs, the browser does not navigate to a new document on each navigation, so speculation rules will not work as expected.
 
 ## Browser support and fallback strategies
 
-Speculative loading is a new feature, and as such, browser support is limited, primarily to Chromium-based browsers, though an implementation exists in Safari for prefetch and is expected to be available soon.
+Speculative loading is a new feature, and as such, is not supported in all modern browsers (Baseline limited availability).
 
-Speculative loading can be seen as a progressive enhancement, where the browser will use the speculation rules if supported, and will ignore them if not supported. This means that you do not need to provide a fallback strategy, as the browser will handle it for you.
-
-If you wish to also support other browsers, libraries like [Quicklink](https://github.com/GoogleChrome/quicklink) provide similar functionality for prefetching with cross-browser support, though do not support the speculation rules syntax, nor prerendering.
+However, speculative loading is a progressive enhancement. It is perfectly safe to use an enhancement, and is highly recommended given the potential performance benefits. If a browser does not support speculation rules, it will simply ignore them.
