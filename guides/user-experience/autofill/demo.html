@@ -23,16 +23,12 @@ SPDX-License-Identifier: Apache-2.0 -->
       --desktop-font-size: 22px;
     }
 
-    :-webkit-autofill, :autofill {
-      border-style: dotted;
-      font-family: sans-serif;
-      font-size: 22px; /* fallback */
-      font-size: var(--small-mobile-font-size);
-    }
-
-    :autofill:hover,
-    :autofill:focus {
-      color: red;
+    :-webkit-autofill,
+    :autofill,
+    :-webkit-autofill:hover,
+    :-webkit-autofill:focus {
+      border-color: green;
+      outline: none;
     }
 
     body {
@@ -53,6 +49,7 @@ SPDX-License-Identifier: Apache-2.0 -->
       font-size: var(--large-mobile-font-size);
       font-weight: 400;
       margin: 3px 0 0 0;
+      outline: none;
       padding: 14px;
       width: 180px;
     }

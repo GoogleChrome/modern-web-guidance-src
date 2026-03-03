@@ -22,20 +22,20 @@
 - Where possible, ask for personal names with a single `<input>`. Do not assume that all users have a first name and a last name.
 - **DO NOT** enforce Latin-only characters for names and usernames.
 - In forms that request an address, allow for a variety of international address formats. https://www.columbia.edu/%7Efdc/postal/ provides information about addresses in different locales.
-- The autocomplete **MUST** be used for billing address form fields.
+- The `autocomplete` attribute **MUST** be used with billing address form fields.
 - Internationalize and localize form labels where necessary.
 - Appropriate payment card autocomplete values **MUST** be used. https://web.dev/articles/payment-and-address-form-best-practices provides more information about address and payment form best practice.
 - A single `<input>` element **MUST** be used for entry of payment card numbers.
 - Custom elements **SHOULD** be avoided if they break the autofill experience.
 - An `<input>` element **MUST** have a `maxlength` attribute if the value associated with element has a maximum character length.
 - An `<input>`, `<select>`, or `<textarea>` element **MUST** have a `required` attribute if it is mandatory for the user to provide a value for that form field.
-- An `<input>` elements used for password entry **MUST** have `aria-label` and `aria-describedby` attributes.
+- An `<input>` element used for password entry **MUST** have `aria-label` and `aria-describedby` attributes.
 - Password visibility toggle UI **MUST** be provided for an `<input>` element used for password entry. https://codepen.io/web-dot-dev/pen/VYvvJpj provides an example.
 - `autocomplete="new-password"` and `id="new-password"` attributes **MUST** be included in an `<input>` element used for entry of a new password in a sign-up form, or for the new password in a change-password form.
 - `autocomplete="current-password"` and `id="current-password"` attributes **MUST** be provided in an `<input>` element used for entry of a password in a sign-in form, or for input of the user's old password in a change-password form.
 - Forms **SHOULD** be designed so that the mobile keyboard does not obscure inputs or buttons. https://web.dev/articles/sign-in-form-best-practices#keyboard-obstruction provides more information.
 - Do not double-up form fields for passwords or email addresses: do not make the user enter passwords and email addresses twice. Instead, ensure that users confirm their email address, and make it easy for users to reset their password if necessary.
-- An `<input>` element used for password entry **MUST** have a `type="password"`attribute.
+- An `<input>` element used for password entry **MUST** have a `type="password"` attribute.
 - The `type="password"`attribute **MUST** only be included on `<input>` elements used for password entry: the `type="password"`attribute **MUST NOT** be used on other types of form fields, such as for OTP entry.
 - The `type="email"` attribute **MUST** be included in an `<input>` element used for email entry, to ensure mobile users are provided with an appropriate keyboard.
 - An `inputmode="numeric"` attribute **MUST** be provided in an `<input>` element used for entry of a PIN number. https://css-tricks.com/everything-you-ever-wanted-to-know-about-inputmode/ provides more information about `inputmode`.
