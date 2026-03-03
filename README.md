@@ -17,6 +17,16 @@ pnpm install
 pnpm setup:playwright
 ```
 
+### 0. CLI Setup
+
+The `gd` CLI is the main way to run this project. To make it available globally and set up shell auto-completion, run:
+
+```bash
+pnpm link --global && gd setup-completion
+```
+
+*Note: For the auto-completion to take effect, you must refresh your shell (e.g., open a new terminal or source your config).*
+
 ### 1. Serving
 
 #### modern-web
@@ -48,17 +58,17 @@ The evaluation suite measures how effectively AI models use modern web APIs.
 
 ```bash
 # To run the full evaluation suite
-pnpm suite
+gd suite
 
 # To run a single isolated task
-pnpm task <task_name>
-# Example: pnpm task cards-render
+gd task <task_name>
+# Example: gd task cards-render
 
 # To generate reports from results
-pnpm report
+gd report
 
 # To view the results in the dashboard
-pnpm dashboard
+gd dashboard
 ```
 
 ## Configuration
