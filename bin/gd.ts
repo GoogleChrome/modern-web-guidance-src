@@ -1,15 +1,60 @@
 #!/usr/bin/env node --experimental-strip-types
 
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
-import { spawn } from 'child_process';
+import { parseArgs } from 'util';
 import path from 'path';
+import fs from 'fs';
+import { spawn } from 'child_process';
+import omelette from 'omelette';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
+// 1. Setup Shell Auto-Completion (Native Bash/Zsh/Fish support)
+const completion = omelette('gd <action> <item>');
+completion.on('action', ({ reply }) => {
+  reply([
+    'suite', 'task', 'smoke', 'agent', 
+    'report', 'grade', 'dashboard', 
+    'gen:grader', 'gen:negative',
+    'setup-completion'
+  ]);
+});
+
+completion.on('item', ({ before, reply }) => {
+  if (before === 'task') {
+    const tasksDir = path.join(rootDir, 'harness', 'tasks');
+    if (fs.existsSync(tasksDir)) {
+      const tasks = fs.readdirSync(tasksDir)
+        .filter(f => f.endsWith('.md'))
+        .map(f => f.replace('.md', ''));
+      reply(tasks);
+    }
+  } else if (before === 'agent') {
+    const baseAppsDir = path.join(rootDir, 'harness', 'base_apps');
+    if (fs.existsSync(baseAppsDir)) {
+      const apps = fs.readdirSync(baseAppsDir)
+        .filter(dir => fs.statSync(path.join(baseAppsDir, dir)).isDirectory());
+      reply(apps);
+    }
+  }
+});
+
+completion.init();
+
+// 2. Setup argument parsing logic using Node's zero-dependency `util.parseArgs`
+const { positionals, values } = parseArgs({
+  args: process.argv.slice(2),
+  options: {
+    help: { type: 'boolean', short: 'h' },
+    version: { type: 'boolean', short: 'v' },
+  },
+  allowPositionals: true,
+  strict: false // allow pass-through args for the underlying scripts
+});
+
+// Helper functions for spawning children
 function spawnChild(command: string, args: string[], options: import('child_process').SpawnOptions = {}): Promise<number> {
   return new Promise((resolve, reject) => {
     const p = spawn(command, args, {
@@ -30,63 +75,88 @@ function runNode(args: string[]) {
   return spawnChild('node', args);
 }
 
-yargs(hideBin(process.argv))
-  .scriptName('gd')
-  .usage('$0 <cmd> [args]')
+// 3. Command Routing
+async function main() {
+  const action = positionals[0];
 
-  // 1. Execution Commands
-  .command('suite', 'Run the evaluation suite', () => {}, async (argv) => {
-    const code1 = await runNpm(['build:mcp']);
-    if (code1 !== 0) process.exit(code1);
-    const code2 = await runNpm(['--filter', 'harness', 'suite', ...(argv._.slice(1) as string[])]);
-    process.exit(code2);
-  })
-  .command('task [id]', 'Run a specific task', (yargs) => {
-    return yargs.positional('id', {
-      describe: 'ID or Name of the task to run',
-      type: 'string'
-    });
-  }, async (argv) => {
-    const extraArgs = argv.id ? [argv.id] : [];
-    const code = await runNpm(['--filter', 'harness', 'task', ...extraArgs, ...(argv._.slice(1) as string[])]);
-    process.exit(code);
-  })
-  .command('smoke', 'Run the quick smoke test', () => {}, async (argv) => {
-    const code = await runNpm(['--filter', 'harness', 'qsmoke', ...(argv._.slice(1) as string[])]);
-    process.exit(code);
-  })
-  .command('agent', 'Run the evaluation suite with an agent template', () => {}, async (argv) => {
-    const code = await runNode(['harness/run_suite.ts', '--with-template', ...(argv._.slice(1) as string[])]);
-    process.exit(code);
-  })
+  if (!action || values.help) {
+    console.log(`
+gd <cmd> [args]
 
-  // 2. Evaluation & Reporting
-  .command('report', 'Generate an evaluation report', () => {}, async (argv) => {
-    const code = await runNpm(['--filter', 'harness', 'report', ...(argv._.slice(1) as string[])]);
-    process.exit(code);
-  })
-  .command('grade', 'Run the grader', () => {}, async (argv) => {
-    const code = await runNode(['--experimental-strip-types', 'guides/run-grader.ts', ...(argv._.slice(1) as string[])]);
-    process.exit(code);
-  })
+Commands:
+  suite          Run the evaluation suite
+  task [id]      Run a specific task
+  smoke          Run the quick smoke test
+  agent          Run the evaluation suite with an agent template
+  report         Generate an evaluation report
+  grade          Run the grader
+  dashboard      Start the evaluation dashboard
+  gen:grader     Generate a new grader
+  gen:negative   Generate negative examples
 
-  // 3. Tooling & Dashboard
-  .command('dashboard', 'Start the evaluation dashboard', () => {}, async (argv) => {
-    const code = await runNpm(['--filter', 'eval-view', 'start', ...(argv._.slice(1) as string[])]);
-    process.exit(code);
-  })
-  .command('gen:grader', 'Generate a new grader', () => {}, async (argv) => {
-    const code = await runNode(['--env-file=.env', '--experimental-strip-types', 'guides/grader-gen.ts', ...(argv._.slice(1) as string[])]);
-    process.exit(code);
-  })
-  .command('gen:negative', 'Generate negative examples', () => {}, async (argv) => {
-    const code = await runNode(['--env-file=.env', '--experimental-strip-types', 'guides/negative-gen.ts', ...(argv._.slice(1) as string[])]);
-    process.exit(code);
-  })
+  setup-completion  Install shell auto-completion for Fish, Bash, and Zsh
 
-  .completion('completion', 'Generate completion script (e.g. `gd completion >> ~/.zshrc`)')
-  .help()
-  .alias('h', 'help')
-  .alias('v', 'version')
-  .strict()
-  .parse();
+Options:
+  -h, --help     Show this help
+  -v, --version  Show version number
+    `);
+    process.exit(0);
+  }
+
+  const passThroughArgs = process.argv.slice(3); // Grab raw args to pass through everything
+
+  let code = 0;
+  switch (action) {
+    // Execution Commands
+    case 'suite':
+      code = await runNpm(['build:mcp']);
+      if (code !== 0) process.exit(code);
+      code = await runNpm(['--filter', 'harness', 'suite', ...passThroughArgs]);
+      break;
+    case 'task':
+      code = await runNpm(['--filter', 'harness', 'task', ...passThroughArgs]);
+      break;
+    case 'smoke':
+      code = await runNpm(['--filter', 'harness', 'qsmoke', ...passThroughArgs]);
+      break;
+    case 'agent':
+      code = await runNode(['harness/run_suite.ts', '--with-template', ...passThroughArgs]);
+      break;
+      
+    // Evaluation & Reporting
+    case 'report':
+      code = await runNpm(['--filter', 'harness', 'report', ...passThroughArgs]);
+      break;
+    case 'grade':
+      code = await runNode(['--experimental-strip-types', 'guides/run-grader.ts', ...passThroughArgs]);
+      break;
+
+    // Tooling & Dashboard
+    case 'dashboard':
+      code = await runNpm(['--filter', 'eval-view', 'start', ...passThroughArgs]);
+      break;
+    case 'gen:grader':
+      code = await runNode(['--env-file=.env', '--experimental-strip-types', 'guides/grader-gen.ts', ...passThroughArgs]);
+      break;
+    case 'gen:negative':
+      code = await runNode(['--env-file=.env', '--experimental-strip-types', 'guides/negative-gen.ts', ...passThroughArgs]);
+      break;
+
+    case 'setup-completion':
+      completion.setupShellInitFile();
+      console.log('Auto-completion successfully installed into your shell profile.');
+      console.log('Please restart your terminal or run your shell configuration file again to apply.');
+      break;
+
+    default:
+      console.error(`Unknown command: ${action}. Run 'gd --help' for usage.`);
+      process.exit(1);
+  }
+
+  process.exit(code);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
