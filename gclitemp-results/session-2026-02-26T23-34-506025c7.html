@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Trajectory - session-2026-02-26T23-34-506025c7</title>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100vh; overflow: hidden; background: #0f172a; font-family: sans-serif; }
+        iframe { border: none; width: 100%; height: 100%; display: none; }
+        .loading {
+            display: flex; align-items: center; justify-content: center; height: 100%; color: #94a3b8;
+            flex-direction: column; gap: 1rem;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid #1e293b; border-top: 4px solid #3b82f6;
+            border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="loading-state" class="loading">
+        <div class="spinner"></div>
+        <div>Loading Trajectory Browser...</div>
+    </div>
+    <iframe id="viewer-frame" src="https://trajectory-dev.corp.goog/index.html"></iframe>
+
+    <script id="trajectory-data" type="application/json">
+        {"sessionId":"506025c7-e182-41b9-bfbf-b1821993a74a","projectHash":"ae8c2cc01e33adaebc9a15506519067ab8cf57c8ab51b4a1ef738200bbd647d0","startTime":"2026-02-26T23:34:10.595Z","lastUpdated":"2026-02-26T23:34:16.051Z","messages":[{"id":"bf7116a0-a6e7-48d8-aade-b837d1047f8d","timestamp":"2026-02-26T23:34:10.595Z","type":"user","content":[{"text":"create a small html file that says hello world\\n\\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.\\n\\nThe output should be a single HTML file. Do not modify any other files."}]},{"id":"9fc97788-d033-4a96-9619-b89bd0449c8c","timestamp":"2026-02-26T23:34:14.788Z","type":"gemini","content":"I will create a simple, modern `index.html` file with a \"Hello World\" message and a stock photo background.","thoughts":[],"tokens":{"input":7416,"output":570,"cached":2026,"thoughts":0,"tool":0,"total":7986},"model":"gemini-3-flash-preview","toolCalls":[{"id":"write_file_1772148854764_0","name":"write_file","args":{"content":"\u003c!DOCTYPE html>\n\u003chtml lang=\"en\">\n\u003chead>\n    \u003cmeta charset=\"UTF-8\">\n    \u003cmeta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    \u003ctitle>Hello World\u003c/title>\n    \u003cstyle>\n        body {\n            margin: 0;\n            padding: 0;\n            font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\n            display: flex;\n            justify-content: center;\n            align-items: center;\n            height: 100vh;\n            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), \n                        url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop');\n            background-size: cover;\n            background-position: center;\n            color: white;\n            text-align: center;\n        }\n        .container {\n            padding: 2rem;\n            background: rgba(255, 255, 255, 0.1);\n            backdrop-filter: blur(10px);\n            border-radius: 1rem;\n            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);\n            border: 1px solid rgba(255, 255, 255, 0.18);\n        }\n        h1 {\n            font-size: 3.5rem;\n            margin: 0;\n            letter-spacing: -1px;\n        }\n        p {\n            font-size: 1.2rem;\n            opacity: 0.9;\n        }\n    \u003c/style>\n\u003c/head>\n\u003cbody>\n    \u003cdiv class=\"container\">\n        \u003ch1>Hello World\u003c/h1>\n        \u003cp>Welcome to your new HTML page.\u003c/p>\n    \u003c/div>\n\u003c/body>\n\u003c/html>\n","file_path":"index.html"},"result":[{"functionResponse":{"id":"write_file_1772148854764_0","name":"write_file","response":{"output":"Successfully created and wrote to new file: /private/tmp/ghh-gemini-58kzid/gclitemp/index.html."}}}],"status":"success","timestamp":"2026-02-26T23:34:14.795Z","resultDisplay":{"fileDiff":"Index: index.html\n===================================================================\n--- index.html\tOriginal\n+++ index.html\tWritten\n@@ -0,0 +1,48 @@\n+\u003c!DOCTYPE html>\n+\u003chtml lang=\"en\">\n+\u003chead>\n+    \u003cmeta charset=\"UTF-8\">\n+    \u003cmeta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n+    \u003ctitle>Hello World\u003c/title>\n+    \u003cstyle>\n+        body {\n+            margin: 0;\n+            padding: 0;\n+            font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\n+            display: flex;\n+            justify-content: center;\n+            align-items: center;\n+            height: 100vh;\n+            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), \n+                        url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop');\n+            background-size: cover;\n+            background-position: center;\n+            color: white;\n+            text-align: center;\n+        }\n+        .container {\n+            padding: 2rem;\n+            background: rgba(255, 255, 255, 0.1);\n+            backdrop-filter: blur(10px);\n+            border-radius: 1rem;\n+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);\n+            border: 1px solid rgba(255, 255, 255, 0.18);\n+        }\n+        h1 {\n+            font-size: 3.5rem;\n+            margin: 0;\n+            letter-spacing: -1px;\n+        }\n+        p {\n+            font-size: 1.2rem;\n+            opacity: 0.9;\n+        }\n+    \u003c/style>\n+\u003c/head>\n+\u003cbody>\n+    \u003cdiv class=\"container\">\n+        \u003ch1>Hello World\u003c/h1>\n+        \u003cp>Welcome to your new HTML page.\u003c/p>\n+    \u003c/div>\n+\u003c/body>\n+\u003c/html>\n","fileName":"index.html","filePath":"/private/tmp/ghh-gemini-58kzid/gclitemp/index.html","originalContent":"","newContent":"\u003c!DOCTYPE html>\n\u003chtml lang=\"en\">\n\u003chead>\n    \u003cmeta charset=\"UTF-8\">\n    \u003cmeta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    \u003ctitle>Hello World\u003c/title>\n    \u003cstyle>\n        body {\n            margin: 0;\n            padding: 0;\n            font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\n            display: flex;\n            justify-content: center;\n            align-items: center;\n            height: 100vh;\n            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), \n                        url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop');\n            background-size: cover;\n            background-position: center;\n            color: white;\n            text-align: center;\n        }\n        .container {\n            padding: 2rem;\n            background: rgba(255, 255, 255, 0.1);\n            backdrop-filter: blur(10px);\n            border-radius: 1rem;\n            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);\n            border: 1px solid rgba(255, 255, 255, 0.18);\n        }\n        h1 {\n            font-size: 3.5rem;\n            margin: 0;\n            letter-spacing: -1px;\n        }\n        p {\n            font-size: 1.2rem;\n            opacity: 0.9;\n        }\n    \u003c/style>\n\u003c/head>\n\u003cbody>\n    \u003cdiv class=\"container\">\n        \u003ch1>Hello World\u003c/h1>\n        \u003cp>Welcome to your new HTML page.\u003c/p>\n    \u003c/div>\n\u003c/body>\n\u003c/html>\n","diffStat":{"model_added_lines":48,"model_removed_lines":0,"model_added_chars":1435,"model_removed_chars":0,"user_added_lines":0,"user_removed_lines":0,"user_added_chars":0,"user_removed_chars":0},"isNewFile":true},"displayName":"WriteFile","description":"Writes content to a specified file in the local filesystem.\n\n      The user has the ability to modify `content`. If modified, this will be stated in the response.","renderOutputAsMarkdown":true}]},{"id":"c920f3e4-2b1d-4d82-a004-b03f7ac44d9a","timestamp":"2026-02-26T23:34:16.051Z","type":"gemini","content":"I have created a modern `index.html` file featuring a \"Hello World\" message, a glassmorphism container, and a high-quality stock photo background from Unsplash.","thoughts":[],"tokens":{"input":8032,"output":37,"cached":6078,"thoughts":0,"tool":0,"total":8069},"model":"gemini-3-flash-preview"}]}
+    </script>
+    <script>
+        const trajectoryId = "session-2026-02-26T23-34-506025c7";
+        const conversation = JSON.parse(document.getElementById('trajectory-data').textContent);
+        const frame = document.getElementById('viewer-frame');
+        const loading = document.getElementById('loading-state');
+
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'READY') {
+                frame.style.display = 'block';
+                loading.style.display = 'none';
+                frame.contentWindow.postMessage({
+                    type: 'SET_CONVERSATION',
+                    conversation,
+                    trajectoryId
+                }, '*');
+            }
+        });
+
+        // Fallback if production is unreachable or slow
+        setTimeout(() => {
+            if (loading.style.display !== 'none') {
+                loading.textContent = "Unable to load viewer. Ensure you are connected to the network or look for CSP errors.";
+            }
+        }, 8000);
+    </script>
+</body>
+</html>

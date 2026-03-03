@@ -11,6 +11,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
+// Load environment variables strictly without external dependencies (Node 20.12+)
+try {
+  process.loadEnvFile(path.join(rootDir, '.env'));
+} catch (e) {
+  // Ignore if file doesn't exist
+}
+
 // 1. Setup Shell Auto-Completion (Native Bash/Zsh/Fish support)
 const completion = omelette('gd <action> <item>');
 completion.on('action', ({ reply }) => {
@@ -105,41 +112,63 @@ Options:
 
   const passThroughArgs = process.argv.slice(3); // Grab raw args to pass through everything
 
-  let code = 0;
+  let inProcess = false;
+
   switch (action) {
     // Execution Commands
     case 'suite':
-      code = await runNpm(['build:mcp']);
-      if (code !== 0) process.exit(code);
-      code = await runNpm(['--filter', 'harness', 'suite', ...passThroughArgs]);
+      const buildCode = await runNpm(['build:mcp']);
+      if (buildCode !== 0) process.exit(buildCode);
+      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
+      await import('../harness/run_suite.ts');
+      inProcess = true;
       break;
     case 'task':
-      code = await runNpm(['--filter', 'harness', 'task', ...passThroughArgs]);
+      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
+      await import('../harness/run_suite.ts');
+      inProcess = true;
       break;
     case 'smoke':
-      code = await runNpm(['--filter', 'harness', 'qsmoke', ...passThroughArgs]);
+      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
+      await import('../harness/quick-smoke.ts');
+      inProcess = true;
       break;
     case 'agent':
-      code = await runNode(['harness/run_suite.ts', '--with-template', ...passThroughArgs]);
+      process.argv = [process.argv[0], process.argv[1], '--with-template', ...passThroughArgs];
+      await import('../harness/run_suite.ts');
+      inProcess = true;
       break;
       
     // Evaluation & Reporting
     case 'report':
-      code = await runNpm(['--filter', 'harness', 'report', ...passThroughArgs]);
+      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
+      await import('../harness/evaluate.ts');
+      inProcess = true;
       break;
     case 'grade':
-      code = await runNode(['--experimental-strip-types', 'guides/run-grader.ts', ...passThroughArgs]);
+      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
+      await import('../guides/run-grader.ts');
+      inProcess = true;
       break;
 
     // Tooling & Dashboard
     case 'dashboard':
-      code = await runNpm(['--filter', 'eval-view', 'start', ...passThroughArgs]);
+      // The dashboard server relies heavily on its relative directory (eval-view).
+      // Chdir to it before importing so it runs identically as it did via 'pnpm start'.
+      process.chdir(path.join(rootDir, 'eval-view'));
+      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
+      await import('../eval-view/server.js');
+      inProcess = true;
       break;
     case 'gen:grader':
-      code = await runNode(['--env-file=.env', '--experimental-strip-types', 'guides/grader-gen.ts', ...passThroughArgs]);
+      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
+      await import('../guides/grader-gen.ts');
+      inProcess = true;
       break;
     case 'gen:negative':
-      code = await runNode(['--env-file=.env', '--experimental-strip-types', 'guides/negative-gen.ts', ...passThroughArgs]);
+      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
+      await import('../guides/negative-gen.ts');
+      inProcess = true;
       break;
 
     case 'setup-completion':
@@ -153,7 +182,11 @@ Options:
       process.exit(1);
   }
 
-  process.exit(code);
+  // If we handed off execution to an imported script, do not forcefully exit.
+  // We allow the Node.js event loop to naturally wind down.
+  if (!inProcess) {
+    process.exit(0);
+  }
 }
 
 main().catch((err) => {
