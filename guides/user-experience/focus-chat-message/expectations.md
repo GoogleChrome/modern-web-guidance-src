@@ -1,4 +1,4 @@
-- The `scroll-initial-target` property must be applied directly to the **child element** (the target) that needs to be scrolled into view, not to its scroll container. The parent scroll container only needs to explicitly clip its content (e.g., using `overflow-x: auto`).
+- The `scroll-initial-target` property must be applied directly to the **child element** (the target) that needs to be scrolled into view, not to its scroll container. The parent scroll container must be a scroll snap container (e.g., using `overflow-y: auto` and `scroll-snap-type: y mandatory`) and the child must have a scroll snap alignment (e.g., `scroll-snap-align: start`).
 - The `scroll-initial-target` property is not animatable, with the only value options being `nearest` and `none`.
 - The scroll adjustment occurs exactly once during the **initial layout** or immediately upon insertion, provided no prior user interaction has occurred.
 - If the user explicitly scrolls the scroll container before the initial target is reached or resolved, `scroll-initial-target` is deactivated. Additionally, standard fragment navigation (e.g., a URL `#hash`) always takes precedence over this property.

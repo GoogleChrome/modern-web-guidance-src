@@ -14,8 +14,9 @@ The CSS property `scroll-initial-target` offers a declarative CSS-only way to br
 The `scroll-initial-target` property allows you to declaratively set which child element should be scrolled into view when a scroll container is first displayed.
 
 To implement this:
-1. Ensure the parent element is a scroll container (e.g., `overflow-y: auto` or `overflow-y: scroll`).
-2. Apply `scroll-initial-target: nearest` to the specific child element you want to snap into view.
+1. Ensure the parent element is a scroll container with scroll snapping (e.g., `overflow-y: auto` and `scroll-snap-type: y mandatory`).
+2. Apply `scroll-snap-align` (e.g., `start`) to the child elements.
+3. Apply `scroll-initial-target: nearest` to the specific child element you want to snap into view.
 
 When multiple elements specify an initial target within the same container, the user agent selects the one which comes first in the tree order. Once the user manually scrolls or an explicit programmatic scroll is triggered, the initial target isn't active anymore and the scroll container can be freely scrolled.
 
@@ -23,16 +24,26 @@ When multiple elements specify an initial target within the same container, the 
 
 ```css
 /**  
- * PARENT: scroll container
+ * PARENT: The main scroll container.
+ * Includes mandatory scroll snap on parent.
  */
-.app-container {
+.scroll-container {
   height: 100vh;
   overflow-y: auto;
+  scroll-snap-type: y mandatory;
+}
+
+ /** 
+ * Holds scroll snap alignment.
+ * Make sure that once the target is revealed, the user can search freely.
+ */
+.main-content {
+  scroll-snap-align: none;
 }
 
 /** 
- * CHILD: Focused item
- * The specific element to focus on initial render, pushing the search bar out of view.
+ * TARGET: Focused item
+ * The specific item to focus on initial render.
  */
 .main-content.target {
   scroll-initial-target: nearest;
@@ -44,6 +55,7 @@ When multiple elements specify an initial target within the same container, the 
  */
 .search-bar {
   height: 60px;
+  scroll-snap-align: start;
 }
 ```
 
@@ -78,3 +90,4 @@ You can leave the default scroll position as a safe fallback for progressive enh
 - [Chrome Platform Status](https://chromestatus.com/feature/6276178888097792)
 - [CSS Scroll Snap Module Level 2](https://drafts.csswg.org/css-scroll-snap-2/#propdef-scroll-initial-target)
 - [Web Platform Status](https://webstatus.dev/features/scroll-initial-target)
+- [MDN: scroll-initial-target](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/scroll-initial-target)

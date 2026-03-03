@@ -47,6 +47,7 @@
       flex-direction: column;
       gap: 15px;
       scroll-behavior: smooth;
+      scroll-snap-type: y mandatory;
     }
 
     .message {
@@ -56,6 +57,7 @@
       font-size: 15px;
       line-height: 1.4;
       animation: fadeIn 0.3s ease-out forwards;
+      scroll-snap-align: start;
     }
 
     .message.received {

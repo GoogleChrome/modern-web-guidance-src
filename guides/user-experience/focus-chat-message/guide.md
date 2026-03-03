@@ -14,8 +14,9 @@ The CSS property `scroll-initial-target` offers a declarative CSS-only way to br
 The `scroll-initial-target` property allows you to declaratively set which child element should be scrolled into view when a scroll container is first displayed.
 
 To implement this:
-1. Ensure the parent element is a scroll container (e.g., `overflow-y: auto` or `overflow-x: scroll`).
-2. Apply `scroll-initial-target: nearest` to the specific child element you want to snap into view.
+1. Ensure the parent element is a scroll container with scroll snapping (e.g., `overflow-y: auto` and `scroll-snap-type: y mandatory`).
+2. Apply `scroll-snap-align` (e.g., `start`) to the child elements.
+3. Apply `scroll-initial-target: nearest` to the specific child element you want to snap into view.
 
 When multiple elements specify an initial target within the same container, the user agent selects the one which comes first in the tree order. Once the user manually scrolls or an explicit programmatic scroll is triggered, the initial target isn't active anymore and the scroll container can be freely scrolled.
 
@@ -23,16 +24,24 @@ When multiple elements specify an initial target within the same container, the 
 
 ```css
 /**  
- * PARENT: scroll container
+ * PARENT: The main scroll container.
+ * Includes mandatory scroll snap on parent.
  */
-.chat-window {
+.chat-container {
   height: 400px;
   overflow-y: auto;
+  scroll-snap-type: y mandatory;
 }
 
 /** 
- * CHILD: Focused item
- * The specific message to focus on initial render.
+ * Holds scroll snap alignment.
+ */
+.message {
+  scroll-snap-align: start;
+}
+
+/** 
+ * TARGET: The focused item.
  */
 .message.target {
   scroll-initial-target: nearest;
@@ -66,6 +75,7 @@ You can leave the default scroll position as a safe fallback for progressive enh
 
 ## References
 
+- [MDN: scroll-initial-target](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/scroll-initial-target)
 - [scroll-initial-target GitHub Explainer](https://github.com/DavMila/explainer-scroll-initial-target)
 - [Chrome Platform Status](https://chromestatus.com/feature/6276178888097792)
 - [CSS Scroll Snap Module Level 2](https://drafts.csswg.org/css-scroll-snap-2/#propdef-scroll-initial-target)
