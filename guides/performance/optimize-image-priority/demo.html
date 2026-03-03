@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Optimize Image Priority Demo</title>
+</head>
+
+<body>
+  <h1>Optimize Image Priority</h1>
+
+  <!-- LCP Image: Boosted to High Priority, includes dimensions to prevent CLS -->
+  <img src="https://picsum.photos/id/10/600/400" alt="LCP Image" fetchpriority="high" width="600" height="400">
+
+  <!-- Secondary Image (Above the fold): Dropped to Low Priority, includes dimensions -->
+  <img src="https://picsum.photos/id/20/200/200" alt="Secondary Image" fetchpriority="low" width="200" height="200">
+</body>
+
+</html>

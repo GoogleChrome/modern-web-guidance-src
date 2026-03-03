@@ -30,7 +30,7 @@ describe("MCP Server Integration (Functional)", () => {
 
       const result = await client.callTool({
         name: "search_use_cases",
-        arguments: { query: "tooltip" },
+        arguments: { query: "performance" },
       });
 
       if (!result.content || !Array.isArray(result.content)) {
