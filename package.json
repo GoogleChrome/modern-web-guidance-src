@@ -47,12 +47,12 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.11",
+    "@types/omelette": "^0.4.5",
     "oxlint": "^1.50.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@types/yargs": "^17.0.35",
     "glob": "^10.5.0",
-    "yargs": "^18.0.0"
+    "omelette": "^0.4.17"
   }
 }
