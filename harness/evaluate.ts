@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 
 import { config } from './config.ts';
 
-async function main() {
+export async function evaluate() {
   console.log('Starting Evaluation...'.cyan.bold);
 
   // Read manifest to find the latest test
@@ -74,4 +74,6 @@ Report generated: ${path.resolve(path.join(resultsDir, 'evals.md'))}`.green.bold
   }
 }
 
-main().catch(console.error);
+if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
+  evaluate().catch(console.error);
+}
