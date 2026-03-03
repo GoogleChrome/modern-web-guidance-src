@@ -1,0 +1,6 @@
+- The `<img>` element for 'hero-lcp.jpg' has the `fetchpriority="high"` attribute.
+- The `<img>` element for 'hero-lcp.jpg' does NOT have the `loading="lazy"` attribute.
+- No more than two `<img>` elements on the page have the `fetchpriority="high"` attribute.
+- The `<img>` element for 'gallery-alt.jpg' (which is hidden or off-screen initially) has the `fetchpriority="low"` attribute.
+- No image elements located below the fold, such as 'footer-logo.png', have the `fetchpriority="high"` attribute.
+- No `<img>` elements have the deprecated `importance` attribute.
