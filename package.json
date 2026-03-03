@@ -5,23 +5,26 @@
   "main": "index.js",
   "type": "module",
   "private": true,
+  "bin": {
+    "gd": "./bin/gd.ts"
+  },
   "scripts": {
     "test": "pnpm -r test",
     "lint": "oxlint --ignore-path .oxlintignore",
     "typecheck": "pnpm -r typecheck",
     "preflight": "pnpm typecheck && pnpm lint && pnpm test",
-    "suite": "pnpm build:mcp && pnpm --filter harness suite",
-    "qsmoke": "pnpm --filter harness qsmoke",
-    "task": "pnpm --filter harness task",
-    "run-agent": "node harness/run_suite.ts --with-template",
-    "report": "pnpm --filter harness report",
-    "dashboard": "pnpm --filter eval-view start",
+    "suite": "gd suite",
+    "qsmoke": "gd smoke",
+    "task": "gd task",
+    "run-agent": "gd agent",
+    "report": "gd report",
+    "dashboard": "gd dashboard",
     "build:mcp": "pnpm --filter modern-web-mcp build",
     "test:mcp": "pnpm --filter modern-web-mcp test",
     "setup:playwright": "pnpm --filter eval-view exec playwright install",
-    "generate-negative": "node --env-file=.env guides/negative-gen.ts",
-    "generate-grader": "node --env-file=.env guides/grader-gen.ts",
-    "grade": "node --experimental-strip-types guides/run-grader.ts"
+    "generate-negative": "gd gen:negative",
+    "generate-grader": "gd gen:grader",
+    "grade": "gd grade"
   },
   "keywords": [],
   "author": "",
@@ -48,6 +51,8 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "glob": "^10.5.0"
+    "@types/yargs": "^17.0.35",
+    "glob": "^10.5.0",
+    "yargs": "^18.0.0"
   }
 }
