@@ -18,14 +18,7 @@ function findGrader(startDir: string): string | null {
   return null;
 }
 
-async function run() {
-  const args = process.argv.slice(2);
-  if (args.length === 0) {
-    console.error('Usage: pnpm grade <path-to-target-file>');
-    process.exit(1);
-  }
-
-  const targetFileRel = args[0];
+export async function runGrader(targetFileRel: string) {
   const targetFileAbs = path.resolve(process.cwd(), targetFileRel);
 
   if (!fs.existsSync(targetFileAbs)) {
@@ -69,7 +62,16 @@ async function run() {
   });
 }
 
-run().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+}
+
+if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
+  const args = process.argv.slice(2);
+  if (args.length === 0) {
+    console.error('Usage: pnpm grade <path-to-target-file>');
+    process.exit(1);
+  }
+  runGrader(args[0]).catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
+}

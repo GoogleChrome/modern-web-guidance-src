@@ -12,106 +12,103 @@ const RUN_TYPES = ['guided', 'unguided'];
 // Global log file stream
 let logStream: fs.WriteStream | null = null;
 
-async function main() {
-  const baseDir = __dirname;
-  const baseAppsDir = path.join(baseDir, 'base_apps');
-  const tasksDir = path.join(baseDir, 'tasks');
-  const resultsDir = path.join(baseDir, 'results');
+const baseDir = __dirname;
+const baseAppsDir = path.join(baseDir, 'base_apps');
+const tasksDir = path.join(baseDir, 'tasks');
+const resultsDir = path.join(baseDir, 'results');
 
+const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
+
+export async function runAgent(templateDirRaw: string, promptContentRaw: string) {
+  const agent = config.suite.agent;
+  let templateDir = templateDirRaw;
+  if (!path.isAbsolute(templateDir)) {
+    templateDir = path.resolve(process.cwd(), templateDir);
+  }
+  const cleanTemplateDir = templateDir.replace(/\/$/, '');
+  const targetDir = path.join(path.dirname(cleanTemplateDir), path.basename(cleanTemplateDir) + '-results');
+  const taskNameLabel = "Agent Test";
+  const promptContent = promptContentRaw + COMMON_APPEND_PROMPT;
+
+  return executeTaskRun(taskNameLabel, agent, templateDir, targetDir, promptContent);
+}
+
+export async function runSingleTask(task: string) {
+  const agent = config.suite.agent;
+  const taskNameLabel = `Single Task: ${task}`;
+  const taskPath = path.join(tasksDir, `${task}.md`);
+
+  if (!fs.existsSync(taskPath)) {
+    console.error(`❌ Task '${task}' not found at ${taskPath}`);
+    return;
+  }
+
+  const fileContent = fs.readFileSync(taskPath, 'utf8');
+  const frontmatterMatch = fileContent.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+
+  if (!frontmatterMatch) {
+    console.error(`❌ Invalid frontmatter format in ${taskPath}`);
+    return;
+  }
+
+  const baseAppMatch = frontmatterMatch[1].match(/^base_app:\s*(.+)$/m);
+  if (!baseAppMatch) {
+    console.error(`❌ Missing base_app in frontmatter in ${taskPath}`);
+    return;
+  }
+
+  const baseApp = baseAppMatch[1].trim();
+  const templateDir = path.join(baseAppsDir, baseApp);
+  const targetDir = path.join(resultsDir, 'single_task', task);
+  let promptContent = frontmatterMatch[2].trim();
+  promptContent += COMMON_APPEND_PROMPT;
+
+  return executeTaskRun(taskNameLabel, agent, templateDir, targetDir, promptContent);
+}
+
+async function executeTaskRun(taskNameLabel: string, agent: string, templateDir: string, targetDir: string, promptContent: string) {
+  if (!fs.existsSync(templateDir)) {
+    console.error(`❌ Template directory not found: ${templateDir}`);
+    return;
+  }
+
+  console.log(`\n=== Running ${taskNameLabel} ===`);
+  console.log(`Agent: ${agent}`);
+  console.log(`Template: ${templateDir}`);
+  console.log(`Target: ${targetDir}\n`);
+
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
+  }
+
+  try {
+    const agentScript = path.join(__dirname, 'agents',
+      agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
+        agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
+          'jetski-agent.ts'
+    );
+
+    await runCommand('node', [
+      '--experimental-strip-types', 
+      agentScript, 
+      JSON.stringify(promptContent), 
+      'guided', // Default to guided for single task runs
+      targetDir,
+      templateDir
+    ]);
+    console.log(`\n✅ ${taskNameLabel} complete! Results in ${targetDir}`);
+  } catch (error) {
+    console.error(`❌ ${taskNameLabel} failed:`, error);
+  }
+}
+
+export async function runSuite() {
   // Create results directory if it doesn't exist
   if (!fs.existsSync(resultsDir)) {
     fs.mkdirSync(resultsDir, { recursive: true });
   }
 
   const agent = config.suite.agent;
-  const args = process.argv.slice(2);
-  const positionalArgs = args.filter(arg => !arg.startsWith('--'));
-  const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
-
-  // Single task mode check
-  if (positionalArgs.length === 1 || (positionalArgs.length === 2 && args.includes('--with-template'))) {
-    let templateDir: string;
-    let targetDir: string;
-    let promptContent: string;
-    let taskNameLabel: string;
-
-    // pnpm run-agent mode
-    if (positionalArgs.length === 2) {
-      templateDir = positionalArgs[0];
-      if (!path.isAbsolute(templateDir)) {
-        templateDir = path.resolve(process.cwd(), templateDir);
-      }
-      const cleanTemplateDir = templateDir.replace(/\/$/, '');
-      targetDir = path.join(path.dirname(cleanTemplateDir), path.basename(cleanTemplateDir) + '-results');
-      promptContent = positionalArgs[1];
-      taskNameLabel = "Agent Test";
-    } else { // pnpm task mode
-      const task = positionalArgs[0];
-      taskNameLabel = `Single Task: ${task}`;
-      const taskPath = path.join(tasksDir, `${task}.md`);
-
-      if (!fs.existsSync(taskPath)) {
-        console.error(`❌ Task '${task}' not found at ${taskPath}`);
-        return;
-      }
-
-      const fileContent = fs.readFileSync(taskPath, 'utf8');
-      const frontmatterMatch = fileContent.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-
-      if (!frontmatterMatch) {
-        console.error(`❌ Invalid frontmatter format in ${taskPath}`);
-        return;
-      }
-
-      const baseAppMatch = frontmatterMatch[1].match(/^base_app:\s*(.+)$/m);
-      if (!baseAppMatch) {
-        console.error(`❌ Missing base_app in frontmatter in ${taskPath}`);
-        return;
-      }
-
-      const baseApp = baseAppMatch[1].trim();
-      templateDir = path.join(baseAppsDir, baseApp);
-      targetDir = path.join(resultsDir, 'single_task', task);
-      promptContent = frontmatterMatch[2].trim();
-    }
-
-    if (!fs.existsSync(templateDir)) {
-      console.error(`❌ Template directory not found: ${templateDir}`);
-      return;
-    }
-
-    promptContent += COMMON_APPEND_PROMPT;
-
-    console.log(`\n=== Running ${taskNameLabel} ===`);
-    console.log(`Agent: ${agent}`);
-    console.log(`Template: ${templateDir}`);
-    console.log(`Target: ${targetDir}\n`);
-
-    if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true });
-    }
-
-    try {
-      const agentScript = path.join(__dirname, 'agents',
-        agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
-          agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-            'jetski-agent.ts'
-      );
-
-      await runCommand('node', [
-        '--experimental-strip-types', 
-        agentScript, 
-        JSON.stringify(promptContent), 
-        'guided', // Default to guided for single task runs
-        targetDir,
-        templateDir
-      ]);
-      console.log(`\n✅ ${taskNameLabel} complete! Results in ${targetDir}`);
-    } catch (error) {
-      console.error(`❌ ${taskNameLabel} failed:`, error);
-    }
-    return;
-  }
 
   // Generate a unique testID with timestamp or use custom name
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
@@ -299,5 +296,16 @@ async function runCommand(command: string, args: string[] = []) {
   });
 }
 
-
-main().catch(console.error);
+// If invoked directly, retain legacy fallback logic if strictly required (optional).
+// But for native gd.ts import, the exports are used.
+if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
+  const args = process.argv.slice(2);
+  const positionalArgs = args.filter(arg => !arg.startsWith('--'));
+  if (positionalArgs.length === 2 && args.includes('--with-template')) {
+    runAgent(positionalArgs[0], positionalArgs[1]).catch(console.error);
+  } else if (positionalArgs.length === 1) {
+    runSingleTask(positionalArgs[0]).catch(console.error);
+  } else {
+    runSuite().catch(console.error);
+  }
+}

@@ -119,35 +119,35 @@ Options:
     case 'suite':
       const buildCode = await runNpm(['build:mcp']);
       if (buildCode !== 0) process.exit(buildCode);
-      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
-      await import('../harness/run_suite.ts');
+      const { runSuite } = await import('../harness/run_suite.ts');
+      await runSuite();
       inProcess = true;
       break;
     case 'task':
-      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
-      await import('../harness/run_suite.ts');
+      const { runSingleTask } = await import('../harness/run_suite.ts');
+      await runSingleTask(passThroughArgs[0]);
       inProcess = true;
       break;
     case 'smoke':
-      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
-      await import('../harness/quick-smoke.ts');
+      const { runSmokeTest } = await import('../harness/quick-smoke.ts');
+      await runSmokeTest();
       inProcess = true;
       break;
     case 'agent':
-      process.argv = [process.argv[0], process.argv[1], '--with-template', ...passThroughArgs];
-      await import('../harness/run_suite.ts');
+      const { runAgent } = await import('../harness/run_suite.ts');
+      await runAgent(passThroughArgs[0], passThroughArgs[1]);
       inProcess = true;
       break;
       
     // Evaluation & Reporting
     case 'report':
-      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
-      await import('../harness/evaluate.ts');
+      const { evaluate } = await import('../harness/evaluate.ts');
+      await evaluate();
       inProcess = true;
       break;
     case 'grade':
-      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
-      await import('../guides/run-grader.ts');
+      const { runGrader } = await import('../guides/run-grader.ts');
+      await runGrader(passThroughArgs[0]);
       inProcess = true;
       break;
 
@@ -161,13 +161,13 @@ Options:
       inProcess = true;
       break;
     case 'gen:grader':
-      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
-      await import('../guides/grader-gen.ts');
+      const { generateGrader } = await import('../guides/grader-gen.ts');
+      await generateGrader(passThroughArgs[0]);
       inProcess = true;
       break;
     case 'gen:negative':
-      process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
-      await import('../guides/negative-gen.ts');
+      const { generateNegative } = await import('../guides/negative-gen.ts');
+      await generateNegative(passThroughArgs[0]);
       inProcess = true;
       break;
 
