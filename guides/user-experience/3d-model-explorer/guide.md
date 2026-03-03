@@ -1,6 +1,6 @@
 ---
 name: 3d-model-explorer
-description: Actual 3D models embedded via model-viewer that rotate and synchronize their positioning to the progress of a scroll-driven animation.
+description: Rotate a 3D model on scroll.
 web-feature-ids:
   - scroll-driven-animations
 sources:
