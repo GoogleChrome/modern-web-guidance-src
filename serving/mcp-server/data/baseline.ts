@@ -15,30 +15,55 @@ export interface FeatureValidationResult {
   errorMessage?: string;
 }
 
+export interface DetailedBaselineStatus {
+  baseline: 'low' | 'high' | false;
+  baseline_low_date?: string;
+}
+
 /**
- * Gets the Baseline status for a specific feature.
+ * Gets the detailed Baseline status for a specific feature.
  * @param featureId - The ID of the web feature
- * @returns The Baseline status of the feature ('Limited availability' or 'Baseline since YYYY-MM-DD')
+ * @returns Object with baseline level and low date
  */
-export function getBaselineStatus(featureId: string): BaselineStatus | undefined {
+export function getDetailedBaselineStatus(featureId: string): DetailedBaselineStatus | undefined {
   const resolvedIds = resolveFeatureId(featureId);
   if (resolvedIds.length === 0) {
     return;
   }
 
   let latestDate = "0000-00-00";
+  let overallBaseline: 'low' | 'high' | false = 'high';
 
   for (const id of resolvedIds) {
     const feature = features[id] as Feature;
-    if (!feature.status?.baseline_low_date) {
-      return 'Limited availability';
+    const status = feature.status;
+    if (!status?.baseline) {
+      return { baseline: false };
     }
-    if (feature.status.baseline_low_date > latestDate) {
-      latestDate = feature.status.baseline_low_date;
+    if (status.baseline === 'low') {
+      overallBaseline = 'low';
+    }
+    if (status.baseline_low_date && status.baseline_low_date > latestDate) {
+      latestDate = status.baseline_low_date;
     }
   }
 
-  return `Baseline since ${latestDate}`;
+  return {
+    baseline: overallBaseline,
+    baseline_low_date: latestDate === "0000-00-00" ? undefined : latestDate
+  };
+}
+
+/**
+ * Gets the Baseline status for a specific feature.
+ * @param featureId - The ID of the web feature
+ * @returns The Baseline status of the feature ('Limited availability' or 'Baseline since YYYY-MM-DD')
+ */
+export function getBaselineStatus(featureId: string): BaselineStatus | undefined {
+  const status = getDetailedBaselineStatus(featureId);
+  if (!status) return;
+  if (status.baseline === false) return 'Limited availability';
+  return `Baseline since ${status.baseline_low_date}`;
 }
 
 /**
@@ -64,42 +89,42 @@ export function checkBaseline(target: string, featureId: string): boolean {
     return true;
   }
 
-  // 2. Resolve Target to a Required Low Date
-  let requiredLowDate: string;
-
-  const yearMatch = target.match(/^baseline (\d{4})$/i);
-  const dateMatch = target.match(/^baseline widely available on (\d{4}-\d{2}-\d{2})$/i);
-
-  if (yearMatch) {
-    const year = parseInt(yearMatch[1], 10);
-    // "Baseline 2024" -> Available by end of 2024
-    requiredLowDate = `${year}-12-31`;
-  } else if (dateMatch) {
-    // "Baseline Widely available on X" -> Low date was 30 months before X
-    requiredLowDate = subtractMonths(dateMatch[1], 30);
-  } else {
-    // Relative targets (Newly, Widely)
-    const now = new Date().toISOString().split('T')[0];
-
-    if (normalizedTarget.includes('widely')) {
-      requiredLowDate = subtractMonths(now, 30);
-    } else if (normalizedTarget.includes('newly') || normalizedTarget.includes('baseline')) {
-      requiredLowDate = now;
-    } else {
-      return false;
-    }
-  }
-
-  // 3. Verify feature meets requirement using getBaselineStatus
-  const status = getBaselineStatus(featureId);
-
-  if (!status || status === 'Limited availability') {
+  const baselineStatus = getDetailedBaselineStatus(featureId);
+  if (!baselineStatus) {
     return false;
   }
 
-  // Status is "Baseline since YYYY-MM-DD"
-  const featureDate = status.replace('Baseline since ', '');
-  return featureDate <= requiredLowDate;
+  // 2. Handle specific historical checks first (Yearly or specific "Widely available on" dates)
+  const yearMatch = target.match(/^baseline (\d{4})$/i);
+  const dateMatch = target.match(/^baseline widely available on (\d{4}-\d{2}-\d{2})$/i);
+
+  if (yearMatch || dateMatch) {
+    if (baselineStatus.baseline === false || !baselineStatus.baseline_low_date) {
+      return false;
+    }
+
+    let requiredLowDate: string;
+    if (yearMatch) {
+      const year = parseInt(yearMatch[1], 10);
+      // "Baseline 2024" -> Available by end of 2024
+      requiredLowDate = `${year}-12-31`;
+    } else {
+      // "Baseline Widely available on X" -> Low date was 30 months before X
+      requiredLowDate = subtractMonths(dateMatch![1], 30);
+    }
+    return baselineStatus.baseline_low_date <= requiredLowDate;
+  }
+
+  // 3. Handle relative targets (Newly, Widely) strictly against the package status
+  if (normalizedTarget.includes('widely')) {
+    return baselineStatus.baseline === 'high';
+  }
+  if (normalizedTarget.includes('newly') || normalizedTarget === 'baseline' || normalizedTarget === 'baseline newly available') {
+    // "Baseline" or "Newly available" are both satisfied by low or high baseline status
+    return baselineStatus.baseline === 'low' || baselineStatus.baseline === 'high';
+  }
+
+  return false;
 }
 
 /**
@@ -160,16 +185,15 @@ export function validateFeature(id: string): FeatureValidationResult {
 /**
  * Internal helper to format status messages consistently.
  */
-function formatStatusMessage(subject: string, status: { baseline?: string | boolean; baseline_low_date?: string }): string {
+function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string }): string {
   const { baseline, baseline_low_date } = status;
 
   if ((baseline === 'low' || baseline === 'high') && baseline_low_date) {
-    const isWidely = baseline === 'high' || (baseline_low_date <= subtractMonths(new Date().toISOString().split('T')[0], 30));
-    const statusName = isWidely ? 'Widely available' : 'Newly available';
-    return `${subject} has been Baseline since ${baseline_low_date} (${statusName})`;
+    const statusName = baseline === 'high' ? 'Widely available' : 'Newly available';
+    return `${featureName} is ${statusName}. It's been Baseline since ${baseline_low_date}.`;
   }
 
-  return `${subject} is not supported across all major browsers`;
+  return `${featureName} is not supported across all major browsers.`;
 }
 
 /**
@@ -185,17 +209,19 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
   const feature = features[featureId] as Feature | undefined;
   if (!feature) return;
 
-  const baselineStatus = getBaselineStatus(featureId);
+  const baselineStatus = getDetailedBaselineStatus(featureId);
   if (!baselineStatus) return;
 
   const subject = (feature as any).name || featureId;
 
-  if (baselineStatus === 'Limited availability') {
+  if (baselineStatus.baseline === false) {
     return formatStatusMessage(subject, { baseline: false });
   }
 
-  const date = baselineStatus.replace('Baseline since ', '');
-  return formatStatusMessage(subject, { baseline: 'low', baseline_low_date: date });
+  return formatStatusMessage(subject, {
+    baseline: baselineStatus.baseline,
+    baseline_low_date: baselineStatus.baseline_low_date
+  });
 }
 
 type FeatureData = Extract<Feature, { kind: "feature" }>;
