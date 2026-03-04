@@ -8,11 +8,7 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const cRed = (str: string) => `\x1b[31m${str}\x1b[0m`;
-const cGreen = (str: string) => `\x1b[32m${str}\x1b[0m`;
-const cYellow = (str: string) => `\x1b[33m${str}\x1b[0m`;
-const cCyan = (str: string) => `\x1b[36m${str}\x1b[0m`;
-const cBold = (str: string) => `\x1b[1m${str}\x1b[0m`;
+import { cRed, cGreen, cYellow, cCyan, cBold } from '../lib/colors.ts';
 
 export function findGrader(startDir: string): string | null {
   let currentDir = startDir;
