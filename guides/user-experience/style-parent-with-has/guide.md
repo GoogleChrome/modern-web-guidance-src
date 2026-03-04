@@ -63,6 +63,8 @@ By combining `:has()` with `:user-invalid`, we can declaratively style any ances
 
 ## Fallbacking & Browser Support
 
+The `:user-invalid` pseudo-class is widely supported (Baseline 2023), but if you need to support older browsers, you must ensure consistency of the implementation.
+
 ### CSS for Fallback
 We use a class `.has-error` on the parent to mimic the `:has()` behavior.
 
@@ -79,6 +81,9 @@ We use a class `.has-error` on the parent to mimic the `:has()` behavior.
 ```
 
 ### JavaScript Fallback
+
+DO: Use a reusable utility that tracks interaction state using a `WeakMap`. This avoids polluting the DOM with "dirty" classes or data attributes.
+
 ```javascript
 const UserInvalidFallback = (() => {
   const dirtyState = new WeakMap();

@@ -142,7 +142,7 @@ input:user-valid + .rules-list {
 
 ## Fallbacking & Browser Support
 
-MANDATORY: The `:user-invalid` pseudo-class is widely supported (Baseline 2023), but you must ensure consistency of the implementation when using it with the `pattern` attribute in older browsers.
+The `:user-invalid` pseudo-class is widely supported (Baseline 2023), but if you need to support older browsers, you must ensure consistency of the implementation.
 
 ### CSS for Fallback
 DO: Ensure your fallback class shares the native styles. Group your selectors to ensure consistent styling.
@@ -169,7 +169,8 @@ input.user-invalid-fallback + .rules-list {
 ```
 
 ### JavaScript Fallback
-MANDATORY: If the browser doesn't support the selector, we can use a reusable utility that tracks interaction state using a `WeakMap`. This avoids polluting the DOM with "dirty" classes or data attributes.
+
+DO: Use a reusable utility that tracks interaction state using a `WeakMap`. This avoids polluting the DOM with "dirty" classes or data attributes.
 
 ```javascript
 /* DO: Keep state in a WeakMap for automatic cleanup */
