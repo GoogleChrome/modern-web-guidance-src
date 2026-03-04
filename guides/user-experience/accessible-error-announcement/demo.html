@@ -248,31 +248,48 @@
 
                 // 3. For native support, we still need to sync ARIA state
                 // because :user-invalid exists but aria-invalid doesn't auto-sync.
-                form.addEventListener('blur', (e) => {
+                  document.addEventListener('blur', (e) => {
+                    if (!e.target.matches?.('input, textarea, select')) return;
+                    if (useNativeLogic && e.target.checkValidity) {
+                      const isInvalid = e.target.matches(':user-invalid');
+                      if (isInvalid) {
+                        e.target.setAttribute('aria-invalid', 'true');
+                      } else {
+                        e.target.removeAttribute('aria-invalid');
+                      }
+                    }
+                    // Update debug info for the demo
+                    updateDebugInfo(e.target);
+                  }, true);
+
+                  document.addEventListener('focus', (e) => {
+                    if (!e.target.matches?.('input, textarea, select')) return;
                   if (useNativeLogic && e.target.checkValidity) {
                     const isInvalid = e.target.matches(':user-invalid');
                     if (isInvalid) {
                       e.target.setAttribute('aria-invalid', 'true');
                     } else {
-                    e.target.removeAttribute('aria-invalid');
+                      e.target.removeAttribute('aria-invalid');
+                    }
                   }
-                }
-                // Update debug info for the demo
-                updateDebugInfo(e.target);
-              }, true);
+                  // Update debug info for the demo
+                  updateDebugInfo(e.target);
+                }, true);
 
-                form.addEventListener('input', (e) => {
+                  document.addEventListener('input', (e) => {
+                    if (!e.target.matches?.('input, textarea, select')) return;
                   if (useNativeLogic && e.target.checkValidity) {
                     if (e.target.hasAttribute('aria-invalid')) {
                       const isInvalid = e.target.matches(':user-invalid');
                       if (!isInvalid) e.target.removeAttribute('aria-invalid');
                     }
-                }
-                // Update debug info for the demo
-                updateDebugInfo(e.target);
-              });
+                  }
+                  // Update debug info for the demo
+                  updateDebugInfo(e.target);
+                });
 
-                form.addEventListener('reset', (e) => {
+                  document.addEventListener('reset', (e) => {
+                    if (!e.target.matches?.('form')) return;
                   setTimeout(() => {
                     Array.from(e.target.elements).forEach(el => {
                       if (useNativeLogic) el.removeAttribute('aria-invalid');

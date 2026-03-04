@@ -69,10 +69,10 @@ input:user-invalid {
 Since there is no "UserInvalidChanged" event, hook into standard form events to check the state.
 
 ```javascript
-const inputs = document.querySelectorAll('input, textarea, select');
-
 const updateAriaState = (event) => {
   const input = event.target;
+  if (!input.matches?.('input, textarea, select')) return;
+
   // Check if the browser currently considers this input "user-invalid"
   const isUserInvalid = input.matches(':user-invalid');
   
@@ -83,19 +83,22 @@ const updateAriaState = (event) => {
   }
 };
 
-// 'blur' is usually when :user-invalid first triggers
-inputs.forEach(input => {
-  input.addEventListener('blur', updateAriaState);
+// Listen on the document to handle dynamically added fields.
+// 'blur' and 'focus' do not bubble, so we must use the capture phase (true).
+document.addEventListener('blur', updateAriaState, true);
+document.addEventListener('focus', updateAriaState, true);
 
-  // Also update on input if we've already shown the error, 
-  // so the error clears immediately when fixed.
-  input.addEventListener('input', () => {
-    const hasAriaInvalid = input.hasAttribute('aria-invalid');
-    const ariaInvalid = input.getAttribute('aria-invalid');
-    if (hasAriaInvalid && ariaInvalid === 'true') {
-      updateAriaState(input);
-    }
-  });
+// Also update on input if we've already shown the error, 
+// so the error clears immediately when fixed.
+document.addEventListener('input', (event) => {
+  const input = event.target;
+  if (!input.matches?.('input, textarea, select')) return;
+
+  const hasAriaInvalid = input.hasAttribute('aria-invalid');
+  const ariaInvalid = input.getAttribute('aria-invalid');
+  if (hasAriaInvalid && ariaInvalid === 'true') {
+    updateAriaState(event);
+  }
 });
 ```
 
