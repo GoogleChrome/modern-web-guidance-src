@@ -32,14 +32,13 @@ pnpm generate-grader <path/to/guide_dir>
 This will create a `grader.ts` file in the guide directory.
 
 6. Once the grader is generated, run it on the `demo.html` and `negative-demo.html` with:
-
 ```sh
-pnpm test-grader <path/to/guide_dir>
+pnpm grade <path/to/demo_file_or_directory>
 ```
 
-This essentially runs `pnpm grade path/to/demo.html` and `pnpm grade path/to/negative-demo.html` and asserts everything passes and then everything fails.  You can also just run `pnpm grade <path/to/demo.html>` to see detailed results.
+If you pass a specific `.html` file, it will grade it and auto-open the interactive visual HTML report.
 
-The grader should pass at 100% for `demo.html`, and 0% for `negative-demo.html`. If needed, make changes to the files created in this folder (including `guide.md`), repeating any of the above steps, until this is reliably true.
+If you pass the **guide directory**, it will run a rapid meta-calibration suite to ensure the grader correctly passes `demo.html` at 100% and correctly fails `negative-demo.html` at 0%. If the grader fails either constraint, it will output a CLI summary and provide copy-paste links directly to the generated HTML reports so you can explore in detail.
 
 
 ## Testing with an Agent

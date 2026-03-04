@@ -21,7 +21,6 @@
     "setup:playwright": "pnpm --filter eval-view exec playwright install",
     "generate-negative": "node --env-file=.env guides/negative-gen.ts",
     "generate-grader": "node --env-file=.env guides/grader-gen.ts",
-    "test-grader": "node guides/test-grader.ts",
     "grade": "node --experimental-strip-types guides/run-grader.ts"
   },
   "keywords": [],
