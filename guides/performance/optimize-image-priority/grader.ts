@@ -48,6 +48,10 @@ test.describe(`Optimize image priority Expectations: ${demoName}`, () => {
     await expect(page.locator('img[src*="mega-menu-promo.jpg"]')).toHaveAttribute('fetchpriority', 'low');
   });
 
+  test(`The <img> element for 'footer-logo.png' does NOT have the fetchpriority attribute`, async ({ page }) => {
+    await expect(page.locator('img[src*="footer-logo.png"]')).not.toHaveAttribute('fetchpriority');
+  });
+
   test(`No more than two <img> elements on the page have the fetchpriority="high" attribute`, async ({ page }) => {
     const count = await page.locator('img[fetchpriority="high"]').count();
     expect(count).toBeLessThanOrEqual(2);

@@ -18,7 +18,8 @@ Browsers use heuristics to assign loading priorities to images, but these defaul
 1. **Identify the LCP image**: Determine which image is the most likely candidate for the Largest Contentful Paint (usually the hero image at the top of the page).
 2. **Elevate LCP priority**: Add `fetchpriority="high"` to the `<img>` element for the LCP candidate.
 3. **Deprioritize non-critical images**: For images that are part of a secondary UI or are only revealed after user interaction (like mega menus, modals, or off-screen carousel slides), add `fetchpriority="low"`.
-4. **Optimize lazy loading**: Never use `loading="lazy"` on the LCP image. For standard below-the-fold images, `loading="lazy"` is sufficient to defer the request until the user scrolls near them. Reserve `fetchpriority="low"` for images that are technically "above the fold" but not initially visible (e.g., hidden carousel slides). This prevents the browser's eager fetching heuristics from automatically assigning them a high priority and stealing bandwidth from your LCP image.
+4. **Optimize lazy loading**: Never use `loading="lazy"` on the LCP image. For standard below-the-fold images, `loading="lazy"` is sufficient to defer the request until the user scrolls near them. Avoid adding `fetchpriority="low"` to these images, as you want them to load at normal priority once the user scrolls to them. Reserve `fetchpriority="low"` for images that are technically "above the fold" but not initially visible (e.g., hidden carousel slides or mega menus). For these hidden images, it is acceptable to use `loading="lazy"` as well; the browser will handle the request timing while respecting the low priority.
+5. **Prefer default priorities**: If an image should have normal loading priority, omit the `fetchpriority` attribute entirely rather than setting it to `auto`. This is a stylistic convention to keep your HTML cleaner while relying on the browser's native heuristics.
 
 ## Example code
 
@@ -29,26 +30,38 @@ Browsers use heuristics to assign loading priorities to images, but these defaul
      fetchpriority="high"
      width="800" height="400">
 
-<!-- Deprioritize initially hidden images, even if they are loaded lazily -->
+<!-- Deprioritize initially hidden images above the fold -->
 <img src="/images/gallery-alt.jpg"
      alt="Gallery Image"
      fetchpriority="low"
      width="400" height="300">
 
-<!-- Deprioritize an image that is only revealed following a user interaction (e.g., inside a dropdown menu or modal) -->
+<!-- Deprioritize images revealed only after user interaction -->
 <img src="/images/mega-menu-promo.jpg"
      alt="Special Offer"
      fetchpriority="low"
      width="300" height="150">
+
+<!-- Use lazy loading ALONE for standard below-the-fold images -->
+<img src="/images/footer-logo.png"
+     alt="Footer Logo"
+     loading="lazy"
+     width="120" height="60">
+
+<!-- Omit fetchpriority for images with standard priority -->
+<img src="/images/standard-image.jpg"
+     alt="Standard Image"
+     width="400" height="300">
 ```
 
 ## Best practices
 
 - **MANDATORY**: Always apply `fetchpriority="high"` to the LCP image.
 - **MANDATORY**: Only use `fetchpriority="high"` on at most 1-2 critical images to avoid network contention and diluting the priority boost.
+- **MANDATORY**: Use `fetchpriority="low"` for images that are technically "above the fold" but initially hidden (e.g., hidden carousel slides, mega menu images).
+- **MANDATORY**: **Do not** use `fetchpriority="low"` on standard below-the-fold images that are already using `loading="lazy"`. These images should load at normal priority once they enter the viewport.
+- **RECOMMENDED**: Avoid using `fetchpriority="auto"`. If you want the default priority, omit the attribute entirely to keep your HTML clean.
 - **DO NOT** combine `fetchpriority="high"` with `loading="lazy"` for the LCP image.
-- **DO** use `fetchpriority="low"` for images that may be above the fold but are not critical to the user experience, such as images in a gallery that are initially hidden.
-- **DO NOT** combine `fetchpriority="low"` with `loading="lazy"` for standard below-the-fold images. When the user scrolls near the image, the browser should load it with high priority.
 - **DO NOT** use the deprecated `importance` attribute. It has been replaced by `fetchpriority` and is not supported by any browser.
 
 ## Fallback strategy
