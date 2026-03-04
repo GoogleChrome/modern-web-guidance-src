@@ -1,95 +1,131 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
-const REPO_ROOT = process.cwd();
-const GUIDES_DIR = path.join(REPO_ROOT, 'guides');
-const DIST_DIR = path.join(REPO_ROOT, 'skills', 'modern-web');
-const DIST_REFS_DIR = path.join(DIST_DIR, 'references');
-const EXISTING_SKILL_PATH = path.join(GUIDES_DIR, 'modern-web-dev.md');
-
-// Create fresh dist directory
-if (fs.existsSync(DIST_DIR)) {
-  fs.rmSync(DIST_DIR, { recursive: true, force: true });
-}
-fs.mkdirSync(DIST_REFS_DIR, { recursive: true });
-
-// Read existing skill
-let existingSkillContent = '';
-if (fs.existsSync(EXISTING_SKILL_PATH)) {
-  existingSkillContent = fs.readFileSync(EXISTING_SKILL_PATH, 'utf-8');
-} else {
-  console.warn(`Could not find existing skill at ${EXISTING_SKILL_PATH}`);
-  process.exit(1);
+function toTitleCase(kebabString: string): string {
+  return kebabString
+    .split('-')
+    .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
+function safeRmSync(targetPath: string, expectedSuffix: string): void {
+  // Normalize path separators to ensure cross-platform safety check works
+  const normalizedPath = targetPath.replace(/\\/g, '/');
+  if (!normalizedPath.endsWith(expectedSuffix)) {
+    console.error(`Safety Abort: Refusing to rmSync ${targetPath}\nPath does not terminate with expected suffix '${expectedSuffix}'`);
+    process.exit(1);
+  }
+  
+  fs.rmSync(targetPath, { recursive: true, force: true });
+}
 
-let taxonomyMarkdown = `\n## Specialized expert-level guidance\n\nREAD the below guides if they are relevant to the current task.\n\n`;
+function buildTaxonomyMarkdown(guidesDir: string, distRefsDir: string): string {
+  let taxonomyMarkdown = `\n## Specialized expert-level guidance\n\nREAD the below guides if they are relevant to the current task.\n\n`;
 
-// Process guides directory
-const categories = fs.readdirSync(GUIDES_DIR).filter(f => {
-  const stat = fs.statSync(path.join(GUIDES_DIR, f));
-  return stat.isDirectory() && !f.startsWith('.') && f !== 'node_modules';
-});
-
-for (const category of categories) {
-  const categoryPath = path.join(GUIDES_DIR, category);
-  const usecases = fs.readdirSync(categoryPath).filter(f => {
-    return fs.statSync(path.join(categoryPath, f)).isDirectory() && !f.startsWith('.');
+  // Process guides directory
+  const categories = fs.readdirSync(guidesDir).filter((file: string) => {
+    const stat = fs.statSync(path.join(guidesDir, file));
+    return stat.isDirectory() && !file.startsWith('.') && file !== 'node_modules';
   });
 
-  if (usecases.length === 0) continue;
+  for (const category of categories) {
+    const categoryPath = path.join(guidesDir, category);
+    const usecases = fs.readdirSync(categoryPath).filter((file: string) => {
+      const isDir = fs.statSync(path.join(categoryPath, file)).isDirectory();
+      return isDir && !file.startsWith('.');
+    });
 
-  // Format Category name
-  const categoryName = category.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-  taxonomyMarkdown += `### ${categoryName}\n\n`;
+    if (usecases.length === 0) continue;
 
-  // Create category dist folder
-  fs.mkdirSync(path.join(DIST_REFS_DIR, category), { recursive: true });
+    // Format Category name
+    taxonomyMarkdown += `### ${toTitleCase(category)}\n\n`;
 
-  for (const usecase of usecases) {
-    const guidePath = path.join(categoryPath, usecase, 'guide.md');
-    if (!fs.existsSync(guidePath)) continue;
+    // Create category dist folder
+    const distCategoryDir = path.join(distRefsDir, category);
+    fs.mkdirSync(distCategoryDir, { recursive: true });
 
-    let guideContent = fs.readFileSync(guidePath, 'utf-8');
+    for (const usecase of usecases) {
+      const guidePath = path.join(categoryPath, usecase, 'guide.md');
+      if (!fs.existsSync(guidePath)) continue;
 
-    // Skip if there's no content beyond frontmatter
-    const contentWithoutFrontmatter = guideContent.replace(/^---[\s\S]*?---\n*/, '').trim();
-    if (contentWithoutFrontmatter.length === 0) continue;
+      const guideContent = fs.readFileSync(guidePath, 'utf-8');
 
-    // Extract title from first H1 or fall back
-    const match = guideContent.match(/^#\s+(.+)$/m);
-    let title = match ? match[1].trim() : usecase.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      // Skip if there's no content beyond frontmatter
+      const contentWithoutFrontmatter = guideContent.replace(/^---[\s\S]*?---\n*/, '').trim();
+      if (contentWithoutFrontmatter.length === 0) continue;
 
-    // Copy the file
-    const destFilePath = path.posix.join(category, `${usecase}.md`);
-    fs.writeFileSync(path.join(DIST_REFS_DIR, destFilePath), guideContent);
+      // Extract title from first H1 or fall back
+      let title: string;
+      const titleMatch = guideContent.match(/^#\s+(.+)$/m);
+      if (titleMatch) {
+         title = titleMatch[1].trim();
+      } else {
+         title = toTitleCase(usecase);
+      }
 
-    taxonomyMarkdown += `- [${title}](./references/${destFilePath})\n`;
+      // Copy the file
+      const destFilePath = path.posix.join(category, `${usecase}.md`);
+      fs.writeFileSync(path.join(distRefsDir, destFilePath), guideContent);
+
+      taxonomyMarkdown += `- [${title}](./references/${destFilePath})\n`;
+    }
+
+    taxonomyMarkdown += `\n`;
   }
 
-  taxonomyMarkdown += `\n`;
+  return taxonomyMarkdown;
 }
 
-// Assemble final SKILL.md
-const finalContent = `${existingSkillContent.trim()}\n\n${taxonomyMarkdown}`;
-
-fs.writeFileSync(path.join(DIST_DIR, 'SKILL.md'), finalContent);
-console.log(`Generated skill successfully in ${DIST_DIR}`);
-
-const LOCAL_AGENTS_SKILL_DIR = path.join(REPO_ROOT, '.agents', 'skills', 'modern-web');
-const localAgentsSkillsBase = path.dirname(LOCAL_AGENTS_SKILL_DIR);
-if (!fs.existsSync(localAgentsSkillsBase)) {
-  fs.mkdirSync(localAgentsSkillsBase, { recursive: true });
-}
-
-try {
-  if (fs.lstatSync(LOCAL_AGENTS_SKILL_DIR)) {
-    fs.rmSync(LOCAL_AGENTS_SKILL_DIR, { recursive: true, force: true });
+function createLocalSymlink(repoRoot: string, distDir: string): void {
+  const localAgentsSkillDir = path.join(repoRoot, '.agents', 'skills', 'modern-web');
+  const localAgentsSkillsBase = path.dirname(localAgentsSkillDir);
+  
+  if (!fs.existsSync(localAgentsSkillsBase)) {
+    fs.mkdirSync(localAgentsSkillsBase, { recursive: true });
   }
-} catch (e) {
-  // Ignore error if it doesn't exist
+
+  // safely remove to prepare for symlink
+  safeRmSync(localAgentsSkillDir, '.agents/skills/modern-web');
+
+  const relativeTarget = path.relative(localAgentsSkillsBase, distDir);
+  fs.symlinkSync(relativeTarget, localAgentsSkillDir, 'dir');
+  console.log(`Symlinked skill to ${localAgentsSkillDir}`);
 }
 
-const relativeTarget = path.relative(localAgentsSkillsBase, DIST_DIR);
-fs.symlinkSync(relativeTarget, LOCAL_AGENTS_SKILL_DIR, 'dir');
-console.log(`Symlinked skill to ${LOCAL_AGENTS_SKILL_DIR}`);
+function buildSkill(): void {
+  const repoRoot = process.cwd();
+  
+  // Validate we are actually rooted in the guidance project
+  if (!fs.existsSync(path.join(repoRoot, 'package.json'))) {
+    console.error(`Safety Abort: Script must be run from the repository root (missing package.json in ${repoRoot}).`);
+    process.exit(1);
+  }
+
+  const guidesDir = path.join(repoRoot, 'guides');
+  const distDir = path.join(repoRoot, 'skills', 'modern-web');
+  const distRefsDir = path.join(distDir, 'references');
+  const existingSkillPath = path.join(guidesDir, 'modern-web-dev.md');
+
+  // Create fresh dist directory
+  safeRmSync(distDir, 'skills/modern-web');
+  fs.mkdirSync(distRefsDir, { recursive: true });
+
+  // Read existing skill
+  if (!fs.existsSync(existingSkillPath)) {
+    console.error(`Error: Could not find existing skill at ${existingSkillPath}`);
+    process.exit(1);
+  }
+  const existingSkillContent = fs.readFileSync(existingSkillPath, 'utf-8');
+
+  const taxonomyMarkdown = buildTaxonomyMarkdown(guidesDir, distRefsDir);
+
+  // Assemble final SKILL.md
+  const finalContent = `${existingSkillContent.trim()}\n\n${taxonomyMarkdown}`;
+
+  fs.writeFileSync(path.join(distDir, 'SKILL.md'), finalContent);
+  console.log(`Generated skill successfully in ${distDir}`);
+
+  createLocalSymlink(repoRoot, distDir);
+}
+
+buildSkill();
