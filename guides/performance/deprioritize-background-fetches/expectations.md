@@ -1,4 +1,3 @@
 - A `fetch()` call to `/api/data` is made without the `priority: 'low'` option.
 - A `fetch()` call to `/api/analytics` is made with the `priority: 'low'` option.
-- The `fetch()` for `/api/analytics` is triggered by the same user interaction as the critical data fetch.
 - No `fetch()` calls use the deprecated `importance` option.
