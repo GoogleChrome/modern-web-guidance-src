@@ -66,7 +66,7 @@ input:user-invalid {
 ```
 
 ### 3. JavaScript
-Since there is no "UserInvalidChanged" event, we hook into standard form events to check the state.
+Since there is no "UserInvalidChanged" event, hook into standard form events to check the state.
 
 ```javascript
 const inputs = document.querySelectorAll('input, textarea, select');
