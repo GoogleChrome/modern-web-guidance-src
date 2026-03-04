@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll-Driven Animations: Horizontal Scroll Section</title>
+  <style>
+    @layer reset, base, demo;
+
+    @layer demo {
+      @keyframes slide {
+        to {
+          translate: calc(-100% + 100vw) 0;
+        }
+      }
+
+      .tracked-subject {
+        view-timeline: --tracked-subject block;
+        height: 300vh;
+      }
+
+      .sticky-wrapper {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-x: clip;
+      }
+
+      .horizontal-strip {
+        width: 300vw;
+        height: 100%;
+
+        animation: slide auto linear both;
+        animation-timeline: --tracked-subject;
+        animation-range: contain;
+      }
+    }
+
+    @layer base {
+      html, body {
+        margin: 0;
+        padding: 0;
+      }
+      .spacer {
+        height: 100vh;
+        place-content: center;
+        text-align: center;
+        background-color: #ececec;
+      }
+
+      .horizontal-strip {
+        font-size: 10em;
+        overflow-x: clip;
+        place-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="spacer">SPACER</div>
+
+  <div class="tracked-subject">
+    <div class="sticky-wrapper">
+      <div class="horizontal-strip">HORIZONTAL STRIP HORIZONTAL STRIP HORIZONTAL STRIP HORIZONTAL STRIP HORIZONTAL STRIP</div>
+    </div>
+  </div>
+
+  <div class="spacer">SPACER</div>
+</body>
+</html>
