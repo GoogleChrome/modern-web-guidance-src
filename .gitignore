@@ -21,3 +21,6 @@ harness/results/
 # Coverage
 coverage/
 serving/.mcp-data/
+
+# Generated Skills
+dist-skill/
