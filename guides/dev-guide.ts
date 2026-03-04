@@ -234,16 +234,17 @@ async function generatePrompts(targetDir: string, baseApp: string): Promise<void
 
     process.env.HOME = tempHome;
 
+    // TODO: need to expose the daily-grind source to this agent.
     const userPrompt = `Read guide.md to understand what web development guidance is being provided.
 Read base-app.html to understand the existing web app that the developer is working on.
 
-Generate a set of prompts that a web developer might give to an AI coding assistant
+Generate one or two realistic test prompts... the kind of thing a web developer would say to a AI coding assistant
 to accomplish the goal described in this guide. Write these to a file called prompts.md.
 
 The prompts should:
-- Be grounded in the base app: reference the kind of app it is (e.g. its content, purpose, or UI) rather than describing a generic or unrelated app
+- Assume the project is the daily-grind app.
 - Vary in specificity: include vague developer requests and specific technical asks
-- Be phrased as a developer asking an AI for help with their existing web app
+- Be phrased as a developer asking an AI for help with their existing web app. lowercase text, occasional typos, etc.
 - Not reference the guide itself or indicate that guidance exists
 - Each be on its own line, prefixed with "- "
 
