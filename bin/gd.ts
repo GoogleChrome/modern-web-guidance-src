@@ -24,7 +24,7 @@ completion.on('action', ({ reply }) => {
   reply([
     'suite', 'task', 'smoke', 'agent', 
     'report', 'grade', 'dashboard', 
-    'gen:grader', 'gen:negative',
+    'gen:grader', 'gen:negative', 'test-grader',
     'setup-completion'
   ]);
 });
@@ -100,6 +100,7 @@ Commands:
   dashboard      Start the evaluation dashboard
   gen:grader     Generate a new grader
   gen:negative   Generate negative examples
+  test-grader    Check grader against demo and negative-demo
 
   setup-completion  Install shell auto-completion for Fish, Bash, and Zsh
 
@@ -168,6 +169,11 @@ Options:
     case 'gen:negative':
       const { generateNegative } = await import('../guides/negative-gen.ts');
       await generateNegative(passThroughArgs[0]);
+      inProcess = true;
+      break;
+    case 'test-grader':
+      const { testGrader } = await import('../guides/test-grader.ts');
+      await testGrader(passThroughArgs[0] || process.cwd());
       inProcess = true;
       break;
 
