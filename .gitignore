@@ -23,4 +23,4 @@ coverage/
 serving/.mcp-data/
 
 # Generated Skills
-dist-skill/
+skills/modern-web/
