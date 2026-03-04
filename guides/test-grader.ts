@@ -25,18 +25,19 @@ function findGrader(startDir: string): string | null {
   return null;
 }
 
-async function runPlaywrightJson(targetFileAbs: string, graderPath: string): Promise<any> {
+async function runPlaywright(targetFileAbs: string, graderPath: string, htmlOutputDir: string): Promise<any> {
   const playwrightConfig = path.join(__dirname, 'playwright.config.ts');
   const tmpJson = path.join(os.tmpdir(), `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
   
   return new Promise((resolve, reject) => {
-    // Run playwright using the json reporter
-    const child = spawn('pnpm', ['--filter', 'guides', 'exec', 'playwright', 'test', '-c', playwrightConfig, graderPath, '--reporter=json'], {
+    // Run playwright using both json and html reporters
+    const child = spawn('pnpm', ['--filter', 'guides', 'exec', 'playwright', 'test', '-c', playwrightConfig, graderPath, '--reporter=json,html'], {
       stdio: 'ignore', // Ignore stdout to not mix playwright logs visually, we will parse the json
       env: {
         ...process.env,
         TARGET_FILE: targetFileAbs,
-        PLAYWRIGHT_JSON_OUTPUT_NAME: tmpJson
+        PLAYWRIGHT_JSON_OUTPUT_NAME: tmpJson,
+        PLAYWRIGHT_HTML_OUTPUT_DIR: htmlOutputDir
       }
     });
 
@@ -85,29 +86,43 @@ export async function testGrader(targetDirRel: string) {
   console.log(cCyan(`Testing grader against demo.html and negative-demo.html in:\n  ${targetDirAbs}\n`));
 
   let hasError = false;
+  let demoFailed = false;
+  let negativeFailed = false;
+
+  const demoParams = {
+    file: demoPath,
+    outDir: path.join(targetDirAbs, 'grade-report', 'demo')
+  };
+  const negativeParams = {
+    file: negativePath,
+    outDir: path.join(targetDirAbs, 'grade-report', 'negative')
+  };
 
   // 1. Test against demo.html
   console.log(cYellow(`Running against demo.html... (Expecting 100% pass)`));
   try {
-    const demoResults = await runPlaywrightJson(demoPath, graderPath);
+    const demoResults = await runPlaywright(demoParams.file, graderPath, demoParams.outDir);
     const unexpected = demoResults.stats?.unexpected || 0;
     const expected = demoResults.stats?.expected || 0;
     
     if (expected === 0 && unexpected === 0) {
        console.log(cYellow(`⚠️  Warning: No tests were run for demo.html`));
        hasError = true;
+       demoFailed = true;
     }
     
     if (unexpected > 0) {
       console.log(cRed(`❌ demo.html failed ${unexpected} tests!`));
       demoResults.suites?.forEach((suite: any) => printFailingSpecs(suite));
       hasError = true;
+      demoFailed = true;
     } else if (expected > 0) {
       console.log(cGreen(`✅ demo.html passed all ${expected} tests.`));
     }
   } catch (err: any) {
     console.error(cRed(`Failed to test demo.html: ${err.message}`));
     hasError = true;
+    demoFailed = true;
   }
 
   console.log('');
@@ -115,7 +130,7 @@ export async function testGrader(targetDirRel: string) {
   // 2. Test against negative-demo.html
   console.log(cYellow(`Running against negative-demo.html... (Expecting 100% fail)`));
   try {
-    const negativeResults = await runPlaywrightJson(negativePath, graderPath);
+    const negativeResults = await runPlaywright(negativeParams.file, graderPath, negativeParams.outDir);
     const expected = negativeResults.stats?.expected || 0; // "expected" means tests passed in Playwright (bad for us)
     const unexpected = negativeResults.stats?.unexpected || 0; // "unexpected" means tests failed (good for us)
     
@@ -123,23 +138,33 @@ export async function testGrader(targetDirRel: string) {
       console.log(cRed(`❌ negative-demo.html incorrectly passed ${expected} tests!`));
       negativeResults.suites?.forEach((suite: any) => printPassingSpecs(suite));
       hasError = true;
+      negativeFailed = true;
     } else if (unexpected > 0) {
       console.log(cGreen(`✅ negative-demo.html failed all ${unexpected} tests correctly.`));
     } else {
        console.log(cYellow(`⚠️  Warning: No tests were run for negative-demo.html`));
        hasError = true;
+       negativeFailed = true;
     }
   } catch (err: any) {
     console.error(cRed(`Failed to test negative-demo.html: ${err.message}`));
     hasError = true;
+    negativeFailed = true;
   }
 
   console.log('');
   if (hasError) {
     console.log(cBold(cRed(`Failed! The grader needs calibration.`)));
+    if (demoFailed) {
+        console.log(`\nView demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), demoParams.outDir)}`);
+    }
+    if (negativeFailed) {
+        console.log(`\nView negative-demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), negativeParams.outDir)}`);
+    }
     process.exit(1);
   } else {
     console.log(cBold(cGreen(`Success! The grader is perfectly calibrated.`)));
+    // Optional: could still offer to view them if desired even when perfectly calibrated
     process.exit(0);
   }
 }
