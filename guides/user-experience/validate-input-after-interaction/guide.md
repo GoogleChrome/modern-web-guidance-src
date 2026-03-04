@@ -87,20 +87,19 @@ MANDATORY: Define the complexity rule using a Regex Lookahead pattern in the `pa
 <form>
   <div class="field">
     <label for="password">New Password</label>
-    <!-- DO: Use pattern and minlength for complex password validation -->
+    <!-- DO: Use pattern and minlength for complex password validation 
+         DO: Match all constraints with lookaheads via pattern attribute
+         (?=.*\d)       : Must contain at least one digit
+         (?=.*[a-z])    : Must contain at least one lowercase letter
+         (?=.*[A-Z])    : Must contain at least one uppercase letter
+         (?=.*[\W_])    : Must contain at least one special char
+         .{8,}          : Must be at least 8 chars long   
+     -->
     <input 
       type="password" 
       id="password" 
       autocomplete="new-password"
       required
-      /* 
-         DO: Match all constraints with lookaheads
-         (?=.*\d)       : Must contain at least one digit
-         (?=.*[a-z])    : Must contain at least one lowercase letter
-         (?=.*[A-Z])    : Must contain at least one uppercase letter
-         (?=.*[\W_])    : Must contain at least one special char
-         .{8,}          : Must be at least 8 chars long
-      */
       pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}"
       minlength="8"
       aria-describedby="password-rules"
