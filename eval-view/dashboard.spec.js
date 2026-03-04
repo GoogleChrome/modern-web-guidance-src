@@ -17,13 +17,13 @@ test.describe('Eval View Dashboard', () => {
     await expect(page.locator('#latest-unguided-metric')).toBeVisible();
   });
 
-  test('should load results from harness directory', async ({ page }) => {
-    // Attempt to fetch results/tests.json through the server
-    const response = await page.request.get('/results/tests.json');
+  test('should load suites from API', async ({ page }) => {
+    // Attempt to fetch /api/suites through the server
+    const response = await page.request.get('/api/suites');
     expect(response.ok()).toBe(true);
     
     const data = await response.json();
-    expect(data).toHaveProperty('tests');
+    expect(data).toHaveProperty('suites');
   });
 
   test('should navigate to explorer tab', async ({ page }) => {
@@ -41,7 +41,7 @@ test.describe('Eval View Dashboard', () => {
     await page.goto('/dashboard.html?testID=example-result');
 
     // Check title
-    await expect(page.locator('h1')).toContainText('Eval Dashboard');
+    await expect(page.locator('h1')).toContainText('Suite Results');
 
     // Check header info
     await expect(page.locator('#test-header')).toContainText('example-result');
