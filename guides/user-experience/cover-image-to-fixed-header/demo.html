@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll-Driven Animations: Cover Image to Fixed Header</title>
+  <style>
+    @layer reset, base, demo;
+
+    @layer demo {
+      @keyframes shrink {
+        to {
+          height: 100px;
+        }
+      }
+
+      .card {
+        animation: shrink auto linear both;
+        animation-timeline: scroll(block root);
+        animation-range: 0px calc(100vh - 100px);
+      }
+    }
+
+    @layer base {
+      .card {
+        height: 100dvh;
+        width: 100%;
+        background: aliceblue;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        place-content: center;
+        text-align: center;
+      }
+
+      body {
+        padding-top: 100vh;
+      }
+
+      .content {
+        height: 300vh;
+        max-width: 60ch;
+        margin: 0 auto;
+      }
+    }
+
+    @layer reset {
+      html, body {
+        margin: 0;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">.card</div>
+  <div class="content">
+    <h1>Content</h1>
+    <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Consequuntur explicabo sed inventore, vero voluptatibus, corrupti magnam rerum illum veniam cum quis eaque repellat. Tempora dolorum, et cupiditate facere officiis odio!</p>
+  </div>
+</body>
+</html>
