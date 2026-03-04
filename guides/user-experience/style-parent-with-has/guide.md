@@ -15,7 +15,7 @@ By combining `:has()` with `:user-invalid`, we can declaratively style any ances
 
 ### Implementation Strategy
 
-1.  **Selector**: Use `.parent:has(input:user-invalid)` to target the container.
+1.  **Selector**: Use `.parent:has(:user-invalid)` to target the container.
 2.  **Scope**: Be specific to avoid performance issues. Target `.field-group` rather than `body`.
 3.  **Fallback**: Requires JS to toggle classes on the parent if `:has()` is not supported.
 
