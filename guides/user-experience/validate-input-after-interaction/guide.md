@@ -1,7 +1,7 @@
 ---
 name: validate-input-after-interaction
 description: Validation feedback for form inputs that only appears after the user has finished their initial interaction, avoiding premature errors on page load or while the user is typing. This consolidated guide covers sub-use-cases including password complexity validation and validating email after interaction.
-web-features:
+web-feature-ids:
   - user-pseudos
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/CSS/:user-invalid
