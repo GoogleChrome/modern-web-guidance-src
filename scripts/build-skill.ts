@@ -3,9 +3,9 @@ import * as path from 'path';
 
 const REPO_ROOT = process.cwd();
 const GUIDES_DIR = path.join(REPO_ROOT, 'guides');
-const DIST_DIR = path.join(REPO_ROOT, 'dist-skill');
+const DIST_DIR = path.join(REPO_ROOT, 'skills', 'modern-web');
 const DIST_REFS_DIR = path.join(DIST_DIR, 'references');
-const EXISTING_SKILL_PATH = path.join(process.env.HOME || '', '.gemini/skills/modern-web-development/SKILL.md');
+const EXISTING_SKILL_PATH = path.join(GUIDES_DIR, 'modern-web-dev.md');
 
 // Create fresh dist directory
 if (fs.existsSync(DIST_DIR)) {
@@ -22,32 +22,8 @@ if (fs.existsSync(EXISTING_SKILL_PATH)) {
   process.exit(1);
 }
 
-// Extract body from existing skill (everything after the second '---')
-const parts = existingSkillContent.split(/---\s*\n/);
-let bodyContent = parts.length >= 3 ? parts.slice(2).join('---\n') : existingSkillContent;
 
-let frontmatter = `---
-name: modern-web-dev
-description: |
-  **CRITICAL USAGE REQUIREMENT**: Use this skill ALWAYS and HEAVILY across EVERY single web development task you perform. If you are touching HTML, CSS, JavaScript, or TypeScript, or if the user asks you to build, review, or fix ANY frontend feature, YOU MUST INVOKE THIS SKILL before proceeding. This includes simple component updates, performance issues, logic restructuring, and any UI work.
-
-  This skill contains the definitive guidelines for web development, performance architecture, and modern UX patterns for this repository.
-  
-  Do NOT assume you know the best practices without consulting this skill first. It contains explicit constraints, fallback approaches, and optimized architectural patterns that you must follow!
-  
-  Examples:
-  - "Add a copy to clipboard button" -> ensures Clipboard API is used
-  - "Implement drag and drop" -> ensures HTML Drag and Drop API
-  - "Fetch data from API" -> ensures fetch() with modern patterns
-allowed-tools:
-  - WebSearch
-  - WebFetch
-model: opus
-user-invokable: true
----
-`;
-
-let taxonomyMarkdown = `\n## Internal Specialized Guides\n\nWhen working in this repository on specific domains, be sure to consult the targeted guides below.\n\n`;
+let taxonomyMarkdown = `\n## Specialized expert-level guidance\n\nREAD the below guides if they are relevant to the current task.\n\n`;
 
 // Process guides directory
 const categories = fs.readdirSync(GUIDES_DIR).filter(f => {
@@ -76,6 +52,10 @@ for (const category of categories) {
     
     let guideContent = fs.readFileSync(guidePath, 'utf-8');
     
+    // Skip if there's no content beyond frontmatter
+    const contentWithoutFrontmatter = guideContent.replace(/^---[\s\S]*?---\n*/, '').trim();
+    if (contentWithoutFrontmatter.length === 0) continue;
+    
     // Extract title from first H1 or fall back
     const match = guideContent.match(/^#\s+(.+)$/m);
     let title = match ? match[1].trim() : usecase.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -91,7 +71,25 @@ for (const category of categories) {
 }
 
 // Assemble final SKILL.md
-const finalContent = `${frontmatter}\n${bodyContent.trim()}\n\n${taxonomyMarkdown}`;
+const finalContent = `${existingSkillContent.trim()}\n\n${taxonomyMarkdown}`;
 
 fs.writeFileSync(path.join(DIST_DIR, 'SKILL.md'), finalContent);
 console.log(`Generated skill successfully in ${DIST_DIR}`);
+
+const LOCAL_AGENTS_SKILL_DIR = path.join(REPO_ROOT, '.agents', 'skills', 'modern-web');
+const localAgentsSkillsBase = path.dirname(LOCAL_AGENTS_SKILL_DIR);
+if (!fs.existsSync(localAgentsSkillsBase)) {
+  fs.mkdirSync(localAgentsSkillsBase, { recursive: true });
+}
+
+try {
+  if (fs.lstatSync(LOCAL_AGENTS_SKILL_DIR)) {
+    fs.rmSync(LOCAL_AGENTS_SKILL_DIR, { recursive: true, force: true });
+  }
+} catch (e) {
+  // Ignore error if it doesn't exist
+}
+
+const relativeTarget = path.relative(localAgentsSkillsBase, DIST_DIR);
+fs.symlinkSync(relativeTarget, LOCAL_AGENTS_SKILL_DIR, 'dir');
+console.log(`Symlinked skill to ${LOCAL_AGENTS_SKILL_DIR}`);
