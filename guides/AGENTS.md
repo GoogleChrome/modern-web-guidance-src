@@ -72,7 +72,7 @@ sources:
 
 ## Step 3: Authoring `expectations.md` and `demo.html`
 
-* **`expectations.md`**: Write a natural language, bulleted list of assertions that must be true if an agent implements the `guide.md` correctly. **MANDATORY:** Assertions must be objective and deterministic (e.g., "The input element is styled with a red border only AFTER a blur event" or "No more than one image has `fetchpriority=high`").
+* **`expectations.md`**: Write a natural language, bulleted list of assertions that must be true if an agent implements the `guide.md` correctly. **MANDATORY:** Assertions must be objective and deterministic (e.g., "The input element is styled with a red border only AFTER a blur event" or "No more than two images have `fetchpriority=high`").
 * **`demo.html`**: Provide a pristine, working HTML/CSS/JS implementation of the guide that completely satisfies `expectations.md` and conforms to the guidance in `guide.md`.
 
 ---

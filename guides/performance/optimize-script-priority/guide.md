@@ -14,8 +14,8 @@ Browsers assign default priorities to scripts based on where they appear in the 
 ## How to implement
 
 1. **Identify critical scripts**: Determine which scripts are essential for the page's core functionality or initial user interaction.
-2. **Elevate critical async scripts**: For critical scripts loaded with `async`, add the `fetchpriority="high"` attribute to ensure they are prioritized during the discovery phase.
-3. **Deprioritize non-essential scripts**: For scripts that are not needed immediately (e.g., analytics, ads, or below-the-fold widgets), add `fetchpriority="low"`.
+2. **Elevate critical async scripts**: For critical scripts loaded with `async` or `defer`, add the `fetchpriority="high"` attribute to ensure they are prioritized during the discovery phase.
+3. **Deprioritize non-essential scripts**: For scripts that are not needed immediately (e.g., analytics, ads, or below-the-fold widgets), add `fetchpriority="low"` and ensure they have a `async`, `defer`, or `module` attribute to avoid blocking.
 4. **Sequence parser-blocking scripts**: Use `fetchpriority="low"` on parser-blocking scripts at the end of the body to prevent them from contending for bandwidth with more critical resources.
 
 ## Example code
