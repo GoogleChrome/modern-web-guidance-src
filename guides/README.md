@@ -17,39 +17,39 @@ pnpm setup:playwright
 ```
 
 4. Generate negative demo:
-```
-pnpm generate-negative <path/to/guide_dir>
-# e.g. pnpm generate-negative guides/performance/content-vis
+```bash
+gd guide gen-negative <path/to/guide_dir>
+# e.g. gd guide gen-negative guides/performance/content-vis
 ```
 
 This will create a `negative-demo.html` file in the guide directory.
 
 5. Generate grader:
-```
-pnpm generate-grader <path/to/guide_dir>
+```bash
+gd guide gen-grader <path/to/guide_dir>
 ```
 
 This will create a `grader.ts` file in the guide directory.
 
 6. Once the grader is generated, run it on the `demo.html` and `negative-demo.html` with:
 
-```
-pnpm grade <path/to/demo_file>
+```bash
+gd guide grade <path/to/demo_file>
 
-e.g. pnpm grade guides/performance/content-vis/demo.html
-e.g. pnpm grade guides/performance/content-vis/negative-demo.html
+# e.g. gd guide grade guides/performance/content-vis/demo.html
+# e.g. gd guide grade guides/performance/content-vis/negative-demo.html
 ```
 
-On each `pnpm grade` run, a `grade-report` folder will be created in the same directory as the specified demo file, and the results will be displayed in a browser window.
+On each `gd guide grade` run, a `grade-report` folder will be created in the same directory as the specified demo file, and the results will be displayed in a browser window.
 
 The grader should pass at 100% for `demo.html`, and 0% for `negative-demo.html`. If needed, make changes to the files created in this folder (including `guide.md`), repeating any of the above steps, until this is reliably true.
 
 You can automatically verify that your grader is perfectly calibrated against both of these files by running:
 
 ```bash
-pnpm test-grader <path/to/guide_dir>
+gd guide test-grader <path/to/guide_dir>
 
-# e.g. pnpm test-grader guides/performance/content-vis
+# e.g. gd guide test-grader guides/performance/content-vis
 ```
 
 ## Testing with an Agent

@@ -56,19 +56,27 @@ Skills live in the `skills/` directory, and they are copied directly into the ag
 
 The evaluation suite measures how effectively AI models use modern web APIs.
 
+gd <command>
+```
+
+## Usage
+
+Run commands via the new universal CLI:
+
 ```bash
-# To run the full evaluation suite
-gd suite
+# System Evaluators
+gd eval suite
+gd eval task [id]
+gd eval smoke
+gd eval agent [template]
+gd eval report
+gd eval dashboard
 
-# To run a single isolated task
-gd task <task_name>
-# Example: gd task cards-render
-
-# To generate reports from results
-gd report
-
-# To view the results in the dashboard
-gd dashboard
+# Guidance Contributors
+gd guide grade [file]
+gd guide test-grader [dir]
+gd guide gen-grader [dir]
+gd guide gen-negative [dir]
 ```
 
 ## Configuration
