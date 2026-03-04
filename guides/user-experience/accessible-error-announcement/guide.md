@@ -158,7 +158,7 @@ const UserInvalidFallback = (() => {
   const handleEvent = (event) => {
     const input = event.target;
 
-    if (event.type === 'reset') {
+    if (event.type === 'reset' && input.matches?.('form')) {
       const controls = input.elements || [];
       for (const control of controls) {
         dirtyState.delete(control);
@@ -169,7 +169,7 @@ const UserInvalidFallback = (() => {
       return;
     }
 
-    if (!input.checkValidity) return;
+    if (!input.matches?.('input, textarea, select')) return;
 
     if (event.type === 'input' || event.type === 'change') {
       const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
@@ -188,21 +188,20 @@ const UserInvalidFallback = (() => {
     }
   };
 
-  const init = (root = document) => {
+  const init = () => {
     if (CSS.supports('selector(:user-invalid)')) return;
 
-    root.addEventListener('blur', handleEvent, true); // Capture phase
-    root.addEventListener('input', handleEvent);
-    root.addEventListener('change', handleEvent);
-    root.addEventListener('reset', handleEvent, true); // Capture resets
+    document.addEventListener('blur', handleEvent, true); // Capture phase required
+    document.addEventListener('input', handleEvent, true);
+    document.addEventListener('change', handleEvent, true);
+    document.addEventListener('reset', handleEvent, true); // Capture resets
   };
 
   return { init };
 })();
 
-// Initialize for a specific form
-const form = document.querySelector('#demo-form');
-UserInvalidFallback.init(form);
+// Initialize globally
+UserInvalidFallback.init();
 ```
 
 ## Other Considerations

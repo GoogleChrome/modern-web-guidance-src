@@ -180,6 +180,7 @@
                 // 2. The Fallback (Synced from guide.md)
                 const UserInvalidFallback = (() => {
                   const dirtyState = new WeakMap();
+                  let initialized = false;
 
                 const updateState = (input) => {
                   const isValid = input.checkValidity();
@@ -193,23 +194,30 @@
                 } else {
                   input.removeAttribute('aria-invalid');
                 }
+
+                  if (!useNativeLogic) {
+                    updateDebugInfo(input);
+                  }
               };
 
                 const handleEvent = (event) => {
+                  if (useNativeLogic) return; // Don't run fallback logic if native is active
+
                   const input = event.target;
 
-                  if (event.type === 'reset') {
+                  if (event.type === 'reset' && input.matches?.('form')) {
                     const controls = input.elements || [];
                     for (const control of controls) {
                       dirtyState.delete(control);
                       control.classList.remove('user-invalid-fallback');
                       control.classList.remove('user-valid-fallback');
                       control.removeAttribute('aria-invalid');
+                      updateDebugInfo(control);
                     }
                     return;
                   }
 
-                if (!input.checkValidity) return;
+                  if (!input.matches?.('input, textarea, select')) return;
 
                 // Track if user has interacted with the field at all.
                 const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
@@ -233,14 +241,14 @@
                 }
                 };
 
-                const init = (root = document) => {
-                  const nativelySupported = CSS.supports('selector(:user-invalid)');
-                  if (nativelySupported && !forceFallbackCheckbox.checked) return;
+                  const init = () => {
+                    if (initialized) return;
+                    initialized = true;
 
-                  root.addEventListener('blur', handleEvent, true); // Capture phase
-                  root.addEventListener('input', handleEvent);
-                  root.addEventListener('change', handleEvent);
-                  root.addEventListener('reset', handleEvent, true); // Capture resets
+                  document.addEventListener('blur', handleEvent, true); // Capture phase
+                  document.addEventListener('input', handleEvent, true); // Capture phase since input doesn't always bubble reliably for all field types when testing
+                  document.addEventListener('change', handleEvent, true);
+                  document.addEventListener('reset', handleEvent, true); // Capture resets
                 };
 
                 return { init };
