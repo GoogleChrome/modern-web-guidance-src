@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Educational Hotspot Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #eef2f5;
+      color: #333;
+    }
+
+    .diagram-container {
+      position: relative;
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      border: 1px solid #ddd;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    .diagram-image {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 8px;
+    }
+
+    /* Hotspot button styles */
+    .hotspot {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      background: #005fcc;
+      color: white;
+      border: 2px solid white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      padding: 0;
+      z-index: 10;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .hotspot:hover,
+    .hotspot:focus-visible {
+      transform: scale(1.15);
+      background: #004ba3;
+      outline: 2px solid #005fcc;
+      outline-offset: 2px;
+    }
+
+    /* Positioning the hotspots manually over the diagram */
+    .hotspot-1 {
+      top: 30%;
+      left: 25%;
+      anchor-name: --hotspot-1;
+    }
+
+    .hotspot-2 {
+      top: 60%;
+      left: 70%;
+      anchor-name: --hotspot-2;
+    }
+    
+    .hotspot-3 {
+      top: 75%;
+      left: 40%;
+      anchor-name: --hotspot-3;
+    }
+
+    /* Popover styles */
+    [popover="hint"] {
+      padding: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+      color: #222;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+      font-size: 0.9rem;
+      max-width: 260px;
+      line-height: 1.5;
+      margin: 0;
+      
+      /* Anchor positioning with fallback */
+      position: absolute;
+      opacity: 0;
+      transition: opacity 0.2s, display 0.2s allow-discrete, overlay 0.2s allow-discrete;
+    }
+
+    [popover="hint"]:popover-open {
+      opacity: 1;
+    }
+
+    @starting-style {
+      [popover="hint"]:popover-open {
+        opacity: 0;
+      }
+    }
+
+    /* Individual popover anchoring */
+    @supports not (anchor-name: --foo) {
+      [popover="hint"] {
+        top: 50%;
+        left: 50%;
+        translate: -50% -50%;
+      }
+    }
+    
+    .info-title {
+      margin: 0 0 0.4rem 0;
+      font-size: 1.05rem;
+      color: #005fcc;
+    }
+    
+    .info-text {
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="diagram-container">
+    <h2>System Architecture Overview</h2>
+    <p>Hover over the pulsing markers to learn more about each component.</p>
+    
+    <div style="position: relative;">
+      <!-- A placeholder image representing a diagram or map -->
+      <img src="https://picsum.photos/seed/diagram/600/350" alt="Abstract system diagram" class="diagram-image">
+      
+      <!-- Hotspots & Popovers -->
+      <button id="hotspot-1" class="hotspot hotspot-1" popovertarget="info-1" aria-details="info-1">1</button>
+      <div id="info-1" popover="hint" anchor="hotspot-1" style="position-area: top; margin-bottom: 8px;">
+        <h3 class="info-title">Data Ingestion Layer</h3>
+        <p class="info-text">This module is responsible for fetching, sanitizing, and queuing incoming data streams from external APIs.</p>
+      </div>
+
+      <button id="hotspot-2" class="hotspot hotspot-2" popovertarget="info-2" aria-details="info-2">2</button>
+      <div id="info-2" popover="hint" anchor="hotspot-2" style="position-area: top; margin-bottom: 8px;">
+        <h3 class="info-title">Processing Engine</h3>
+        <p class="info-text">The core engine computes analytics and performs complex transformations using distributed worker nodes.</p>
+      </div>
+
+      <button id="hotspot-3" class="hotspot hotspot-3" popovertarget="info-3" aria-details="info-3">3</button>
+      <div id="info-3" popover="hint" anchor="hotspot-3" style="position-area: top; margin-bottom: 8px;">
+        <h3 class="info-title">Storage & Caching</h3>
+        <p class="info-text">Processed data is persisted in a high-speed columnar database with an in-memory Redis cache layer for quick retrieval.</p>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

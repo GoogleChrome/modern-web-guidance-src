@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview Content Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #f8f9fa;
+      color: #333;
+      padding: 2rem;
+    }
+
+    .article-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      max-width: 600px;
+      width: 100%;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border: 1px solid #eaeaea;
+    }
+
+    .article-item {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid #eaeaea;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .article-item:last-child {
+      border-bottom: none;
+    }
+
+    .article-title {
+      margin: 0;
+      font-size: 1.15rem;
+    }
+
+    .article-link {
+      color: #005fcc;
+      text-decoration: none;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .article-link:hover,
+    .article-link:focus-visible {
+      text-decoration: underline;
+      outline: none;
+    }
+    
+    .article-meta {
+      font-size: 0.85rem;
+      color: #666;
+      margin: 0;
+    }
+
+    [popover="hint"] {
+      padding: 0;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      max-width: 320px;
+      margin: 0;
+      overflow: hidden;
+      
+      /* Anchor positioning */
+      position: absolute;
+      margin-top: 10px;
+      
+      opacity: 0;
+      transition: opacity 0.25s, display 0.25s allow-discrete, overlay 0.25s allow-discrete;
+    }
+
+    [popover="hint"]:popover-open {
+      opacity: 1;
+    }
+
+    @starting-style {
+      [popover="hint"]:popover-open {
+        opacity: 0;
+      }
+    }
+
+    @supports not (anchor-name: --foo) {
+      [popover="hint"] {
+        top: 50%;
+        left: 50%;
+        translate: -50% -50%;
+      }
+    }
+
+    .preview-card-image {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      display: block;
+      background-color: #eee;
+    }
+
+    .preview-card-content {
+      padding: 1.2rem;
+    }
+
+    .preview-card-title {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.25rem;
+      color: #111;
+    }
+
+    .preview-card-summary {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #555;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+  <ul class="article-list">
+    <li class="article-item">
+      <h2 class="article-title">
+        <a href="#" class="article-link preview-trigger" style="anchor-name: --article-1;" popovertarget="preview-1"
+          aria-details="preview-1">Space Telescope Captures New Galaxy</a>
+      </h2>
+      <p class="article-meta">Published 2 hours ago • Science</p>
+    </li>
+    <li class="article-item">
+      <h2 class="article-title">
+        <a href="#" class="article-link preview-trigger" style="anchor-name: --article-2;" popovertarget="preview-2"
+          aria-details="preview-2">Global Markets Reach Record Highs</a>
+      </h2>
+      <p class="article-meta">Published 4 hours ago • Finance</p>
+    </li>
+    <li class="article-item">
+      <h2 class="article-title">
+        <a href="#" class="article-link preview-trigger" style="anchor-name: --article-3;" popovertarget="preview-3"
+          aria-details="preview-3">The Future of AI in Healthcare</a>
+      </h2>
+      <p class="article-meta">Published 1 day ago • Technology</p>
+    </li>
+  </ul>
+  
+  <!-- Popovers -->
+  <div id="preview-1" popover="hint" style="top: anchor(--article-1 bottom); left: anchor(--article-1 start);">
+    <img class="preview-card-image" src="https://picsum.photos/seed/galaxy/320/160" alt="Space telescope galaxy image"
+      loading="lazy">
+    <div class="preview-card-content">
+      <h3 class="preview-card-title">Stunning Cosmic Discovery</h3>
+      <p class="preview-card-summary">Astronomers reveal breathtaking new images of a distant spiral galaxy, shedding
+        light on the early formation of the universe.</p>
+    </div>
+  </div>
+  
+  <div id="preview-2" popover="hint" style="top: anchor(--article-2 bottom); left: anchor(--article-2 start);">
+    <img class="preview-card-image" src="https://picsum.photos/seed/finance/320/160" alt="Stock market charts"
+      loading="lazy">
+    <div class="preview-card-content">
+      <h3 class="preview-card-title">Economic Surge Continues</h3>
+      <p class="preview-card-summary">Tech stocks rally into the weekend as major indices break previous resistance levels
+        amid strong quarterly earnings reports.</p>
+    </div>
+  </div>
+
+  <div id="preview-3" popover="hint" style="top: anchor(--article-3 bottom); left: anchor(--article-3 start);">
+    <img class="preview-card-image" src="https://picsum.photos/seed/healthcare/320/160" alt="Medical technology"
+      loading="lazy">
+    <div class="preview-card-content">
+      <h3 class="preview-card-title">Transforming Patient Care</h3>
+      <p class="preview-card-summary">Machine learning models are now being effectively utilized to predict patient outcomes
+        and personalize treatment plans faster than ever.</p>
+    </div>
+  </div>
+
+  <script>
+    const triggers = document.querySelectorAll('.preview-trigger');
+    
+    triggers.forEach(trigger => {
+      const targetId = trigger.getAttribute('popovertarget');
+      if (!targetId) return;
+      
+      const tooltip = document.getElementById(targetId);
+      if (!tooltip) return;
+
+      // Show on hover and focus
+      trigger.addEventListener('mouseenter', () => {
+        try { tooltip.showPopover(); } catch(e) {}
+      });
+      trigger.addEventListener('focus', () => {
+        try { tooltip.showPopover(); } catch(e) {}
+      });
+
+      // Hide when mouse leaves or focus is lost
+      trigger.addEventListener('mouseleave', () => {
+        try { tooltip.hidePopover(); } catch(e) {}
+      });
+      trigger.addEventListener('blur', () => {
+        try { tooltip.hidePopover(); } catch(e) {}
+      });
+    });
+  </script>
+
+</body>
+</html>
