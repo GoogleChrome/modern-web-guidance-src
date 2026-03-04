@@ -218,7 +218,8 @@ async function runAgentTest(targetDir: string, guideName: string): Promise<void>
     return;
   }
 
-  // Find or create test prompt
+  // Find or create test prompt.
+  // TODO: do i want it to do this?
   const promptsPath = path.join(targetDir, 'prompts.md');
   const guidePath = path.join(targetDir, 'guide.md');
   let prompt: string;
