@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll-Driven Animations: Reverse Scrolling Columns</title>
+  <style>
+    @layer reset, base, demo;
+
+    @layer demo {
+      @media (prefers-reduced-motion: no-preference) {
+        @supports ((animation-timeline: scroll())) {
+          /* As we're about to shift content out of .columns, we need it to hide its overflow */
+          .columns {
+            overflow-y: clip;
+          }
+
+          /* Shift entire column up, but not so much that it goes out of view */
+          .column-reverse {
+            transform: translateY(calc(-100% + 100vh));
+          }
+
+          /* Flip item order in reversed columns */
+          .column-reverse {
+            flex-direction: column-reverse;
+          }
+
+          @keyframes adjust-position {
+            /* Start position: shift entire column up, but not so that it goes out of view */
+            from {
+              transform: translateY(calc(-100% + 100vh));
+            }
+
+            /* End position: shift entire column down, but not so that it goes out of view */
+            to {
+              transform: translateY(calc(100% - 100vh));
+            }
+          }
+
+          /* Hook our animation with the timeline to our columns */
+          .column-reverse {
+            animation: adjust-position linear forwards;
+            animation-timeline: scroll();
+          }
+        }
+      }
+    }
+
+    @layer base {
+      html {
+        height: 100%;
+      }
+      body {
+        height: 100%;
+        place-content: center;
+      }
+      
+      /* Three column layout */
+      .columns {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1em;
+
+        width: 100%;
+        max-width: 80em;
+        margin: 0 auto;
+        position: relative;
+      }
+
+      .column {
+        display: flex;
+        flex-direction: column;
+
+        padding: 10vh 0;
+        gap: 1em;
+      }
+
+      .column > * {
+        width: 100%;
+        aspect-ratio: 0.75;
+        border: 1px solid;
+
+        place-content: center;
+        text-align: center;
+      }
+    }
+
+    @layer reset {
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      ul[class] {
+        list-style: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="columns">
+    <div class="column column-reverse">
+      <div class="item">1</div>
+      <div class="item">2</div>
+      <div class="item">3</div>
+      <div class="item">4</div>
+      <div class="item">5</div>
+      <div class="item">6</div>
+      <div class="item">7</div>
+      <div class="item">8</div>
+      <div class="item">9</div>
+      <div class="item">10</div>
+    </div>
+    <div class="column">
+      <div class="item">1</div>
+      <div class="item">2</div>
+      <div class="item">3</div>
+      <div class="item">4</div>
+      <div class="item">5</div>
+      <div class="item">6</div>
+      <div class="item">7</div>
+      <div class="item">8</div>
+      <div class="item">9</div>
+      <div class="item">10</div>
+    </div>
+    <div class="column column-reverse">
+      <div class="item">1</div>
+      <div class="item">2</div>
+      <div class="item">3</div>
+      <div class="item">4</div>
+      <div class="item">5</div>
+      <div class="item">6</div>
+      <div class="item">7</div>
+      <div class="item">8</div>
+      <div class="item">9</div>
+      <div class="item">10</div>
+    </div>
+  </div>
+</body>
+</html>
