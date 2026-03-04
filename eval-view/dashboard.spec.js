@@ -5,16 +5,15 @@ test.describe('Eval View Dashboard', () => {
     await page.goto('/');
 
     // Check title
-    await expect(page.locator('.landing-title')).toContainText('Results');
+    await expect(page.locator('.landing-title')).toContainText('Guidance Evals');
 
     // Check tabs exist
-    await expect(page.locator('.tab-button[data-tab="overview"]')).toBeVisible();
+    await expect(page.locator('.tab-button[data-tab="suites"]')).toBeVisible();
     await expect(page.locator('.tab-button[data-tab="explorer"]')).toBeVisible();
     await expect(page.locator('.tab-button[data-tab="trends"]')).toBeVisible();
 
-    // Check overview content
-    await expect(page.locator('#latest-guided-metric')).toBeVisible();
-    await expect(page.locator('#latest-unguided-metric')).toBeVisible();
+    // Check suites content
+    await expect(page.locator('.suite-item-container').first()).toBeVisible();
   });
 
   test('should load suites from API', async ({ page }) => {
@@ -28,8 +27,8 @@ test.describe('Eval View Dashboard', () => {
 
   test('should navigate to explorer tab', async ({ page }) => {
     await page.goto('/');
-    // Wait for data to be loaded (overview cards appear)
-    await expect(page.locator('#latest-guided-metric')).not.toContainText('-');
+    // Wait for data to be loaded (suites appear)
+    await expect(page.locator('.suite-item-container').first()).toBeVisible();
     
     await page.click('.tab-button[data-tab="explorer"]');
     
