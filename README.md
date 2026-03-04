@@ -73,7 +73,9 @@ gd eval report
 gd eval dashboard
 
 # Guidance Contributors
-gd guide grade [file]
+gd guide dev [dir] [--test]
+gd guide dev-all
+gd guide grade [file|dir]
 gd guide test-grader [dir]
 gd guide gen-grader [dir]
 gd guide gen-negative [dir]

@@ -25,7 +25,8 @@
     "generate-negative": "node --env-file=.env --experimental-strip-types guides/negative-gen.ts",
     "generate-grader": "node --env-file=.env --experimental-strip-types guides/grader-gen.ts",
     "test-grader": "node --experimental-strip-types guides/test-grader.ts",
-    "grade": "node --experimental-strip-types guides/run-grader.ts"
+    "grade": "node --experimental-strip-types guides/run-grader.ts",
+    "dev-guide": "node --env-file=.env --experimental-strip-types guides/dev-guide.ts"
   },
   "keywords": [],
   "author": "",

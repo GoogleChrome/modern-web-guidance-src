@@ -29,7 +29,7 @@ completion.on('action', ({ before, reply }) => {
   if (before === 'eval') {
     reply(['suite', 'task', 'smoke', 'agent', 'report', 'dashboard']);
   } else if (before === 'guide') {
-    reply(['grade', 'test-grader', 'gen-grader', 'gen-negative']);
+    reply(['dev', 'dev-all', 'grade', 'test-grader', 'gen-grader', 'gen-negative']);
   }
 });
 
@@ -111,10 +111,12 @@ Eval Commands (gd eval <action>):
   dashboard      Start the evaluation dashboard
 
 Guide Commands (gd guide <action>):
-  grade [file]       Run the grader on a specific demo or negative-demo file
-  test-grader [dir]  Check grader calibration against demo and negative-demo
-  gen-grader [dir]   Generate a new grader script
-  gen-negative [dir] Generate negative examples
+  dev [dir] [--test]   Auto-generate and calibrate guide artifacts
+  dev-all              Batch-process all incomplete guides
+  grade [file|dir]     Run/calibrate grader
+  test-grader [dir]    Check grader calibration against demo and negative-demo
+  gen-grader [dir]     Generate a new grader script
+  gen-negative [dir]   Generate negative examples
 
 Other Commands:
   setup-completion   Install shell auto-completion for Fish, Bash, and Zsh
@@ -184,14 +186,15 @@ Options:
   } else if (workflow === 'guide') {
     switch (action) {
       case 'grade':
-        const { runGrader } = await import('../guides/run-grader.ts');
-        await runGrader(passThroughArgs[0]);
+        const { gradeFile } = await import('../guides/run-grader.ts');
+        const gradeTarget = path.resolve(process.cwd(), passThroughArgs[0]);
+        await gradeFile(gradeTarget);
         inProcess = true;
         break;
       case 'test-grader':
         const { testGrader } = await import('../guides/test-grader.ts');
-        await testGrader(passThroughArgs[0] || process.cwd());
-        inProcess = true;
+        const calibrationResult = await testGrader(passThroughArgs[0] || process.cwd());
+        process.exit(calibrationResult.success ? 0 : 1);
         break;
       case 'gen-grader':
         const { generateGrader } = await import('../guides/grader-gen.ts');
@@ -201,6 +204,22 @@ Options:
       case 'gen-negative':
         const { generateNegative } = await import('../guides/negative-gen.ts');
         await generateNegative(passThroughArgs[0]);
+        inProcess = true;
+        break;
+      case 'dev':
+        const { devGuide } = await import('../guides/dev-guide.ts');
+        const devDir = passThroughArgs.find(a => !a.startsWith('--'));
+        if (!devDir) {
+          console.error('Usage: gd guide dev <path/to/guide> [--test]');
+          process.exit(1);
+        }
+        const devOpts = { test: passThroughArgs.includes('--test') };
+        const devSuccess = await devGuide(devDir, devOpts);
+        process.exit(devSuccess ? 0 : 1);
+        break;
+      case 'dev-all':
+        const { devAll } = await import('../guides/dev-guide.ts');
+        await devAll();
         inProcess = true;
         break;
       default:

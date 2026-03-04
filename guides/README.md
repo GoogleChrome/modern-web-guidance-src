@@ -1,5 +1,38 @@
 ## Testing Guides
 
+### Automated (Recommended)
+
+Use `gd guide dev` to automatically generate missing artifacts and calibrate the grader in one command:
+
+```bash
+gd guide dev <path/to/guide_dir>
+
+# e.g. gd guide dev guides/performance/content-vis
+```
+
+This will:
+1. Inventory existing artifacts (`guide.md`, `demo.html`, `expectations.md`, `negative-demo.html`, `grader.ts`)
+2. Generate `negative-demo.html` if missing (via Gemini CLI)
+3. Generate `grader.ts` if missing (via Gemini CLI)
+4. Calibrate the grader (demo.html should pass 100%, negative-demo.html should fail 100%)
+5. If calibration fails, regenerate the grader with failure context and retry (up to 2 retries)
+
+**Prerequisites:** The guide directory must contain `guide.md`, `demo.html`, and `expectations.md`.
+
+Add `--test` to also run an agent test after calibration:
+
+```bash
+gd guide dev <path/to/guide_dir> --test
+```
+
+To batch-process all incomplete guides:
+
+```bash
+gd guide dev-all
+```
+
+### Manual Steps
+
 1. Create a `guide.md`, `expectations.md`, and `demo.html` in the desired guide directory (e.g. `guidance/guides/performance/content-vis/`).
 2. Set `GEMINI_API_KEY` and `GEMINI_MODEL` environment variables in `guidance/.env`:
 
