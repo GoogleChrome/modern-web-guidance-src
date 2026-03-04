@@ -21,6 +21,3 @@ harness/results/
 # Coverage
 coverage/
 serving/.mcp-data/
-
-# Generated Skills
-skills/modern-web/

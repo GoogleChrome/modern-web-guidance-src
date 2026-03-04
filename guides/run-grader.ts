@@ -62,7 +62,6 @@ export async function runGrader(targetFileRel: string) {
   });
 }
 
-}
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
