@@ -1,1 +1,1 @@
-- Create an extremely minimal video landing page that preloads its critical assets. This includes a video poster image 'poster.jpg', a custom web font 'brand-font.woff2' necessary for the header, and a heavy 'background-init.js' script that handles non-critical analytics.
+- Create an extremely minimal video landing page that optimizes for LCP. This includes a video poster image 'poster.jpg' (the LCP element), a custom web font 'brand-font.woff2' necessary for the header, and a heavy 'background-init.js' script that handles non-critical analytics.

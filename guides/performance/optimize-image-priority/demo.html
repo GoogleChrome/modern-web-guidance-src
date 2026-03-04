@@ -8,23 +8,28 @@
 
 <body>
   <h1>Product Landing Page</h1>
-  
+
   <!-- LCP Image: Boosted to High Priority -->
   <img src="hero-lcp.jpg" alt="Product Hero" fetchpriority="high" width="600" height="400">
-  
+
   <div class="gallery">
     <!-- Visible gallery image -->
     <img src="gallery-main.jpg" alt="Main Gallery Image" width="300" height="200">
-  
+
     <!-- Hidden Gallery Image: Dropped to Low Priority -->
     <img src="gallery-alt.jpg" alt="Secondary Gallery Image" fetchpriority="low" width="300" height="200"
       style="display: none;">
   </div>
-  <!-- Spacer to create a "below the fold" area -->
-  <div style="height: 200vh;"></div>
-
-  <!-- Below the fold image: No high fetching priority -->
-  <img src="footer-logo.png" alt="Footer Logo" width="100" height="50">
+  <nav>
+    <ul>
+      <li>Products
+        <div class="mega-menu" style="display: none;">
+          <!-- Image hidden in a dropdown: Dropped to Low Priority -->
+          <img src="mega-menu-promo.jpg" alt="Special Offer" fetchpriority="low" width="300" height="150">
+        </div>
+      </li>
+    </ul>
+  </nav>
 </body>
 
 </html>

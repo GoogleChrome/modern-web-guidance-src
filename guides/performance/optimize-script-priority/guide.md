@@ -9,25 +9,25 @@ sources:
 
 # Optimize script priority
 
-Browsers assign default priorities to scripts based on where they appear in the document and whether they have attributes like `async` or `defer`. Using `fetchpriority` gives developers explicit control to ensure critical interactivity scripts load first, while non-essential scripts stay out of the way.
+Browsers assign default priorities to scripts based on where they appear in the document and whether they have attributes like `async` or `defer`. Using `fetchpriority` gives developers explicit control to ensure critical scripts load first, while non-essential scripts stay out of the way.
 
 ## How to implement
 
-1. **Identify Critical Scripts**: Determine which scripts are essential for the page's core functionality or initial user interaction.
-2. **Elevate Critical Async Scripts**: For critical scripts loaded with `async`, add the `fetchpriority="high"` attribute to ensure they are prioritized during the discovery phase.
-3. **Deprioritize Non-Essential Scripts**: For scripts that are not needed immediately (e.g., analytics, ads, or below-the-fold widgets), add `fetchpriority="low"`.
-4. **Sequence Parser-Blocking Scripts**: Use `fetchpriority="low"` on parser-blocking scripts at the end of the body to prevent them from contending for bandwidth with more critical resources.
+1. **Identify critical scripts**: Determine which scripts are essential for the page's core functionality or initial user interaction.
+2. **Elevate critical async scripts**: For critical scripts loaded with `async`, add the `fetchpriority="high"` attribute to ensure they are prioritized during the discovery phase.
+3. **Deprioritize non-essential scripts**: For scripts that are not needed immediately (e.g., analytics, ads, or below-the-fold widgets), add `fetchpriority="low"`.
+4. **Sequence parser-blocking scripts**: Use `fetchpriority="low"` on parser-blocking scripts at the end of the body to prevent them from contending for bandwidth with more critical resources.
 
 ## Example code
 
 ```html
-<!-- DO: Elevate the priority of the critical app logic -->
+<!-- Elevate the priority of the critical app logic -->
 <script src="/js/app.js" async fetchpriority="high"></script>
 
-<!-- DO: Deprioritize non-essential tracking scripts -->
+<!-- Deprioritize non-essential tracking scripts -->
 <script src="/js/tracker.js" async fetchpriority="low"></script>
 
-<!-- DO: Deprioritize late-body scripts to favor critical images or CSS -->
+<!-- Deprioritize late-body scripts to favor critical images or CSS -->
 <script src="/js/legacy-widgets.js" fetchpriority="low"></script>
 ```
 
@@ -41,6 +41,6 @@ Browsers assign default priorities to scripts based on where they appear in the 
 
 ## Fallbacks & Browser Support
 
-{{ BASELINE_STATUS("fetch-priority") }}
+The Fetch Priority API is not Baseline.
 
 The `fetchpriority` attribute is a progressive enhancement. Browsers that do not support it will ignore the attribute and use their internal scheduling logic without error. No explicit feature detection or fallback logic is required for basic usage.
