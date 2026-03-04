@@ -239,10 +239,10 @@ export async function testGrader(targetDirAbs: string) {
   if (hasError) {
     console.log(cBold(cRed(`Failed! The grader needs calibration.`)));
     if (demoFailed) {
-        console.log(`\nView demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), demoParams.outDir)}`);
+      console.log(`\nView demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(__dirname, demoParams.outDir)}`);
     }
     if (negativeFailed) {
-        console.log(`\nView negative-demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), negativeParams.outDir)}`);
+      console.log(`\nView negative-demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(__dirname, negativeParams.outDir)}`);
     }
     process.exit(1);
   } else {
