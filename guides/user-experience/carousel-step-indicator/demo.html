@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll-Driven Animations: Carousel Step Indicator</title>
+  <style>
+    @layer reset, base, demo;
+
+    @layer demo {
+      @layer scroll-snapping {
+        .scroller {
+          scroll-snap-type: x mandatory;
+        }
+
+        .scroller > * {
+          scroll-snap-align: center;
+        }
+      }
+
+      @layer scroll-driven-animations {
+        @keyframes grow-progress {
+          to { transform: scaleX(1); }
+        }
+
+        .progressbar {
+          --num-items: 10;
+          transform: scaleX(calc(1 / var(--num-items)));
+          transform-origin: 0% 50%;
+          background-color: red;
+        }
+
+        .container {
+          timeline-scope: --scroller;
+        }
+        .scroller {
+          scroll-timeline: --scroller inline;
+        }
+        .progressbar {
+          animation: auto grow-progress linear forwards;
+          animation-timeline: --scroller;
+        }
+      }
+    }
+
+    @layer base {
+      html {
+        height: 100%;
+      }
+      body {
+        height: 100%;
+        place-content: center;
+      }
+
+      .container {
+        width: 800px;
+        max-width: 90vw;
+        margin: 0 auto;
+        position: relative;
+      }
+
+      .scroller {
+        display: flex;
+        gap: 0.5em;
+        overflow-x: scroll;
+        scroll-behavior: smooth;
+        border: 1px solid black;
+        padding: 1em;
+      }
+
+      .scroller > * {
+        flex-shrink: 0;
+        width: 100%;
+        height: 200px;
+        border: 1px solid black;
+        place-content: center;
+        text-align: center;
+      }
+
+      .progressbar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 1em;
+      }
+    }
+
+    @layer reset {
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      ul[class] {
+        list-style: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <ul class="scroller">
+      <li class="entry">1</li>
+      <li class="entry">2</li>
+      <li class="entry">3</li>
+      <li class="entry">4</li>
+      <li class="entry">5</li>
+      <li class="entry">6</li>
+      <li class="entry">7</li>
+      <li class="entry">8</li>
+      <li class="entry">9</li>
+      <li class="entry">10</li>
+    </ul>
+    <div class="progressbar"></div>
+  </div>
+</body>
+</html>
