@@ -87,6 +87,38 @@ gd guide test-grader <path/to/guide_dir>
 
 ## Testing with an Agent
 
+### Automated via `--test` (Recommended)
+
+Pass `--test` to `gd guide dev` to run a full agent evaluation after calibration:
+
+```bash
+gd guide dev <path/to/guide_dir> --test
+```
+
+This runs the following pipeline after the grader calibrates successfully:
+
+1. **Generate `prompts.md`** if missing — uses Gemini CLI to create a set of developer-facing prompts derived from the guide
+2. **Find or create a task file** in `harness/tasks/` — scans existing tasks for a matching `grader:` field, or creates `<guideName>-task.md` using the first prompt from `prompts.md` (defaults to `daily-grind` base app)
+3. **Grade the base app as-is** (pre-score) — establishes a baseline before any agent runs
+4. **Run the agent** in both `unguided` (no guide access) and `guided` (with MCP guide access) modes against the base app
+5. **Grade both outputs** and print a comparison:
+
+```
+Agent test results:
+  Base app (pre):   1/9 checks passed (11%)
+  Unguided:         3/9 checks passed (33%)
+  Guided:           8/9 checks passed (89%)
+  Guide impact:     +56% (vs unguided)
+```
+
+The agent and base app are selected from the [harness config](../harness/config.ts) (`suite.agent` and the task's `base_app` field).
+
+The generated task file also enables future `gd eval suite` runs against this guide — any task in `harness/tasks/` is automatically picked up by the eval harness.
+
+### Manual Steps
+
+If you need more control, you can run each step individually:
+
 1. Configure the following settings for your run in the [harness config](../harness/config.ts):
 
 ```
