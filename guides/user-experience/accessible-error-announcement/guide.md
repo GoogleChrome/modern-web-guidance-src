@@ -212,6 +212,3 @@ UserInvalidFallback.init();
 
 2.  **Internationalization**:
     *   Ensure the text content of your error message (`#email-error`) is translated. The logic remains the same.
-
-3.  **Performance**:
-    *   `input.matches(':user-invalid')` is very fast. Attaching these listeners to hundreds of inputs is generally negligible, but event delegation (listening on the `<form>` element) is a good optimization for large forms.
