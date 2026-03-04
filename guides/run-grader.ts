@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-function findGrader(startDir: string): string | null {
+export function findGrader(startDir: string): string | null {
   let currentDir = startDir;
   while (currentDir !== path.dirname(currentDir)) {
     const graderPath = path.join(currentDir, 'grader.ts');
@@ -16,6 +16,30 @@ function findGrader(startDir: string): string | null {
     currentDir = path.dirname(currentDir);
   }
   return null;
+}
+
+export interface PlaywrightOptions {
+  targetFileAbs: string;
+  graderPath: string;
+  reporters: string[];
+  htmlOutputDir?: string;
+  jsonOutputName?: string;
+  stdio?: 'inherit' | 'ignore' | 'pipe';
+}
+
+export function executePlaywright(opts: PlaywrightOptions) {
+  const playwrightConfig = path.join(__dirname, 'playwright.config.ts');
+  const reporterArgs = opts.reporters.length > 0 ? ['--reporter=' + opts.reporters.join(',')] : [];
+  
+  return spawn('pnpm', ['--silent', '--filter', 'guides', 'exec', 'playwright', 'test', '-c', playwrightConfig, opts.graderPath, ...reporterArgs], {
+    stdio: opts.stdio || 'inherit',
+    env: {
+      ...process.env,
+      TARGET_FILE: opts.targetFileAbs,
+      ...(opts.htmlOutputDir ? { PLAYWRIGHT_HTML_OUTPUT_DIR: opts.htmlOutputDir } : {}),
+      ...(opts.jsonOutputName ? { PLAYWRIGHT_JSON_OUTPUT_NAME: opts.jsonOutputName } : {})
+    }
+  });
 }
 
 async function run() {
@@ -42,18 +66,15 @@ async function run() {
   console.log(`Target File: ${targetFileAbs}`);
   console.log(`Grader: ${graderPath}`);
 
-  const playwrightConfig = path.join(__dirname, 'playwright.config.ts');
-
   // Output the HTML report to a grade-report folder inside the target file's directory
   const outputDirPath = path.join(path.dirname(targetFileAbs), 'grade-report');
 
-  const child = spawn('pnpm', ['--filter', 'guides', 'exec', 'playwright', 'test', '-c', playwrightConfig, graderPath, '--reporter=html'], {
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      TARGET_FILE: targetFileAbs,
-      PLAYWRIGHT_HTML_OUTPUT_DIR: outputDirPath
-    }
+  const child = executePlaywright({
+    targetFileAbs,
+    graderPath,
+    reporters: ['html'],
+    htmlOutputDir: outputDirPath,
+    stdio: 'inherit'
   });
 
   child.on('close', (code) => {
@@ -69,7 +90,11 @@ async function run() {
   });
 }
 
-run().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+
+
+if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
+  run().catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
+}

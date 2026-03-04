@@ -1,8 +1,8 @@
-import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { fileURLToPath } from 'url';
+import { findGrader, executePlaywright } from './run-grader.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,32 +13,18 @@ const cYellow = (str: string) => `\x1b[33m${str}\x1b[0m`;
 const cCyan = (str: string) => `\x1b[36m${str}\x1b[0m`;
 const cBold = (str: string) => `\x1b[1m${str}\x1b[0m`;
 
-function findGrader(startDir: string): string | null {
-  let currentDir = startDir;
-  while (currentDir !== path.dirname(currentDir)) {
-    const graderPath = path.join(currentDir, 'grader.ts');
-    if (fs.existsSync(graderPath)) {
-      return graderPath;
-    }
-    currentDir = path.dirname(currentDir);
-  }
-  return null;
-}
-
-async function runPlaywright(targetFileAbs: string, graderPath: string, htmlOutputDir: string): Promise<any> {
-  const playwrightConfig = path.join(__dirname, 'playwright.config.ts');
+async function runPlaywright(targetFileAbs: string, graderPath: string, htmlOutputDir: string, stdio: 'inherit' | 'ignore' = 'inherit'): Promise<any> {
   const tmpJson = path.join(os.tmpdir(), `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
   
   return new Promise((resolve, reject) => {
-    // Run playwright using both json and html reporters
-    const child = spawn('pnpm', ['--filter', 'guides', 'exec', 'playwright', 'test', '-c', playwrightConfig, graderPath, '--reporter=json,html'], {
-      stdio: 'ignore', // Ignore stdout to not mix playwright logs visually, we will parse the json
-      env: {
-        ...process.env,
-        TARGET_FILE: targetFileAbs,
-        PLAYWRIGHT_JSON_OUTPUT_NAME: tmpJson,
-        PLAYWRIGHT_HTML_OUTPUT_DIR: htmlOutputDir
-      }
+    // Run playwright using both json and html reporters via shared utility
+    const child = executePlaywright({
+      targetFileAbs,
+      graderPath,
+      reporters: ['json', 'html'],
+      htmlOutputDir,
+      jsonOutputName: tmpJson,
+      stdio
     });
 
     child.on('close', () => {
@@ -101,7 +87,7 @@ export async function testGrader(targetDirRel: string) {
   // 1. Test against demo.html
   console.log(cYellow(`Running against demo.html... (Expecting 100% pass)`));
   try {
-    const demoResults = await runPlaywright(demoParams.file, graderPath, demoParams.outDir);
+    const demoResults = await runPlaywright(demoParams.file, graderPath, demoParams.outDir, 'inherit');
     const unexpected = demoResults.stats?.unexpected || 0;
     const expected = demoResults.stats?.expected || 0;
     
@@ -127,29 +113,33 @@ export async function testGrader(targetDirRel: string) {
 
   console.log('');
 
-  // 2. Test against negative-demo.html
-  console.log(cYellow(`Running against negative-demo.html... (Expecting 100% fail)`));
-  try {
-    const negativeResults = await runPlaywright(negativeParams.file, graderPath, negativeParams.outDir);
-    const expected = negativeResults.stats?.expected || 0; // "expected" means tests passed in Playwright (bad for us)
-    const unexpected = negativeResults.stats?.unexpected || 0; // "unexpected" means tests failed (good for us)
-    
-    if (expected > 0) {
-      console.log(cRed(`❌ negative-demo.html incorrectly passed ${expected} tests!`));
-      negativeResults.suites?.forEach((suite: any) => printPassingSpecs(suite));
+  if (hasError) {
+    console.log(cYellow(`Skipping negative-demo.html run due to failures in demo.html`));
+  } else {
+    // 2. Test against negative-demo.html
+    console.log(cYellow(`Running against negative-demo.html... (Expecting 100% fail)`));
+    try {
+      const negativeResults = await runPlaywright(negativeParams.file, graderPath, negativeParams.outDir, 'ignore');
+      const expected = negativeResults.stats?.expected || 0; // "expected" means tests passed in Playwright (bad for us)
+      const unexpected = negativeResults.stats?.unexpected || 0; // "unexpected" means tests failed (good for us)
+      
+      if (expected > 0) {
+        console.log(cRed(`❌ negative-demo.html incorrectly passed ${expected} tests!`));
+        negativeResults.suites?.forEach((suite: any) => printPassingSpecs(suite));
+        hasError = true;
+        negativeFailed = true;
+      } else if (unexpected > 0) {
+        console.log(cGreen(`✅ negative-demo.html failed all ${unexpected} tests correctly.`));
+      } else {
+         console.log(cYellow(`⚠️  Warning: No tests were run for negative-demo.html`));
+         hasError = true;
+         negativeFailed = true;
+      }
+    } catch (err: any) {
+      console.error(cRed(`Failed to test negative-demo.html: ${err.message}`));
       hasError = true;
       negativeFailed = true;
-    } else if (unexpected > 0) {
-      console.log(cGreen(`✅ negative-demo.html failed all ${unexpected} tests correctly.`));
-    } else {
-       console.log(cYellow(`⚠️  Warning: No tests were run for negative-demo.html`));
-       hasError = true;
-       negativeFailed = true;
     }
-  } catch (err: any) {
-    console.error(cRed(`Failed to test negative-demo.html: ${err.message}`));
-    hasError = true;
-    negativeFailed = true;
   }
 
   console.log('');
