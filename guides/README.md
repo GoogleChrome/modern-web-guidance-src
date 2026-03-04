@@ -44,6 +44,14 @@ On each `pnpm grade` run, a `grade-report` folder will be created in the same di
 
 The grader should pass at 100% for `demo.html`, and 0% for `negative-demo.html`. If needed, make changes to the files created in this folder (including `guide.md`), repeating any of the above steps, until this is reliably true.
 
+You can automatically verify that your grader is perfectly calibrated against both of these files by running:
+
+```bash
+pnpm test-grader <path/to/guide_dir>
+
+# e.g. pnpm test-grader guides/performance/content-vis
+```
+
 ## Testing with an Agent
 
 1. Configure the following settings for your run in the [harness config](../harness/config.ts):

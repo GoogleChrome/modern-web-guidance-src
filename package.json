@@ -24,6 +24,7 @@
     "setup:playwright": "pnpm --filter eval-view exec playwright install",
     "generate-negative": "gd gen:negative",
     "generate-grader": "gd gen:grader",
+    "test-grader": "gd test-grader",
     "grade": "gd grade"
   },
   "keywords": [],
