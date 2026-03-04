@@ -3,5 +3,5 @@
 - No more than two `<img>` elements on the page have the `fetchpriority="high"` attribute.
 - The `<img>` element for 'gallery-alt.jpg' (which is hidden or off-screen initially) has the `fetchpriority="low"` attribute.
 - The `<img>` element for 'mega-menu-promo.jpg' has the `fetchpriority="low"` attribute.
-- No image elements located below the fold have the `fetchpriority="high"` attribute.
+- The `<img>` element for 'footer-logo.png' (located below the fold) does NOT have the `fetchpriority` attribute.
 - No `<img>` elements have the deprecated `importance` attribute.
