@@ -12,13 +12,7 @@ import { generateGrader, generateGraderWithContext } from './grader-gen.ts';
 import { testGrader, findGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
 import { createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders } from '../harness/lib/agent-shared.ts';
 import { Agents, environmentConfig } from '../harness/config.ts';
-
-const cRed = (str: string) => `\x1b[31m${str}\x1b[0m`;
-const cGreen = (str: string) => `\x1b[32m${str}\x1b[0m`;
-const cYellow = (str: string) => `\x1b[33m${str}\x1b[0m`;
-const cCyan = (str: string) => `\x1b[36m${str}\x1b[0m`;
-const cBold = (str: string) => `\x1b[1m${str}\x1b[0m`;
-const cDim = (str: string) => `\x1b[2m${str}\x1b[0m`;
+import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
 
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2

@@ -6,75 +6,88 @@ import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
 import { fileURLToPath } from 'url';
+import { cRed, cCyan } from '../lib/colors.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-// Load environment variables strictly without external dependencies (Node 20.12+)
+// Load environment variables (Node 20.12+)
 try {
   process.loadEnvFile(path.join(rootDir, '.env'));
 } catch (e) {
   // Ignore if file doesn't exist
 }
 
-// 1. Setup Shell Auto-Completion (Native Bash/Zsh/Fish support)
-const completion = omelette('gd <workflow> <action> <item>');
+// --- Shell Auto-Completion ---
 
-completion.on('workflow', ({ reply }) => {
-  reply(['eval', 'guide', 'setup-completion']);
+function listGuideDirs(): string[] {
+  const guidesDir = path.join(rootDir, 'guides');
+  const categories = ['performance', 'user-experience', 'accessibility', 'security'];
+  const dirs: string[] = [];
+  for (const cat of categories) {
+    const catDir = path.join(guidesDir, cat);
+    if (!fs.existsSync(catDir)) continue;
+    for (const entry of fs.readdirSync(catDir, { withFileTypes: true })) {
+      if (entry.isDirectory()) dirs.push(`guides/${cat}/${entry.name}`);
+    }
+  }
+  return dirs;
+}
+
+const completion = omelette('gd <command> <arg1> <arg2>');
+
+completion.on('command', ({ reply }) => {
+  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'eval', 'setup-completion']);
 });
 
-completion.on('action', ({ before, reply }) => {
+completion.on('arg1', ({ before, reply }) => {
   if (before === 'eval') {
     reply(['suite', 'task', 'smoke', 'agent', 'report', 'dashboard']);
-  } else if (before === 'guide') {
-    reply(['dev', 'dev-all', 'grade', 'test-grader', 'gen-grader', 'gen-negative']);
+  } else if (before === 'gen') {
+    reply(['grader', 'negative']);
+  } else if (['dev', 'test', 'grade'].includes(before)) {
+    reply(listGuideDirs());
   }
 });
 
-completion.on('item', ({ before, line, reply }) => {
-  if (!line.includes('eval') && !line.includes('guide')) return;
-
-  if (before === 'task') {
+completion.on('arg2', ({ before, line, reply }) => {
+  if (before === 'task' && line.includes('eval')) {
     const tasksDir = path.join(rootDir, 'harness', 'tasks');
     if (fs.existsSync(tasksDir)) {
-      const tasks = fs.readdirSync(tasksDir)
-        .filter(f => f.endsWith('.md'))
-        .map(f => f.replace('.md', ''));
-      reply(tasks);
+      reply(fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).map(f => f.replace('.md', '')));
     }
-  } else if (before === 'agent') {
+  } else if (before === 'agent' && line.includes('eval')) {
     const baseAppsDir = path.join(rootDir, 'harness', 'base_apps');
     if (fs.existsSync(baseAppsDir)) {
-      const apps = fs.readdirSync(baseAppsDir)
-        .filter(dir => fs.statSync(path.join(baseAppsDir, dir)).isDirectory());
-      reply(apps);
+      reply(fs.readdirSync(baseAppsDir).filter(d => fs.statSync(path.join(baseAppsDir, d)).isDirectory()));
     }
+  } else if (['grader', 'negative'].includes(before) && line.includes('gen')) {
+    reply(listGuideDirs());
   }
 });
 
 completion.init();
 
-// 2. Setup argument parsing logic using Node's zero-dependency `util.parseArgs`
+// --- Argument Parsing ---
+
 const { positionals, values } = parseArgs({
   args: process.argv.slice(2),
   options: {
     help: { type: 'boolean', short: 'h' },
     version: { type: 'boolean', short: 'v' },
+    test: { type: 'boolean' },
+    verbose: { type: 'boolean' },
   },
   allowPositionals: true,
-  strict: false // allow pass-through args for the underlying scripts
+  strict: false,
 });
 
-// Helper functions for spawning children
+// --- Helpers ---
+
 function spawnChild(command: string, args: string[], options: import('child_process').SpawnOptions = {}): Promise<number> {
   return new Promise((resolve, reject) => {
-    const p = spawn(command, args, {
-      stdio: 'inherit',
-      cwd: rootDir,
-      ...options,
-    });
+    const p = spawn(command, args, { stdio: 'inherit', cwd: rootDir, ...options });
     p.on('close', (code) => resolve(code ?? 0));
     p.on('error', (err) => reject(err));
   });
@@ -84,165 +97,178 @@ function runNpm(args: string[]) {
   return spawnChild('pnpm', args);
 }
 
-function runNode(args: string[]) {
-  return spawnChild('node', args);
+function requireArg(arg: string | undefined, usage: string): string {
+  if (!arg) {
+    console.error(`${cRed('Missing argument.')} Usage: ${usage}`);
+    process.exit(1);
+  }
+  return arg;
 }
 
-// 3. Command Routing
+// --- Command Routing ---
+
 async function main() {
-  const workflow = positionals[0];
+  const command = positionals[0];
 
-  if (values.help || !workflow) {
+  if (values.help || !command) {
     console.log(`
-Guidance CLI (gd) - Unified interface for operations
+Guidance CLI (gd)
 
-Usage: gd <workflow> <action> [options]
+Usage: gd <command> [options]
 
-Workflows:
-  eval     System Evaluators: Test the whole system and run evaluations
-  guide    Guidance Contributors: Create, test, and calibrate guidance files
+Guide Development:
+  dev <dir> [--test]          Auto-generate and calibrate guide artifacts
+  dev-all                     Batch-process all incomplete guides
+  grade <file|dir>            Run/calibrate grader
+  test <dir>                  Check grader calibration (demo + negative-demo)
+  gen grader <dir>            Generate a new grader script
+  gen negative <dir>          Generate negative examples
 
-Eval Commands (gd eval <action>):
-  suite          Run the full evaluation suite
-  task [id]      Run a specific task
-  smoke          Run the quick smoke test
-  agent [tmpl]   Run an agent against a template
-  report         Generate an evaluation report
-  dashboard      Start the evaluation dashboard
+Evaluation:
+  eval suite                  Run the full evaluation suite
+  eval task <id>              Run a specific task
+  eval smoke                  Run the quick smoke test
+  eval agent <tmpl> <prompt>  Run an agent against a template
+  eval report                 Generate an evaluation report
+  eval dashboard              Start the evaluation dashboard
 
-Guide Commands (gd guide <action>):
-  dev [dir] [--test]   Auto-generate and calibrate guide artifacts
-  dev-all              Batch-process all incomplete guides
-  grade [file|dir]     Run/calibrate grader
-  test-grader [dir]    Check grader calibration against demo and negative-demo
-  gen-grader [dir]     Generate a new grader script
-  gen-negative [dir]   Generate negative examples
-
-Other Commands:
-  setup-completion   Install shell auto-completion for Fish, Bash, and Zsh
+Other:
+  setup-completion            Install shell auto-completion
 
 Options:
-  -h, --help     Show this help
-  -v, --version  Show version number
+  -h, --help      Show this help
+  --test          Run agent test after calibration (with dev)
+  --verbose       Show additional output
     `);
     process.exit(0);
   }
 
-  const passThroughArgs = process.argv.slice(4); // Grab raw args after `gd <workflow> <action>`
-  let inProcess = false;
-
-  if (workflow === 'setup-completion') {
-    completion.setupShellInitFile();
-    console.log('Auto-completion successfully installed into your shell profile.');
-    console.log('Please restart your terminal or run your shell configuration file again to apply.');
-    process.exit(0);
-  }
-
-  const action = positionals[1];
-  if (!action) {
-    console.error(`Missing action for workflow '${workflow}'. Run 'gd --help' for usage.`);
-    process.exit(1);
-  }
-
-  if (workflow === 'eval') {
-    switch (action) {
-      case 'suite':
-        const buildCode = await runNpm(['build:mcp']);
-        if (buildCode !== 0) process.exit(buildCode);
-        const { runSuite } = await import('../harness/run_suite.ts');
-        await runSuite();
-        inProcess = true;
-        break;
-      case 'task':
-        const { runSingleTask } = await import('../harness/run_suite.ts');
-        await runSingleTask(passThroughArgs[0]);
-        inProcess = true;
-        break;
-      case 'smoke':
-        const { runSmokeTest } = await import('../harness/quick-smoke.ts');
-        await runSmokeTest();
-        inProcess = true;
-        break;
-      case 'agent':
-        const { runAgent } = await import('../harness/run_suite.ts');
-        await runAgent(passThroughArgs[0], passThroughArgs[1]);
-        inProcess = true;
-        break;
-      case 'report':
-        const { evaluate } = await import('../harness/evaluate.ts');
-        await evaluate();
-        inProcess = true;
-        break;
-      case 'dashboard':
-        process.chdir(path.join(rootDir, 'eval-view'));
-        process.argv = [process.argv[0], process.argv[1], ...passThroughArgs];
-        await import('../eval-view/server.js');
-        inProcess = true;
-        break;
-      default:
-        console.error(`Unknown 'eval' command: ${action}. Run 'gd --help' for usage.`);
-        process.exit(1);
+  switch (command) {
+    case 'setup-completion': {
+      completion.setupShellInitFile();
+      console.log('Auto-completion installed. Restart your terminal to apply.');
+      process.exit(0);
     }
-  } else if (workflow === 'guide') {
-    switch (action) {
-      case 'grade':
-        const { gradeFile } = await import('../guides/run-grader.ts');
-        const gradeTarget = path.resolve(process.cwd(), passThroughArgs[0]);
-        await gradeFile(gradeTarget);
-        inProcess = true;
-        break;
-      case 'test-grader':
-        const { testGrader } = await import('../guides/test-grader.ts');
-        const calibrationResult = await testGrader(passThroughArgs[0] || process.cwd());
-        process.exit(calibrationResult.success ? 0 : 1);
-        break;
-      case 'gen-grader':
+
+    case 'dev': {
+      const dir = requireArg(positionals[1], 'gd dev <path/to/guide> [--test]');
+      const { devGuide } = await import('../guides/dev-guide.ts');
+      const success = await devGuide(dir, {
+        test: !!values.test,
+        verbose: !!values.verbose,
+      });
+      process.exit(success ? 0 : 1);
+    }
+
+    case 'dev-all': {
+      const { devAll } = await import('../guides/dev-guide.ts');
+      await devAll({ verbose: !!values.verbose });
+      break;
+    }
+
+    case 'grade': {
+      const target = requireArg(positionals[1], 'gd grade <path/to/file-or-dir>');
+      const { gradeFile } = await import('../guides/run-grader.ts');
+      await gradeFile(path.resolve(process.cwd(), target));
+      break;
+    }
+
+    case 'test': {
+      const dir = requireArg(positionals[1], 'gd test <path/to/guide>');
+      const { testGrader } = await import('../guides/test-grader.ts');
+      const result = await testGrader(dir);
+      process.exit(result.success ? 0 : 1);
+    }
+
+    case 'gen': {
+      const subcommand = requireArg(positionals[1], 'gd gen <grader|negative> <path/to/guide>');
+      const dir = requireArg(positionals[2], `gd gen ${subcommand} <path/to/guide>`);
+      if (subcommand === 'grader') {
         const { generateGrader } = await import('../guides/grader-gen.ts');
-        await generateGrader(passThroughArgs[0]);
-        inProcess = true;
-        break;
-      case 'gen-negative':
+        await generateGrader(dir);
+      } else if (subcommand === 'negative') {
         const { generateNegative } = await import('../guides/negative-gen.ts');
-        await generateNegative(passThroughArgs[0]);
-        inProcess = true;
-        break;
-      case 'dev':
-        const { devGuide } = await import('../guides/dev-guide.ts');
-        const devDir = passThroughArgs.find(a => !a.startsWith('--'));
-        if (!devDir) {
-          console.error('Usage: gd guide dev <path/to/guide> [--test]');
-          process.exit(1);
-        }
-        const devOpts = { test: passThroughArgs.includes('--test') };
-        const devSuccess = await devGuide(devDir, devOpts);
-        process.exit(devSuccess ? 0 : 1);
-        break;
-      case 'dev-all':
-        const { devAll } = await import('../guides/dev-guide.ts');
-        await devAll();
-        inProcess = true;
-        break;
-      default:
-        console.error(`Unknown 'guide' command: ${action}. Run 'gd --help' for usage.`);
+        await generateNegative(dir);
+      } else {
+        console.error(`${cRed(`Unknown gen target: ${subcommand}.`)} Expected: grader, negative`);
         process.exit(1);
+      }
+      break;
     }
-  } else {
-    // Legacy fallback help map
-    if (['suite', 'task', 'smoke', 'agent', 'report', 'dashboard'].includes(workflow)) {
-      console.error(`\x1b[31mError:\x1b[0m Command '${workflow}' has been moved to the 'eval' namespace.\n  Please run: \x1b[36mgd eval ${workflow}\x1b[0m\n`);
-    } else if (['grade', 'test-grader', 'gen:grader', 'gen:negative'].includes(workflow)) {
-      const mapped = workflow.replace('gen:', 'gen-');
-      console.error(`\x1b[31mError:\x1b[0m Command '${workflow}' has been moved to the 'guide' namespace.\n  Please run: \x1b[36mgd guide ${mapped}\x1b[0m\n`);
-    } else {
-      console.error(`Unknown workflow: ${workflow}. Run 'gd --help' for usage.`);
-    }
-    process.exit(1);
-  }
 
-  // If we handed off execution to an imported script, do not forcefully exit.
-  // We allow the Node.js event loop to naturally wind down.
-  if (!inProcess) {
-    process.exit(0);
+    case 'eval': {
+      const action = requireArg(positionals[1], 'gd eval <suite|task|smoke|agent|report|dashboard>');
+      switch (action) {
+        case 'suite': {
+          const buildCode = await runNpm(['build:mcp']);
+          if (buildCode !== 0) process.exit(buildCode);
+          const { runSuite } = await import('../harness/run_suite.ts');
+          await runSuite();
+          break;
+        }
+        case 'task': {
+          const id = requireArg(positionals[2], 'gd eval task <task-id>');
+          const { runSingleTask } = await import('../harness/run_suite.ts');
+          await runSingleTask(id);
+          break;
+        }
+        case 'smoke': {
+          const { runSmokeTest } = await import('../harness/quick-smoke.ts');
+          await runSmokeTest();
+          break;
+        }
+        case 'agent': {
+          const tmpl = requireArg(positionals[2], 'gd eval agent <template> <prompt>');
+          const prompt = requireArg(positionals[3], 'gd eval agent <template> <prompt>');
+          const { runAgent } = await import('../harness/run_suite.ts');
+          await runAgent(tmpl, prompt);
+          break;
+        }
+        case 'report': {
+          const { evaluate } = await import('../harness/evaluate.ts');
+          await evaluate();
+          break;
+        }
+        case 'dashboard': {
+          process.chdir(path.join(rootDir, 'eval-view'));
+          await import('../eval-view/server.js');
+          break;
+        }
+        default:
+          console.error(`${cRed(`Unknown eval command: ${action}.`)} Run 'gd --help' for usage.`);
+          process.exit(1);
+      }
+      break;
+    }
+
+    default: {
+      // Legacy fallbacks — guide namespace was flattened
+      if (command === 'guide') {
+        const action = positionals[1] || '';
+        const remap: Record<string, string> = {
+          'dev': 'dev', 'dev-all': 'dev-all', 'grade': 'grade',
+          'test-grader': 'test', 'gen-grader': 'gen grader', 'gen-negative': 'gen negative',
+        };
+        if (remap[action]) {
+          const rest = positionals.slice(2).join(' ');
+          console.error(`${cRed(`'gd guide ${action}' has moved.`)}  Run: ${cCyan(`gd ${remap[action]}${rest ? ' ' + rest : ''}`)}\n`);
+        } else {
+          console.error(`${cRed(`The 'guide' namespace has been removed.`)} Run ${cCyan('gd --help')} for the new commands.\n`);
+        }
+      } else if (['suite', 'task', 'smoke', 'agent', 'report', 'dashboard'].includes(command)) {
+        console.error(`${cRed(`'gd ${command}' has moved.`)}  Run: ${cCyan(`gd eval ${command}`)}\n`);
+      } else if (['test-grader', 'gen-grader', 'gen-negative', 'gen:grader', 'gen:negative'].includes(command)) {
+        const remap: Record<string, string> = {
+          'test-grader': 'test', 'gen-grader': 'gen grader', 'gen-negative': 'gen negative',
+          'gen:grader': 'gen grader', 'gen:negative': 'gen negative',
+        };
+        const rest = positionals.slice(1).join(' ');
+        console.error(`${cRed(`'gd ${command}' has moved.`)}  Run: ${cCyan(`gd ${remap[command]}${rest ? ' ' + rest : ''}`)}\n`);
+      } else {
+        console.error(`${cRed(`Unknown command: ${command}.`)} Run ${cCyan('gd --help')} for usage.`);
+      }
+      process.exit(1);
+    }
   }
 }
 

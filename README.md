@@ -64,21 +64,21 @@ gd <command>
 Run commands via the new universal CLI:
 
 ```bash
-# System Evaluators
+# Guide Development
+gd dev [dir] [--test]         # auto-generate and calibrate
+gd dev-all                    # batch-process all incomplete guides
+gd grade [file|dir]           # run/calibrate grader
+gd test [dir]                 # check grader calibration
+gd gen grader [dir]           # generate grader script
+gd gen negative [dir]         # generate negative example
+
+# Evaluation
 gd eval suite
 gd eval task [id]
 gd eval smoke
 gd eval agent [template]
 gd eval report
 gd eval dashboard
-
-# Guidance Contributors
-gd guide dev [dir] [--test]
-gd guide dev-all
-gd guide grade [file|dir]
-gd guide test-grader [dir]
-gd guide gen-grader [dir]
-gd guide gen-negative [dir]
 ```
 
 ## Configuration

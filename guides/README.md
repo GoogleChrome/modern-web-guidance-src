@@ -2,12 +2,12 @@
 
 ### Automated (Recommended)
 
-Use `gd guide dev` to automatically generate missing artifacts and calibrate the grader in one command:
+Use `gd dev` to automatically generate missing artifacts and calibrate the grader in one command:
 
 ```bash
-gd guide dev <path/to/guide_dir>
+gd dev <path/to/guide_dir>
 
-# e.g. gd guide dev guides/performance/content-vis
+# e.g. gd dev guides/performance/content-vis
 ```
 
 This will:
@@ -22,13 +22,13 @@ This will:
 Add `--test` to also run an agent test after calibration:
 
 ```bash
-gd guide dev <path/to/guide_dir> --test
+gd dev <path/to/guide_dir> --test
 ```
 
 To batch-process all incomplete guides:
 
 ```bash
-gd guide dev-all
+gd dev-all
 ```
 
 ### Manual Steps
@@ -51,15 +51,15 @@ pnpm setup:playwright
 
 4. Generate negative demo:
 ```bash
-gd guide gen-negative <path/to/guide_dir>
-# e.g. gd guide gen-negative guides/performance/content-vis
+gd gen negative <path/to/guide_dir>
+# e.g. gd gen negative guides/performance/content-vis
 ```
 
 This will create a `negative-demo.html` file in the guide directory.
 
 5. Generate grader:
 ```bash
-gd guide gen-grader <path/to/guide_dir>
+gd gen grader <path/to/guide_dir>
 ```
 
 This will create a `grader.ts` file in the guide directory.
@@ -67,32 +67,32 @@ This will create a `grader.ts` file in the guide directory.
 6. Once the grader is generated, run it on the `demo.html` and `negative-demo.html` with:
 
 ```bash
-gd guide grade <path/to/demo_file>
+gd grade <path/to/demo_file>
 
-# e.g. gd guide grade guides/performance/content-vis/demo.html
-# e.g. gd guide grade guides/performance/content-vis/negative-demo.html
+# e.g. gd grade guides/performance/content-vis/demo.html
+# e.g. gd grade guides/performance/content-vis/negative-demo.html
 ```
 
-On each `gd guide grade` run, a `grade-report` folder will be created in the same directory as the specified demo file, and the results will be displayed in a browser window.
+On each `gd grade` run, a `grade-report` folder will be created in the same directory as the specified demo file, and the results will be displayed in a browser window.
 
 The grader should pass at 100% for `demo.html`, and 0% for `negative-demo.html`. If needed, make changes to the files created in this folder (including `guide.md`), repeating any of the above steps, until this is reliably true.
 
 You can automatically verify that your grader is perfectly calibrated against both of these files by running:
 
 ```bash
-gd guide test-grader <path/to/guide_dir>
+gd test <path/to/guide_dir>
 
-# e.g. gd guide test-grader guides/performance/content-vis
+# e.g. gd test guides/performance/content-vis
 ```
 
 ## Testing with an Agent
 
 ### Automated via `--test` (Recommended)
 
-Pass `--test` to `gd guide dev` to run a full agent evaluation after calibration:
+Pass `--test` to `gd dev` to run a full agent evaluation after calibration:
 
 ```bash
-gd guide dev <path/to/guide_dir> --test
+gd dev <path/to/guide_dir> --test
 ```
 
 This runs the following pipeline after the grader calibrates successfully:
