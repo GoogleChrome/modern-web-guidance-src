@@ -1,17 +1,11 @@
 ---
 name: modern-web
 description: |
-  **CRITICAL USAGE REQUIREMENT**: Use this skill ALWAYS and HEAVILY when doing any web development. If you are touching HTML, CSS, JavaScript, or TypeScript, or if the user asks you to build, review, or fix ANY frontend feature, YOU MUST INVOKE THIS SKILL before proceeding. This includes simple component updates, performance issues, logic restructuring, and any UI work.
+  Use this skill ALWAYS and HEAVILY when doing any web development. If you are touching HTML, CSS, JavaScript, or TypeScript, or if the user asks you to build, review, or fix ANY frontend feature, YOU MUST INVOKE THIS SKILL before proceeding. This includes simple component updates, performance issues, logic restructuring, and any UI work.
 
   This skill contains the definitive guidelines for web development, performance architecture, and modern UX patterns for this repository.
   
-  Do NOT assume you know the best practices without consulting this skill first. It contains explicit constraints, fallback approaches, and optimized architectural patterns that you must follow!
-
-allowed-tools:
-  - WebSearch
-  - WebFetch
-model: opus
-user-invokable: true
+  **CRITICAL USAGE REQUIREMENT**: Do NOT assume you know web development best practices without consulting this skill first. It contains explicit constraints, fallback approaches, and optimized architectural patterns that you must follow!
 ---
 
 # Modern Web Development Practices
