@@ -16,8 +16,8 @@ Preloading resources with `<link rel="preload">` signals to the browser that a r
 
 ## How to implement
 
-1. **Identify preload candidates**: Find resources that are not discovered early by the browser (e.g., video poster images, background images in CSS, or fonts) but are essential for the page's appearance.
-2. **Elevate critical preloads**: For the LCP image or essential fonts, use `<link rel="preload" fetchpriority="high">` to ensure they are prioritized above other preloads.
+1. **Identify preload candidates**: Find resources that are not discovered early by the browser (e.g., video poster images or background images in CSS) but are essential for the page's appearance.
+2. **Elevate critical preloads**: For the LCP image or other critical assets that are not prioritized by default, use `<link rel="preload" fetchpriority="high">` to ensure they are prioritized above other preloads. Note that fonts are already high priority by default.
 3. **Deprioritize non-critical preloads**: For resources that aren't critical for the initial render (e.g., a background video or secondary fonts), use `<link rel="preload" fetchpriority="low">`.
 4. **Coordinate with resource types**: Note that different `as` types have different default priorities; use `fetchpriority` to override these defaults when necessary.
 
@@ -32,16 +32,14 @@ Preloading resources with `<link rel="preload">` signals to the browser that a r
 
 <!-- Deprioritize a secondary font to avoid network contention -->
 <link rel="preload" href="/fonts/secondary-font.woff2" as="font" type="font/woff2" fetchpriority="low" crossorigin>
-
-<!-- Deprioritize a background script to avoid network contention -->
-<link rel="preload" href="/js/background-init.js" as="script" fetchpriority="low">
 ```
 
 ## Best Practices
 
 - **MANDATORY**: Only use `fetchpriority="high"` on at most 1-2 critical preloads to avoid network contention and diluting the priority boost.
-- **MANDATORY**: Use `fetchpriority="high"` on critical preloads that are directly responsible for the Largest Contentful Paint (LCP) or blocking render (like essential brand fonts).
-- **DO** use `fetchpriority="low"` for preloads that you want the browser to start early but not at the expense of critical resources.
+- **MANDATORY**: Use `fetchpriority="high"` on critical preloads that are directly responsible for the Largest Contentful Paint (LCP) and aren't already high priority by default (like some background images).
+- **DO**: Limit the total number of preloads on a page to at most 2 images and 2-3 essential fonts to prevent network congestion.
+- **DO** use `fetchpriority="low"` for preloads that you want the browser to start early but not at the expense of critical resources (especially non-critical fonts).
 - **DO** specify the `as` attribute correctly, as it determines the default priority that `fetchpriority` will modify.
 - **DO** prefer making critical resources (like LCP images) statically discoverable in HTML via `<img>` tags rather than relying on preloads for background images.
 - **DO NOT** preload too many resources; this can lead to network congestion regardless of the priority assigned.

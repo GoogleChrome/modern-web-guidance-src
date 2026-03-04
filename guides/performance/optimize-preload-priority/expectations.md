@@ -1,6 +1,6 @@
 - The `<link rel="preload" as="image">` for 'poster.jpg' has the `fetchpriority="high"` attribute.
-- The `<link rel="preload" as="font">` for 'brand-font.woff2' has the `fetchpriority="high"` attribute.
+- The `<link rel="preload" as="font">` for 'brand-font.woff2' does NOT use the `fetchpriority="high"` attribute.
+- The `<link rel="preload" as="font">` for 'secondary-font.woff2' has the `fetchpriority="low"` attribute.
 - The `<link rel="preload" as="font">` includes the `crossorigin` attribute.
-- The `<link rel="preload" as="script">` for 'background-init.js' has the `fetchpriority="low"` attribute.
 - No more than two `<link rel="preload">` elements on the entire page have the `fetchpriority="high"` attribute.
 - No `<link>` elements have the deprecated `importance` attribute.

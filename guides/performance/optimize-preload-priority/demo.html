@@ -11,14 +11,15 @@
   <link rel="preload" as="image" href="poster.jpg" fetchpriority="high">
 
   <!-- 
-    2. Critical Web Font (High Priority)
+    2. Critical Web Font (High Priority by default)
   -->
-  <link rel="preload" as="font" type="font/woff2" href="brand-font.woff2" crossorigin fetchpriority="high">
+  <link rel="preload" as="font" type="font/woff2" href="brand-font.woff2" crossorigin>
 
   <!-- 
-    3. Heavy Script (Low Priority)
+    3. Secondary Web Font (Low Priority)
   -->
-  <link rel="preload" as="script" href="background-init.js" fetchpriority="low">
+  <link rel="preload" as="font" type="font/woff2" href="secondary-font.woff2" crossorigin fetchpriority="low">
+
 
 </head>
 
