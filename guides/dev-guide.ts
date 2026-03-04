@@ -415,7 +415,7 @@ async function runAgentTest(targetDir: string, guideName: string): Promise<void>
         'jetski-agent.ts'
   );
 
-  for (const runType of ['unguided', 'guided']) {
+  await Promise.all(['unguided', 'guided'].map(async (runType) => {
     const resultDir = path.join(targetDir, 'test-app-results', runType);
     fs.mkdirSync(resultDir, { recursive: true });
 
@@ -433,11 +433,11 @@ async function runAgentTest(targetDir: string, guideName: string): Promise<void>
 
       if (code !== 0) {
         console.error(cRed(`Agent (${runType}) failed with code ${code}`));
-        continue;
+        return;
       }
     } catch (err) {
       console.error(cRed(`Agent (${runType}) error: ${err}`));
-      continue;
+      return;
     }
 
     // Step g: Grade agent output
@@ -445,7 +445,7 @@ async function runAgentTest(targetDir: string, guideName: string): Promise<void>
     const htmlFiles = fs.readdirSync(resultDir).filter(f => f.endsWith('.html'));
     if (htmlFiles.length === 0) {
       console.log(cYellow(`No HTML output found in ${runType} results`));
-      continue;
+      return;
     }
 
     const outputFile = htmlFiles.find(f => f === 'index.html') || htmlFiles[0];
@@ -466,7 +466,7 @@ async function runAgentTest(targetDir: string, guideName: string): Promise<void>
         console.log(`  ${runType}: ${passed}/${total} checks passed (${Math.round(passed / total * 100)}%)`);
       }
     }
-  }
+  }));
 
   // Step h: Print comparison
   const total = results.pre?.total || results.guided?.total || results.unguided?.total || 0;
@@ -574,7 +574,7 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
 
   const results: { name: string; success: boolean }[] = [];
 
-  for (const inv of incompleteGuides) {
+  await Promise.all(incompleteGuides.map(async (inv) => {
     console.log(cBold(`\n${'='.repeat(60)}`));
     console.log(cBold(`Processing: ${inv.name}`));
     console.log(`${'='.repeat(60)}`);
@@ -586,7 +586,7 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
       console.error(cRed(`Failed to process ${inv.name}: ${err}`));
       results.push({ name: inv.name, success: false });
     }
-  }
+  }));
 
   // Aggregate results
   const succeeded = results.filter(r => r.success);
