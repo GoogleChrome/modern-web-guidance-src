@@ -1,5 +1,5 @@
 ---
-name: image-reveal-effects
+name: self-revealing-images-on-scroll
 description: Images that reveal themselves dynamically as they enter the scrollport, often using an animated "open curtain" clip-path effect.
 web-feature-ids:
   - scroll-driven-animations
