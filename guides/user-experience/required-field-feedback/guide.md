@@ -1,6 +1,6 @@
 ---
 name: required-field-feedback
-description: Highlighting required fields that were skipped or left empty after user focus and blur, ensuring feedback is contextually relevant to the user's flow.
+description: Provide error message for required form fields that were skipped or left empty *only* after user interaction, to avoid preemptive errors and ensure feedback is timely and contextually relevant to the user's flow.
 web-feature-ids:
   - user-pseudos
 ---
