@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Deprioritize Background Fetches Demo</title>
+</head>
+
+<body>
+  <h1>Deprioritize Background Fetches</h1>
+
+  <p>Click the button below to simulate a user action that triggers both a critical data fetch and a background sync
+    simultaneously.</p>
+  <button id="btn-fetch-both">Fetch Data</button>
+
+  <script>
+    document.getElementById('btn-fetch-both').addEventListener('click', () => {
+      // 1. Critical user-initiated fetch (Executes with default 'High' priority)
+      fetch('https://httpbin.org/get?type=critical-data');
+
+      // 2. Non-critical background fetch (Forced to 'Low' priority to prevent contention)
+      fetch('https://httpbin.org/get?type=background-data', {
+        priority: 'low'
+      });
+    });
+  </script>
+</body>
+
+</html>

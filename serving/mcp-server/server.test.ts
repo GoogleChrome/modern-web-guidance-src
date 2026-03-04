@@ -65,9 +65,9 @@ describe("Server Registration", () => {
       );
       const handler = getPracticesCall[2];
 
-      const result = await handler({ use_case_id: "content-vis" });
+      const result = await handler({ use_case_id: "batch-analytics-events" });
       expect(result.content[0].type).toBe("text");
-      expect(result.content[0].text).toContain("Optimize Rendering of Long Pages");
+      expect(result.content[0].text).toContain("Debounce and batch multiple analytics events");
     });
   });
 });
