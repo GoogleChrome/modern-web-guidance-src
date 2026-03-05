@@ -139,7 +139,12 @@ export async function runSuite() {
         fs.mkdirSync(runDir, { recursive: true });
       }
 
-      for (const task of config.suite.tasks) {
+      // Use configured tasks, or discover all tasks in the tasks directory
+      const tasks = config.suite.tasks.length > 0
+        ? config.suite.tasks
+        : fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, ''));
+
+      for (const task of tasks) {
         // Read prompt from task
         const taskPath = path.join(tasksDir, `${task}.md`);
         if (!fs.existsSync(taskPath)) {

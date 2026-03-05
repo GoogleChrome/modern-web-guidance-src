@@ -47,7 +47,7 @@ export const environmentConfig: EnvironmentConfig = {
 export const suiteConfig: SuiteConfig = {
   name: 'analytics-suite',
   numRuns: 1,
-  tasks: ['batch-analytics-events-task', 'full-session-analytics-task'],
+  tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: false,
   agent: Agents.GEMINI_CLI,

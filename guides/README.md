@@ -113,7 +113,7 @@ Agent test results:
 
 The agent and base app are selected from the [harness config](../harness/config.ts) (`suite.agent` and the task's `base_app` field).
 
-The generated task file also enables future `gd eval suite` runs against this guide — any task in `harness/tasks/` is automatically picked up by the eval harness.
+The generated task file is automatically included in future `gd eval suite` runs — the suite discovers all task files in `harness/tasks/` by default.
 
 ### Manual Steps
 
