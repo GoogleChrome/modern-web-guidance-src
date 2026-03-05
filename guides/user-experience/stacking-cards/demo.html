@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll-Driven Animations: Parallax Animation</title>
+  <style>
+    @layer reset, base, demo;
+
+    @layer demo {
+      @media (prefers-reduced-motion: no-preference) {
+        @supports ((animation-timeline: view()) and (animation-range: exit-crossing)) {
+          @keyframes rotate {
+            to {
+              rotate: var(--rotate-to, 0deg);
+            }
+          }
+
+          .wrapper {
+            view-timeline: --wrapper;
+          }
+
+          .card {
+            --rotate-to: calc(-2deg * (sibling-count() - sibling-index()));
+
+            --start-range: calc((sibling-index() - 1) / sibling-count() * 100%);
+            --end-range: calc(sibling-index() / sibling-count() * 100%);
+
+            animation: rotate linear both;
+            animation-timeline: --wrapper;
+            animation-range: exit-crossing var(--start-range) exit-crossing calc(var(--end-range) - 10vh);
+          }
+        }
+      }
+    }
+
+    @layer base {
+      html {
+        height: 100%;
+      }
+      body {
+        height: 400dvh;
+      }
+
+      .wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 10vh;
+        padding: 10vh 0;
+      }
+
+      .card {
+        width: auto;
+        height: 50vh;
+        aspect-ratio: 2/3;
+        margin: 0 auto;
+        border: 1px solid;
+
+        place-content: center;
+        text-align: center;
+        background-color: white;
+
+        position: sticky;
+        top: 25vh;
+      }
+
+      .spacer {
+        height: 100vh;
+        place-content: center;
+        text-align: center;
+        background-color: #ececec;
+      }
+    }
+
+    @layer reset {
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      ul[class] {
+        list-style: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="spacer">SPACER</div>
+  <div class="wrapper">
+    <div class="card">CARD 0</div>
+    <div class="card">CARD 1</div>
+    <div class="card">CARD 2</div>
+    <div class="card">CARD 3</div>
+    <div class="card">CARD 4</div>
+    <div class="card">CARD 5</div>
+    <div class="card">CARD 6</div>
+  </div>
+  <div class="spacer">SPACER</div>
+</body>
+</html>
