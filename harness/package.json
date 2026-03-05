@@ -8,6 +8,7 @@
     "suite": "node run_suite.ts",
     "qsmoke": "node quick-smoke.ts",
     "task": "node run_suite.ts",
+    "upload": "node --experimental-strip-types upload_suite.ts",
     "typecheck": "tsc --noEmit",
     "full-run": "npm run suite && npm run report"
   },
@@ -15,6 +16,7 @@
   "dependencies": {
     "@anthropic-ai/claude-code": "^2.1.56",
     "@anthropic-ai/vertex-sdk": "^0.14.4",
+    "@google-cloud/storage": "^7.19.0",
     "@google/gemini-cli": "^0.30.0",
     "cheerio": "^1.2.0",
     "colors": "^1.4.0",
