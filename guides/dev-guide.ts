@@ -426,47 +426,32 @@ async function runAgentTest(targetDir: string, guideName: string): Promise<void>
     console.log(cYellow(`Base app index.html not found at ${baseAppHtml}, skipping pre-score`));
   }
 
-  // Step f: Run agent for guided + unguided
-  const config = (await import('../harness/config.ts')).default;
-  const agent = config.suite.agent;
+  // Step f: Run agent for guided + unguided via runSuite
+  const { runSuite } = await import('../harness/run_suite.ts');
+  const testOutputDir = path.join(targetDir, 'test-app-results');
 
-  const agentScript = path.join(rootDir, 'harness', 'agents',
-    agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
-      agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-        'jetski-agent.ts'
-  );
+  await runSuite({
+    name: taskInfo.taskName,
+    outputDir: testOutputDir,
+    tasks: [taskInfo.taskName],
+    numRuns: 1,
+    skipEval: true // skip report generation to keep guide directory clean
+  });
 
-  await Promise.all(['unguided', 'guided'].map(async (runType) => {
-    const resultDir = path.join(targetDir, 'test-app-results', runType);
-    fs.mkdirSync(resultDir, { recursive: true });
-
-    console.log(cYellow(`\nRunning ${runType} agent...`));
-
-    try {
-      const code = await spawnAsync('node', [
-        '--experimental-strip-types',
-        agentScript,
-        JSON.stringify(prompt),
-        runType,
-        resultDir,
-        baseAppDir,
-      ], { stdio: 'inherit' });
-
-      if (code !== 0) {
-        console.error(cRed(`Agent (${runType}) failed with code ${code}`));
-        return;
-      }
-    } catch (err) {
-      console.error(cRed(`Agent (${runType}) error: ${err}`));
-      return;
+  // Step g: Grade agent output
+  for (const runType of ['unguided', 'guided']) {
+    console.log(cYellow(`\nGrading ${runType} output...`));
+    const resultDir = path.join(testOutputDir, '1', taskInfo.taskName, runType);
+    
+    if (!fs.existsSync(resultDir)) {
+      console.log(cYellow(`No output directory found for ${runType}`));
+      continue;
     }
 
-    // Step g: Grade agent output
-    console.log(cYellow(`Grading ${runType} output...`));
     const htmlFiles = fs.readdirSync(resultDir).filter(f => f.endsWith('.html'));
     if (htmlFiles.length === 0) {
       console.log(cYellow(`No HTML output found in ${runType} results`));
-      return;
+      continue;
     }
 
     const outputFile = htmlFiles.find(f => f === 'index.html') || htmlFiles[0];
@@ -487,7 +472,7 @@ async function runAgentTest(targetDir: string, guideName: string): Promise<void>
         console.log(`  ${runType}: ${passed}/${total} checks passed (${Math.round(passed / total * 100)}%)`);
       }
     }
-  }));
+  }
 
   // Step h: Print comparison
   const total = results.pre?.total || results.guided?.total || results.unguided?.total || 0;

@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { config, Agents } from './config.ts';
+import { evaluateSuite } from './evaluate.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -102,7 +103,15 @@ async function executeTaskRun(taskNameLabel: string, agent: string, templateDir:
   }
 }
 
-export async function runSuite() {
+export interface RunSuiteOptions {
+  name?: string;
+  outputDir?: string;
+  tasks?: string[];
+  numRuns?: number;
+  skipEval?: boolean;
+}
+
+export async function runSuite(options: RunSuiteOptions = {}) {
   // Create results directory if it doesn't exist
   if (!fs.existsSync(resultsDir)) {
     fs.mkdirSync(resultsDir, { recursive: true });
@@ -112,9 +121,12 @@ export async function runSuite() {
 
   // Generate a unique testID with timestamp or use custom name
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-  const testID = config.suite.name || `test_${timestamp}`;
-  const testDir = path.join(resultsDir, testID);
-  fs.mkdirSync(testDir, { recursive: true });
+  const testID = options.name || config.suite.name || `test_${timestamp}`;
+  const testDir = options.outputDir || path.join(resultsDir, testID);
+  
+  if (!fs.existsSync(testDir)) {
+    fs.mkdirSync(testDir, { recursive: true });
+  }
 
   // Setup logging to file
   const logFilePath = path.join(testDir, 'test_suite.log');
@@ -125,8 +137,9 @@ export async function runSuite() {
   console.log(`Log file: ${logFilePath}\n`);
 
   try {
-    const endRun = 1 + config.suite.numRuns;
-    console.log(`\nStarting execution for ${config.suite.numRuns} runs`);
+    const numRuns = options.numRuns || config.suite.numRuns;
+    const endRun = 1 + numRuns;
+    console.log(`\nStarting execution for ${numRuns} runs`);
 
     for (let runNumber = 1; runNumber < endRun; runNumber++) {
 
@@ -140,11 +153,13 @@ export async function runSuite() {
       }
 
       // Use configured tasks, or discover all tasks in the tasks directory
-      const tasks = config.suite.tasks.length > 0
-        ? config.suite.tasks
-        : fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, ''));
+      const tasksToRun = options.tasks && options.tasks.length > 0
+        ? options.tasks
+        : (config.suite.tasks.length > 0
+          ? config.suite.tasks
+          : fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, '')));
 
-      for (const task of tasks) {
+      for (const task of tasksToRun) {
         // Read prompt from task
         const taskPath = path.join(tasksDir, `${task}.md`);
         if (!fs.existsSync(taskPath)) {
@@ -206,20 +221,26 @@ export async function runSuite() {
       }
     }
 
-    const manifestPath = path.join(resultsDir, 'tests.json');
-    let manifest: { tests: any[] } = { tests: [] };
-    if (fs.existsSync(manifestPath)) {
-      try {
-        manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-      } catch { }
+    if (!options.outputDir) {
+      const manifestPath = path.join(resultsDir, 'tests.json');
+      let manifest: { tests: any[] } = { tests: [] };
+      if (fs.existsSync(manifestPath)) {
+        try {
+          manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        } catch { }
+      }
+
+      if (!manifest.tests.some(t => t.id === testID)) {
+        manifest.tests.push({ id: testID, timestamp: new Date().toISOString(), runCount: numRuns });
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+      }
     }
 
-    if (!manifest.tests.some(t => t.id === testID)) {
-      manifest.tests.push({ id: testID, timestamp: new Date().toISOString(), runCount: config.suite.numRuns });
-      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-    }
+    console.log(`\n✅ Test suite complete! Results saved to: ${testDir}`);
 
-    console.log(`\n✅ Test suite complete! Results saved to: results/${testID}`);
+    if (!options.skipEval) {
+      await evaluateSuite(testDir, testID);
+    }
   } catch (e) {
     console.error('❌ Error during suite execution:', e);
   } finally {

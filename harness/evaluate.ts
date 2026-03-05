@@ -12,6 +12,34 @@ const __dirname = dirname(__filename);
 
 import { config } from './config.ts';
 
+export async function evaluateSuite(resultsDir: string, suiteName: string) {
+  console.log(`Evaluating suite: ${suiteName}`.cyan);
+  console.log(`Results directory: ${resultsDir}`.cyan);
+
+  if (!fs.existsSync(resultsDir)) {
+    console.error(`Results directory not found at ${resultsDir}!`.red);
+    return;
+  }
+
+  try {
+    const { allResults, numRuns } = await collectResults(resultsDir);
+    console.log(`Found ${numRuns} test run(s)`.cyan);
+
+    const metrics = calculateMetrics(allResults, numRuns);
+    const mdReport = generateMarkdownReport(metrics, allResults);
+    const jsonReport = generateJsonReport(metrics, allResults);
+
+    saveReports(resultsDir, mdReport, jsonReport);
+
+    console.log(`\nReport generated: ${path.resolve(path.join(resultsDir, 'evals.md'))}`.green.bold);
+    console.log(`JSON Report generated: ${path.resolve(path.join(resultsDir, 'evals.json'))}`.green.bold);
+    console.log(`Pass Rate - Unguided: ${metrics.summary.unguidedPassRate}%, Guided: ${metrics.summary.guidedPassRate}%`.cyan);
+
+  } catch (error: any) {
+    console.error(`Evaluation failed: ${error.message}`.red);
+  }
+}
+
 export async function evaluate() {
   console.log('Starting Evaluation...'.cyan.bold);
 
@@ -46,32 +74,7 @@ export async function evaluate() {
   }
   const resultsDir = path.join(resultsDirBase, suiteName);
 
-  console.log(`Evaluating suite: ${suiteName}`.cyan);
-  console.log(`Results directory: ${resultsDir}`.cyan);
-
-  if (!fs.existsSync(resultsDir)) {
-    console.error(`Results directory not found at ${resultsDir}!`.red);
-    return;
-  }
-
-  try {
-    const { allResults, numRuns } = await collectResults(resultsDir);
-    console.log(`Found ${numRuns} test run(s)`.cyan);
-
-    const metrics = calculateMetrics(allResults, numRuns);
-    const mdReport = generateMarkdownReport(metrics, allResults);
-    const jsonReport = generateJsonReport(metrics, allResults);
-
-    saveReports(resultsDir, mdReport, jsonReport);
-
-    console.log(`
-Report generated: ${path.resolve(path.join(resultsDir, 'evals.md'))}`.green.bold);
-    console.log(`JSON Report generated: ${path.resolve(path.join(resultsDir, 'evals.json'))}`.green.bold);
-    console.log(`Pass Rate - Unguided: ${metrics.summary.unguidedPassRate}%, Guided: ${metrics.summary.guidedPassRate}%`.cyan);
-
-  } catch (error: any) {
-    console.error(`Evaluation failed: ${error.message}`.red);
-  }
+  await evaluateSuite(resultsDir, suiteName);
 }
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
