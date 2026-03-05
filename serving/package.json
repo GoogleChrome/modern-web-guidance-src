@@ -18,6 +18,7 @@
   "scripts": {
     "prepublishOnly": "npm run build",
     "build": "tsx scripts/build-guides.ts",
+    "build:skill": "tsx scripts/build-skill.ts",
     "start": "tsx mcp-server/index.ts",
     "dev": "tsx scripts/build-guides.ts && tsx --watch mcp-server/index.ts",
     "test": "tsx scripts/build-guides.ts && vitest run mcp-server/",

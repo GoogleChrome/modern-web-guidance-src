@@ -1,5 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function toTitleCase(kebabString: string): string {
   return kebabString
@@ -93,11 +97,11 @@ function createLocalSymlink(repoRoot: string, distDir: string): void {
 }
 
 function buildSkill(): void {
-  const repoRoot = process.cwd();
+  const repoRoot = path.resolve(__dirname, '../..');
   
   // Validate we are actually rooted in the guidance project
   if (!fs.existsSync(path.join(repoRoot, 'package.json'))) {
-    console.error(`Safety Abort: Script must be run from the repository root (missing package.json in ${repoRoot}).`);
+    console.error(`Safety Abort: Script must be run from a directory where the repo root can be found (missing package.json in ${repoRoot}).`);
     process.exit(1);
   }
 
