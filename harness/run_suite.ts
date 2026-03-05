@@ -204,18 +204,7 @@ async function main() {
       }
     }
 
-    const manifestPath = path.join(resultsDir, 'tests.json');
-    let manifest: { tests: any[] } = { tests: [] };
-    if (fs.existsSync(manifestPath)) {
-      try {
-        manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-      } catch { }
-    }
 
-    if (!manifest.tests.some(t => t.id === testID)) {
-      manifest.tests.push({ id: testID, timestamp: new Date().toISOString(), runCount: config.suite.numRuns });
-      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-    }
 
     console.log(`\n✅ Test suite complete! Results saved to: results/${testID}`);
   } catch (e) {

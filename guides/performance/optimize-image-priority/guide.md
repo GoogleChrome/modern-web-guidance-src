@@ -66,8 +66,6 @@ Browsers use heuristics to assign loading priorities to images, but these defaul
 
 ## Fallback strategy
 
-### Fetch Priority
-
-The Fetch Priority API is not Baseline.
+{{ BASELINE_STATUS("fetch-priority") }}
 
 The `fetchpriority` attribute is a progressive enhancement for the `<img>` element. If a browser does not support it, the attribute is ignored, and the browser uses its default priority heuristics.

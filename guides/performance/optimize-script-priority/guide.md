@@ -14,8 +14,8 @@ Browsers assign default priorities to scripts based on where they appear in the 
 ## How to implement
 
 1. **Identify critical scripts**: Determine which scripts are essential for the page's core functionality or initial user interaction.
-2. **Elevate critical async scripts**: For critical scripts loaded with `async`, add the `fetchpriority="high"` attribute to ensure they are prioritized during the discovery phase.
-3. **Deprioritize non-essential scripts**: For scripts that are not needed immediately (e.g., analytics, ads, or below-the-fold widgets), add `fetchpriority="low"`.
+2. **Elevate critical async scripts**: For critical scripts loaded with `async` or `defer`, add the `fetchpriority="high"` attribute to ensure they are prioritized during the discovery phase.
+3. **Deprioritize non-essential scripts**: For scripts that are not needed immediately (e.g., analytics, ads, or below-the-fold widgets), add `fetchpriority="low"` and ensure they have a `async`, `defer`, or `module` attribute to avoid blocking.
 4. **Sequence parser-blocking scripts**: Use `fetchpriority="low"` on parser-blocking scripts at the end of the body to prevent them from contending for bandwidth with more critical resources.
 
 ## Example code
@@ -39,8 +39,8 @@ Browsers assign default priorities to scripts based on where they appear in the 
 - **DO NOT** use `fetchpriority` on every script tag; it should only be used to change the browser's default heuristic when it is known to be sub-optimal.
 - **DO NOT** use the deprecated `importance` attribute. It has been replaced by `fetchpriority`.
 
-## Fallbacks & Browser Support
+## Fallback strategy
 
-The Fetch Priority API is not Baseline.
+{{ BASELINE_STATUS("fetch-priority") }}
 
 The `fetchpriority` attribute is a progressive enhancement. Browsers that do not support it will ignore the attribute and use their internal scheduling logic without error. No explicit feature detection or fallback logic is required for basic usage.
