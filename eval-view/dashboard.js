@@ -37,16 +37,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Fetch timestamp from manifest
         let timestamp = null;
         try {
-            const manifestRes = await fetch(`results/tests.json?t=${Date.now()}`);
-            if (manifestRes.ok) {
-                const manifest = await manifestRes.json();
-                const testEntry = manifest.tests.find(t => t.id === testID);
-                if (testEntry && testEntry.timestamp) {
-                    timestamp = testEntry.timestamp;
-                }
+            const evalsRes = await fetch(`results/${testID}/evals.json?t=${Date.now()}`);
+            if (evalsRes.ok) {
+                const evals = await evalsRes.json();
+                timestamp = evals.timestamp;
             }
         } catch (e) {
-            console.log('Could not load test manifest:', e);
+            console.log('Failed to fetch evals.json for timestamp:', e);
         }
 
         renderTestHeader(testID, jetskiVersion, timestamp);
