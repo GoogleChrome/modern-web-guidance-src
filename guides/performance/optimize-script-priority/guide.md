@@ -39,8 +39,8 @@ Browsers assign default priorities to scripts based on where they appear in the 
 - **DO NOT** use `fetchpriority` on every script tag; it should only be used to change the browser's default heuristic when it is known to be sub-optimal.
 - **DO NOT** use the deprecated `importance` attribute. It has been replaced by `fetchpriority`.
 
-## Fallbacks & Browser Support
+## Fallback strategy
 
-The Fetch Priority API is not Baseline.
+{{ BASELINE_STATUS("fetch-priority") }}
 
 The `fetchpriority` attribute is a progressive enhancement. Browsers that do not support it will ignore the attribute and use their internal scheduling logic without error. No explicit feature detection or fallback logic is required for basic usage.

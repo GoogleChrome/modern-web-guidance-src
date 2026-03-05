@@ -41,12 +41,6 @@ fetch('/api/analytics', {
 
 ## Fallback strategy
 
-### Fetch API
-
-The Fetch API is Baseline Widely Available. No fallback is required.
-
-### Fetch Priority
-
-The Fetch Priority API is not Baseline.
+{{ BASELINE_STATUS("fetch-priority") }}
 
 The `priority` option in the Fetch API is a progressive enhancement. Browsers that do not support it will ignore the option and treat the request with default priority. No explicit feature detection or fallback logic is required for basic usage.

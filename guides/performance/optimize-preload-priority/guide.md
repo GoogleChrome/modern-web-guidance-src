@@ -47,6 +47,6 @@ Preloading resources with `<link rel="preload">` signals to the browser that a r
 
 ## Fallback strategy
 
-The Fetch Priority API is not Baseline.
+{{ BASELINE_STATUS("fetch-priority") }}
 
 The `fetchpriority` attribute on `<link rel="preload">` is a progressive enhancement. Browsers that do not support it will still preload the resource using their default priority for that resource type. To ensure compatibility, always provide correct `as` and `type` attributes.
