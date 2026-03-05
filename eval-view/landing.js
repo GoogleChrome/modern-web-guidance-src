@@ -475,8 +475,8 @@ function renderGridRow(testName) {
     const cellsHtml = [];
     let hasData = false;
 
-    testIds.forEach(testID => {
-        const data = allTestData[testID].data;
+    testIds.forEach(compoundTestId => {
+        const data = allTestData[compoundTestId].data;
         const results = data.results;
 
         const runData = results[testName];
@@ -495,12 +495,14 @@ function renderGridRow(testName) {
 
             const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
 
+            const testId = allTestData[compoundTestId].testID;
+            const source = allTestData[compoundTestId].source;
+            const dateStr = new Date(allTestData[compoundTestId].timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
             cellsHtml.push(`
-                const dateStr = new Date(allTestData[testID].timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
                 <a class="test-grid-cell"
-                     href="dashboard.html?testID=${testID}"
+                     href="dashboard.html?testID=${testId}&source=${source}"
                      style="background-color: ${getColor(avgRate)}"
-                     title="${testID} - ${dateStr}: ${avgRate}% (${totalPassed}/${totalChecks})">
+                     title="${testId} - ${dateStr}: ${avgRate}% (${totalPassed}/${totalChecks})">
                     ${avgRate}%
                 </a>
             `);
@@ -524,8 +526,8 @@ function renderComparisonHistory(scenario, prompt) {
     // Gather all checks from BOTH agents for this prompt
     agents.forEach(agent => {
         const testName = `${scenario} - ${prompt} - ${agent}`;
-        testIds.forEach(testID => {
-            const data = allTestData[testID].data;
+        testIds.forEach(compoundTestId => {
+            const data = allTestData[compoundTestId].data;
             const results = data.results;
             if (results && results[testName]) {
                 results[testName].forEach(run => {
@@ -569,11 +571,13 @@ function renderComparisonHistory(scenario, prompt) {
 
             // Generate sparklines for this check/agent
             let sparklinesHtml = '';
-            testIds.forEach(testID => {
-                const data = allTestData[testID].data;
+            testIds.forEach(compoundTestId => {
+                const data = allTestData[compoundTestId].data;
                 const results = data.results;
 
                 let hasRuns = false;
+                const testId = allTestData[compoundTestId].testID;
+                const source = allTestData[compoundTestId].source;
 
                 if (results && results[testName]) {
                     const runs = results[testName];
@@ -583,12 +587,12 @@ function renderComparisonHistory(scenario, prompt) {
                         // logic in evaluate.js suggests they are pushed in runDirs sort order (ascending)
                         [...runs].reverse().forEach(run => {
                             let status = 'missing';
-                            let tooltip = `Test ${testID.replace('test_', '')} (Run ${run.runNumber}): Not Run`;
+                            let tooltip = `Test ${testId.replace('test_', '')} (Run ${run.runNumber}): Not Run`;
 
                             const check = run.results.find(c => c.id === checkId);
                             if (check) {
                                 status = check.passed ? 'pass' : 'fail';
-                                tooltip = `Test ${testID.replace('test_', '')} (Run ${run.runNumber}): ${check.passed ? 'PASS' : 'FAIL'}\n${check.message}`;
+                                tooltip = `Test ${testId.replace('test_', '')} (Run ${run.runNumber}): ${check.passed ? 'PASS' : 'FAIL'}\\n${check.message}`;
                             }
 
                             let color = 'var(--bg-tertiary)';
@@ -600,8 +604,8 @@ function renderComparisonHistory(scenario, prompt) {
                             const encodedCheckId = encodeURIComponent(checkId);
 
                             sparklinesHtml += `
-                                <a href="dashboard.html?testID=${testID}&testName=${encodedTestName}&checkId=${encodedCheckId}"
-                                   class="sparkline-dot"
+                                <a href="dashboard.html?testID=${testId}&source=${source}&testName=${encodedTestName}&checkId=${encodedCheckId}"
+                                   class="history-sparkline-item"
                                    style="background-color: ${color}; border: ${border};"
                                    title="${escapeHtml(tooltip)}"></a>
                             `;
@@ -610,7 +614,7 @@ function renderComparisonHistory(scenario, prompt) {
                 }
 
                 if (!hasRuns) {
-                    let tooltip = `Test ${testID.replace('test_', '')}: Not Run`;
+                    let tooltip = `Test ${testId.replace('test_', '')}: Not Run`;
 
                     let color = 'var(--bg-tertiary)';
                     const border = '1px solid var(--border-color)';
@@ -619,8 +623,8 @@ function renderComparisonHistory(scenario, prompt) {
                     const encodedCheckId = encodeURIComponent(checkId);
 
                     sparklinesHtml += `
-                        <a href="dashboard.html?testID=${testID}&testName=${encodedTestName}&checkId=${encodedCheckId}"
-                           class="sparkline-dot"
+                        <a href="dashboard.html?testID=${testId}&source=${source}&testName=${encodedTestName}&checkId=${encodedCheckId}"
+                           class="history-sparkline-item"
                            style="background-color: ${color}; border: ${border};"
                            title="${escapeHtml(tooltip)}"></a>
                     `;
@@ -652,14 +656,17 @@ function renderTrends() {
 
     // Helper to render bars
     const renderBars = (groupType) => {
-        return testIds.map(testID => {
-            const data = allTestData[testID].data;
+        return testIds.map(compoundTestId => {
+            const testInfo = allTestData[compoundTestId];
+            const testId = testInfo.testID;
+            const source = testInfo.source;
+            const data = testInfo.data;
             const stats = calculateGroupTotalStats(data.results, groupType);
             const value = stats.total > 0 ? Math.round((stats.passed / stats.total) * 100) : 0;
-            const timestamp = new Date(allTestData[testID].timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
+            const timestamp = new Date(testInfo.timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
 
             return `
-                <a class="timeline-bar" href="dashboard.html?testID=${testID}" title="${testID} - ${timestamp}: ${value}%">
+                <a class="timeline-bar" href="dashboard.html?testID=${testId}&source=${source}" title="${testId} - ${timestamp}: ${value}%">
                     <div class="timeline-bar-fill" style="height: ${Math.max(value * 2, 10)}px; background-color: ${getColor(value)}"></div>
                     <div class="timeline-bar-label">${value}%</div>
                 </a>
