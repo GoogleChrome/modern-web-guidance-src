@@ -15,7 +15,7 @@ function findGuides(dir, fileList = []) {
   return fileList;
 }
 
-const guidesDir = new URL('../guides', import.meta.url).pathname;
+const guidesDir = new URL('.', import.meta.url).pathname;
 const guidesPaths = findGuides(guidesDir);
 
 const guides = [];
@@ -65,7 +65,7 @@ for (const guide of guides) {
 }
 
 // Generate ASCII Diagram
-let output = '<!-- Note: This diagram is generated automatically by scripts/guide-features-diagram.mjs during PRs. -->\n\n';
+let output = '<!-- Note: This diagram is generated automatically by guides/guide-features-diagram.mjs during PRs. -->\n\n';
 output += '# Mapping: Web feature : Use cases\n\n';
 output += '```\n';
 

@@ -12,8 +12,8 @@
   <div class="landing-container">
     <header class="header-nav">
       <div>
-        <h1 class="landing-title">Results</h1>
-        <p class="landing-subtitle">All test runs and performance over time</p>
+        <h1 class="landing-title">Guidance Evals</h1>
+        <p class="landing-subtitle">All suite runs and performance over time</p>
       </div>
       <div class="filter-container-nav">
         <button id="filter-btn" class="secondary-btn">
@@ -40,28 +40,15 @@
     </header>
 
     <nav class="dashboard-tabs">
-      <button class="tab-button active" data-tab="overview">Overview</button>
+      <button class="tab-button active" data-tab="suites">Suites</button>
       <button class="tab-button" data-tab="explorer">Explorer</button>
       <button class="tab-button" data-tab="trends">Trends</button>
     </nav>
 
-    <!-- Overview Tab -->
-    <div id="overview-tab" class="tab-content active">
-      <div class="overview-grid">
-        <div class="overview-card">
-          <h3>Latest Guided Pass Rate</h3>
-          <div class="metric-huge" id="latest-guided-metric">-</div>
-          <div class="metric-sub">Across all checks</div>
-        </div>
-        <div class="overview-card">
-          <h3>Latest Unguided Pass Rate</h3>
-          <div class="metric-huge" id="latest-unguided-metric">-</div>
-          <div class="metric-sub">Across all checks</div>
-        </div>
-        <div class="overview-card">
-          <h3>Recent Runs</h3>
-          <div id="overview-recent-tests" class="recent-tests-compact"></div>
-        </div>
+    <!-- Suites Tab -->
+    <div id="suites-tab" class="tab-content active">
+      <div id="suites-list" class="suites-list-container">
+        <!-- populated by JS -->
       </div>
     </div>
 
