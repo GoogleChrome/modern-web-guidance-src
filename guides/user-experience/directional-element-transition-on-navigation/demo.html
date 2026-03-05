@@ -6,19 +6,19 @@
   <title>Direction-Aware Transitions</title>
   <style>
     /* CORE: View Transitions API */
-    html:active-view-transition-type(forward) ::view-transition-old(root) {
+    html:active-view-transition-type(forward)::view-transition-old(root) {
       animation: slide-left 0.4s ease-out forwards;
     }
 
-    html:active-view-transition-type(forward) ::view-transition-new(root) {
+    html:active-view-transition-type(forward)::view-transition-new(root) {
       animation: slide-from-right 0.4s ease-out forwards;
     }
 
-    html:active-view-transition-type(backward) ::view-transition-old(root) {
+    html:active-view-transition-type(backward)::view-transition-old(root) {
       animation: slide-right 0.4s ease-out forwards;
     }
 
-    html:active-view-transition-type(backward) ::view-transition-new(root) {
+    html:active-view-transition-type(backward)::view-transition-new(root) {
       animation: slide-from-left 0.4s ease-out forwards;
     }
 
