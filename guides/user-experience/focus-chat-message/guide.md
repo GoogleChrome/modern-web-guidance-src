@@ -3,6 +3,8 @@ name: focus-chat-message
 description: Build a chat message feature that can display a conversation automatically scrolled to a specific message (e.g. matching a search query) on initial render.
 web-feature-ids:
   - scroll-initial-target
+  - scroll-into-view
+  - scroll-snap
 ---
 
 # Focus Chat Message
