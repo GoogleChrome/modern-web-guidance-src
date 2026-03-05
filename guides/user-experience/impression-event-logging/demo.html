@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impression Event Logging (Card Components) Demo</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #f8fafc;
+            --card-border: rgba(255, 255, 255, 0.1);
+            --accent-color: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.4);
+            --success-color: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.4);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            text-align: center;
+            padding: 2rem;
+            width: 100%;
+            background: linear-gradient(to bottom, rgba(15, 23, 42, 1), rgba(15, 23, 42, 0));
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin: 0 0 0.5rem 0;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            color: #94a3b8;
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            flex-grow: 1;
+            justify-content: center;
+            gap: 2rem;
+        }
+
+        /* The Scroll Snap Container */
+        .scroller-container {
+            width: 100%;
+            position: relative;
+        }
+
+        .scroller {
+            display: flex;
+            gap: 4vw; /* Responsive gap */
+            padding: 2rem 50vw; /* Padding to allow first/last cards to center */
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            /* Hide scrollbar for cleaner look */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .scroller::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* Account for the padding to align centers correctly */
+        .scroller::before, .scroller::after {
+             content: '';
+             flex: 0 0 auto;
+             width: 1px;
+        }
+
+        /* The Card Components */
+        .card-component {
+            flex: 0 0 320px;
+            height: 400px;
+            scroll-snap-align: center;
+            scroll-snap-stop: always;
+            border-radius: 1.5rem;
+            border: 2px solid var(--card-border);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            /* Initial un-snapped state */
+            transform: scale(0.9) translateY(10px);
+            opacity: 0.7;
+            filter: grayscale(0.5);
+            /* Premium shadows */
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+        }
+
+        /* Distinct gradient themes for cards */
+        #card-a { background: linear-gradient(180deg, #1e293b, #0f172a); }
+        #card-b { background: linear-gradient(180deg, #1e1b4b, #0f172a); }
+        #card-c { background: linear-gradient(180deg, #3f2a1a, #0f172a); }
+        #card-d { background: linear-gradient(180deg, #064e3b, #0f172a); }
+
+        .card-image-placeholder {
+            height: 50%;
+            width: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+
+        .card-content {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+            color: #fff;
+        }
+
+        .card-desc {
+            font-size: 0.9rem;
+            color: #cbd5e1;
+            margin: 0;
+            line-height: 1.5;
+            flex-grow: 1;
+        }
+        
+        .card-badge {
+            align-self: flex-start;
+            padding: 0.25rem 0.75rem;
+            background: rgba(255,255,255,0.1);
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #94a3b8;
+            transition: all 0.3s;
+        }
+
+        /* States triggered by JavaScript */
+        .card-component.is-changing {
+            transform: scale(0.95) translateY(0);
+            opacity: 0.9;
+            filter: grayscale(0.2);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .card-component.is-snapped {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+            filter: grayscale(0);
+            border-color: var(--success-color);
+            box-shadow: 0 15px 40px -5px var(--success-glow);
+        }
+        
+        .card-component.is-snapped .card-badge {
+            background: var(--success-color);
+            color: #fff;
+        }
+
+        /* Event Logger UI */
+        .event-log-container {
+            width: 90%;
+            max-width: 600px;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 1rem;
+            border: 1px solid var(--card-border);
+            padding: 1rem;
+            height: 180px;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+        }
+
+        .event-log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 0.5rem;
+        }
+        
+        .event-log-title {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .event-log {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.85rem;
+            padding-right: 0.5rem;
+        }
+        
+        .event-log::-webkit-scrollbar {
+             width: 6px;
+        }
+        .event-log::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+
+        .log-entry {
+            padding: 0.4rem 0.6rem;
+            border-radius: 0.4rem;
+            background: rgba(255,255,255,0.03);
+            display: flex;
+            align-items: center;
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .log-time {
+            color: #64748b;
+            margin-right: 0.75rem;
+            font-size: 0.9em;
+        }
+
+        .log-message.impression { color: var(--success-color); font-weight: 600; }
+        .log-message.changing { color: var(--accent-color); }
+        .log-message.end { color: #f59e0b; }
+
+        @media (max-width: 600px) {
+            .card-component { flex: 0 0 280px; height: 350px; }
+            .scroller { padding: 2rem 50vw; }
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header>
+        <h1>Impression Logs</h1>
+        <p class="subtitle">Swipe through cards to log definitive impressions</p>
+    </header>
+
+    <main>
+        <div class="scroller-container">
+            <div class="scroller" id="scroller">
+                
+                <div class="card-component" id="card-a">
+                    <div class="card-image-placeholder">🎨</div>
+                    <div class="card-content">
+                        <div class="card-badge">Design</div>
+                        <h2 class="card-title">Creative Systems</h2>
+                        <p class="card-desc">Building scalable components that adapt to user preferences and screen sizes.</p>
+                    </div>
+                </div>
+
+                <div class="card-component" id="card-b">
+                    <div class="card-image-placeholder">⚡</div>
+                    <div class="card-content">
+                        <div class="card-badge">Performance</div>
+                        <h2 class="card-title">Lightning Fast</h2>
+                        <p class="card-desc">Optimizing render cycles and leveraging native browser APIs for silky smooth UX.</p>
+                    </div>
+                </div>
+
+                <div class="card-component" id="card-c">
+                    <div class="card-content" style="padding-top:2rem;">
+                        <h2 class="card-title">Text Heavy Card</h2>
+                        <p class="card-desc">Sometimes a card is just about delivering a clear message. This card skips the image placeholder to focus entirely on typography and layout hierarchy within the component.</p>
+                        <div class="card-badge" style="margin-top:auto;">Typography</div>
+                    </div>
+                </div>
+
+                <div class="card-component" id="card-d">
+                    <div class="card-image-placeholder">🌍</div>
+                    <div class="card-content">
+                        <div class="card-badge">Accessibility</div>
+                        <h2 class="card-title">For Everyone</h2>
+                        <p class="card-desc">Ensuring experiences are inclusive, semantic, and usable by all audiences unconditionally.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="event-log-container">
+            <div class="event-log-header">
+                <span class="event-log-title">Live Interactions</span>
+            </div>
+            <div class="event-log" id="event-log">
+                <!-- Log entries injected here -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const scroller = document.getElementById('scroller');
+        const eventLog = document.getElementById('event-log');
+        const cards = document.querySelectorAll('.card-component');
+        
+        // Track the current explicitly snapped card ID to avoid duplicate impression logs
+        // if user interacts but doesn't actually change targets.
+        let currentSnappedId = null;
+
+        function addLog(message, type = 'default') {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const time = new Date().toISOString().substring(11, 23); // HH:MM:SS.mmm
+            
+            entry.innerHTML = `
+                <span class="log-time">[${time}]</span>
+                <span class="log-message ${type}">${message}</span>
+            `;
+            
+            eventLog.appendChild(entry);
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+
+        // Initialize state
+        if (!('onscrollsnapchange' in window)) {
+            addLog('⚠️ scrollsnapchange API not supported in this browser.', 'changing');
+        } else {
+            addLog('Ready: Awaiting scroll interaction...', 'default');
+        }
+        
+        // Setup initial snapped state visually without logging a tracking impression yet
+        // A real impression usually happens when a user explicitly brings it into view, 
+        // but we want the first card to look active immediately.
+        setTimeout(() => {
+             // In horizontal scroll, scrollLeft 0 means first item usually
+             if(scroller.scrollLeft === 0 && cards[0]) {
+                 cards[0].classList.add('is-snapped');
+                 currentSnappedId = cards[0].id;
+             }
+        }, 100);
+
+        // 1. Eager 'changing' event: Highlights the target being panned to
+        scroller.addEventListener('scrollsnapchanging', (e) => {
+            const target = e.snapTargetInline; // horizontal scroller uses inline target
+            
+            cards.forEach(c => c.classList.remove('is-changing'));
+            
+            if (target) {
+                target.classList.add('is-changing');
+                // Only log changing if it's different from what's currently snapped
+                if(target.id !== currentSnappedId) {
+                     // Note: We might omit 'changing' logs for less noise in production, 
+                     // but it's useful for demoing the API.
+                     addLog(`Targeting: ${target.querySelector('.card-title').innerText}...`, 'changing');
+                }
+            }
+        });
+
+        // 2. Definitive 'change' event: Officially logs the "Impression"
+        scroller.addEventListener('scrollsnapchange', (e) => {
+            const target = e.snapTargetInline;
+            
+            // Clean up visual states
+            cards.forEach(c => {
+                 c.classList.remove('is-snapped', 'is-changing');
+            });
+            
+            if (target) {
+                target.classList.add('is-snapped');
+                
+                // Only log if it's a *new* card snapped, avoiding double-logging
+                // if the API fires redundantly (though the API is designed not to).
+                if (target.id !== currentSnappedId) {
+                    currentSnappedId = target.id;
+                    const cardTitle = target.querySelector('.card-title').innerText;
+                    addLog(`✓ Impression Logged: "${cardTitle}"`, 'impression');
+                    
+                    // Here you would typically send data to your analytics endpoint:
+                    // navigator.sendBeacon('/api/track-impression', JSON.stringify({ cardId: target.id }));
+                }
+            }
+        });
+
+        // 3. Optional fallback/complementary 'scrollend'
+        scroller.addEventListener('scrollend', () => {
+             // Clean up `changing` state just in case scroll ends without a change firing 
+             // (e.g., bounced back to same card)
+             cards.forEach(c => c.classList.remove('is-changing'));
+        });
+
+    </script>
+</body>
+</html>

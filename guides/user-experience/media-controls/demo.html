@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Controls with Scroll Snap Demo</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #f8fafc;
+            --accent-color: #a855f7;
+            --secondary-color: #3b82f6;
+            --card-bg: rgba(30, 41, 59, 0.8);
+            --card-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden; /* Prevent body scrolling, use container */
+        }
+
+        .container {
+            height: 100vh;
+            width: 100vw;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        .section {
+            height: 100vh;
+            width: 100vw;
+            scroll-snap-align: center;
+            scroll-snap-stop: always;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* Distinct backgrounds for sections */
+        #section-1 { background: radial-gradient(circle at center, #1e1b4b, #0f172a); }
+        #section-2 { background: radial-gradient(circle at center, #172554, #0f172a); }
+
+        .media-container {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 2rem;
+            padding: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            max-width: 600px;
+            width: 90%;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .section.is-snapped .media-container {
+            transform: scale(1.02);
+            box-shadow: 0 0 40px rgba(168, 85, 247, 0.2);
+            border-color: rgba(168, 85, 247, 0.4);
+        }
+
+        h1, h2 {
+            margin: 0;
+            background: linear-gradient(135deg, var(--accent-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        h1 { font-size: 3rem; }
+        h2 { font-size: 2rem; }
+
+        p {
+            color: #94a3b8;
+            text-align: center;
+            margin: 0;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        video, audio {
+            width: 100%;
+            border-radius: 1rem;
+            background: #000;
+            outline: none;
+        }
+
+        /* Custom scrollbar to look sleek */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.4);
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: bounce 2s infinite;
+            color: rgba(255,255,255,0.5);
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0) translateX(-50%); }
+            40% { transform: translateY(-20px) translateX(-50%); }
+            60% { transform: translateY(-10px) translateX(-50%); }
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            background: rgba(0,0,0,0.5);
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            border: 1px solid var(--card-border);
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .status-badge.visible {
+            opacity: 1;
+        }
+
+        .status-badge.playing::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #10b981; /* green */
+            border-radius: 50%;
+            box-shadow: 0 0 10px #10b981;
+        }
+
+        .status-badge.paused::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #f59e0b; /* yellow */
+            border-radius: 50%;
+        }
+
+    </style>
+    <!-- Preconnect to Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="container" id="scroller">
+        
+        <!-- Section 1 -->
+        <section class="section" id="section-1">
+            <div class="media-container">
+                <h1>Snap & Play</h1>
+                <p>Scroll down. The video in the next section will automatically play when it snaps into view, thanks to <strong>scrollsnapchange</strong>.</p>
+            </div>
+            <div class="scroll-indicator">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+            </div>
+        </section>
+
+        <!-- Section 2 -->
+        <section class="section" id="section-2">    
+             <div class="status-badge" id="badge-2">Status</div>
+            <div class="media-container">
+                <h2>Audio Track</h2>
+                 <!-- Sample audio -->
+                <audio id="audio-1" controls loop>
+                     <!-- Placeholder audio clip for demo -->
+                    <source src="https://mdn.github.io/webaudio-examples/audio-analyser/viper.mp3" type="audio/mpeg">
+                    <source src="https://mdn.github.io/webaudio-examples/audio-analyser/viper.ogg" type="audio/ogg">
+                    Your browser does not support the audio tag.
+                </audio>
+                <p>Likewise, this audio plays when snapped and pauses when another section is targeted. (Note: Audio might require a prior user interaction with the page to autoplay successfully).</p>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        const scroller = document.getElementById('scroller');
+        const sections = document.querySelectorAll('.section');
+        
+        // Helper function to update the visual status badge
+        function updateBadge(sectionId, status) {
+            const badgeId = sectionId.replace('section', 'badge');
+            const badge = document.getElementById(badgeId);
+            if (badge) {
+                badge.className = `status-badge visible ${status}`;
+                badge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            }
+        }
+
+        // Support check
+        if (!('onscrollsnapchange' in window)) {
+            console.warn('scrollsnapchange event is not supported in this browser. Media controls will not auto-play.');
+            // Add a permanent warning badge to the first section
+            const warning = document.createElement('div');
+            warning.className = 'status-badge visible paused';
+            warning.style.position = 'relative';
+            warning.style.top = '0';
+            warning.style.right = '0';
+            warning.style.marginTop = '1rem';
+            warning.textContent = 'scrollsnapchange not supported';
+            document.querySelector('#section-1 .media-container').appendChild(warning);
+        }
+
+        // The core logic using scrollsnapchange
+        scroller.addEventListener('scrollsnapchange', (event) => {
+            const newTarget = event.snapTargetBlock; // Vertical scroller uses block
+            
+            sections.forEach(section => {
+                // Find media elements in this section
+                const mediaElems = section.querySelectorAll('video, audio');
+                
+                if (section === newTarget) {
+                    section.classList.add('is-snapped');
+                    // Play media elements in the newly snapped section
+                    mediaElems.forEach(media => {
+                        // We use a try-catch to handle potential autoplay rejections by the browser
+                        let playPromise = media.play();
+                        if (playPromise !== undefined) {
+                            playPromise.then(_ => {
+                                updateBadge(section.id, 'playing');
+                            }).catch(error => {
+                                console.log("Autoplay prevented:", error);
+                                updateBadge(section.id, 'paused');
+                            });
+                        }
+                    });
+                } else {
+                    section.classList.remove('is-snapped');
+                    // Pause media elements in all other sections
+                    mediaElems.forEach(media => {
+                        media.pause();
+                        updateBadge(section.id, 'paused');
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
