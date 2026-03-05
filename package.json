@@ -18,6 +18,7 @@
     "task": "pnpm --filter harness task",
     "run-agent": "gd agent",
     "report": "pnpm --filter harness report",
+    "upload": "pnpm --filter harness upload",
     "dashboard": "pnpm --filter eval-view start",
     "build:mcp": "pnpm --filter modern-web-mcp build",
     "test:mcp": "pnpm --filter modern-web-mcp test",

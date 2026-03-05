@@ -52,6 +52,8 @@ pnpm setup:playwright
 4. Generate negative demo:
 ```bash
 gd gen negative <path/to/guide_dir>
+# (or: pnpm generate-negative <path/to/guide_dir>)
+
 # e.g. gd gen negative guides/performance/content-vis
 ```
 
@@ -60,6 +62,7 @@ This will create a `negative-demo.html` file in the guide directory.
 5. Generate grader:
 ```bash
 gd gen grader <path/to/guide_dir>
+# (or: pnpm generate-grader <path/to/guide_dir>)
 ```
 
 This will create a `grader.ts` file in the guide directory.
@@ -68,6 +71,7 @@ This will create a `grader.ts` file in the guide directory.
 
 ```bash
 gd grade <path/to/demo_file>
+# (or: pnpm grade <path/to/demo_file>)
 
 # e.g. gd grade guides/performance/content-vis/demo.html
 # e.g. gd grade guides/performance/content-vis/negative-demo.html
@@ -81,6 +85,7 @@ You can automatically verify that your grader is perfectly calibrated against bo
 
 ```bash
 gd test <path/to/guide_dir>
+# (or: pnpm test-grader <path/to/guide_dir>)
 
 # e.g. gd test guides/performance/content-vis
 ```
@@ -145,16 +150,18 @@ Within this folder, create a base app (e.g. `index.html`) that you want the agen
 
 4. Run the agent on the test app with a prompt:
 
-```
-pnpm run-agent <path/to/guide_dir>/test-app/ "<prompt>"
+```bash
+gd eval agent <path/to/guide_dir>/test-app/ "<prompt>"
+# (or: pnpm run-agent <path/to/guide_dir>/test-app/ "<prompt>")
 ```
 
 This will create a `test-app-result` directory in the `<path/to/guide_dir>` folder with the results of the run.
 
 5. Run the grader and see the results on the generated file:
 
-```
-pnpm grade <path/to/guide_dir>/test-app-result/index.html
+```bash
+gd grade <path/to/guide_dir>/test-app-result/index.html
+# (or: pnpm grade <path/to/guide_dir>/test-app-result/index.html)
 ```
 
 Use the results to validate guide quality, and make changes as needed. A useful sanity check is to examine the result of the agent run *without* guide access.
