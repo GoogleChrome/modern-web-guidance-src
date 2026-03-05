@@ -1,6 +1,6 @@
 ---
 name: search-hidden-content
-description: Hide content from view using patterns such as accordions, tabs, and "Read more" sections, and enable native "Find in page" search to show hidden regions, while ensuring content can be indexed for search and referenced by `aria` attributes for accessibility.
+description: Hide content from view using patterns such as accordions, tabs, and "Read more" sections, and enable native "Find in page" search to show hidden regions, while ensuring content, including URL fragments and "Scroll to Text Fragment" links for deep linking, can be indexed for search and referenced by `aria` attributes for accessibility.
 web-feature-ids:
   - hidden-until-found
 ---
@@ -9,7 +9,7 @@ web-feature-ids:
 
 Web interfaces often hide content from view to improve the user experience, save screen space, or increase page performance. Traditional methods like `display: none` or `visibility: hidden` work to hide content visually, but they also make that content completely inaccessible to screen readers and browser features like "Find in page".
 
-To hide content visually but still allow it to be searchable by users, you can use either the HTML `<details>` element or the `hidden="until-found"` attribute. The `<details>` element is generally recommended as it's simpler to implement and maintain, but there are some more complex cases where `<details>` is not sufficient and `hidden="until-found"` is required.
+To hide content visually but still allow it to be searchable by users and enable it to be deep linked to via URL fragments and "Scroll to Text Fragment" links, you can use either the HTML `<details>` element or the `hidden="until-found"` attribute. The `<details>` element is generally recommended as it's simpler to implement and maintain, but there are some more complex cases where `<details>` is not sufficient and `hidden="until-found"` is required.
 
 For example:
 - If you want full control over the styling of the show/hide mechanism.
@@ -18,7 +18,7 @@ For example:
 
 ## How to implement the `<details>` element
 
-Follow common best practices for implementing the `<details>` element.
+Follow standard best practices for implementing the `<details>` element.
 
 ## How to implement `hidden="until-found"`
 
