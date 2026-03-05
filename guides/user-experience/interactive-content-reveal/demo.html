@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive content reveal</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #111;
+      color: white;
+    }
+
+    .product-card {
+      position: relative;
+      width: 400px;
+      height: 500px;
+      background: #222;
+      border-radius: 20px;
+      overflow: hidden;
+      cursor: crosshair;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    .product-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.3;
+      filter: grayscale(1) blur(2px);
+      background: linear-gradient(135deg, #444, #111);
+      /* Placeholder for an image */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 80px;
+    }
+
+    .reveal-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 80px;
+      mask-image: radial-gradient(circle at var(--x, 50%) var(--y, 50%), black 0%, transparent 0%);
+      mask-repeat: no-repeat;
+      mask-size: 100% 100%;
+      transition: mask-image 0.1s ease-out;
+    }
+
+    .product-card:hover .reveal-layer {
+      mask-image: radial-gradient(circle at var(--x, 50%) var(--y, 50%), black 100px, transparent 120px);
+    }
+
+    .card-info {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      pointer-events: none;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    p {
+      margin: 5px 0 0;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="product-card" id="card">
+    <div class="product-image">📦</div>
+    <div class="reveal-layer">✨</div>
+    <div class="card-info">
+      <h2>Discovery Spotlight</h2>
+      <p>Hover to uncover the magic within.</p>
+    </div>
+  </div>
+
+  <script>
+    const card = document.getElementById('card');
+    card.addEventListener('mousemove', e => {
+      const rect = card.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      card.querySelector('.reveal-layer').style.setProperty('--x', `${x}%`);
+      card.querySelector('.reveal-layer').style.setProperty('--y', `${y}%`);
+    });
+  </script>
+</body>
+
+</html>

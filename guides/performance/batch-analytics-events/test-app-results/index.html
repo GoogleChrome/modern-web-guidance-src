@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      line-height: 1.5;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Analytics Demo</h1>
+  <button id="btn-purchase">Simulate Purchase</button>
+  <button id="btn-signup">Simulate Sign Up</button>
+  <button id="btn-random">Click Random Element</button>
+
+  <script>
+    // fetchLater polyfill
+    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
+      let timeoutHandle;
+      let activated = false;
+
+      function sendNow() {
+        if (!(init.signal && init.signal.aborted)) {
+          if (
+            'keepalive' in Request.prototype ||
+            init.method !== 'POST' ||
+            init.headers
+          ) {
+            fetch(url, Object.assign({}, init, {keepalive: true}));
+            activated = true;
+          } else {
+            activated = navigator.sendBeacon(url, init.body);
+          }
+        }
+        destroy();
+      }
+
+      function destroy() {
+        document.removeEventListener('visibilitychange', sendNow);
+        clearTimeout(timeoutHandle);
+      }
+
+      if (document.visibilityState === 'hidden') {
+        queueMicrotask(sendNow);
+      } else {
+        document.addEventListener('visibilitychange', sendNow);
+
+        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
+          timeoutHandle = setTimeout(sendNow, init.activateAfter);
+        }
+      }
+
+      if (init.signal) {
+        init.signal.addEventListener('abort', destroy);
+      }
+
+      return {
+        get activated() {
+          return activated;
+        },
+      };
+    };
+  </script>
+
+  <script type="module">
+    import {onCLS, onINP, onLCP, onFCP, onTTFB} from 'https://unpkg.com/web-vitals@4?module';
+
+    const ANALYTICS_ENDPOINT = '/collect';
+    const BATCH_WINDOW = 10 * 1000;
+    const MAX_QUEUE_SIZE = 100;
+
+    const eventQueue = [];
+    let fetchLaterResult;
+    let fetchLaterController;
+
+    function trackEvent(eventData) {
+      if (fetchLaterResult?.activated || eventQueue.length > MAX_QUEUE_SIZE) {
+        fetchLaterController = null;
+        fetchLaterResult = null;
+        eventQueue.length = 0;
+      }
+
+      eventQueue.push(eventData);
+
+      if (fetchLaterController) {
+        fetchLaterController.abort();
+      }
+      fetchLaterController = new AbortController();
+
+      try {
+        fetchLaterResult = fetchLater(ANALYTICS_ENDPOINT, {
+          method: 'POST',
+          headers: {'content-type': 'application/json'},
+          body: JSON.stringify(eventQueue),
+          signal: fetchLaterController.signal,
+          activateAfter: BATCH_WINDOW,
+        });
+      } catch (error) {
+        // Handle errors as needed.
+      }
+    }
+
+    function serializeElement(el) {
+      if (!el) return 'unknown';
+      let tag = el.tagName.toLowerCase();
+      let id = el.id ? `#${el.id}` : '';
+      let className = el.className ? `.${el.className.split(' ').join('.')}` : '';
+      return `${tag}${id}${className}`;
+    }
+
+    window.addEventListener('load', () => {
+      trackEvent({type: 'page_load'});
+    });
+
+    window.addEventListener('click', (event) => {
+      trackEvent({type: 'click', target: serializeElement(event.target)});
+    });
+
+    // Send Core Web Vitals to the same batched endpoint
+    function sendToAnalytics(metric) {
+      trackEvent({
+        type: 'web_vital',
+        name: metric.name,
+        value: metric.value,
+        id: metric.id,
+        rating: metric.rating,
+        delta: metric.delta,
+        entries: metric.entries
+      });
+    }
+
+    onCLS(sendToAnalytics);
+    onINP(sendToAnalytics);
+    onLCP(sendToAnalytics);
+    onFCP(sendToAnalytics);
+    onTTFB(sendToAnalytics);
+  </script>
+</body>
+</html>

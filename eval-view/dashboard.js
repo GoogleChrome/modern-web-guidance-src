@@ -1,6 +1,8 @@
 import { getRunStats, getColor, escapeHtml, formatTestName } from './utils.js';
 import { RadarChart } from './radar.js';
 
+const MCP_LOG_FILE = 'mcp-server.log';
+
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         // Get testID from query string
@@ -35,16 +37,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Fetch timestamp from manifest
         let timestamp = null;
         try {
-            const manifestRes = await fetch(`results/tests.json?t=${Date.now()}`);
-            if (manifestRes.ok) {
-                const manifest = await manifestRes.json();
-                const testEntry = manifest.tests.find(t => t.id === testID);
-                if (testEntry && testEntry.timestamp) {
-                    timestamp = testEntry.timestamp;
-                }
+            const evalsRes = await fetch(`results/${testID}/evals.json?t=${Date.now()}`);
+            if (evalsRes.ok) {
+                const evals = await evalsRes.json();
+                timestamp = evals.timestamp;
             }
         } catch (e) {
-            console.log('Could not load test manifest:', e);
+            console.log('Failed to fetch evals.json for timestamp:', e);
         }
 
         renderTestHeader(testID, jetskiVersion, timestamp);
@@ -439,7 +438,7 @@ async function showDetails(testName, runs, stats, testID) {
                         <strong style="font-size: 0.9em; font-weight: 600;">${guide} used by agent</strong>
                     </div>
                     <div>
-                        <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">View mcp_tool_calls.log</a>
+                        <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">View ${MCP_LOG_FILE}</a>
                     </div>
                 </div>
             `;
@@ -470,7 +469,7 @@ async function showDetails(testName, runs, stats, testID) {
         if (viewResourcesLink) {
             viewResourcesLink.onclick = (e) => {
                 e.preventDefault();
-                const resourcesPath = `${usedBasePath}/mcp_tool_calls.log`;
+                const resourcesPath = `${usedBasePath}/${MCP_LOG_FILE}`;
                 viewContent(resourcesPath, resourcesPath);
             };
         }

@@ -57,11 +57,13 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
   return md;
 }
 
-export function generateJsonReport(metrics: Metrics, allResults: Record<string, RunResult[]>) {
+export function generateJsonReport(metrics: Metrics, allResults: Record<string, RunResult[]>, timestamp: string, runCount: number) {
   return {
     summary: metrics.summary,
     results: allResults,
-    stats: metrics.testPassRates
+    stats: metrics.testPassRates,
+    timestamp,
+    runCount
   };
 }
 

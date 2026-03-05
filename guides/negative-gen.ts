@@ -54,11 +54,8 @@ function setupIsolatedWorkDir(baseDir: string): string {
   const workDir = path.join(tempHome, 'work');
   fs.mkdirSync(workDir, { recursive: true });
 
-  // copy files from target dir to work dir
-  const filesToStage = ['guide.md', 'demo.html', 'expectations.md'];
-  filesToStage.forEach(file => {
-    copyFileIfExists(path.join(baseDir, file), path.join(workDir, file));
-  });
+  // copy all files and folders from target dir to work dir
+  fs.cpSync(baseDir, workDir, { recursive: true });
 
   const geminiSource = path.join(path.resolve(process.env.HOME || process.cwd()), '.gemini');
   const geminiDest = path.join(tempHome, '.gemini');

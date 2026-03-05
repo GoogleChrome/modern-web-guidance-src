@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adapt Scrollbar to Preferences Demo</title>
+  <style>
+    /* 1. Essential System Default Adaptation */
+    :root {
+      /* DO: Let the browser know this page supports dark mode natively */
+      color-scheme: light dark;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      gap: 2rem;
+      padding: 2rem;
+      background-color: #f7f9fc;
+      color: #111;
+    }
+
+    /* Demo page dark mode adjustments */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #121212;
+        color: #e0e0e0;
+      }
+    }
+
+    .container {
+      width: 300px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      background-color: white;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .container {
+        background-color: #1e1e1e;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+      }
+    }
+
+    .header {
+      padding: 1rem;
+      font-weight: bold;
+      margin: 0;
+      font-size: 1.2rem;
+      background-color: #e0e0e0;
+      color: #333;
+      border-bottom: 2px solid #ccc;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .header {
+        background-color: #333;
+        color: #f1f1f1;
+        border-bottom: 2px solid #444;
+      }
+    }
+
+    .scroller {
+      height: 200px;
+      overflow-y: auto;
+      padding: 1rem;
+      line-height: 1.6;
+    }
+
+    /* ---------------------------------------------------- */
+    /* Explicit Custom Color Definitions with Variables */
+    /* ---------------------------------------------------- */
+
+    .scroller.adaptive-scroll {
+      /* Define light mode colors as CSS variables */
+      --scrollbar-thumb: #999;
+      --scrollbar-thumb-hover: #777;
+      --scrollbar-track: #e0e0e0;
+
+      /* DO: Apply standard property natively */
+      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+      scrollbar-width: auto;
+
+      /* DO: Force track background to be visible on macOS */
+      scrollbar-gutter: stable;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .scroller.adaptive-scroll {
+        /* Override variables for dark mode */
+        --scrollbar-thumb: #555;
+        --scrollbar-thumb-hover: #888;
+        --scrollbar-track: #2a2a2a;
+      }
+    }
+
+    /* Legacy WebKit/Blink styling hidden from modern browsers */
+    @supports not (scrollbar-color: auto) {
+      .scroller.adaptive-scroll::-webkit-scrollbar {
+        /* Must be sized for the custom colors to show up in Webkit */
+        width: 14px;
+      }
+
+      .scroller.adaptive-scroll::-webkit-scrollbar-track {
+        background: var(--scrollbar-track);
+        border-radius: 7px;
+      }
+
+      .scroller.adaptive-scroll::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb);
+        border-radius: 7px;
+        border: 3px solid var(--scrollbar-track);
+      }
+
+      .scroller.adaptive-scroll::-webkit-scrollbar-thumb:hover {
+        background: var(--scrollbar-thumb-hover);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <h2 class="header">System Default</h2>
+    <div class="scroller">
+      <p>
+        This box relies purely on <code>color-scheme: light dark</code> on the root element.
+      </p>
+      <p>
+        If your operating system is set to dark mode, the browser will automatically render a dark system scrollbar.
+      </p>
+      <p>More text to force scrolling...</p>
+      <p>More text to force scrolling...</p>
+      <p>More text to force scrolling...</p>
+      <p>More text to force scrolling...</p>
+      <p>More text to force scrolling...</p>
+      <p>More text to force scrolling...</p>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2 class="header">Custom Adaptive</h2>
+    <div class="scroller adaptive-scroll">
+      <p>
+        This box has custom explicitly defined colors for its scrollbar.
+      </p>
+      <p>
+        It uses a <code>@media (prefers-color-scheme: dark)</code> CSS media feature to override the explicit light
+        colors with darker ones.
+      </p>
+      <p>
+        This ensures custom aesthetics remain legible and visually appealing in both contexts.
+      </p>
+      <p>More text to force scrolling...</p>
+      <p>More text to force scrolling...</p>
+      <p>More text to force scrolling...</p>
+      <p>More text to force scrolling...</p>
+      <p>More text to force scrolling...</p>
+    </div>
+  </div>
+
+</body>
+
+</html>

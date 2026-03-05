@@ -1,12 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { MCP_LOG_FILE } from '../../constants.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export async function guideUsed(dirPath: string, taskName: string): Promise<boolean> {
-  const logPath = path.join(dirPath, 'mcp_tool_calls.log');
+  const logPath = path.join(dirPath, MCP_LOG_FILE);
   
   if (!fs.existsSync(logPath)) {
     return false;
@@ -16,11 +17,15 @@ export async function guideUsed(dirPath: string, taskName: string): Promise<bool
   let toolCalls: any[] = [];
 
   if (logContent) {
-    try {
-      const jsonString = '[' + logContent.replace(/}\s*\{/g, '},{') + ']';
-      toolCalls = JSON.parse(jsonString);
-    } catch (e) {
-      console.error(`Failed to parse ${logPath}:`, e);
+    const lines = logContent.split('\n');
+    for (const line of lines) {
+      if (line.trim().startsWith('{')) {
+        try {
+          toolCalls.push(JSON.parse(line));
+        } catch (e) {
+          console.error(`Failed to parse line in ${logPath}:`, e);
+        }
+      }
     }
   }
 

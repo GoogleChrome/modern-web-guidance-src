@@ -9,5 +9,8 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "playwright": "^1.58.2"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "^7.19.0"
   }
 }
