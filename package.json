@@ -17,6 +17,7 @@
     "report": "pnpm --filter harness report",
     "dashboard": "pnpm --filter eval-view start",
     "build:mcp": "pnpm --filter modern-web-mcp build",
+    "build:megaskill": "pnpm --filter modern-web-mcp build:megaskill",
     "test:mcp": "pnpm --filter modern-web-mcp test",
     "setup:playwright": "pnpm --filter eval-view exec playwright install",
     "generate-negative": "node --env-file=.env guides/negative-gen.ts",
