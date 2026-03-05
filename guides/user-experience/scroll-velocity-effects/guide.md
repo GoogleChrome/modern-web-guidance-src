@@ -1,6 +1,6 @@
 ---
 name: scroll-velocity-effects
-description: Calculating scroll speed and direction to apply dynamic visual changes, such as skewing elements or applying a cinematic motion blur and desaturation filter while scrolling.
+description: Animate elements on scroll based on scroll velocity and direction, applying dynamic visual changes like skewing or motion blur.
 web-feature-ids:
   - scroll-driven-animations
 sources:

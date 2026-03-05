@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll-Driven Animations: Scroll Velocity Effects</title>
+  <style>
+    @layer reset, base, demo;
+
+    @layer demo {
+      @media (prefers-reduced-motion: no-preference) {
+        @supports((animation-timeline: scroll())) {
+          @property --scroll-position {
+            syntax: "<number>";
+            inherits: true;
+            initial-value: 0;
+          }
+          @property --scroll-position-delayed {
+            syntax: "<number>";
+            inherits: true;
+            initial-value: 0;
+          }
+
+          @keyframes adjust-pos {
+            to {
+              --scroll-position: 1;
+              --scroll-position-delayed: 1;
+            }
+          }
+
+          :root {
+            animation: adjust-pos linear both;
+            animation-timeline: scroll(root);
+          }
+
+          body {
+            transition: --scroll-position-delayed 0.15s linear;
+            --scroll-velocity: calc(var(--scroll-position) - var(--scroll-position-delayed));
+            --scroll-speed: max(var(--scroll-velocity), -1 * var(--scroll-velocity));
+            --scroll-direction: calc(var(--scroll-velocity) / var(--scroll-speed));
+
+            --when-scrolling: abs(var(--scroll-direction));
+            --when-not-scrolling: abs(var(--when-scrolling) - 1);
+
+            --when-scrolling-up: min(abs(var(--scroll-direction) - abs(var(--scroll-direction))),	1);
+            --when-scrolling-down: min(var(--scroll-direction) + abs(var(--scroll-direction)), 1);
+
+            --when-scrolling-down-or-when-not-scrolling: clamp(0, var(--scroll-direction) + 1, 1);
+            --when-scrolling-up-or-when-not-scrolling: clamp(0, abs(var(--scroll-direction) - 1), 1);
+          }
+
+          h1 {
+            transform: skew(calc(var(--scroll-velocity) * -25deg));
+          }
+        }
+      }
+    }
+
+    @layer base {
+      body {
+        height: 400dvh;
+      }
+
+      h1 {
+        position: fixed;
+        top: 50%;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        font-size: 10dvw;
+        translate: 0 -50%;
+      }
+    }
+    
+    @layer reset {
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>SCROLL VELOCITY EFFECTS</h1>
+</body>
+</html>
