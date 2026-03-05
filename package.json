@@ -45,7 +45,10 @@
     }
   },
   "devDependencies": {
+    "@playwright/test": "1.58.2",
     "@types/node": "^22.19.11",
+    "node-addon-api": "^8.6.0",
+    "node-gyp": "^12.2.0",
     "oxlint": "^1.50.0",
     "typescript": "^5.9.3"
   },
