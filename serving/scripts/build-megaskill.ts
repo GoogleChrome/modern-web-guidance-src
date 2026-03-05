@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import {fileURLToPath} from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,8 +19,8 @@ function safeRmSync(targetPath: string, expectedSuffix: string): void {
     console.error(`Safety Abort: Refusing to rmSync ${targetPath}\nPath does not terminate with expected suffix '${expectedSuffix}'`);
     process.exit(1);
   }
-  
-  fs.rmSync(targetPath, { recursive: true, force: true });
+
+  fs.rmSync(targetPath, {recursive: true, force: true});
 }
 
 function buildTaxonomyMarkdown(guidesDir: string, distRefsDir: string): string {
@@ -46,7 +46,7 @@ function buildTaxonomyMarkdown(guidesDir: string, distRefsDir: string): string {
 
     // Create category dist folder
     const distCategoryDir = path.join(distRefsDir, category);
-    fs.mkdirSync(distCategoryDir, { recursive: true });
+    fs.mkdirSync(distCategoryDir, {recursive: true});
 
     for (const usecase of usecases) {
       const guidePath = path.join(categoryPath, usecase, 'guide.md');
@@ -62,9 +62,9 @@ function buildTaxonomyMarkdown(guidesDir: string, distRefsDir: string): string {
       let title: string;
       const titleMatch = guideContent.match(/^#\s+(.+)$/m);
       if (titleMatch) {
-         title = titleMatch[1].trim();
+        title = titleMatch[1].trim();
       } else {
-         title = toTitleCase(usecase);
+        title = toTitleCase(usecase);
       }
 
       // Copy the file
@@ -83,9 +83,9 @@ function buildTaxonomyMarkdown(guidesDir: string, distRefsDir: string): string {
 function createLocalSymlink(repoRoot: string, distDir: string): void {
   const localAgentsSkillDir = path.join(repoRoot, '.agents', 'skills', 'modern-web');
   const localAgentsSkillsBase = path.dirname(localAgentsSkillDir);
-  
+
   if (!fs.existsSync(localAgentsSkillsBase)) {
-    fs.mkdirSync(localAgentsSkillsBase, { recursive: true });
+    fs.mkdirSync(localAgentsSkillsBase, {recursive: true});
   }
 
   // safely remove to prepare for symlink
@@ -98,7 +98,7 @@ function createLocalSymlink(repoRoot: string, distDir: string): void {
 
 function buildMegaskill(): void {
   const repoRoot = path.resolve(__dirname, '../..');
-  
+
   // Validate we are actually rooted in the guidance project
   if (!fs.existsSync(path.join(repoRoot, 'package.json'))) {
     console.error(`Safety Abort: Script must be run from a directory where the repo root can be found (missing package.json in ${repoRoot}).`);
@@ -112,7 +112,7 @@ function buildMegaskill(): void {
 
   // Create fresh dist directory
   safeRmSync(distDir, 'skills/modern-web');
-  fs.mkdirSync(distRefsDir, { recursive: true });
+  fs.mkdirSync(distRefsDir, {recursive: true});
 
   // Read existing skill
   if (!fs.existsSync(existingSkillPath)) {
