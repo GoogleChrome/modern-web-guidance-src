@@ -13,7 +13,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw new Error('No testID provided in query string');
         }
 
-        const evalsPath = `results/${testID}/evals.json?t=${Date.now()}`;
+        const source = params.get('source') || 'local';
+        const evalsPath = `results/${testID}/evals.json?source=${source}&t=${Date.now()}`;
         const response = await fetch(evalsPath);
         if (!response.ok) throw new Error(`Failed to load data from ${evalsPath}`);
         const data = await response.json();
@@ -25,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Fetch jetski info (optional)
         let jetskiVersion = null;
         try {
-            const jetskiRes = await fetch(`results/${testID}/jetski_info.json`);
+            const jetskiRes = await fetch(`results/${testID}/jetski_info.json?source=${source}`);
             if (jetskiRes.ok) {
                 const jetskiData = await jetskiRes.json();
                 jetskiVersion = jetskiData['Jetski Version'];
@@ -37,10 +38,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Fetch timestamp from manifest
         let timestamp = null;
         try {
-            const evalsRes = await fetch(`results/${testID}/evals.json?t=${Date.now()}`);
-            if (evalsRes.ok) {
-                const evals = await evalsRes.json();
-                timestamp = evals.timestamp;
+            if (data.timestamp) {
+                timestamp = data.timestamp;
+            } else {
+                const evalsRes = await fetch(evalsPath);
+                if (evalsRes.ok) {
+                    const evals = await evalsRes.json();
+                    timestamp = evals.timestamp;
+                }
             }
         } catch (e) {
             console.log('Failed to fetch evals.json for timestamp:', e);
@@ -140,12 +145,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     // We no longer need popstate for modal state because we use replaceState exclusively.
     // Full page deep links are handled via DOMContentLoaded.
 
+    // View GCS Artifacts
+    const gcsBtn = document.getElementById('view-gcs-artifacts-btn');
+    if (gcsBtn) {
+        const params = new URLSearchParams(window.location.search);
+        const source = params.get('source');
+        const testID = params.get('testID');
+        if (source === 'remote') {
+            gcsBtn.style.display = 'inline-block';
+            gcsBtn.onclick = () => window.open(`https://console.cloud.google.com/storage/browser/guidance-evals/${testID}?project=chrome-kiwi-air-force-dev`, '_blank');
+        }
+    }
+
     // View Log Handler
     const viewLogBtn = document.getElementById('view-log-btn');
     if (viewLogBtn) {
         const params = new URLSearchParams(window.location.search);
         const testID = params.get('testID');
-        const logPath = `results/${testID}/test_suite.log`;
+        const source = params.get('source') || 'local';
+        const logPath = `results/${testID}/test_suite.log?source=${source}`;
 
         // Check if log file exists
         try {
@@ -242,9 +260,16 @@ function renderTestHeader(testID, jetskiVersion, timestamp) {
         if (timestamp) {
             let timeStr = timestamp;
             try {
-                timeStr = new Date(timestamp).toLocaleString();
+                const _date = new Date(timestamp);
+                timeStr = _date.toLocaleString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
             } catch { }
-            html += ` — Run at ${timeStr}`;
+            html += ` — ${timeStr}`;
         }
 
         if (jetskiVersion) {
@@ -469,7 +494,8 @@ async function showDetails(testName, runs, stats, testID) {
         if (viewResourcesLink) {
             viewResourcesLink.onclick = (e) => {
                 e.preventDefault();
-                const resourcesPath = `${usedBasePath}/${MCP_LOG_FILE}`;
+                const source = new URLSearchParams(window.location.search).get('source') || 'local';
+                const resourcesPath = `${usedBasePath}/${MCP_LOG_FILE}?source=${source}`;
                 viewContent(resourcesPath, resourcesPath);
             };
         }
@@ -480,7 +506,8 @@ async function showDetails(testName, runs, stats, testID) {
         diffButton.style.cssText = 'margin-left: 10px; font-size: 0.8em; padding: 2px 8px;';
         diffButton.onclick = () => viewDiff(setupPath, resultPath, testName, run.runNumber);
 
-        const rawResultsPath = `${usedBasePath}/${guide}_results.json`;
+        const sourceParam = new URLSearchParams(window.location.search).get('source') || 'local';
+        const rawResultsPath = `${usedBasePath}/${guide}_results.json?source=${sourceParam}`;
         let showRawResults = false;
         try {
             const rawRes = await fetch(rawResultsPath, { method: 'HEAD' });
@@ -778,13 +805,13 @@ async function getResultPaths(testID, run, testName) {
         `results/${testID}/${run.runNumber}/${appName}/${guide}/${runType}`
     ];
 
-    const resultPath = await findBestEntryPoint(basePaths);
+    const resultPathBase = await findBestEntryPoint(basePaths);
 
     // Determine which base path was used
-    const usedBasePath = basePaths.find(bp => resultPath.startsWith(bp)) || basePaths[0];
+    const usedBasePath = basePaths.find(bp => resultPathBase.startsWith(bp)) || basePaths[0];
 
     // Calculate relative path (e.g., "src/App.jsx" or "index.html")
-    const relativePath = resultPath.replace(usedBasePath + '/', '');
+    const relativePath = resultPathBase.replace(usedBasePath + '/', '');
     
     // Check old style path and new style path
     const candidateSetupPaths = [
@@ -802,6 +829,9 @@ async function getResultPaths(testID, run, testName) {
             }
         } catch {}
     }
+
+    const source = new URLSearchParams(window.location.search).get('source') || 'local';
+    const resultPath = `${resultPathBase}?source=${source}`;
 
     return { setupPath, resultPath, usedBasePath };
 }
@@ -821,9 +851,11 @@ async function findBestEntryPoint(basePaths) {
         'index.html'
     ];
 
+    const source = new URLSearchParams(window.location.search).get('source') || 'local';
+
     for (const basePath of pathsToCheck) {
         const checks = candidates.map(candidate =>
-            fetch(`${basePath}/${candidate}`, { method: 'HEAD' })
+            fetch(`${basePath}/${candidate}?source=${source}`, { method: 'HEAD' })
                 .then(res => res.ok ? `${basePath}/${candidate}` : null)
                 .catch(() => null)
         );

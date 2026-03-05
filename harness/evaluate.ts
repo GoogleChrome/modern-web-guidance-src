@@ -16,7 +16,7 @@ async function main() {
   console.log('Starting Evaluation...'.cyan.bold);
 
   const resultsDirBase = path.join(__dirname, 'results');
-  let suiteName = config.eval.suiteName;
+  let suiteName = process.argv[2] || config.suite.name;
   if (!suiteName) {
     console.error('❌ No suite name provided! Please specify a suite to evaluate.'.red);
     process.exit(1);
@@ -38,7 +38,7 @@ async function main() {
     const metrics = calculateMetrics(allResults, numRuns);
     const mdReport = generateMarkdownReport(metrics, allResults);
     const timestamp = new Date().toISOString();
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns);
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, config.suite.agent, config.suite.enableSkills);
 
     saveReports(resultsDir, mdReport, jsonReport);
 

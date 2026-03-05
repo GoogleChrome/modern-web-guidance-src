@@ -204,9 +204,14 @@ async function main() {
       }
     }
 
-
-
     console.log(`\n✅ Test suite complete! Results saved to: results/${testID}`);
+
+    console.log(`\n=== Running Evaluation for ${testID} ===`);
+    try {
+      await runCommand('node', [path.join(__dirname, 'evaluate.ts'), testID]);
+    } catch (evalError) {
+      console.error('❌ Evaluation failed:', evalError);
+    }
   } catch (e) {
     console.error('❌ Error during suite execution:', e);
   } finally {
