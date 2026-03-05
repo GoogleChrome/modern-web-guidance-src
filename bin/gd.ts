@@ -38,7 +38,7 @@ function listGuideDirs(): string[] {
 const completion = omelette('gd <command> <arg1> <arg2>');
 
 completion.on('command', ({ reply }) => {
-  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'eval', 'setup-completion']);
+  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'setup-completion']);
 });
 
 completion.on('arg1', ({ before, reply }) => {
@@ -123,6 +123,7 @@ Guide Development:
   test <dir>                  Check grader calibration (demo + negative-demo)
   gen grader <dir>            Generate a new grader script
   gen negative <dir>          Generate negative examples
+  audit                       Show status of all guides
 
 Evaluation:
   eval suite                  Run the full evaluation suite
@@ -163,6 +164,12 @@ Options:
     case 'dev-all': {
       const { devAll } = await import('../guides/dev-guide.ts');
       await devAll({ verbose: !!values.verbose });
+      break;
+    }
+
+    case 'audit': {
+      const { auditGuides } = await import('../guides/dev-guide.ts');
+      auditGuides();
       break;
     }
 

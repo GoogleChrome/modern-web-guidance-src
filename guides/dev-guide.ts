@@ -23,16 +23,22 @@ export interface DevGuideOptions {
 interface GuideInventory {
   dir: string;
   name: string;
+  category: string;
   hasGuide: boolean;
   hasDemo: boolean;
   hasExpectations: boolean;
   expectationsEmpty: boolean;
   hasNegativeDemo: boolean;
   hasGrader: boolean;
+  hasPrompts: boolean;
+  hasTask: boolean;
 }
+
+const GUIDE_CATEGORIES = ['performance', 'user-experience', 'accessibility', 'security'];
 
 function inventoryGuide(dir: string): GuideInventory {
   const name = path.basename(dir);
+  const category = path.basename(path.dirname(dir));
   const expectationsPath = path.join(dir, 'expectations.md');
   const hasExpectations = fs.existsSync(expectationsPath);
   let expectationsEmpty = false;
@@ -43,13 +49,29 @@ function inventoryGuide(dir: string): GuideInventory {
   return {
     dir,
     name,
+    category,
     hasGuide: fs.existsSync(path.join(dir, 'guide.md')),
     hasDemo: fs.existsSync(path.join(dir, 'demo.html')),
     hasExpectations,
     expectationsEmpty,
     hasNegativeDemo: fs.existsSync(path.join(dir, 'negative-demo.html')),
     hasGrader: fs.existsSync(path.join(dir, 'grader.ts')),
+    hasPrompts: fs.existsSync(path.join(dir, 'prompts.md')),
+    hasTask: !!findExistingTask(name),
   };
+}
+
+function scanAllGuides(): GuideInventory[] {
+  const guides: GuideInventory[] = [];
+  for (const category of GUIDE_CATEGORIES) {
+    const categoryDir = path.join(__dirname, category);
+    if (!fs.existsSync(categoryDir)) continue;
+    for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      guides.push(inventoryGuide(path.join(categoryDir, entry.name)));
+    }
+  }
+  return guides;
 }
 
 function printInventory(inv: GuideInventory): void {
@@ -304,7 +326,6 @@ function findExistingTask(guideName: string): TaskInfo | null {
       const baseApp = baseAppMatch ? baseAppMatch[1].trim() : 'daily-grind';
       const prompt = frontmatterMatch[2].trim();
       const taskName = file.replace(/\.md$/, '');
-      console.log(`Found existing task: ${file}`);
       return { taskName, baseApp, prompt };
     }
   }
@@ -538,25 +559,9 @@ function spawnAsync(command: string, args: string[], options: import('child_proc
 
 // Batch mode: process all incomplete guides
 export async function devAll(options: DevGuideOptions = {}): Promise<void> {
-  const guideCategories = ['performance', 'user-experience', 'accessibility', 'security'];
-  const incompleteGuides: GuideInventory[] = [];
-
-  for (const category of guideCategories) {
-    const categoryDir = path.join(__dirname, category);
-    if (!fs.existsSync(categoryDir)) continue;
-
-    const entries = fs.readdirSync(categoryDir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const guideDir = path.join(categoryDir, entry.name);
-      const inv = inventoryGuide(guideDir);
-
-      // Must have guide.md + demo.html, but missing negative-demo.html or grader.ts
-      if (inv.hasGuide && inv.hasDemo && (!inv.hasNegativeDemo || !inv.hasGrader)) {
-        incompleteGuides.push(inv);
-      }
-    }
-  }
+  const incompleteGuides = scanAllGuides().filter(inv =>
+    inv.hasGuide && inv.hasDemo && (!inv.hasNegativeDemo || !inv.hasGrader)
+  );
 
   if (incompleteGuides.length === 0) {
     console.log(cGreen(`All guides are complete!`));
@@ -596,6 +601,102 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
   console.log(cBold(`Batch complete: ${succeeded.length}/${results.length} guides calibrated`));
   if (failed.length > 0) {
     console.log(cRed(`Failed: ${failed.map(r => r.name).join(', ')}`));
+  }
+  console.log('');
+}
+
+type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'incomplete';
+
+function classifyGuide(inv: GuideInventory): GuideStatus {
+  if (!inv.hasGuide || !inv.hasDemo) return 'incomplete';
+  if (!inv.hasExpectations || inv.expectationsEmpty) return 'needs-expectations';
+  if (!inv.hasNegativeDemo || !inv.hasGrader) return 'needs-calibration';
+  if (!inv.hasPrompts || !inv.hasTask) return 'needs-test';
+  return 'eval-ready';
+}
+
+export function auditGuides(): void {
+  const allGuides = scanAllGuides();
+
+  if (allGuides.length === 0) {
+    console.log('No guides found.');
+    return;
+  }
+
+  const byStatus = new Map<GuideStatus, GuideInventory[]>();
+  for (const inv of allGuides) {
+    const status = classifyGuide(inv);
+    if (!byStatus.has(status)) byStatus.set(status, []);
+    byStatus.get(status)!.push(inv);
+  }
+
+  const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
+    'eval-ready':        { label: 'Ready for eval', color: cGreen },
+    'needs-test':        { label: 'Needs --test run (missing prompts/task)', color: cCyan },
+    'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
+    'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
+    'incomplete':        { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
+  };
+
+  // Summary counts
+  console.log(cBold(`\nGuide Audit: ${allGuides.length} guides\n`));
+  for (const status of ['eval-ready', 'needs-test', 'needs-calibration', 'needs-expectations', 'incomplete'] as GuideStatus[]) {
+    const guides = byStatus.get(status) || [];
+    const { label, color } = statusLabel[status];
+    console.log(`  ${color(`${String(guides.length).padStart(2)}`)}  ${label}`);
+  }
+
+  // Per-category detail
+  const byCategory = new Map<string, GuideInventory[]>();
+  for (const inv of allGuides) {
+    if (!byCategory.has(inv.category)) byCategory.set(inv.category, []);
+    byCategory.get(inv.category)!.push(inv);
+  }
+
+  const fileFlag = (has: boolean) => has ? '●' : cDim('○');
+
+  for (const [category, guides] of byCategory) {
+    console.log(cBold(`\n${category}/`));
+
+    //         header
+    console.log(cDim(`  ${'name'.padEnd(42)} guide demo  expct neg   grdr  prmpt task`));
+
+    for (const inv of guides.sort((a, b) => a.name.localeCompare(b.name))) {
+      const status = classifyGuide(inv);
+      const { color } = statusLabel[status];
+
+      const name = inv.name.length > 40 ? inv.name.substring(0, 39) + '…' : inv.name;
+      const cols = [
+        fileFlag(inv.hasGuide),
+        fileFlag(inv.hasDemo),
+        inv.expectationsEmpty ? cYellow('△') : fileFlag(inv.hasExpectations),
+        fileFlag(inv.hasNegativeDemo),
+        fileFlag(inv.hasGrader),
+        fileFlag(inv.hasPrompts),
+        fileFlag(inv.hasTask),
+      ];
+
+      console.log(`  ${color(name.padEnd(42))} ${cols.join('     ')}`);
+    }
+  }
+
+  // Next action suggestion
+  const nextCalibrate = byStatus.get('needs-calibration')?.[0];
+  const nextTest = byStatus.get('needs-test')?.[0];
+  const nextExpectations = byStatus.get('needs-expectations')?.[0];
+
+  console.log('');
+  if (nextExpectations) {
+    const rel = path.relative(process.cwd(), nextExpectations.dir);
+    console.log(`Next: add expectations.md to ${cBold(rel)}`);
+  } else if (nextCalibrate) {
+    const rel = path.relative(process.cwd(), nextCalibrate.dir);
+    console.log(`Next: ${cCyan(`gd dev ${rel}`)}`);
+  } else if (nextTest) {
+    const rel = path.relative(process.cwd(), nextTest.dir);
+    console.log(`Next: ${cCyan(`gd dev ${rel} --test`)}`);
+  } else {
+    console.log(cGreen(`All guides are eval-ready!`));
   }
   console.log('');
 }
