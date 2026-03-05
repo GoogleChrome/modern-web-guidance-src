@@ -45,8 +45,8 @@ export const environmentConfig: EnvironmentConfig = {
 // *** Run with: `pnpm suite`         ***
 // **************************************
 export const suiteConfig: SuiteConfig = {
-  name: 'analytics-suite-1',
-  numRuns: 1,
+  name: 'local-suite',
+  numRuns: 2,
   tasks: ['batch-analytics-events-task'],
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: false,

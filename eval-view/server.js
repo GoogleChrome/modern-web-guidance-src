@@ -91,6 +91,44 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (decodedPath === '/api/run-files') {
+    const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+    const relativePath = parsedUrl.searchParams.get('dir');
+    const source = parsedUrl.searchParams.get('source') || 'local';
+
+    if (!relativePath) {
+      res.writeHead(400);
+      res.end('Missing dir parameter');
+      return;
+    }
+
+    let files = [];
+    if (source === 'local') {
+      const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
+      const targetDir = path.join(resultsDir, relativePath);
+      try {
+        if (fs.existsSync(targetDir)) {
+          files = fs.readdirSync(targetDir, { withFileTypes: true })
+            .filter(d => !d.isDirectory())
+            .map(d => d.name);
+        }
+      } catch (e) {
+        console.error('Error reading local dir:', e.message);
+      }
+    } else {
+      try {
+        const [gcsFiles] = await bucket.getFiles({ prefix: relativePath });
+        files = gcsFiles.map(f => path.basename(f.name));
+      } catch (e) {
+        console.error('Error reading remote dir:', e.message);
+      }
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ files }));
+    return;
+  }
+
   let filePath;
   // Map results and setup to the harness directory
   if (decodedPath.startsWith('/results/')) {

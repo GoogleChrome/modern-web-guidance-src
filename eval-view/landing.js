@@ -265,7 +265,7 @@ function renderFilterMenuItems() {
             hour: 'numeric',
             minute: '2-digit',
             hour12: true
-        });
+        }).replace(' at ', ', ');
 
         labelContent.appendChild(idSpan);
         labelContent.appendChild(dateSpan);
@@ -379,7 +379,7 @@ function renderSuites() {
             hour: 'numeric',
             minute: '2-digit',
             hour12: true
-        });
+        }).replace(' at ', ', ');
 
         const gStats = calculateGroupTotalStats(data.results, 'guided');
         const uStats = calculateGroupTotalStats(data.results, 'unguided');
@@ -496,10 +496,11 @@ function renderGridRow(testName) {
             const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
 
             cellsHtml.push(`
+                const dateStr = new Date(allTestData[testID].timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
                 <a class="test-grid-cell"
                      href="dashboard.html?testID=${testID}"
                      style="background-color: ${getColor(avgRate)}"
-                     title="${testID} - ${new Date(allTestData[testID].timestamp).toLocaleDateString()}: ${avgRate}% (${totalPassed}/${totalChecks})">
+                     title="${testID} - ${dateStr}: ${avgRate}% (${totalPassed}/${totalChecks})">
                     ${avgRate}%
                 </a>
             `);
@@ -655,7 +656,7 @@ function renderTrends() {
             const data = allTestData[testID].data;
             const stats = calculateGroupTotalStats(data.results, groupType);
             const value = stats.total > 0 ? Math.round((stats.passed / stats.total) * 100) : 0;
-            const timestamp = new Date(allTestData[testID].timestamp).toLocaleDateString();
+            const timestamp = new Date(allTestData[testID].timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
 
             return `
                 <a class="timeline-bar" href="dashboard.html?testID=${testID}" title="${testID} - ${timestamp}: ${value}%">

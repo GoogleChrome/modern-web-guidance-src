@@ -267,7 +267,7 @@ function renderTestHeader(testID, jetskiVersion, timestamp) {
                     hour: 'numeric',
                     minute: '2-digit',
                     hour12: true
-                });
+                }).replace(' at ', ', ');
             } catch { }
             html += ` — ${timeStr}`;
         }
@@ -463,7 +463,7 @@ async function showDetails(testName, runs, stats, testID) {
                         <strong style="font-size: 0.9em; font-weight: 600;">${guide} used by agent</strong>
                     </div>
                     <div>
-                        <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">View ${MCP_LOG_FILE}</a>
+                        <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${MCP_LOG_FILE}</a>
                     </div>
                 </div>
             `;
@@ -476,7 +476,6 @@ async function showDetails(testName, runs, stats, testID) {
                 <strong>Run ${run.runNumber}</strong>
                 <span style="color: ${getColor(s.rate)}">${s.rate}% Pass (${s.passed}/${s.total})</span>
                 <div class="run-actions">
-                    <a href="${resultPath}" target="_blank">View Source ↗</a>
                 </div>
             </div>
             <ul class="check-list">
@@ -500,32 +499,66 @@ async function showDetails(testName, runs, stats, testID) {
             };
         }
 
-        const diffButton = document.createElement('button');
-        diffButton.className = 'secondary-btn small-btn';
-        diffButton.textContent = 'View Diff';
-        diffButton.style.cssText = 'margin-left: 10px; font-size: 0.8em; padding: 2px 8px;';
-        diffButton.onclick = () => viewDiff(setupPath, resultPath, testName, run.runNumber);
-
         const sourceParam = new URLSearchParams(window.location.search).get('source') || 'local';
-        const rawResultsPath = `${usedBasePath}/${guide}_results.json?source=${sourceParam}`;
-        let showRawResults = false;
+        const relativeDir = usedBasePath.replace('results/', '');
+
+        const dropdown = document.createElement('select');
+        dropdown.className = 'run-actions-dropdown';
+        dropdown.style.cssText = 'padding: 4px; font-size: 0.9em; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;';
+        dropdown.innerHTML = '<option value="" disabled selected>Artifacts</option>';
+
+        const sourceOpt = document.createElement('option');
+        sourceOpt.value = 'source';
+        sourceOpt.textContent = 'App';
+        dropdown.appendChild(sourceOpt);
+
+        const diffOpt = document.createElement('option');
+        diffOpt.value = 'diff';
+        diffOpt.textContent = 'Diff';
+        dropdown.appendChild(diffOpt);
+
+        let sessionFile = null;
         try {
-            const rawRes = await fetch(rawResultsPath, { method: 'HEAD' });
-            if (rawRes.ok) showRawResults = true;
+            const filesRes = await fetch(`/api/run-files?dir=${encodeURIComponent(relativeDir)}&source=${sourceParam}`);
+            if (filesRes.ok) {
+                const { files } = await filesRes.json();
+
+                const rawJson = files.find(f => f === `${guide}_results.json`);
+                if (rawJson) {
+                    const rawOpt = document.createElement('option');
+                    rawOpt.value = 'raw';
+                    rawOpt.textContent = 'Raw Test Results';
+                    dropdown.appendChild(rawOpt);
+                }
+
+                sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
+                if (sessionFile) {
+                    const trajOpt = document.createElement('option');
+                    trajOpt.value = 'trajectory';
+                    trajOpt.textContent = 'Trajectory';
+                    dropdown.appendChild(trajOpt);
+                }
+            }
         } catch (e) {
-            console.log('Error checking raw results:', e);
+            console.log('Error checking run files:', e);
         }
 
-        if (showRawResults) {
-            const rawResultsBtn = document.createElement('button');
-            rawResultsBtn.className = 'secondary-btn small-btn';
-            rawResultsBtn.textContent = 'View Raw Results';
-            rawResultsBtn.style.cssText = 'margin-left: 10px; font-size: 0.8em; padding: 2px 8px;';
-            rawResultsBtn.onclick = () => viewContent(rawResultsPath, rawResultsPath);
-            runDetail.querySelector('.run-actions').appendChild(rawResultsBtn);
-        }
+        dropdown.onchange = (e) => {
+            const val = e.target.value;
+            e.target.value = ''; // reset selection
+            if (val === 'source') {
+                window.open(resultPath, '_blank');
+            } else if (val === 'diff') {
+                viewDiff(setupPath, resultPath, testName, run.runNumber);
+            } else if (val === 'trajectory' && sessionFile) {
+                window.open(`${usedBasePath}/${sessionFile}?source=${sourceParam}`, '_blank');
+            } else if (val === 'raw') {
+                const rawPath = `${usedBasePath}/${guide}_results.json?source=${sourceParam}`;
+                viewContent(rawPath, rawPath);
+            }
+        };
 
-        runDetail.querySelector('.run-actions').appendChild(diffButton);
+        runDetail.querySelector('.run-actions').appendChild(dropdown);
         return runDetail;
     });
 
