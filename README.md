@@ -65,12 +65,15 @@ Run commands via the new universal CLI:
 
 ```bash
 # Guide Development
-gd dev [dir] [--test]         # auto-generate and calibrate
+gd dev [dir] [options]        # auto-generate/calibrate (runs agent test by default)
 gd dev-all                    # batch-process all incomplete guides
-gd grade [file|dir]           # run/calibrate grader
-gd test [dir]                 # check grader calibration
-gd gen grader [dir]           # generate grader script
-gd gen negative [dir]         # generate negative example
+gd audit                      # show status of all guides
+
+# Dev Options:
+gd dev [dir] --grade          # (or: pnpm grade) run/calibrate grader
+gd dev [dir] --test-grader    # (or: pnpm test-grader) check grader calibration
+gd dev [dir] --gen-grader     # (or: pnpm generate-grader) generate grader script
+gd dev [dir] --gen-negative   # (or: pnpm generate-negative) generate negative example
 
 # Evaluation
 gd eval suite                 # (or: pnpm suite)

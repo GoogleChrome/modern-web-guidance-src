@@ -51,17 +51,17 @@ pnpm setup:playwright
 
 4. Generate negative demo:
 ```bash
-gd gen negative <path/to/guide_dir>
+gd dev <path/to/guide_dir> --gen-negative
 # (or: pnpm generate-negative <path/to/guide_dir>)
 
-# e.g. gd gen negative guides/performance/content-vis
+# e.g. gd dev guides/performance/content-vis --gen-negative
 ```
 
 This will create a `negative-demo.html` file in the guide directory.
 
 5. Generate grader:
 ```bash
-gd gen grader <path/to/guide_dir>
+gd dev <path/to/guide_dir> --gen-grader
 # (or: pnpm generate-grader <path/to/guide_dir>)
 ```
 
@@ -70,11 +70,11 @@ This will create a `grader.ts` file in the guide directory.
 6. Once the grader is generated, run it on the `demo.html` and `negative-demo.html` with:
 
 ```bash
-gd grade <path/to/demo_file>
+gd dev <path/to/demo_file> --grade
 # (or: pnpm grade <path/to/demo_file>)
 
-# e.g. gd grade guides/performance/content-vis/demo.html
-# e.g. gd grade guides/performance/content-vis/negative-demo.html
+# e.g. gd dev guides/performance/content-vis/demo.html --grade
+# e.g. gd dev guides/performance/content-vis/negative-demo.html --grade
 ```
 
 On each `gd grade` run, a `grade-report` folder will be created in the same directory as the specified demo file, and the results will be displayed in a browser window.
@@ -84,20 +84,20 @@ The grader should pass at 100% for `demo.html`, and 0% for `negative-demo.html`.
 You can automatically verify that your grader is perfectly calibrated against both of these files by running:
 
 ```bash
-gd test <path/to/guide_dir>
+gd dev <path/to/guide_dir> --test-grader
 # (or: pnpm test-grader <path/to/guide_dir>)
 
-# e.g. gd test guides/performance/content-vis
+# e.g. gd dev guides/performance/content-vis --test-grader
 ```
 
 ## Testing with an Agent
 
-### Automated via `--test` (Recommended)
+### Automated (Recommended)
 
-Pass `--test` to `gd dev` to run a full agent evaluation after calibration:
+By default, `gd dev` runs a full agent evaluation after calibration:
 
 ```bash
-gd dev <path/to/guide_dir> --test
+gd dev <path/to/guide_dir>
 ```
 
 This runs the following pipeline after the grader calibrates successfully:
@@ -160,7 +160,7 @@ This will create a `test-app-result` directory in the `<path/to/guide_dir>` fold
 5. Run the grader and see the results on the generated file:
 
 ```bash
-gd grade <path/to/guide_dir>/test-app-result/index.html
+gd dev <path/to/guide_dir>/test-app-result/index.html --grade
 # (or: pnpm grade <path/to/guide_dir>/test-app-result/index.html)
 ```
 

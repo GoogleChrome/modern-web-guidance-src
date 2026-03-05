@@ -16,7 +16,7 @@ import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
 
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
-  test?: boolean;        // default: false — run agent test after calibration
+  test?: boolean;        // default: true — run agent test after calibration
   verbose?: boolean;
 }
 
@@ -215,7 +215,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   }
 
   // Step 5: Optional agent test
-  if (options.test && calibrationResult?.success) {
+  if (options.test !== false && calibrationResult?.success) {
     await runAgentTest(targetDir, inv.name);
   }
 
@@ -617,7 +617,7 @@ export function auditGuides(): void {
 
   const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
     'eval-ready':        { label: 'Ready for eval', color: cGreen },
-    'needs-test':        { label: 'Needs --test run (missing prompts/task)', color: cCyan },
+    'needs-test':        { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
     'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
     'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
     'incomplete':        { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
@@ -679,7 +679,7 @@ export function auditGuides(): void {
     console.log(`Next: ${cCyan(`gd dev ${rel}`)}`);
   } else if (nextTest) {
     const rel = path.relative(process.cwd(), nextTest.dir);
-    console.log(`Next: ${cCyan(`gd dev ${rel} --test`)}`);
+    console.log(`Next: ${cCyan(`gd dev ${rel}`)}`);
   } else {
     console.log(cGreen(`All guides are eval-ready!`));
   }
@@ -689,10 +689,10 @@ export function auditGuides(): void {
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const dir = args.find(a => !a.startsWith('--'));
-  const isTest = args.includes('--test');
+  const isTest = !args.includes('--no-test'); // Default to true unless explicitly disabled
 
   if (!dir) {
-    console.error('Usage: node --experimental-strip-types guides/dev-guide.ts <path/to/guide> [--test]');
+    console.error('Usage: node --experimental-strip-types guides/dev-guide.ts <path/to/guide> [--no-test]');
     process.exit(1);
   }
 

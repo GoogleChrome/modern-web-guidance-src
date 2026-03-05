@@ -76,7 +76,10 @@ const { positionals, values } = parseArgs({
   options: {
     help: { type: 'boolean', short: 'h' },
     version: { type: 'boolean', short: 'v' },
-    test: { type: 'boolean' },
+    grade: { type: 'boolean' },
+    'test-grader': { type: 'boolean' },
+    'gen-grader': { type: 'boolean' },
+    'gen-negative': { type: 'boolean' },
     verbose: { type: 'boolean' },
   },
   allowPositionals: true,
@@ -117,12 +120,16 @@ Guidance CLI (gd)
 Usage: gd <command> [options]
 
 Guide Development:
-  dev <dir> [--test]          Auto-generate and calibrate guide artifacts
-  grade <file|dir>            Run/calibrate grader
-  test <dir>                  Check grader calibration (demo + negative-demo)
-  gen grader <dir>            Generate a new grader script
-  gen negative <dir>          Generate negative examples
+  dev <dir> [options]         Auto-generate and calibrate guide artifacts
+  dev-all                     Batch-process all incomplete guides
   audit                       Show status of all guides
+
+Options for 'dev':
+  --grade              Run/calibrate grader
+  --test-grader        Check grader calibration (demo + negative-demo)
+  --gen-grader         Generate a new grader script
+  --gen-negative       Generate negative examples
+  --verbose            Show additional output
 
 Evaluation:
   eval suite                  Run the full evaluation suite
@@ -137,7 +144,6 @@ Other:
 
 Options:
   -h, --help      Show this help
-  --test          Run agent test after calibration (with dev)
   --verbose       Show additional output
     `);
     process.exit(0);
@@ -151,10 +157,30 @@ Options:
     }
 
     case 'dev': {
-      const dir = requireArg(positionals[1], 'gd dev <path/to/guide> [--test]');
+      const dir = requireArg(positionals[1], 'gd dev <path/to/guide>');
+      if (values.grade) {
+        const { gradeFile } = await import('../guides/run-grader.ts');
+        await gradeFile(path.resolve(process.cwd(), dir));
+        break;
+      }
+      if (values['test-grader']) {
+        const { testGrader } = await import('../guides/test-grader.ts');
+        const result = await testGrader(dir);
+        process.exit(result.success ? 0 : 1);
+      }
+      if (values['gen-grader']) {
+        const { generateGrader } = await import('../guides/grader-gen.ts');
+        await generateGrader(dir);
+        break;
+      }
+      if (values['gen-negative']) {
+        const { generateNegative } = await import('../guides/negative-gen.ts');
+        await generateNegative(dir);
+        break;
+      }
+      // Default dev-guide pipeline
       const { devGuide } = await import('../guides/dev-guide.ts');
       const success = await devGuide(dir, {
-        test: !!values.test,
         verbose: !!values.verbose,
       });
       process.exit(success ? 0 : 1);
@@ -169,36 +195,6 @@ Options:
     case 'audit': {
       const { auditGuides } = await import('../guides/dev-guide.ts');
       auditGuides();
-      break;
-    }
-
-    case 'grade': {
-      const target = requireArg(positionals[1], 'gd grade <path/to/file-or-dir>');
-      const { gradeFile } = await import('../guides/run-grader.ts');
-      await gradeFile(path.resolve(process.cwd(), target));
-      break;
-    }
-
-    case 'test': {
-      const dir = requireArg(positionals[1], 'gd test <path/to/guide>');
-      const { testGrader } = await import('../guides/test-grader.ts');
-      const result = await testGrader(dir);
-      process.exit(result.success ? 0 : 1);
-    }
-
-    case 'gen': {
-      const subcommand = requireArg(positionals[1], 'gd gen <grader|negative> <path/to/guide>');
-      const dir = requireArg(positionals[2], `gd gen ${subcommand} <path/to/guide>`);
-      if (subcommand === 'grader') {
-        const { generateGrader } = await import('../guides/grader-gen.ts');
-        await generateGrader(dir);
-      } else if (subcommand === 'negative') {
-        const { generateNegative } = await import('../guides/negative-gen.ts');
-        await generateNegative(dir);
-      } else {
-        console.error(`${cRed(`Unknown gen target: ${subcommand}.`)} Expected: grader, negative`);
-        process.exit(1);
-      }
       break;
     }
 
@@ -263,13 +259,13 @@ Options:
         }
       } else if (['suite', 'task', 'smoke', 'agent', 'report', 'dashboard'].includes(command)) {
         console.error(`${cRed(`'gd ${command}' has moved.`)}  Run: ${cCyan(`gd eval ${command}`)}\n`);
-      } else if (['test-grader', 'gen-grader', 'gen-negative', 'gen:grader', 'gen:negative'].includes(command)) {
-        const remap: Record<string, string> = {
-          'test-grader': 'test', 'gen-grader': 'gen grader', 'gen-negative': 'gen negative',
-          'gen:grader': 'gen grader', 'gen:negative': 'gen negative',
-        };
+      } else if (['grade'].includes(command)) {
+        console.error(`${cRed(`'gd grade' has moved.`)}  Run: ${cCyan(`gd dev <guide_dir> --grade`)}\n`);
+      } else if (['test', 'test-grader'].includes(command)) {
+        console.error(`${cRed(`'gd test' has moved.`)}  Run: ${cCyan(`gd dev <guide_dir> --test-grader`)}\n`);
+      } else if (['gen', 'gen-grader', 'gen-negative', 'gen:grader', 'gen:negative'].includes(command)) {
         const rest = positionals.slice(1).join(' ');
-        console.error(`${cRed(`'gd ${command}' has moved.`)}  Run: ${cCyan(`gd ${remap[command]}${rest ? ' ' + rest : ''}`)}\n`);
+        console.error(`${cRed(`'gd ${command}' has moved.`)}  Run: ${cCyan(`gd dev <guide_dir> --gen-grader`)} or ${cCyan(`--gen-negative`)}\n`);
       } else {
         console.error(`${cRed(`Unknown command: ${command}.`)} Run ${cCyan('gd --help')} for usage.`);
       }
