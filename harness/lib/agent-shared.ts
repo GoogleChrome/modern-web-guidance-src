@@ -307,33 +307,55 @@ export function watchLogFile(logPath: string): () => void {
   return () => clearInterval(interval);
 }
 
-
-
 const DEFAULT_PROD_BASE = 'https://trajectory-dev.corp.goog/';
 
 /**
- * @param {Uint8Array} fileBuffer
- * @param {string} fileName
- * @param {string} [prodBase=DEFAULT_PROD_BASE]
- * @returns {string}
+ * Finds trajectory files, copies them to the target directory, and generates HTML exports.
+ * @param sourceDir Directory to search for trajectory files
+ * @param pattern Glob pattern for trajectory files (relative to sourceDir)
+ * @param targetDir Directory to copy files and HTML exports to
+ */
+export function exportTrajectories(sourceDir: string, pattern: string, targetDir: string): void {
+  if (!fs.existsSync(sourceDir)) return;
+
+  // fs.globSync is available in Node 22+
+  const files = fs.globSync(pattern, { cwd: sourceDir });
+  
+  for (const relativeSrc of files as string[]) {
+    const srcFile = path.join(sourceDir, relativeSrc);
+    const fileName = path.basename(srcFile);
+    const destFile = path.join(targetDir, fileName);
+    
+    try {
+      fs.copyFileSync(srcFile, destFile);
+      console.log(`Copied trajectory: ${fileName} to ${targetDir}`);
+
+      const trajectoryId = fileName.replace(/\.(json|pb)$/, '');
+      const fileBuffer = fs.readFileSync(srcFile);
+      const htmlContent = generateExportHtml(new Uint8Array(fileBuffer), fileName);
+      const htmlDest = path.join(targetDir, `${trajectoryId}.html`);
+      fs.writeFileSync(htmlDest, htmlContent, 'utf8');
+      console.log(`Generated HTML export: ${trajectoryId}.html`);
+    } catch (e) {
+      console.error(`Failed to export trajectory ${fileName}:`, e);
+    }
+  }
+}
+
+/**
+ * Generates an HTML file that can load and display a trajectory file (JSON/PB) 
+ * by embedding it as base64 and posting it to the trajectory viewer iframe.
+ * @param fileBuffer Binary content of the trajectory file
+ * @param fileName Name of the trajectory file
+ * @param prodBase Base URL of the trajectory viewer
+ * @returns HTML content
  */
 export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, prodBase = DEFAULT_PROD_BASE): string {
     const trajectoryId = fileName.replace(/\.(json|pb)$/, '');
     const title = `Trajectory - ${trajectoryId}`;
 
-    let base64String = '';
-    // Node.js environment
-    if (typeof process !== 'undefined' && typeof process.versions === 'object' && typeof Buffer !== 'undefined') {
-        base64String = Buffer.from(fileBuffer).toString('base64');
-    } else {
-        // Browser environment fallback
-        let binary = '';
-        const len = fileBuffer.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(fileBuffer[i]);
-        }
-        base64String = btoa(binary);
-    }
+    // Node.js environment: Buffer is faster than manual conversion
+    const base64String = Buffer.from(fileBuffer).toString('base64');
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -399,3 +421,4 @@ export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, pro
 </body>
 </html>`;
 }
+
