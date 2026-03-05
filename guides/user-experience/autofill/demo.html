@@ -10,9 +10,6 @@ SPDX-License-Identifier: Apache-2.0 -->
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- <link rel="stylesheet" href="css/main.css"> -->
-  <!-- <script src="js/main.js" defer></script> -->
-
   <style>
     /* Copyright 2026 Google LLC.
     SPDX-License-Identifier: Apache-2.0 */
@@ -45,7 +42,7 @@ SPDX-License-Identifier: Apache-2.0 -->
       color: #eeeeee;
       cursor: pointer;
       display: block;
-      font-size: 20px; /* fallback */
+      font-size: 20px; /* fallback for browsers where CSS variables are not available */
       font-size: var(--large-mobile-font-size);
       font-weight: 400;
       margin: 3px 0 0 0;
@@ -77,12 +74,6 @@ SPDX-License-Identifier: Apache-2.0 -->
       width: 50%;
     }
 
-    form {
-      /*   border-bottom: 1px solid #cccccc;
-      margin: 0 0 20px 0;
-      padding: 0 0 50px 0; */
-    }
-
     h1 {
       border-bottom: 1px solid #cccccc;
       font-size: 28px;
@@ -93,10 +84,10 @@ SPDX-License-Identifier: Apache-2.0 -->
 
     input {
       border: 1px solid #cccccc;
-      font-size: 22px; /* fallback */
+      font-size: 22px; /* fallback for browsers where CSS variables are not available */
       font-size: var(--small-mobile-font-size);
       padding: 12px;
-      width: 90%; /* fallback */
+      width: 90%; /* fallback for browsers where CSS calc() is not available */
       width: calc(100% - 30px); /* full width minus padding */
     }
 
@@ -150,18 +141,18 @@ SPDX-License-Identifier: Apache-2.0 -->
     textarea {
       border: 1px solid #cccccc;
       font-family: sans-serif;
-      font-size: 22px; /* fallback */
+      font-size: 22px; /* fallback for browsers where CSS variables are not available */
       font-size: var(--small-mobile-font-size);
       height: 3.5em;
       line-height: 1.4em;
       padding: 12px;
-      width: 90%; /* fallback */
+      width: 90%; /* fallback for browsers where CSS calc() is not available */
       width: calc(100% - 30px); /* full width minus padding */
     }
 
     @media (min-width: 400px) {
       button {
-        font-size: 20px; /* fallback */
+        font-size: 20px; /* fallback for browsers where CSS variables are not available */
         font-size: var(--large-mobile-font-size);
       }
 
@@ -175,12 +166,12 @@ SPDX-License-Identifier: Apache-2.0 -->
       }
 
       input {
-        font-size: 22px; /* fallback */
+        font-size: 22px; /* fallback for browsers where CSS variables are not available */
         font-size: var(--large-mobile-font-size);
       }
 
       label {
-        font-size: 22px; /* fallback */
+        font-size: 22px; /* fallback for browsers where CSS variables are not available */
         font-size: var(--large-mobile-font-size);
       }
 
@@ -198,12 +189,12 @@ SPDX-License-Identifier: Apache-2.0 -->
       }
 
       select {
-        font-size: 22px; /* fallback */
+        font-size: 22px; /* fallback for browsers where CSS variables are not available */
         font-size: var(--large-mobile-font-size);
       }
 
       textarea {
-        font-size: 22px; /* fallback */
+        font-size: 22px; /* fallback for browsers where CSS variables are not available */
         font-size: var(--large-mobile-font-size);
       }
     }
@@ -214,7 +205,7 @@ SPDX-License-Identifier: Apache-2.0 -->
       }
 
       button {
-        font-size: 18px; /* fallback */
+        font-size: 18px; /* fallback for browsers where CSS variables are not available */
         font-size: var(--desktop-font-size);
       }
 
@@ -234,12 +225,12 @@ SPDX-License-Identifier: Apache-2.0 -->
       }
 
       input {
-        font-size: 18px; /* fallback */
+        font-size: 18px; /* fallback for browsers where CSS variables are not available */
         font-size: var(--desktop-font-size);
       }
 
       label {
-        font-size: 18px; /* fallback */
+        font-size: 18px; /* fallback for browsers where CSS variables are not available */
         font-size: var(--desktop-font-size);
         margin: 0 0 6px 0;
       }
@@ -261,6 +252,8 @@ SPDX-License-Identifier: Apache-2.0 -->
 
   <main>
 
+   <!-- On a production site, the value of the `action` attribute is the URL of the site's
+   backend service that handles form submission, and the `method` attribute has the value `post` -->
     <form action="." id="form" name="form">
 
       <h1>Address form</h1>
@@ -275,7 +268,9 @@ SPDX-License-Identifier: Apache-2.0 -->
         <textarea id="address" name="address" autocomplete="address" maxlength="300" required></textarea>
       </section>
 
-      <!-- Alternative address format -->
+      <!-- Use the following commented-out code for address entry instead of the previous section,
+      if separate inputs are preferred for address parts -->
+
       <!--
       <section>
         <label for="address-line1">Address line 1</label>
@@ -553,8 +548,8 @@ SPDX-License-Identifier: Apache-2.0 -->
         <label for="tel">Telephone</label>
         <input id="tel" name="tel" autocomplete="tel" type="tel" maxlength="30" pattern="[\d \-\+]+" required>
       </section>
+
       <input type="submit" value="Submit" id="submit-button">
-      <!--       <button id="save-address" type="submit">Save address</button> -->
 
     </form>
 
@@ -567,35 +562,40 @@ SPDX-License-Identifier: Apache-2.0 -->
     const form = document.querySelector("form");
     console.log(form);
     console.log(form.submit);
-    // const saveAddressButton = document.querySelector("button#save-address");
     const submitInput = document.querySelector("input#submit-button");
 
     form.addEventListener("submit", handleFormSubmission);
 
     function handleFormSubmission(event) {
       event.preventDefault();
+      // Call a validate() function if validation is required for specific form fields.
       // validate();
       form.reportValidity();
       if (form.checkValidity() === false) {
         // Handle invalid form data.
       } else {
         // On a production site do form submission.
-        // saveAddressButton.textContent = "Saving...";
-        // saveAddressButton.disabled = "true";
         submitInput.value = "Saving...";
         submitInput.disabled = "true";
         form.submit();
       }
     }
 
-    // Do form validation.
+    // Do form validation for specific form fields.
     function validate() {
       let message = "";
-      // if (!/someregex/.test(someInput.value)) {
-      //   console.log(`Invalid value ${someInput.value} for someInput`);
+
+      // If validation is required for a specific form field (`someField`),
+      // use the commented-out code below. Repeat this code for each form field to be validated.
+      // Notes:
+      // - `someregex` is a regular expression used to test the validity of the field.
+      // - `someField` is the form field being tested.
+
+      // if (!/someregex/.test(someField.value)) {
+      //   console.log(`Invalid value ${someField.value} for someField`);
       // message = 'Explain how to enter a valid value';
       // }
-      // someInput.setCustomValidity(message);
+      // someField.setCustomValidity(message);
     }
 
   </script>
