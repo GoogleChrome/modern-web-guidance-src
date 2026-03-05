@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visually Textured Content</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #e8e4db;
+    }
+
+    .weathered-badge {
+      position: relative;
+      width: 250px;
+      height: 150px;
+      background-color: #c0392b;
+      /* Deep red badge */
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      border-radius: 4px;
+      box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border: 5px double white;
+    }
+
+    .weathered-badge::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #c0392b;
+      pointer-events: none;
+      mask-image: url('grunge-texture.svg');
+      mask-mode: luminance;
+      mask-size: cover;
+    }
+
+    .badge-content {
+      text-align: center;
+      padding: 20px;
+      mask-image: url('grunge-texture.svg');
+      mask-mode: luminance;
+      mask-size: cover;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    p {
+      margin: 5px 0 0;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="weathered-badge">
+    <div class="badge-content">
+      <h1>VINTAGE</h1>
+      <p>Est. 1924</p>
+      <p>Certified Quality</p>
+    </div>
+  </div>
+</body>
+
+</html>

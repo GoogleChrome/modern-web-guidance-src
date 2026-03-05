@@ -1,26 +1,11 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
-import { checkGuides } from './guide_validation.ts';
+import { guideUsed } from './guide_validation.ts';
 import { fileURLToPath } from 'url';
-import readline from 'readline';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-async function _promptUser(question: string): Promise<string> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
-  return new Promise(resolve => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
-}
 
 export async function collectResults(resultsDir: string) {
   const runDirs = fs.readdirSync(resultsDir)
@@ -39,7 +24,7 @@ export async function collectResults(resultsDir: string) {
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
 
-    // Structure: results/{testID}/{runNumber}/{baseApp}/{runType}
+    // Structure: results/{suiteName}/{runNumber}/{taskName}/{runType}
     const directories = glob.sync('*/*/', {
       cwd: runPath,
       absolute: true
@@ -51,22 +36,14 @@ export async function collectResults(resultsDir: string) {
 
       if (parts.length < 2) continue;
 
-      const [baseApp, runType] = parts;
+      const [taskName, runType] = parts;
 
-      let guideResults = undefined;
+      let guideUsedResult = undefined;
       if (runType === 'guided') {
-        guideResults = await checkGuides(dir, baseApp);
+        guideUsedResult = await guideUsed(dir, taskName);
       }
 
       const targetFile = path.join(dir, 'index.html');
-
-
-
-      // We determine what to grade by looking up the task used for this directory
-      // The task name is actually baseApp in the current dir traversal because
-      // the structure is actually results/{testID}/{runNumber}/{taskName}/{runType}
-      // baseApp above was misleadingly named from legacy code. Let's rename it implicitly here:
-      const taskName = baseApp;
 
       const taskPath = path.resolve(__dirname, `../tasks/${taskName}.md`);
       if (!fs.existsSync(taskPath)) {
@@ -111,8 +88,7 @@ export async function collectResults(resultsDir: string) {
 
           // Check if existing results are found
           if (fs.existsSync(graderResults)) {
-            // Instead of prompting interactively, automatically reuse if exists for non-blocking CI usage
-            // The user can delete the file to force a re-run
+            console.log(`Using existing results for ${guide} in ${dir}`);
             useExistingResults = true;
           }
 
@@ -165,7 +141,7 @@ export async function collectResults(resultsDir: string) {
       allResults[testName].push({
         runNumber: parseInt(runDir),
         results: scenarioResults,
-        guideResults,
+        guideUsed: guideUsedResult,
         baseApp: actualBaseApp,
         taskName: taskName
       });

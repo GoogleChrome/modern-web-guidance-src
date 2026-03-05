@@ -5,31 +5,30 @@ test.describe('Eval View Dashboard', () => {
     await page.goto('/');
 
     // Check title
-    await expect(page.locator('.landing-title')).toContainText('Results');
+    await expect(page.locator('.landing-title')).toContainText('Guidance Evals');
 
     // Check tabs exist
-    await expect(page.locator('.tab-button[data-tab="overview"]')).toBeVisible();
+    await expect(page.locator('.tab-button[data-tab="suites"]')).toBeVisible();
     await expect(page.locator('.tab-button[data-tab="explorer"]')).toBeVisible();
     await expect(page.locator('.tab-button[data-tab="trends"]')).toBeVisible();
 
-    // Check overview content
-    await expect(page.locator('#latest-guided-metric')).toBeVisible();
-    await expect(page.locator('#latest-unguided-metric')).toBeVisible();
+    // Check suites content
+    await expect(page.locator('.suite-item-container').first()).toBeVisible();
   });
 
-  test('should load results from harness directory', async ({ page }) => {
-    // Attempt to fetch results/tests.json through the server
-    const response = await page.request.get('/results/tests.json');
+  test('should load suites from API', async ({ page }) => {
+    // Attempt to fetch /api/suites through the server
+    const response = await page.request.get('/api/suites');
     expect(response.ok()).toBe(true);
     
     const data = await response.json();
-    expect(data).toHaveProperty('tests');
+    expect(data).toHaveProperty('suites');
   });
 
   test('should navigate to explorer tab', async ({ page }) => {
     await page.goto('/');
-    // Wait for data to be loaded (overview cards appear)
-    await expect(page.locator('#latest-guided-metric')).not.toContainText('-');
+    // Wait for data to be loaded (suites appear)
+    await expect(page.locator('.suite-item-container').first()).toBeVisible();
     
     await page.click('.tab-button[data-tab="explorer"]');
     
@@ -38,13 +37,13 @@ test.describe('Eval View Dashboard', () => {
   });
 
   test('should load specific test dashboard', async ({ page }) => {
-    await page.goto('/dashboard.html?testID=react');
+    await page.goto('/dashboard.html?testID=example-result');
 
     // Check title
-    await expect(page.locator('h1')).toContainText('Eval Dashboard');
+    await expect(page.locator('h1')).toContainText('Suite Results');
 
     // Check header info
-    await expect(page.locator('#test-header')).toContainText('react');
+    await expect(page.locator('#test-header')).toContainText('example-result');
 
     // Check grid exists and has content
     await expect(page.locator('#dashboard-grid')).toBeVisible();
@@ -58,7 +57,7 @@ test.describe('Eval View Dashboard', () => {
   });
 
   test('should show details and toggle diff view', async ({ page }) => {
-    await page.goto('/dashboard.html?testID=react');
+    await page.goto('/dashboard.html?testID=example-result');
 
     // Wait for cards and click the first one
     const firstCard = page.locator('.test-card').first();
@@ -81,7 +80,7 @@ test.describe('Eval View Dashboard', () => {
     const diffContainer = page.locator('.diff-container');
     await expect(diffContainer).toBeVisible();
     
-    // Since we're using real data (react test), we should see some diff parts
+    // Since we're using real data (example-result test), we should see some diff parts
     // We expect either added or unchanged lines
     const diffParts = page.locator('.diff-added, .diff-removed, .diff-unchanged');
     const partsCount = await diffParts.count();

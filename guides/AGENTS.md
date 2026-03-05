@@ -45,7 +45,7 @@ You MUST start `guide.md` with EXACTLY this YAML frontmatter structure:
 ---
 name: slugified-use-case-name
 description: <do thing> <with feature> (e.g., "Create dynamic color systems using modern color syntax")
-web-features:
+web-feature-ids:
   - webstatus-feature-id
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/API/Feature
@@ -64,7 +64,9 @@ sources:
 * Put directives directly in code comments so they are impossible to miss (e.g., `<!-- DO: Always use the required attribute -->`).
 
 ### 4. Fallback Strategies
-* If the feature is not "Baseline Widely Available", you **MUST** include a `### Fallbacks` or `### Fallbacking & Browser Support` section.
+* If the feature is not "Baseline Widely Available", you **MUST** include a `### Fallback strategies` section.
+* **DO** use the `{{ BASELINE_STATUS("feature-id") }}` macro to display the current support status.
+* **OPTIONAL** provide an optional second argument for specific BCD keys: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
 * Show explicit code for feature detection (e.g., `CSS.supports()`, `if ('feature' in window)`) or graceful degradation techniques.
 
 ---

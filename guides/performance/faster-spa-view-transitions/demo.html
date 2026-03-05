@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Faster SPA View Transitions Demo</title>
+  <style>
+    :root {
+      --primary: #8b5cf6;
+      --primary-hover: #7c3aed;
+      --surface: #ffffff;
+      --bg: #f8fafc;
+      --text: #1e293b;
+      --border: #e2e8f0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* Top Navigation Bar */
+    .navbar {
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .nav-brand {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: var(--primary);
+      margin-right: auto;
+    }
+
+    .nav-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      font-weight: 500;
+      color: #64748b;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .nav-btn.active {
+      background: #eff6ff;
+      color: var(--primary);
+      border-color: #bfdbfe;
+    }
+
+    /* Main Content Area */
+    main {
+      padding: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* SPA Page Container Logic */
+    .page-container {
+      /* Optional fallback for unsupported browsers */
+      display: none;
+    }
+
+    @supports (content-visibility: hidden) {
+      .page-container {
+        /* content-visibility: hidden provides the fastest way to swap SPA pages
+         that have heavy DOM payloads because the browser engine parses them 
+         and keeps their internal state ready while skipping all rendering costs 
+         when inactive. */
+        content-visibility: hidden;
+        display: revert;
+      }
+    }
+
+    .page-container.active {
+      /* Fallback for unsupported browsers */
+      display: block;
+    }
+
+    @supports (content-visibility: visible) {
+      .page-container.active {
+        /* Show the active page */
+        content-visibility: visible;
+        display: revert;
+      }
+    }
+
+    /* Page UI styling */
+    .page-header {
+      margin-bottom: 2rem;
+    }
+
+    .page-header h1 {
+      margin-top: 0;
+      font-size: 2.25rem;
+    }
+
+    /* Heavy Widget Grid */
+    .widget-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .widget {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .widget-title {
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      font-size: 0.875rem;
+      letter-spacing: 0.05em;
+    }
+
+    .chart-placeholder {
+      height: 150px;
+      background: #f1f5f9;
+      border-radius: 4px;
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+      font-size: 2rem;
+    }
+
+    /* Complex Data Table */
+    .table-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .data-table th {
+      background: #f8fafc;
+      font-weight: 600;
+      text-align: left;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+    }
+
+    .data-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      color: #475569;
+    }
+
+    .data-table tr:hover {
+      background: #f1f5f9;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Top Navigation -->
+  <nav class="navbar">
+    <div class="nav-brand">Performance SPA Demo</div>
+    <button class="nav-btn active" data-target="dashboard-page">Dashboard</button>
+    <button class="nav-btn" data-target="analytics-page">Analytics</button>
+  </nav>
+
+  <!-- Main Content Route Views -->
+  <main>
+    <!-- PAGE 1: DASHBOARD -->
+    <!-- Initially active -->
+    <section id="dashboard-page" class="page-container active">
+      <div class="page-header">
+        <h1>Overview Dashboard</h1>
+        <p>This is a heavy DOM section. Navigating away sets <code>content-visibility: hidden</code> instead of
+          destroying the DOM nodes, making the return navigation instantaneous.</p>
+      </div>
+
+      <div class="widget-grid" id="dashboard-widgets">
+        <!-- Generated by JS -->
+      </div>
+    </section>
+
+    <!-- PAGE 2: ANALYTICS -->
+    <!-- Initially inactive (content-visibility: hidden) -->
+    <section id="analytics-page" class="page-container">
+      <div class="page-header">
+        <h1>Deep Analytics</h1>
+        <p>This page contains a massive data table. Rendering tables is one of the most expensive operations for a
+          browser. By using <code>content-visibility</code>, we construct it once and then pause its rendering lifecycle
+          when you leave the page!</p>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Request ID</th>
+              <th>Timestamp</th>
+              <th>Endpoint</th>
+              <th>Method</th>
+              <th>Status</th>
+              <th>Response Time (ms)</th>
+              <th>Client IP</th>
+            </tr>
+          </thead>
+          <tbody id="analytics-tbody">
+            <!-- Generated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // --- 1. DOM Generation for Heavy Payloads ---
+
+    // Generate 50 complex widgets for the Dashboard page
+    function generateWidgets() {
+      const container = document.getElementById('dashboard-widgets');
+      let html = '';
+      for (let i = 1; i <= 50; i++) {
+        html += `
+          <div class="widget">
+            <div class="widget-title">Metrics Cluster ${i}</div>
+            <div style="font-size: 2.5rem; font-weight: bold; color: #1e293b; margin-bottom: 0.5rem">
+              ${(Math.random() * 1000).toFixed(2)}
+            </div>
+            <div style="color: ${Math.random() > 0.5 ? '#10b981' : '#ef4444'}; font-weight: 500; font-size: 0.875rem;">
+               ${Math.random() > 0.5 ? '▲' : '▼'} ${Math.floor(Math.random() * 100)}% vs last week
+            </div>
+            <div class="chart-placeholder">
+              📊
+            </div>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+    }
+
+    // Generate 1000 table rows for the Analytics page 
+    // This is notoriously expensive for browser layout engines
+    function generateTable() {
+      const tbody = document.getElementById('analytics-tbody');
+      const endpoints = ['/api/v1/users', '/auth/login', '/data/sync', '/api/v2/products', '/health'];
+      const methods = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'];
+      let html = '';
+
+      for (let i = 1; i <= 1000; i++) {
+        const isError = Math.random() > 0.95;
+        const status = isError ? 500 : (Math.random() > 0.8 ? 201 : 200);
+
+        html += `
+          <tr>
+            <td style="font-family: monospace">REQ-${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}</td>
+            <td>${new Date(Date.now() - Math.floor(Math.random() * 10000000)).toISOString()}</td>
+            <td><code>${endpoints[Math.floor(Math.random() * endpoints.length)]}</code></td>
+            <td style="font-weight: 600">${methods[Math.floor(Math.random() * methods.length)]}</td>
+            <td><span style="background: ${isError ? '#fee2e2' : '#dcfce7'}; color: ${isError ? '#991b1b' : '#166534'}; padding: 2px 6px; border-radius: 4px; font-weight: 500; font-size: 0.75rem">${status}</span></td>
+            <td>${Math.floor(Math.random() * 800)}</td>
+            <td style="font-family: monospace">192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}</td>
+          </tr>
+        `;
+      }
+      tbody.innerHTML = html;
+    }
+
+    // Trigger generation on load
+    generateWidgets();
+    generateTable();
+
+
+    // --- 2. SPA Navigation Routing Logic ---
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const pages = document.querySelectorAll('.page-container');
+
+    navButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const targetId = e.target.getAttribute('data-target');
+
+        // Update button active states
+        navButtons.forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+
+        // Update page visibility
+        // Instead of typical SPA behavior (removing DOM or display:none)
+        // we toggle the .active class which applies content-visibility: visible
+        pages.forEach(page => {
+          if (page.id === targetId) {
+            page.classList.add('active');
+          } else {
+            page.classList.remove('active');
+          }
+        });
+      });
+    });
+
+  </script>
+</body>
+
+</html>

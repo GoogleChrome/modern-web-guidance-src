@@ -1,1 +1,0 @@
-Modernize this existing React tooltip implementation.

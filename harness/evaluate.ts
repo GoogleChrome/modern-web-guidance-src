@@ -15,38 +15,15 @@ import { config } from './config.ts';
 async function main() {
   console.log('Starting Evaluation...'.cyan.bold);
 
-  // Read manifest to find the latest test
   const resultsDirBase = path.join(__dirname, 'results');
-  const manifestPath = path.join(resultsDirBase, 'tests.json');
-  if (!fs.existsSync(manifestPath)) {
-    console.error('Manifest file not found at results/tests.json!'.red);
-    return;
+  let suiteName = config.eval.suiteName;
+  if (!suiteName) {
+    console.error('❌ No suite name provided! Please specify a suite to evaluate.'.red);
+    process.exit(1);
   }
+  const resultsDir = path.join(resultsDirBase, suiteName);
 
-  let manifest;
-  try {
-    manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  } catch {
-    console.error('Failed to parse manifest!'.red);
-    return;
-  }
-
-  if (!manifest.tests || manifest.tests.length === 0) {
-    console.error('No tests found in manifest!'.red);
-    return;
-  }
-
-  let testID;
-  if (config.eval.suiteName) {
-    testID = config.eval.suiteName;
-  } else {
-    // Get the latest test if no specific test ID is provided
-    const latestTest = manifest.tests[manifest.tests.length - 1];
-    testID = latestTest.id;
-  }
-  const resultsDir = path.join(resultsDirBase, testID);
-
-  console.log(`Evaluating test: ${testID}`.cyan);
+  console.log(`Evaluating suite: ${suiteName}`.cyan);
   console.log(`Results directory: ${resultsDir}`.cyan);
 
   if (!fs.existsSync(resultsDir)) {
@@ -60,7 +37,8 @@ async function main() {
 
     const metrics = calculateMetrics(allResults, numRuns);
     const mdReport = generateMarkdownReport(metrics, allResults);
-    const jsonReport = generateJsonReport(metrics, allResults);
+    const timestamp = new Date().toISOString();
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns);
 
     saveReports(resultsDir, mdReport, jsonReport);
 
