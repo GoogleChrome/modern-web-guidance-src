@@ -23,3 +23,6 @@ test-app-results/
 # Coverage
 coverage/
 serving/.mcp-data/
+
+# Generated Skills (temporary. This can't be ignored when publishing the repo/skill)
+skills/modern-web/

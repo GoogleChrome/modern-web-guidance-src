@@ -1,4 +1,4 @@
-<!-- Note: This diagram is generated automatically by scripts/guide-features-diagram.mjs during PRs. -->
+<!-- Note: This diagram is generated automatically by guides/guide-features-diagram.mjs during PRs. -->
 
 # Mapping: Web feature : Use cases
 

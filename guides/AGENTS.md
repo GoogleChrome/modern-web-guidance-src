@@ -64,9 +64,11 @@ sources:
 * Put directives directly in code comments so they are impossible to miss (e.g., `<!-- DO: Always use the required attribute -->`).
 
 ### 4. Fallback Strategies
-* If the feature is not "Baseline Widely Available", you **MUST** include a `### Fallbacks` or `### Fallbacking & Browser Support` section.
+* If the feature is not "Baseline Widely Available", you **MUST** include a `### Fallback strategies` section.
+* **DO** use the `{{ BASELINE_STATUS("feature-id") }}` macro to display the current support status.
+* **OPTIONAL** provide an optional second argument for specific BCD keys: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
 * Explain how the feature behaves in unsupported browsers (e.g., progressive enhancement vs. failure).
-* Only show explicit code for feature detection (e.g., `CSS.supports()`, `if ('feature' in window)`) if a conditional fallback to an alternative implementation is required. If the feature degrades gracefully without extra code, state that clearly.
+* Show explicit code for feature detection (e.g., `CSS.supports()`, `if ('feature' in window)`) or graceful degradation techniques. If the feature degrades gracefully without extra code, state that clearly.
 
 ---
 
