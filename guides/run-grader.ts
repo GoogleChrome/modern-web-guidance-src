@@ -70,7 +70,7 @@ async function gradeFile(targetFileAbs: string) {
     stdio: 'inherit'
   });
 
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<void>((_resolve, _reject) => {
     child.on('close', (code) => {
       // Automatically show the report if tests completed or failed
       console.log(`\nTests finished with code ${code}. Opening HTML report...`);

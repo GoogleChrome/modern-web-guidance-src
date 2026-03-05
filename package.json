@@ -15,6 +15,7 @@
     "task": "pnpm --filter harness task",
     "run-agent": "node harness/run_suite.ts --with-template",
     "report": "pnpm --filter harness report",
+    "upload": "pnpm --filter harness upload",
     "dashboard": "pnpm --filter eval-view start",
     "build:mcp": "pnpm --filter modern-web-mcp build",
     "build:megaskill": "pnpm --filter modern-web-mcp build:megaskill",
