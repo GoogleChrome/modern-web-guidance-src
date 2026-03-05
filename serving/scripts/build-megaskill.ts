@@ -96,7 +96,7 @@ function createLocalSymlink(repoRoot: string, distDir: string): void {
   console.log(`Symlinked skill to ${localAgentsSkillDir}`);
 }
 
-function buildSkill(): void {
+function buildMegaskill(): void {
   const repoRoot = path.resolve(__dirname, '../..');
   
   // Validate we are actually rooted in the guidance project
@@ -127,9 +127,9 @@ function buildSkill(): void {
   const finalContent = `${existingSkillContent.trim()}\n\n${taxonomyMarkdown}`;
 
   fs.writeFileSync(path.join(distDir, 'SKILL.md'), finalContent);
-  console.log(`Generated skill successfully in ${distDir}`);
+  console.log(`Generated megaskill successfully in ${distDir}`);
 
   createLocalSymlink(repoRoot, distDir);
 }
 
-buildSkill();
+buildMegaskill();
