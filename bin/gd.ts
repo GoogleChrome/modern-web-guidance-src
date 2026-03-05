@@ -118,7 +118,6 @@ Usage: gd <command> [options]
 
 Guide Development:
   dev <dir> [--test]          Auto-generate and calibrate guide artifacts
-  dev-all                     Batch-process all incomplete guides
   grade <file|dir>            Run/calibrate grader
   test <dir>                  Check grader calibration (demo + negative-demo)
   gen grader <dir>            Generate a new grader script
