@@ -6,7 +6,7 @@ import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config, Agents } from '../config.ts';
 
-import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, watchLogFile } from '../lib/agent-shared.ts';
+import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, exportTrajectories, watchLogFile } from '../lib/agent-shared.ts';
 import { MCP_LOG_FILE } from '../../constants.ts';
 
 // Usage: node jetski-agent.ts <prompt> <runType> <targetDir> <templateDir>
@@ -356,6 +356,10 @@ async function run(): Promise<void> {
     console.log("Disconnected.");
 
     copyResultsToTarget(workDir, targetDir);
+
+    // Extract trajectory pb from isolated home
+    const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
+    exportTrajectories(conversationsDir, '*.pb', targetDir);
 
   } catch (err) {
     console.error("Error during execution:", err);

@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
+
 import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatusMessage } from './baseline.js';
 
 describe('baseline data', () => {
