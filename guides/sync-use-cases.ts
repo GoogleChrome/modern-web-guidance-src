@@ -3,13 +3,9 @@ import path from 'path';
 import fs from 'fs';
 import { Octokit } from '@octokit/rest';
 import matter from 'gray-matter';
-import { features } from 'web-features';
 import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = path.resolve(__dirname, '..');
-dotenv.config({ path: path.join(REPO_ROOT, '.env') });
-
+import { validateMacros } from '../serving/mcp-server/lib/macros.ts';
+import { validateFeature } from '../serving/mcp-server/data/baseline.ts';
 
 interface GuideData {
   name?: string;
@@ -24,6 +20,13 @@ interface ValidationResult {
   body: string;
   filePath: string;
 }
+
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(__dirname, '..');
+dotenv.config({ path: path.join(REPO_ROOT, '.env') });
+
+
 
 /**
  * Recursively find all guide.md files in a directory.
@@ -89,20 +92,15 @@ function validateGuide(filePath: string): ValidationResult {
     errors.push(`"web-feature-ids" must be an array in ${relativePath}.`);
   } else {
     for (const id of featureIds) {
-      const feature = (features as any)[id];
-      if (!feature) {
-        errors.push(`Web feature ID "${id}" not found in web-features package (${relativePath}).`);
-      } else if (feature.kind !== 'feature') {
-        let suggestion = '';
-        if (feature.kind === 'moved') {
-          suggestion = ` (It has been moved to "${feature.redirect_target}")`;
-        } else if (feature.kind === 'split') {
-          suggestion = ` (It has been split into: ${feature.redirect_targets.join(', ')})`;
-        }
-        errors.push(`Web feature ID "${id}" is a ${feature.kind} record, not a primary feature${suggestion} in ${relativePath}.`);
+      const result = validateFeature(id);
+      if (!result.isValid) {
+        errors.push(`${result.errorMessage} (${relativePath}).`);
       }
     }
   }
+
+  // Validate macros in the body
+  errors.push(...validateMacros(body, relativePath));
 
   return { errors, data, body, filePath };
 }
