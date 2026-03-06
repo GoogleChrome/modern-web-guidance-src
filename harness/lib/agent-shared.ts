@@ -1,10 +1,21 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { fileURLToPath } from 'url';
 import { Agents } from '../config.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Promisified version of child_process.spawn.
+ */
+export function spawnAsync(command: string, args: string[], options: SpawnOptions = {}): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, options);
+    child.on('close', (code) => resolve(code ?? 1));
+    child.on('error', reject);
+  });
+}
 
 /**
  * Creates a unique isolated HOME directory in /tmp.

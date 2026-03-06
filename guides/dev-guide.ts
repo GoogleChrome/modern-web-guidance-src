@@ -11,9 +11,26 @@ import matter from 'gray-matter';
 import { generateNegative } from './negative-gen.ts';
 import { generateGrader, generateGraderWithContext } from './grader-gen.ts';
 import { testGrader, findGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
-import { createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders } from '../harness/lib/agent-shared.ts';
-import { Agents, environmentConfig } from '../harness/config.ts';
+import { 
+  createIsolatedHome, 
+  cleanupIsolatedHome, 
+  copyFileIfExists, 
+  createTrustedFolders,
+  spawnAsync
+} from '../harness/lib/agent-shared.ts';
+import { environmentConfig } from '../harness/config.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
+
+// Constants
+const GUIDE_FILE = 'guide.md';
+const DEMO_FILE = 'demo.html';
+const EXPECTATIONS_FILE = 'expectations.md';
+const NEGATIVE_DEMO_FILE = 'negative-demo.html';
+const GRADER_FILE = 'grader.ts';
+const PROMPTS_FILE = 'prompts.md';
+const TASKS_DIR = path.join(rootDir, 'harness', 'tasks');
+
+const GUIDE_CATEGORIES = ['performance', 'user-experience', 'accessibility', 'security'];
 
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
@@ -36,43 +53,70 @@ interface GuideInventory {
   hasTask: boolean;
 }
 
-const GUIDE_CATEGORIES = ['performance', 'user-experience', 'accessibility', 'security'];
+interface TaskInfo {
+  taskName: string;
+  baseApp: string;
+  prompt: string;
+}
 
-function inventoryGuide(dir: string): GuideInventory {
-  const name = path.basename(dir);
-  const category = path.basename(path.dirname(dir));
-  const expectationsPath = path.join(dir, 'expectations.md');
-  const hasExpectations = fs.existsSync(expectationsPath);
-  let expectationsEmpty = false;
-  if (hasExpectations) {
-    expectationsEmpty = fs.readFileSync(expectationsPath, 'utf-8').trim().length === 0;
+/**
+ * Reads a file and trims its content. Returns empty string if file doesn't exist.
+ */
+function readFileSafe(filePath: string): string {
+  try {
+    return fs.readFileSync(filePath, 'utf-8').trim();
+  } catch {
+    return '';
   }
+}
 
-  const guidePath = path.join(dir, 'guide.md');
-  const demoPath = path.join(dir, 'demo.html');
-  
-  let hasGuide = false;
-  let isStub = false;
-  if (fs.existsSync(guidePath)) {
-    const content = fs.readFileSync(guidePath, 'utf-8').trim();
-    if (content.length > 0) {
-      const parsed = matter(content);
-      if (Object.keys(parsed.data).length > 0 || content.startsWith('---')) {
-         isStub = true;
-         if (parsed.content.trim().length > 0) {
-             hasGuide = true;
-         }
-      } else {
-         hasGuide = true;
-      }
+/**
+ * Builds a map of grader names to task information.
+ */
+function getTaskMap(): Map<string, TaskInfo> {
+  const taskMap = new Map<string, TaskInfo>();
+  if (!fs.existsSync(TASKS_DIR)) return taskMap;
+
+  const taskFiles = fs.readdirSync(TASKS_DIR).filter(f => f.endsWith('.md'));
+  for (const file of taskFiles) {
+    const rawContent = readFileSafe(path.join(TASKS_DIR, file));
+    if (!rawContent) continue;
+
+    const { data, content } = matter(rawContent);
+    if (data?.grader) {
+      taskMap.set(data.grader, {
+        taskName: file.replace(/\.md$/, ''),
+        baseApp: data.base_app || 'daily-grind',
+        prompt: content.trim()
+      });
     }
   }
+  return taskMap;
+}
 
-  let hasDemo = false;
-  if (fs.existsSync(demoPath)) {
-    const content = fs.readFileSync(demoPath, 'utf-8').trim();
-    if (content.length > 0) {
-      hasDemo = true;
+function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): GuideInventory {
+  const name = path.basename(dir);
+  const category = path.basename(path.dirname(dir));
+  
+  const expectationsContent = readFileSafe(path.join(dir, EXPECTATIONS_FILE));
+  const hasExpectations = fs.existsSync(path.join(dir, EXPECTATIONS_FILE));
+  
+  const guideContent = readFileSafe(path.join(dir, GUIDE_FILE));
+  let hasGuide = false;
+  let isStub = false;
+  
+  if (guideContent) {
+    const parsed = matter(guideContent);
+    const hasFrontmatter = Object.keys(parsed.data).length > 0 || guideContent.startsWith('---');
+    const hasContent = parsed.content.trim().length > 0;
+    
+    if (hasFrontmatter) {
+      isStub = true;
+      if (hasContent) {
+        hasGuide = true;
+      }
+    } else if (hasContent) {
+      hasGuide = true;
     }
   }
 
@@ -82,24 +126,24 @@ function inventoryGuide(dir: string): GuideInventory {
     category,
     hasGuide,
     isStub,
-    hasDemo,
+    hasDemo: readFileSafe(path.join(dir, DEMO_FILE)).length > 0,
     hasExpectations,
-    expectationsEmpty,
-    hasNegativeDemo: fs.existsSync(path.join(dir, 'negative-demo.html')),
-    hasGrader: fs.existsSync(path.join(dir, 'grader.ts')),
-    hasPrompts: fs.existsSync(path.join(dir, 'prompts.md')),
-    hasTask: !!findExistingTask(name),
+    expectationsEmpty: hasExpectations && expectationsContent.length === 0,
+    hasNegativeDemo: fs.existsSync(path.join(dir, NEGATIVE_DEMO_FILE)),
+    hasGrader: fs.existsSync(path.join(dir, GRADER_FILE)),
+    hasPrompts: fs.existsSync(path.join(dir, PROMPTS_FILE)),
+    hasTask: taskMap.has(name),
   };
 }
 
-function scanAllGuides(): GuideInventory[] {
+function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
   const guides: GuideInventory[] = [];
   for (const category of GUIDE_CATEGORIES) {
     const categoryDir = path.join(__dirname, category);
     if (!fs.existsSync(categoryDir)) continue;
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
-      guides.push(inventoryGuide(path.join(categoryDir, entry.name)));
+      guides.push(inventoryGuide(path.join(categoryDir, entry.name), taskMap));
     }
   }
   return guides;
@@ -114,22 +158,22 @@ function printInventory(inv: GuideInventory): void {
   };
 
   console.log(`\n\ud83d\udccb Guide: ${cBold(inv.name)}`);
-  console.log(`   guide.md           ${icon(inv.hasGuide)}`);
-  console.log(`   demo.html          ${icon(inv.hasDemo)}`);
+  console.log(`   ${GUIDE_FILE.padEnd(18)} ${icon(inv.hasGuide)}`);
+  console.log(`   ${DEMO_FILE.padEnd(18)} ${icon(inv.hasDemo)}`);
 
   if (!inv.hasExpectations) {
-    console.log(`   expectations.md    ${icon(false)} ${cDim('missing')}`);
+    console.log(`   ${EXPECTATIONS_FILE.padEnd(18)} ${icon(false)} ${cDim('missing')}`);
   } else if (inv.expectationsEmpty) {
-    console.log(`   expectations.md    ${icon(true, false, true)} ${cDim('empty')}`);
+    console.log(`   ${EXPECTATIONS_FILE.padEnd(18)} ${icon(true, false, true)} ${cDim('empty')}`);
   } else {
-    console.log(`   expectations.md    ${icon(true)}`);
+    console.log(`   ${EXPECTATIONS_FILE.padEnd(18)} ${icon(true)}`);
   }
 
-  console.log(`   negative-demo.html ${inv.hasNegativeDemo ? icon(true) : icon(false, true) + ' will generate'}`);
-  console.log(`   grader.ts          ${inv.hasGrader ? icon(true) : icon(false, true) + ' will generate'}`);
+  console.log(`   ${NEGATIVE_DEMO_FILE.padEnd(18)} ${inv.hasNegativeDemo ? icon(true) : icon(false, true) + ' will generate'}`);
+  console.log(`   ${GRADER_FILE.padEnd(18)} ${inv.hasGrader ? icon(true) : icon(false, true) + ' will generate'}`);
 }
 
-export async function devGuide(targetDirRaw: string, options: DevGuideOptions = {}): Promise<boolean> {
+export async function devGuide(targetDirRaw: string, options: DevGuideOptions = {}, inv?: GuideInventory): Promise<boolean> {
   const maxRetries = options.maxRetries ?? 2;
   const targetDir = path.resolve(process.cwd(), targetDirRaw);
 
@@ -138,66 +182,44 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     return false;
   }
 
-  // Step 1: Inventory
-  const inv = inventoryGuide(targetDir);
-  printInventory(inv);
+  // Step 1: Inventory (use provided inventory or scan)
+  const taskMap = getTaskMap();
+  const currentInv = inv || inventoryGuide(targetDir, taskMap);
+  printInventory(currentInv);
 
-  if (!inv.hasGuide) {
-    if (inv.isStub) {
-      console.error(cRed(`\nError: guide.md is just a stub (missing content) in ${targetDir}`));
+  if (!currentInv.hasGuide) {
+    if (currentInv.isStub) {
+      console.error(cRed(`\nError: ${GUIDE_FILE} is just a stub (missing content) in ${targetDir}`));
     } else {
-      console.error(cRed(`\nError: guide.md is required but missing or empty in ${targetDir}`));
+      console.error(cRed(`\nError: ${GUIDE_FILE} is required but missing or empty in ${targetDir}`));
     }
     return false;
   }
-  if (!inv.hasDemo) {
-    console.error(cRed(`\nError: demo.html is required but missing in ${targetDir}`));
+  if (!currentInv.hasDemo) {
+    console.error(cRed(`\nError: ${DEMO_FILE} is required but missing in ${targetDir}`));
     return false;
   }
 
-  const needsGeneration = !inv.hasNegativeDemo || !inv.hasGrader;
+  const needsGeneration = !currentInv.hasNegativeDemo || !currentInv.hasGrader;
 
   // Generators require expectations.md — check before attempting generation
-  if (needsGeneration && !inv.hasExpectations) {
-    console.error(cRed(`\nError: expectations.md is required for generating artifacts but is missing.`));
-    console.error(`Create expectations.md in ${targetDir} before running dev.`);
+  if (needsGeneration && !currentInv.hasExpectations) {
+    console.error(cRed(`\nError: ${EXPECTATIONS_FILE} is required for generating artifacts but is missing.`));
+    console.error(`Create ${EXPECTATIONS_FILE} in ${targetDir} before running dev.`);
     return false;
   }
 
-  // Step 2: Generate negative-demo.html if missing
-  if (!inv.hasNegativeDemo) {
-    console.log(cCyan(`\n--- Generating negative-demo.html ---`));
-    try {
-      await generateNegative(targetDirRaw);
-      if (!fs.existsSync(path.join(targetDir, 'negative-demo.html'))) {
-        console.error(cRed(`Failed: negative-demo.html was not created`));
-        return false;
-      }
-      console.log(cGreen(`\u2705 negative-demo.html generated`));
-    } catch (err) {
-      console.error(cRed(`Failed to generate negative-demo.html: ${err}`));
-      return false;
-    }
+  // Step 2: Generate missing artifacts
+  if (!currentInv.hasNegativeDemo) {
+    await generateArtifact('negative-demo.html', () => generateNegative(targetDirRaw), path.join(targetDir, NEGATIVE_DEMO_FILE));
   } else {
-    console.log(cDim(`\nSkipping negative-demo.html generation (already exists)`));
+    console.log(cDim(`\nSkipping ${NEGATIVE_DEMO_FILE} generation (already exists)`));
   }
 
-  // Step 3: Generate grader.ts if missing
-  if (!inv.hasGrader) {
-    console.log(cCyan(`\n--- Generating grader.ts ---`));
-    try {
-      await generateGrader(targetDirRaw);
-      if (!fs.existsSync(path.join(targetDir, 'grader.ts'))) {
-        console.error(cRed(`Failed: grader.ts was not created`));
-        return false;
-      }
-      console.log(cGreen(`\u2705 grader.ts generated`));
-    } catch (err) {
-      console.error(cRed(`Failed to generate grader.ts: ${err}`));
-      return false;
-    }
+  if (!currentInv.hasGrader) {
+    await generateArtifact('grader.ts', () => generateGrader(targetDirRaw), path.join(targetDir, GRADER_FILE));
   } else {
-    console.log(cDim(`\nSkipping grader.ts generation (already exists)`));
+    console.log(cDim(`\nSkipping ${GRADER_FILE} generation (already exists)`));
   }
 
   // Step 4: Calibration retry loop
@@ -229,7 +251,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     if (attempt <= maxRetries) {
       console.log(cYellow(`Attempt ${attempt} failed. Regenerating grader with failure context...`));
 
-      const graderPath = path.join(targetDir, 'grader.ts');
+      const graderPath = path.join(targetDir, GRADER_FILE);
       if (fs.existsSync(graderPath)) {
         fs.unlinkSync(graderPath);
       }
@@ -237,11 +259,11 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
       try {
         await generateGraderWithContext(targetDirRaw, calibrationResult);
         if (!fs.existsSync(graderPath)) {
-          console.error(cRed(`Failed: grader.ts was not regenerated`));
+          console.error(cRed(`Failed: ${GRADER_FILE} was not regenerated`));
           break;
         }
       } catch (err) {
-        console.error(cRed(`Failed to regenerate grader.ts: ${err}`));
+        console.error(cRed(`Failed to regenerate ${GRADER_FILE}: ${err}`));
         break;
       }
     } else {
@@ -251,13 +273,26 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
   // Step 5: Optional agent test
   if (options.test !== false && calibrationResult?.success) {
-    await runAgentTest(targetDir, inv.name);
+    await runAgentTest(targetDir, currentInv.name, taskMap);
   }
 
   // Step 6: Summary
-  printSummary(targetDir, inv, calibrationResult, calibrationAttempt);
+  printSummary(targetDir, currentInv, calibrationResult, calibrationAttempt);
 
   return calibrationResult?.success ?? false;
+}
+
+async function generateArtifact(name: string, generator: () => Promise<void>, checkPath: string): Promise<void> {
+  console.log(cCyan(`\n--- Generating ${name} ---`));
+  try {
+    await generator();
+    if (!fs.existsSync(checkPath)) {
+      throw new Error(`${name} was not created`);
+    }
+    console.log(cGreen(`\u2705 ${name} generated`));
+  } catch (err) {
+    throw new Error(`Failed to generate ${name}: ${err}`);
+  }
 }
 
 const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
@@ -291,11 +326,11 @@ async function generatePrompts(targetDir: string, baseApp: string): Promise<void
 
     process.env.HOME = tempHome;
 
-    const userPrompt = `Read guide.md to understand what web development guidance is being provided.
+    const userPrompt = `Read ${GUIDE_FILE} to understand what web development guidance is being provided.
 Read base-app.html to understand the existing web app (the "${baseApp}" app) that the developer is working on.
 
 Generate one or two realistic test prompts... the kind of thing a web developer would say to a AI coding assistant
-to accomplish the goal described in this guide. Write these to a file called prompts.md.
+to accomplish the goal described in this guide. Write these to a file called ${PROMPTS_FILE}.
 
 The prompts should:
 - Assume the project is the ${baseApp} app as seen in base-app.html.
@@ -304,21 +339,14 @@ The prompts should:
 - Not reference the guide itself or indicate that guidance exists
 - Each be on its own line, prefixed with "- "
 
-Only create the prompts.md file. Do not modify any other files.`;
+Only create the ${PROMPTS_FILE} file. Do not modify any other files.`;
 
-    console.log(`Generating prompts.md via Gemini CLI...`);
+    console.log(`Generating ${PROMPTS_FILE} via Gemini CLI...`);
 
-    const child = spawn(environmentConfig.geminiCliBin, ['-p', userPrompt, '--yolo'], {
+    const exitCode = await spawnAsync(environmentConfig.geminiCliBin, ['-p', userPrompt, '--yolo'], {
       cwd: workDir,
       env: { ...process.env },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    child.stdout.on('data', (data) => process.stdout.write(data));
-    child.stderr.on('data', (data) => process.stderr.write(data));
-
-    const exitCode = await new Promise<number | null>((resolve) => {
-      child.on('close', resolve);
+      stdio: 'inherit',
     });
 
     if (exitCode !== 0) {
@@ -326,12 +354,12 @@ Only create the prompts.md file. Do not modify any other files.`;
     }
 
     // Copy prompts.md back
-    const generatedFile = path.join(workDir, 'prompts.md');
+    const generatedFile = path.join(workDir, PROMPTS_FILE);
     if (fs.existsSync(generatedFile)) {
-      fs.copyFileSync(generatedFile, path.join(targetDir, 'prompts.md'));
-      console.log(cGreen(`✅ prompts.md generated`));
+      fs.copyFileSync(generatedFile, path.join(targetDir, PROMPTS_FILE));
+      console.log(cGreen(`✅ ${PROMPTS_FILE} generated`));
     } else {
-      throw new Error(`prompts.md was not created by Gemini CLI`);
+      throw new Error(`${PROMPTS_FILE} was not created by Gemini CLI`);
     }
   } finally {
     process.env.HOME = originalHome;
@@ -339,36 +367,8 @@ Only create the prompts.md file. Do not modify any other files.`;
   }
 }
 
-interface TaskInfo {
-  taskName: string;
-  baseApp: string;
-  prompt: string;
-}
-
-function findExistingTask(guideName: string): TaskInfo | null {
-  const tasksDir = path.join(rootDir, 'harness', 'tasks');
-  if (!fs.existsSync(tasksDir)) return null;
-
-  const taskFiles = fs.readdirSync(tasksDir).filter(f => f.endsWith('.md'));
-  for (const file of taskFiles) {
-    const rawContent = fs.readFileSync(path.join(tasksDir, file), 'utf-8');
-    const { data, content } = matter(rawContent);
-    if (!data || Object.keys(data).length === 0) continue;
-
-    if (data.grader === guideName) {
-      const baseApp = data.base_app || 'daily-grind';
-      const prompt = content.trim();
-      const taskName = file.replace(/\.md$/, '');
-      return { taskName, baseApp, prompt };
-    }
-  }
-  return null;
-}
-
 function createTask(targetDir: string, guideName: string): TaskInfo {
-  const tasksDir = path.join(rootDir, 'harness', 'tasks');
-  const promptsPath = path.join(targetDir, 'prompts.md');
-  const promptsContent = fs.readFileSync(promptsPath, 'utf-8').trim();
+  const promptsContent = readFileSafe(path.join(targetDir, PROMPTS_FILE));
   const firstLine = promptsContent.split('\n').find(l => l.trim().startsWith('- '));
   const prompt = firstLine ? firstLine.replace(/^-\s*/, '').trim() : `Implement the guidance from ${guideName}`;
 
@@ -380,41 +380,34 @@ grader: ${guideName}
 ${prompt}
 `;
 
-  fs.mkdirSync(tasksDir, { recursive: true });
-  fs.writeFileSync(path.join(tasksDir, `${taskName}.md`), taskContent);
+  fs.mkdirSync(TASKS_DIR, { recursive: true });
+  fs.writeFileSync(path.join(TASKS_DIR, `${taskName}.md`), taskContent);
   console.log(cGreen(`✅ Created task: harness/tasks/${taskName}.md`));
 
   return { taskName, baseApp: 'daily-grind', prompt };
 }
 
-async function runAgentTest(targetDir: string, guideName: string): Promise<void> {
+async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<string, TaskInfo>): Promise<void> {
   console.log(cCyan(`\n--- Running agent test ---`));
 
   // Step a: Determine base app — check for an existing task first
-  const existingTask = findExistingTask(guideName);
+  const existingTask = taskMap.get(guideName);
   const baseApp = existingTask?.baseApp ?? 'daily-grind';
 
   // Step b: Ensure prompts.md exists
-  const promptsPath = path.join(targetDir, 'prompts.md');
+  const promptsPath = path.join(targetDir, PROMPTS_FILE);
   if (!fs.existsSync(promptsPath)) {
-    console.log(`prompts.md not found, generating...`);
+    console.log(`${PROMPTS_FILE} not found, generating...`);
     try {
       await generatePrompts(targetDir, baseApp);
     } catch (err) {
-      console.error(cRed(`Failed to generate prompts.md: ${err}`));
+      console.error(cRed(`Failed to generate ${PROMPTS_FILE}: ${err}`));
       return;
     }
-    if (!fs.existsSync(promptsPath)) {
-      console.error(cRed(`prompts.md was not created`));
-      return;
-    }
-  } else {
-    console.log(cDim(`prompts.md already exists, skipping generation`));
   }
 
   // Step c: Find or create task file
   const taskInfo = existingTask ?? createTask(targetDir, guideName);
-  const prompt = taskInfo.prompt + COMMON_APPEND_PROMPT;
   console.log(`Task: ${taskInfo.taskName} (base_app: ${taskInfo.baseApp})`);
   console.log(`Prompt: ${cDim(taskInfo.prompt.substring(0, 120))}${taskInfo.prompt.length > 120 ? '...' : ''}`);
 
@@ -426,107 +419,93 @@ async function runAgentTest(targetDir: string, guideName: string): Promise<void>
     return;
   }
 
-  // Step e: Grade base_app as-is (pre-score)
-  const baseAppDir = path.join(rootDir, 'harness', 'base_apps', taskInfo.baseApp);
-  const baseAppHtml = path.join(baseAppDir, 'index.html');
+  // Step e: Grade runs
   const graderPath = findGrader(targetDir);
   if (!graderPath) {
-    console.error(cRed(`Could not find grader.ts for grading`));
+    console.error(cRed(`Could not find ${GRADER_FILE} for grading`));
     return;
   }
 
   const results: Record<string, { passed: number; total: number }> = {};
 
-  console.log(cYellow(`\nGrading base app (pre-score)...`));
+  // 1. Grade base app
+  const baseAppHtml = path.join(rootDir, 'harness', 'base_apps', taskInfo.baseApp, 'index.html');
   if (fs.existsSync(baseAppHtml)) {
-    const preGradeDir = path.join(targetDir, 'test-app-results', 'pre-grade-report');
-    const preResults = await runPlaywright(baseAppHtml, graderPath, preGradeDir, 'pipe')
-      .catch(err => {
-        console.error(cRed(`Failed to grade base app: ${err}`));
-        return null;
-      });
-
-    if (preResults) {
-      const passed = preResults.stats?.expected || 0;
-      const failed = preResults.stats?.unexpected || 0;
-      const total = passed + failed;
-      results['pre'] = { passed, total };
-      if (total > 0) {
-        console.log(`  Base app (pre): ${passed}/${total} checks passed (${Math.round(passed / total * 100)}%)`);
-      }
-    }
-  } else {
-    console.log(cYellow(`Base app index.html not found at ${baseAppHtml}, skipping pre-score`));
+    const preResults = await gradeOutput(baseAppHtml, graderPath, path.join(targetDir, 'test-app-results', 'pre-grade-report'));
+    if (preResults) results['pre'] = preResults;
   }
 
-  // Step f: Run agent for guided + unguided via runSuite
+  // 2. Run agent suite
   const { runSuite } = await import('../harness/run_suite.ts');
   const testOutputDir = path.join(targetDir, 'test-app-results');
-
   await runSuite({
     name: taskInfo.taskName,
     outputDir: testOutputDir,
     tasks: [taskInfo.taskName],
     numRuns: 1,
-    skipEval: true // skip report generation to keep guide directory clean
+    skipEval: true
   });
 
-  // Step g: Grade agent output
+  // 3. Grade agent output (unguided + guided)
   for (const runType of ['unguided', 'guided']) {
-    console.log(cYellow(`\nGrading ${runType} output...`));
     const resultDir = path.join(testOutputDir, '1', taskInfo.taskName, runType);
-    
-    if (!fs.existsSync(resultDir)) {
-      console.log(cYellow(`No output directory found for ${runType}`));
-      continue;
-    }
+    if (!fs.existsSync(resultDir)) continue;
 
     const htmlFiles = fs.readdirSync(resultDir).filter(f => f.endsWith('.html'));
-    if (htmlFiles.length === 0) {
-      console.log(cYellow(`No HTML output found in ${runType} results`));
-      continue;
-    }
-
     const outputFile = htmlFiles.find(f => f === 'index.html') || htmlFiles[0];
-    const outputPath = path.join(resultDir, outputFile);
-    const gradeOutDir = path.join(resultDir, 'grade-report');
-    const gradeResults = await runPlaywright(outputPath, graderPath, gradeOutDir, 'pipe')
-      .catch(err => {
-        console.error(cRed(`Failed to grade ${runType} output: ${err}`));
-        return null;
-      });
+    if (!outputFile) continue;
 
-    if (gradeResults) {
-      const passed = gradeResults.stats?.expected || 0;
-      const failed = gradeResults.stats?.unexpected || 0;
-      const total = passed + failed;
-      results[runType] = { passed, total };
-      if (total > 0) {
-        console.log(`  ${runType}: ${passed}/${total} checks passed (${Math.round(passed / total * 100)}%)`);
-      }
-    }
+    const gradeResults = await gradeOutput(
+      path.join(resultDir, outputFile),
+      graderPath,
+      path.join(resultDir, 'grade-report')
+    );
+    if (gradeResults) results[runType] = gradeResults;
   }
 
-  // Step h: Print comparison
-  const total = results.pre?.total || results.guided?.total || results.unguided?.total || 0;
-  if (total > 0) {
-    const fmt = (label: string, r: { passed: number; total: number } | undefined, pad: number) => {
-      if (!r) return `  ${label.padEnd(pad)} —`;
-      const pct = Math.round(r.passed / r.total * 100);
-      return `  ${label.padEnd(pad)} ${r.passed}/${r.total} checks passed (${pct}%)`;
-    };
+  printTestComparison(results);
+}
 
-    console.log(cBold(`\nAgent test results:`));
-    console.log(fmt('Base app (pre):', results.pre, 18));
-    console.log(fmt('Unguided:', results.unguided, 18));
-    console.log(fmt('Guided:', results.guided, 18));
-
-    if (results.guided && results.unguided && results.guided.total > 0 && results.unguided.total > 0) {
-      const guidedPct = Math.round(results.guided.passed / results.guided.total * 100);
-      const unguidedPct = Math.round(results.unguided.passed / results.unguided.total * 100);
-      const impact = guidedPct - unguidedPct;
-      console.log(`  ${'Guide impact:'.padEnd(18)} ${impact >= 0 ? '+' : ''}${impact}% (vs unguided)`);
+async function gradeOutput(htmlPath: string, graderPath: string, outputDir: string): Promise<{ passed: number; total: number } | null> {
+  const label = path.basename(path.dirname(outputDir));
+  console.log(cYellow(`\nGrading ${label}...`));
+  
+  try {
+    const gradeResults = await runPlaywright(htmlPath, graderPath, outputDir, 'pipe');
+    const passed = gradeResults.stats?.expected || 0;
+    const failed = gradeResults.stats?.unexpected || 0;
+    const total = passed + failed;
+    
+    if (total > 0) {
+      console.log(`  ${label}: ${passed}/${total} checks passed (${Math.round(passed / total * 100)}%)`);
     }
+    return { passed, total };
+  } catch (err) {
+    console.error(cRed(`Failed to grade ${label}: ${err}`));
+    return null;
+  }
+}
+
+function printTestComparison(results: Record<string, { passed: number; total: number }>): void {
+  const total = results.pre?.total || results.guided?.total || results.unguided?.total || 0;
+  if (total === 0) return;
+
+  const fmt = (label: string, r: { passed: number; total: number } | undefined, pad: number) => {
+    if (!r) return `  ${label.padEnd(pad)} —`;
+    const pct = Math.round(r.passed / r.total * 100);
+    return `  ${label.padEnd(pad)} ${r.passed}/${r.total} checks passed (${pct}%)`;
+  };
+
+  console.log(cBold(`\nAgent test results:`));
+  console.log(fmt('Base app (pre):', results.pre, 18));
+  console.log(fmt('Unguided:', results.unguided, 18));
+  console.log(fmt('Guided:', results.guided, 18));
+
+  if (results.guided && results.unguided && results.guided.total > 0 && results.unguided.total > 0) {
+    const guidedPct = Math.round(results.guided.passed / results.guided.total * 100);
+    const unguidedPct = Math.round(results.unguided.passed / results.unguided.total * 100);
+    const impact = guidedPct - unguidedPct;
+    console.log(`  ${'Guide impact:'.padEnd(18)} ${impact >= 0 ? '+' : ''}${impact}% (vs unguided)`);
   }
 }
 
@@ -540,24 +519,24 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
     console.log(cBold(cRed(`\u274c Guide: ${inv.name}`)));
   }
 
-  console.log(`   guide.md              \u2705 exists`);
-  console.log(`   demo.html             \u2705 exists`);
+  console.log(`   ${GUIDE_FILE.padEnd(21)} \u2705 exists`);
+  console.log(`   ${DEMO_FILE.padEnd(21)} \u2705 exists`);
 
   if (!inv.hasExpectations || inv.expectationsEmpty) {
-    console.log(`   expectations.md       \u26a0\ufe0f  ${inv.hasExpectations ? 'empty' : 'missing'} (consider adding assertions)`);
+    console.log(`   ${EXPECTATIONS_FILE.padEnd(21)} \u26a0\ufe0f  ${inv.hasExpectations ? 'empty' : 'missing'} (consider adding assertions)`);
   } else {
-    console.log(`   expectations.md       \u2705 exists`);
+    console.log(`   ${EXPECTATIONS_FILE.padEnd(21)} \u2705 exists`);
   }
 
   const negStatus = inv.hasNegativeDemo ? 'exists' : 'generated';
-  console.log(`   negative-demo.html    \u2705 ${negStatus}`);
+  console.log(`   ${NEGATIVE_DEMO_FILE.padEnd(21)} \u2705 ${negStatus}`);
 
   if (result?.success) {
-    console.log(`   grader.ts             \u2705 calibrated (attempt ${attempts})`);
+    console.log(`   ${GRADER_FILE.padEnd(21)} \u2705 calibrated (attempt ${attempts})`);
   } else if (result) {
-    console.log(`   grader.ts             \u274c calibration failed`);
+    console.log(`   ${GRADER_FILE.padEnd(21)} \u274c calibration failed`);
   } else {
-    console.log(`   grader.ts             \u274c not generated`);
+    console.log(`   ${GRADER_FILE.padEnd(21)} \u274c not generated`);
   }
 
   console.log(`\nAll generated files are in ${relDir}/`);
@@ -567,17 +546,10 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
   console.log('');
 }
 
-function spawnAsync(command: string, args: string[], options: import('child_process').SpawnOptions = {}): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd: rootDir, ...options });
-    child.on('close', (code) => resolve(code ?? 1));
-    child.on('error', reject);
-  });
-}
-
 // Batch mode: process all incomplete guides
 export async function devAll(options: DevGuideOptions = {}): Promise<void> {
-  const incompleteGuides = scanAllGuides().filter(inv =>
+  const taskMap = getTaskMap();
+  const incompleteGuides = scanAllGuides(taskMap).filter(inv =>
     inv.hasGuide && inv.hasDemo && (!inv.hasNegativeDemo || !inv.hasGrader)
   );
 
@@ -589,27 +561,28 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
   console.log(cBold(`Found ${incompleteGuides.length} incomplete guide(s):\n`));
   for (const inv of incompleteGuides) {
     const missing = [];
-    if (!inv.hasNegativeDemo) missing.push('negative-demo.html');
-    if (!inv.hasGrader) missing.push('grader.ts');
+    if (!inv.hasNegativeDemo) missing.push(NEGATIVE_DEMO_FILE);
+    if (!inv.hasGrader) missing.push(GRADER_FILE);
     console.log(`  ${inv.name} ${cDim(`(missing: ${missing.join(', ')})`)}`);
   }
   console.log('');
 
   const results: { name: string; success: boolean }[] = [];
 
-  await Promise.all(incompleteGuides.map(async (inv) => {
+  // Use sequential processing to avoid resource exhaustion
+  for (const inv of incompleteGuides) {
     console.log(cBold(`\n${'='.repeat(60)}`));
     console.log(cBold(`Processing: ${inv.name}`));
     console.log(`${'='.repeat(60)}`);
 
     try {
-      const success = await devGuide(inv.dir, { ...options, test: false });
+      const success = await devGuide(inv.dir, { ...options, test: false }, inv);
       results.push({ name: inv.name, success });
     } catch (err) {
       console.error(cRed(`Failed to process ${inv.name}: ${err}`));
       results.push({ name: inv.name, success: false });
     }
-  }));
+  }
 
   // Aggregate results
   const succeeded = results.filter(r => r.success);
@@ -636,7 +609,8 @@ function classifyGuide(inv: GuideInventory): GuideStatus {
 }
 
 export function auditGuides(): void {
-  const allGuides = scanAllGuides();
+  const taskMap = getTaskMap();
+  const allGuides = scanAllGuides(taskMap);
 
   if (allGuides.length === 0) {
     console.log('No guides found.');
@@ -730,7 +704,7 @@ export function auditGuides(): void {
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const dir = args.find(a => !a.startsWith('--'));
-  const isTest = !args.includes('--no-test'); // Default to true unless explicitly disabled
+  const isTest = !args.includes('--no-test');
 
   if (!dir) {
     console.error('Usage: node --experimental-strip-types guides/dev-guide.ts <path/to/guide> [--no-test]');
