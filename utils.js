@@ -38,7 +38,7 @@ export function formatTestName(name) {
 
 // Google Identity Services (OAuth) Integration
 const GOOGLE_CLIENT_ID = '169412140096-fk4rtf6iqk982d43385s1ilucrda91g2.apps.googleusercontent.com';
-let accessToken = null;
+let accessToken = localStorage.getItem('gcs_access_token') || null;
 
 export function getAccessToken() {
     return accessToken;
@@ -55,6 +55,13 @@ export function initGoogleAuth(onAuthSuccess) {
         const authBtn = document.getElementById('auth-btn');
         if (authBtn) {
             authBtn.style.display = 'block';
+            if (accessToken) {
+                authBtn.textContent = 'Authenticated ✓';
+                authBtn.disabled = true;
+                authBtn.style.backgroundColor = 'var(--accent-success)';
+                authBtn.style.color = 'white';
+                authBtn.style.borderColor = 'var(--accent-success)';
+            }
         }
 
         const tokenClient = google.accounts.oauth2.initTokenClient({
@@ -66,6 +73,7 @@ export function initGoogleAuth(onAuthSuccess) {
                     return;
                 }
                 accessToken = response.access_token;
+                localStorage.setItem('gcs_access_token', accessToken);
                 console.log('Successfully authenticated with Google.');
                 if (authBtn) {
                     authBtn.textContent = 'Authenticated ✓';
@@ -93,5 +101,21 @@ export async function authenticatedFetch(url, options = {}) {
         options.headers = options.headers || {};
         options.headers['Authorization'] = `Bearer ${accessToken}`;
     }
-    return fetch(url, options);
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+        console.warn('Google Access Token expired or invalid. Clearing token.');
+        localStorage.removeItem('gcs_access_token');
+        accessToken = null;
+        
+        // Reset button UI if available
+        const authBtn = document.getElementById('auth-btn');
+        if (authBtn) {
+            authBtn.textContent = 'Sign in with Google';
+            authBtn.disabled = false;
+            authBtn.style.backgroundColor = '';
+            authBtn.style.color = '';
+            authBtn.style.borderColor = '';
+        }
+    }
+    return res;
 }

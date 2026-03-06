@@ -1,7 +1,14 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, authenticatedFetch } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, authenticatedFetch, getAccessToken } from './utils.js';
 import { RadarChart } from './radar.js';
 
 const MCP_LOG_FILE = 'mcp-server.log';
+
+// Keep track of current details state for navigation
+let currentDetails = null;
+let allTestData = null;
+let sortedScenarios = [];
+let currentRunTypes = [];
+let currentTestID = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Wait for auth to be checked/initialized before loading dashboard data
@@ -9,8 +16,13 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadDashboardData();
     });
 
+    const params = new URLSearchParams(window.location.search);
+    const source = params.get('source') || 'local';
+
     // In local mode or if already authenticated immediately load
-    loadDashboardData();
+    if (source === 'local' || getAccessToken()) {
+        loadDashboardData();
+    }
 });
 
 async function loadDashboardData() {
@@ -31,7 +43,7 @@ async function loadDashboardData() {
         let evalsPath = `results/${testID}/evals.json?source=${source}&t=${Date.now()}`;
         
         if (source === 'remote') {
-            evalsPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`results/${testID}/evals.json`)}?alt=media`;
+            evalsPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testID}/evals.json`)}?alt=media`;
         }
 
         const response = await (source === 'remote' ? authenticatedFetch(evalsPath) : fetch(evalsPath));
@@ -47,7 +59,7 @@ async function loadDashboardData() {
         try {
             let jetskiPath = `results/${testID}/jetski_info.json?source=${source}`;
             if (source === 'remote') {
-                 jetskiPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`results/${testID}/jetski_info.json`)}?alt=media`;
+                 jetskiPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testID}/jetski_info.json`)}?alt=media`;
             }
             const jetskiRes = await (source === 'remote' ? authenticatedFetch(jetskiPath) : fetch(jetskiPath));
             if (jetskiRes.ok) {
@@ -193,7 +205,7 @@ async function loadDashboardData() {
         try {
             let logUrl = logPath;
             if (source === 'remote') {
-                logUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`results/${testID}/test_suite.log`)}?alt=media`;
+                logUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testID}/test_suite.log`)}?alt=media`;
             }
             
             const checkRes = await (source === 'remote' ? authenticatedFetch(logUrl) : fetch(logPath, { method: 'HEAD' }));
@@ -420,11 +432,6 @@ function renderGrid(data, testID) {
 }
 
 // Keep track of current details state for navigation
-let currentDetails = null;
-let allTestData = null;
-let sortedScenarios = [];
-let currentRunTypes = [];
-let currentTestID = null;
 
 async function showDetails(testName, runs, stats, testID) {
     // Update URL without reloading
@@ -567,9 +574,29 @@ async function showDetails(testName, runs, stats, testID) {
                      }
                  }
             } else {
-                 // For remote we can't easily list directory files, so we make a best effort guess if needed,
-                 // but typically we don't have the directory listing API available over plain GCS json api without more logic.
-                 // We will skip trajectory/raw for remote for simplicity in this iteration, or assume standard names.
+                 const gcsPrefix = relativeDir.endsWith('/') ? relativeDir : relativeDir + '/';
+                 const gcsUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o?prefix=${encodeURIComponent(gcsPrefix)}`;
+                 const filesRes = await authenticatedFetch(gcsUrl);
+                 if (filesRes.ok) {
+                     const data = await filesRes.json();
+                     if (data.items) {
+                         const fileNames = data.items.map(item => item.name.split('/').pop());
+                         const rawJson = fileNames.find(f => f === `${guide}_results.json`);
+                         if (rawJson) {
+                             const rawOpt = document.createElement('option');
+                             rawOpt.value = 'raw';
+                             rawOpt.textContent = 'Raw Test Results';
+                             dropdown.appendChild(rawOpt);
+                         }
+                         sessionFile = fileNames.find(f => f.startsWith('session-') && f.endsWith('.html'));
+                         if (sessionFile) {
+                             const trajOpt = document.createElement('option');
+                             trajOpt.value = 'trajectory';
+                             trajOpt.textContent = 'Trajectory';
+                             dropdown.appendChild(trajOpt);
+                         }
+                     }
+                 }
             }
         } catch (e) {
             console.log('Error checking run files:', e);
@@ -583,7 +610,24 @@ async function showDetails(testName, runs, stats, testID) {
             } else if (val === 'diff') {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {
-                window.open(`${usedBasePath}/${sessionFile}?source=${sourceParam}`, '_blank');
+                if (sourceParam === 'remote') {
+                    const fixedPath = `${usedBasePath}/${sessionFile}`.replace(/^results\//, '');
+                    const finalPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(fixedPath)}?alt=media`;
+                    authenticatedFetch(finalPath)
+                        .then(res => { if (!res.ok) throw new Error(); return res.blob(); })
+                        .then(blob => {
+                            // Ensure the blob has text/html type so it renders in the browser
+                            const htmlBlob = new Blob([blob], { type: 'text/html' });
+                            const url = URL.createObjectURL(htmlBlob);
+                            window.open(url, '_blank');
+                        })
+                        .catch(e => {
+                            console.error('Error loading trajectory:', e);
+                            alert('Failed to load remote trajectory');
+                        });
+                } else {
+                    window.open(`${usedBasePath}/${sessionFile}?source=${sourceParam}`, '_blank');
+                }
             } else if (val === 'raw') {
                 const rawPath = `${usedBasePath}/${guide}_results.json?source=${sourceParam}`;
                 viewContent(rawPath, rawPath);
@@ -631,7 +675,11 @@ async function viewContent(fileName, filePath) {
             // Note: filePath might be `results/test_xxx/...` but from getResultPaths usedBasePath...
             // It could be absolute or relative. Make a safe guess.
             if (!filePath.startsWith('http')) {
-                 finalPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(filePath.split('?')[0])}?alt=media`;
+                 let fixedPath = filePath.split('?')[0];
+                 if (fixedPath.startsWith('results/')) {
+                     fixedPath = fixedPath.substring(8); // Strip "results/"
+                 }
+                 finalPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(fixedPath)}?alt=media`;
             }
             res = await authenticatedFetch(finalPath);
         } else {
@@ -694,7 +742,12 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
         if (source === 'remote') {
              // setupPath is local base_apps/...
              // resultPath is GCS
-             finalResult = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(resultPath.split('?')[0])}?alt=media`;
+             // Remove 'results/' from GCS paths and fix finalPath parsing.
+             if (!resultPath.startsWith('http')) {
+                let fixedResultPath = resultPath.split('?')[0];
+                if (fixedResultPath.startsWith('results/')) fixedResultPath = fixedResultPath.substring(8);
+                finalResult = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(fixedResultPath)}?alt=media`;
+            }
         }
 
         const [setupRes, resultRes] = await Promise.all([
