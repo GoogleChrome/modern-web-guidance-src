@@ -2,25 +2,22 @@
   "compilerOptions": {
     "target": "esnext",
     "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
+
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+
+    "noEmit": true,
     "allowJs": true,
-    "checkJs": true
+    "checkJs": true,
+    "strict": true,
+    "skipLibCheck": true
   },
-  "include": [
-    "**/*"
-  ],
   "exclude": [
-    "node_modules",
     "**/test-app-results/**",
-    "**/*.mjs",
-    "**/*.js"
+    "**/node_modules/**",
+    "**/grade-report/**",
+    "**/dist/**"
   ]
 }
