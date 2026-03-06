@@ -7,6 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
+import matter from 'gray-matter';
 import { generateNegative } from './negative-gen.ts';
 import { generateGrader, generateGraderWithContext } from './grader-gen.ts';
 import { testGrader, findGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
@@ -55,11 +56,10 @@ function inventoryGuide(dir: string): GuideInventory {
   if (fs.existsSync(guidePath)) {
     const content = fs.readFileSync(guidePath, 'utf-8').trim();
     if (content.length > 0) {
-      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-      if (frontmatterMatch) {
+      const parsed = matter(content);
+      if (Object.keys(parsed.data).length > 0 || content.startsWith('---')) {
          isStub = true;
-         const withoutFrontmatter = content.substring(frontmatterMatch[0].length).trim();
-         if (withoutFrontmatter.length > 0) {
+         if (parsed.content.trim().length > 0) {
              hasGuide = true;
          }
       } else {
@@ -351,15 +351,13 @@ function findExistingTask(guideName: string): TaskInfo | null {
 
   const taskFiles = fs.readdirSync(tasksDir).filter(f => f.endsWith('.md'));
   for (const file of taskFiles) {
-    const content = fs.readFileSync(path.join(tasksDir, file), 'utf-8');
-    const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-    if (!frontmatterMatch) continue;
+    const rawContent = fs.readFileSync(path.join(tasksDir, file), 'utf-8');
+    const { data, content } = matter(rawContent);
+    if (!data || Object.keys(data).length === 0) continue;
 
-    const graderMatch = frontmatterMatch[1].match(/^grader:\s*(.+)$/m);
-    if (graderMatch && graderMatch[1].trim() === guideName) {
-      const baseAppMatch = frontmatterMatch[1].match(/^base_app:\s*(.+)$/m);
-      const baseApp = baseAppMatch ? baseAppMatch[1].trim() : 'daily-grind';
-      const prompt = frontmatterMatch[2].trim();
+    if (data.grader === guideName) {
+      const baseApp = data.base_app || 'daily-grind';
+      const prompt = content.trim();
       const taskName = file.replace(/\.md$/, '');
       return { taskName, baseApp, prompt };
     }
