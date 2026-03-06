@@ -1,6 +1,6 @@
 ---
-name: "PWA Native Parity"
-description: "Synchronize internal UI form styling with the external operating system's overall theme to create a deeply integrated, seamless application environment that mimics a true native mobile experience."
+name: brand-consistent-forms
+description: Match checkboxes, radio buttons, range sliders, and progress bars to your site's color palette without replacing them with custom components.
 web-feature-ids:
   - accent-color
 ---
