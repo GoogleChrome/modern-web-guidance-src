@@ -325,7 +325,6 @@ Gemini-generated graders frequently fail calibration on the first attempt — te
 
 - **Reconcile contributor docs**: Rick's `.agents/skills/` approach (modular skill files for project-use-cases, project-guides, project-evals) and the `gd` CLI approach need to be unified into a single coherent contributor workflow. The two-checkpoint model from Rick's proposal is compatible with the `gd dev` pipeline and will likely be adopted.
 - **Merge `cli-plus-dev` to main**: The CLI and dev pipeline need to land on main so all contributors can use them.
-- **Stale `--test` references**: The docs still reference `--test` as an opt-in flag, but agent tests now run by default in `gd dev`. Documentation should be updated to reflect this and mention `--no-test` for skipping.
 
 ### Medium-term
 
