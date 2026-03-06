@@ -110,7 +110,6 @@ tabContainer.addEventListener('beforematch', () => {
 
 ## Best practices for `hidden="until-found"`
 
-- **DO** prefer using the `<details>` element if possible. Only use `hidden="until-found"` if your use case cannot be achieved with `<details>`.
 - **DO** apply borders, padding, and backgrounds to nested child wrappers rather than directly to the element with the `hidden="until-found"` attribute. This prevents unintended layout shifts or visual remnants while the element is hidden.
 - **DO NOT** apply `display: none`, `visibility: hidden`, or any associated `display` or `visibility` CSS properties directly to elements with the `hidden="until-found"` attribute. This breaks the native functionality and permanently hides the content from the search index.
 - **DO NOT** use `hidden="until-found"` for sensitive information, internal data tokens, or irrelevant data that should not be exposed via search.
@@ -120,26 +119,20 @@ tabContainer.addEventListener('beforematch', () => {
 
 The `<details>` element is Baseline Widely available, so a fallback strategy is not required.
 
-The `hidden="until-found"` attribute is not yet Baseline Widely available, but it can be safely used in most cases with the following fallback:
+The `hidden="until-found"` attribute is not yet Baseline Widely available, but it can be safely used with a fallback in unsupporting browsers. **DO NOT** avoid `hidden="until-found"` because of missing browser support, as its accessiblity benefits far outweigh the cost of implementing a fallback.
 
-### Fallback strategy for `hidden="until-found"`
+#### `hidden="until-found"` fallback
 
-Elements that are hidden using `hidden="until-found"` can be shown in browsers that don't support this API by feature detecting missing `onbeforematch` event support and conditionally adding CSS to unhide the matched elements. This ensures the content inside `hidden="until-found"` elements is discoverable even for users on older browsers.
+For standard UI elements like accordions or "Read more" sections, use JavaScript to feature-detect and show all content if the feature is unsupported.
 
-```js
+```javascript
 if (!('onbeforematch' in HTMLElement.prototype)) {
-  const style = document.createElement('style');
-  style.textContent = `[hidden=until-found] {display: initial;}`;
-  document.head.appendChild(style);
+  // Expand all hidden content for unsupported browsers
+  document.querySelectorAll('[hidden="until-found"]').forEach((el) => {
+    el.removeAttribute('hidden');
+    // MANDATORY: also update any aria references to this element.
+  });
 }
 ```
 
-This fallback works well for most UI elements like accordions or "Read more" sections, where displaying all hidden content will extend the page but otherwise not break the experience.
-
-For mutually exclusive UI paradigms (like tabs where content shares the same visual region), you can define a `.no-hidden-until-found` rule in your component styles that displays all of the content stacked when this class is present. Use a variation of the above script to add a `no-hidden-until-found` class to either the `<html>` element or the component root:
-
-```js
-if (!('onbeforematch' in HTMLElement.prototype)) {
-  document.documentElement.classList.add('no-hidden-until-found');
-}
-```
+For mutually exclusive UI paradigms (like tabs where content shares the same visual region), the fallback should extract and display all content linearly below the main interactive area, using URL anchor fragments to allow users to navigate directly to the respective sections.
