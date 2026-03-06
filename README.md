@@ -62,24 +62,19 @@ The evaluation suite measures how effectively AI models use modern web APIs.
 
 ## Usage
 
-Run commands via the `gd` CLI:
+Run commands via the `gd` CLI.. run `gd --help`: 
 
 ```bash
 # Guide Development
 gd audit                      # show status of all guides
-gd dev [dir] [options]        # auto-generate/calibrate (runs agent test by default)
+gd dev [dir] [options]        # auto-generate/calibrate 
 
-# Dev Options:
-gd dev [dir] --grade          # (or: pnpm grade) run/calibrate grader
-gd dev [dir] --test-grader    # (or: pnpm test-grader) check grader calibration
-gd dev [dir] --gen-grader     # (or: pnpm generate-grader) generate grader script
-gd dev [dir] --gen-negative   # (or: pnpm generate-negative) generate negative example
+# You can still run individual steps if you need to, like `gd dev <dir> --gen-grader`
 
 # Evaluation
 gd eval                       # run the full evaluation suite
 gd eval [task1] [task2]       # run specific tasks
 gd dashboard                  # start the evaluation dashboard
-gd run [template] [prompt]    # run an ad-hoc agent test
 
 # To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
 pnpm upload <suite-name>
