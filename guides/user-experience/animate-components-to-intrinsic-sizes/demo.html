@@ -122,6 +122,11 @@
       /* Animates straight to its intrinsic size! */
     }
 
+    .open .accordion-content.capped-height {
+      height: calc-size(auto, min(150px, size));
+      overflow-y: auto;
+    }
+
     .accordion-content p {
       margin: 0;
       padding: 1rem 1.5rem;
@@ -273,6 +278,34 @@
         <span class="btn-label">Delete Forever</span>
       </button>
 
+    </div>
+  </section>
+
+  <!-- Maximum Size Demonstration -->
+  <section>
+    <h2>Bounded: Height capped with <code>calc-size()</code></h2>
+    <div class="accordion">
+      <div class="accordion-item">
+        <button class="accordion-header">
+          Section 3: Very Long Content (Capped Height)
+          <svg class="accordion-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <div class="accordion-content capped-height">
+          <p>
+            This section contains so much text that we don't want it to take up the entire screen when opened.
+            By animating to <code>height: calc-size(auto, min(150px, size))</code>, the container will grow exactly to its content height,
+            but if the content exceeds <code>150px</code>, it smoothly stops growing at that limit and becomes scrollable.
+            <br><br>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+            Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+            Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+          </p>
+        </div>
+      </div>
     </div>
   </section>
 
