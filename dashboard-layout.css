@@ -1,0 +1,338 @@
+/* Dashboard Layout & Tabs */
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --border-color: #30363d;
+  --text-primary: #c9d1d9;
+  --text-secondary: #8b949e;
+  --accent-color: #58a6ff;
+  --accent-success: #238636;
+  --accent-failure: #da3633;
+  --accent-warning: #d29922;
+}
+
+/* Tabs Navigation */
+.dashboard-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0;
+}
+
+.tab-button {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.tab-button:hover {
+  color: var(--text-primary);
+}
+
+.tab-button.active {
+  color: var(--text-primary);
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--accent-orange, #f78166);
+}
+
+/* Tab Content Areas */
+.tab-content {
+  display: none;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Overview Section Layout */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.overview-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 24px;
+}
+
+.overview-card h3 {
+  margin-top: 0;
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.metric-huge {
+  font-size: 36px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.metric-sub {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* Explorer Layout */
+.explorer-container {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 32px;
+}
+
+.explorer-sidebar {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 16px;
+  height: fit-content;
+  position: sticky;
+  top: 20px;
+}
+
+.filter-group {
+  margin-bottom: 20px;
+}
+
+.filter-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: background 0.2s;
+}
+
+.filter-option:hover {
+  background: var(--bg-tertiary);
+}
+
+.filter-option.active {
+  background: rgba(56, 139, 253, 0.15);
+  color: var(--accent-color);
+}
+
+.explorer-content {
+  min-width: 0;
+  /* Prevents overflow */
+}
+
+/* Refined Grid Styles for Explorer */
+.scenario-section {
+  margin-bottom: 48px;
+}
+
+.scenario-title {
+  font-size: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.test-grid-row {
+  margin-bottom: 16px;
+}
+
+/* Modern Check History Table */
+.check-history-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.check-history-th {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.check-history-row td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.check-history-row:last-child td {
+  border-bottom: none;
+}
+
+.check-id-cell {
+  font-family: monospace;
+  color: var(--accent-color);
+}
+
+/* Recent Tests List Refinement for Overview */
+.recent-tests-compact .recent-test-item {
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 8px;
+  background: var(--bg-secondary);
+}
+
+.recent-tests-compact .stat-value {
+  font-size: 1.25rem;
+  /* Override the 3rem from dashboard.css */
+}
+
+
+/* Comparison Grid with Subgrid */
+.comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 1px;
+  /* To avoid overlapping borders? No, just padding */
+}
+
+.history-column {
+  display: grid;
+  grid-template-rows: subgrid;
+  /* grid-row is set inline */
+}
+
+.history-header {
+  padding: 12px;
+  border-bottom: 2px solid var(--border-color);
+  background: var(--bg-tertiary);
+  font-weight: 600;
+}
+
+.history-header-title {
+  color: var(--text-primary);
+  font-size: 1.1em;
+}
+
+.history-header-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.8em;
+  margin-top: 4px;
+  font-weight: normal;
+}
+
+.history-item {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.check-id-text {
+  font-family: monospace;
+  color: var(--text-primary);
+  font-size: 0.9em;
+  word-break: break-word;
+  flex: 1;
+  min-width: 140px;
+}
+
+.history-sparklines {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 70%;
+}
+
+/* Dashboard Grid Row Pair for Grids */
+.dashboard-grid-row-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .explorer-container {
+    grid-template-columns: 1fr;
+  }
+
+  .explorer-sidebar {
+    position: static;
+    width: 100%;
+    margin-bottom: 24px;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .filter-title {
+    width: 100%;
+    border-bottom: none;
+    margin-bottom: 4px;
+  }
+
+  .comparison-grid {
+    display: block;
+    /* Disable grid/subgrid on mobile */
+  }
+
+  .history-column {
+    display: block;
+    margin-bottom: 24px;
+    /* Revert explicit grid row placement if needed, but display:block ignores it anyway */
+  }
+
+  .dashboard-grid-row-pair {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+serving/build/
+serving/mcp-server/data/use-cases.gen.ts
+serving/mcp-server/.mcp-data/
+
+# Test artifacts
+eval-view/test-results/
+harness/results/
+grade-report/
+test-app-results/
+
+# Environment and Logs
+.env
+*.log
+.vscode
+
+# OS Junk
+.DS_Store
+
+# Coverage
+coverage/
+serving/.mcp-data/
+
+# Generated Skills (temporary. This can't be ignored when publishing the repo/skill)
+skills/modern-web/

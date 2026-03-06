@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Results - All Runs</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="landing.css">
+  <link rel="stylesheet" href="dashboard-layout.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <div class="landing-container">
+    <header class="header-nav">
+      <div>
+        <h1 class="landing-title">Guidance Evals</h1>
+        <p class="landing-subtitle">All suite runs and performance over time</p>
+      </div>
+      <div class="filter-container-nav" style="display: flex; gap: 10px; align-items: center;">
+        <button id="auth-btn" class="secondary-btn" style="display: none;">
+          Sign in with Google
+        </button>
+        <button id="filter-btn" class="secondary-btn">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"
+            style="vertical-align: text-bottom; margin-right: 4px;">
+            <path
+              d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z" />
+          </svg>
+          Filter Runs
+        </button>
+        <div id="filter-menu" class="filter-menu hidden">
+          <div class="filter-header">
+            <span class="filter-header-title">Select Test Runs</span>
+            <div class="filter-actions">
+              <button id="select-all-btn" class="text-btn">All</button>
+              <button id="deselect-all-btn" class="text-btn">None</button>
+            </div>
+          </div>
+          <div style="padding: 10px; border-bottom: 1px solid var(--border-color);">
+            <input type="text" id="filter-search" placeholder="Search tests..."
+              style="width: 100%; box-sizing: border-box; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9em; outline: none;">
+          </div>
+          <div id="filter-list" class="filter-list">
+            <!-- Checkboxes injected by JS -->
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="dashboard-tabs">
+      <button class="tab-button active" data-tab="suites">Suites</button>
+      <button class="tab-button" data-tab="explorer">Explorer</button>
+      <button class="tab-button" data-tab="trends">Trends</button>
+    </nav>
+
+    <!-- Suites Tab -->
+    <div id="suites-tab" class="tab-content active">
+      <div class="suites-table-container">
+        <table class="suites-table">
+          <thead>
+            <tr>
+              <th style="padding-left:15px; text-align: left;">Suite ID</th>
+              <th>Source
+                <select id="filter-source" class="header-filter-select">
+                  <option value="all">All</option>
+                  <option value="local">Local</option>
+                  <option value="remote">Remote</option>
+                </select>
+              </th>
+              <th>Agent
+                <select id="filter-agent" class="header-filter-select">
+                  <option value="all">All</option>
+                  <option value="jetski">jetski</option>
+                  <option value="gemini_cli">gemini_cli</option>
+                  <option value="claude_code">claude_code</option>
+                </select>
+              </th>
+              <th>Serving
+                <select id="filter-skills" class="header-filter-select">
+                  <option value="all">All</option>
+                  <option value="skills">Skills</option>
+                  <option value="mcp">MCP</option>
+                </select>
+              </th>
+              <th>Guided</th>
+              <th>Unguided</th>
+              <th style="padding-right:15px; text-align: right;">Date</th>
+            </tr>
+          </thead>
+          <tbody id="suites-list">
+            <!-- populated by JS -->
+          </tbody>
+          </table>
+      </div>
+    </div>
+
+    <!-- Explorer Tab -->
+    <div id="explorer-tab" class="tab-content">
+      <div class="explorer-container">
+        <aside class="explorer-sidebar">
+          <div class="filter-group">
+            <div class="filter-title">Scenario</div>
+            <div class="filter-option active" data-filter-type="scenario" data-filter-value="all">All Scenarios</div>
+            <div class="filter-option" data-filter-type="scenario" data-filter-value="greenfield">Greenfield</div>
+            <div class="filter-option" data-filter-type="scenario" data-filter-value="brownfield">Brownfield</div>
+            <div class="filter-option" data-filter-type="scenario" data-filter-value="redfield">Redfield</div>
+          </div>
+        </aside>
+        <main class="explorer-content">
+          <div id="explorer-grids"></div>
+          <div id="explorer-timelines"></div>
+        </main>
+      </div>
+    </div>
+
+    <!-- Trends Tab -->
+    <div id="trends-tab" class="tab-content">
+      <div id="timeline-section" class="timeline-section">
+        <div class="timeline-header">
+          <h2>Overall Pass Rate Timeline</h2>
+          <span class="timeline-subtitle">(Latest First)</span>
+          </div>
+        <div class="timeline-group">
+          <div class="test-grid-label">Guided Pass Rate</div>
+          <div id="guided-timeline" class="timeline-chart"></div>
+        </div>
+
+        <div class="timeline-group">
+          <div class="test-grid-label">Unguided Pass Rate</div>
+          <div id="unguided-timeline" class="timeline-chart"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="empty-state" class="empty-state" style="display: none;">
+      <p>No test runs found yet. Run the test suite to get started.</p>
+    </div>
+  </div>
+
+  <script type="module" src="landing.js"></script>
+</body>
+</html>

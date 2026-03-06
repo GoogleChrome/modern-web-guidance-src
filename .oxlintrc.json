@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "env": {
+    "node": true,
+    "browser": true,
+    "es2021": true
+  },
+  "globals": {
+    "Diff": "readonly"
+  },
+  "rules": {
+    "eslint(no-unused-vars)": ["error", {
+      "argsIgnorePattern": "^_"
+    }],
+    "eslint(no-undef)": "error",
+    "no-undef": "error"
+  }
+}

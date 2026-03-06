@@ -1,0 +1,17 @@
+{
+  "name": "eval-view",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test:e2e": "playwright test",
+    "deploy": "gh-pages -d ."
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "playwright": "^1.58.2"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "^7.19.0"
+  }
+}
