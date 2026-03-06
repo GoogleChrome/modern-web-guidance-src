@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -294,8 +293,6 @@ async function generateArtifact(name: string, generator: () => Promise<void>, ch
     throw new Error(`Failed to generate ${name}: ${err}`);
   }
 }
-
-const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
 async function generatePrompts(targetDir: string, baseApp: string): Promise<void> {
   const originalHome = process.env.HOME;
@@ -648,62 +645,75 @@ export function auditGuides(): void {
     byCategory.get(inv.category)!.push(inv);
   }
 
-  const fileFlag = (has: boolean) => has ? '●' : cDim('○');
+  const dot = (has: boolean) => has ? '●' : cDim('○');
+  const guideDot = (inv: GuideInventory) => {
+    if (inv.hasGuide) return '●';
+    if (inv.isStub) return '◐';
+    return cDim('○');
+  };
+  // Pad a single visible character (possibly ANSI-wrapped) to a fixed column width
+  const col = (s: string, w = 6) => s + ' '.repeat(w - 1);
 
   for (const [category, guides] of byCategory) {
     console.log(cBold(`\n${category}/`));
 
-    //         header
-    console.log(cDim(`  ${'name'.padEnd(42)} stub guide expct demo  neg   grdr  prmpt task`));
+    const hdr = 'guide'.padEnd(6) + 'demo'.padEnd(6) + 'expct'.padEnd(6)
+      + '│ ' + 'neg'.padEnd(6) + 'grdr'.padEnd(6) + 'prmpt'.padEnd(6) + 'task';
+    console.log(cDim(`  ${'name'.padEnd(42)} ${hdr}`));
 
     for (const inv of guides.sort((a, b) => a.name.localeCompare(b.name))) {
       const status = classifyGuide(inv);
       const { color } = statusLabel[status];
 
       const name = inv.name.length > 40 ? inv.name.substring(0, 39) + '…' : inv.name;
-      const cols = [
-        fileFlag(inv.isStub),
-        fileFlag(inv.hasGuide),
-        inv.expectationsEmpty ? cYellow('○') : fileFlag(inv.hasExpectations),
-        fileFlag(inv.hasDemo),
-        fileFlag(inv.hasNegativeDemo),
-        fileFlag(inv.hasGrader),
-        fileFlag(inv.hasPrompts),
-        fileFlag(inv.hasTask),
-      ];
+      const expctDot = inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations);
+      const row = col(guideDot(inv)) + col(dot(inv.hasDemo)) + col(expctDot)
+        + cDim('│') + ' ' + col(dot(inv.hasNegativeDemo)) + col(dot(inv.hasGrader))
+        + col(dot(inv.hasPrompts)) + dot(inv.hasTask);
 
-      console.log(`  ${color(name.padEnd(42))} ${cols.join('     ')}`);
+      console.log(`  ${color(name.padEnd(42))} ${row}`);
     }
   }
 
-  // Next action suggestion
+  // Next action suggestions, ordered by pipeline stage
   const nextCalibrate = byStatus.get('needs-calibration')?.[0];
   const nextTest = byStatus.get('needs-test')?.[0];
   const nextExpectations = byStatus.get('needs-expectations')?.[0];
   const nextStub = byStatus.get('stub')?.[0];
+  const nextIncomplete = byStatus.get('incomplete')?.[0];
 
-  console.log('');
-  
+  const actions: string[] = [];
+
+  // Automatable: ready for `gd dev`
   const devTarget = nextCalibrate || nextTest;
   if (devTarget) {
     const rel = path.relative(process.cwd(), devTarget.dir);
-    console.log(`Next run:    ${cCyan(`gd dev ${rel}`)}`);
+    actions.push(`${cCyan('Run:')}    ${cCyan(`gd dev ${rel}`)}`);
   }
 
-  const writeTarget = nextExpectations || nextStub;
-  if (writeTarget) {
-    const rel = path.relative(process.cwd(), writeTarget.dir);
-    if (writeTarget === nextExpectations) {
-      console.log(`Next manual: add expectations.md to ${cBold(rel)}`);
-    } else {
-      console.log(`Next manual: flesh out the stub guide in ${cBold(rel)}`);
-    }
+  // Needs human writing before `gd dev` can run
+  if (nextExpectations) {
+    const rel = path.relative(process.cwd(), nextExpectations.dir);
+    actions.push(`${cYellow('Write:')}  add ${cBold('expectations.md')} to ${rel}`);
   }
-  
-  if (!devTarget && !writeTarget) {
+  if (nextStub) {
+    const rel = path.relative(process.cwd(), nextStub.dir);
+    actions.push(`${cYellow('Write:')}  flesh out ${cBold('guide.md')}, ${cBold('demo.html')}, and ${cBold('expectations.md')} in ${rel}`);
+  }
+  if (nextIncomplete) {
+    const rel = path.relative(process.cwd(), nextIncomplete.dir);
+    actions.push(`${cYellow('Write:')}  add missing ${cBold('guide.md')} or ${cBold('demo.html')} in ${rel}`);
+  }
+
+  console.log('');
+  if (actions.length > 0) {
+    console.log(cBold('Next steps:'));
+    for (const action of actions) {
+      console.log(`  ${action}`);
+    }
+  } else {
     console.log(cGreen(`All guides are eval-ready!`));
   }
-  
   console.log('');
 }
 
