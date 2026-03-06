@@ -1,7 +1,6 @@
 ---
 name: prevent-incorrect-theme-flash
-description: Leverage the color-scheme specification at the earliest possible stage, the HTML parsing layer, so the browser is reliably informed of the document's supported themes well before it attempts its initial viewport paint.
+description: Prevent a flash of the incorrect color theme before page styles are loaded, for example a flash of a white background before the dark theme CSS is applied.
 web-feature-ids:
   - color-scheme
-  - light-dark
 ---

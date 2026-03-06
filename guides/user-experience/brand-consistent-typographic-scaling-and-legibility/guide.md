@@ -1,7 +1,6 @@
 ---
-name: brand-consistent-typographic-scaling-and-legibility
-description: Leverage advanced CSS properties alongside foundational design principles, ensuring web interfaces are resilient, readable, and perfectly aligned with brand visual standards.
+name: browser-ui-color-theme
+description: Configure built-in browser UI (e.g. scrollbars, form controls, etc) to respect the user's light/dark theme preference.
 web-feature-ids:
   - color-scheme
-  - accent-color
---- 
+---
