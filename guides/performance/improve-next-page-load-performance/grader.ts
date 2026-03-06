@@ -92,7 +92,7 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
       for (const set of ruleSets) {
         if (set.urls) {
           expect(Array.isArray(set.urls)).toBe(true);
-          expect(set.urls.every(u => typeof u === 'string')).toBe(true);
+          expect(set.urls.every((u: unknown) => typeof u === 'string')).toBe(true);
         }
       }
     } else {
@@ -124,7 +124,7 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
       const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
       for (const set of ruleSets) {
         if (set.urls) {
-          expect(set.urls.some(url => url.includes('logout'))).toBe(false);
+          expect(set.urls.some((url: string) => url.includes('logout'))).toBe(false);
         }
         if (set.where) {
           // Simplistic check for /logout in where clause
