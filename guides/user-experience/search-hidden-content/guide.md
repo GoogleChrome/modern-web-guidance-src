@@ -1,6 +1,6 @@
 ---
 name: search-hidden-content
-description: Hide content from view using patterns such as accordions, tabs, and "Read more" sections, and enable native "Find in page" search to show hidden regions, while ensuring content, including URL fragments and "Scroll to Text Fragment" links for deep linking, can be indexed for search and referenced by `aria` attributes for accessibility.
+description: Hide content from view using patterns such as accordions, tabs, and "Read more" sections, while ensuring the hidden text reveals itself during native "Find in page" searches, allows search engine indexing, supports URL fragment deep links, and maintains ARIA accessibility.
 web-feature-ids:
   - details
   - details-name
@@ -14,15 +14,16 @@ Web interfaces often hide content from view to improve the user experience, save
 To hide content visually but still allow it to be searchable by users and enable it to be deep linked to via URL fragments and "Scroll to Text Fragment" links, you can use either the HTML `<details>` element or the `hidden="until-found"` attribute. The `<details>` element is generally recommended as it's simpler to implement and maintain, but there are some more complex cases where `<details>` is not sufficient and `hidden="until-found"` is required.
 
 For example:
+
 - If you want full control over the styling of the show/hide mechanism.
-- If the UI controls to show/hide the content are in another part of the DOM
-- If you don't want to support hiding the content after it's shown
+- If the UI controls to show/hide the content are in another part of the DOM.
+- If you don't want to support hiding the content after it's shown.
 
-## How to implement the `<details>` element
+## How to implement
 
-Follow standard best practices for implementing the `<details>` element.
+The `<details>` element has searchable and accessible text by default, and no special implementation is required. Prefer using `<details>` over `hidden="until-found"` if possible.
 
-## How to implement `hidden="until-found"`
+If you need to use `hidden="until-found"` instead, follow these instructions:
 
 1. **Apply the attribute:** Add the `hidden="until-found"` HTML attribute directly to the elements containing the content that should be hidden from view.
 2. **Synchronize UI state:** If the interface has related states that depend on the content's visibility (e.g., updating ARIA attributes, toggling open/close CSS classes, or rotating accordion icons):
@@ -102,13 +103,14 @@ const tabContainer = document.querySelector('.tab-container');
 tabContainer.addEventListener('beforematch', () => {
   // Hide all tabs before the browser reveals the matched tab
   tabContainer.querySelectorAll('.tab').forEach((tab) => {
-    tab.hidden = "until-found";
+    tab.hidden = 'until-found';
   });
 });
 ```
 
 ## Best practices for `hidden="until-found"`
 
+- **DO** prefer using the `<details>` element if possible. Only use `hidden="until-found"` if your use case cannot be achieved with `<details>`.
 - **DO** apply borders, padding, and backgrounds to nested child wrappers rather than directly to the element with the `hidden="until-found"` attribute. This prevents unintended layout shifts or visual remnants while the element is hidden.
 - **DO NOT** apply `display: none`, `visibility: hidden`, or any associated `display` or `visibility` CSS properties directly to elements with the `hidden="until-found"` attribute. This breaks the native functionality and permanently hides the content from the search index.
 - **DO NOT** use `hidden="until-found"` for sensitive information, internal data tokens, or irrelevant data that should not be exposed via search.
@@ -116,25 +118,28 @@ tabContainer.addEventListener('beforematch', () => {
 
 ## Browser support and fallback strategies
 
-The `<details>` element is Baseline Widely Available.
+The `<details>` element is Baseline Widely available, so a fallback strategy is not required.
 
-The `hidden="until-found"` attribute is Baseline Limited Availability, and the `beforematch` event is Baseline Newly Available. If targeting Baseline Widely Available or Baseline Newly Available, you **MUST** provide a fallback strategy when using `hidden="until-found"`.
+The `hidden="until-found"` attribute is not yet Baseline Widely available, but it can be safely used in most cases with the following fallback:
 
-### Feature detection fallback strategy
+### Fallback strategy for `hidden="until-found"`
 
-A fallback is not required for `<details>` elements. When using `hidden="until-found"`, you **MUST** use the `onbeforematch` feature detection to conditionally handle browsers that do not support it.
+Elements that are hidden using `hidden="until-found"` can be shown in browsers that don't support this API by feature detecting missing `onbeforematch` event support and conditionally adding CSS to unhide the matched elements. This ensures the content inside `hidden="until-found"` elements is discoverable even for users on older browsers.
 
-#### Fallback strategy: Expand all hidden content
-
-For standard UI elements like accordions or "Read more" sections, write a script to automatically remove the `hidden` attribute and expand all sections if the feature is unsupported.
-
-```javascript
+```js
 if (!('onbeforematch' in HTMLElement.prototype)) {
-  // Expand all hidden content for unsupported browsers
-  document.querySelectorAll('[hidden="until-found"]').forEach((el) => {
-    el.removeAttribute('hidden');
-  });
+  const style = document.createElement('style');
+  style.textContent = `[hidden=until-found] {display: initial;}`;
+  document.head.appendChild(style);
 }
 ```
 
-For mutually exclusive UI paradigms (like tabs where content shares the same visual region), the fallback should extract and display all content linearly below the main interactive area, using URL anchor fragments to allow users to navigate directly to the respective sections.
+This fallback works well for most UI elements like accordions or "Read more" sections, where displaying all hidden content will extend the page but otherwise not break the experience.
+
+For mutually exclusive UI paradigms (like tabs where content shares the same visual region), you can define a `.no-hidden-until-found` rule in your component styles that displays all of the content stacked when this class is present. Use a variation of the above script to add a `no-hidden-until-found` class to either the `<html>` element or the component root:
+
+```js
+if (!('onbeforematch' in HTMLElement.prototype)) {
+  document.documentElement.classList.add('no-hidden-until-found');
+}
+```
