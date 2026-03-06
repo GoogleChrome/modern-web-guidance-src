@@ -9,8 +9,13 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadDashboardData();
     });
 
+    const params = new URLSearchParams(window.location.search);
+    const source = params.get('source') || 'local';
+
     // In local mode or if already authenticated immediately load
-    loadDashboardData();
+    if (source === 'local' || getAccessToken()) {
+        loadDashboardData();
+    }
 });
 
 async function loadDashboardData() {

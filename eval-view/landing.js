@@ -24,6 +24,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         await loadLocalTests();
+        if (getAccessToken()) {
+             await loadRemoteTests();
+        }
 
         // Initialize with default states relative to compoundKeys instead of simple testIDs
         selectedTestIds = new Set(Object.keys(allTestData));
