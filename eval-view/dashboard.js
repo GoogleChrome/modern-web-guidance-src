@@ -3,6 +3,13 @@ import { RadarChart } from './radar.js';
 
 const MCP_LOG_FILE = 'mcp-server.log';
 
+// Keep track of current details state for navigation
+let currentDetails = null;
+let allTestData = null;
+let sortedScenarios = [];
+let currentRunTypes = [];
+let currentTestID = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     // Wait for auth to be checked/initialized before loading dashboard data
     initGoogleAuth(async () => {
@@ -425,11 +432,6 @@ function renderGrid(data, testID) {
 }
 
 // Keep track of current details state for navigation
-let currentDetails = null;
-let allTestData = null;
-let sortedScenarios = [];
-let currentRunTypes = [];
-let currentTestID = null;
 
 async function showDetails(testName, runs, stats, testID) {
     // Update URL without reloading
