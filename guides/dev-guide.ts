@@ -53,17 +53,17 @@ function inventoryGuide(dir: string): GuideInventory {
   let hasGuide = false;
   let isStub = false;
   if (fs.existsSync(guidePath)) {
-    hasGuide = true;
     const content = fs.readFileSync(guidePath, 'utf-8').trim();
-    if (content.length === 0) {
-      isStub = true;
-    } else {
+    if (content.length > 0) {
       const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
       if (frontmatterMatch) {
+         isStub = true;
          const withoutFrontmatter = content.substring(frontmatterMatch[0].length).trim();
-         if (withoutFrontmatter.length === 0) {
-             isStub = true;
+         if (withoutFrontmatter.length > 0) {
+             hasGuide = true;
          }
+      } else {
+         hasGuide = true;
       }
     }
   }
@@ -143,7 +143,11 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   printInventory(inv);
 
   if (!inv.hasGuide) {
-    console.error(cRed(`\nError: guide.md is required but missing in ${targetDir}`));
+    if (inv.isStub) {
+      console.error(cRed(`\nError: guide.md is just a stub (missing content) in ${targetDir}`));
+    } else {
+      console.error(cRed(`\nError: guide.md is required but missing or empty in ${targetDir}`));
+    }
     return false;
   }
   if (!inv.hasDemo) {
@@ -624,8 +628,9 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
 type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
 
 function classifyGuide(inv: GuideInventory): GuideStatus {
-  if (inv.isStub) return 'stub';
-  if (!inv.hasGuide || !inv.hasDemo) return 'incomplete';
+  if (!inv.hasGuide && !inv.isStub) return 'incomplete';
+  if (inv.isStub && !inv.hasGuide) return 'stub';
+  if (!inv.hasDemo) return 'incomplete';
   if (!inv.hasExpectations || inv.expectationsEmpty) return 'needs-expectations';
   if (!inv.hasNegativeDemo || !inv.hasGrader) return 'needs-calibration';
   if (!inv.hasPrompts || !inv.hasTask) return 'needs-test';
@@ -652,7 +657,7 @@ export function auditGuides(): void {
     'needs-test':        { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
     'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
     'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
-    'stub':              { label: 'Stub (only yaml frontmatter or empty)', color: cYellow },
+    'stub':              { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
     'incomplete':        { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
   };
 
@@ -677,7 +682,7 @@ export function auditGuides(): void {
     console.log(cBold(`\n${category}/`));
 
     //         header
-    console.log(cDim(`  ${'name'.padEnd(42)} guide stub demo  expct neg   grdr  prmpt task`));
+    console.log(cDim(`  ${'name'.padEnd(42)} stub guide expct demo  neg   grdr  prmpt task`));
 
     for (const inv of guides.sort((a, b) => a.name.localeCompare(b.name))) {
       const status = classifyGuide(inv);
@@ -685,10 +690,10 @@ export function auditGuides(): void {
 
       const name = inv.name.length > 40 ? inv.name.substring(0, 39) + '…' : inv.name;
       const cols = [
+        fileFlag(inv.isStub),
         fileFlag(inv.hasGuide),
-        inv.isStub ? cYellow('●') : cDim('○'),
-        fileFlag(inv.hasDemo),
         inv.expectationsEmpty ? cYellow('△') : fileFlag(inv.hasExpectations),
+        fileFlag(inv.hasDemo),
         fileFlag(inv.hasNegativeDemo),
         fileFlag(inv.hasGrader),
         fileFlag(inv.hasPrompts),
