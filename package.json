@@ -11,8 +11,5 @@
     "@playwright/test": "^1.58.2",
     "gh-pages": "^6.3.0",
     "playwright": "^1.58.2"
-  },
-  "dependencies": {
-    "@google-cloud/storage": "^7.19.0"
   }
 }
