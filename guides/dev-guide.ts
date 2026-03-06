@@ -692,7 +692,7 @@ export function auditGuides(): void {
       const cols = [
         fileFlag(inv.isStub),
         fileFlag(inv.hasGuide),
-        inv.expectationsEmpty ? cYellow('△') : fileFlag(inv.hasExpectations),
+        inv.expectationsEmpty ? cYellow('○') : fileFlag(inv.hasExpectations),
         fileFlag(inv.hasDemo),
         fileFlag(inv.hasNegativeDemo),
         fileFlag(inv.hasGrader),
