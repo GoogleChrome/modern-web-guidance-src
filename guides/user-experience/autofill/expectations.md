@@ -1,6 +1,6 @@
 # Expectations: `autofill`
 
-- `autocomplete-"off"` **MUST NOT** be used.
+- The attribute `autocomplete="off"` **MUST NOT** be used.
 - Custom form controls (UI components for data entry) built using JavaScript **MUST NOT** be used if they break the autofill experience. A custom form control built using JavaScript that uses hidden inputs **MUST** reflect the selected value as well as the `:autofill` state in its custom UI.
 - `<input>`, `<select>`, and `<textarea>` elements **MUST** be within a `<form>` element.
 - Every `<input>`, `<select>`, and `<textarea>` element **MUST** have an `autocomplete` attribute with a valid value. For example, `autocomplete="name"` (for entry of a user's name) or `autocomplete="tel"` (for entry of their telephone number).
