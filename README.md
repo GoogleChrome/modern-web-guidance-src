@@ -52,13 +52,18 @@ pnpm suite
 
 # To run a single isolated task
 pnpm task <task_name>
-# Example: pnpm task cards-render
+# Example: pnpm task batch-analytics-events-task
 
-# To generate reports from results
-pnpm report
+# To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
+pnpm upload <suite-name>
+# Example: pnpm upload analytics-suite
 
-# To view the results in the dashboard
+# To view results in the dashboard
 pnpm dashboard
+
+# To re-generate evaluation reports for a suite
+pnpm report <suite-name>
+# Example: pnpm report analytics-suite
 ```
 
 ## Configuration
@@ -66,8 +71,7 @@ pnpm dashboard
 All configuration is centralized in [`harness/config.ts`](./harness/config.ts). This file controls:
 
 -   **Environment**: Paths to binaries (Jetski, Gemini CLI, Claude Code), API keys, and server locations.
--   **Suite**: Agent selection, number of runs, base apps, enabled MCP servers, and skills.
--   **Evaluation**: Target suite name and specific guides to run evaluation for.
+-   **Suite**: Agent selection, number of runs, tasks to run, enabled MCP servers, and skills.
 
 All settings must be adjusted in `harness/config.ts` or via environment variables in `.env` at the `guidance/` root.
 
@@ -83,7 +87,7 @@ Jetski is the default agent that will be used. When running, be sure to update t
 
 When using Gemini CLI, set the `GEMINI_API_KEY` environment variable with your API key.
 
-Set the Gemini model with the environment variable (e.g. `GEMINI_MODEL='gemini-3-pro-preview'`).
+Set the Gemini model with the environment variable (e.g. `GEMINI_MODEL='gemini-3.1-pro-preview'`).
 
 #### Claude
 

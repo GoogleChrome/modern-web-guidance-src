@@ -4,10 +4,9 @@ import { getGuide } from "./modern-practices.ts";
 
 describe("getGuide", () => {
   it("should retrieve full guide when no section is provided", async () => {
-    const guide = await getGuide("carousel");
+    const guide = await getGuide("batch-analytics-events");
     expect(guide).toBeTruthy();
-    expect(guide).toContain("# Modern Carousel");
-    expect(guide).toContain("## Key Features");
+    expect(guide).toContain("# Debounce and batch multiple analytics events");
   });
 
   it("should return null for non-existent guide", async () => {

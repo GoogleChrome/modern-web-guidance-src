@@ -1,8 +1,0 @@
-I will read the `index.html` file to understand the current structure and activate the `web-dev-performance` skill to check for relevant guides on pre-rendering.
-I will read the `guides/preload-prerender.md` file from the skill resources to ensure I follow the recommended best practices for pre-rendering.
-I'll define the speculation rules script to target the navigation links in the header, ensuring the logout link is explicitly excluded. I'll use the `document` source with a `selector_matches` rule for `nav a` and a `not` rule for `/logout` to achieve this dynamically and safely. Then, I'll inject this script into the `<head>` of the `index.html` file.
-I'll verify the changes to `index.html` to confirm the speculation rules script is correctly inserted and targets the intended navigation links while excluding the logout link, ensuring full compliance with the user's request.
-I'll create the `resources_used.json` file to document the `web-dev-performance` skill and the `guides/preload-prerender.md` resource I utilized, recording their access timestamps as required.
-I have implemented pre-rendering for the navigation links (`/menu`, `/locations`, `/rewards`, `/account`) using the Speculation Rules API, while ensuring `/logout` is explicitly excluded to prevent accidental state changes. This leverages native web platform features for optimal performance.
-
-I also created a `resources_used.json` file documenting the skills and resources utilized during this process.

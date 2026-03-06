@@ -1,9 +1,0 @@
-The implementation is done. Here's what I added at `index.html:156-163`:
-
-A `<script type="speculationrules">` block that explicitly lists the four safe navigation URLs (`/menu`, `/locations`, `/rewards`, `/account`) for pre-rendering. The `/logout` link is intentionally excluded from the list, so the browser will never speculatively pre-render it.
-
-**How it works:**
-
-- The [Speculation Rules API](https://developer.mozilla.org/en-US/docs/Web/API/Speculation_Rules_API) is a native web platform feature that tells the browser to pre-render specified URLs in the background before the user navigates to them.
-- When the user clicks one of those four links, the page loads nearly instantly because the browser has already fetched and rendered it.
-- `/logout` is omitted from the rules entirely, preventing any accidental session termination from speculative loading.

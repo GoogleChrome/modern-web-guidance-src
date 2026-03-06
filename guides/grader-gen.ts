@@ -39,9 +39,9 @@ const userPrompt = `
 Read the guide.md and expectations.md files to understand the guidance and expectations.
 Then, read the demo.html file, which represents a perfect working example of the guides and expectations, and the negative-demo.html file, which represents an anti-example that fails the expectations.
 
-Using template.grader.ts as a framework, write a Playwright test script to model the expectations.md requirements.
-You should generate a set of robust tests with functional and browser assertions.
-Design it so that the demo.html passes all tests at 100% success rate, and the negative-demo.html fails all tests at 0% success rate.
+Using template.grader.ts as a framework, write a Playwright test script that directly models the expectations.md requirements.
+You should generate both functional and browser tests, with each test containing only one assertion.
+Design it so that the demo.html passes all tests (100% success rate), and the negative-demo.html fails all tests (0% success rate).
 
 The grader can be run with the following commands:
 
@@ -60,11 +60,8 @@ function setupIsolatedWorkDir(baseDir: string): string {
   const workDir = path.join(tempHome, 'work');
   fs.mkdirSync(workDir, { recursive: true });
 
-  // copy files from target dir to work dir
-  const filesToStage = ['guide.md', 'demo.html', 'expectations.md', 'negative-demo.html'];
-  filesToStage.forEach(file => {
-    copyFileIfExists(path.join(baseDir, file), path.join(workDir, file));
-  });
+  // copy all files and folders from target dir to work dir
+  fs.cpSync(baseDir, workDir, { recursive: true });
 
   // copy template.grader.ts from the guides directory
   copyFileIfExists(path.join(__dirname, 'template.grader.ts'), path.join(workDir, 'template.grader.ts'));

@@ -6,7 +6,8 @@ import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config, Agents } from '../config.ts';
 
-import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, copyAgentContext, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills } from '../lib/agent-shared.ts';
+import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, exportTrajectories, watchLogFile } from '../lib/agent-shared.ts';
+import { MCP_LOG_FILE } from '../../constants.ts';
 
 // Usage: node jetski-agent.ts <prompt> <runType> <targetDir> <templateDir>
 const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-agent.ts');
@@ -79,8 +80,6 @@ function setupIsolatedWorkDir(): string {
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
-    copyAgentContext(tempHome, Agents.JETSKI);
-
     if (config.suite.enableSkills) {
       copySkills(tempHome, Agents.JETSKI)
     }
@@ -266,6 +265,9 @@ async function run(): Promise<void> {
       console.log(`Jetski info already exists at: ${jetskiInfoPath}`);
     }
 
+    process.env.MCP_LOG_DIR = targetDir;
+    const stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
+
     const inputSelector = '#chat [contenteditable="true"][role="textbox"]';
     const sendButtonSelector = '#chat button[data-tooltip-id="input-send-button-send-tooltip"]';
     const cancelButtonSelector = '[data-tooltip-id="input-send-button-cancel-tooltip"]';
@@ -347,11 +349,17 @@ async function run(): Promise<void> {
       console.log("Sent quit command to Jetski.");
     }
 
+    stopWatchingMcpLog();
+
     await sleep(1000);
     await browser.disconnect();
     console.log("Disconnected.");
 
     copyResultsToTarget(workDir, targetDir);
+
+    // Extract trajectory pb from isolated home
+    const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
+    exportTrajectories(conversationsDir, '*.pb', targetDir);
 
   } catch (err) {
     console.error("Error during execution:", err);

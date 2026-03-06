@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Efficient Background Processing Demo</title>
+  <style>
+    :root {
+      --primary: #14b8a6;
+      --surface: #ffffff;
+      --bg: #f8fafc;
+      --text: #1e293b;
+      --border: #e2e8f0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* Fixed Status Bar */
+    .status-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-bottom: 2px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+
+    .status-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-weight: bold;
+      font-size: 0.875rem;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .badge-running {
+      background-color: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-paused {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 800px;
+      margin: 100px auto 40px;
+      /* offset for fixed status bar */
+      padding: 0 2rem;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      color: #0f172a;
+      margin-top: 0;
+    }
+
+    .info-box {
+      background: #eff6ff;
+      border-left: 4px solid #3b82f6;
+      padding: 1.5rem;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 2rem;
+    }
+
+    /* Spacer to push content below the fold. */
+    .spacer {
+      height: 250vh;
+      display: flex;
+      align-items: top;
+      justify-content: center;
+      background: repeating-linear-gradient(-45deg,
+          #f1f5f9,
+          #f1f5f9 20px,
+          #e2e8f0 20px,
+          #e2e8f0 40px);
+      border-radius: 12px;
+      padding-top: 2rem;
+      margin: 3rem 0;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #64748b;
+      text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    /* Target Container with content-visibility */
+    .heavy-component-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+
+      /* THIS is the magic property! */
+      content-visibility: auto;
+
+      /* Prevent the scrollbar from jumping around as it enters the viewport */
+      contain-intrinsic-size: 1px 500px;
+    }
+
+    .heavy-component-container h2 {
+      margin-top: 0;
+      color: var(--primary);
+    }
+
+    /* Canvas styling */
+    canvas {
+      width: 100%;
+      height: 400px;
+      background: #0f172a;
+      border-radius: 8px;
+    }
+
+    .metrics {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 1rem;
+      font-family: monospace;
+      color: #475569;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Fixed Top Bar to demonstrate background processing state -->
+  <div class="status-bar">
+    <div>
+      <strong>Heavy Component State:</strong>
+      <span style="font-size: 0.875rem; color: #64748b; margin-left: 0.5rem">(Scroll down to see it start!)</span>
+    </div>
+    <div class="status-info">
+      <span id="fps-counter" style="font-family: monospace; font-weight: bold;">FPS: 0</span>
+      <span id="status-badge" class="status-badge badge-paused">PAUSED (Skipped)</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <header>
+      <h1>Efficient Background Processing</h1>
+
+      <div class="info-box">
+        <p><strong>The Challenge:</strong> Heavy DOM components, Javascript complex animations, or expensive
+          data-polling often run continuously whether the user is looking at them or not. This burns battery life, ties
+          up the main thread, and degrades overall page performance.</p>
+        <p><strong>The Solution:</strong> By applying <code>content-visibility: auto</code> to a container, the browser
+          fires a <code>contentvisibilityautostatechange</code> event indicating if the element's rendering is currently
+          "skipped". We can listen to this event to safely pause our intense Javascript loops or HTTP polling when the
+          user can't see the component anyway!</p>
+      </div>
+    </header>
+
+    <!-- Note: Browsers use internal heuristics when using 'content-visibility: auto',
+       and will proactively pre-render content that is "close" to the viewport 
+       (the pre-render safety margin). Therefore, the element needs to be 
+       pushed sufficiently far away from the viewport to actually trigger the 'skipped' state. -->
+    <div class="spacer">
+      Scroll down to see the heavy component &darr;
+    </div>
+
+    <!-- The target container that we monitor -->
+    <div id="target-container" class="heavy-component-container">
+      <h2>Intense Particle Simulation</h2>
+      <p>This canvas simulates thousands of particles colliding and rendering at 60fps. When you scroll it out of view,
+        the JavaScript animation loop pauses instantly!</p>
+
+      <canvas id="particle-canvas"></canvas>
+      <div class="metrics">
+        <span>Particles: 2000</span>
+        <span id="internal-fps">FPS: 0</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Canvas Particle Simulation Logic ---
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    const fpsCounter = document.getElementById('fps-counter');
+    const internalFps = document.getElementById('internal-fps');
+
+    // Set actual canvas resolution to match display size
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    const particles = [];
+    const NUM_PARTICLES = 2000;
+
+    for (let i = 0; i < NUM_PARTICLES; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 4,
+        vy: (Math.random() - 0.5) * 4,
+        color: `hsl(${Math.random() * 360}, 70%, 50%)`
+      });
+    }
+
+    let animationFrameId = null;
+    let isRunning = false;
+    let lastTime = performance.now();
+    let frames = 0;
+
+    function renderSimulation(timestamp) {
+      if (!isRunning) return; // Failsafe
+
+      // Calculate FPS
+      frames++;
+      if (timestamp - lastTime >= 1000) {
+        const fps = Math.round((frames * 1000) / (timestamp - lastTime));
+        fpsCounter.textContent = `FPS: ${fps}`;
+        internalFps.textContent = `FPS: ${fps}`;
+        frames = 0;
+        lastTime = timestamp;
+      }
+
+      // Draw background with slight trail effect
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.2)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Update and draw particles
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // Bounce off edges
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Expensive calculation simulation
+      for (let i = 0; i < 10000; i++) {
+        Math.sqrt(Math.random() * 100);
+      }
+
+      animationFrameId = requestAnimationFrame(renderSimulation);
+    }
+
+    function startSimulation() {
+      if (!isRunning) {
+        isRunning = true;
+        lastTime = performance.now();
+        frames = 0;
+        animationFrameId = requestAnimationFrame(renderSimulation);
+      }
+    }
+
+    function stopSimulation() {
+      isRunning = false;
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      fpsCounter.textContent = 'FPS: 0';
+      internalFps.textContent = 'FPS: 0';
+    }
+
+
+    // --- The Core Concept: Using contentvisibilityautostatechange! ---
+
+    // We listen to the container that has 'content-visibility: auto'
+    const targetContainer = document.getElementById('target-container');
+    const badge = document.getElementById('status-badge');
+
+    // This event fires whenever the browser decides to skip or un-skip rendering the element
+    targetContainer.addEventListener('contentvisibilityautostatechange', (event) => {
+      if (event.skipped) {
+        // The element is off-screen. We can safely pause our expensive work!
+        stopSimulation();
+
+        badge.textContent = 'PAUSED (Skipped)';
+        badge.className = 'status-badge badge-paused';
+        console.log("Component is skipped. Simulation paused.");
+      } else {
+        // The element is approaching or in the viewport. Start our work!
+        startSimulation();
+
+        badge.textContent = 'RUNNING (Visible)';
+        badge.className = 'status-badge badge-running';
+        console.log("Component is visible. Simulation running.");
+      }
+    });
+
+  </script>
+</body>
+
+</html>
