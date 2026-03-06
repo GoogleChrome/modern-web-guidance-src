@@ -75,12 +75,10 @@ gd dev [dir] --gen-grader     # (or: pnpm generate-grader) generate grader scrip
 gd dev [dir] --gen-negative   # (or: pnpm generate-negative) generate negative example
 
 # Evaluation
-gd eval suite                 # (or: pnpm suite)
-gd eval task [id]             # (or: pnpm task [id])
-gd eval smoke                 # (or: pnpm qsmoke)
-gd eval agent [template]      # (or: pnpm run-agent [template])
-gd eval report                # (or: pnpm report)
-gd eval dashboard             # (or: pnpm dashboard)
+gd eval                       # run the full evaluation suite
+gd eval [task1] [task2]       # run specific tasks
+gd eval dashboard             # start the evaluation dashboard
+gd run [template] [prompt]    # run an ad-hoc agent test
 
 # To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
 pnpm upload <suite-name>

@@ -43,7 +43,9 @@ completion.on('command', ({ reply }) => {
 
 completion.on('arg1', ({ before, reply }) => {
   if (before === 'eval') {
-    reply(['suite', 'task', 'smoke', 'agent', 'report', 'dashboard']);
+    const tasksDir = path.join(rootDir, 'harness', 'tasks');
+    const tasks = fs.existsSync(tasksDir) ? fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).map(f => f.replace('.md', '')) : [];
+    reply(['suite', 'dashboard', ...tasks]);
   } else if (before === 'gen') {
     reply(['grader', 'negative']);
   } else if (['dev', 'test', 'grade'].includes(before)) {
@@ -52,12 +54,7 @@ completion.on('arg1', ({ before, reply }) => {
 });
 
 completion.on('arg2', ({ before, line, reply }) => {
-  if (before === 'task' && line.includes('eval')) {
-    const tasksDir = path.join(rootDir, 'harness', 'tasks');
-    if (fs.existsSync(tasksDir)) {
-      reply(fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).map(f => f.replace('.md', '')));
-    }
-  } else if (before === 'agent' && line.includes('eval')) {
+  if (before === 'run') {
     const baseAppsDir = path.join(rootDir, 'harness', 'base_apps');
     if (fs.existsSync(baseAppsDir)) {
       reply(fs.readdirSync(baseAppsDir).filter(d => fs.statSync(path.join(baseAppsDir, d)).isDirectory()));
@@ -131,12 +128,9 @@ Piece-wise options for 'dev':
   --verbose            Show additional output
 
 Evaluation:
-  eval suite                  Run the full evaluation suite
-  eval task <id>              Run a specific task
-  eval smoke                  Run the quick smoke test
-  eval agent <tmpl> <prompt>  Run an agent against a template
-  eval report                 Generate an evaluation report
+  eval [suite|tasks...]       Run the full evaluation suite, or specific tasks
   eval dashboard              Start the evaluation dashboard
+  run <template> <prompt>     Run an ad-hoc agent test against a template
 
 Other:
   setup-completion            Install shell auto-completion
@@ -198,47 +192,32 @@ Options:
       break;
     }
 
+    case 'run': {
+      const tmpl = requireArg(positionals[1], 'gd run <template> <prompt>');
+      const prompt = requireArg(positionals[2], 'gd run <template> <prompt>');
+      const { runAgent } = await import('../harness/run_suite.ts');
+      await runAgent(tmpl, prompt);
+      break;
+    }
+
     case 'eval': {
-      const action = requireArg(positionals[1], 'gd eval <suite|task|smoke|agent|report|dashboard>');
-      switch (action) {
-        case 'suite': {
-          const buildCode = await runNpm(['build:mcp']);
-          if (buildCode !== 0) process.exit(buildCode);
-          const { runSuite } = await import('../harness/run_suite.ts');
-          await runSuite();
-          break;
-        }
-        case 'task': {
-          const id = requireArg(positionals[2], 'gd eval task <task-id>');
-          const { runSingleTask } = await import('../harness/run_suite.ts');
-          await runSingleTask(id);
-          break;
-        }
-        case 'smoke': {
-          const { runSmokeTest } = await import('../harness/quick-smoke.ts');
-          await runSmokeTest();
-          break;
-        }
-        case 'agent': {
-          const tmpl = requireArg(positionals[2], 'gd eval agent <template> <prompt>');
-          const prompt = requireArg(positionals[3], 'gd eval agent <template> <prompt>');
-          const { runAgent } = await import('../harness/run_suite.ts');
-          await runAgent(tmpl, prompt);
-          break;
-        }
-        case 'report': {
-          const { evaluate } = await import('../harness/evaluate.ts');
-          await evaluate();
-          break;
-        }
-        case 'dashboard': {
-          process.chdir(path.join(rootDir, 'eval-view'));
-          await import('../eval-view/server.js');
-          break;
-        }
-        default:
-          console.error(`${cRed(`Unknown eval command: ${action}.`)} Run 'gd --help' for usage.`);
-          process.exit(1);
+      const action = positionals[1] || 'suite';
+      
+      if (action === 'dashboard') {
+        process.chdir(path.join(rootDir, 'eval-view'));
+        await import('../eval-view/server.js');
+        break;
+      }
+      
+      const buildCode = await runNpm(['build:mcp']);
+      if (buildCode !== 0) process.exit(buildCode);
+      const { runSuite } = await import('../harness/run_suite.ts');
+
+      const tasks = positionals.slice(1).filter(a => a !== 'suite');
+      if (tasks.length > 0) {
+        await runSuite({ tasks });
+      } else {
+        await runSuite();
       }
       break;
     }
@@ -257,8 +236,10 @@ Options:
         } else {
           console.error(`${cRed(`The 'guide' namespace has been removed.`)} Run ${cCyan('gd --help')} for the new commands.\n`);
         }
-      } else if (['suite', 'task', 'smoke', 'agent', 'report', 'dashboard'].includes(command)) {
+      } else if (['suite', 'task', 'smoke', 'report', 'dashboard'].includes(command)) {
         console.error(`${cRed(`'gd ${command}' has moved.`)}  Run: ${cCyan(`gd eval ${command}`)}\n`);
+      } else if (command === 'agent') {
+        console.error(`${cRed(`'gd agent' has moved.`)}  Run: ${cCyan(`gd run <template> <prompt>`)}\n`);
       } else if (['grade'].includes(command)) {
         console.error(`${cRed(`'gd grade' has moved.`)}  Run: ${cCyan(`gd dev <guide_dir> --grade`)}\n`);
       } else if (['test', 'test-grader'].includes(command)) {

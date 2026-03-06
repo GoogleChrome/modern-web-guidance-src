@@ -34,38 +34,7 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string)
   return executeTaskRun(taskNameLabel, agent, templateDir, targetDir, promptContent);
 }
 
-export async function runSingleTask(task: string) {
-  const agent = config.suite.agent;
-  const taskNameLabel = `Single Task: ${task}`;
-  const taskPath = path.join(tasksDir, `${task}.md`);
 
-  if (!fs.existsSync(taskPath)) {
-    console.error(`❌ Task '${task}' not found at ${taskPath}`);
-    return;
-  }
-
-  const fileContent = fs.readFileSync(taskPath, 'utf8');
-  const frontmatterMatch = fileContent.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-
-  if (!frontmatterMatch) {
-    console.error(`❌ Invalid frontmatter format in ${taskPath}`);
-    return;
-  }
-
-  const baseAppMatch = frontmatterMatch[1].match(/^base_app:\s*(.+)$/m);
-  if (!baseAppMatch) {
-    console.error(`❌ Missing base_app in frontmatter in ${taskPath}`);
-    return;
-  }
-
-  const baseApp = baseAppMatch[1].trim();
-  const templateDir = path.join(baseAppsDir, baseApp);
-  const targetDir = path.join(resultsDir, 'single_task', task);
-  let promptContent = frontmatterMatch[2].trim();
-  promptContent += COMMON_APPEND_PROMPT;
-
-  return executeTaskRun(taskNameLabel, agent, templateDir, targetDir, promptContent);
-}
 
 async function executeTaskRun(taskNameLabel: string, agent: string, templateDir: string, targetDir: string, promptContent: string) {
   if (!fs.existsSync(templateDir)) {
@@ -329,8 +298,8 @@ if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(imp
   const positionalArgs = args.filter(arg => !arg.startsWith('--'));
   if (positionalArgs.length === 2 && args.includes('--with-template')) {
     runAgent(positionalArgs[0], positionalArgs[1]).catch(console.error);
-  } else if (positionalArgs.length === 1) {
-    runSingleTask(positionalArgs[0]).catch(console.error);
+  } else if (positionalArgs.length >= 1) {
+    runSuite({ tasks: positionalArgs }).catch(console.error);
   } else {
     runSuite().catch(console.error);
   }
