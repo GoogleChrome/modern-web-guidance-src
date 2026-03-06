@@ -31,7 +31,7 @@ async function loadDashboardData() {
         let evalsPath = `results/${testID}/evals.json?source=${source}&t=${Date.now()}`;
         
         if (source === 'remote') {
-            evalsPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`results/${testID}/evals.json`)}?alt=media`;
+            evalsPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testID}/evals.json`)}?alt=media`;
         }
 
         const response = await (source === 'remote' ? authenticatedFetch(evalsPath) : fetch(evalsPath));
@@ -47,7 +47,7 @@ async function loadDashboardData() {
         try {
             let jetskiPath = `results/${testID}/jetski_info.json?source=${source}`;
             if (source === 'remote') {
-                 jetskiPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`results/${testID}/jetski_info.json`)}?alt=media`;
+                 jetskiPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testID}/jetski_info.json`)}?alt=media`;
             }
             const jetskiRes = await (source === 'remote' ? authenticatedFetch(jetskiPath) : fetch(jetskiPath));
             if (jetskiRes.ok) {
@@ -193,7 +193,7 @@ async function loadDashboardData() {
         try {
             let logUrl = logPath;
             if (source === 'remote') {
-                logUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`results/${testID}/test_suite.log`)}?alt=media`;
+                logUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testID}/test_suite.log`)}?alt=media`;
             }
             
             const checkRes = await (source === 'remote' ? authenticatedFetch(logUrl) : fetch(logPath, { method: 'HEAD' }));
@@ -631,7 +631,11 @@ async function viewContent(fileName, filePath) {
             // Note: filePath might be `results/test_xxx/...` but from getResultPaths usedBasePath...
             // It could be absolute or relative. Make a safe guess.
             if (!filePath.startsWith('http')) {
-                 finalPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(filePath.split('?')[0])}?alt=media`;
+                 let fixedPath = filePath.split('?')[0];
+                 if (fixedPath.startsWith('results/')) {
+                     fixedPath = fixedPath.substring(8); // Strip "results/"
+                 }
+                 finalPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(fixedPath)}?alt=media`;
             }
             res = await authenticatedFetch(finalPath);
         } else {
@@ -694,7 +698,12 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
         if (source === 'remote') {
              // setupPath is local base_apps/...
              // resultPath is GCS
-             finalResult = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(resultPath.split('?')[0])}?alt=media`;
+             // Remove 'results/' from GCS paths and fix finalPath parsing.
+             if (!resultPath.startsWith('http')) {
+                let fixedResultPath = resultPath.split('?')[0];
+                if (fixedResultPath.startsWith('results/')) fixedResultPath = fixedResultPath.substring(8);
+                finalResult = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(fixedResultPath)}?alt=media`;
+            }
         }
 
         const [setupRes, resultRes] = await Promise.all([
