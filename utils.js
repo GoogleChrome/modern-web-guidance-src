@@ -45,43 +45,47 @@ export function getAccessToken() {
 }
 
 export function initGoogleAuth(onAuthSuccess) {
-    if (!window.google || !window.google.accounts) {
-        console.error('Google Identity Services SDK not loaded.');
-        return;
-    }
+    const init = () => {
+        if (!window.google || !window.google.accounts) {
+            // Wait for script to load
+            setTimeout(init, 50);
+            return;
+        }
 
-    const authBtn = document.getElementById('auth-btn');
-    if (authBtn) {
-        authBtn.style.display = 'block';
-    }
+        const authBtn = document.getElementById('auth-btn');
+        if (authBtn) {
+            authBtn.style.display = 'block';
+        }
 
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: 'https://www.googleapis.com/auth/devstorage.read_only',
-        callback: (response) => {
-            if (response.error !== undefined) {
-                console.error('OAuth Error:', response);
-                return;
-            }
-            accessToken = response.access_token;
-            console.log('Successfully authenticated with Google.');
-            if (authBtn) {
-                authBtn.textContent = 'Authenticated ✓';
-                authBtn.disabled = true;
-                authBtn.style.backgroundColor = 'var(--accent-success)';
-                authBtn.style.color = 'white';
-                authBtn.style.borderColor = 'var(--accent-success)';
-            }
-            if (onAuthSuccess) onAuthSuccess();
-        },
-    });
-
-    if (authBtn) {
-        authBtn.addEventListener('click', () => {
-            // Request an access token
-            tokenClient.requestAccessToken();
+        const tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: 'https://www.googleapis.com/auth/devstorage.read_only',
+            callback: (response) => {
+                if (response.error !== undefined) {
+                    console.error('OAuth Error:', response);
+                    return;
+                }
+                accessToken = response.access_token;
+                console.log('Successfully authenticated with Google.');
+                if (authBtn) {
+                    authBtn.textContent = 'Authenticated ✓';
+                    authBtn.disabled = true;
+                    authBtn.style.backgroundColor = 'var(--accent-success)';
+                    authBtn.style.color = 'white';
+                    authBtn.style.borderColor = 'var(--accent-success)';
+                }
+                if (onAuthSuccess) onAuthSuccess();
+            },
         });
-    }
+
+        if (authBtn) {
+            authBtn.addEventListener('click', () => {
+                // Request an access token
+                tokenClient.requestAccessToken();
+            });
+        }
+    };
+    init();
 }
 
 export async function authenticatedFetch(url, options = {}) {
