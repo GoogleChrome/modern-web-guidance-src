@@ -67,13 +67,14 @@ sources:
 * If the feature is not "Baseline Widely Available", you **MUST** include a `### Fallback strategies` section.
 * **DO** use the `{{ BASELINE_STATUS("feature-id") }}` macro to display the current support status.
 * **OPTIONAL** provide an optional second argument for specific BCD keys: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
-* Show explicit code for feature detection (e.g., `CSS.supports()`, `if ('feature' in window)`) or graceful degradation techniques.
+* Explain how the feature behaves in unsupported browsers (e.g., progressive enhancement vs. failure).
+* Show explicit code for feature detection (e.g., `CSS.supports()`, `if ('feature' in window)`) or graceful degradation techniques. If the feature degrades gracefully without extra code, state that clearly.
 
 ---
 
 ## Step 3: Authoring `expectations.md` and `demo.html`
 
-* **`expectations.md`**: Write a natural language, bulleted list of assertions that must be true if an agent implements the `guide.md` correctly. (e.g., "The input element is styled with a red border only AFTER a blur event").
+* **`expectations.md`**: Write a natural language, bulleted list of assertions that must be true if an agent implements the `guide.md` correctly. **MANDATORY:** Assertions must be objective and deterministic (e.g., "The input element is styled with a red border only AFTER a blur event" or "No more than two images have `fetchpriority=high`").
 * **`demo.html`**: Provide a pristine, working HTML/CSS/JS implementation of the guide that completely satisfies `expectations.md` and conforms to the guidance in `guide.md`.
 
 ---
