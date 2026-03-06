@@ -6,7 +6,7 @@ import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
 import { fileURLToPath } from 'url';
-import { cRed, cCyan } from '../lib/colors.ts';
+import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,14 +38,14 @@ function listGuideDirs(): string[] {
 const completion = omelette('gd <command> <arg1> <arg2>');
 
 completion.on('command', ({ reply }) => {
-  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'setup-completion']);
+  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'setup-completion']);
 });
 
 completion.on('arg1', ({ before, reply }) => {
   if (before === 'eval') {
     const tasksDir = path.join(rootDir, 'harness', 'tasks');
     const tasks = fs.existsSync(tasksDir) ? fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).map(f => f.replace('.md', '')) : [];
-    reply(['suite', 'dashboard', ...tasks]);
+    reply(['suite', ...tasks]);
   } else if (before === 'gen') {
     reply(['grader', 'negative']);
   } else if (['dev', 'test', 'grade'].includes(before)) {
@@ -112,32 +112,32 @@ async function main() {
 
   if (values.help || !command) {
     console.log(`
-Guidance CLI (gd)
+${cBold('Guidance CLI (gd)')}
 
-Usage: gd <command> [options]
+${cCyan('Usage:')} gd <command> [options]
 
-Guide Development:
-  audit                       Show status of all guides
-  dev <dir> [options]         Auto-generate and calibrate guide artifacts
+${cBold('Guide Development:')}
+  ${cCyan('audit')}${' '.repeat(21)} Show status of all guides
+  ${cCyan('dev')} <dir> [options]         Auto-generate and calibrate guide artifacts
 
-Piece-wise options for 'dev':
-  --grade              Run/calibrate grader
-  --test-grader        Check grader calibration (demo + negative-demo)
-  --gen-grader         Generate a new grader script
-  --gen-negative       Generate negative examples
-  --verbose            Show additional output
+${cBold("Piece-wise options for 'dev':")}
+  ${cDim('--grade')}              Run/calibrate grader
+  ${cDim('--test-grader')}        Check grader calibration (demo + negative-demo)
+  ${cDim('--gen-grader')}         Generate a new grader script
+  ${cDim('--gen-negative')}       Generate negative examples
+  ${cDim('--verbose')}            Show additional output
 
-Evaluation:
-  eval [suite|tasks...]       Run the full evaluation suite, or specific tasks
-  eval dashboard              Start the evaluation dashboard
-  run <template> <prompt>     Run an ad-hoc agent test against a template
+${cBold('Evaluation:')}
+  ${cCyan('eval')} [suite|tasks...]       Run the full evaluation suite, or specific tasks
+  ${cCyan('dashboard')}${' '.repeat(17)} Start the evaluation dashboard
+  ${cCyan('run')} <tmpl> <prompt>         Run an ad-hoc agent test against a template
 
-Other:
-  setup-completion            Install shell auto-completion
+${cBold('Other:')}
+  ${cCyan('setup-completion')}${' '.repeat(10)} Install shell auto-completion
 
-Options:
-  -h, --help      Show this help
-  --verbose       Show additional output
+${cBold('Options:')}
+  ${cDim('-h, --help')}      Show this help
+  ${cDim('--verbose')}       Show additional output
     `);
     process.exit(0);
   }
@@ -200,13 +200,18 @@ Options:
       break;
     }
 
+    case 'dashboard': {
+      process.chdir(path.join(rootDir, 'eval-view'));
+      await import('../eval-view/server.js');
+      break;
+    }
+
     case 'eval': {
       const action = positionals[1] || 'suite';
       
       if (action === 'dashboard') {
-        process.chdir(path.join(rootDir, 'eval-view'));
-        await import('../eval-view/server.js');
-        break;
+        console.error(`${cRed(`'gd eval dashboard' has moved.`)} Run: ${cCyan(`gd dashboard`)}\n`);
+        process.exit(1);
       }
       
       const buildCode = await runNpm(['build:mcp']);
@@ -236,7 +241,7 @@ Options:
         } else {
           console.error(`${cRed(`The 'guide' namespace has been removed.`)} Run ${cCyan('gd --help')} for the new commands.\n`);
         }
-      } else if (['suite', 'task', 'smoke', 'report', 'dashboard'].includes(command)) {
+      } else if (['suite', 'task', 'smoke', 'report'].includes(command)) {
         console.error(`${cRed(`'gd ${command}' has moved.`)}  Run: ${cCyan(`gd eval ${command}`)}\n`);
       } else if (command === 'agent') {
         console.error(`${cRed(`'gd agent' has moved.`)}  Run: ${cCyan(`gd run <template> <prompt>`)}\n`);

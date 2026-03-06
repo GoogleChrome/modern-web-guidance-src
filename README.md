@@ -77,7 +77,7 @@ gd dev [dir] --gen-negative   # (or: pnpm generate-negative) generate negative e
 # Evaluation
 gd eval                       # run the full evaluation suite
 gd eval [task1] [task2]       # run specific tasks
-gd eval dashboard             # start the evaluation dashboard
+gd dashboard                  # start the evaluation dashboard
 gd run [template] [prompt]    # run an ad-hoc agent test
 
 # To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
