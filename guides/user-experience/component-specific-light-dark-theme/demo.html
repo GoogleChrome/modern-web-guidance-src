@@ -4,6 +4,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 
+      To reduce the risk of FOUC (Flash of Unstyled Content) use the meta element 
+      `<meta name="color-scheme" content="light dark">` and the css root attribute.
+    -->
+  <meta name="color-scheme" content="light dark">
   <title>Component-Specific Default Theme Demo</title>
   <style>
     /* 
@@ -145,7 +150,7 @@
     Toggle Page Theme (System Default)
   </button>
 
-  <div class="card-grid">
+  <main class="card-grid">
     <!-- Card 1: Defaults to the system preference -->
     <div class="themed-card">
       <h2>System Preference</h2>
@@ -161,7 +166,7 @@
         mathematically resolve to the light variables forever!</p>
       <button>Action</button>
     </div>
-  </div>
+  </main>
 
   <script>
     const themeToggleBtn = document.getElementById('themeToggleBtn');
