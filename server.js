@@ -42,8 +42,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Explicitly block hidden files (starting with dot)
-  if (decodedPath.split('/').some(part => part.startsWith('.'))) {
+  // Explicitly block hidden files (starting with dot), exempting .well-known
+  if (decodedPath.split('/').some(part => part.startsWith('.') && part !== '.well-known')) {
     console.log(`403 Forbidden: Hidden file access - ${req.method} ${req.url}`);
     res.writeHead(403);
     res.end('403 Forbidden: Access to hidden files is not allowed');
