@@ -32,6 +32,10 @@
               <button id="deselect-all-btn" class="text-btn">None</button>
             </div>
           </div>
+          <div style="padding: 10px; border-bottom: 1px solid var(--border-color);">
+            <input type="text" id="filter-search" placeholder="Search tests..."
+              style="width: 100%; box-sizing: border-box; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9em; outline: none;">
+          </div>
           <div id="filter-list" class="filter-list">
             <!-- Checkboxes injected by JS -->
           </div>
@@ -47,8 +51,42 @@
 
     <!-- Suites Tab -->
     <div id="suites-tab" class="tab-content active">
-      <div id="suites-list" class="suites-list-container">
-        <!-- populated by JS -->
+      <div class="suites-table-container">
+        <table class="suites-table">
+          <thead>
+            <tr>
+              <th style="padding-left:15px; text-align: left;">Suite ID</th>
+              <th>Source
+                <select id="filter-source" class="header-filter-select">
+                  <option value="all">All</option>
+                  <option value="local">Local</option>
+                  <option value="remote">Remote</option>
+                </select>
+              </th>
+              <th>Agent
+                <select id="filter-agent" class="header-filter-select">
+                  <option value="all">All</option>
+                  <option value="jetski">jetski</option>
+                  <option value="gemini_cli">gemini_cli</option>
+                  <option value="claude_code">claude_code</option>
+                </select>
+              </th>
+              <th>Serving
+                <select id="filter-skills" class="header-filter-select">
+                  <option value="all">All</option>
+                  <option value="skills">Skills</option>
+                  <option value="mcp">MCP</option>
+                </select>
+              </th>
+              <th>Guided</th>
+              <th>Unguided</th>
+              <th style="padding-right:15px; text-align: right;">Date</th>
+            </tr>
+          </thead>
+          <tbody id="suites-list">
+            <!-- populated by JS -->
+          </tbody>
+          </table>
       </div>
     </div>
 

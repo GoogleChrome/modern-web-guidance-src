@@ -1,4 +1,55 @@
 /* Base Layout */
+.suites-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.suites-table th {
+  padding: 12px 10px;
+  background-color: var(--bg-tertiary);
+  border-bottom: 2px solid var(--border-color);
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-align: center;
+}
+
+.suites-table td {
+  padding: 16px 10px;
+  border-bottom: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.suite-table-row:hover {
+  background-color: var(--bg-tertiary);
+  transition: background-color 0.2s;
+}
+
+.header-filter-select {
+  margin-left: 8px;
+  font-size: 0.85em;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s;
+  /* Appearance for custom dropdown arrow spacing */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 1em;
+  padding-right: 28px;
+}
+
+.header-filter-select:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--text-secondary);
+}
 .landing-container {
   max-width: 1400px;
   margin: 0 auto;

@@ -1,0 +1,6 @@
+# Prompts: `search-hidden-content`
+
+- Create an accordion component with 3 sections. The first section MUST be visible by default, and the second and third sections MUST be hidden by default. All text within the hidden sections MUST remain searchable and accessible to the browser's native "Find in page" feature.
+- Create a tabs component to display comparisons of 2 products. You MUST ensure that when a user searches for a product name located within a hidden tab, the browser automatically reveals the matched tab.
+- Create a news article component that initially restricts and hides the text content after the first 3 lines. Implement a "Read more" button to reveal the remaining content. You MUST ensure that the hidden portion of the article remains searchable, and that matching a search query within the hidden text automatically reveals the rest of the article.
+- Create an image component with clickable areas that reveal hidden text panels when clicked. You MUST ensure that the hidden text remains searchable and accessible to the browser's native "Find in page" feature.

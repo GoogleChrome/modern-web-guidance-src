@@ -38,7 +38,7 @@ Preloading resources with `<link rel="preload">` signals to the browser that a r
 
 - **MANDATORY**: Only use `fetchpriority="high"` on at most 1-2 critical image preloads to avoid network contention and diluting the priority boost.
 - **MANDATORY**: Use `fetchpriority="high"` on Largest Contentful Paint (LCP) images.
-- **DO**: Limit the total number of preloads on a page to at most 2 images and 2-3 essential fonts to prevent network congestion.
+- **DO**: Limit the total number of preloads on a page to at most 2 images and 2-3 essential fonts to prevent bandwidth contention.
 - **DO** use `fetchpriority="low"` for preloads that you want the browser to start early but not at the expense of critical resources (especially non-critical fonts).
 - **DO** specify the `as` attribute correctly to ensure the preload will be used.
 - **DO** prefer making critical resources (like LCP images) statically discoverable in HTML via `<img>` tags rather than relying on preloads for background images.

@@ -21,6 +21,8 @@ async function uploadDirectory(bucket: any, dirPath: string, gcsPrefix: string) 
     if (file.isDirectory()) {
       await uploadDirectory(bucket, fullPath, destinationPath);
     } else {
+      if (file.name === '.DS_Store') continue;
+
       console.log(`Uploading ${fullPath} to gs://${BUCKET_NAME}/${destinationPath}...`);
       await bucket.upload(fullPath, {
         destination: destinationPath,

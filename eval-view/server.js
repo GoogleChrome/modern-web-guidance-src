@@ -5,7 +5,6 @@ import { exec } from 'child_process';
 import { Storage } from '@google-cloud/storage';
 
 const PORT = process.env.PORT || 8081;
-const USE_LOCAL = process.argv.includes('--local');
 const PROJECT_ID = 'chrome-kiwi-air-force-dev';
 const BUCKET_NAME = 'guidance-evals';
 
@@ -59,30 +58,74 @@ const server = http.createServer(async (req, res) => {
 
   // Handle /api/suites endpoint
   if (decodedPath === '/api/suites') {
-    if (USE_LOCAL) {
-      const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
-      try {
+    let suitesList = [];
+
+    // Local
+    const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
+    try {
+      if (fs.existsSync(resultsDir)) {
         const dirs = fs.readdirSync(resultsDir, { withFileTypes: true })
           .filter(dirent => dirent.isDirectory() && dirent.name !== 'single_task')
           .map(dirent => dirent.name);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ suites: dirs, isLocal: true }));
+        dirs.forEach(d => suitesList.push({ id: d, source: 'local' }));
+      }
+    } catch (e) {
+      console.error('Error reading local suites:', e.message);
+    }
+
+    // Remote
+    try {
+      const [_, __, apiResponse] = await bucket.getFiles({ delimiter: '/' });
+      const prefixes = apiResponse.prefixes || [];
+      const remoteDirs = prefixes.map(p => p.slice(0, -1)); // Remove trailing slash
+
+      remoteDirs.forEach(d => {
+        suitesList.push({ id: d, source: 'remote' });
+      });
+    } catch (e) {
+      console.error('Error reading remote suites:', e.message);
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ suites: suitesList }));
+    return;
+  }
+
+  if (decodedPath === '/api/run-files') {
+    const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+    const relativePath = parsedUrl.searchParams.get('dir');
+    const source = parsedUrl.searchParams.get('source') || 'local';
+
+    if (!relativePath) {
+      res.writeHead(400);
+      res.end('Missing dir parameter');
+      return;
+    }
+
+    let files = [];
+    if (source === 'local') {
+      const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
+      const targetDir = path.join(resultsDir, relativePath);
+      try {
+        if (fs.existsSync(targetDir)) {
+          files = fs.readdirSync(targetDir, { withFileTypes: true })
+            .filter(d => !d.isDirectory())
+            .map(d => d.name);
+        }
       } catch (e) {
-        res.writeHead(500);
-        res.end(JSON.stringify({ error: e.message }));
+        console.error('Error reading local dir:', e.message);
       }
     } else {
       try {
-        const [_, __, apiResponse] = await bucket.getFiles({ delimiter: '/' });
-        const prefixes = apiResponse.prefixes || [];
-        const suites = prefixes.map(p => p.slice(0, -1)); // Remove trailing slash
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ suites, isLocal: false }));
+        const [gcsFiles] = await bucket.getFiles({ prefix: relativePath });
+        files = gcsFiles.map(f => path.basename(f.name));
       } catch (e) {
-        res.writeHead(500);
-        res.end(JSON.stringify({ error: e.message }));
+        console.error('Error reading remote dir:', e.message);
       }
     }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ files }));
     return;
   }
 
@@ -90,8 +133,9 @@ const server = http.createServer(async (req, res) => {
   // Map results and setup to the harness directory
   if (decodedPath.startsWith('/results/')) {
     const relativeResultPath = decodedPath.substring(9);
+    const useLocal = req.url.includes('source=local');
 
-    if (!USE_LOCAL) {
+    if (!useLocal) {
       // Stream from GCS
       const extname = path.extname(relativeResultPath) || '';
       let contentType = MIME_TYPES[extname] || 'application/octet-stream';
@@ -194,7 +238,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   const url = `http://localhost:${PORT}/`;
-  console.log(`Server running at ${url} (${USE_LOCAL ? 'LOCAL MODE' : 'GCP MODE'})`);
+  console.log(`Server running at ${url}`);
 
   // Try to open the browser if not disabled
   if (process.env.NO_OPEN !== 'true') {
