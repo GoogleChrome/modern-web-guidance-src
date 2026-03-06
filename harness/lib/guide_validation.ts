@@ -1,71 +1,56 @@
 import fs from 'fs';
 import path from 'path';
-import { config } from '../config.ts';
+import { fileURLToPath } from 'url';
+import { MCP_LOG_FILE } from '../../constants.ts';
+import matter from 'gray-matter';
 
-export interface GuideCheck {
-  id: string;
-  passed: boolean;
-  message: string;
-}
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-export interface GuideValidationResult {
-  checks: GuideCheck[];
-  resourcesUsed: any[] | null;
-}
-
-export async function checkGuides(dirPath: string, appName: string): Promise<GuideValidationResult> {
-  const resourcesPath = path.join(dirPath, 'resources_used.json');
+export async function guideUsed(dirPath: string, taskName: string): Promise<boolean> {
+  const logPath = path.join(dirPath, MCP_LOG_FILE);
   
-  if (!fs.existsSync(resourcesPath)) {
-    return {
-      checks: [{
-        id: 'resources-exist',
-        passed: false,
-        message: 'resources_used.json not found'
-      }],
-      resourcesUsed: null
-    };
+  if (!fs.existsSync(logPath)) {
+    return false;
   }
 
-  let resources: any[];
-  try {
-    resources = JSON.parse(fs.readFileSync(resourcesPath, 'utf8'));
-  } catch {
-    return {
-      checks: [{
-        id: 'resources-valid-json',
-        passed: false,
-        message: 'resources_used.json is not valid JSON'
-      }],
-      resourcesUsed: null
-    };
+  const logContent = fs.readFileSync(logPath, 'utf8').trim();
+  let toolCalls: any[] = [];
+
+  if (logContent) {
+    const lines = logContent.split('\n');
+    for (const line of lines) {
+      if (line.trim().startsWith('{')) {
+        try {
+          toolCalls.push(JSON.parse(line));
+        } catch (e) {
+          console.error(`Failed to parse line in ${logPath}:`, e);
+        }
+      }
+    }
   }
 
-  const checks: GuideCheck[] = [{
-    id: 'resources-exist',
-    passed: true,
-    message: 'resources_used.json found'
-  }];
-
-  const expected = config.eval.expectedGuides[appName] || [];
-  
-  // Extract all resource names for easier searching
-  const resourceNames = resources.map(r => r.name || '').filter(Boolean);
-
-  for (const guide of expected) {
-    // Check if any resource name contains the guide name
-    const found = resourceNames.some(name => name.includes(guide));
-    checks.push({
-      id: `guide-${guide}`,
-      passed: found,
-      message: found 
-        ? `Guide "${guide}" used` 
-        : `Guide "${guide}" NOT found in resources`
-    });
+  const taskPath = path.resolve(__dirname, `../tasks/${taskName}.md`);
+  if (!fs.existsSync(taskPath)) {
+    console.error(`Task ${taskName} not found at ${taskPath}`);
+    return false;
   }
 
-  return {
-    checks,
-    resourcesUsed: resources
-  };
+  const fileContent = fs.readFileSync(taskPath, 'utf8');
+  const { data } = matter(fileContent);
+
+  if (!data || !data.grader) {
+    console.error(`No 'grader:' found in frontmatter for task ${taskName}`);
+    return false;
+  }
+
+  const guide = data.grader.trim();
+
+  // Extract all use case IDs requested via get_best_practices
+  const requestedGuides = toolCalls
+    .filter(call => call.tool === 'get_best_practices' && Array.isArray(call.result))
+    .flatMap(call => call.result.map((r: any) => r.id || ''))
+    .filter(Boolean);
+
+  return requestedGuides.some(id => id === guide);
 }

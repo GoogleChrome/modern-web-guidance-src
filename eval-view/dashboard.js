@@ -1,6 +1,8 @@
 import { getRunStats, getColor, escapeHtml, formatTestName } from './utils.js';
 import { RadarChart } from './radar.js';
 
+const MCP_LOG_FILE = 'mcp-server.log';
+
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         // Get testID from query string
@@ -11,7 +13,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw new Error('No testID provided in query string');
         }
 
-        const evalsPath = `results/${testID}/evals.json?t=${Date.now()}`;
+        const source = params.get('source') || 'local';
+        const evalsPath = `results/${testID}/evals.json?source=${source}&t=${Date.now()}`;
         const response = await fetch(evalsPath);
         if (!response.ok) throw new Error(`Failed to load data from ${evalsPath}`);
         const data = await response.json();
@@ -23,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Fetch jetski info (optional)
         let jetskiVersion = null;
         try {
-            const jetskiRes = await fetch(`results/${testID}/jetski_info.json`);
+            const jetskiRes = await fetch(`results/${testID}/jetski_info.json?source=${source}`);
             if (jetskiRes.ok) {
                 const jetskiData = await jetskiRes.json();
                 jetskiVersion = jetskiData['Jetski Version'];
@@ -35,16 +38,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Fetch timestamp from manifest
         let timestamp = null;
         try {
-            const manifestRes = await fetch(`results/tests.json?t=${Date.now()}`);
-            if (manifestRes.ok) {
-                const manifest = await manifestRes.json();
-                const testEntry = manifest.tests.find(t => t.id === testID);
-                if (testEntry && testEntry.timestamp) {
-                    timestamp = testEntry.timestamp;
+            if (data.timestamp) {
+                timestamp = data.timestamp;
+            } else {
+                const evalsRes = await fetch(evalsPath);
+                if (evalsRes.ok) {
+                    const evals = await evalsRes.json();
+                    timestamp = evals.timestamp;
                 }
             }
         } catch (e) {
-            console.log('Could not load test manifest:', e);
+            console.log('Failed to fetch evals.json for timestamp:', e);
         }
 
         renderTestHeader(testID, jetskiVersion, timestamp);
@@ -141,12 +145,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     // We no longer need popstate for modal state because we use replaceState exclusively.
     // Full page deep links are handled via DOMContentLoaded.
 
+    // View GCS Artifacts
+    const gcsBtn = document.getElementById('view-gcs-artifacts-btn');
+    if (gcsBtn) {
+        const params = new URLSearchParams(window.location.search);
+        const source = params.get('source');
+        const testID = params.get('testID');
+        if (source === 'remote') {
+            gcsBtn.style.display = 'inline-block';
+            gcsBtn.onclick = () => window.open(`https://console.cloud.google.com/storage/browser/guidance-evals/${testID}?project=chrome-kiwi-air-force-dev`, '_blank');
+        }
+    }
+
     // View Log Handler
     const viewLogBtn = document.getElementById('view-log-btn');
     if (viewLogBtn) {
         const params = new URLSearchParams(window.location.search);
         const testID = params.get('testID');
-        const logPath = `results/${testID}/test_suite.log`;
+        const source = params.get('source') || 'local';
+        const logPath = `results/${testID}/test_suite.log?source=${source}`;
 
         // Check if log file exists
         try {
@@ -243,9 +260,16 @@ function renderTestHeader(testID, jetskiVersion, timestamp) {
         if (timestamp) {
             let timeStr = timestamp;
             try {
-                timeStr = new Date(timestamp).toLocaleString();
+                const _date = new Date(timestamp);
+                timeStr = _date.toLocaleString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                }).replace(' at ', ', ');
             } catch { }
-            html += ` — Run at ${timeStr}`;
+            html += ` — ${timeStr}`;
         }
 
         if (jetskiVersion) {
@@ -389,7 +413,7 @@ async function showDetails(testName, runs, stats, testID) {
     const title = document.getElementById('modal-title');
     const contentDiv = document.querySelector('.modal-content');
     const body = document.getElementById('modal-body');
-    const [appName, guide] = testName.split(' - ');
+    const [, guide] = testName.split(' - ');
 
     // Reset modifier classes
     modal.classList.remove('diff-modal');
@@ -398,13 +422,20 @@ async function showDetails(testName, runs, stats, testID) {
 
     title.textContent = formatTestName(testName);
 
-    // Fetch prompt text
+    // Fetch prompt text from tasks directory
     let promptHtml = '';
     try {
-        const promptPath = `base_apps/${appName}/PROMPT.txt`;
-        const res = await fetch(promptPath);
+        const taskPath = `tasks/${guide}.md`;
+        const res = await fetch(taskPath);
         if (res.ok) {
-            const text = await res.text();
+            let text = await res.text();
+            
+            // Strip frontmatter if present
+            const frontmatterMatch = text.match(/^---\n(?:[\s\S]*?)\n---\n([\s\S]*)$/);
+            if (frontmatterMatch) {
+                text = frontmatterMatch[1].trim();
+            }
+
             promptHtml = `
                     <div class="prompt-section" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--text-secondary);">
                     <h4 style="margin-top: 0; margin-bottom: 10px;">Prompt</h4>
@@ -422,40 +453,17 @@ async function showDetails(testName, runs, stats, testID) {
         const { setupPath, resultPath, usedBasePath } = await getResultPaths(testID, run, testName);
 
         let guideSection = '';
-        if (run.guideResults && run.guideResults.checks) {
-            const guideStats = getRunStats(run.guideResults.checks);
-            // Toggle ID
-            const toggleId = `guide-toggle-${run.runNumber}`;
-            const contentId = `guide-content-${run.runNumber}`;
-
-            // Professional Look: Clean styling, no raw arrows
-            // Using SVG for chevron
-            const chevronRight = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="transition: transform 0.2s; margin-right: 8px;"><path d="M4 2L8 6L4 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        if (run.guideUsed !== undefined) {
+            const passed = run.guideUsed;
 
             guideSection = `
-                <div class="guide-section" style="margin-top: 15px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--border-color); overflow: hidden;">
-                    <div id="${toggleId}" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; cursor: pointer; user-select: none; background: rgba(255,255,255,0.02); transition: background 0.1s;">
-                        <div style="display: flex; align-items: center;">
-                            <span class="toggle-icon-wrapper" style="display: flex; align-items: center;">${chevronRight}</span>
-                            <strong style="font-size: 0.9em; font-weight: 600;">Guide Validation</strong>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 0.85em; color: ${getColor(guideStats.rate)}; font-weight: 600; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 10px;">${guideStats.rate}% Match</span>
-                        </div>
+                <div class="guide-section" style="margin-top: 15px; padding: 10px 15px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1rem;">${passed ? '✅' : '❌'}</span>
+                        <strong style="font-size: 0.9em; font-weight: 600;">${guide} used by agent</strong>
                     </div>
-                    
-                    <div id="${contentId}" style="display: none; padding: 0 15px 15px 15px; border-top: 1px solid var(--border-color);">
-                        <div style="padding-top: 10px; margin-bottom: 10px; text-align: right;">
-                             <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">View resources_used.json</a>
-                        </div>
-                        <ul class="check-list" style="border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden;">
-                            ${run.guideResults.checks.map(check => `
-                                <li class="check-item" style="padding: 8px 12px; font-size: 0.9em;">
-                                    <span class="check-status" style="font-size: 1rem;">${check.passed ? '✅' : '❌'}</span>
-                                    <span class="check-message" style="color: var(--text-primary); font-family: -apple-system, sans-serif;">${escapeHtml(check.message)}</span>
-                                </li>
-                            `).join('')}
-                        </ul>
+                    <div>
+                        <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${MCP_LOG_FILE}</a>
                     </div>
                 </div>
             `;
@@ -468,7 +476,6 @@ async function showDetails(testName, runs, stats, testID) {
                 <strong>Run ${run.runNumber}</strong>
                 <span style="color: ${getColor(s.rate)}">${s.rate}% Pass (${s.passed}/${s.total})</span>
                 <div class="run-actions">
-                    <a href="${resultPath}" target="_blank">View Source ↗</a>
                 </div>
             </div>
             <ul class="check-list">
@@ -482,61 +489,76 @@ async function showDetails(testName, runs, stats, testID) {
             ${guideSection}
         `;
 
-        // Handle Guide Toggle
-        const toggleBtn = runDetail.querySelector(`#guide-toggle-${run.runNumber}`);
-        const contentArea = runDetail.querySelector(`#guide-content-${run.runNumber}`);
-        if (toggleBtn && contentArea) {
-            toggleBtn.onclick = () => {
-                const isHidden = contentArea.style.display === 'none';
-                contentArea.style.display = isHidden ? 'block' : 'none';
-                const icon = toggleBtn.querySelector('svg');
-                if (icon) {
-                    icon.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
-                }
-                toggleBtn.style.background = isHidden ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)';
-            };
-
-            // Hover effect for header
-            toggleBtn.onmouseenter = () => { toggleBtn.style.background = 'rgba(255,255,255,0.05)'; };
-            toggleBtn.onmouseleave = () => { if (contentArea.style.display === 'none') toggleBtn.style.background = 'rgba(255,255,255,0.02)'; };
-        }
-
         const viewResourcesLink = runDetail.querySelector('.view-resources-link');
         if (viewResourcesLink) {
             viewResourcesLink.onclick = (e) => {
                 e.preventDefault();
-                // usedBasePath is like "results/testID/runNumber/appName/guide/runType"
-                // resources_used.json is usually in that same directory
-                const resourcesPath = `${usedBasePath}/resources_used.json`;
+                const source = new URLSearchParams(window.location.search).get('source') || 'local';
+                const resourcesPath = `${usedBasePath}/${MCP_LOG_FILE}?source=${source}`;
                 viewContent(resourcesPath, resourcesPath);
             };
         }
 
-        const diffButton = document.createElement('button');
-        diffButton.className = 'secondary-btn small-btn';
-        diffButton.textContent = 'View Diff';
-        diffButton.style.cssText = 'margin-left: 10px; font-size: 0.8em; padding: 2px 8px;';
-        diffButton.onclick = () => viewDiff(setupPath, resultPath, testName, run.runNumber);
+        const sourceParam = new URLSearchParams(window.location.search).get('source') || 'local';
+        const relativeDir = usedBasePath.replace('results/', '');
 
-        const rawResultsPath = `${usedBasePath}/${guide}_results.json`;
-        let showRawResults = false;
+        const dropdown = document.createElement('select');
+        dropdown.className = 'run-actions-dropdown';
+        dropdown.style.cssText = 'padding: 4px; font-size: 0.9em; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;';
+        dropdown.innerHTML = '<option value="" disabled selected>Artifacts</option>';
+
+        const sourceOpt = document.createElement('option');
+        sourceOpt.value = 'source';
+        sourceOpt.textContent = 'App';
+        dropdown.appendChild(sourceOpt);
+
+        const diffOpt = document.createElement('option');
+        diffOpt.value = 'diff';
+        diffOpt.textContent = 'Diff';
+        dropdown.appendChild(diffOpt);
+
+        let sessionFile = null;
         try {
-            const rawRes = await fetch(rawResultsPath, { method: 'HEAD' });
-            if (rawRes.ok) showRawResults = true;
+            const filesRes = await fetch(`/api/run-files?dir=${encodeURIComponent(relativeDir)}&source=${sourceParam}`);
+            if (filesRes.ok) {
+                const { files } = await filesRes.json();
+
+                const rawJson = files.find(f => f === `${guide}_results.json`);
+                if (rawJson) {
+                    const rawOpt = document.createElement('option');
+                    rawOpt.value = 'raw';
+                    rawOpt.textContent = 'Raw Test Results';
+                    dropdown.appendChild(rawOpt);
+                }
+
+                sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
+                if (sessionFile) {
+                    const trajOpt = document.createElement('option');
+                    trajOpt.value = 'trajectory';
+                    trajOpt.textContent = 'Trajectory';
+                    dropdown.appendChild(trajOpt);
+                }
+            }
         } catch (e) {
-            console.log('Error checking raw results:', e);
+            console.log('Error checking run files:', e);
         }
 
-        if (showRawResults) {
-            const rawResultsBtn = document.createElement('button');
-            rawResultsBtn.className = 'secondary-btn small-btn';
-            rawResultsBtn.textContent = 'View Raw Results';
-            rawResultsBtn.style.cssText = 'margin-left: 10px; font-size: 0.8em; padding: 2px 8px;';
-            rawResultsBtn.onclick = () => viewContent(rawResultsPath, rawResultsPath);
-            runDetail.querySelector('.run-actions').appendChild(rawResultsBtn);
-        }
+        dropdown.onchange = (e) => {
+            const val = e.target.value;
+            e.target.value = ''; // reset selection
+            if (val === 'source') {
+                window.open(resultPath, '_blank');
+            } else if (val === 'diff') {
+                viewDiff(setupPath, resultPath, testName, run.runNumber);
+            } else if (val === 'trajectory' && sessionFile) {
+                window.open(`${usedBasePath}/${sessionFile}?source=${sourceParam}`, '_blank');
+            } else if (val === 'raw') {
+                const rawPath = `${usedBasePath}/${guide}_results.json?source=${sourceParam}`;
+                viewContent(rawPath, rawPath);
+            }
+        };
 
-        runDetail.querySelector('.run-actions').appendChild(diffButton);
+        runDetail.querySelector('.run-actions').appendChild(dropdown);
         return runDetail;
     });
 
@@ -570,7 +592,12 @@ async function viewContent(fileName, filePath) {
 
     try {
         const res = await fetch(filePath);
-        if (!res.ok) throw new Error('Failed to fetch file');
+        if (!res.ok) {
+            if (res.status === 404) {
+                throw new Error('Resources file not found.');
+            }
+            throw new Error(`Failed to fetch file (Status: ${res.status})`);
+        }
         const text = await res.text();
 
         body.innerHTML = '';
@@ -803,6 +830,7 @@ function renderRadarChart(data, testID) {
 
 async function getResultPaths(testID, run, testName) {
     const [appName, guide, runType] = testName.split(' - ');
+    const actualBaseApp = run.baseApp || appName;
 
     // Cover cases for new use case format and old (greenfield, brownfield, redfield) format
     const basePaths = [
@@ -810,14 +838,33 @@ async function getResultPaths(testID, run, testName) {
         `results/${testID}/${run.runNumber}/${appName}/${guide}/${runType}`
     ];
 
-    const resultPath = await findBestEntryPoint(basePaths);
+    const resultPathBase = await findBestEntryPoint(basePaths);
 
     // Determine which base path was used
-    const usedBasePath = basePaths.find(bp => resultPath.startsWith(bp)) || basePaths[0];
+    const usedBasePath = basePaths.find(bp => resultPathBase.startsWith(bp)) || basePaths[0];
 
     // Calculate relative path (e.g., "src/App.jsx" or "index.html")
-    const relativePath = resultPath.replace(usedBasePath + '/', '');
-    const setupPath = `base_apps/${appName}/${runType}/${relativePath}`;
+    const relativePath = resultPathBase.replace(usedBasePath + '/', '');
+    
+    // Check old style path and new style path
+    const candidateSetupPaths = [
+        `base_apps/${actualBaseApp}/${runType}/${relativePath}`,
+        `base_apps/${actualBaseApp}/${relativePath}`
+    ];
+    let setupPath = candidateSetupPaths[candidateSetupPaths.length - 1]; // Assume new style by default
+    
+    for (const path of candidateSetupPaths) {
+        try {
+            const res = await fetch(path, { method: 'HEAD' });
+            if (res.ok) {
+                setupPath = path;
+                break;
+            }
+        } catch {}
+    }
+
+    const source = new URLSearchParams(window.location.search).get('source') || 'local';
+    const resultPath = `${resultPathBase}?source=${source}`;
 
     return { setupPath, resultPath, usedBasePath };
 }
@@ -837,9 +884,11 @@ async function findBestEntryPoint(basePaths) {
         'index.html'
     ];
 
+    const source = new URLSearchParams(window.location.search).get('source') || 'local';
+
     for (const basePath of pathsToCheck) {
         const checks = candidates.map(candidate =>
-            fetch(`${basePath}/${candidate}`, { method: 'HEAD' })
+            fetch(`${basePath}/${candidate}?source=${source}`, { method: 'HEAD' })
                 .then(res => res.ok ? `${basePath}/${candidate}` : null)
                 .catch(() => null)
         );

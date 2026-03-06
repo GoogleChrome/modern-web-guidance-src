@@ -1,6 +1,0 @@
-I will read the `index.html` file to understand the current structure and where to add the navigation links and pre-rendering rules.
-I will now add the Speculation Rules API script to the `index.html` file to enable pre-rendering for the specified navigation links (`/menu`, `/locations`, `/rewards`, `/account`) while strictly excluding `/logout`. I'll insert this script into the `<head>` section.
-I will verify the changes to `index.html` by reading the file and checking for the newly added Speculation Rules script.
-I have implemented pre-rendering for the `/menu`, `/locations`, `/rewards`, and `/account` links using the Speculation Rules API. I added a `<script type="speculationrules">` block to the `<head>` of your `index.html`. This native web platform feature will instruct the browser to pre-render these pages, speeding up navigation.
-
-I have strictly excluded the `/logout` link from this list to prevent any accidental state changes, as requested.
