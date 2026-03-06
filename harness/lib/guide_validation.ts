@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { MCP_LOG_FILE } from '../../constants.ts';
+import matter from 'gray-matter';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,14 +37,14 @@ export async function guideUsed(dirPath: string, taskName: string): Promise<bool
   }
 
   const fileContent = fs.readFileSync(taskPath, 'utf8');
-  const frontmatterMatch = fileContent.match(/^---\n(?:[\s\S]*?)grader:\s*(.+)\n(?:[\s\S]*?)---\n([\s\S]*)$/m);
+  const { data } = matter(fileContent);
 
-  if (!frontmatterMatch) {
+  if (!data || !data.grader) {
     console.error(`No 'grader:' found in frontmatter for task ${taskName}`);
     return false;
   }
 
-  const guide = frontmatterMatch[1].trim();
+  const guide = data.grader.trim();
 
   // Extract all use case IDs requested via get_best_practices
   const requestedGuides = toolCalls

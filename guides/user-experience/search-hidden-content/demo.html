@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search Hidden Content Demo</title>
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --bg: #f8fafc;
+      --text: #0f172a;
+      --border: #e2e8f0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 2rem;
+      max-width: 640px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .instructions {
+      background: #dbeafe;
+      color: #1e40af;
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+    }
+
+    .accordion {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: white;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .accordion-item {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .accordion-item:last-child {
+      border-bottom: none;
+    }
+
+    .accordion-header {
+      width: 100%;
+      text-align: left;
+      padding: 1.25rem;
+      background: transparent;
+      border: none;
+      font-size: 1.05rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text);
+    }
+
+    .accordion-header:hover {
+      background: #f1f5f9;
+    }
+
+    .icon {
+      font-size: 1.5rem;
+      font-weight: 300;
+      color: #64748b;
+      line-height: 1;
+      transition: transform 0.2s;
+    }
+
+    /* Rotate '+' icon to an 'x' when open */
+    .is-open .icon {
+      transform: rotate(45deg);
+    }
+
+    /* DO NOT apply display or visibility to elements with hidden="until-found" */
+    .accordion-pane {
+      margin: 0;
+    }
+
+    /* DO apply padding to nested wrappers instead */
+    .accordion-content {
+      padding: 0 1.25rem 1.25rem 1.25rem;
+      color: #334155;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Hidden Content Search</h1>
+  <div class="instructions">
+    <strong>Test it out:</strong> Press <code>Cmd/Ctrl + F</code> and search for words like <em>"strawberry"</em>,
+    <em>"mango"</em>, or <em>"hidden"</em>. The browser will automatically expand the right accordion section and jump
+    to the text!
+  </div>
+
+  <div class="accordion">
+    <div class="accordion-item is-open" id="item1">
+      <button class="accordion-header" aria-expanded="true" aria-controls="pane1">
+        Section 1: Apples & Oranges
+        <span class="icon" aria-hidden="true">+</span>
+      </button>
+      <div id="pane1" class="accordion-pane">
+        <div class="accordion-content">
+          <p>This section is open by default. You can see all the content right away without searching.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- hidden="until-found" is applied to the pane -->
+    <div class="accordion-item" id="item2">
+      <button class="accordion-header" aria-expanded="false" aria-controls="pane2">
+        Section 2: The Hidden Berries
+        <span class="icon" aria-hidden="true">+</span>
+      </button>
+      <div id="pane2" class="accordion-pane" hidden="until-found">
+        <div class="accordion-content">
+          <p>This section contains some <strong>hidden</strong> information about berries. If you searched for a term
+            like <em>blueberry</em> or <em>strawberry</em>, the browser automatically dispatched a
+            <code>beforematch</code> event, allowing our JavaScript to update the UI icons before revealing this panel.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-item" id="item3">
+      <button class="accordion-header" aria-expanded="false" aria-controls="pane3">
+        Section 3: Tropical Fruits
+        <span class="icon" aria-hidden="true">+</span>
+      </button>
+      <div id="pane3" class="accordion-pane" hidden="until-found">
+        <div class="accordion-content">
+          <p>Here in the tropics, you will find a juicy <em>mango</em>! Even though this panel was initially collapsed,
+            it remained natively indexed by your browser's search capabilities.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 1. Map standard button toggling
+    document.querySelectorAll('.accordion-header').forEach(button => {
+      button.addEventListener('click', () => {
+        const paneId = button.getAttribute('aria-controls');
+        const pane = document.getElementById(paneId);
+        const item = button.closest('.accordion-item');
+        const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+        if (isExpanded) {
+          button.setAttribute('aria-expanded', 'false');
+          pane.setAttribute('hidden', 'until-found');
+          item.classList.remove('is-open');
+        } else {
+          button.setAttribute('aria-expanded', 'true');
+          pane.removeAttribute('hidden');
+          item.classList.add('is-open');
+        }
+      });
+    });
+
+    // 2. Synchronize UI upon browser search using 'beforematch'
+    document.querySelectorAll('.accordion-pane').forEach(pane => {
+      pane.addEventListener('beforematch', () => {
+        // The browser is about to remove the 'hidden' attribute.
+        // We just need to sync our UI classes and accessibility attributes.
+        const item = pane.closest('.accordion-item');
+        const button = item.querySelector('.accordion-header');
+        button.setAttribute('aria-expanded', 'true');
+        item.classList.add('is-open');
+      });
+    });
+
+    // 3. Fallback strategy for browsers without 'beforematch' support
+    // (We auto-expand all hidden content)
+    if (!('onbeforematch' in HTMLElement.prototype)) {
+      console.warn("hidden=until-found not supported. Executing fallback: expanding all content.");
+      document.querySelectorAll('[hidden="until-found"]').forEach(el => {
+        el.removeAttribute('hidden');
+        const paneId = el.id;
+        const button = document.querySelector(`.accordion-header[aria-controls="${paneId}"]`);
+        if (button) {
+          button.setAttribute('aria-expanded', 'true');
+          button.closest('.accordion-item').classList.add('is-open');
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>

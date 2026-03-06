@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "exclude": [
+    "**/test-app-results/**",
+    "**/node_modules/**",
+    "**/grade-report/**",
+    "**/dist/**"
+  ]
+}
