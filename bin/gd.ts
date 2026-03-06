@@ -112,15 +112,15 @@ async function main() {
 
   if (values.help || !command) {
     console.log(`
-${cBold('Guidance CLI (gd)')}
+${cBold('Guidance CLI')}
 
 ${cCyan('Usage:')} gd <command> [options]
 
 ${cBold('Guide Development:')}
-  ${cCyan('audit')}${' '.repeat(21)} Show status of all guides
+  ${cCyan('audit')}${' '.repeat(17)}      Show status of all guides
   ${cCyan('dev')} <dir> [options]         Auto-generate and calibrate guide artifacts
 
-${cBold("Piece-wise options for 'dev':")}
+${cBold("Piece-wise options for `dev`:")}
   ${cDim('--grade')}              Run/calibrate grader
   ${cDim('--test-grader')}        Check grader calibration (demo + negative-demo)
   ${cDim('--gen-grader')}         Generate a new grader script
@@ -129,7 +129,7 @@ ${cBold("Piece-wise options for 'dev':")}
 
 ${cBold('Evaluation:')}
   ${cCyan('eval')} [suite|tasks...]       Run the full evaluation suite, or specific tasks
-  ${cCyan('dashboard')}${' '.repeat(17)} Start the evaluation dashboard
+  ${cCyan('dashboard')}${' '.repeat(18)} Start the evaluation dashboard
   ${cCyan('run')} <tmpl> <prompt>         Run an ad-hoc agent test against a template
 
 ${cBold('Other:')}
