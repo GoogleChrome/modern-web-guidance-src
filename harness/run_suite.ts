@@ -24,11 +24,9 @@ async function main() {
   }
 
   const agent = config.suite.agent;
-
   const args = process.argv.slice(2);
   const positionalArgs = args.filter(arg => !arg.startsWith('--'));
-  
-  const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.\n\nThe output should be a single HTML file. Do not modify any other files.`;
+  const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
   // Single task mode check
   if (positionalArgs.length === 1 || (positionalArgs.length === 2 && args.includes('--with-template'))) {
@@ -206,18 +204,7 @@ async function main() {
       }
     }
 
-    const manifestPath = path.join(resultsDir, 'tests.json');
-    let manifest: { tests: any[] } = { tests: [] };
-    if (fs.existsSync(manifestPath)) {
-      try {
-        manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-      } catch { }
-    }
 
-    if (!manifest.tests.some(t => t.id === testID)) {
-      manifest.tests.push({ id: testID, timestamp: new Date().toISOString(), runCount: config.suite.numRuns });
-      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-    }
 
     console.log(`\n✅ Test suite complete! Results saved to: results/${testID}`);
   } catch (e) {

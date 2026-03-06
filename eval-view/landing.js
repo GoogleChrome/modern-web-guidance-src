@@ -1,9 +1,10 @@
 import { getRunStats, getColor, escapeHtml, capitalize } from './utils.js';
 
 let allTestData = {}; // Cache all test data by testID
-let currentTab = 'overview';
+let currentTab = 'suites';
 let currentScenarioFilter = 'all';
 let selectedTestIds = new Set(); // Set of test IDs to show
+let isLocalServer = false;
 
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -42,7 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Initial Render
-        renderOverview();
+        renderSuites();
         renderExplorer();
         renderTrends();
 
@@ -55,8 +56,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Handle browser back/forward
 window.addEventListener('popstate', () => {
     const params = new URLSearchParams(window.location.search);
-    const view = params.get('view') || 'overview';
-    if (['overview', 'explorer', 'trends'].includes(view)) {
+    const view = params.get('view') || 'suites';
+    if (['suites', 'explorer', 'trends'].includes(view)) {
         activateTab(view, false);
     }
 
@@ -201,7 +202,7 @@ function renderFilterMenuItems() {
         labelContent.className = 'filter-item-label';
 
         const idSpan = document.createElement('span');
-        idSpan.textContent = `Test ${testID.replace('test_', '')}`;
+        idSpan.textContent = testID.replace('test_', '');
 
         const dateSpan = document.createElement('span');
         dateSpan.className = 'filter-item-date';
@@ -232,18 +233,20 @@ function updateUrlParams() {
 }
 
 function renderAll() {
-    renderOverview();
+    renderSuites();
     renderExplorer();
     renderTrends();
 }
 
 async function loadAllTests() {
     try {
-        const response = await fetch(`results/tests.json?t=${Date.now()}`);
-        if (!response.ok) throw new Error('Manifest not found');
+        const response = await fetch(`/api/suites?t=${Date.now()}`);
+        if (!response.ok) throw new Error('Failed to fetch suites');
         const manifest = await response.json();
 
-        if (!manifest.tests || manifest.tests.length === 0) {
+        isLocalServer = manifest.isLocal || false;
+
+        if (!manifest.suites || manifest.suites.length === 0) {
             document.getElementById('empty-state').style.display = 'block';
             return;
         }
@@ -251,21 +254,22 @@ async function loadAllTests() {
         document.getElementById('empty-state').style.display = 'none';
 
         // Load all test data
-        for (const testEntry of manifest.tests) {
+        for (const testID of manifest.suites) {
             try {
-                const response = await fetch(`results/${testEntry.id}/evals.json?t=${Date.now()}`);
+                const response = await fetch(`results/${testID}/evals.json?t=${Date.now()}`);
                 if (response.ok) {
-                    allTestData[testEntry.id] = {
-                        timestamp: testEntry.timestamp,
-                        data: await response.json()
+                    const parsed = await response.json();
+                    allTestData[testID] = {
+                        timestamp: parsed.timestamp || new Date().toISOString(), // Fallback
+                        data: parsed
                     };
                 }
             } catch (e) {
-                console.warn(`Failed to load test ${testEntry.id}:`, e);
+                console.warn(`Failed to load test ${testID}:`, e);
             }
         }
     } catch (error) {
-        console.warn('No manifest found:', error);
+        console.warn('Error loading suites:', error);
         document.getElementById('empty-state').style.display = 'block';
         throw error;
     }
@@ -275,37 +279,19 @@ async function loadAllTests() {
 // RENDERERS
 // ==========================================
 
-function renderOverview() {
+function renderSuites() {
     const testIds = getSortedTestIds();
     if (testIds.length === 0) return;
 
-    const latestTestId = testIds[0];
-    const latestData = allTestData[latestTestId].data;
+    const container = document.getElementById('suites-list');
 
-    // 1. Render Metrics
-    const guidedMetric = document.getElementById('latest-guided-metric');
-    const unguidedMetric = document.getElementById('latest-unguided-metric');
-
-    const guidedStats = calculateGroupTotalStats(latestData.results, 'guided');
-    const unguidedStats = calculateGroupTotalStats(latestData.results, 'unguided');
-
-    const guidedRate = guidedStats.total > 0 ? Math.round((guidedStats.passed / guidedStats.total) * 100) : 0;
-    const unguidedRate = unguidedStats.total > 0 ? Math.round((unguidedStats.passed / unguidedStats.total) * 100) : 0;
-
-    guidedMetric.textContent = `${guidedRate}%`;
-    guidedMetric.style.color = getColor(guidedRate);
-
-    unguidedMetric.textContent = `${unguidedRate}%`;
-    unguidedMetric.style.color = getColor(unguidedRate);
-
-    // 2. Render Recent Tests List
-    const container = document.getElementById('overview-recent-tests');
-    const recentTests = testIds.slice(0, 5);
-
-    container.innerHTML = recentTests.map(testID => {
+    container.innerHTML = testIds.map(testID => {
         const testInfo = allTestData[testID];
         const data = testInfo.data;
-        const timestamp = new Date(testInfo.timestamp).toLocaleString();
+        const _date = new Date(testInfo.timestamp);
+
+        // Custom format to add time into the label:
+        const prettyTimestampStr = `${_date.toLocaleDateString()} at ${_date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
         const gStats = calculateGroupTotalStats(data.results, 'guided');
         const uStats = calculateGroupTotalStats(data.results, 'unguided');
@@ -313,23 +299,33 @@ function renderOverview() {
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
 
+        const gcpLink = `https://console.cloud.google.com/storage/browser/guidance-evals/${testID}?project=chrome-kiwi-air-force-dev`;
+        const localLink = `dashboard.html?testID=${testID}`;
+
+        const gcpButtonHtml = !isLocalServer ?
+            `<button onclick="event.stopPropagation(); window.open('${gcpLink}', '_blank');" class="secondary-btn" style="font-size: 0.8rem; padding: 6px 10px;">View Result Artifacts</button>` : '';
+
         return `
-            <a class="recent-test-item" href="dashboard.html?testID=${testID}">
-                <div>
-                    <div class="test-id">Test ${testID.replace('test_', '')}</div>
-                    <div class="test-timestamp">${timestamp}</div>
-                </div>
-                <div class="test-stats">
-                    <div>
-                        <div class="stat-label">Guided</div>
-                        <div class="stat-value" style="color: ${getColor(gRate)}">${gRate}%</div>
+            <div onclick="window.location.href='${localLink}'" class="suite-item-container" style="cursor: pointer; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--primary-color)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='none';">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                    <div style="flex: 1; min-width: 250px;">
+                        <h3 style="margin: 0; font-size: 1.25rem; color: var(--text-primary); pointer-events: none;">${testID}</h3>
+                        <div style="font-size: 0.85rem; color: var(--text-tertiary); margin-top: 4px; pointer-events: none;">${prettyTimestampStr}</div>
                     </div>
-                    <div>
-                        <div class="stat-label">Unguided</div>
-                        <div class="stat-value" style="color: ${getColor(uRate)}">${uRate}%</div>
+
+                    <div style="display: flex; gap: 32px; align-items: center; justify-content: flex-end;">
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px;">Guided Pass Rate</div>
+                            <div style="font-size: 2rem; font-weight: 700; color: ${getColor(gRate)};">${gRate}%</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px;">Unguided Pass Rate</div>
+                            <div style="font-size: 2rem; font-weight: 700; color: ${getColor(uRate)};">${uRate}%</div>
+                        </div>
+                        ${!isLocalServer ? `<div style="margin-left: 16px;">${gcpButtonHtml}</div>` : ''}
                     </div>
                 </div>
-            </a>
+            </div>
         `;
     }).join('');
 }

@@ -2,8 +2,16 @@ import * as http from "http";
 import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
+import { Storage } from '@google-cloud/storage';
 
 const PORT = process.env.PORT || 8081;
+const USE_LOCAL = process.argv.includes('--local');
+const PROJECT_ID = 'chrome-kiwi-air-force-dev';
+const BUCKET_NAME = 'guidance-evals';
+
+const storage = new Storage({ projectId: PROJECT_ID });
+const bucket = storage.bucket(BUCKET_NAME);
+
 const MIME_TYPES = {
   '.html': 'text/html',
   '.js': 'text/javascript',
@@ -18,7 +26,7 @@ const MIME_TYPES = {
   '.log': 'text/plain',
 };
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   // Ultra-strict raw URL check
   if (req.url.includes('..') || req.url.toLowerCase().includes('%2e')) {
     console.log(`403 Forbidden: Traversal/Encoded attempt - ${req.method} ${req.url}`);
@@ -49,10 +57,76 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Handle /api/suites endpoint
+  if (decodedPath === '/api/suites') {
+    if (USE_LOCAL) {
+      const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
+      try {
+        const dirs = fs.readdirSync(resultsDir, { withFileTypes: true })
+          .filter(dirent => dirent.isDirectory() && dirent.name !== 'single_task')
+          .map(dirent => dirent.name);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ suites: dirs, isLocal: true }));
+      } catch (e) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    } else {
+      try {
+        const [_, __, apiResponse] = await bucket.getFiles({ delimiter: '/' });
+        const prefixes = apiResponse.prefixes || [];
+        const suites = prefixes.map(p => p.slice(0, -1)); // Remove trailing slash
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ suites, isLocal: false }));
+      } catch (e) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    }
+    return;
+  }
+
   let filePath;
   // Map results and setup to the harness directory
   if (decodedPath.startsWith('/results/')) {
-    filePath = path.join('../harness/results', decodedPath.substring(9));
+    const relativeResultPath = decodedPath.substring(9);
+
+    if (!USE_LOCAL) {
+      // Stream from GCS
+      const extname = path.extname(relativeResultPath) || '';
+      let contentType = MIME_TYPES[extname] || 'application/octet-stream';
+      // If fetching the suite root instead of a file
+      if (relativeResultPath === '' || relativeResultPath.endsWith('/')) {
+        contentType = 'text/html';
+        // Serve an index.html equivalent or 404
+      }
+
+      const file = bucket.file(relativeResultPath);
+      file.exists().then(([exists]) => {
+        if (!exists) {
+          res.writeHead(404);
+          res.end('404 Not Found');
+          return;
+        }
+
+        res.writeHead(200, { 'Content-Type': contentType });
+        file.createReadStream()
+          .on('error', (err) => {
+            console.error('Error streaming from GCS:', err);
+            // We can't write head here if we already wrote 200, but we can end
+            res.end();
+          })
+          .pipe(res);
+      }).catch(err => {
+        console.error('GCS exists check failed:', err);
+        res.writeHead(500);
+        res.end(`Server Error: ${err.message}`);
+      });
+      return;
+    }
+
+    const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
+    filePath = path.join(resultsDir, relativeResultPath);
   } else if (decodedPath.startsWith('/base_apps/')) {
     filePath = path.join('../harness/base_apps', decodedPath.substring(11));
   } else {
@@ -120,7 +194,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   const url = `http://localhost:${PORT}/`;
-  console.log(`Server running at ${url}`);
+  console.log(`Server running at ${url} (${USE_LOCAL ? 'LOCAL MODE' : 'GCP MODE'})`);
 
   // Try to open the browser if not disabled
   if (process.env.NO_OPEN !== 'true') {

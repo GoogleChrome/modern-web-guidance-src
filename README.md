@@ -52,12 +52,19 @@ pnpm suite
 
 # To run a single isolated task
 pnpm task <task_name>
-# Example: pnpm task cards-render
+# Example: pnpm task batch-analytics-events-task
 
 # To generate reports from results
 pnpm report
 
-# To view the results in the dashboard
+# To view local results (`harness/results/`) in the dashboard
+pnpm dashboard --local
+
+# To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
+pnpm upload <suite-name>
+# Example: pnpm upload analytics-suite
+
+# To view uploaded results in the dashboard
 pnpm dashboard
 ```
 
@@ -83,7 +90,7 @@ Jetski is the default agent that will be used. When running, be sure to update t
 
 When using Gemini CLI, set the `GEMINI_API_KEY` environment variable with your API key.
 
-Set the Gemini model with the environment variable (e.g. `GEMINI_MODEL='gemini-3-pro-preview'`).
+Set the Gemini model with the environment variable (e.g. `GEMINI_MODEL='gemini-3.1-pro-preview'`).
 
 #### Claude
 

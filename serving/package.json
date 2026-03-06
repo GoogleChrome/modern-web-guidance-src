@@ -17,11 +17,12 @@
   ],
   "scripts": {
     "prepublishOnly": "npm run build",
-    "build": "tsx scripts/build-guides.ts",
-    "start": "tsx mcp-server/index.ts",
-    "dev": "tsx scripts/build-guides.ts && tsx --watch mcp-server/index.ts",
-    "test": "tsx scripts/build-guides.ts && vitest run mcp-server/",
-    "typecheck": "tsc --noEmit"
+    "build": "node scripts/build-guides.ts",
+    "build:megaskill": "node scripts/build-megaskill.ts",
+    "start": "node mcp-server/index.ts",
+    "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
+    "test": "node scripts/build-guides.ts && vitest run mcp-server/",
+    "typecheck": "npm run build && tsc --noEmit"
   },
   "keywords": [],
   "author": "",
@@ -38,7 +39,6 @@
   "devDependencies": {
     "@types/node": "^22.19.11",
     "gray-matter": "^4.0.3",
-    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }

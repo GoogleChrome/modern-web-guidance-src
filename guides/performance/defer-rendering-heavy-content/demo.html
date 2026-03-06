@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Defer Rendering Off-screen Content</title>
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --surface: #ffffff;
+      --bg: #f8fafc;
+      --text: #1e293b;
+      --border: #e2e8f0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    header {
+      margin-bottom: 3rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .example-section {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 3rem;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      border: 1px solid var(--border);
+    }
+
+    .example-header {
+      margin-bottom: 1.5rem;
+    }
+
+    .example-header h2 {
+      margin-top: 0;
+      color: var(--primary);
+    }
+
+    /* Dashboard Styles */
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .widget {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      min-height: 150px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .widget-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .widget-label {
+      font-size: 0.875rem;
+      color: #64748b;
+      margin-top: 0.5rem;
+    }
+
+    /* Complex table to generate high rendering cost */
+    .complex-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: 0.875rem;
+    }
+
+    .complex-table th,
+    .complex-table td {
+      border: 1px solid var(--border);
+      padding: 0.5rem;
+      text-align: left;
+    }
+
+    /* Example 1: Show/Hide Toggle */
+    .toggle-content {
+      /* content-visibility: hidden saves rendering state unlike display: none */
+      content-visibility: hidden;
+    }
+
+    .toggle-content.visible {
+      content-visibility: visible;
+    }
+
+    .btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #2563eb;
+    }
+
+    /* Example 2: Below the fold (content-visibility) */
+    .spacer {
+      height: 120vh;
+      display: flex;
+      align-items: top;
+      justify-content: center;
+      background: repeating-linear-gradient(45deg,
+          #f1f5f9,
+          #f1f5f9 20px,
+          #e2e8f0 20px,
+          #e2e8f0 40px);
+      border-radius: 12px;
+      margin: 2rem 0;
+      padding-top: 2rem;
+      color: #475569;
+      font-weight: bold;
+      font-size: 1.5rem;
+      text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
+    }
+
+    .below-fold-cv {
+      content-visibility: auto;
+      contain-intrinsic-size: 1000px;
+      /* Estimated height to prevent scrollbar jumping */
+    }
+
+    /* Example 3: Below the fold (hidden=until-found) */
+    .searchable-text {
+      font-size: 1.125rem;
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: #eff6ff;
+      border-left: 4px solid var(--primary);
+      border-radius: 0 8px 8px 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Deferring Rendering Techniques</h1>
+      <p>This demo compares different methods for deferring the rendering of complex UI components (like heavy
+        dashboards) to improve initial page load performance and main-thread responsiveness.</p>
+    </header>
+
+    <!-- Example 1: Show/Hide Toggle using content-visibility -->
+    <section class="example-section">
+      <div class="example-header">
+        <h2>Example 1: Toggle State (content-visibility vs display:none)</h2>
+        <p>This dashboard is hidden by default using <code>content-visibility: hidden</code>. Unlike
+          <code>display: none</code>, the browser parses the DOM but skips rendering. When toggled to
+          <code>visible</code>, it renders instantly because the layout tree is preserved.
+        </p>
+        <button class="btn" id="toggle-btn" aria-expanded="false">Show Dashboard</button>
+      </div>
+
+      <div id="demo1-container" class="toggle-content">
+        <div id="dashboard-1"></div> <!-- Will be populated by JS -->
+      </div>
+    </section>
+
+    <div class="spacer">Scroll Down for Example 2 & 3 &darr;</div>
+
+    <!-- Example 2: Below the fold (content-visibility: auto) -->
+    <section class="example-section">
+      <div class="example-header">
+        <h2>Example 2: Below the Fold (content-visibility: auto)</h2>
+        <p>This dashboard is rendered below the fold. It uses <code>content-visibility: auto</code>. The browser
+          completely skips layout and painting for this section until you scroll close to it, drastically improving the
+          initial load time of the page!</p>
+        <button class="btn" id="toggle-btn-2" aria-expanded="true">Hide Dashboard</button>
+      </div>
+      <div id="demo2-container">
+        <div id="dashboard-2" class="below-fold-cv"></div> <!-- Will be populated by JS -->
+      </div>
+    </section>
+
+    <div class="spacer">Scroll Down further for Example 3 &darr;</div>
+
+    <!-- Example 3: Below the fold (hidden="until-found") -->
+    <section class="example-section">
+      <div class="example-header">
+        <h2>Example 3: Searchable & Deferred (hidden="until-found")</h2>
+        <p>This section uses <code>hidden="until-found"</code>. Like Example 2, rendering is skipped, saving main-thread
+          time on load. However, unlike Example 2, the text inside it is <strong>searchable</strong> via the browser's
+          find-in-page (Cmd/Ctrl+F) mechanism.</p>
+        <p><strong>Try it out!</strong> Hit Cmd/Ctrl+F and search for the magic word: <code
+            style="font-size:1.2rem; color: #d97706; background: #fffbeb; padding: 2px 6px; border-radius: 4px;">Supercalifragilisticexpialidocious</code>.
+          If it is hidden, the browser will automatically reveal this entire section!</p>
+        <button class="btn" id="toggle-btn-3" aria-expanded="true">Show Dashboard</button>
+      </div>
+      <div hidden="until-found" id="demo3-container">
+        <p class="searchable-text">
+          The system report indicates a critical failure in the main thruster array, specifically within the
+          secondary <strong>Supercalifragilisticexpialidocious</strong> bypass valve telemetry module.</p>
+        <div id="dashboard-3"></div> <!-- Will be populated by JS -->
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // Helper to generate a heavy/complex dashboard DOM structure
+    // This simulates a high rendering cost by creating thousands of nodes
+    function generateHeavyDashboard(containerId, seed) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      // Create metrics widgets
+      let dashboardHTML = '<div class="dashboard">';
+      for (let i = 0; i < 8; i++) {
+        const val = Math.floor(Math.random() * 10000);
+        dashboardHTML += `
+          <div class="widget">
+            <div class="widget-value">${val.toLocaleString()}</div>
+            <div class="widget-label">Metric ${seed}-${i}</div>
+          </div>
+        `;
+      }
+      dashboardHTML += '</div>';
+
+      // Create a very large, complex table to really stress the rendering engine
+      dashboardHTML += `
+      <h3 style="margin-top: 2rem;">Detailed Analytics Data</h3>
+      <table class="complex-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Timestamp</th>
+            <th>Event Type</th>
+            <th>Status</th>
+            <th>Latency (ms)</th>
+            <th>Data Payload</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+      // 500 rows to ensure it's a heavy render
+      for (let i = 0; i < 500; i++) {
+        dashboardHTML += `
+        <tr>
+          <td>#${seed}-${i.toString().padStart(4, '0')}</td>
+          <td>${new Date(Date.now() - i * 100000).toISOString()}</td>
+          <td>${['CLICK', 'HOVER', 'SCROLL', 'SUBMIT'][i % 4]}</td>
+          <td><span style="color: ${i % 7 === 0 ? 'red' : 'green'}">${i % 7 === 0 ? 'FAILED' : 'SUCCESS'}</span></td>
+          <td>${Math.floor(Math.random() * 500)}</td>
+          <td>{"user": "u_${Math.floor(Math.random() * 1000)}", "session": "s_${Math.floor(Math.random() * 10000)}", "flag": ${i % 2 === 0}}</td>
+        </tr>
+      `;
+      }
+
+      dashboardHTML += `
+        </tbody>
+      </table>
+    `;
+
+      container.innerHTML = dashboardHTML;
+    }
+
+    // Initialize dashboards
+    generateHeavyDashboard('dashboard-1', 'A');
+    generateHeavyDashboard('dashboard-2', 'B');
+    generateHeavyDashboard('dashboard-3', 'C');
+
+    // Logic for Example 1 Show/Hide toggle
+    const toggleBtn = document.getElementById('toggle-btn');
+    const demo1Container = document.getElementById('demo1-container');
+
+    toggleBtn.addEventListener('click', () => {
+      const isVisible = demo1Container.classList.contains('visible');
+
+      if (isVisible) {
+        demo1Container.classList.remove('visible');
+        toggleBtn.textContent = 'Show Dashboard';
+        toggleBtn.setAttribute('aria-expanded', 'false');
+      } else {
+        demo1Container.classList.add('visible');
+        toggleBtn.textContent = 'Hide Dashboard';
+        toggleBtn.setAttribute('aria-expanded', 'true');
+      }
+    });
+
+    // Logic for Example 2 Show/Hide toggle
+    const toggleBtn2 = document.getElementById('toggle-btn-2');
+    const demo2Container = document.getElementById('demo2-container');
+
+    toggleBtn2.addEventListener('click', () => {
+      // For this one we just use standard display none approach to hide completely 
+      // or we can remove it from DOM
+      const isHidden = demo2Container.style.display === 'none';
+      if (isHidden) {
+        demo2Container.style.display = 'block';
+        toggleBtn2.textContent = 'Hide Dashboard';
+        toggleBtn2.setAttribute('aria-expanded', 'true');
+      } else {
+        demo2Container.style.display = 'none';
+        toggleBtn2.textContent = 'Show Dashboard';
+        toggleBtn2.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Logic for Example 3 Show/Hide toggle
+    const toggleBtn3 = document.getElementById('toggle-btn-3');
+    const demo3Container = document.getElementById('demo3-container');
+
+    toggleBtn3.addEventListener('click', () => {
+      // Toggle the hidden attribute
+      if (demo3Container.hasAttribute('hidden')) {
+        demo3Container.removeAttribute('hidden');
+        toggleBtn3.textContent = 'Hide Dashboard';
+        toggleBtn3.setAttribute('aria-expanded', 'true');
+      } else {
+        demo3Container.setAttribute('hidden', 'until-found');
+        toggleBtn3.textContent = 'Show Dashboard';
+        toggleBtn3.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Logic for Example 3 hiding interception (optional)
+    demo3Container.addEventListener('beforematch', (e) => {
+      console.log("Browser found search text! Unhiding the container automatically...");
+      toggleBtn3.textContent = 'Hide Dashboard';
+      toggleBtn3.setAttribute('aria-expanded', 'true');
+    });
+  </script>
+
+</body>
+
+</html>

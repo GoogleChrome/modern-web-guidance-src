@@ -10,13 +10,15 @@
     "lint": "oxlint --ignore-path .oxlintignore",
     "typecheck": "pnpm -r typecheck",
     "preflight": "pnpm typecheck && pnpm lint && pnpm test",
-    "suite": "pnpm --filter harness suite",
+    "suite": "pnpm build:mcp && pnpm --filter harness suite",
     "qsmoke": "pnpm --filter harness qsmoke",
     "task": "pnpm --filter harness task",
     "run-agent": "node harness/run_suite.ts --with-template",
     "report": "pnpm --filter harness report",
+    "upload": "pnpm --filter harness upload",
     "dashboard": "pnpm --filter eval-view start",
     "build:mcp": "pnpm --filter modern-web-mcp build",
+    "build:megaskill": "pnpm --filter modern-web-mcp build:megaskill",
     "test:mcp": "pnpm --filter modern-web-mcp test",
     "setup:playwright": "pnpm --filter eval-view exec playwright install",
     "generate-negative": "node --env-file=.env guides/negative-gen.ts",
@@ -26,7 +28,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.28.1",
+  "packageManager": "pnpm@10.30.3",
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
@@ -43,8 +45,7 @@
     }
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
-    "@types/glob": "^9.0.0",
+    "@types/node": "^22.19.11",
     "oxlint": "^1.50.0",
     "typescript": "^5.9.3"
   },
