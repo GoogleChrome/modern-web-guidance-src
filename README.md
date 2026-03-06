@@ -65,9 +65,8 @@ Run commands via the new universal CLI:
 
 ```bash
 # Guide Development
-gd dev [dir] [options]        # auto-generate/calibrate (runs agent test by default)
-gd dev-all                    # batch-process all incomplete guides
 gd audit                      # show status of all guides
+gd dev [dir] [options]        # auto-generate/calibrate (runs agent test by default)
 
 # Dev Options:
 gd dev [dir] --grade          # (or: pnpm grade) run/calibrate grader

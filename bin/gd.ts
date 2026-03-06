@@ -120,8 +120,8 @@ Guidance CLI (gd)
 Usage: gd <command> [options]
 
 Guide Development:
-  dev <dir> [options]         Auto-generate and calibrate guide artifacts
   audit                       Show status of all guides
+  dev <dir> [options]         Auto-generate and calibrate guide artifacts
 
 Piece-wise options for 'dev':
   --grade              Run/calibrate grader
