@@ -1,6 +1,6 @@
 ---
 name: apply-math-boundaries-to-intrinsically-sized-content
-description: Create highly resilient components that default to their intrinsic size but enforce strict size constraints.
+description: Calculate the size of a components as a function of their intrinsic size.
 web-feature-ids:
   - calc-size
 ---
