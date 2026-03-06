@@ -13,7 +13,7 @@ test.describe('Eval View Dashboard', () => {
     await expect(page.locator('.tab-button[data-tab="trends"]')).toBeVisible();
 
     // Check suites content
-    await expect(page.locator('.suite-item-container').first()).toBeVisible();
+    await expect(page.locator('.suite-table-row').first()).toBeVisible();
   });
 
   test('should load suites from API', async ({ page }) => {
@@ -28,7 +28,7 @@ test.describe('Eval View Dashboard', () => {
   test('should navigate to explorer tab', async ({ page }) => {
     await page.goto('/');
     // Wait for data to be loaded (suites appear)
-    await expect(page.locator('.suite-item-container').first()).toBeVisible();
+    await expect(page.locator('.suite-table-row').first()).toBeVisible();
     
     await page.click('.tab-button[data-tab="explorer"]');
     
@@ -67,10 +67,10 @@ test.describe('Eval View Dashboard', () => {
     const modal = page.locator('#modal');
     await expect(modal).toBeVisible();
 
-    // Verify "View Diff" button exists and click it
-    const diffButton = page.locator('button:has-text("View Diff")').first();
-    await expect(diffButton).toBeVisible();
-    await diffButton.click();
+    // Verify dropdown exists and select "Diff"
+    const dropdown = page.locator('.run-actions-dropdown').first();
+    await expect(dropdown).toBeVisible();
+    await dropdown.selectOption('diff');
 
     // Verify diff content is displayed
     // The title changes to "Diff: ..."
