@@ -52,13 +52,18 @@ pnpm suite
 
 # To run a single isolated task
 pnpm task <task_name>
-# Example: pnpm task cards-render
+# Example: pnpm task batch-analytics-events-task
 
-# To generate reports from results
-pnpm report
+# To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
+pnpm upload <suite-name>
+# Example: pnpm upload analytics-suite
 
-# To view the results in the dashboard
+# To view results in the dashboard
 pnpm dashboard
+
+# To re-generate evaluation reports for a suite
+pnpm report <suite-name>
+# Example: pnpm report analytics-suite
 ```
 
 ## Configuration
@@ -67,7 +72,6 @@ All configuration is centralized in [`harness/config.ts`](./harness/config.ts). 
 
 -   **Environment**: Paths to binaries (Jetski, Gemini CLI, Claude Code), API keys, and server locations.
 -   **Suite**: Agent selection, number of runs, tasks to run, enabled MCP servers, and skills.
--   **Evaluation**: Name of suite to evaluate.
 
 All settings must be adjusted in `harness/config.ts` or via environment variables in `.env` at the `guidance/` root.
 

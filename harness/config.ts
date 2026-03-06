@@ -40,25 +40,17 @@ export const environmentConfig: EnvironmentConfig = {
   mcpApiKey: process.env.MCP_API_KEY || '', // For google-developer-knowledge MCP server
 };
 
-// *******************************
-// *** Set suite configuration ***
-// *** Run with: `pnpm suite`  ***
-// *******************************
+// **************************************
+// *** Set suite & eval configuration ***
+// *** Run with: `pnpm suite`         ***
+// **************************************
 export const suiteConfig: SuiteConfig = {
-  name: 'analytics-suite',
-  numRuns: 1,
-  tasks: ['batch-analytics-events-task', 'full-session-analytics-task'],
+  name: 'local-suite',
+  numRuns: 2,
+  tasks: ['batch-analytics-events-task'],
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: false,
   agent: Agents.GEMINI_CLI,
-};
-
-// ************************************
-// *** Set evaluation configuration ***
-// *** Run with: `pnpm report`      ***
-// ************************************
-export const evalConfig: EvalConfig = {
-  suiteName: 'analytics-suite'
 };
 
 export interface EnvironmentConfig {
@@ -83,14 +75,9 @@ export interface SuiteConfig {
   agent: string;
 }
 
-export interface EvalConfig {
-  suiteName: string | null;
-}
-
 export const config = {
   environment: environmentConfig,
   suite: suiteConfig,
-  eval: evalConfig,
 };
 
 // Validate critical paths exist during configuration

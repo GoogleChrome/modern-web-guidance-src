@@ -45,9 +45,11 @@ OPTIONAL: Use a `@media (prefers-contrast: more)` block to define dark, distinct
 
 ## Fallbacks & Browser Support
 
+{{ BASELINE_STATUS("scrollbar-color") }}
+
 If you are using legacy WebKit pseudo-elements to ensure custom colored scrollbars on older versions of Safari/Chrome, the variable assignments from the media query above will automatically cascade to the fallback.
 
-OPTIONAL: The `scrollbar-color` feature is "Baseline Newly Available". If the user's Baseline target is "Baseline Widely Available" or earlier, you SHOULD ensure you provide the legacy fallback code block securely isolated behind `@supports not (scrollbar-color: auto)`.
+OPTIONAL: If the user's Baseline target is "Baseline Widely Available" or earlier, you SHOULD ensure you provide the legacy fallback code block securely isolated behind `@supports not (scrollbar-color: auto)`.
 
 ```css
 /* Legacy fallback for WebKit/Blink browsers */

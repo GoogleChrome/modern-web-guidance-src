@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { guideUsed } from './guide_validation.ts';
 import { fileURLToPath } from 'url';
+import matter from 'gray-matter';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,17 +53,16 @@ export async function collectResults(resultsDir: string) {
       }
 
       const fileContent = fs.readFileSync(taskPath, 'utf8');
-      const frontmatterMatch = fileContent.match(/^---\n(?:[\s\S]*?)grader:\s*(.+)\n(?:[\s\S]*?)---\n([\s\S]*)$/m);
+      const { data } = matter(fileContent);
 
-      if (!frontmatterMatch) {
+      if (!data || !data.grader) {
          console.warn(`Skipping grading: No 'grader:' found in frontmatter for task ${taskName}`);
          continue;
       }
 
-      const guide = frontmatterMatch[1].trim();
+      const guide = data.grader.trim();
 
-      const baseAppMatch = fileContent.match(/^base_app:\s*(.+)$/m);
-      const actualBaseApp = baseAppMatch ? baseAppMatch[1].trim() : taskName;
+      const actualBaseApp = data.base_app ? data.base_app.trim() : taskName;
 
       const testName = `${taskName} - ${guide} - ${runType}`;
 

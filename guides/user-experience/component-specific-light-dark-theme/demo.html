@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 
+      To reduce the risk of FOUC (Flash of Unstyled Content) use the meta element 
+      `<meta name="color-scheme" content="light dark">` and the css root attribute.
+    -->
+  <meta name="color-scheme" content="light dark">
+  <title>Component-Specific Default Theme Demo</title>
+  <style>
+    /* 
+      1. Global Opt-In
+      The document defaults to the user's system preference. 
+    */
+    :root {
+      color-scheme: light dark;
+
+      /* Global base styles for the page body, strictly for contrast against the component */
+      --page-bg: light-dark(#e8eaed, #1c1c1e);
+      --page-text: light-dark(#202124, #e8eaed);
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 2rem;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      background-color: var(--page-bg);
+      color: var(--page-text);
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    h1,
+    p.description {
+      text-align: center;
+      max-width: 600px;
+    }
+
+    p.description {
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+
+    /* 
+      ===============================================================
+      2. The Component-Specific Theme Definition
+      ===============================================================
+      Instead of declaring `light-dark()` variables on the `:root`, 
+      we define a class containing our semantic variables!
+    */
+    .themed-card {
+
+      --card-bg: light-dark(#ffffff, #2d2e31);
+      --card-border: light-dark(#dadce0, #5f6368);
+      --card-shadow: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.4));
+      --text-color: light-dark(#202124, #f8f9fa);
+      --accent-color: light-dark(#1a73e8, #8ab4f8);
+      --btn-text-color: light-dark(white, #202124);
+
+      /* Apply the local variables exclusively to this component */
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-color);
+      box-shadow: 0 4px 12px var(--card-shadow);
+      border-radius: 8px;
+      padding: 2rem;
+      max-width: 400px;
+      width: 100%;
+      box-sizing: border-box;
+      transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s, color 0.3s;
+    }
+
+    .themed-card h2 {
+      margin-top: 0;
+      color: var(--accent-color);
+    }
+
+    .themed-card button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      background-color: var(--accent-color);
+      color: var(--btn-text-color);
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 1rem;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* 
+      ===============================================================
+      3. Component-Specific Override Classes 
+      ===============================================================
+      By leveraging the `color-scheme` property purely scoped to the component,
+      we can manually force instances of the component to render in light or dark
+      mode independent of the page's `:root` system preference!
+    */
+    .themed-card.force-light {
+      color-scheme: light;
+    }
+
+    .theme-toggle {
+      padding: 0.75rem 1.5rem;
+      margin-bottom: 2rem;
+      border-radius: 20px;
+      border: 2px solid var(--page-text);
+      background-color: transparent;
+      color: var(--page-text);
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .theme-toggle:hover {
+      background-color: var(--page-text);
+      color: var(--page-bg);
+    }
+
+    /* Layout structure for the demo grid */
+    .card-grid {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+      max-width: 1200px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Component-Specific Themes</h1>
+  <p class="description">
+    By scoping <code>light-dark()</code> variables and the <code>color-scheme</code> property directly to a component
+    class rather than the <code>:root</code>, you can force individual instances of that component to render in a
+    specific theme—regardless of the surrounding page's system preference!
+  </p>
+
+  <button id="themeToggleBtn" class="theme-toggle">
+    Toggle Page Theme (System Default)
+  </button>
+
+  <main class="card-grid">
+    <!-- Card 1: Defaults to the system preference -->
+    <div class="themed-card">
+      <h2>System Preference</h2>
+      <p>This card organically inherits the <code>:root</code> color-scheme, toggling automatically between light and
+        dark modes.</p>
+      <button>Action</button>
+    </div>
+
+    <!-- Card 2: Exclusively forced to light mode -->
+    <div class="themed-card force-light">
+      <h2>Forced Light Mode</h2>
+      <p>This card has <code>color-scheme: light;</code> applied to it directly. Its <code>light-dark()</code> math will
+        mathematically resolve to the light variables forever!</p>
+      <button>Action</button>
+    </div>
+  </main>
+
+  <script>
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const root = document.documentElement;
+
+    // Check initial system preference
+    let isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    themeToggleBtn.addEventListener('click', () => {
+      isDark = !isDark;
+      root.style.colorScheme = isDark ? 'dark' : 'light';
+      themeToggleBtn.textContent = `Toggle Page Theme (Forced ${isDark ? 'Dark' : 'Light'})`;
+    });
+  </script>
+</body>
+
+</html>
