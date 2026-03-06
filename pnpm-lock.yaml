@@ -81,6 +81,9 @@ importers:
       glob:
         specifier: ^10.5.0
         version: 10.5.0
+      gray-matter:
+        specifier: ^4.0.3
+        version: 4.0.3
       puppeteer-core:
         specifier: ^24.37.5
         version: 24.37.5
