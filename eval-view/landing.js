@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, capitalize } from './utils.js';
+import { getRunStats, getColor, escapeHtml, capitalize, initGoogleAuth, authenticatedFetch } from './utils.js';
 
 let allTestData = {}; // Cache all test data by testID
 let currentTab = 'suites';
@@ -8,11 +8,8 @@ let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
 let currentSkillsFilter = 'all';
 
-
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        await loadAllTests();
-
         // Initialize UI
         setupTabs();
         setupFilters();
@@ -20,6 +17,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupTableFilters();
 
         const params = new URLSearchParams(window.location.search);
+        
+        // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
+        initGoogleAuth(async () => {
+             await loadRemoteTests();
+        });
+
+        await loadLocalTests();
 
         // Initialize with default states relative to compoundKeys instead of simple testIDs
         selectedTestIds = new Set(Object.keys(allTestData));
@@ -297,55 +301,99 @@ function renderAll() {
     renderTrends();
 }
 
-async function loadAllTests() {
+async function loadLocalTests() {
     try {
         const response = await fetch(`/api/suites?t=${Date.now()}`);
-        if (!response.ok) throw new Error('Failed to fetch suites');
+        if (!response.ok) return; // Silent fail for local if we are on gh-pages
         const manifest = await response.json();
 
-        if (!manifest.suites || manifest.suites.length === 0) {
-            document.getElementById('empty-state').style.display = 'block';
-            return;
+        if (manifest.suites && manifest.suites.length > 0) {
+            document.getElementById('empty-state').style.display = 'none';
         }
 
-        document.getElementById('empty-state').style.display = 'none';
-
-        // Load all test data
+        // Load local test data
         for (const suite of manifest.suites) {
-            const isObj = typeof suite === 'object';
-            const testID = isObj ? suite.id : suite;
-            const source = isObj ? suite.source : (manifest.isLocal ? 'local' : 'remote');
-
+            if (suite.source !== 'local') continue;
+            
+            const testID = suite.id;
             try {
-                const response = await fetch(`results/${testID}/evals.json?source=${source}&t=${Date.now()}`);
+                const response = await fetch(`results/${testID}/evals.json?source=local&t=${Date.now()}`);
                 if (response.ok) {
                     const parsed = await response.json();
-
-                    let servingArch = 'unknown';
-                    if (parsed.enableSkills !== undefined) {
-                        servingArch = parsed.enableSkills ? 'skills' : 'mcp';
-                    }
-
-                    const compoundKey = `${testID}|||${source}`;
-
-                    allTestData[compoundKey] = {
-                        testID: testID,
-                        timestamp: parsed.timestamp || new Date().toISOString(), // Fallback
-                        data: parsed,
-                        source: source,
-                        agent: parsed.agent || 'unknown',
-                        servingArch: servingArch
-                    };
+                    registerTestData(testID, 'local', parsed);
                 }
             } catch (e) {
-                console.warn(`Failed to load test ${testID}:`, e);
+                console.warn(`Failed to load local test ${testID}:`, e);
             }
         }
     } catch (error) {
-        console.warn('Error loading suites:', error);
-        document.getElementById('empty-state').style.display = 'block';
-        throw error;
+        console.warn('Local proxy not available');
     }
+}
+
+async function loadRemoteTests() {
+    try {
+        // Fetch from GCS JSON API directly instead of our node proxy
+        const response = await authenticatedFetch(`https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/&prefix=results/`);
+        if (!response.ok) throw new Error('Failed to fetch remote suites');
+        
+        const data = await response.json();
+        const prefixes = data.prefixes || [];
+        
+        if (prefixes.length > 0) {
+             document.getElementById('empty-state').style.display = 'none';
+        }
+
+        // Load remote test data
+        for (const prefix of prefixes) {
+            // "results/test_xxx/" -> "test_xxx"
+            const testID = prefix.replace('results/', '').slice(0, -1);
+            
+            try {
+                // Fetch directly from GCS storage API (media link) OR using public URL if we had public enabled, 
+                // but since it's private we must use the auth fetch. Easiest is to use the raw storage URL.
+                const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(prefix + 'evals.json')}?alt=media`;
+                
+                const response = await authenticatedFetch(fileUrl);
+                if (response.ok) {
+                    const parsed = await response.json();
+                    registerTestData(testID, 'remote', parsed);
+                }
+            } catch (e) {
+                console.warn(`Failed to load remote test ${testID}:`, e);
+            }
+        }
+        
+        // Re-render UI now that we have remote data
+        const params = new URLSearchParams(window.location.search);
+        let initialTests = params.get('tests');
+        if (!initialTests || initialTests.trim() === '') {
+            selectedTestIds = new Set(Object.keys(allTestData));
+        }
+        renderFilterMenuItems();
+        renderAll();
+
+    } catch (error) {
+        console.error('Error loading remote suites:', error);
+    }
+}
+
+function registerTestData(testID, source, parsed) {
+    let servingArch = 'unknown';
+    if (parsed.enableSkills !== undefined) {
+        servingArch = parsed.enableSkills ? 'skills' : 'mcp';
+    }
+
+    const compoundKey = `${testID}|||${source}`;
+
+    allTestData[compoundKey] = {
+        testID: testID,
+        timestamp: parsed.timestamp || new Date().toISOString(), // Fallback
+        data: parsed,
+        source: source,
+        agent: parsed.agent || 'unknown',
+        servingArch: servingArch
+    };
 }
 
 // ==========================================

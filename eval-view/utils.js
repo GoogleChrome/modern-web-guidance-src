@@ -35,3 +35,59 @@ export function formatTestName(name) {
     if (!name) return name;
     return name.split(' - ').join(' / ');
 }
+
+// Google Identity Services (OAuth) Integration
+const GOOGLE_CLIENT_ID = '169412140096-fk4rtf6iqk982d43385s1ilucrda91g2.apps.googleusercontent.com';
+let accessToken = null;
+
+export function getAccessToken() {
+    return accessToken;
+}
+
+export function initGoogleAuth(onAuthSuccess) {
+    if (!window.google || !window.google.accounts) {
+        console.error('Google Identity Services SDK not loaded.');
+        return;
+    }
+
+    const authBtn = document.getElementById('auth-btn');
+    if (authBtn) {
+        authBtn.style.display = 'block';
+    }
+
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'https://www.googleapis.com/auth/devstorage.read_only',
+        callback: (response) => {
+            if (response.error !== undefined) {
+                console.error('OAuth Error:', response);
+                return;
+            }
+            accessToken = response.access_token;
+            console.log('Successfully authenticated with Google.');
+            if (authBtn) {
+                authBtn.textContent = 'Authenticated ✓';
+                authBtn.disabled = true;
+                authBtn.style.backgroundColor = 'var(--accent-success)';
+                authBtn.style.color = 'white';
+                authBtn.style.borderColor = 'var(--accent-success)';
+            }
+            if (onAuthSuccess) onAuthSuccess();
+        },
+    });
+
+    if (authBtn) {
+        authBtn.addEventListener('click', () => {
+            // Request an access token
+            tokenClient.requestAccessToken();
+        });
+    }
+}
+
+export async function authenticatedFetch(url, options = {}) {
+    if (accessToken) {
+        options.headers = options.headers || {};
+        options.headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+    return fetch(url, options);
+}

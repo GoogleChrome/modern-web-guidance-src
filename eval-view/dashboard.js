@@ -1,9 +1,23 @@
-import { getRunStats, getColor, escapeHtml, formatTestName } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, authenticatedFetch } from './utils.js';
 import { RadarChart } from './radar.js';
 
 const MCP_LOG_FILE = 'mcp-server.log';
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+    // Wait for auth to be checked/initialized before loading dashboard data
+    initGoogleAuth(async () => {
+        await loadDashboardData();
+    });
+
+    // In local mode or if already authenticated immediately load
+    loadDashboardData();
+});
+
+async function loadDashboardData() {
+    // Prevent double loading
+    if (window.dashboardLoaded) return;
+    window.dashboardLoaded = true;
+
     try {
         // Get testID from query string
         const params = new URLSearchParams(window.location.search);
@@ -14,8 +28,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const source = params.get('source') || 'local';
-        const evalsPath = `results/${testID}/evals.json?source=${source}&t=${Date.now()}`;
-        const response = await fetch(evalsPath);
+        let evalsPath = `results/${testID}/evals.json?source=${source}&t=${Date.now()}`;
+        
+        if (source === 'remote') {
+            evalsPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`results/${testID}/evals.json`)}?alt=media`;
+        }
+
+        const response = await (source === 'remote' ? authenticatedFetch(evalsPath) : fetch(evalsPath));
         if (!response.ok) throw new Error(`Failed to load data from ${evalsPath}`);
         const data = await response.json();
 
@@ -26,7 +45,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Fetch jetski info (optional)
         let jetskiVersion = null;
         try {
-            const jetskiRes = await fetch(`results/${testID}/jetski_info.json?source=${source}`);
+            let jetskiPath = `results/${testID}/jetski_info.json?source=${source}`;
+            if (source === 'remote') {
+                 jetskiPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`results/${testID}/jetski_info.json`)}?alt=media`;
+            }
+            const jetskiRes = await (source === 'remote' ? authenticatedFetch(jetskiPath) : fetch(jetskiPath));
             if (jetskiRes.ok) {
                 const jetskiData = await jetskiRes.json();
                 jetskiVersion = jetskiData['Jetski Version'];
@@ -41,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data.timestamp) {
                 timestamp = data.timestamp;
             } else {
-                const evalsRes = await fetch(evalsPath);
+                const evalsRes = await (source === 'remote' ? authenticatedFetch(evalsPath) : fetch(evalsPath));
                 if (evalsRes.ok) {
                     const evals = await evalsRes.json();
                     timestamp = evals.timestamp;
@@ -107,6 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error:', error);
         document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;">Error loading dashboard data: ${error.message}</div>`;
     }
+}
 
     // Modal control
     const modal = document.getElementById('modal');
@@ -167,7 +191,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Check if log file exists
         try {
-            const checkRes = await fetch(logPath, { method: 'HEAD' });
+            let logUrl = logPath;
+            if (source === 'remote') {
+                logUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`results/${testID}/test_suite.log`)}?alt=media`;
+            }
+            
+            const checkRes = await (source === 'remote' ? authenticatedFetch(logUrl) : fetch(logPath, { method: 'HEAD' }));
             if (!checkRes.ok) {
                 // Hide button if log doesn't exist
                 viewLogBtn.style.display = 'none';
@@ -184,7 +213,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     modal.showModal();
 
                     try {
-                        const res = await fetch(logPath);
+                        const res = await (source === 'remote' ? authenticatedFetch(logUrl) : fetch(logPath));
                         if (!res.ok) throw new Error('Failed to fetch log');
                         const text = await res.text();
                         body.innerHTML = `<div class="log-content">${escapeHtml(text)}</div>`;
@@ -250,7 +279,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
     });
-});
 
 function renderTestHeader(testID, jetskiVersion, timestamp) {
     const container = document.getElementById('test-header');
@@ -519,25 +547,29 @@ async function showDetails(testName, runs, stats, testID) {
 
         let sessionFile = null;
         try {
-            const filesRes = await fetch(`/api/run-files?dir=${encodeURIComponent(relativeDir)}&source=${sourceParam}`);
-            if (filesRes.ok) {
-                const { files } = await filesRes.json();
-
-                const rawJson = files.find(f => f === `${guide}_results.json`);
-                if (rawJson) {
-                    const rawOpt = document.createElement('option');
-                    rawOpt.value = 'raw';
-                    rawOpt.textContent = 'Raw Test Results';
-                    dropdown.appendChild(rawOpt);
-                }
-
-                sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
-                if (sessionFile) {
-                    const trajOpt = document.createElement('option');
-                    trajOpt.value = 'trajectory';
-                    trajOpt.textContent = 'Trajectory';
-                    dropdown.appendChild(trajOpt);
-                }
+            if (sourceParam === 'local') {
+                 const filesRes = await fetch(`/api/run-files?dir=${encodeURIComponent(relativeDir)}&source=${sourceParam}`);
+                 if (filesRes.ok) {
+                     const { files } = await filesRes.json();
+                     const rawJson = files.find(f => f === `${guide}_results.json`);
+                     if (rawJson) {
+                         const rawOpt = document.createElement('option');
+                         rawOpt.value = 'raw';
+                         rawOpt.textContent = 'Raw Test Results';
+                         dropdown.appendChild(rawOpt);
+                     }
+                     sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
+                     if (sessionFile) {
+                         const trajOpt = document.createElement('option');
+                         trajOpt.value = 'trajectory';
+                         trajOpt.textContent = 'Trajectory';
+                         dropdown.appendChild(trajOpt);
+                     }
+                 }
+            } else {
+                 // For remote we can't easily list directory files, so we make a best effort guess if needed,
+                 // but typically we don't have the directory listing API available over plain GCS json api without more logic.
+                 // We will skip trajectory/raw for remote for simplicity in this iteration, or assume standard names.
             }
         } catch (e) {
             console.log('Error checking run files:', e);
@@ -591,7 +623,21 @@ async function viewContent(fileName, filePath) {
     body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading content...</div>';
 
     try {
-        const res = await fetch(filePath);
+        const source = new URLSearchParams(window.location.search).get('source');
+        let finalPath = filePath;
+        
+        let res;
+        if (source === 'remote') {
+            // Note: filePath might be `results/test_xxx/...` but from getResultPaths usedBasePath...
+            // It could be absolute or relative. Make a safe guess.
+            if (!filePath.startsWith('http')) {
+                 finalPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(filePath.split('?')[0])}?alt=media`;
+            }
+            res = await authenticatedFetch(finalPath);
+        } else {
+            res = await fetch(filePath);
+        }
+
         if (!res.ok) {
             if (res.status === 404) {
                 throw new Error('Resources file not found.');
@@ -641,9 +687,19 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     modal.dataset.view = 'diff';
 
     try {
+        const source = new URLSearchParams(window.location.search).get('source');
+        let finalSetup = setupPath;
+        let finalResult = resultPath;
+
+        if (source === 'remote') {
+             // setupPath is local base_apps/...
+             // resultPath is GCS
+             finalResult = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(resultPath.split('?')[0])}?alt=media`;
+        }
+
         const [setupRes, resultRes] = await Promise.all([
-            fetch(setupPath),
-            fetch(resultPath)
+            fetch(finalSetup), // Always local for base_apps
+            source === 'remote' ? authenticatedFetch(finalResult) : fetch(finalResult)
         ]);
 
         // If setup is missing (404), treat as empty string
@@ -887,16 +943,24 @@ async function findBestEntryPoint(basePaths) {
     const source = new URLSearchParams(window.location.search).get('source') || 'local';
 
     for (const basePath of pathsToCheck) {
-        const checks = candidates.map(candidate =>
-            fetch(`${basePath}/${candidate}?source=${source}`, { method: 'HEAD' })
-                .then(res => res.ok ? `${basePath}/${candidate}` : null)
-                .catch(() => null)
-        );
+        let bestCandidate = null;
 
-        const results = await Promise.all(checks);
-        const best = results.find(result => result !== null);
+        if (source === 'remote') {
+             // For remote, we guess index.html as standard since HEAD requests to media link fail without auth sometimes,
+             // or auth fetch HEAD doesn't work exact same way.
+             bestCandidate = `${basePath}/index.html`;
+        } else {
+             const checks = candidates.map(candidate =>
+                 fetch(`${basePath}/${candidate}?source=${source}`, { method: 'HEAD' })
+                     .then(res => res.ok ? `${basePath}/${candidate}` : null)
+                     .catch(() => null)
+             );
 
-        if (best) return best;
+             const results = await Promise.all(checks);
+             bestCandidate = results.find(result => result !== null);
+        }
+
+        if (bestCandidate) return bestCandidate;
     }
 
     // Fallback to first base path index.html if nothing found
