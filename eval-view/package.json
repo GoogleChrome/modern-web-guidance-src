@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node server.js",
     "test:e2e": "playwright test",
-    "deploy": "gh-pages -d . -e eval-view"
+    "deploy-pages": "gh-pages -d ."
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

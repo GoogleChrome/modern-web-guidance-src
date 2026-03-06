@@ -29,7 +29,7 @@
     "test-grader": "node --experimental-strip-types guides/test-grader.ts",
     "grade": "node --experimental-strip-types guides/run-grader.ts",
     "dev-guide": "node --env-file=.env --experimental-strip-types guides/dev-guide.ts",
-    "deploy:dashboard": "pnpm --filter eval-view deploy"
+    "deploy:dashboard": "pnpm --filter eval-view deploy-pages"
   },
   "keywords": [],
   "author": "",
