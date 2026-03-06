@@ -289,7 +289,21 @@ Natural-language bulleted list of assertions. These are the input for automated 
 
 ---
 
-## 9. Key Architectural Decisions
+## 9. Roles and Responsibilities
+
+The architecture is designed so that each group can work independently without needing deep knowledge of the other group's domain.
+
+**Subject Matter Experts (SMEs)** focus exclusively on technical accuracy: understanding edge cases of a web feature, writing clear guidance, building a canonical demo, and defining testable expectations. They are shielded from the underlying Playwright infrastructure and do not need to be functional test engineers. Their deliverables are `guide.md`, `expectations.md`, and `demo.html`.
+
+**Infrastructure Engineers** focus on the reliability of the `gd` CLI, the evaluation harness, LLM invocation stability, MCP server correctness, and diagnosing systemic issues (e.g., why guided vs. unguided pass rates show no delta for a particular category of guide).
+
+**The LLM Pipeline (`gd dev`)** bridges the gap between human-authored guidance and the automated evaluation harness. It translates natural-language expectations into executable Playwright test assertions and scaffolds negative test cases, absorbing the friction of maintaining the testing infrastructure. When calibration fails, the retry loop handles most issues automatically — the SME should not need to understand why a Playwright selector was flaky.
+
+The boundary is intentionally drawn so that SMEs never need to write or debug Playwright code, and infra engineers rarely need to understand the specifics of a web feature. The `gd dev` pipeline is the interface between these two worlds.
+
+---
+
+## 10. Key Architectural Decisions
 
 ### Why Gemini CLI for generation?
 Grader and negative-demo generation use Gemini CLI (not API calls) because the generation needs to read multiple files from the guide directory and produce files in context. The CLI handles this naturally with file system access. An isolated home directory prevents accidental side effects.
@@ -305,7 +319,7 @@ Gemini-generated graders frequently fail calibration on the first attempt — te
 
 ---
 
-## 10. Future Direction
+## 11. Future Direction
 
 ### Near-term (in progress or planned)
 
@@ -327,7 +341,7 @@ Gemini-generated graders frequently fail calibration on the first attempt — te
 
 ---
 
-## 11. Configuration Reference
+## 12. Configuration Reference
 
 All runtime configuration lives in `harness/config.ts` and environment variables in `.env`:
 
