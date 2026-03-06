@@ -2,14 +2,8 @@ import * as http from "http";
 import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
-import { Storage } from '@google-cloud/storage';
 
 const PORT = process.env.PORT || 8081;
-const PROJECT_ID = 'chrome-kiwi-air-force-dev';
-const BUCKET_NAME = 'guidance-evals';
-
-const storage = new Storage({ projectId: PROJECT_ID });
-const bucket = storage.bucket(BUCKET_NAME);
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -73,18 +67,8 @@ const server = http.createServer(async (req, res) => {
       console.error('Error reading local suites:', e.message);
     }
 
-    // Remote
-    try {
-      const [_, __, apiResponse] = await bucket.getFiles({ delimiter: '/' });
-      const prefixes = apiResponse.prefixes || [];
-      const remoteDirs = prefixes.map(p => p.slice(0, -1)); // Remove trailing slash
-
-      remoteDirs.forEach(d => {
-        suitesList.push({ id: d, source: 'remote' });
-      });
-    } catch (e) {
-      console.error('Error reading remote suites:', e.message);
-    }
+    // Remote (No longer supported via local Node proxy. Use client-side OAuth)
+    // The client handles remote data fetches directly via the GCS JSON API.
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ suites: suitesList }));
@@ -116,12 +100,7 @@ const server = http.createServer(async (req, res) => {
         console.error('Error reading local dir:', e.message);
       }
     } else {
-      try {
-        const [gcsFiles] = await bucket.getFiles({ prefix: relativePath });
-        files = gcsFiles.map(f => path.basename(f.name));
-      } catch (e) {
-        console.error('Error reading remote dir:', e.message);
-      }
+      console.error('Remote directory listing is no longer supported via local proxy. Use client-side API calls.');
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -136,36 +115,8 @@ const server = http.createServer(async (req, res) => {
     const useLocal = req.url.includes('source=local');
 
     if (!useLocal) {
-      // Stream from GCS
-      const extname = path.extname(relativeResultPath) || '';
-      let contentType = MIME_TYPES[extname] || 'application/octet-stream';
-      // If fetching the suite root instead of a file
-      if (relativeResultPath === '' || relativeResultPath.endsWith('/')) {
-        contentType = 'text/html';
-        // Serve an index.html equivalent or 404
-      }
-
-      const file = bucket.file(relativeResultPath);
-      file.exists().then(([exists]) => {
-        if (!exists) {
-          res.writeHead(404);
-          res.end('404 Not Found');
-          return;
-        }
-
-        res.writeHead(200, { 'Content-Type': contentType });
-        file.createReadStream()
-          .on('error', (err) => {
-            console.error('Error streaming from GCS:', err);
-            // We can't write head here if we already wrote 200, but we can end
-            res.end();
-          })
-          .pipe(res);
-      }).catch(err => {
-        console.error('GCS exists check failed:', err);
-        res.writeHead(500);
-        res.end(`Server Error: ${err.message}`);
-      });
+      res.writeHead(400);
+      res.end('400 Bad Request: Remote GCS streaming is no longer supported via this proxy. Use client-side authenticated fetches directly to GCS instead.');
       return;
     }
 
