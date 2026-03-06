@@ -121,10 +121,9 @@ Usage: gd <command> [options]
 
 Guide Development:
   dev <dir> [options]         Auto-generate and calibrate guide artifacts
-  dev-all                     Batch-process all incomplete guides
   audit                       Show status of all guides
 
-Options for 'dev':
+Piece-wise options for 'dev':
   --grade              Run/calibrate grader
   --test-grader        Check grader calibration (demo + negative-demo)
   --gen-grader         Generate a new grader script
@@ -186,6 +185,7 @@ Options:
       process.exit(success ? 0 : 1);
     }
 
+    // not documented because it's UBER-powerful.
     case 'dev-all': {
       const { devAll } = await import('../guides/dev-guide.ts');
       await devAll({ verbose: !!values.verbose });
