@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import matter from 'gray-matter';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -53,9 +54,10 @@ function buildTaxonomyMarkdown(guidesDir: string, distRefsDir: string): string {
       if (!fs.existsSync(guidePath)) continue;
 
       const guideContent = fs.readFileSync(guidePath, 'utf-8');
+      const { content: parsedContent } = matter(guideContent);
 
       // Skip if there's no content beyond frontmatter
-      const contentWithoutFrontmatter = guideContent.replace(/^---[\s\S]*?---\n*/, '').trim();
+      const contentWithoutFrontmatter = parsedContent.trim();
       if (contentWithoutFrontmatter.length === 0) continue;
 
       // Extract title from first H1 or fall back
