@@ -574,9 +574,29 @@ async function showDetails(testName, runs, stats, testID) {
                      }
                  }
             } else {
-                 // For remote we can't easily list directory files, so we make a best effort guess if needed,
-                 // but typically we don't have the directory listing API available over plain GCS json api without more logic.
-                 // We will skip trajectory/raw for remote for simplicity in this iteration, or assume standard names.
+                 const gcsPrefix = relativeDir.endsWith('/') ? relativeDir : relativeDir + '/';
+                 const gcsUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o?prefix=${encodeURIComponent(gcsPrefix)}`;
+                 const filesRes = await authenticatedFetch(gcsUrl);
+                 if (filesRes.ok) {
+                     const data = await filesRes.json();
+                     if (data.items) {
+                         const fileNames = data.items.map(item => item.name.split('/').pop());
+                         const rawJson = fileNames.find(f => f === `${guide}_results.json`);
+                         if (rawJson) {
+                             const rawOpt = document.createElement('option');
+                             rawOpt.value = 'raw';
+                             rawOpt.textContent = 'Raw Test Results';
+                             dropdown.appendChild(rawOpt);
+                         }
+                         sessionFile = fileNames.find(f => f.startsWith('session-') && f.endsWith('.html'));
+                         if (sessionFile) {
+                             const trajOpt = document.createElement('option');
+                             trajOpt.value = 'trajectory';
+                             trajOpt.textContent = 'Trajectory';
+                             dropdown.appendChild(trajOpt);
+                         }
+                     }
+                 }
             }
         } catch (e) {
             console.log('Error checking run files:', e);
@@ -590,7 +610,24 @@ async function showDetails(testName, runs, stats, testID) {
             } else if (val === 'diff') {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {
-                window.open(`${usedBasePath}/${sessionFile}?source=${sourceParam}`, '_blank');
+                if (sourceParam === 'remote') {
+                    const fixedPath = `${usedBasePath}/${sessionFile}`.replace(/^results\//, '');
+                    const finalPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(fixedPath)}?alt=media`;
+                    authenticatedFetch(finalPath)
+                        .then(res => { if (!res.ok) throw new Error(); return res.blob(); })
+                        .then(blob => {
+                            // Ensure the blob has text/html type so it renders in the browser
+                            const htmlBlob = new Blob([blob], { type: 'text/html' });
+                            const url = URL.createObjectURL(htmlBlob);
+                            window.open(url, '_blank');
+                        })
+                        .catch(e => {
+                            console.error('Error loading trajectory:', e);
+                            alert('Failed to load remote trajectory');
+                        });
+                } else {
+                    window.open(`${usedBasePath}/${sessionFile}?source=${sourceParam}`, '_blank');
+                }
             } else if (val === 'raw') {
                 const rawPath = `${usedBasePath}/${guide}_results.json?source=${sourceParam}`;
                 viewContent(rawPath, rawPath);
