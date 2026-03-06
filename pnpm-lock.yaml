@@ -46,14 +46,14 @@ importers:
         specifier: ^1.58.2
         version: 1.58.2
       dotenv:
-        specifier: ^16.4.7
-        version: 16.6.1
+        specifier: ^17.3.1
+        version: 17.3.1
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
       web-features:
         specifier: latest
-        version: 3.18.0
+        version: 3.19.0
 
   harness:
     dependencies:
@@ -76,8 +76,8 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0
       dotenv:
-        specifier: ^16.6.1
-        version: 16.6.1
+        specifier: ^17.3.1
+        version: 17.3.1
       glob:
         specifier: ^10.5.0
         version: 10.5.0
@@ -1906,10 +1906,6 @@ packages:
     resolution: {integrity: sha512-tE7ztYzXHIeyvc7N+hR3oi7FIbf/NIjVP9hmAt3yMXzrQ072/fpjGLx2GxNxGxUl5V73MEqYzioOMoVhGMJ5cA==}
     engines: {node: '>=10'}
 
-  dotenv@16.6.1:
-    resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
-    engines: {node: '>=12'}
-
   dotenv@17.3.1:
     resolution: {integrity: sha512-IO8C/dzEb6O3F9/twg6ZLXz164a2fhTnEWb95H23Dm4OuN+92NmEAlTrupP9VW6Jm3sO26tQlqyvyi4CsnY9GA==}
     engines: {node: '>=12'}
@@ -1984,8 +1980,8 @@ packages:
     resolution: {integrity: sha512-j6vWzfrGVfyXxge+O0x5sh6cvxAog0a/4Rdd2K36zCMV5eJ+/+tOAngRO8cODMNWbVRdVlmGZQL2YS3yR8bIUA==}
     engines: {node: '>= 0.4'}
 
-  es-toolkit@1.44.0:
-    resolution: {integrity: sha512-6penXeZalaV88MM3cGkFZZfOoLGWshWWfdy0tWw/RlVVyhvMaWSBTOvXNeiW3e5FwdS5ePW0LGEu17zT139ktg==}
+  es-toolkit@1.45.1:
+    resolution: {integrity: sha512-/jhoOj/Fx+A+IIyDNOvO3TItGmlMKhtX8ISAHKE90c4b/k1tqaqEZ+uUqfpU8DMnW5cgNJv606zS55jGvza0Xw==}
 
   es6-error@4.1.1:
     resolution: {integrity: sha512-Um/+FxMr9CISWh0bi5Zv0iOD+4cFh5qLeks1qhAopKVAJw3drgKbKySikp7wGhDL0HPeaja0P5ULZrxLkniUVg==}
@@ -3665,6 +3661,9 @@ packages:
   web-features@3.18.0:
     resolution: {integrity: sha512-9iooEQLOadt90JPBYwzkFiUp9CH0/s9in2yGMGFBF19EHmsOlrzYo55TnJwp5WJf1n0uWmktjOprwILZLaO7Tw==}
 
+  web-features@3.19.0:
+    resolution: {integrity: sha512-csr7EVdiEdWev1RdDmNcDi+w6eg2234+oVgKOyJHNUgShYmC1w+XaDIxcg/gdYXut4Zuf7vIPzhdTgXk5U1ehA==}
+
   web-streams-polyfill@3.3.3:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
     engines: {node: '>= 8'}
@@ -4348,7 +4347,7 @@ snapshots:
       cli-cursor: 4.0.0
       cli-truncate: 4.0.0
       code-excerpt: 4.0.0
-      es-toolkit: 1.44.0
+      es-toolkit: 1.45.1
       indent-string: 5.0.0
       is-in-ci: 2.0.0
       mnemonist: 0.40.3
@@ -5581,8 +5580,6 @@ snapshots:
     dependencies:
       is-obj: 2.0.0
 
-  dotenv@16.6.1: {}
-
   dotenv@17.3.1: {}
 
   dunder-proto@1.0.1:
@@ -5648,7 +5645,7 @@ snapshots:
       has-tostringtag: 1.0.2
       hasown: 2.0.2
 
-  es-toolkit@1.44.0: {}
+  es-toolkit@1.45.1: {}
 
   es6-error@4.1.1: {}
 
@@ -7544,6 +7541,8 @@ snapshots:
       - yaml
 
   web-features@3.18.0: {}
+
+  web-features@3.19.0: {}
 
   web-streams-polyfill@3.3.3: {}
 
