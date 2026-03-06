@@ -37,7 +37,7 @@ export function formatTestName(name) {
 }
 
 // Google Identity Services (OAuth) Integration
-const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID_HERE'; // User needs to replace this
+const GOOGLE_CLIENT_ID = '169412140096-fk4rtf6iqk982d43385s1ilucrda91g2.apps.googleusercontent.com';
 let accessToken = null;
 
 export function getAccessToken() {
@@ -78,8 +78,8 @@ export function initGoogleAuth(onAuthSuccess) {
 
     if (authBtn) {
         authBtn.addEventListener('click', () => {
-             // Request an access token
-             tokenClient.requestAccessToken();
+            // Request an access token
+            tokenClient.requestAccessToken();
         });
     }
 }
