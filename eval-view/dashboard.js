@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, authenticatedFetch } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, authenticatedFetch, getAccessToken } from './utils.js';
 import { RadarChart } from './radar.js';
 
 const MCP_LOG_FILE = 'mcp-server.log';
