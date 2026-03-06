@@ -25,6 +25,7 @@ interface GuideInventory {
   name: string;
   category: string;
   hasGuide: boolean;
+  isStub: boolean;
   hasDemo: boolean;
   hasExpectations: boolean;
   expectationsEmpty: boolean;
@@ -46,12 +47,42 @@ function inventoryGuide(dir: string): GuideInventory {
     expectationsEmpty = fs.readFileSync(expectationsPath, 'utf-8').trim().length === 0;
   }
 
+  const guidePath = path.join(dir, 'guide.md');
+  const demoPath = path.join(dir, 'demo.html');
+  
+  let hasGuide = false;
+  let isStub = false;
+  if (fs.existsSync(guidePath)) {
+    hasGuide = true;
+    const content = fs.readFileSync(guidePath, 'utf-8').trim();
+    if (content.length === 0) {
+      isStub = true;
+    } else {
+      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      if (frontmatterMatch) {
+         const withoutFrontmatter = content.substring(frontmatterMatch[0].length).trim();
+         if (withoutFrontmatter.length === 0) {
+             isStub = true;
+         }
+      }
+    }
+  }
+
+  let hasDemo = false;
+  if (fs.existsSync(demoPath)) {
+    const content = fs.readFileSync(demoPath, 'utf-8').trim();
+    if (content.length > 0) {
+      hasDemo = true;
+    }
+  }
+
   return {
     dir,
     name,
     category,
-    hasGuide: fs.existsSync(path.join(dir, 'guide.md')),
-    hasDemo: fs.existsSync(path.join(dir, 'demo.html')),
+    hasGuide,
+    isStub,
+    hasDemo,
     hasExpectations,
     expectationsEmpty,
     hasNegativeDemo: fs.existsSync(path.join(dir, 'negative-demo.html')),
@@ -590,9 +621,10 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
   console.log('');
 }
 
-type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'incomplete';
+type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
 
 function classifyGuide(inv: GuideInventory): GuideStatus {
+  if (inv.isStub) return 'stub';
   if (!inv.hasGuide || !inv.hasDemo) return 'incomplete';
   if (!inv.hasExpectations || inv.expectationsEmpty) return 'needs-expectations';
   if (!inv.hasNegativeDemo || !inv.hasGrader) return 'needs-calibration';
@@ -620,12 +652,13 @@ export function auditGuides(): void {
     'needs-test':        { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
     'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
     'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
+    'stub':              { label: 'Stub (only yaml frontmatter or empty)', color: cYellow },
     'incomplete':        { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
   };
 
   // Summary counts
   console.log(cBold(`\nGuide Audit: ${allGuides.length} guides\n`));
-  for (const status of ['eval-ready', 'needs-test', 'needs-calibration', 'needs-expectations', 'incomplete'] as GuideStatus[]) {
+  for (const status of ['eval-ready', 'needs-test', 'needs-calibration', 'needs-expectations', 'stub', 'incomplete'] as GuideStatus[]) {
     const guides = byStatus.get(status) || [];
     const { label, color } = statusLabel[status];
     console.log(`  ${color(`${String(guides.length).padStart(2)}`)}  ${label}`);
@@ -644,7 +677,7 @@ export function auditGuides(): void {
     console.log(cBold(`\n${category}/`));
 
     //         header
-    console.log(cDim(`  ${'name'.padEnd(42)} guide demo  expct neg   grdr  prmpt task`));
+    console.log(cDim(`  ${'name'.padEnd(42)} guide stub demo  expct neg   grdr  prmpt task`));
 
     for (const inv of guides.sort((a, b) => a.name.localeCompare(b.name))) {
       const status = classifyGuide(inv);
@@ -653,6 +686,7 @@ export function auditGuides(): void {
       const name = inv.name.length > 40 ? inv.name.substring(0, 39) + '…' : inv.name;
       const cols = [
         fileFlag(inv.hasGuide),
+        inv.isStub ? cYellow('●') : cDim('○'),
         fileFlag(inv.hasDemo),
         inv.expectationsEmpty ? cYellow('△') : fileFlag(inv.hasExpectations),
         fileFlag(inv.hasNegativeDemo),
@@ -669,9 +703,13 @@ export function auditGuides(): void {
   const nextCalibrate = byStatus.get('needs-calibration')?.[0];
   const nextTest = byStatus.get('needs-test')?.[0];
   const nextExpectations = byStatus.get('needs-expectations')?.[0];
+  const nextStub = byStatus.get('stub')?.[0];
 
   console.log('');
-  if (nextExpectations) {
+  if (nextStub) {
+    const rel = path.relative(process.cwd(), nextStub.dir);
+    console.log(`Next: flesh out the stub guide in ${cBold(rel)}`);
+  } else if (nextExpectations) {
     const rel = path.relative(process.cwd(), nextExpectations.dir);
     console.log(`Next: add expectations.md to ${cBold(rel)}`);
   } else if (nextCalibrate) {
