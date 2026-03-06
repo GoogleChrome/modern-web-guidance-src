@@ -125,6 +125,7 @@ ${"Piece-wise options for `dev`:"}
     ${cDim('--test-grader')}        Check grader calibration (demo + negative-demo)
     ${cDim('--gen-grader')}         Generate a new grader script
     ${cDim('--gen-negative')}       Generate negative examples
+    ${cDim('--no-test')}            Skip agent tests after calibration
     ${cDim('--verbose')}            Show additional output
 
 ${cBold('Evaluation:')}

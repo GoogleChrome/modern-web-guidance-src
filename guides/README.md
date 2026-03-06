@@ -19,10 +19,10 @@ This will:
 
 **Prerequisites:** The guide directory must contain `guide.md`, `demo.html`, and `expectations.md`.
 
-Add `--test` to also run an agent test after calibration:
+Agent tests run automatically after calibration by default. To skip them, add `--no-test`:
 
 ```bash
-gd dev <path/to/guide_dir> --test
+gd dev <path/to/guide_dir> --no-test
 ```
 
 To batch-process all incomplete guides:
