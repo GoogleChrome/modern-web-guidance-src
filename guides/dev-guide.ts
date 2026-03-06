@@ -683,21 +683,27 @@ export function auditGuides(): void {
   const nextStub = byStatus.get('stub')?.[0];
 
   console.log('');
-  if (nextStub) {
-    const rel = path.relative(process.cwd(), nextStub.dir);
-    console.log(`Next: flesh out the stub guide in ${cBold(rel)}`);
-  } else if (nextExpectations) {
-    const rel = path.relative(process.cwd(), nextExpectations.dir);
-    console.log(`Next: add expectations.md to ${cBold(rel)}`);
-  } else if (nextCalibrate) {
-    const rel = path.relative(process.cwd(), nextCalibrate.dir);
-    console.log(`Next: ${cCyan(`gd dev ${rel}`)}`);
-  } else if (nextTest) {
-    const rel = path.relative(process.cwd(), nextTest.dir);
-    console.log(`Next: ${cCyan(`gd dev ${rel}`)}`);
-  } else {
+  
+  const devTarget = nextCalibrate || nextTest;
+  if (devTarget) {
+    const rel = path.relative(process.cwd(), devTarget.dir);
+    console.log(`Next run:    ${cCyan(`gd dev ${rel}`)}`);
+  }
+
+  const writeTarget = nextExpectations || nextStub;
+  if (writeTarget) {
+    const rel = path.relative(process.cwd(), writeTarget.dir);
+    if (writeTarget === nextExpectations) {
+      console.log(`Next manual: add expectations.md to ${cBold(rel)}`);
+    } else {
+      console.log(`Next manual: flesh out the stub guide in ${cBold(rel)}`);
+    }
+  }
+  
+  if (!devTarget && !writeTarget) {
     console.log(cGreen(`All guides are eval-ready!`));
   }
+  
   console.log('');
 }
 
