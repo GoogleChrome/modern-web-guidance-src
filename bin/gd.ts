@@ -121,11 +121,11 @@ ${cBold('Guide Development:')}
   ${cCyan('dev')} <dir> [options]    Auto-generate and calibrate guide artifacts
 
 ${"Piece-wise options for `dev`:"}
-  ${cDim('--grade')}                Run/calibrate grader
-  ${cDim('--test-grader')}          Check grader calibration (demo + negative-demo)
-  ${cDim('--gen-grader')}           Generate a new grader script
-  ${cDim('--gen-negative')}         Generate negative examples
-  ${cDim('--verbose')}              Show additional output
+    ${cDim('--grade')}              Run/calibrate grader
+    ${cDim('--test-grader')}        Check grader calibration (demo + negative-demo)
+    ${cDim('--gen-grader')}         Generate a new grader script
+    ${cDim('--gen-negative')}       Generate negative examples
+    ${cDim('--verbose')}            Show additional output
 
 ${cBold('Evaluation:')}
   ${cCyan('eval')} [suite|tasks...]  Run the full evaluation suite, or specific tasks
