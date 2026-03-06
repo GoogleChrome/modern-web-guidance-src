@@ -69,12 +69,23 @@ gd dev [dir] [options]        # auto-generate/calibrate (runs agent test by defa
 gd dev-all                    # batch-process all incomplete guides
 gd audit                      # show status of all guides
 
+<<<<<<< HEAD
 # Dev Options:
 gd dev [dir] --grade          # (or: pnpm grade) run/calibrate grader
 gd dev [dir] --test-grader    # (or: pnpm test-grader) check grader calibration
 gd dev [dir] --gen-grader     # (or: pnpm generate-grader) generate grader script
 gd dev [dir] --gen-negative   # (or: pnpm generate-negative) generate negative example
+||||||| 1ea386d
+# To run a single isolated task
+pnpm task <task_name>
+# Example: pnpm task cards-render
+=======
+# To run a single isolated task
+pnpm task <task_name>
+# Example: pnpm task batch-analytics-events-task
+>>>>>>> origin/main
 
+<<<<<<< HEAD
 # Evaluation
 gd eval suite                 # (or: pnpm suite)
 gd eval task [id]             # (or: pnpm task [id])
@@ -82,10 +93,30 @@ gd eval smoke                 # (or: pnpm qsmoke)
 gd eval agent [template]      # (or: pnpm run-agent [template])
 gd eval report                # (or: pnpm report)
 gd eval dashboard             # (or: pnpm dashboard)
-
+||||||| 1ea386d
+# To generate reports from results
+pnpm report
+=======
 # To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
 pnpm upload <suite-name>
 # Example: pnpm upload analytics-suite
+>>>>>>> origin/main
+
+<<<<<<< HEAD
+# To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
+pnpm upload <suite-name>
+# Example: pnpm upload analytics-suite
+||||||| 1ea386d
+# To view the results in the dashboard
+pnpm dashboard
+=======
+# To view results in the dashboard
+pnpm dashboard
+
+# To re-generate evaluation reports for a suite
+pnpm report <suite-name>
+# Example: pnpm report analytics-suite
+>>>>>>> origin/main
 ```
 
 ## Configuration
@@ -94,7 +125,6 @@ All configuration is centralized in [`harness/config.ts`](./harness/config.ts). 
 
 -   **Environment**: Paths to binaries (Jetski, Gemini CLI, Claude Code), API keys, and server locations.
 -   **Suite**: Agent selection, number of runs, tasks to run, enabled MCP servers, and skills.
--   **Evaluation**: Name of suite to evaluate.
 
 All settings must be adjusted in `harness/config.ts` or via environment variables in `.env` at the `guidance/` root.
 

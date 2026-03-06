@@ -221,6 +221,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
       }
     }
 
+<<<<<<< HEAD
     if (!options.outputDir) {
       const manifestPath = path.join(resultsDir, 'tests.json');
       let manifest: { tests: any[] } = { tests: [] };
@@ -241,6 +242,31 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     if (!options.skipEval) {
       await evaluateSuite(testDir, testID);
     }
+||||||| 1ea386d
+    const manifestPath = path.join(resultsDir, 'tests.json');
+    let manifest: { tests: any[] } = { tests: [] };
+    if (fs.existsSync(manifestPath)) {
+      try {
+        manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      } catch { }
+    }
+
+    if (!manifest.tests.some(t => t.id === testID)) {
+      manifest.tests.push({ id: testID, timestamp: new Date().toISOString(), runCount: config.suite.numRuns });
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+    }
+
+    console.log(`\n✅ Test suite complete! Results saved to: results/${testID}`);
+=======
+    console.log(`\n✅ Test suite complete! Results saved to: results/${testID}`);
+
+    console.log(`\n=== Running Evaluation for ${testID} ===`);
+    try {
+      await runCommand('node', [path.join(__dirname, 'evaluate.ts'), testID]);
+    } catch (evalError) {
+      console.error('❌ Evaluation failed:', evalError);
+    }
+>>>>>>> origin/main
   } catch (e) {
     console.error('❌ Error during suite execution:', e);
   } finally {

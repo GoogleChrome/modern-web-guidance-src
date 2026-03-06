@@ -21,6 +21,7 @@
     "upload": "pnpm --filter harness upload",
     "dashboard": "pnpm --filter eval-view start",
     "build:mcp": "pnpm --filter modern-web-mcp build",
+    "build:megaskill": "pnpm --filter modern-web-mcp build:megaskill",
     "test:mcp": "pnpm --filter modern-web-mcp test",
     "setup:playwright": "pnpm --filter eval-view exec playwright install",
     "generate-negative": "node --env-file=.env --experimental-strip-types guides/negative-gen.ts",
@@ -32,7 +33,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.28.1",
+  "packageManager": "pnpm@10.30.3",
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",

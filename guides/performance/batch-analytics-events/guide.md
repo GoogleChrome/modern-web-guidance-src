@@ -96,9 +96,9 @@ window.addEventListener('click', (event) => {
 
 ## Browser support and fallback strategies
 
-The `fetchLater` API is not currently supported in all modern browsers (Baseline limited availability), thus a fallback strategy is typically required.
+{{ BASELINE_STATUS("fetchlater") }}. Therefore, a fallback strategy is typically required.
 
-However, given the improved reliability and performance benefits of this API,`fetchLater()` should be used if the browser supports it.
+However, given the improved reliability and performance benefits of this API, `fetchLater()` should be used if the browser supports it.
 
 ### `fetchLater()` polyfill
 

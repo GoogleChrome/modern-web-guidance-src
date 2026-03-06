@@ -13,6 +13,53 @@ const __dirname = dirname(__filename);
 import { config } from './config.ts';
 
 export async function evaluateSuite(resultsDir: string, suiteName: string) {
+<<<<<<< HEAD
+||||||| 1ea386d
+  console.log('Starting Evaluation...'.cyan.bold);
+
+  // Read manifest to find the latest test
+  const resultsDirBase = path.join(__dirname, 'results');
+  const manifestPath = path.join(resultsDirBase, 'tests.json');
+  if (!fs.existsSync(manifestPath)) {
+    console.error('Manifest file not found at results/tests.json!'.red);
+    return;
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  } catch {
+    console.error('Failed to parse manifest!'.red);
+    return;
+  }
+
+  if (!manifest.tests || manifest.tests.length === 0) {
+    console.error('No tests found in manifest!'.red);
+    return;
+  }
+
+  let suiteName;
+  if (config.eval.suiteName) {
+    suiteName = config.eval.suiteName;
+  } else {
+    // Get the latest test if no specific test ID is provided
+    const latestTest = manifest.tests[manifest.tests.length - 1];
+    suiteName = latestTest.id;
+  }
+  const resultsDir = path.join(resultsDirBase, suiteName);
+
+=======
+  console.log('Starting Evaluation...'.cyan.bold);
+
+  const resultsDirBase = path.join(__dirname, 'results');
+  let suiteName = process.argv[2] || config.suite.name;
+  if (!suiteName) {
+    console.error('❌ No suite name provided! Please specify a suite to evaluate.'.red);
+    process.exit(1);
+  }
+  const resultsDir = path.join(resultsDirBase, suiteName);
+
+>>>>>>> origin/main
   console.log(`Evaluating suite: ${suiteName}`.cyan);
   console.log(`Results directory: ${resultsDir}`.cyan);
 
@@ -27,7 +74,8 @@ export async function evaluateSuite(resultsDir: string, suiteName: string) {
 
     const metrics = calculateMetrics(allResults, numRuns);
     const mdReport = generateMarkdownReport(metrics, allResults);
-    const jsonReport = generateJsonReport(metrics, allResults);
+    const timestamp = new Date().toISOString();
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, config.suite.agent, config.suite.enableSkills);
 
     saveReports(resultsDir, mdReport, jsonReport);
 

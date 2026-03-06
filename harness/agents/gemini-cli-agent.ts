@@ -5,7 +5,7 @@ import { spawn } from 'child_process';
 
 import config, { Agents } from '../config.ts';
 
-import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copyResultsToTarget, copySkills, watchLogFile } from '../lib/agent-shared.ts';
+import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copyResultsToTarget, copySkills, watchLogFile, exportTrajectories } from '../lib/agent-shared.ts';
 import { MCP_LOG_FILE } from '../../constants.ts';
 
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
@@ -119,6 +119,10 @@ async function run() {
     const chatLogPath = path.join(targetDir, 'chat_log.txt');
     fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
     console.log(`Saved output to: ${chatLogPath}`);
+
+    // Extract trajectory JSON from isolated home
+    const tmpDir = path.join(path.dirname(workDir), '.gemini', 'tmp');
+    exportTrajectories(tmpDir, '*/chats/*.json', targetDir);
 
     console.log("Gemini CLI agent finished successfully.");
 
