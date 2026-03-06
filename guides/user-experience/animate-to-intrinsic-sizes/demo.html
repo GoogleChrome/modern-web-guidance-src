@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animate Intrinsic Sizes Demo</title>
+  <style>
+    :root {
+      /* 1. Opt-in to animating to keywords globally! */
+      interpolate-size: allow-keywords;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 2rem;
+      background-color: #f8f9fa;
+      color: #202124;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+    }
+
+    p.description {
+      max-width: 600px;
+      text-align: center;
+      color: #5f6368;
+      line-height: 1.6;
+    }
+
+    .note {
+      max-width: 600px;
+      padding: 1rem;
+      background-color: #e8eaed;
+      border-left: 4px solid #1a73e8;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      color: #3c4043;
+      text-align: left;
+      line-height: 1.5;
+    }
+
+    code {
+      background-color: #e8eaed;
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 0.85em;
+    }
+
+    section {
+      width: 100%;
+      max-width: 600px;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      color: #1a73e8;
+      border-bottom: 1px solid #dadce0;
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .accordion {
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      background: white;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+    }
+
+    .accordion-item {
+      border-bottom: 1px solid #dadce0;
+    }
+
+    .accordion-item:last-child {
+      border-bottom: none;
+    }
+
+    .accordion-header {
+      width: 100%;
+      text-align: left;
+      padding: 1rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #202124;
+      transition: background-color 0.2s;
+    }
+
+    .accordion-header:hover {
+      background-color: #f1f3f4;
+    }
+
+    .accordion-icon {
+      transition: transform 0.3s ease;
+    }
+
+    .open .accordion-icon {
+      transform: rotate(180deg);
+    }
+
+    .accordion-content {
+      height: 0;
+      /* Forced to 0 when closed */
+      overflow: hidden;
+      /* Necessary so content is chopped off when 0 height */
+      background-color: #faf8f8;
+      transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .open .accordion-content {
+      height: auto;
+      /* Animates straight to its intrinsic size! */
+    }
+
+    .open .accordion-content.capped-height {
+      height: calc-size(auto, min(150px, size));
+      overflow-y: auto;
+    }
+
+    .accordion-content p {
+      margin: 0;
+      padding: 1rem 1.5rem;
+      color: #5f6368;
+      line-height: 1.5;
+    }
+
+
+    .button-row {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    .expand-btn {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 24px;
+      background-color: #1a73e8;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(26, 115, 232, 0.3);
+      transition: background-color 0.2s, gap 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .expand-btn:hover {
+      background-color: #1557b0;
+      gap: 0.5rem;
+    }
+
+    .btn-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-label {
+      width: 0;
+      /* Hidden by default */
+      overflow: hidden;
+      white-space: nowrap;
+      /* Prevent text wrapping while expanding */
+      font-weight: 500;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .expand-btn:hover .btn-label {
+      width: max-content;
+      /* Animates straight to the text's natural intrinsic width! */
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Animate To Intrinsic Sizes</h1>
+  <p class="description">
+    By setting <code>interpolate-size: allow-keywords</code> on the <code>:root</code>, you can smoothly animate
+    properties like width and height to and from intrinsic keywords such as <code>auto</code> and
+    <code>max-content</code> using pure CSS.
+  </p>
+
+  <div class="note">
+    <strong>💡 What is Intrinsic Size?</strong> An element's intrinsic size is its natural dimension based entirely on
+    the content it holds, without any explicit fixed lengths applied. It is represented in CSS by sizing keywords like
+    <code>auto</code>, <code>min-content</code>, <code>max-content</code>, and <code>fit-content</code>.
+  </div>
+  <!-- Vertical Demonstration -->
+  <section>
+    <h2>Vertical: Height to <code>auto</code></h2>
+    <div class="accordion">
+      <div class="accordion-item">
+        <button class="accordion-header">
+          Section 1: Short Content
+          <svg class="accordion-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <div class="accordion-content">
+          <p>This is a small amount of text. The accordion animating to its exact <code>height: auto</code>
+            effortlessly.</p>
+        </div>
+      </div>
+
+      <div class="accordion-item open">
+        <button class="accordion-header">
+          Section 2: Long Content
+          <svg class="accordion-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <div class="accordion-content">
+          <p>
+            This section contains significantly more text than the first. Because we are animating to
+            <code>height: auto</code>, the CSS transition knows exactly how far it needs to go to reveal this specific
+            content. No more hardcoding absurdly large <code>max-height: 1000px</code> values and dealing with timing
+            curve delays!
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Horizontal Demonstration -->
+  <section>
+    <h2>Horizontal: Width to <code>max-content</code></h2>
+    <div class="button-row">
+
+      <button class="expand-btn">
+        <span class="btn-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+        </span>
+        <span class="btn-label">Edit Properties</span>
+      </button>
+
+      <button class="expand-btn">
+        <span class="btn-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+        </span>
+        <span class="btn-label">Copy to Clipboard</span>
+      </button>
+
+      <button class="expand-btn">
+        <span class="btn-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </span>
+        <span class="btn-label">Delete Forever</span>
+      </button>
+
+    </div>
+  </section>
+
+  <!-- Maximum Size Demonstration -->
+  <section>
+    <h2>Bounded: Height capped with <code>calc-size()</code></h2>
+    <div class="accordion">
+      <div class="accordion-item">
+        <button class="accordion-header">
+          Section 3: Very Long Content (Capped Height)
+          <svg class="accordion-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <div class="accordion-content capped-height">
+          <p>
+            This section contains so much text that we don't want it to take up the entire screen when opened.
+            By animating to <code>height: calc-size(auto, min(150px, size))</code>, the container will grow exactly to its content height,
+            but if the content exceeds <code>150px</code>, it smoothly stops growing at that limit and becomes scrollable.
+            <br><br>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+            Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+            Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // Simple logic just to toggle the .open class on accordion items
+    const headers = document.querySelectorAll('.accordion-header');
+    headers.forEach(header => {
+      header.addEventListener('click', () => {
+        const item = header.parentElement;
+        item.classList.toggle('open');
+      });
+    });
+  </script>
+</body>
+
+</html>
