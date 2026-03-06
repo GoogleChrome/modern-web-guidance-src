@@ -117,27 +117,27 @@ ${cBold('Guidance CLI')}
 ${cCyan('Usage:')} gd <command> [options]
 
 ${cBold('Guide Development:')}
-  ${cCyan('audit')}${' '.repeat(17)}      Show status of all guides
-  ${cCyan('dev')} <dir> [options]         Auto-generate and calibrate guide artifacts
+  ${cCyan('audit')}                            Show status of all guides
+  ${cCyan('dev')} <dir> [options]              Auto-generate and calibrate guide artifacts
 
 ${cBold("Piece-wise options for `dev`:")}
-  ${cDim('--grade')}              Run/calibrate grader
-  ${cDim('--test-grader')}        Check grader calibration (demo + negative-demo)
-  ${cDim('--gen-grader')}         Generate a new grader script
-  ${cDim('--gen-negative')}       Generate negative examples
-  ${cDim('--verbose')}            Show additional output
+  ${cDim('--grade')}                          Run/calibrate grader
+  ${cDim('--test-grader')}                    Check grader calibration (demo + negative-demo)
+  ${cDim('--gen-grader')}                     Generate a new grader script
+  ${cDim('--gen-negative')}                   Generate negative examples
+  ${cDim('--verbose')}                        Show additional output
 
 ${cBold('Evaluation:')}
-  ${cCyan('eval')} [suite|tasks...]       Run the full evaluation suite, or specific tasks
-  ${cCyan('dashboard')}${' '.repeat(18)} Start the evaluation dashboard
-  ${cCyan('run')} <tmpl> <prompt>         Run an ad-hoc agent test against a template
+  ${cCyan('eval')} [suite|tasks...]           Run the full evaluation suite, or specific tasks
+  ${cCyan('dashboard')}                        Start the evaluation dashboard
+  ${cCyan('run')} <tmpl> <prompt>              Run an ad-hoc agent test against a template
 
 ${cBold('Other:')}
-  ${cCyan('setup-completion')}${' '.repeat(10)} Install shell auto-completion
+  ${cCyan('setup-completion')}                 Install shell auto-completion
 
 ${cBold('Options:')}
-  ${cDim('-h, --help')}      Show this help
-  ${cDim('--verbose')}       Show additional output
+  ${cDim('-h, --help')}                       Show this help
+  ${cDim('--verbose')}                        Show additional output
     `);
     process.exit(0);
   }
