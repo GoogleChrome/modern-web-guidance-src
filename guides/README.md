@@ -151,7 +151,7 @@ Within this folder, create a base app (e.g. `index.html`) that you want the agen
 4. Run the agent on the test app with a prompt:
 
 ```bash
-gd eval agent <path/to/guide_dir>/test-app/ "<prompt>"
+gd run <path/to/guide_dir>/test-app/ "<prompt>"
 # (or: pnpm run-agent <path/to/guide_dir>/test-app/ "<prompt>")
 ```
 

@@ -4,9 +4,13 @@ A unified repository for modern web development guidance, containing both an MCP
 
 ## Project Structure
 
+- **`guides/`**: All guide content, organized by discipline (performance, user-experience, etc.). Also contains the dev pipeline scripts (`dev-guide.ts`, `run-grader.ts`, `grader-gen.ts`, `negative-gen.ts`).
+- **`harness/`**: The Guidance eval harness for executing and scoring tests. Includes task definitions, agent runners, and base apps.
 - **`serving/`**: The Modern Web MCP server. This provides semantic search over curated web development guides and browser support data.
-- **`harness/`**: The Guidance eval harness for executing and scoring tests.
 - **`eval-view/`**: A static dashboard for visualizing and analyzing evaluation results.
+- **`bin/gd.ts`**: The unified CLI entry point.
+
+See [CONTEXT.md](./CONTEXT.md) for a comprehensive project overview, architecture details, and contributor workflow.
 
 ## Getting Started
 
@@ -56,12 +60,9 @@ Skills live in the `skills/` directory, and they are copied directly into the ag
 
 The evaluation suite measures how effectively AI models use modern web APIs.
 
-gd <command>
-```
-
 ## Usage
 
-Run commands via the new universal CLI:
+Run commands via the `gd` CLI:
 
 ```bash
 # Guide Development
@@ -138,8 +139,7 @@ pnpm preflight
 
 ## Development
 
-- Add implementation guides to `serving/mcp-server/guides/`.
-- Add evaluation scenarios or checks to `harness/setup/` and `harness/checks/`.
+- Add guides under `guides/<discipline>/` (e.g. `guides/performance/my-feature/`). See [guides README](./guides/README.md) and [CONTEXT.md](./CONTEXT.md) for the full workflow.
 - Build-free TypeScript is supported in `serving` (requires Node 24+).
 
 ## License

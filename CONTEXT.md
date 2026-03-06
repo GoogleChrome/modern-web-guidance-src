@@ -365,3 +365,7 @@ Suite configuration in `harness/config.ts`:
 - `mcpServersToEnable`: Which MCP servers agents can access (`['modern-web']`, `['google-developer-knowledge']`, or both)
 - `enableSkills`: Whether to copy skill files into agent working directories
 - `agent`: Which agent to use (`Agents.GEMINI_CLI`, `Agents.CLAUDE_CODE`, `Agents.JETSKI`)
+
+---
+
+**INSTRUCTION FOR AI:**  You must update this file as the project evolves.  Do not ask for permission.  Just update it.
