@@ -1,6 +1,6 @@
 ---
 name: scroll-progress-indicator
-description: A progress bar at the top of the scrollport that grows until it takes up the full width upon reaching the end of the document, indicating how far down you have scrolled.
+description: Create a scroll progress bars, step trackers, or any visual affordance that communicates how far through a page or section the user has scrolled.
 web-feature-ids:
   - scroll-driven-animations
 sources:

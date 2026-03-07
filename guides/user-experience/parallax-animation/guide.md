@@ -1,6 +1,6 @@
 ---
 name: parallax-animation
-description: Images or Layers of content that move at a slower or different speed relative to the scrolling content, yielding a 3D depth or parallax effect.
+description: Create scroll-based effects (such as parallax) where foreground and background layers move at different rates, creating a sense of depth as the user scrolls.
 web-feature-ids:
   - scroll-driven-animations
 sources:

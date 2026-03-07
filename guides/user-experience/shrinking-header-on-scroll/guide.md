@@ -1,6 +1,6 @@
 ---
 name: shrinking-header-on-scroll
-description: A sticky top navigation bar that minimizes in size and gains a drop shadow effect as the user scrolls down the web app.
+description: Create a large header bar that stays fixed to the top but shrinks in size (along with other effects like adding a shadow) as the user scrolls down.
 web-feature-ids:
   - scroll-driven-animations
 sources:
