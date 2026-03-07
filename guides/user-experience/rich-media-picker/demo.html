@@ -6,211 +6,280 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rich Media Picker Demo</title>
   <style>
+    :root {
+      --bg-color: #0f172a;
+      --text-color: #f1f5f9;
+      --primary-color: #3b82f6;
+      --border-color: #334155;
+      --hover-bg: #1e293b;
+      --popover-bg: #0f172a;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --transition-speed: 0.2s;
+    }
+
     body {
-      font-family: 'Inter', system-ui, sans-serif;
-      margin: 0;
-      padding: 0;
-      min-height: 100vh;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
       display: flex;
       flex-direction: column;
-      align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #10b981, #3b82f6);
-      color: #333;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
     }
 
     .hero {
       text-align: center;
-      color: white;
       margin-bottom: 2rem;
+      max-width: 600px;
     }
 
-    h1 {
-      margin-bottom: 0.5rem;
+    .hero h1 {
       font-size: 2.5rem;
+      margin: 0 0 12px 0;
+      color: white;
+      letter-spacing: -0.025em;
     }
 
-    p {
-      opacity: 0.9;
+    .hero p {
       font-size: 1.1rem;
+      color: #94a3b8;
+      margin: 0;
+      line-height: 1.6;
     }
 
-    .form-container {
-      background: white;
-      padding: 2.5rem;
-      border-radius: 20px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-      width: 100%;
-      max-width: 400px;
-    }
-
-    .form-group {
+    .picker-container {
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
+      gap: 12px;
+      width: 100%;
+      max-width: 500px;
     }
 
     label {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: #475569;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #94a3b8;
     }
 
-    /* Customizable Select Styles */
-    select.rich-select {
+    /* Essential Opt-in */
+    select.custom-select,
+    select.custom-select::picker(select) {
       appearance: base-select;
-      width: 100%;
-      padding: 1rem;
-      font-size: 1rem;
-      background-color: #f8fafc;
-      border: 2px solid #e2e8f0;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: border-color 0.2s, box-shadow 0.2s;
     }
 
-    select.rich-select:hover {
-      border-color: #cbd5e1;
-    }
-
-    select.rich-select:focus-visible {
-      outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-    }
-
-    /* Target the picker popup itself */
-    select.rich-select::picker(select) {
-      padding: 0.5rem;
-      background: white;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-      margin-top: 0.5rem;
-      max-height: 400px;
-      /* Allow scrolling if many options */
-    }
-
-    /* Option Layout - Grid approach for the rich media */
-    select.rich-select option {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      grid-template-areas:
-        "icon title"
-        "icon subtitle";
-      gap: 0 1rem;
+    /* Basic Structural Adjustment */
+    select.custom-select {
+      display: flex;
       align-items: center;
-      padding: 1rem;
-      border-radius: 10px;
+      justify-content: space-between;
+      width: 100%;
+      padding: 12px 16px;
+      background-color: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      color: var(--text-color);
+      font-size: 1rem;
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: all var(--transition-speed) ease;
     }
 
-    select.rich-select option:hover,
-    select.rich-select option:focus-visible,
-    select.rich-select option:hover:not(:checked) {
-      background-color: #f1f5f9;
-      outline: none;
+    select.custom-select:hover {
+      border-color: var(--primary-color);
+      background-color: #334155;
     }
 
-    select.rich-select option:checked {
-      background-color: #eff6ff;
-      border: 1px solid #bfdbfe;
+    select.custom-select:focus-visible {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 2px;
     }
 
-    /* Mapping HTML elements within the option to the grid areas */
-    /* Note: In standard implementation of appearance: base-select, 
-       we inject spans or divs inside the <option>. If the browser doesn't 
-       fully support child elements inside option, we can style the parts 
-       we *can* target, or rely on a polyfill/future-facing syntax. 
-       For the sake of this demo showcasing `base-select`'s rich media capabilities, 
-       we assume true DOM elements are allowed inside <option>. */
+    select.custom-select selectedcontent {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
-    .flag-icon {
-      grid-area: icon;
-      font-size: 2rem;
-      /* Using emoji flags for simplicity in this demo, but could be <img> */
+    /* The arrow / carrot indicator */
+    .arrow {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #f8fafc;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      border: 1px solid #f1f5f9;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      transition: rotate var(--transition-speed) ease;
+      color: #94a3b8;
     }
 
-    .country-name {
-      grid-area: title;
-      font-weight: 600;
-      color: #0f172a;
-      font-size: 1.05rem;
+    select.custom-select:open .arrow {
+      rotate: -180deg;
+      color: var(--primary-color);
     }
 
-    .country-meta {
-      grid-area: subtitle;
-      color: #64748b;
-      font-size: 0.85rem;
+    /* Popover List */
+    select.custom-select::picker(select) {
+      background-color: var(--popover-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      margin-top: 8px;
+      /* Spacing from button */
+      width: anchor-size(width);
     }
 
-    /* 
-      Specific styles for when the option is selected (shown in the main select box). 
-      We want it to look tight and clean.
-    */
-    select.rich-select>option:checked {
-      padding: 0;
-      /* Remove padding when displaying in the trigger button */
-      background: transparent;
-      border: none;
+    /* Option rows */
+    select.custom-select option {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background-color var(--transition-speed) ease;
+      background-color: transparent;
+    }
+
+    /* Remove standard OS checkmark for base-select */
+    select.custom-select option::before {
+      display: none;
+    }
+
+    select.custom-select option:hover,
+    select.custom-select option:focus-visible {
+      background-color: #1e293b;
+      outline: none;
+    }
+
+    select.custom-select option:active {
+      background-color: #334155;
+    }
+
+    /* SVG internal structure */
+    select.custom-select option svg,
+    select.custom-select selectedcontent svg {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+      color: var(--primary-color);
+    }
+
+    .option-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .option-title {
+      font-weight: 500;
+      font-size: 0.95rem;
+      color: #f8fafc;
+    }
+
+    .option-desc {
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+
+    /* Show only the core name when selected (closed button state) */
+    select.custom-select selectedcontent .option-desc {
+      display: none;
+    }
+
+    /* Animations for popover */
+    select.custom-select::picker(select) {
+      transition:
+        display allow-discrete 0.3s,
+        overlay allow-discrete 0.3s,
+        opacity 0.3s ease,
+        transform 0.3s ease;
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+
+    select.custom-select:open::picker(select) {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @starting-style {
+      select.custom-select:open::picker(select) {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
     }
   </style>
 </head>
 
 <body>
-
   <div class="hero">
-    <h1>Rich Media Picker</h1>
-    <p>Using <code>appearance: base-select</code> with grid layout.</p>
+    <h1>Rich Media Picker Demo</h1>
+    <p>A demonstration of the new CSS <code>appearance: base-select</code> API, allowing the native
+      <code>&lt;select&gt;</code> element to be completely styled and contain rich HTML elements rather than plaintext
+      options.
+    </p>
   </div>
 
-  <div class="form-container">
-    <div class="form-group">
-      <label for="countrySelect">Select Destination</label>
-      <select id="countrySelect" class="rich-select">
-
-        <option value="jp">
-          <div class="flag-icon">🇯🇵</div>
-          <span class="country-name">Japan</span>
-          <span class="country-meta">Asia • Pop 125M</span>
-        </option>
-
-        <option value="fr">
-          <div class="flag-icon">🇫🇷</div>
-          <span class="country-name">France</span>
-          <span class="country-meta">Europe • Pop 67M</span>
-        </option>
-
-        <option value="br">
-          <div class="flag-icon">🇧🇷</div>
-          <span class="country-name">Brazil</span>
-          <span class="country-meta">South America • Pop 214M</span>
-        </option>
-
-        <option value="us">
-          <div class="flag-icon">🇺🇸</div>
-          <span class="country-name">United States</span>
-          <span class="country-meta">North America • Pop 331M</span>
-        </option>
-
-        <option value="za">
-          <div class="flag-icon">🇿🇦</div>
-          <span class="country-name">South Africa</span>
-          <span class="country-meta">Africa • Pop 60M</span>
-        </option>
-
-      </select>
-    </div>
+  <div class="picker-container">
+    <label for="tech-stack">Select Developer Role</label>
+    <select id="tech-stack" class="custom-select">
+      <button>
+        <selectedcontent></selectedcontent>
+      </button>
+      <!-- Rich options -->
+      <option value="frontend">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+        <div class="option-text">
+          <span class="option-title">Frontend Developer</span>
+          <span class="option-desc">React, Vue, CSS</span>
+        </div>
+      </option>
+      <option value="backend">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+        </svg>
+        <div class="option-text">
+          <span class="option-title">Backend Developer</span>
+          <span class="option-desc">Node.js, Python, Databases</span>
+        </div>
+      </option>
+      <option value="design">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+          <line x1="9" y1="9" x2="9.01" y2="9"></line>
+          <line x1="15" y1="9" x2="15.01" y2="9"></line>
+        </svg>
+        <div class="option-text">
+          <span class="option-title">UX/UI Designer</span>
+          <span class="option-desc">Figma, Prototyping</span>
+        </div>
+      </option>
+      <option value="devops">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+          <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+        </svg>
+        <div class="option-text">
+          <span class="option-title">DevOps Engineer</span>
+          <span class="option-desc">AWS, Docker, CI/CD</span>
+        </div>
+      </option>
+    </select>
   </div>
 
 </body>
