@@ -139,7 +139,7 @@ The output should be a single file named negative-demo.html. Do not modify any o
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   if (args.length < 1) {
-    console.error('Usage: pnpm generate-negative <path/to/guide>');
+    console.error('Usage: gd dev <path/to/guide> --gen-negative');
     process.exit(1);
   }
   generateNegative(args[0]).catch(err => {

@@ -178,7 +178,7 @@ Revise the grader to fix these issues.`;
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   if (args.length < 1) {
-    console.error('Usage: pnpm generate-grader <path/to/guide>');
+    console.error('Usage: gd dev <path/to/guide> --gen-grader');
     process.exit(1);
   }
   generateGrader(args[0]).catch(err => {

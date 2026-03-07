@@ -29,7 +29,7 @@ const GRADER_FILE = 'grader.ts';
 const PROMPTS_FILE = 'prompts.md';
 const TASKS_DIR = path.join(rootDir, 'harness', 'tasks');
 
-const GUIDE_CATEGORIES = ['performance', 'user-experience', 'accessibility', 'security'];
+
 
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
@@ -137,7 +137,10 @@ function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): GuideInven
 
 function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
   const guides: GuideInventory[] = [];
-  for (const category of GUIDE_CATEGORIES) {
+  const categories = fs.readdirSync(__dirname, { withFileTypes: true })
+    .filter(d => d.isDirectory() && !d.name.startsWith('.'))
+    .map(d => d.name);
+  for (const category of categories) {
     const categoryDir = path.join(__dirname, category);
     if (!fs.existsSync(categoryDir)) continue;
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {

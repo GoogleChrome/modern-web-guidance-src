@@ -23,7 +23,10 @@ try {
 
 function listGuideDirs(): string[] {
   const guidesDir = path.join(rootDir, 'guides');
-  const categories = ['performance', 'user-experience', 'accessibility', 'security'];
+  if (!fs.existsSync(guidesDir)) return [];
+  const categories = fs.readdirSync(guidesDir, { withFileTypes: true })
+    .filter(d => d.isDirectory() && !d.name.startsWith('.'))
+    .map(d => d.name);
   const dirs: string[] = [];
   for (const cat of categories) {
     const catDir = path.join(guidesDir, cat);

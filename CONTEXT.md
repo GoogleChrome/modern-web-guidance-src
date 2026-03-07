@@ -1,5 +1,7 @@
 # Guidance Project — Context Document
 
+*(Note: This is an auto-maintained LLM context document, meant to provide overarching project goals, architecture, and workflow details to AI agents working in this repository. It is not intended to replace the READMEs for human contributors, but rather to supplement them with "big picture" state. AI agents are instructed to update this file as they work.)*
+
 This document describes the goals, architecture, contributor workflow, and current state of the Guidance project. It is intended both as LLM context (for feeding into subsequent AI-assisted work) and as a human-readable project overview.
 
 Last updated: 2026-03-06.
@@ -209,7 +211,7 @@ The MCP server (`serving/mcp-server/`) provides AI agents with semantic search o
 ### How agents access guidance
 
 - **MCP mode** (`mcpServersToEnable: ['modern-web']`): The agent connects to the MCP server and can search/retrieve guides dynamically.
-- **Skills mode** (`enableSkills: true`): Guide content is copied directly into the agent's working directory as skill files.
+- **Skills mode** (`enableSkills: true`): Guide content is copied directly into the agent's working directory as skill files. *(Note: currently not fully functional and planned for future updates.)*
 - **Unguided mode** (both disabled): Agent relies only on its training data. This is the control condition in evaluations.
 
 ---
@@ -250,9 +252,9 @@ This branch (diverged from `main`) introduces:
 
 ## 8. Contributor Workflow (Current + Planned)
 
-### Two-checkpoint contribution model
+### Two-checkpoint contribution model (Use Case, then Implementation)
 
-The contribution process has two distinct phases to avoid wasted effort:
+To prevent SMEs from investing time writing full guides for use cases that might be rejected (due to overlap, scope, or platform maturity), the contribution process has two distinct phases to avoid wasted effort:
 
 **Checkpoint 1 — Use case identification:**
 - SME picks a web feature from the tracking sheet

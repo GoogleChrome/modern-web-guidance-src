@@ -1,5 +1,14 @@
 ## Testing Guides
 
+**Prerequisite Setup:**
+Before using the `gd` CLI, ensure it's linked globally:
+
+```bash
+pnpm install
+pnpm link --global && gd setup-completion
+```
+*Note: For the auto-completion to take effect, you must refresh your shell (e.g., open a new terminal or source your config).*
+
 ### Automated (Recommended)
 
 Use `gd dev` to automatically generate missing artifacts and calibrate the grader in one command:
@@ -52,7 +61,6 @@ pnpm setup:playwright
 4. Generate negative demo:
 ```bash
 gd dev <path/to/guide_dir> --gen-negative
-# (or: pnpm generate-negative <path/to/guide_dir>)
 
 # e.g. gd dev guides/performance/content-vis --gen-negative
 ```
@@ -62,7 +70,6 @@ This will create a `negative-demo.html` file in the guide directory.
 5. Generate grader:
 ```bash
 gd dev <path/to/guide_dir> --gen-grader
-# (or: pnpm generate-grader <path/to/guide_dir>)
 ```
 
 This will create a `grader.ts` file in the guide directory.
@@ -70,7 +77,6 @@ This will create a `grader.ts` file in the guide directory.
 6. Once the grader is generated, run it on the `demo.html` and `negative-demo.html` with:
 ```bash
 gd dev <path/to/demo_file> --grade
-# (or: pnpm grade <path/to/demo_file>)
 
 # e.g. gd dev guides/performance/content-vis/demo.html --grade
 # e.g. gd dev guides/performance/content-vis/negative-demo.html --grade
@@ -85,7 +91,6 @@ You can automatically verify that your grader is perfectly calibrated against bo
 
 ```bash
 gd dev <path/to/guide_dir> --test-grader
-# (or: pnpm test-grader <path/to/guide_dir>)
 
 # e.g. gd dev guides/performance/content-vis --test-grader
 ```
@@ -152,7 +157,6 @@ Within this folder, create a base app (e.g. `index.html`) that you want the agen
 
 ```bash
 gd run <path/to/guide_dir>/test-app/ "<prompt>"
-# (or: pnpm run-agent <path/to/guide_dir>/test-app/ "<prompt>")
 ```
 
 This will create a `test-app-result` directory in the `<path/to/guide_dir>` folder with the results of the run.
@@ -161,7 +165,6 @@ This will create a `test-app-result` directory in the `<path/to/guide_dir>` fold
 
 ```bash
 gd dev <path/to/guide_dir>/test-app-result/index.html --grade
-# (or: pnpm grade <path/to/guide_dir>/test-app-result/index.html)
 ```
 
 Use the results to validate guide quality, and make changes as needed. A useful sanity check is to examine the result of the agent run *without* guide access.

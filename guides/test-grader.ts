@@ -6,7 +6,7 @@ if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(imp
   const { testGrader } = await import('./run-grader.ts');
   const dir = process.argv[2];
   if (!dir) {
-    console.error('Usage: pnpm test-grader <path/to/guide-directory>');
+    console.error('Usage: gd dev <path/to/guide> --test-grader');
     process.exit(1);
   }
   const result = await testGrader(dir);
