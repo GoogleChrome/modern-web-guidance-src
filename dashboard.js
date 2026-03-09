@@ -1,7 +1,8 @@
 import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth } from './utils.js';
 import { ApiClient } from './api.js';
 import { RadarChart } from './radar.js';
-import { MCP_LOG_FILE } from './constants.js';
+
+const MCP_LOG_FILE = 'mcp-server.log';
 
 // Keep track of current details state for navigation
 let currentDetails = null;

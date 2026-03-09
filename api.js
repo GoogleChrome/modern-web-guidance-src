@@ -3,7 +3,16 @@ import { authenticatedFetch } from './utils.js';
 export class ApiClient {
     constructor() {
         const params = new URLSearchParams(window.location.search);
-        this.source = params.get('source') || 'local';
+        let sourceParam = params.get('source');
+        if (!sourceParam) {
+            // Auto-detect static Github Pages deployment
+            if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                sourceParam = 'remote';
+            } else {
+                sourceParam = 'local';
+            }
+        }
+        this.source = sourceParam;
         this.gcsPrefix = 'https://storage.googleapis.com/storage/v1/b/guidance-evals/o/';
     }
 
@@ -228,17 +237,25 @@ export class ApiClient {
 
     /** Downloads raw text content for a specific URL Path (e.g. from viewContent modal). */
     async getFileText(path) {
-        // base_apps are never uploaded to GCS. They are only available if the user
-        // is running the dashboard locally. Let's force them to be fetched locally.
+        // Base apps are never uploaded to GCS. Force them to be fetched locally.
         const isBaseApp = path.startsWith('base_apps/');
+        const isTasks = path.startsWith('tasks/');
 
-        if (this.source === 'remote' && !isBaseApp) {
+        // If trying to retrieve a task definition from Github Pages, fetch from repo source directly
+        if (isTasks && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            const rawUrl = `https://raw.githubusercontent.com/GoogleChrome/guidance/main/harness/${path}`;
+            const res = await fetch(rawUrl);
+            if (!res.ok) throw new Error('File not found (404).');
+            return await res.text();
+        }
+
+        if (this.source === 'remote' && !isBaseApp && !isTasks) {
             const exists = await this._checkRemoteFileExists(path);
             if (!exists) throw new Error('File not found (404).');
         }
         
-        // Force local fetching for base_apps, otherwise it tries to read from GCS
-        const res = isBaseApp 
+        // Force local fetching for base_apps or tasks natively, otherwise it tries to read from GCS
+        const res = (isBaseApp || isTasks)
             ? await fetch(`/${path}?source=local`) 
             : await this._fetch(path);
             
