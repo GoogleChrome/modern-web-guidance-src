@@ -448,10 +448,6 @@ async function showDetails(testName, runs, stats, testId) {
         // Fetch prompt text from the task definition
         if (run === runs[0]) {
             try {
-                // Determine task name. 'guide' is already extracted above via `const [, guide] = testName.split(' - ');`
-                // Convert camel/kebab case to match task file if necessary, but usually it's just guide + "-task". 
-                // However, wait, in existing code, earlier versions fetched `api.getPromptCode(guide)` or `tasks/${guide}.md`.
-                // Let's use `api.getFileText` with the correct path.
                 const promptPath = `tasks/${guide}-task.md`;
                 const text = await api.getFileText(promptPath);
                 
