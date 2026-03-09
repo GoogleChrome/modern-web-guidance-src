@@ -135,10 +135,10 @@ ${cBold('Evaluation:')}
   ${cCyan('eval')} [suite|tasks...]  Run the full evaluation suite, or specific tasks
   ${cCyan('dashboard')}              Start the evaluation dashboard
   ${cCyan('run')} <tmpl> <prompt>    Run an ad-hoc agent test against a template
+  ${cCyan('deploy')}                 Deploy the dashboard to GitHub Pages
+  ${cCyan('upload')} <suite>         Upload generated evaluation suite to GCS
 
 ${cBold('Other:')}
-  ${cCyan('deploy')}                 Deploy the dashboard to GitHub Pages
-  ${cCyan('upload')}                 Upload generated evaluation results to GCS
   ${cCyan('setup-completion')}       Install shell auto-completion
 
 ${cBold('Options:')}

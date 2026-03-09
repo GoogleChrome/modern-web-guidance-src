@@ -241,14 +241,6 @@ export class ApiClient {
         const isBaseApp = path.startsWith('base_apps/');
         const isTasks = path.startsWith('tasks/');
 
-        // If trying to retrieve a task definition from Github Pages, fetch from repo source directly
-        if (isTasks && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-            const rawUrl = `https://raw.githubusercontent.com/GoogleChrome/guidance/main/harness/${path}`;
-            const res = await fetch(rawUrl);
-            if (!res.ok) throw new Error('File not found (404).');
-            return await res.text();
-        }
-
         if (this.source === 'remote' && !isBaseApp && !isTasks) {
             const exists = await this._checkRemoteFileExists(path);
             if (!exists) throw new Error('File not found (404).');
@@ -256,7 +248,7 @@ export class ApiClient {
         
         // Force local fetching for base_apps or tasks natively, otherwise it tries to read from GCS
         const res = (isBaseApp || isTasks)
-            ? await fetch(`/${path}?source=local`) 
+            ? await fetch(`${path}?source=local`) 
             : await this._fetch(path);
             
         if (!res.ok) {
