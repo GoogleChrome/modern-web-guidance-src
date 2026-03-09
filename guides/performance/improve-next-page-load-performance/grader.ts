@@ -19,7 +19,7 @@ function getSpeculationRules(html: string) {
   if (!match) return null;
   try {
     return JSON.parse(match[1]);
-  } catch (e) {
+  } catch {
     return 'INVALID_JSON';
   }
 }
