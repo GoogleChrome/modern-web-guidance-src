@@ -100,8 +100,15 @@ run();
   // --- PASS 1.5: Execute the accumulated grading runs in parallel ---
   if (pnpmWorkspacePackages.length > 0) {
     console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
-    fs.writeFileSync(path.join(resultsDir, 'pnpm-workspace.yaml'), 'packages:\n  - \'**\'\n');
-    spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit' });
+    const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
+    fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
+    try {
+      spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit' });
+    } finally {
+      if (fs.existsSync(pnpmWorkspacePath)) {
+        fs.unlinkSync(pnpmWorkspacePath);
+      }
+    }
     console.log(`✅ Completed parallel grading pass\n`);
   }
 

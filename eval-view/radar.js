@@ -121,7 +121,15 @@ export class RadarChart {
       text.setAttribute("fill", "#c9d1d9");
       text.setAttribute("font-size", "11"); // Slightly smaller
       text.setAttribute("font-weight", "500");
-      text.textContent = label;
+
+      // Extract use case ID from format "appName (useCaseId)", or use label as-is
+      let useCaseId = label;
+      const match = label.match(/\(([^)]+)\)$/);
+      if (match) {
+        useCaseId = match[1];
+      }
+
+      text.textContent = useCaseId;
 
       text.onmouseover = () => {
         text.setAttribute("fill", "#fff");
