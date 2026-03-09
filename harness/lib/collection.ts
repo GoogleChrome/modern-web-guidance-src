@@ -56,44 +56,28 @@ export async function collectResults(resultsDir: string) {
       }
 
       // Generate a runner script to be picked up by pnpm -r run-grader
-      const playwrightConfig = path.join(guidesDir, 'playwright.config.ts');
+      // We import runPlaywright directly from the guides code to leverage existing test execution logic
+      const runGraderModulePath = path.resolve(__dirname, '../../guides/run-grader.ts');
       const gradeScript = `
-import { spawnSync } from 'child_process';
 import fs from 'fs';
-// We use child_process so we can cleanly capture stdout without piping issues
-const args = ['exec', 'playwright', 'test', '-c', ${JSON.stringify(playwrightConfig)}, ${JSON.stringify(graderPath)}, '--reporter=json'];
-const result = spawnSync('pnpm', args, {
-  encoding: 'utf-8',
-  stdio: ['ignore', 'pipe', 'inherit'],
-  env: { ...process.env, TARGET_FILE: ${JSON.stringify(targetFile)} },
-  cwd: ${JSON.stringify(guidesDir)},
-  maxBuffer: 10 * 1024 * 1024,
-});
+import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
-if (result.stdout && result.stdout.trim() !== '') {
+async function run() {
   try {
-    let maybeJson = result.stdout;
-    // Strip any preceding standard output lines (like pnpm setup logs)
-    const jsonStartIndex = maybeJson.indexOf('{');
-    if (jsonStartIndex !== -1) {
-      maybeJson = maybeJson.substring(jsonStartIndex);
-    }
-    // ensure it's valid JSON before writing, skipping Playwright warning lines if any
-    JSON.parse(maybeJson); 
-    // We simply write it out here; passing fails will be parsed later
-    fs.writeFileSync(${JSON.stringify(graderResults)}, maybeJson);
-  } catch(e) {
-    console.error("Failed to parse/write grader results JSON:", e.message);
-    console.error("Raw stdout was:", result.stdout.substring(0, 500));
+    const json = await runPlaywright(
+      ${JSON.stringify(targetFile)},
+      ${JSON.stringify(graderPath)},
+      ${JSON.stringify(path.join(dir, 'grade-report'))},
+      'inherit'
+    );
+    fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
+  } catch (err) {
+    console.error("Playwright test execution failed:", err);
+    process.exit(1); 
   }
 }
 
-if (result.error) {
-  console.error("Playwright failed to spawn:", result.error);
-  process.exit(1);
-}
-// Exit 0 regardless of test failures explicitly so pnpm doesn't abort the rest of the workspace
-process.exit(0);
+run();
       `.trim();
 
       fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);

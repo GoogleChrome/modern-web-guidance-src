@@ -45,7 +45,9 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
     env.PLAYWRIGHT_JSON_OUTPUT_NAME = opts.jsonOutputName;
   }
 
-  return spawn('pnpm', ['--silent', '--filter', 'guides', 'exec', 'playwright', 'test', '-c', playwrightConfig, opts.graderPath, ...reporterArgs], {
+  const playwrightBin = path.join(__dirname, 'node_modules', '.bin', 'playwright');
+
+  return spawn(playwrightBin, ['test', '-c', playwrightConfig, opts.graderPath, ...reporterArgs], {
     stdio: opts.stdio || 'inherit',
     env
   });
@@ -74,7 +76,8 @@ export async function gradeFile(targetFileAbs: string): Promise<void> {
   const [code] = await once(child, 'close');
 
   console.log(`\nTests finished with code ${code}. Opening HTML report...`);
-  const showReportChild = spawn('pnpm', ['--filter', 'guides', 'exec', 'playwright', 'show-report', outputDirPath], {
+  const playwrightBin = path.join(__dirname, 'node_modules', '.bin', 'playwright');
+  const showReportChild = spawn(playwrightBin, ['show-report', outputDirPath], {
     stdio: 'inherit'
   });
 
