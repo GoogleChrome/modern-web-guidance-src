@@ -173,6 +173,8 @@ function printInventory(inv: GuideInventory): void {
 
   console.log(`   ${NEGATIVE_DEMO_FILE.padEnd(18)} ${inv.hasNegativeDemo ? icon(true) : icon(false, true) + ' will generate'}`);
   console.log(`   ${GRADER_FILE.padEnd(18)} ${inv.hasGrader ? icon(true) : icon(false, true) + ' will generate'}`);
+  console.log(`   ${PROMPTS_FILE.padEnd(18)} ${inv.hasPrompts ? icon(true) : icon(false, true) + ' will generate'}`);
+  console.log(`   ${'task'.padEnd(18)} ${inv.hasTask ? icon(true) : icon(false, true) + ' will generate'}`);
 }
 
 export async function devGuide(targetDirRaw: string, options: DevGuideOptions = {}, inv?: GuideInventory): Promise<boolean> {
@@ -548,6 +550,12 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
   } else {
     console.log(`   ${GRADER_FILE.padEnd(21)} \u274c not generated`);
   }
+
+  const promptsStatus = inv.hasPrompts ? 'exists' : (result?.success ? 'generated' : 'not generated');
+  console.log(`   ${PROMPTS_FILE.padEnd(21)} ${inv.hasPrompts || result?.success ? '\u2705' : '\u274c'} ${promptsStatus}`);
+
+  const taskStatus = inv.hasTask ? 'exists' : (result?.success ? 'generated' : 'not generated');
+  console.log(`   ${'task'.padEnd(21)} ${inv.hasTask || result?.success ? '\u2705' : '\u274c'} ${taskStatus}`);
 
   console.log(`\nAll generated files are in ${relDir}/`);
   if (result?.success) {
