@@ -209,7 +209,8 @@ process.exit(result.status ?? 0);
         // Drop a transient pnpm-workspace.yaml at the root of the run directory.
         // The '**' pattern tells pnpm to recursively discover all the targetDirs
         // we just seeded with package.json files.
-        fs.writeFileSync(path.join(runDir, 'pnpm-workspace.yaml'), 'packages:\n  - \'**\'\n');
+        const pnpmWorkspacePath = path.join(runDir, 'pnpm-workspace.yaml');
+        fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
         
         try {
           // Fire off the parallel execution!
@@ -218,6 +219,10 @@ process.exit(result.status ?? 0);
         } catch (error) {
           console.error(`❌ Failed during Run ${runNumber} test execution`, error);
           hasErrors = true;
+        } finally {
+          if (fs.existsSync(pnpmWorkspacePath)) {
+            fs.unlinkSync(pnpmWorkspacePath);
+          }
         }
       }
 
