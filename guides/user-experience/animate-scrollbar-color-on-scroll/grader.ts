@@ -85,7 +85,12 @@ test.describe(`Animate Scrollbar Color Expectations: ${demoName}`, () => {
               }
             }
           } catch (e) {
-            // Ignore cross-origin stylesheet errors
+            const msg = e instanceof Error ? e.message : String(e);
+            if (msg.includes('Cannot access rules') || msg.includes('cross-origin') || (e instanceof Error && e.name === 'SecurityError')) {
+              // Ignore cross-origin stylesheet errors
+              continue;
+            }
+            throw e;
           }
         }
 
