@@ -4,9 +4,13 @@ A unified repository for modern web development guidance, containing both an MCP
 
 ## Project Structure
 
+- **`guides/`**: All guide content, organized by discipline (performance, user-experience, etc.). Also contains the dev pipeline scripts (`dev-guide.ts`, `run-grader.ts`, `grader-gen.ts`, `negative-gen.ts`).
+- **`harness/`**: The Guidance eval harness for executing and scoring tests. Includes task definitions, agent runners, and base apps.
 - **`serving/`**: The Modern Web MCP server. This provides semantic search over curated web development guides and browser support data.
-- **`harness/`**: The Guidance eval harness for executing and scoring tests.
 - **`eval-view/`**: A static dashboard for visualizing and analyzing evaluation results.
+- **`bin/gd.ts`**: The unified CLI entry point.
+
+See [CONTEXT.md](./CONTEXT.md) for a comprehensive project overview, architecture details, and contributor workflow.
 
 ## Getting Started
 
@@ -16,6 +20,16 @@ This project is managed as a **pnpm workspace**. You can install all dependencie
 pnpm install
 pnpm setup:playwright
 ```
+
+### 0. CLI Setup
+
+The `gd` CLI is the main way to run this project. To make it available globally and set up shell auto-completion, run:
+
+```bash
+pnpm link --global && gd setup-completion
+```
+
+*Note: For the auto-completion to take effect, you must refresh your shell (e.g., open a new terminal or source your config).*
 
 ### 1. Serving
 
@@ -46,24 +60,25 @@ Skills live in the `skills/` directory, and they are copied directly into the ag
 
 The evaluation suite measures how effectively AI models use modern web APIs.
 
-```bash
-# To run the full evaluation suite
-pnpm suite
+## Usage
 
-# To run a single isolated task
-pnpm task <task_name>
-# Example: pnpm task batch-analytics-events-task
+Run commands via the `gd` CLI.. run `gd --help`: 
+
+```bash
+# Guide Development
+gd audit                      # show status of all guides
+gd dev [dir] [options]        # auto-generate/calibrate 
+
+# You can still run individual steps if you need to, like `gd dev <dir> --gen-grader`
+
+# Evaluation
+gd eval                       # run the full evaluation suite
+gd eval [task1] [task2]       # run specific tasks
+gd dashboard                  # start the evaluation dashboard
 
 # To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
 pnpm upload <suite-name>
 # Example: pnpm upload analytics-suite
-
-# To view results in the dashboard
-pnpm dashboard
-
-# To re-generate evaluation reports for a suite
-pnpm report <suite-name>
-# Example: pnpm report analytics-suite
 ```
 
 ## Configuration
@@ -119,8 +134,7 @@ pnpm preflight
 
 ## Development
 
-- Add implementation guides to `serving/mcp-server/guides/`.
-- Add evaluation scenarios or checks to `harness/setup/` and `harness/checks/`.
+- Add guides under `guides/<discipline>/` (e.g. `guides/performance/my-feature/`). See [guides README](./guides/README.md) and [CONTEXT.md](./CONTEXT.md) for the full workflow.
 - Build-free TypeScript is supported in `serving` (requires Node 24+).
 
 ## License
