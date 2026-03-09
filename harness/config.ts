@@ -45,7 +45,7 @@ export const environmentConfig: EnvironmentConfig = {
 // *** Run with: `pnpm suite`         ***
 // **************************************
 export const suiteConfig: SuiteConfig = {
-  name: 'local-suite',
+  name: `full-${new Date().toISOString().split('T')[0]}`,
   numRuns: 2,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
