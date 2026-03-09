@@ -645,17 +645,17 @@ export function auditGuides(): void {
   }
 
   const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
-    'eval-ready':        { label: 'Ready for eval', color: cGreen },
-    'needs-test':        { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
-    'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
-    'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
-    'stub':              { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
     'incomplete':        { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
+    'stub':              { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
+    'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
+    'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
+    'needs-test':        { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
+    'eval-ready':        { label: 'Ready for eval', color: cGreen },
   };
 
   // Summary counts
   console.log(cBold(`\nGuide Audit: ${allGuides.length} guides\n`));
-  for (const status of ['eval-ready', 'needs-test', 'needs-calibration', 'needs-expectations', 'stub', 'incomplete'] as GuideStatus[]) {
+  for (const status of ['incomplete', 'stub', 'needs-expectations', 'needs-calibration', 'needs-test', 'eval-ready'] as GuideStatus[]) {
     const guides = byStatus.get(status) || [];
     const { label, color } = statusLabel[status];
     console.log(`  ${color(`${String(guides.length).padStart(2)}`)}  ${label}`);
