@@ -101,6 +101,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
   console.log(`Log file: ${logFilePath}\n`);
 
   try {
+    let hasErrors = false;
     const numRuns = options.numRuns || config.suite.numRuns;
     const endRun = 1 + numRuns;
     console.log(`\nStarting execution for ${numRuns} runs`);
@@ -216,6 +217,7 @@ process.exit(result.status ?? 0);
           console.log(`✅ Completed Run ${runNumber} test executions`);
         } catch (error) {
           console.error(`❌ Failed during Run ${runNumber} test execution`, error);
+          hasErrors = true;
         }
       }
 
@@ -236,10 +238,18 @@ process.exit(result.status ?? 0);
       }
     }
 
-    console.log(`\n✅ Test suite complete! Results saved to: ${testDir}`);
+    if (hasErrors) {
+      console.log(`\n❌ Test suite completed with errors! Results saved to: ${testDir}`);
+    } else {
+      console.log(`\n✅ Test suite complete! Results saved to: ${testDir}`);
+    }
 
     if (!options.skipEval) {
       await evaluateSuite(testDir, testID);
+    }
+
+    if (hasErrors) {
+      process.exitCode = 1;
     }
   } catch (e) {
     console.error('❌ Error during suite execution:', e);
