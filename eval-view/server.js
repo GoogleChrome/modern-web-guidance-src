@@ -189,7 +189,7 @@ const server = http.createServer(async (req, res) => {
                     const basePath = parts.slice(0, 4).join('/');
                     finalRelativePath = path.join(basePath, finalRelativePath);
                 }
-            } catch (e) {
+            } catch {
                 // Ignore invalid referer URLs
             }
         }

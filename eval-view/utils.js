@@ -64,7 +64,7 @@ export function initGoogleAuth(onAuthSuccess) {
             }
         }
 
-        const tokenClient = google.accounts.oauth2.initTokenClient({
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
             client_id: GOOGLE_CLIENT_ID,
             scope: 'https://www.googleapis.com/auth/devstorage.read_only',
             callback: (response) => {

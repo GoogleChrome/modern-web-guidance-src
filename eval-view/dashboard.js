@@ -511,7 +511,6 @@ async function showDetails(testName, runs, stats, testId) {
             };
         }
 
-        const sourceParam = new URLSearchParams(window.location.search).get('source') || 'local';
         const dropdown = document.createElement('select');
         dropdown.className = 'run-actions-dropdown';
         dropdown.style.cssText = 'padding: 4px; font-size: 0.9em; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;';

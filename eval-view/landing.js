@@ -313,7 +313,7 @@ async function loadLocalTests() {
                 console.warn(`Failed to load local test ${testId}:`, e);
             }
         }
-    } catch (error) {
+    } catch {
         console.warn('Local proxy not available');
     }
 }

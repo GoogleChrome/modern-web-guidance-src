@@ -131,14 +131,14 @@ export class ApiClient {
             } else {
                 return await this._checkLocalFileExists(path);
             }
-        } catch (e) {
+        } catch {
             return false;
         }
     }
 
     /** Resolves the correct base path for specific run details, parsing legacy logic. */
     async getResultInfo(testId, run, testName) {
-        const [appName, guide, runType] = testName.split(' - ');
+        const [appName, _, runType] = testName.split(' - ');
         const actualBaseApp = run.baseApp || appName;
 
         const logicalBasePath = `${testId}/${run.runNumber}/${appName}/${runType}`;
