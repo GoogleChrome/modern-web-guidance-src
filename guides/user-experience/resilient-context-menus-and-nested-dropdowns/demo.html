@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resilient Context Menu</title>
+
+  <!-- Polyfill for CSS Anchor Positioning -->
+  <script type="module">
+    if (!("anchorName" in document.documentElement.style)) {
+      import("https://unpkg.com/@oddbird/css-anchor-positioning");
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f6f8fa;
+    }
+
+    /* Container to allow visualizing edge collision (optional wrapper) */
+    .wrapper {
+      /* Gives enough space in center to see positioning but you can resize window to see flipping */
+      padding: 2rem;
+    }
+
+    .kebab-button {
+      /* 1. Define the anchor */
+      anchor-name: --kebab-anchor;
+
+      background-color: #ffffff;
+      border: 1px solid #d0d7de;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      cursor: pointer;
+      font-size: 24px;
+      line-height: 1;
+      padding: 4px 12px;
+      border-radius: 4px;
+      color: #333;
+      transition: background-color 0.2s;
+    }
+
+    .kebab-button:hover,
+    .kebab-button:focus-visible {
+      background-color: #e0e0e0;
+    }
+
+    .context-menu {
+      /* Native popover styles reset / setup */
+      margin: 0;
+      padding: 8px 0;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      background-color: white;
+      box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
+      min-width: 160px;
+
+      /* 2. Anchor Positioning setup */
+      position-anchor: --kebab-anchor;
+
+      /* 3. Tethering using position-area */
+      position-area: bottom span-right;
+
+      /* 4. Edge collision handling */
+      position-try-fallbacks: flip-block, flip-inline;
+
+      /* Reset inset to allow anchoring to take over */
+      inset: auto;
+    }
+
+    .context-menu::backdrop {
+      background: transparent;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      text-align: left;
+      padding: 8px 16px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 14px;
+      color: #24292f;
+    }
+
+    .menu-item:hover,
+    .menu-item:focus-visible {
+      background-color: #f3f4f6;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="wrapper">
+    <button id="trigger-btn" class="kebab-button" popovertarget="dropdown-menu" aria-label="Open context menu">
+      &#8942;
+    </button>
+  </div>
+
+  <!-- The actual dropdown menu (Popover API) -->
+  <div id="dropdown-menu" class="context-menu" popover="auto">
+    <button class="menu-item" type="button">Edit</button>
+    <button class="menu-item" type="button">Duplicate</button>
+    <button class="menu-item" type="button" style="color: #cf222e;">Delete</button>
+  </div>
+
+</body>
+
+</html>
