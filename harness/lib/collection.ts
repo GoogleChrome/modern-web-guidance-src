@@ -80,15 +80,20 @@ async function run() {
 run();
       `.trim();
 
+      const relativeId = path.relative(resultsDir, dir);
       fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
       fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
         name: `${taskName.substring(0, 30)}-${runType}-grader`,
         type: "module",
-        scripts: { "run-grader": "node grade.mjs" }
+        scripts: { 
+          // The --id flag is not used by grade.mjs, it is purely added here 
+          // so that the pnpm log output clearly identifies which test is running.
+          "run-grader": `node grade.mjs --id ${relativeId}` 
+        }
       }, null, 2));
 
       // path.relative(resultsDir, dir) gives e.g. "1/taskName/guided"
-      pnpmWorkspacePackages.push(path.relative(resultsDir, dir));
+      pnpmWorkspacePackages.push(relativeId);
     }
   }
 
