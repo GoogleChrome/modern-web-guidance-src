@@ -71,42 +71,59 @@ async function runGraderGeneration(targetDir: string, prompt: string): Promise<v
     execSync('npm install -D @playwright/test', { cwd: workDir, stdio: 'ignore' });
     execSync('npx playwright install chromium', { cwd: workDir, stdio: 'ignore', env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: path.join(workDir, '.cache', 'ms-playwright') } });
 
-    console.log(`Starting Gemini CLI agent for grader generation in ${workDir}`);
-
     const command = config.environment.geminiCliBin;
     const commandArgs = [
       '-p', prompt,
       '--yolo'
     ];
 
-    console.log(`Executing prompt...`);
+    let attempt = 0;
+    const maxRetries = 3;
 
-    const child = spawn(command, commandArgs, {
-      cwd: workDir,
-      env: { ...process.env },
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
+    while (attempt < maxRetries) {
+      attempt++;
+      console.log(`Starting Gemini CLI agent for grader generation in ${workDir} (Attempt ${attempt}/${maxRetries})`);
+      console.log(`Executing prompt...`);
 
-    let stdoutData = '';
-    let stderrData = '';
+      const child = spawn(command, commandArgs, {
+        cwd: workDir,
+        env: { ...process.env },
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
 
-    child.stdout.on('data', (data) => {
-      const chunk = data.toString();
-      stdoutData += chunk;
-      process.stdout.write(chunk);
-    });
+      let stdoutData = '';
+      let stderrData = '';
 
-    child.stderr.on('data', (data) => {
-      const chunk = data.toString();
-      stderrData += chunk;
-      process.stderr.write(chunk);
-    });
+      child.stdout.on('data', (data) => {
+        const chunk = data.toString();
+        stdoutData += chunk;
+        process.stdout.write(chunk);
+      });
 
-    const exitCode = await new Promise((resolve) => {
-      child.on('close', resolve);
-    });
+      child.stderr.on('data', (data) => {
+        const chunk = data.toString();
+        stderrData += chunk;
+        process.stderr.write(chunk);
+      });
 
-    if (exitCode !== 0) {
+      const exitCode = await new Promise((resolve) => {
+        child.on('close', resolve);
+      });
+
+      if (exitCode === 0) {
+        break; // Success
+      }
+
+      const combinedOutput = stdoutData + '\n' + stderrData;
+      const isInternalApiError = combinedOutput.includes('ApiError: got status: INTERNAL') || combinedOutput.includes('"status":"INTERNAL"');
+
+      if (isInternalApiError && attempt < maxRetries) {
+        const backoffMs = Math.pow(2, attempt) * 1000;
+        console.warn(`\n⚠️ Gemini API returned an INTERNAL error. Retrying in ${backoffMs / 1000} seconds...`);
+        await new Promise(r => setTimeout(r, backoffMs));
+        continue;
+      }
+
       throw new Error(`Gemini CLI exited with code ${exitCode}`);
     }
 
