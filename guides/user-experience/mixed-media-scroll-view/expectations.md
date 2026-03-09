@@ -1,0 +1,9 @@
+- The implementation MUST include a parent scroll container configured with vertical scrolling (e.g., `overflow-y: auto`). The container MUST NOT enforce `scroll-snap-type` so that the feed can be scrolled freely by the user after initial load.
+- A specific featured media card MUST be defined and have the `scroll-initial-target: nearest` CSS property applied directly to it.
+- The implementation MUST NOT apply `scroll-snap-align` to the feed items, so that the scrolling experience remains smooth and native without forced snapping.
+- The `scroll-initial-target` property MUST be applied uniquely to the single featured media card within the container.
+- Media elements (e.g., embedded images) within the scroll container MUST have explicit dimensions applied (e.g., via `height`, `width`, or `aspect-ratio`) to prevent unpredictable layout shifts that would invalidate initial scroll coordinates.
+- The implementation MUST NOT rely on JavaScript to calculate the initial scroll offset as its primary mechanism. The CSS property alone must manage the positioning to avoid a visible flash.
+- A progressive enhancement JavaScript fallback MUST be included. It MUST evaluate native CSS capability using `!CSS.supports("scroll-initial-target", "nearest")` before executing any scroll logic.
+- To guarantee accurate scroll coordinates and layout metrics, the fallback script MUST execute only after the layout is fully resolved. It MUST use `DOMContentLoaded` with a `setTimeout` delay (e.g., 50ms) or `window.addEventListener("load")` to ensure image heights are accounted for.
+- Inside the fallback check, the script MUST focus the featured media card using `element.scrollIntoView({ behavior: 'instant', block: 'center' })` to satisfy the prompt's centering requirement while mimicking the native discrete jump.

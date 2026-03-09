@@ -13,43 +13,44 @@ sources:
 
 # Pull to Reveal
 
-The CSS property `scroll-initial-target` offers a declarative CSS-only way to bring a specific child element into the visible area of its scroll container as soon as the container is rendered. Previously, developers heavily relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#content-id`) to hide a top search bar or refresh control on initial load, forcing the user to scroll up (pull down) to reveal it.
+The CSS property `scroll-initial-target` offers a declarative, CSS-only way to bring a specific child element into the visible area of its scroll container as soon as that container is rendered. Previously, developers relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#content-id`) to hide a top search bar or refresh control on initial load, forcing the user to scroll up (pull down) to reveal it.
 
-## How to implement
+## How to Implement
 
 The `scroll-initial-target` property allows you to declaratively set which child element should be scrolled into view when a scroll container is first displayed.
 
-To implement this:
-1. Ensure the parent element is a scroll container with scroll snapping (e.g., `overflow-y: auto` and `scroll-snap-type: y mandatory`).
-2. Apply `scroll-snap-align` (e.g., `start`) to the child elements.
-3. Apply `scroll-initial-target: nearest` to the specific child element you want to snap into view.
+To implement this successfully:
 
-When multiple elements specify an initial target within the same container, the user agent selects the one which comes first in the tree order. Once the user manually scrolls or an explicit programmatic scroll is triggered, the initial target isn't active anymore and the scroll container can be freely scrolled.
+1.  **Define the Container:** Ensure the parent element is a scroll container (e.g., `overflow-y: auto`).
+2.  **Set Alignment (Required):** Apply `scroll-snap-align` (e.g., `start`) to the child elements. **Note:** If the child's alignment is `none` (the default), `scroll-initial-target` will not function because the browser has no reference point for positioning.
+3.  **Target the Item:** Apply `scroll-initial-target: nearest` to the specific child element you want to snap into view.
 
-## Example code
+> **The "First-Wins" Rule:** If multiple elements within the same container specify `nearest`, the browser selects the one that appears first in the DOM tree order.
+
+## Example Code: Pull to Reveal Search
 
 ```css
 /**  
- * PARENT: The main scroll container.
- * Includes mandatory scroll snap on parent.
+ * PARENT: The scroll container.
  */
 .scroll-container {
   height: 100vh;
   overflow-y: auto;
+  /* Optional: Enables snapping for subsequent user scrolls */
   scroll-snap-type: y mandatory;
 }
 
- /** 
- * Holds scroll snap alignment.
- * Make sure that once the target is revealed, the user can search freely.
+/** 
+ * CHILDREN: Both the search bar and the main content need snap alignment.
+ * The main content aligns to start to serve as the initial target position
+ * and to act as a valid snap point after scrolling.
  */
 .main-content {
-  scroll-snap-align: none;
+  scroll-snap-align: start;
 }
 
 /** 
- * TARGET: Focused item
- * The specific item to focus on initial render.
+ * TARGET: The item that should be visible on initial load.
  */
 .main-content.target {
   scroll-initial-target: nearest;
@@ -65,27 +66,33 @@ When multiple elements specify an initial target within the same container, the 
 }
 ```
 
-## Strategic implementation
+## Strategic Implementation & Best Practices
 
 - **DO** use `scroll-initial-target: nearest` when you want to draw the user's attention to a specific part of a scrollable area upon load and intentionally hide peripheral UI units like a search bar at the very top.
-- **DO NOT** use this as a replacement for standard accessibility focus. This property only affects the visual scroll position; it does not move keyboard focus.
-- **DO NOT** use it if you need to animate the scroll position on load; this property sets the *initial* position instantly.
-- **DO** understand that the property is only effective on the *initial* render or when the scroll container's content changes significantly.
-- **DO** note that it will not override fragment navigation (if a URL has a `#hash` identifier it takes precedence).
+- **DO NOT** confuse this with accessibility focus. This property only moves the **visual** viewport; it does not move the keyboard focus. You must manually manage `element.focus()` if the target is intended to be the starting point for keyboard users.
+- **DO NOT** use this if you need a smooth "scrolling" animation on load; this property is discrete and sets the position instantly during the layout phase.
+- **DO** account for the **Precedence Hierarchy**: A URL fragment (e.g., `example.com/#top`) and the container-level `scroll-start` property both take precedence over `scroll-initial-target`.
 
-## Fallback strategies
+## Fallback Strategy
 
-For browsers that have yet to support `scroll-initial-target`, leverage `scrollIntoView()` as a fallback for cross-browser compatibility. Note that for pulling content to reveal, you want the main content to bound to the `start` (top) of the container.
+For browsers that do not yet support the API, use a JavaScript fallback. Note that for pulling content to reveal, you want the main content to bound to the `start` (top) of the container.
 
 ```javascript
+/**
+ * Progressive Enhancement Fallback
+ */
 document.addEventListener("DOMContentLoaded", () => {
-  const targetContent = document.querySelector('.main-content.target');
+  // Check for native CSS support
+  if (!CSS.supports("scroll-initial-target", "nearest")) {
+    const targetContent = document.querySelector('.main-content.target');
 
-  if (targetContent && !CSS.supports('scroll-initial-target', 'nearest')) {
-    // Fallback for browsers that don't support the CSS property
-    targetContent.scrollIntoView({ behavior: 'instant', block: 'start' });
+    if (targetContent) {
+      // Use behavior: "instant" to mimic the native CSS behavior
+      // 'block: start' should match your CSS 'scroll-snap-align' (or expected top position)
+      targetContent.scrollIntoView({ behavior: 'instant', block: 'start' });
+    }
   }
 });
 ```
 
-You can leave the default scroll position as a safe fallback for progressive enhancement if the specific target content isn't critical for the initial view (users will just see the search bar immediately instead of having to pull to reveal it).
+Leave the default scroll position as a safe fallback for progressive enhancement if the specific target content isn't critical for the initial view (users will just see the search bar immediately instead of having to pull to reveal it).
