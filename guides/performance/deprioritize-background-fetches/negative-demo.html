@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Background Fetch Control</title>
+</head>
+<body>
+  <h1>Data Management</h1>
+  <button id="trigger">Process Requests</button>
+
+  <script>
+    document.getElementById('trigger').addEventListener('click', () => {
+      fetch('/api/data', {
+        priority: 'low'
+      });
+
+      fetch('/api/analytics', {
+        method: 'POST',
+        body: JSON.stringify({ event: 'interaction' }),
+        importance: 'high'
+      });
+    });
+  </script>
+</body>
+</html>
