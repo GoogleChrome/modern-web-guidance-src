@@ -1,6 +1,6 @@
 # Eval-View Dashboard
 
-The Eval-View Dashboard lets you visualize test results from the Guidance eval harness. It runs completely client-side.
+The Eval-View Dashboard lets you visualize test results from the Guidance eval harness.
 
 ## Viewing the Dashboard
 
@@ -18,7 +18,7 @@ The application fetches evaluation data directly from the private Google Cloud S
 
 ## Local Development
 
-To run the dashboard locally (run from the root `guidance` directory):
+To run the dashboard locally and see local results (run from the root `guidance` directory):
 
 ```bash
 pnpm dashboard
@@ -30,7 +30,9 @@ If you make modifications to the `eval-view` code (HTML, CSS, JS), you can deplo
 
 From the **project root directory**, run:
 ```bash
-pnpm deploy:dashboard
+gd deploy
 ```
 
 This will automatically bundle the current `eval-view` directory and push it to the `gh-pages` branch on GitHub in the `eval-view` folder, which GitHub Pages uses to host the web app. It takes about 2-3 minutes for GitHub Actions to process the deployment and update the live URL.
+
+When deploying, you should also separately merge the changes into `main`.

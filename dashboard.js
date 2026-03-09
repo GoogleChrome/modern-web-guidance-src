@@ -1,7 +1,7 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, authenticatedFetch, getAccessToken } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth } from './utils.js';
+import { ApiClient } from './api.js';
 import { RadarChart } from './radar.js';
-
-const MCP_LOG_FILE = 'mcp-server.log';
+import { MCP_LOG_FILE } from './constants.js';
 
 // Keep track of current details state for navigation
 let currentDetails = null;
@@ -9,62 +9,54 @@ let allTestData = null;
 let sortedScenarios = [];
 let currentRunTypes = [];
 let currentTestID = null;
+let api;
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Wait for auth to be checked/initialized before loading dashboard data
-    initGoogleAuth(async () => {
-        await loadDashboardData();
-    });
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize API Client
+    api = new ApiClient();
 
-    const params = new URLSearchParams(window.location.search);
-    const source = params.get('source') || 'local';
+    // Auth Button Handling (only for remote)
+    if (api.source === 'remote') {
+        initGoogleAuth(async () => {
+            // Reload on auth success
+            const params = new URLSearchParams(window.location.search);
+            const testId = params.get('testId');
+            if (testId) {
+                await loadDashboardData(testId);
+            }
+        });
+    }
 
-    // In local mode or if already authenticated immediately load
-    if (source === 'local' || getAccessToken()) {
-        loadDashboardData();
+    const initialParams = new URLSearchParams(window.location.search);
+    const initialTestID = initialParams.get('testId');
+
+    if (initialTestID) {
+        await loadDashboardData(initialTestID);
+    } else {
+        document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;">Error: No testId provided in query string.</div>`;
     }
 });
 
-async function loadDashboardData() {
+async function loadDashboardData(testId) {
     // Prevent double loading
     if (window.dashboardLoaded) return;
     window.dashboardLoaded = true;
 
     try {
-        // Get testID from query string
-        const params = new URLSearchParams(window.location.search);
-        const testID = params.get('testID');
-
-        if (!testID) {
-            throw new Error('No testID provided in query string');
-        }
-
-        const source = params.get('source') || 'local';
-        let evalsPath = `results/${testID}/evals.json?source=${source}&t=${Date.now()}`;
-        
-        if (source === 'remote') {
-            evalsPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testID}/evals.json`)}?alt=media`;
-        }
-
-        const response = await (source === 'remote' ? authenticatedFetch(evalsPath) : fetch(evalsPath));
-        if (!response.ok) throw new Error(`Failed to load data from ${evalsPath}`);
-        const data = await response.json();
+        const data = await api.getEvals(testId);
 
         // Capture data for navigation
         allTestData = data;
-        currentTestID = testID;
+        currentTestID = testId;
 
         // Fetch jetski info (optional)
         let jetskiVersion = null;
+        let manifestTimestamp = null;
         try {
-            let jetskiPath = `results/${testID}/jetski_info.json?source=${source}`;
-            if (source === 'remote') {
-                 jetskiPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testID}/jetski_info.json`)}?alt=media`;
-            }
-            const jetskiRes = await (source === 'remote' ? authenticatedFetch(jetskiPath) : fetch(jetskiPath));
-            if (jetskiRes.ok) {
-                const jetskiData = await jetskiRes.json();
+            const jetskiData = await api.getJetskiInfo(testId);
+            if (jetskiData) {
                 jetskiVersion = jetskiData['Jetski Version'];
+                manifestTimestamp = jetskiData.timestamp;
             }
         } catch (e) {
             console.log('Could not load Jetski info:', e);
@@ -72,26 +64,17 @@ async function loadDashboardData() {
 
         // Fetch timestamp from manifest
         let timestamp = null;
-        try {
-            if (data.timestamp) {
-                timestamp = data.timestamp;
-            } else {
-                const evalsRes = await (source === 'remote' ? authenticatedFetch(evalsPath) : fetch(evalsPath));
-                if (evalsRes.ok) {
-                    const evals = await evalsRes.json();
-                    timestamp = evals.timestamp;
-                }
-            }
-        } catch (e) {
-            console.log('Failed to fetch evals.json for timestamp:', e);
+        if (manifestTimestamp) {
+            timestamp = manifestTimestamp;
         }
 
-        renderTestHeader(testID, jetskiVersion, timestamp);
-        renderSummary(data, testID);
-        renderGrid(data, testID);
-        renderRadarChart(data, testID);
+        renderTestHeader(testId, jetskiVersion, timestamp);
+        renderSummary(data);
+        renderGrid(data, testId);
+        renderRadarChart(data, testId);
 
         // Check for deep link to modal
+        const params = new URLSearchParams(window.location.search);
         const testName = params.get('testName');
         const checkId = params.get('checkId');
 
@@ -108,17 +91,17 @@ async function loadDashboardData() {
                 if (view === 'diff' && runNumber) {
                     const run = runData.find(r => r.runNumber === runNumber);
                     if (run) {
-                        currentDetails = { testName, runs: runData, stats: testStats, testID };
-                        await showDetails(testName, runData, testStats, testID);
+                        currentDetails = { testName, runs: runData, stats: testStats, testId };
+                        await showDetails(testName, runData, testStats, testId);
 
-                        const { setupPath, resultPath } = await getResultPaths(testID, run, testName);
+                        const { setupPath, resultPath } = await getResultPaths(testId, run, testName);
                         await viewDiff(setupPath, resultPath, testName, run.runNumber);
                     } else {
-                        await showDetails(testName, runData, testStats, testID);
+                        await showDetails(testName, runData, testStats, testId);
                     }
                 } else {
                     // Auto-open modal
-                    await showDetails(testName, runData, testStats, testID);
+                    await showDetails(testName, runData, testStats, testId);
                 }
 
                 // If checkId is provided, try to scroll to it
@@ -144,8 +127,11 @@ async function loadDashboardData() {
     }
 }
 
-    // Modal control
+// Modal control
+document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('modal');
+    if (!modal) return;
+
     const closeBtn = document.querySelector('.close-modal');
 
     // Close function that also cleans up URL
@@ -153,7 +139,7 @@ async function loadDashboardData() {
         if (modal.open) modal.close();
     };
 
-    closeBtn.onclick = closeModal;
+    if (closeBtn) closeBtn.onclick = closeModal;
 
     // Close on backdrop click
     modal.addEventListener('click', (event) => {
@@ -165,9 +151,9 @@ async function loadDashboardData() {
     // Handle Esc key or dialog close API
     modal.addEventListener('close', () => {
         const url = new URL(window.location.href);
-        const params = ['testName', 'checkId', 'view', 'run'];
+        const paramsList = ['testName', 'checkId', 'view', 'run'];
         let changed = false;
-        params.forEach(p => {
+        paramsList.forEach(p => {
             if (url.searchParams.has(p)) {
                 url.searchParams.delete(p);
                 changed = true;
@@ -186,59 +172,53 @@ async function loadDashboardData() {
     if (gcsBtn) {
         const params = new URLSearchParams(window.location.search);
         const source = params.get('source');
-        const testID = params.get('testID');
+        const testId = params.get('testId');
         if (source === 'remote') {
             gcsBtn.style.display = 'inline-block';
-            gcsBtn.onclick = () => window.open(`https://console.cloud.google.com/storage/browser/guidance-evals/${testID}?project=chrome-kiwi-air-force-dev`, '_blank');
+            gcsBtn.onclick = () => window.open(`https://console.cloud.google.com/storage/browser/guidance-evals/${testId}?project=chrome-kiwi-air-force-dev`, '_blank');
         }
     }
 
     // View Log Handler
-    const viewLogBtn = document.getElementById('view-log-btn');
-    if (viewLogBtn) {
-        const params = new URLSearchParams(window.location.search);
-        const testID = params.get('testID');
-        const source = params.get('source') || 'local';
-        const logPath = `results/${testID}/test_suite.log?source=${source}`;
+    (async () => {
+        const viewLogBtn = document.getElementById('view-log-btn');
+        if (viewLogBtn) {
+            const params = new URLSearchParams(window.location.search);
+            const testId = params.get('testId');
 
-        // Check if log file exists
-        try {
-            let logUrl = logPath;
-            if (source === 'remote') {
-                logUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testID}/test_suite.log`)}?alt=media`;
-            }
-            
-            const checkRes = await (source === 'remote' ? authenticatedFetch(logUrl) : fetch(logPath, { method: 'HEAD' }));
-            if (!checkRes.ok) {
-                // Hide button if log doesn't exist
-                viewLogBtn.style.display = 'none';
-            } else {
-                // Show button and set up click handler
-                viewLogBtn.onclick = async () => {
-                    const modal = document.getElementById('modal');
-                    const title = document.getElementById('modal-title');
-                    const body = document.getElementById('modal-body');
+            if (testId) {
+                try {
+                    const hasLog = await api.checkLogExists(testId);
+                    if (!hasLog) {
+                        viewLogBtn.style.display = 'none';
+                    } else {
+                        viewLogBtn.onclick = async () => {
+                            const modal = document.getElementById('modal');
+                            const title = document.getElementById('modal-title');
+                            const body = document.getElementById('modal-body');
 
-                    title.textContent = 'Test Suite Run Log';
-                    body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading log...</div>';
-                    modal.dataset.view = 'log';
-                    modal.showModal();
+                            title.textContent = 'Test Suite Run Log';
+                            body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading log...</div>';
+                            modal.dataset.view = 'log';
+                            modal.showModal();
 
-                    try {
-                        const res = await (source === 'remote' ? authenticatedFetch(logUrl) : fetch(logPath));
-                        if (!res.ok) throw new Error('Failed to fetch log');
-                        const text = await res.text();
-                        body.innerHTML = `<div class="log-content">${escapeHtml(text)}</div>`;
-                    } catch (e) {
-                        body.innerHTML = `<div style="color: var(--accent-failure); padding: 20px;">Error loading log: ${e.message}</div>`;
+                            try {
+                                const text = await api.getFileText(`${testId}/test_suite.log`);
+                                body.innerHTML = `<div class="log-content">${escapeHtml(text)}</div>`;
+                            } catch (e) {
+                                body.innerHTML = `<div style="color: var(--accent-failure); padding: 20px;">Error loading log: ${e.message}</div>`;
+                            }
+                        };
                     }
-                };
+                } catch (e) {
+                    console.log('Error checking log existence:', e);
+                    viewLogBtn.style.display = 'none'; // Hide button on error
+                }
+            } else {
+                viewLogBtn.style.display = 'none'; // Hide button if no testId
             }
-        } catch {
-            // Hide button on error
-            viewLogBtn.style.display = 'none';
         }
-    }
+    })();
 
     // Arrow key navigation
     document.addEventListener('keydown', (e) => {
@@ -291,11 +271,12 @@ async function loadDashboardData() {
             }
         }
     });
+});
 
-function renderTestHeader(testID, jetskiVersion, timestamp) {
+function renderTestHeader(testId, jetskiVersion, timestamp) {
     const container = document.getElementById('test-header');
     if (container) {
-        let html = `Test ID: <strong>${testID}</strong>`;
+        let html = `Test ID: <strong>${testId}</strong>`;
 
         if (timestamp) {
             let timeStr = timestamp;
@@ -319,7 +300,7 @@ function renderTestHeader(testID, jetskiVersion, timestamp) {
     }
 }
 
-function renderSummary(data, _testID) {
+function renderSummary(data) {
     const container = document.getElementById('summary-stats');
     const results = data.results;
 
@@ -369,7 +350,7 @@ function calculateGroupTotalStats(results, runType) {
     return { passed, total };
 }
 
-function renderGrid(data, testID) {
+function renderGrid(data, testId) {
     const grid = document.getElementById('dashboard-grid');
     const results = data.results;
     const stats = data.stats;
@@ -413,7 +394,7 @@ function renderGrid(data, testID) {
                 const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
                 const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
 
-                card.onclick = () => showDetails(testName, runData, testStats, testID);
+                card.onclick = () => showDetails(testName, runData, testStats, testId);
                 card.innerHTML = `
                     <h3>${formatTestName(testName)}</h3>
                     <div class="pass-rate-bar">
@@ -433,7 +414,7 @@ function renderGrid(data, testID) {
 
 // Keep track of current details state for navigation
 
-async function showDetails(testName, runs, stats, testID) {
+async function showDetails(testName, runs, stats, testId) {
     // Update URL without reloading
     const url = new URL(window.location.href);
     url.searchParams.set('testName', testName);
@@ -442,7 +423,7 @@ async function showDetails(testName, runs, stats, testID) {
     window.history.replaceState({ testName }, '', url);
 
     // Store current details for back navigation
-    currentDetails = { testName, runs, stats, testID };
+    currentDetails = { testName, runs, stats, testId };
 
     const modal = document.getElementById('modal');
     const title = document.getElementById('modal-title');
@@ -457,35 +438,32 @@ async function showDetails(testName, runs, stats, testID) {
 
     title.textContent = formatTestName(testName);
 
-    // Fetch prompt text from tasks directory
-    let promptHtml = '';
-    try {
-        const taskPath = `tasks/${guide}.md`;
-        const res = await fetch(taskPath);
-        if (res.ok) {
-            let text = await res.text();
-            
-            // Strip frontmatter if present
-            const frontmatterMatch = text.match(/^---\n(?:[\s\S]*?)\n---\n([\s\S]*)$/);
-            if (frontmatterMatch) {
-                text = frontmatterMatch[1].trim();
-            }
+    let promptHtml = ''; // Initialize promptHtml outside the map
 
-            promptHtml = `
-                    <div class="prompt-section" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--text-secondary);">
-                    <h4 style="margin-top: 0; margin-bottom: 10px;">Prompt</h4>
-                        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; color: var(--text-primary);">${escapeHtml(text)}</pre>
-                    </div>
-                `;
-        }
-    } catch (e) {
-        console.error('Failed to fetch prompt', e);
-    }
-
-    // Check for setup file asynchronously for each run to show View Diff button if applicable
     const runDetailsPromises = runs.map(async (run) => {
         const s = getRunStats(run.results);
-        const { setupPath, resultPath, usedBasePath } = await getResultPaths(testID, run, testName);
+        // Determine file paths for this run
+        const { setupPath, resultPath, usedBasePath } = await getResultPaths(testId, run, testName);
+
+        // Fetch prompt text from the task definition
+        if (run === runs[0]) {
+            try {
+                const promptPath = `tasks/${guide}-task.md`;
+                const text = await api.getFileText(promptPath);
+                
+                // Strip YAML frontmatter from the markdown task file
+                const cleanedText = text.replace(/^---[\s\S]+?---\n+/, '');
+
+                promptHtml = `
+                    <div class="prompt-section" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--text-secondary);">
+                        <h4 style="margin-top: 0; margin-bottom: 10px;">Prompt</h4>
+                        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; color: var(--text-primary);">${escapeHtml(cleanedText)}</pre>
+                    </div>
+                `;
+            } catch (e) {
+                console.log('Task prompt file not found:', e.message);
+            }
+        }
 
         let guideSection = '';
         if (run.guideUsed !== undefined) {
@@ -528,14 +506,10 @@ async function showDetails(testName, runs, stats, testID) {
         if (viewResourcesLink) {
             viewResourcesLink.onclick = (e) => {
                 e.preventDefault();
-                const source = new URLSearchParams(window.location.search).get('source') || 'local';
-                const resourcesPath = `${usedBasePath}/${MCP_LOG_FILE}?source=${source}`;
+                const resourcesPath = `${usedBasePath}/${MCP_LOG_FILE}`;
                 viewContent(resourcesPath, resourcesPath);
             };
         }
-
-        const sourceParam = new URLSearchParams(window.location.search).get('source') || 'local';
-        const relativeDir = usedBasePath.replace('results/', '');
 
         const dropdown = document.createElement('select');
         dropdown.className = 'run-actions-dropdown';
@@ -554,49 +528,23 @@ async function showDetails(testName, runs, stats, testID) {
 
         let sessionFile = null;
         try {
-            if (sourceParam === 'local') {
-                 const filesRes = await fetch(`/api/run-files?dir=${encodeURIComponent(relativeDir)}&source=${sourceParam}`);
-                 if (filesRes.ok) {
-                     const { files } = await filesRes.json();
-                     const rawJson = files.find(f => f === `${guide}_results.json`);
-                     if (rawJson) {
-                         const rawOpt = document.createElement('option');
-                         rawOpt.value = 'raw';
-                         rawOpt.textContent = 'Raw Test Results';
-                         dropdown.appendChild(rawOpt);
-                     }
-                     sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
-                     if (sessionFile) {
-                         const trajOpt = document.createElement('option');
-                         trajOpt.value = 'trajectory';
-                         trajOpt.textContent = 'Trajectory';
-                         dropdown.appendChild(trajOpt);
-                     }
-                 }
-            } else {
-                 const gcsPrefix = relativeDir.endsWith('/') ? relativeDir : relativeDir + '/';
-                 const gcsUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o?prefix=${encodeURIComponent(gcsPrefix)}`;
-                 const filesRes = await authenticatedFetch(gcsUrl);
-                 if (filesRes.ok) {
-                     const data = await filesRes.json();
-                     if (data.items) {
-                         const fileNames = data.items.map(item => item.name.split('/').pop());
-                         const rawJson = fileNames.find(f => f === `${guide}_results.json`);
-                         if (rawJson) {
-                             const rawOpt = document.createElement('option');
-                             rawOpt.value = 'raw';
-                             rawOpt.textContent = 'Raw Test Results';
-                             dropdown.appendChild(rawOpt);
-                         }
-                         sessionFile = fileNames.find(f => f.startsWith('session-') && f.endsWith('.html'));
-                         if (sessionFile) {
-                             const trajOpt = document.createElement('option');
-                             trajOpt.value = 'trajectory';
-                             trajOpt.textContent = 'Trajectory';
-                             dropdown.appendChild(trajOpt);
-                         }
-                     }
-                 }
+            const files = await api.getRunFiles(usedBasePath);
+            if (files && files.length > 0) {
+                const rawJson = files.find(f => f === `${guide}_results.json`);
+                if (rawJson) {
+                    const rawOpt = document.createElement('option');
+                    rawOpt.value = 'raw';
+                    rawOpt.textContent = 'Raw Test Results';
+                    dropdown.appendChild(rawOpt);
+                }
+
+                sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
+                if (sessionFile) {
+                    const trajOpt = document.createElement('option');
+                    trajOpt.value = 'trajectory';
+                    trajOpt.textContent = 'Trajectory';
+                    dropdown.appendChild(trajOpt);
+                }
             }
         } catch (e) {
             console.log('Error checking run files:', e);
@@ -606,17 +554,21 @@ async function showDetails(testName, runs, stats, testID) {
             const val = e.target.value;
             e.target.value = ''; // reset selection
             if (val === 'source') {
-                window.open(resultPath, '_blank');
+                if (api.source === 'remote') {
+                    // Open directly via the mTLS domain which handles auth and serves raw HTML
+                    window.open(`https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`, '_blank');
+                } else {
+                    window.open(api.getAbsoluteUrl(resultPath), '_blank');
+                }
             } else if (val === 'diff') {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {
-                if (sourceParam === 'remote') {
-                    const fixedPath = `${usedBasePath}/${sessionFile}`.replace(/^results\//, '');
-                    const finalPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(fixedPath)}?alt=media`;
-                    authenticatedFetch(finalPath)
+                if (api.source === 'remote') {
+                    // For remote HTML files, fetch as blob so it renders in a new tab instead of downloading
+                    const finalPath = api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`);
+                    api._fetch(finalPath)
                         .then(res => { if (!res.ok) throw new Error(); return res.blob(); })
                         .then(blob => {
-                            // Ensure the blob has text/html type so it renders in the browser
                             const htmlBlob = new Blob([blob], { type: 'text/html' });
                             const url = URL.createObjectURL(htmlBlob);
                             window.open(url, '_blank');
@@ -626,10 +578,10 @@ async function showDetails(testName, runs, stats, testID) {
                             alert('Failed to load remote trajectory');
                         });
                 } else {
-                    window.open(`${usedBasePath}/${sessionFile}?source=${sourceParam}`, '_blank');
+                    window.open(api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`), '_blank');
                 }
             } else if (val === 'raw') {
-                const rawPath = `${usedBasePath}/${guide}_results.json?source=${sourceParam}`;
+                const rawPath = `${usedBasePath}/${guide}_results.json`;
                 viewContent(rawPath, rawPath);
             }
         };
@@ -639,7 +591,7 @@ async function showDetails(testName, runs, stats, testID) {
     });
 
     const runDetails = await Promise.all(runDetailsPromises);
-    body.innerHTML = promptHtml;
+    body.innerHTML = promptHtml; // Insert promptHtml first
     runDetails.forEach(detail => body.appendChild(detail));
     modal.showModal();
 }
@@ -651,7 +603,7 @@ function renderBackButton() {
     btn.style.cssText = 'margin-bottom: 20px; padding: 5px 15px; font-size: 0.9em;';
     btn.onclick = () => {
         if (currentDetails) {
-            showDetails(currentDetails.testName, currentDetails.runs, currentDetails.stats, currentDetails.testID);
+            showDetails(currentDetails.testName, currentDetails.runs, currentDetails.stats, currentDetails.testId);
         }
     };
     return btn;
@@ -666,41 +618,20 @@ async function viewContent(fileName, filePath) {
     modal.dataset.view = 'content';
     body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading content...</div>';
 
+    body.innerHTML = '';
+    body.appendChild(renderBackButton());
+
+    const pre = document.createElement('pre');
+    pre.className = 'log-content';
+    body.appendChild(pre);
+
     try {
-        const source = new URLSearchParams(window.location.search).get('source');
-        let finalPath = filePath;
-        
-        let res;
-        if (source === 'remote') {
-            // Note: filePath might be `results/test_xxx/...` but from getResultPaths usedBasePath...
-            // It could be absolute or relative. Make a safe guess.
-            if (!filePath.startsWith('http')) {
-                 let fixedPath = filePath.split('?')[0];
-                 if (fixedPath.startsWith('results/')) {
-                     fixedPath = fixedPath.substring(8); // Strip "results/"
-                 }
-                 finalPath = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(fixedPath)}?alt=media`;
-            }
-            res = await authenticatedFetch(finalPath);
-        } else {
-            res = await fetch(filePath);
-        }
-
-        if (!res.ok) {
-            if (res.status === 404) {
-                throw new Error('Resources file not found.');
-            }
-            throw new Error(`Failed to fetch file (Status: ${res.status})`);
-        }
-        const text = await res.text();
-
-        body.innerHTML = '';
-        body.appendChild(renderBackButton());
-
-        const content = document.createElement('div');
-        content.className = 'log-content';
-        content.textContent = text;
-        body.appendChild(content);
+        const text = await api.getFileText(filePath);
+        const lines = text.split('\n');
+        const truncated = lines.length > 5000;
+        const content = truncated ? lines.slice(0, 5000).join('\n') + '\n\n...[truncated for display]...' : text;
+        pre.textContent = content; // escapeHtml not needed if using textContent on a pre
+        pre.className = '';
 
     } catch (e) {
         body.innerHTML = '';
@@ -735,37 +666,18 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     modal.dataset.view = 'diff';
 
     try {
-        const source = new URLSearchParams(window.location.search).get('source');
-        let finalSetup = setupPath;
-        let finalResult = resultPath;
-
-        if (source === 'remote') {
-             // setupPath is local base_apps/...
-             // resultPath is GCS
-             // Remove 'results/' from GCS paths and fix finalPath parsing.
-             if (!resultPath.startsWith('http')) {
-                let fixedResultPath = resultPath.split('?')[0];
-                if (fixedResultPath.startsWith('results/')) fixedResultPath = fixedResultPath.substring(8);
-                finalResult = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(fixedResultPath)}?alt=media`;
+        let setupText = '';
+        try {
+            setupText = await api.getFileText(setupPath);
+        } catch (e) {
+            // If setup is missing (404), treat as empty string. 
+            // If it's a real error, throw
+            if (!e.message.includes('404')) {
+                throw new Error(`Failed to load setup file: ${setupPath}`);
             }
         }
 
-        const [setupRes, resultRes] = await Promise.all([
-            fetch(finalSetup), // Always local for base_apps
-            source === 'remote' ? authenticatedFetch(finalResult) : fetch(finalResult)
-        ]);
-
-        // If setup is missing (404), treat as empty string
-        let setupText = '';
-        if (setupRes.ok) {
-            setupText = await setupRes.text();
-        } else if (setupRes.status !== 404) {
-            // If it's not OK and NOT 404, likely a real error
-            throw new Error(`Failed to load setup file: ${setupPath} (${setupRes.status})`);
-        }
-
-        if (!resultRes.ok) throw new Error(`Failed to load result file: ${resultPath}`);
-        const resultText = await resultRes.text();
+        const resultText = await api.getFileText(resultPath);
 
         const diff = Diff.diffLines(setupText, resultText);
 
@@ -847,7 +759,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     }
 }
 
-function renderRadarChart(data, testID) {
+function renderRadarChart(data, testId) {
     const results = data.results;
     const apps = {};
 
@@ -911,7 +823,7 @@ function renderRadarChart(data, testID) {
             const testName = originalKey;
             const runData = results[testName];
             const testStats = data.stats[testName];
-            showDetails(testName, runData, testStats, testID);
+            showDetails(testName, runData, testStats, testId);
         }
     };
 
@@ -937,85 +849,6 @@ function renderRadarChart(data, testID) {
 }
 
 
-async function getResultPaths(testID, run, testName) {
-    const [appName, guide, runType] = testName.split(' - ');
-    const actualBaseApp = run.baseApp || appName;
-
-    // Cover cases for new use case format and old (greenfield, brownfield, redfield) format
-    const basePaths = [
-        `results/${testID}/${run.runNumber}/${appName}/${runType}`,
-        `results/${testID}/${run.runNumber}/${appName}/${guide}/${runType}`
-    ];
-
-    const resultPathBase = await findBestEntryPoint(basePaths);
-
-    // Determine which base path was used
-    const usedBasePath = basePaths.find(bp => resultPathBase.startsWith(bp)) || basePaths[0];
-
-    // Calculate relative path (e.g., "src/App.jsx" or "index.html")
-    const relativePath = resultPathBase.replace(usedBasePath + '/', '');
-    
-    // Check old style path and new style path
-    const candidateSetupPaths = [
-        `base_apps/${actualBaseApp}/${runType}/${relativePath}`,
-        `base_apps/${actualBaseApp}/${relativePath}`
-    ];
-    let setupPath = candidateSetupPaths[candidateSetupPaths.length - 1]; // Assume new style by default
-    
-    for (const path of candidateSetupPaths) {
-        try {
-            const res = await fetch(path, { method: 'HEAD' });
-            if (res.ok) {
-                setupPath = path;
-                break;
-            }
-        } catch {}
-    }
-
-    const source = new URLSearchParams(window.location.search).get('source') || 'local';
-    const resultPath = `${resultPathBase}?source=${source}`;
-
-    return { setupPath, resultPath, usedBasePath };
-}
-
-async function findBestEntryPoint(basePaths) {
-    // basePaths can be a string or array of strings
-    const pathsToCheck = Array.isArray(basePaths) ? basePaths : [basePaths];
-
-    const candidates = [
-        'dist/index.html',
-        'src/App.jsx',
-        'src/App.js',
-        'src/main.jsx',
-        'src/main.js',
-        'src/index.jsx',
-        'src/index.js',
-        'index.html'
-    ];
-
-    const source = new URLSearchParams(window.location.search).get('source') || 'local';
-
-    for (const basePath of pathsToCheck) {
-        let bestCandidate = null;
-
-        if (source === 'remote') {
-             // For remote, we guess index.html as standard since HEAD requests to media link fail without auth sometimes,
-             // or auth fetch HEAD doesn't work exact same way.
-             bestCandidate = `${basePath}/index.html`;
-        } else {
-             const checks = candidates.map(candidate =>
-                 fetch(`${basePath}/${candidate}?source=${source}`, { method: 'HEAD' })
-                     .then(res => res.ok ? `${basePath}/${candidate}` : null)
-                     .catch(() => null)
-             );
-
-             const results = await Promise.all(checks);
-             bestCandidate = results.find(result => result !== null);
-        }
-
-        if (bestCandidate) return bestCandidate;
-    }
-
-    // Fallback to first base path index.html if nothing found
-    return `${pathsToCheck[0]}/index.html`;
+async function getResultPaths(testId, run, testName) {
+    return await api.getResultInfo(testId, run, testName);
 }
