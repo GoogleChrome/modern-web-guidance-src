@@ -48,6 +48,9 @@ The grader can be run with the following commands:
 TARGET_FILE=$(pwd)/demo.html npx playwright test grader.ts
 TARGET_FILE=$(pwd)/negative-demo.html npx playwright test grader.ts
 
+Important rules for the generated grader:
+- Do not use generic try/catch blocks that aggressively swallow exceptions (e.g. \`catch (e) { /* ignore */ }\`). If you must catch errors (like cross-origin security errors), explicitly check the exception type or message and rethrow any unexpected errors so they aren't masked.
+
 The output should be a single file named grader.ts. Do not modify any other files.
 `;
 
