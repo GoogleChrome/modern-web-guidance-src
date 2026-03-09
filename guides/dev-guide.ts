@@ -273,12 +273,34 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     }
   }
 
-  // Step 5: Optional agent test
+  // Step 5: Test task and prompt generation
+  if (calibrationResult?.success) {
+    console.log(cCyan(`\n--- Setting up test task ---`));
+    const existingTask = taskMap.get(currentInv.name);
+    const baseApp = existingTask?.baseApp ?? 'daily-grind';
+
+    const promptsPath = path.join(targetDir, PROMPTS_FILE);
+    if (!fs.existsSync(promptsPath)) {
+      console.log(`${PROMPTS_FILE} not found, generating...`);
+      try {
+        await generatePrompts(targetDir, baseApp);
+      } catch (err) {
+        console.error(cRed(`Failed to generate ${PROMPTS_FILE}: ${err}`));
+      }
+    }
+
+    if (!existingTask && fs.existsSync(promptsPath)) {
+      const taskInfo = createTask(targetDir, currentInv.name);
+      taskMap.set(currentInv.name, taskInfo);
+    }
+  }
+
+  // Step 6: Optional agent test
   if (options.test !== false && calibrationResult?.success) {
     await runAgentTest(targetDir, currentInv.name, taskMap);
   }
 
-  // Step 6: Summary
+  // Step 7: Summary
   printSummary(targetDir, currentInv, calibrationResult, calibrationAttempt);
 
   return calibrationResult?.success ?? false;
@@ -390,24 +412,12 @@ ${prompt}
 async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<string, TaskInfo>): Promise<void> {
   console.log(cCyan(`\n--- Running agent test ---`));
 
-  // Step a: Determine base app — check for an existing task first
-  const existingTask = taskMap.get(guideName);
-  const baseApp = existingTask?.baseApp ?? 'daily-grind';
-
-  // Step b: Ensure prompts.md exists
-  const promptsPath = path.join(targetDir, PROMPTS_FILE);
-  if (!fs.existsSync(promptsPath)) {
-    console.log(`${PROMPTS_FILE} not found, generating...`);
-    try {
-      await generatePrompts(targetDir, baseApp);
-    } catch (err) {
-      console.error(cRed(`Failed to generate ${PROMPTS_FILE}: ${err}`));
-      return;
-    }
+  const taskInfo = taskMap.get(guideName);
+  if (!taskInfo) {
+    console.error(cRed(`Task info not found for ${guideName}, cannot run agent test.`));
+    return;
   }
-
-  // Step c: Find or create task file
-  const taskInfo = existingTask ?? createTask(targetDir, guideName);
+  
   console.log(`Task: ${taskInfo.taskName} (base_app: ${taskInfo.baseApp})`);
   console.log(`Prompt: ${cDim(taskInfo.prompt.substring(0, 120))}${taskInfo.prompt.length > 120 ? '...' : ''}`);
 
