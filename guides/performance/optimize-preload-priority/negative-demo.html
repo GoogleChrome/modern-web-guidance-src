@@ -1,28 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <title>Landing Page</title>
-    <link rel="preload" href="hero-banner-1.jpg" as="image" fetchpriority="high">
-    <link rel="preload" href="hero-banner-2.jpg" as="image" fetchpriority="high">
-    <link rel="preload" href="hero-banner-3.jpg" as="image" fetchpriority="high">
-    <link rel="preload" href="hero-banner-4.jpg" as="image" fetchpriority="high">
-    <link rel="preload" href="hero-banner-5.jpg" as="image" fetchpriority="high">
-    <link rel="preload" href="icon-set.png" as="image" fetchpriority="high">
-    <link rel="preload" href="main-font.woff2" as="font" type="font/woff2" fetchpriority="high">
-    <link rel="preload" href="title-font.woff2" as="font" type="font/woff2" fetchpriority="high">
-    <link rel="preload" href="body-font.woff2" as="font" type="font/woff2" fetchpriority="high">
-    <link rel="preload" href="secondary-font.woff2" as="font" type="font/woff2">
-    <link rel="preload" href="accent-font.woff2" as="font" type="font/woff2">
-    <link rel="preload" href="extra-font.woff2" as="font" type="font/woff2">
-    <link rel="preload" href="lcp-image.jpg" as="image" fetchpriority="low">
-    <link rel="preload" href="background-pattern.png" importance="high">
-    <link rel="preload" href="sidebar-ad.jpg" as="image">
-    <link rel="preload" href="footer-logo.svg" as="image">
+  <meta charset="UTF-8">
+  <title>Video Landing Page</title>
+  <link rel="preload" href="poster.jpg" importance="high" fetchpriority="low">
+  <link rel="preload" href="brand-font.woff2" type="font/woff2" fetchpriority="low">
+  <link rel="preload" href="background-init.js" as="script" fetchpriority="high">
+  <link rel="preload" href="analytics.js" as="script" fetchpriority="high">
+  <link rel="preload" href="ads.js" as="script" fetchpriority="high">
+  <link rel="preload" href="tracking.js" as="script" fetchpriority="high">
+  <link rel="preload" href="widget.js" as="script" fetchpriority="high">
+  <link rel="preload" href="style.css" importance="high">
 </head>
+
 <body>
-    <div style="background-image: url('lcp-image.jpg'); width: 100vw; height: 100vh;">
-        <h1>Welcome</h1>
-    </div>
+  <h1>Video Landing Page</h1>
+  <video poster="poster.jpg" width="800" height="450" controls preload="none">
+    <source src="example-video.webm" type="video/webm">
+  </video>
 </body>
+
 </html>

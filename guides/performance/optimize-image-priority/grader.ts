@@ -32,40 +32,40 @@ test.describe(`Optimize image priority Expectations: ${demoName}`, () => {
   });
 
   // Browser assertions
-  test('hero-lcp.jpg has high fetchpriority', async ({ page }) => {
-    const img = page.locator('img[src*="hero-lcp.jpg"]');
-    await expect(img).toHaveAttribute('fetchpriority', 'high');
+  test(`The <img> element for 'hero-lcp.jpg' has the fetchpriority="high" attribute`, async ({ page }) => {
+    await expect(page.locator('img[src*="hero-lcp.jpg"]')).toHaveAttribute('fetchpriority', 'high');
   });
 
-  test('hero-lcp.jpg does not use lazy loading', async ({ page }) => {
-    const img = page.locator('img[src*="hero-lcp.jpg"]');
-    await expect(img).not.toHaveAttribute('loading', 'lazy');
+  test(`The <img> element for 'hero-lcp.jpg' does NOT have the loading="lazy" attribute`, async ({ page }) => {
+    await expect(page.locator('img[src*="hero-lcp.jpg"]')).not.toHaveAttribute('loading', 'lazy');
   });
 
-  test('At most two high priority images', async ({ page }) => {
-    const highPriorityImgs = page.locator('img[fetchpriority="high"]');
-    const count = await highPriorityImgs.count();
+  test(`The <img> element for 'gallery-alt.jpg' has the fetchpriority="low" attribute`, async ({ page }) => {
+    await expect(page.locator('img[src*="gallery-alt.jpg"]')).toHaveAttribute('fetchpriority', 'low');
+  });
+
+  test(`The <img> element for 'mega-menu-promo.jpg' has the fetchpriority="low" attribute`, async ({ page }) => {
+    await expect(page.locator('img[src*="mega-menu-promo.jpg"]')).toHaveAttribute('fetchpriority', 'low');
+  });
+
+  test(`The <img> element for 'footer-logo.png' does NOT have the fetchpriority attribute`, async ({ page }) => {
+    await expect(page.locator('img[src*="footer-logo.png"]')).not.toHaveAttribute('fetchpriority');
+  });
+
+  test(`No more than two <img> elements on the page have the fetchpriority="high" attribute`, async ({ page }) => {
+    const count = await page.locator('img[fetchpriority="high"]').count();
     expect(count).toBeLessThanOrEqual(2);
   });
 
-  test('gallery-alt.jpg has low fetchpriority', async ({ page }) => {
-    const img = page.locator('img[src*="gallery-alt.jpg"]');
-    await expect(img).toHaveAttribute('fetchpriority', 'low');
+  test(`No image elements located below the fold have the fetchpriority="high" attribute`, async ({ page }) => {
+    const belowFoldHighPriorityCount = await page.evaluate(() => {
+      const imgs = Array.from(document.querySelectorAll('img[fetchpriority="high"]'));
+      return imgs.filter(img => img.getBoundingClientRect().top >= window.innerHeight).length;
+    });
+    expect(belowFoldHighPriorityCount).toBe(0);
   });
 
-  test('mega-menu-promo.jpg has low fetchpriority', async ({ page }) => {
-    const img = page.locator('img[src*="mega-menu-promo.jpg"]');
-    await expect(img).toHaveAttribute('fetchpriority', 'low');
-  });
-
-  test('footer-logo.png does not have fetchpriority attribute', async ({ page }) => {
-    const img = page.locator('img[src*="footer-logo.png"]');
-    await expect(img).not.toHaveAttribute('fetchpriority', /.*/);
-  });
-
-  test('No image uses deprecated importance attribute', async ({ page }) => {
-    const importanceImgs = page.locator('img[importance]');
-    const count = await importanceImgs.count();
-    expect(count).toBe(0);
+  test(`No <img> elements have the deprecated importance attribute`, async ({ page }) => {
+    await expect(page.locator('img[importance]')).toHaveCount(0);
   });
 });
