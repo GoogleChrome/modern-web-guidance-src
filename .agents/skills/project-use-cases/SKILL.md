@@ -72,7 +72,7 @@ The following steps are REQUIRED for creating a new use case:
 
   For example:
 
-  ```md
+  ```yaml
   ---
   name: deprioritize-background-fetches
   description: Deprioritize background data fetches made with the Fetch API to prevent network contention with user-initiated requests.
@@ -86,30 +86,16 @@ The following steps are REQUIRED for creating a new use case:
 
 * **Step 5: Create the `demo.html` file**
 
-  Create a `demo.html` file in the new subdirectory. This file should be an ultra-minimal example of a correct implementation of the use case. It should be self-contained with inline scripts and styles for any necessary functionality. If subresources like images or videos are needed, use placeholder URLs.
+  Create a `demo.html` file in the new subdirectory. This file should be an ultra-minimal example of a correct implementation of the use case. It should be self-contained with inline scripts and styles for any necessary functionality. Use placeholder URLs for any subresources like images or videos.
 
   See [demo.html](examples/demo.html) for an example from the `deprioritize-background-fetches` use case.
 
-* **Step 6: Get the use case approved**
+* **Step 6: Validate the use case**
 
-  Submit the use case for review by creating a Pull Request containing only the directory structure and `guide.md` stubs (containing only the frontmatter including `sources` and `web-feature-ids`). This allows for early feedback on the selection and naming of the use cases.
+  Run `pnpm --filter guides test` to validate the use case.
 
-Follow a phased approach when building use cases to ensure they are properly scoped and reviewed.
+* **Step 7: Get the use case approved**
 
-1.  **Phased PR Approach**: 
-    * **Phase 1 (Discovery)**: Create a Pull Request containing only the directory structure and `guide.md` stubs (containing only the frontmatter including `sources` and `web-feature-ids`). This allows for early feedback on the selection and naming of the use cases.
-    * **Phase 2 (Implementation)**: Once the use cases are approved, create a subsequent PR with the full technical guidance and validation files:
-        * `guide.md`: Complete documentation with best practices, browser support, and code examples.
-        * `expectations.md`: Clear, atomic criteria for a successful implementation.
-        * `prompts.md`: The actionable task(s) an agent will use during evaluation.
-        * `demo.html`: The reference "gold" implementation.
-        * `negative-demo.html`: An implementation that deliberately fails the expectations, used to calibrate the grader.
-        * `grader.ts`: The automated validation script.
-2.  **Select the category**: Determine which category the use case falls under: `performance`, `accessibility`, `security`, `user-experience`, etc.
-3.  **Create the directory**: Create a sub-directory under `guides/<category>/`. The directory name should be the slugified version of the action-oriented use case (e.g., `guides/performance/prioritize-lcp-image/`).
-4.  **Generate files**: In Phase 1, start with:
-    * `guide.md` (frontmatter), `expectations.md` (summary of criteria), and `demo.html` (stub).
+  Submit the use case for review by creating a Pull Request containing only the files created in steps 1-6. This allows for early feedback on the selection and naming of the use cases.
 
-* **DO** search primary resources (MDN, web.dev, etc.) to validate every claim.
-* **DO NOT** create a use case for a scenario where the feature is poorly suited or carries significant risks without robust fallbacks.
-* **Skip to Step 2** if the user has already provided a specific, valid use-case for you to author.
+After the use case is approved, you can proceed to writing the guidance and expectations. Additional guidance for these stages is provided by the `project-guides` and `project-evals` skills.
