@@ -138,7 +138,7 @@ function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): GuideInven
 function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
   const guides: GuideInventory[] = [];
   const categories = fs.readdirSync(__dirname, { withFileTypes: true })
-    .filter(d => d.isDirectory() && !d.name.startsWith('.'))
+    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
     .map(d => d.name);
   for (const category of categories) {
     const categoryDir = path.join(__dirname, category);
