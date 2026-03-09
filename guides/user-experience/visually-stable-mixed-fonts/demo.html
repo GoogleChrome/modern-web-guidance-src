@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Visually Stable Mixed Fonts</title>
+
+    <style>
+      body {
+        font-family: Verdana, sans-serif;
+        font-size: 1.25rem;
+        padding: 1rem;
+      }
+
+      .adjusted {
+        font-size-adjust: from-font;
+      }
+
+      span {
+        font-family: Times;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Without <code>font-size-adjust</code></h2>
+    <p>
+      This <span>is</span> some <span>text</span> where <span>every</span> other
+      <span>word</span> is <span>in</span> a <span>different</span> font.
+    </p>
+
+    <h2>With <code>font-size-adjust: from-font</code></h2>
+    <p class="adjusted">
+      This <span>is</span> some <span>text</span> where <span>every</span> other
+      <span>word</span> is <span>in</span> a <span>different</span> font.
+    </p>
+  </body>
+</html>

@@ -13,10 +13,16 @@ importers:
       glob:
         specifier: ^10.5.0
         version: 10.5.0
+      omelette:
+        specifier: ^0.4.17
+        version: 0.4.17
     devDependencies:
       '@types/node':
         specifier: ^22.19.11
         version: 22.19.11
+      '@types/omelette':
+        specifier: ^0.4.5
+        version: 0.4.5
       oxlint:
         specifier: ^1.50.0
         version: 1.50.0
@@ -1388,6 +1394,9 @@ packages:
 
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
+
+  '@types/omelette@0.4.5':
+    resolution: {integrity: sha512-zUCJpVRwfMcZfkxSCGp73mgd3/xesvPz5tQJIORlfP/zkYEyp9KUfF7IP3RRjyZR3DwxkPs96/IFf70GmYZYHQ==}
 
   '@types/request@2.48.13':
     resolution: {integrity: sha512-FGJ6udDNUCjd19pp0Q3iTiDkwhYup7J8hpMW9c4k53NrccQFFWKRho6hvtPPEhnXWKvukfwAlB6DbDz4yhH5Gg==}
@@ -2846,6 +2855,10 @@ packages:
 
   obug@2.1.1:
     resolution: {integrity: sha512-uTqF9MuPraAQ+IsnPf366RG4cP9RtUi7MLO1N3KEc+wb0a6yKpeL0lmk2IB1jY5KHPAlTc6T/JRdC/YqxHNwkQ==}
+
+  omelette@0.4.17:
+    resolution: {integrity: sha512-UlU69G6Bhu0XFjw3tjFZ0qyiMUjAOR+rdzblA1nLQ8xiqFtxOVlkhM39BlgTpLFx9fxkm6rnxNNRsS5GxE/yww==}
+    engines: {node: '>=0.8.0'}
 
   on-finished@2.4.1:
     resolution: {integrity: sha512-oVlzkg3ENAhCk2zdv7IJwd/QUD4z2RxRwpkcGY8psCVcCYZNq4wYnVWALHM+brtuJjePWiYF/ClmuDr8Ch5+kg==}
@@ -5064,6 +5077,8 @@ snapshots:
 
   '@types/normalize-package-data@2.4.4': {}
 
+  '@types/omelette@0.4.5': {}
+
   '@types/request@2.48.13':
     dependencies:
       '@types/caseless': 0.12.5
@@ -6577,6 +6592,8 @@ snapshots:
   obliterator@2.0.5: {}
 
   obug@2.1.1: {}
+
+  omelette@0.4.17: {}
 
   on-finished@2.4.1:
     dependencies:
