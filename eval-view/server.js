@@ -149,8 +149,6 @@ const server = http.createServer(async (req, res) => {
     filePath = path.join('../harness/base_apps', decodedPath.substring(11));
   } else if (decodedPath.startsWith('/tasks/')) {
     filePath = path.join('../harness/tasks', decodedPath.substring(7));
-  } else if (decodedPath === '/constants.js') {
-    filePath = path.join('../constants.ts');
   } else {
     const relativePath = decodedPath.startsWith('/') ? decodedPath.substring(1) : decodedPath;
     let localEvalViewPath = path.join('.', relativePath);
@@ -207,9 +205,8 @@ const server = http.createServer(async (req, res) => {
   // Use path.sep to ensure we match whole directory names
   const isInsideEvalView = absolutePath === evalViewRoot || absolutePath.startsWith(evalViewRoot + path.sep);
   const isInsideHarness = absolutePath === harnessRoot || absolutePath.startsWith(harnessRoot + path.sep);
-  const isConstantsFile = absolutePath === path.resolve('../constants.ts');
 
-  if (!isInsideEvalView && !isInsideHarness && !isConstantsFile) {
+  if (!isInsideEvalView && !isInsideHarness) {
     console.log(`403 Forbidden: Access outside allowed directories - ${req.method} ${req.url} -> ${absolutePath}`);
     res.writeHead(403);
     res.end('403 Forbidden: Access outside allowed directories is not allowed');

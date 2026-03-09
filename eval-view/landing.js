@@ -289,6 +289,10 @@ function renderAll() {
 }
 
 async function loadLocalTests() {
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        return; // Avoid 404s by skipping local network fetches when hosted on Github Pages
+    }
+    
     try {
         const response = await fetch(`/api/suites?t=${Date.now()}`);
         if (!response.ok) return; // Silent fail for local if we are on gh-pages
