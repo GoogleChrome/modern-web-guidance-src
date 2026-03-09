@@ -1,9 +1,15 @@
 ---
 name: project-guides
-description: Best practices for authoring guide.md files. Use this skill any time you're writing or reviewing a guide.md.
+description: Best practices for authoring guidance. Use this skill any time you're writing or reviewing `guide.md` files.
 ---
 
-# Best practices for `guide.md`
+# Stage 2: Authoring guidance for a use case
+
+This is the second of three stages in creating guidance:
+
+1. Stage 1: Identifying use cases for a feature
+2. Stage 2: Authoring guidance for a use case (you are here)
+3. Stage 3: Evaluating guidance for a use case
 
 **MANDATORY RULES FOR WRITING `guide.md`:**
 

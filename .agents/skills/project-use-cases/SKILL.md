@@ -1,39 +1,98 @@
 ---
 name: project-use-cases
-description: Best practices for creating use cases. Use this skill any time you're writing or reviewing a use case under the guides/ directory.
+description: Best practices for creating use cases for a given feature. This is the first step in creating a new guide. Use this skill any time you're writing or reviewing a use case under the guides/ directory.
 ---
 
-# Mapping features to use cases
+# Stage 1: Identifying use cases for a feature
 
-The primary goal of this stage is to translate a technical web platform feature into a carefully selected set of its most common and important use cases. 
+The primary goal of this stage is to translate a technical web platform feature into a carefully selected set of its most common and important use cases. This is the first of three stages in creating guidance:
 
-## Research and discovery
+1. Stage 1: Identifying use cases for a feature (you are here)
+2. Stage 2: Authoring guidance for a use case
+3. Stage 3: Evaluating guidance for a use case
 
-To help you define use cases, perform deep research to supplement your pre-existing knowledge. The goal is to move beyond "what the feature is" to "how should it be used in the wild." The following tools can help you:
+## Manual research and discovery
 
-* **Gemini Deep Research**: Use Deep Research to discover sources and real-world implementations you might not be aware of. Focus on finding complex edge cases, performance implications, and emerging best practices. Deep Research is particularly effective at surfacing GitHub discussions, W3C specifications, and developer blog posts that highlight non-obvious constraints.
-* **NotebookLM**: Once you have a collection of sources, feed them all into NotebookLM. Use NotebookLM to distill these sources into a set of concrete, actionable use cases. NotebookLM helps identify the "core tasks" that reflect common developer needs, ensuring the guidance you build is grounded in practical application rather than just theoretical capability.
+Use Deep Research in NotebookLM to discover sources and real-world implementations you might not be aware of. Focus on finding complex edge cases, performance implications, and emerging best practices. Deep Research is particularly effective at surfacing GitHub discussions, W3C specifications, and developer blog posts that highlight non-obvious constraints.
+
+Here's an example prompt for NotebookLM with Deep Research:
+
+> Thoroughly review the following resources for the `fetchLater()` API, as well as any additional resources you can find on the web, and identify the top 2-5 developer use cases for this API.
+>
+> - https://developer.mozilla.org/en-US/docs/Web/API/Window/fetchLater
+> - https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Deferred_Fetch
+> - https://developer.chrome.com/blog/fetch-later-api-origin-trial
+> - https://github.com/WICG/pending-beacon/blob/main/docs/fetch-later-api.md
 
 ## Identifying action-oriented tasks
 
 A "use case" in this project is not a description of a feature; it's how the feature would be used in the wild.
 
-* **Action-oriented thinking**: Frame every use case as a task. Instead of "Scroll-driven animations support horizontal scrolling," use "Synchronize an animation's progress with the horizontal scroll distance of a container."
+* **Action-oriented thinking**: Frame every use case as a task. Instead of "Scroll-driven animations support horizontal scrolling," use something like "Synchronize an animation's progress with the horizontal scroll distance of a container."
 * **Bridge the knowledge gap**: Assume the developer knows *what* they want to build (e.g., "I need a sticky header that shrinks on scroll") but might not know *which* modern web feature is the best solution (e.g., scroll-driven animations). Your use cases should facilitate this discovery by focusing on the desired outcome.
 * **Targeted scope**: Aim for 2-5 distinct use cases per feature. Each should represent a unique implementation pattern or a significant variation in how the feature is applied.
-    * **Example (fetch-priority)**: Instead of one large "Performance optimization" guide, break it down into "Optimize image priority," "Optimize script priority," and "Deprioritize background fetches." Each has unique implementation details and developer intents.
-    * **Example (fetchlater)**: Separate "Reliably track full-session analytics" from "Batch and debounce real-time events." While both use `fetchLater`, they address different developer goals.
 
 ## Minimizing overlap
 
-This guidance is served through a RAG (Retrieval-Augmented Generation) search system. If multiple guides have significant overlap, coding agents may struggle to select the most relevant one, leading to confusing or contradictory advice.
+This guidance is ultimately served through a RAG (Retrieval-Augmented Generation) search system. If multiple guides have significant overlap, coding agents may struggle to select the most relevant one, leading to confusing or contradictory advice.
 
 * **Check existing guides**: Before creating a new use case, review existing guides in the same discipline.
-* **Search by web-feature-id**: Each guide lists the web features it relies on in the `web-feature-ids` metadata field. Search for the ID of the feature you are writing about in existing guides and open PRs to see how it's being used.
-* **Merge or differentiate**: If your proposed use case is substantially similar to an existing one, do not create a duplicate. Instead, consider if the existing guide should be updated to include your new scenario as a variation or a specific directive. 
-* **Distinct value proposition**: Every new guide must offer a distinct solution to a distinct problem. For example, if both `fetch` and `fetch-priority` are involved in "Deprioritizing background fetches," the guide should justify why this combination is the optimal pattern for that specific problem.
+* **Search by web-feature-id**: Each guide lists the web features it relies on in the `web-feature-ids` metadata field. Search for the ID of the feature you're writing about in existing guides and open PRs to see how it's being used.
+* **Merge or differentiate**: If your proposed use case is substantially similar to an existing one, do not create a duplicate. Instead, consider how the existing guide should be updated to include your new scenario as a variation or a specific directive.
+* **Distinct value proposition**: Every new guide must offer a distinct solution to a distinct problem.
 
 ## Implementation and scaffolding
+
+The following steps are REQUIRED for creating a new use case:
+
+* **Step 1: Describe the use case**
+
+  You MUST choose a short, action-oriented description of the problem the feature solves. The description must be a single sentence that captures the essence of the use case.
+  
+  For example, a use case of the `fetch-priority` feature is "Deprioritize background data fetches made with the Fetch API to prevent network contention with user-initiated requests."
+
+* **Step 2: Choose a category**
+
+  Use cases MUST live under the [`guides/`](/guides) directory, organized into a single, high-level category such as [`performance`](/guides/performance) or [`accessibility`](/guides/accessibility). List the current subdirectories under `guides/` and choose the most appropriate one. If a use case doesn't fit into any of these categories, create a new one.
+
+* **Step 3: Create the use case subdirectory**
+
+  Create a subdirectory under `guides/<category>/` for your use case. The subdirectory name MUST be a short, slugified version of the action-oriented use case. For example, for the use case in Step 1, the subdirectory name is `deprioritize-background-fetches`.
+
+* **Step 4: Create the `guide.md` stub**
+
+  Create a `guide.md` file in the new subdirectory. For now, the guide should only contain metadata about the use case. The actual content of the guide will be filled in later after peer review.
+
+  The required YAML frontmatter fields are:
+
+  - **name**: Short, slugified name of the use case.
+  - **description**: Action-oriented description of the use case.
+  - **web-feature-ids**: List of web feature IDs that the use case relies on. These can be found in the `web-features` package or via webstatus.dev.
+  - **sources**: List of primary source URLs used to synthesize the document. Do NOT guess these. The user should provide them.
+
+  For example:
+
+  ```md
+  ---
+  name: deprioritize-background-fetches
+  description: Deprioritize background data fetches made with the Fetch API to prevent network contention with user-initiated requests.
+  web-feature-ids:
+    - fetch-priority
+    - fetch
+  sources:
+    - https://web.dev/articles/fetch-priority
+  ---
+  ```
+
+* **Step 5: Create the `demo.html` file**
+
+  Create a `demo.html` file in the new subdirectory. This file should be an ultra-minimal example of a correct implementation of the use case. It should be self-contained with inline scripts and styles for any necessary functionality. If subresources like images or videos are needed, use placeholder URLs.
+
+  See [demo.html](examples/demo.html) for an example from the `deprioritize-background-fetches` use case.
+
+* **Step 6: Get the use case approved**
+
+  Submit the use case for review by creating a Pull Request containing only the directory structure and `guide.md` stubs (containing only the frontmatter including `sources` and `web-feature-ids`). This allows for early feedback on the selection and naming of the use cases.
 
 Follow a phased approach when building use cases to ensure they are properly scoped and reviewed.
 
@@ -46,8 +105,8 @@ Follow a phased approach when building use cases to ensure they are properly sco
         * `demo.html`: The reference "gold" implementation.
         * `negative-demo.html`: An implementation that deliberately fails the expectations, used to calibrate the grader.
         * `grader.ts`: The automated validation script.
-2.  **Select the discipline**: Determine which category the use case falls under: `performance`, `accessibility`, `security`, `user-experience`, etc.
-3.  **Create the directory**: Create a sub-directory under `guides/<discipline>/`. The directory name should be the slugified version of the action-oriented use case (e.g., `guides/performance/prioritize-lcp-image/`).
+2.  **Select the category**: Determine which category the use case falls under: `performance`, `accessibility`, `security`, `user-experience`, etc.
+3.  **Create the directory**: Create a sub-directory under `guides/<category>/`. The directory name should be the slugified version of the action-oriented use case (e.g., `guides/performance/prioritize-lcp-image/`).
 4.  **Generate files**: In Phase 1, start with:
     * `guide.md` (frontmatter), `expectations.md` (summary of criteria), and `demo.html` (stub).
 
