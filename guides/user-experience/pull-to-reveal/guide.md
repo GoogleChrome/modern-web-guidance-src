@@ -3,6 +3,12 @@ name: pull-to-reveal
 description: Build a pull-to-reveal feature that would enable the user to pull down on the screen to reveal more content, like a search bar.
 web-feature-ids:
   - scroll-initial-target
+sources:
+  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/scroll-initial-target
+  - https://github.com/DavMila/explainer-scroll-initial-target
+  - https://chromestatus.com/feature/6276178888097792
+  - https://drafts.csswg.org/css-scroll-snap-2/#propdef-scroll-initial-target
+  - https://webstatus.dev/features/scroll-initial-target
 ---
 
 # Pull to Reveal
@@ -83,11 +89,3 @@ document.addEventListener("DOMContentLoaded", () => {
 ```
 
 You can leave the default scroll position as a safe fallback for progressive enhancement if the specific target content isn't critical for the initial view (users will just see the search bar immediately instead of having to pull to reveal it).
-
-## References
-
-- [scroll-initial-target GitHub Explainer](https://github.com/DavMila/explainer-scroll-initial-target)
-- [Chrome Platform Status](https://chromestatus.com/feature/6276178888097792)
-- [CSS Scroll Snap Module Level 2](https://drafts.csswg.org/css-scroll-snap-2/#propdef-scroll-initial-target)
-- [Web Platform Status](https://webstatus.dev/features/scroll-initial-target)
-- [MDN: scroll-initial-target](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/scroll-initial-target)

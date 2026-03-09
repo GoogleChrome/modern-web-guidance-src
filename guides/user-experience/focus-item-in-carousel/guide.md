@@ -3,6 +3,12 @@ name: focus-item-in-carousel
 description: Build a scrollable carousel that centers on a specific image or other visual components in the viewport on initial page load.
 web-feature-ids:
   - scroll-initial-target
+sources:
+  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/scroll-initial-target
+  - https://github.com/DavMila/explainer-scroll-initial-target
+  - https://chromestatus.com/feature/6276178888097792
+  - https://drafts.csswg.org/css-scroll-snap-2/#propdef-scroll-initial-target
+  - https://webstatus.dev/features/scroll-initial-target
 ---
 # Focus Item in Carousel
 
@@ -71,11 +77,3 @@ document.addEventListener("DOMContentLoaded", () => {
 ```
 
 You can leave the default scroll position as a safe fallback for progressive enhancement if the specific target content isn't critical for the initial view.
-
-## References
-
-- [MDN: scroll-initial-target](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/scroll-initial-target)
-- [scroll-initial-target GitHub Explainer](https://github.com/DavMila/explainer-scroll-initial-target)
-- [Chrome Platform Status](https://chromestatus.com/feature/6276178888097792)
-- [CSS Scroll Snap Module Level 2](https://drafts.csswg.org/css-scroll-snap-2/#propdef-scroll-initial-target)
-- [Web Platform Status](https://webstatus.dev/features/scroll-initial-target)
