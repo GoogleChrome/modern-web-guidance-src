@@ -181,6 +181,52 @@
     .code-snippet span.value { color: #fcd34d; }
     .code-snippet span.comment { color: #64748b; font-style: italic; }
 
+    h2.section-title {
+      margin-top: 5rem;
+      font-size: 2rem;
+      text-align: center;
+      font-family: 'Space Grotesk', sans-serif;
+      margin-bottom: 1rem;
+    }
+
+    .icon-card {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      min-height: 160px;
+    }
+
+    .icon-box {
+      width: 48px;
+      height: 48px;
+      background: rgba(244, 114, 182, 0.1);
+      border: 1px dashed rgba(244, 114, 182, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #f472b6;
+    }
+
+    .icon-box svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .icon-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 3rem;
+      margin: 0;
+      color: #f1f5f9;
+      background: rgba(96, 165, 250, 0.1);
+      border: 1px dashed rgba(96, 165, 250, 0.5);
+      line-height: normal;
+    }
+
     @media (max-width: 768px) {
       .comparison-grid {
         grid-template-columns: 1fr;
@@ -194,7 +240,7 @@
 <body>
 
   <div class="container">
-    <h1>Precise Paragraph Alignment</h1>
+    <h1>Precise Text Alignment</h1>
     <p class="description">
       When rendering multiline text, the "ghost space" above the first line's cap height and below the last line's baseline can make the container's physical padding look inaccurate. <code>text-box: trim-both cap alphabetic;</code> trims this internal leading off the block edges of the paragraph, ensuring your actual spacing matches your intended CSS padding.
       <br><br>
@@ -241,6 +287,64 @@
 }
 
 .card p {
+  <span class="property">font-family</span>: <span class="value">'Space Grotesk'</span>;
+  <span class="property">text-box</span>: <span class="value">trim-both cap alphabetic</span>;
+}</code></pre>
+      </div>
+
+    </div>
+
+    <h2 class="section-title">Icon Alignment</h2>
+    <p class="description">
+      When aligning text next to an icon using flexbox, the text's internal leading will often prevent perfect visual centering. Trimming the text-box allows layout engines like Flexbox or Grid to align against the actual visible letters.
+      <br><br>
+      <i>(The dashed borders show the actual bounding boxes used for flex alignment.)</i>
+    </p>
+
+    <div class="comparison-grid">
+      
+      <!-- WITHOUT TEXT-BOX -->
+      <div class="column untrimmed-col">
+        <h2>Misaligned (Untrimmed)</h2>
+        
+        <div class="icon-card">
+          <div class="icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          </div>
+          <p class="icon-text">Info</p>
+        </div>
+
+        <pre class="code-snippet"><code><span class="comment">/* The text box includes ghost space,</span>
+<span class="comment">   skewing the flex center alignment. */</span>
+.icon-card {
+  <span class="property">display</span>: <span class="value">flex</span>;
+  <span class="property">align-items</span>: <span class="value">center</span>;
+}
+
+.icon-text {
+  <span class="property">font-family</span>: <span class="value">'Space Grotesk'</span>;
+}</code></pre>
+      </div>
+
+      <!-- WITH TEXT-BOX -->
+      <div class="column trimmed-col">
+        <h2>Perfect Center (Trimmed)</h2>
+        
+        <div class="icon-card">
+          <div class="icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          </div>
+          <p class="icon-text trimmed">Info</p>
+        </div>
+
+        <pre class="code-snippet"><code><span class="comment">/* The block edges hug the letters, so</span>
+<span class="comment">   flex container perfectly centers it. */</span>
+.icon-card {
+  <span class="property">display</span>: <span class="value">flex</span>;
+  <span class="property">align-items</span>: <span class="value">center</span>;
+}
+
+.icon-text {
   <span class="property">font-family</span>: <span class="value">'Space Grotesk'</span>;
   <span class="property">text-box</span>: <span class="value">trim-both cap alphabetic</span>;
 }</code></pre>
