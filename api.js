@@ -253,7 +253,7 @@ export class ApiClient {
         
         // Force local fetching for base_apps or tasks natively, otherwise it tries to read from GCS
         const res = (isBaseApp || isTasks)
-            ? await fetch(`/${path}?source=local`) 
+            ? await fetch(`${path}?source=local`) 
             : await this._fetch(path);
             
         if (!res.ok) {
