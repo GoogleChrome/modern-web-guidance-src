@@ -2,6 +2,13 @@
 
 The Eval-View Dashboard lets you visualize test results from the Guidance eval harness.
 
+The dashboard can be view in two different ways:
+
+1. Locally, with `gd dashboard`, via `server.js`.
+2. Remotely, with GitHub Pages at **[https://googlechrome.github.io/guidance/](https://googlechrome.github.io/guidance/)** (static hosting).
+
+The `eval-view` codebase contains complexity to support both views.
+
 ## Viewing the Dashboard
 
 The dashboard is continuously deployed to GitHub Pages and can be accessed at:
