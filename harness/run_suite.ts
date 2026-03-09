@@ -116,6 +116,8 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         fs.mkdirSync(runDir, { recursive: true });
       }
 
+      const pnpmWorkspacePackages: string[] = [];
+
       // Use configured tasks, or discover all tasks in the tasks directory
       const tasksToRun = options.tasks && options.tasks.length > 0
         ? options.tasks
@@ -161,27 +163,62 @@ export async function runSuite(options: RunSuiteOptions = {}) {
             fs.mkdirSync(targetDir, { recursive: true });
           }
 
-          console.log(`\n>>> Running Task: ${task} | Template: ${baseApp} | Run Type: ${runType} | Run: ${runNumber} | Agent: ${agent}`);
-          try {
-          // Dispatch to appropriate agent script based on agent
-            const agentArgs = [
-              '--experimental-strip-types',
-              path.join(__dirname, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
-                agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-                  'jetski-agent.ts'),
-              JSON.stringify(promptContent),
-              runType,
-              targetDir,
-              templateDir
-            ];
+          const agentScript = path.join(__dirname, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
+            agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
+              'jetski-agent.ts');
 
-            await runCommand('node', agentArgs);
-            console.log(`✅ Completed: ${task}/${runType} (Run ${runNumber})`);
-          } catch (error) {
-            console.error(`❌ Failed: ${task}/${runType} (Run ${runNumber})`, error);
-          }
+          // Generate runner script
+          // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
+          // we trick pnpm into thinking each test run is a package in a pnpm workspace.
+          // This way we get \`pnpm -r\`'s great parallel scheduler and log interleaving for free.
+          // This run.mjs wrapper executes the actual agent command via spawnSync.
+          const runnerContent = `
+import { spawnSync } from 'child_process';
+const args = [
+  '--experimental-strip-types',
+  ...${JSON.stringify([
+    agentScript,
+    promptContent,
+    runType,
+    targetDir,
+    templateDir
+  ])}
+];
+const result = spawnSync('node', args, { stdio: 'inherit' });
+process.exit(result.status ?? 0);
+          `.trim();
+          
+          fs.writeFileSync(path.join(targetDir, 'run.mjs'), runnerContent);
+
+          // Generate transient package.json
+          // This tells pnpm that this directory is a "package" that can be run
+          // via \`pnpm test\`.
+          fs.writeFileSync(path.join(targetDir, 'package.json'), JSON.stringify({
+            name: `${task.substring(0, 30)}-${runType}`,
+            type: "module",
+            scripts: { test: "node run.mjs" }
+          }, null, 2));
+
+          pnpmWorkspacePackages.push(`${task}/${runType}`);
         }
       }
+
+      if (pnpmWorkspacePackages.length > 0) {
+        console.log(`\n>>> Running all tests for Run ${runNumber} with pnpm -r test (parallel)...`);
+        // Drop a transient pnpm-workspace.yaml at the root of the run directory.
+        // The '**' pattern tells pnpm to recursively discover all the targetDirs
+        // we just seeded with package.json files.
+        fs.writeFileSync(path.join(runDir, 'pnpm-workspace.yaml'), 'packages:\n  - \'**\'\n');
+        
+        try {
+          // Fire off the parallel execution!
+          await runCommand('pnpm', ['-r', 'test'], runDir);
+          console.log(`✅ Completed Run ${runNumber} test executions`);
+        } catch (error) {
+          console.error(`❌ Failed during Run ${runNumber} test execution`, error);
+        }
+      }
+
     }
 
     if (!options.outputDir) {
