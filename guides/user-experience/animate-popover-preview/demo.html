@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animated Popover Previews</title>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background-color: #f6f8fa;
+      min-height: 100vh;
+    }
+
+    .gallery {
+      display: flex;
+      gap: 20px;
+      margin-top: 50px;
+    }
+
+    /* 1. The Trigger Button/Thumbnail */
+    .product-thumbnail {
+      anchor-name: --product-anchor;
+      background: none;
+      border: 2px solid transparent;
+      padding: 0;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: transform 0.2s, border-color 0.2s;
+      position: relative;
+    }
+
+    .product-thumbnail:hover {
+      transform: scale(1.05);
+      border-color: #0969da;
+    }
+
+    .thumbnail-img {
+      display: block;
+      width: 150px;
+      height: 150px;
+      border-radius: 6px;
+      object-fit: cover;
+      background-color: #d0d7de;
+    }
+
+    /* 2. The Popover Preview */
+    .preview-popover {
+      /* Reset native popover styles */
+      margin: 0;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      background-color: #ffffff;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+
+      /* Native Popover Tethering via Anchor Positioning */
+      position-anchor: --product-anchor;
+      position-try-fallbacks: bottom, flip-block;
+      margin-bottom: 12px;
+
+      /* Visuals */
+      text-align: center;
+      max-width: 300px;
+    }
+
+    .preview-popover img {
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      background-color: #d0d7de;
+    }
+
+    .preview-popover h3 {
+      margin: 0 0 8px 0;
+      font-size: 1.25rem;
+      color: #24292f;
+    }
+
+    .preview-popover p {
+      margin: 0;
+      color: #57606a;
+      font-size: 0.9rem;
+    }
+
+    .preview-popover::backdrop {
+      background-color: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(2px);
+    }
+
+    /* 
+      3. Modern Popover Entry/Exit Animations 
+      Wrapped in @supports to ensure older browsers don't choke on discrete transitions 
+    */
+    @supports (transition-behavior: allow-discrete) {
+
+      /* Base transition rules on the popover */
+      .preview-popover {
+        opacity: 0;
+        transform: translateY(10px) scale(0.95);
+
+        /* 
+          Transition the discrete 'display' and 'overlay' properties along with visual ones. 
+          allow-discrete tells the browser to wait for the visual anim to finish before hiding.
+        */
+        transition:
+          opacity 0.3s ease,
+          transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+          display 0.3s allow-discrete,
+          overlay 0.3s allow-discrete;
+      }
+
+      .preview-popover::backdrop {
+        opacity: 0;
+        transition:
+          opacity 0.3s ease,
+          display 0.3s allow-discrete,
+          overlay 0.3s allow-discrete;
+      }
+
+      /* The "Open" State */
+      .preview-popover:popover-open {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+
+      .preview-popover:popover-open::backdrop {
+        opacity: 1;
+      }
+
+      /* 
+        The @starting-style block defines the EXACT styles the element 
+        starts from when it is inserted into the DOM (display: none -> display: block) 
+      */
+      @starting-style {
+        .preview-popover:popover-open {
+          opacity: 0;
+          transform: translateY(10px) scale(0.95);
+        }
+
+        .preview-popover:popover-open::backdrop {
+          opacity: 0;
+        }
+      }
+    }
+
+    /* 
+      4. JavaScript Fallback Styling (for older browsers)
+      These utility classes are used by the JS to mimic the fade in/out 
+      when allow-discrete is not supported.
+    */
+    .preview-popover.js-fallback-setup {
+      opacity: 0;
+      transform: translateY(10px) scale(0.95);
+      transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .preview-popover.js-fallback-active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="gallery">
+    <!-- The trigger linking to the popover ID -->
+    <button class="product-thumbnail" popovertarget="product-preview" aria-label="View product details">
+      <img src="https://picsum.photos/id/103/150/150" alt="Premium Sneakers Thumbnail" class="thumbnail-img">
+    </button>
+  </div>
+
+  <!-- The Popover Modal -->
+  <div id="product-preview" class="preview-popover" popover="auto">
+    <img src="https://picsum.photos/id/103/300/300" alt="Premium Sneakers"
+      style="width: 100%; height: auto; border-radius: 8px; margin-bottom: 12px; object-fit: cover;">
+    <h3>Premium Sneakers</h3>
+    <p>Ultra-comfortable walking shoes featuring advanced foam cushioning and breathable mesh.</p>
+  </div>
+
+  <script>
+    // 5. JavaScript Fallback Logic
+    // Determine if the browser supports discrete transitions
+    const supportsDiscreteTransitions = CSS.supports('transition-behavior', 'allow-discrete');
+
+    if (!supportsDiscreteTransitions) {
+      const popover = document.getElementById('product-preview');
+
+      // Add initial setup class for transitioning
+      popover.classList.add('js-fallback-setup');
+
+      // Listen to the native toggle event fired by the Popover API
+      popover.addEventListener('beforetoggle', (event) => {
+        if (event.newState === "open") {
+          // Scenario: Opening
+          // We must wait a tick for display: block to register in the DOM
+          // before applying our active classes to trigger the CSS transition
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              popover.classList.add('js-fallback-active');
+            });
+          });
+        } else {
+          // Scenario: Closing
+          // The 'closed' state fires immediately, immediately reverting display: none
+          // To animate out, we would ideally intercept the close, but since this is a 
+          // native popovertarget, we accept a snapped close for the fallback, 
+          // or implement a complex event interceptor. For simplicity in this demo fallback,
+          // we just clean up the class on close.
+          popover.classList.remove('js-fallback-active');
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>
