@@ -7,32 +7,25 @@
 
   <!-- 
     1. Video Poster (High Priority)
-    Preloading a video poster image ensures this LCP candidate gets top-tier bandwidth.
   -->
-  <link rel="preload" as="image" href="https://picsum.photos/id/10/800/450" fetchpriority="high">
+  <link rel="preload" as="image" href="poster.jpg" fetchpriority="high">
 
   <!-- 
-    2. Critical Web Font (High Priority)
-    Fonts are late-discovered in CSS. Preload ensures early discovery; fetchpriority ensures early download.
-    (Note: crossorigin is required for preloading fonts).
+    2. Critical Web Font (High Priority by default)
   -->
-  <link rel="preload" as="font" type="font/woff2" href="custom-font.woff2" crossorigin fetchpriority="high">
+  <link rel="preload" as="font" type="font/woff2" href="brand-font.woff2" crossorigin>
 
   <!-- 
-    3. Heavy Script (Low Priority)
-    Discovers the script early, but drops it to Low priority so it doesn't steal bandwidth 
-    from the poster image or font above.
+    3. Secondary Web Font (Low Priority)
   -->
-  <link rel="preload" as="script" href="heavy-background-script.js" fetchpriority="low">
+  <link rel="preload" as="font" type="font/woff2" href="secondary-font.woff2" crossorigin fetchpriority="low">
+
 
 </head>
 
 <body>
-  <h1>Optimize Preload Priority</h1>
-  <p>Check the Network tab to see the priority buckets for these diverse resource types.</p>
-
-  <!-- The video element consuming the preloaded poster image -->
-  <video poster="https://picsum.photos/id/10/800/450" width="800" height="450" controls preload="none">
+  <h1>Video Landing Page</h1>
+  <video poster="poster.jpg" width="800" height="450" controls preload="none">
     <source src="example-video.webm" type="video/webm">
   </video>
 

@@ -22,6 +22,7 @@
     "colors": "^1.4.0",
     "dotenv": "^16.6.1",
     "glob": "^10.5.0",
+    "gray-matter": "^4.0.3",
     "puppeteer-core": "^24.37.5"
   }
 }
