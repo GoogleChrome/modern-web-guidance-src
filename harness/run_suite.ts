@@ -46,9 +46,6 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string)
     fs.mkdirSync(targetDir, { recursive: true });
   }
 
-  // Save the exact prompt that will be sent to the agent
-  fs.writeFileSync(path.join(targetDir, 'prompt.txt'), promptContent);
-
   try {
     const agentScript = path.join(__dirname, 'agents',
       agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
@@ -166,9 +163,6 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           if (!fs.existsSync(targetDir)) {
             fs.mkdirSync(targetDir, { recursive: true });
           }
-
-          // Save the exact prompt that will be sent to the agent
-          fs.writeFileSync(path.join(targetDir, 'prompt.txt'), promptContent);
 
           const agentScript = path.join(__dirname, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
             agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :

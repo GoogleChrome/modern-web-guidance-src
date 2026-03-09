@@ -445,20 +445,27 @@ async function showDetails(testName, runs, stats, testId) {
         // Determine file paths for this run
         const { setupPath, resultPath, usedBasePath } = await getResultPaths(testId, run, testName);
 
-        // Fetch prompt text from the first run's directory
+        // Fetch prompt text from the task definition
         if (run === runs[0]) {
             try {
-                const promptPath = `${usedBasePath}/prompt.txt`;
+                // Determine task name. 'guide' is already extracted above via `const [, guide] = testName.split(' - ');`
+                // Convert camel/kebab case to match task file if necessary, but usually it's just guide + "-task". 
+                // However, wait, in existing code, earlier versions fetched `api.getPromptCode(guide)` or `tasks/${guide}.md`.
+                // Let's use `api.getFileText` with the correct path.
+                const promptPath = `tasks/${guide}-task.md`;
                 const text = await api.getFileText(promptPath);
+                
+                // Strip YAML frontmatter from the markdown task file
+                const cleanedText = text.replace(/^---[\s\S]+?---\n+/, '');
 
                 promptHtml = `
                     <div class="prompt-section" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--text-secondary);">
                         <h4 style="margin-top: 0; margin-bottom: 10px;">Prompt</h4>
-                        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; color: var(--text-primary);">${escapeHtml(text)}</pre>
+                        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; color: var(--text-primary);">${escapeHtml(cleanedText)}</pre>
                     </div>
                 `;
             } catch (e) {
-                console.log('Run prompt file not found:', e.message);
+                console.log('Task prompt file not found:', e.message);
             }
         }
 
