@@ -23,7 +23,7 @@ The `scroll-initial-target` property allows you to set which child element shoul
 
 To implement this successfully:
 
-1.  **Define the Container:** Ensure the parent element is a scroll container (e.g., `overflow-y: auto`). You do not need to enforce `scroll-snap-type` if you want users to scroll freely after the initial load.
+1.  **Define the Container:** Ensure the parent element is a scroll container. You do not need to enforce `scroll-snap-type` if you want users to scroll freely after the initial load.
 2.  **Target the Item:** Apply `scroll-initial-target: nearest` to the specific child element you want to bring into view. You do not need to apply `scroll-snap-align` to the feed items, allowing the scrolling experience to remain smooth and native without forced snapping.
 
 > **The "First-Wins" Rule:** If multiple elements within the same container specify `nearest`, the browser selects the one that appears first in the DOM tree order.
@@ -33,15 +33,6 @@ To implement this successfully:
 In this example, the feed starts focused on a specific "featured" item rather than the very top of the list.
 
 ```css
-/**  
- * PARENT: The scroll container.
- * No scroll-snap-type needed for free scrolling.
- */
-.feed-container {
-  height: 80vh;
-  overflow-y: auto;
-}
-
 /** 
  * TARGET: The item that should be visible on initial load.
  */

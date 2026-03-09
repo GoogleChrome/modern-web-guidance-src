@@ -21,7 +21,7 @@ The `scroll-initial-target` property allows you to declaratively set which child
 
 To implement this successfully:
 
-1.  **Define the Container:** Ensure the parent element is a scroll container (e.g., `overflow-y: auto`).
+1.  **Define the Container:** The parent element must be a scroll container and can optionally add `scroll-snap-type`.
 2.  **Set Alignment (Required):** Apply `scroll-snap-align` (e.g., `start`) to the child elements. **Note:** If the child's alignment is `none` (the default), `scroll-initial-target` will not function because the browser has no reference point for positioning.
 3.  **Target the Item:** Apply `scroll-initial-target: nearest` to the specific child element you want to snap into view.
 
