@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Image Loading Example</title>
+</head>
+<body>
+  <h1>Corporate Portal</h1>
+
+  <img src="hero-lcp.jpg" alt="Corporate Hero" loading="lazy" width="600" height="400">
+
+  <img src="redundant-banner-1.jpg" alt="Banner 1" fetchpriority="high" width="600" height="100">
+  <img src="redundant-banner-2.jpg" alt="Banner 2" fetchpriority="high" width="600" height="100">
+  <img src="redundant-banner-3.jpg" alt="Banner 3" fetchpriority="high" width="600" height="100">
+
+  <div class="gallery">
+    <img src="gallery-main.jpg" alt="Gallery" fetchpriority="auto" width="300" height="200">
+    <img src="gallery-alt.jpg" alt="Gallery Alt" importance="low" width="300" height="200" style="display: none;">
+  </div>
+
+  <nav>
+    <div class="mega-menu" style="display: none;">
+      <img src="mega-menu-promo.jpg" alt="Promotion" fetchpriority="high" width="300" height="150">
+    </div>
+  </nav>
+
+  <footer style="margin-top: 2000px;">
+    <img src="footer-logo.png" alt="Logo" loading="lazy" fetchpriority="low" width="120" height="60">
+  </footer>
+</body>
+</html>

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Precise Paragraph Alignment Demo</title>
+  <meta name="description" content="A demonstration of the CSS text-box property for achieving perfect padding around paragraphs.">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --bg-secondary: #131b2f;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --card-bg: #1e293b;
+      --border-color: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      max-width: 1100px;
+      width: 100%;
+      padding: 3rem;
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 2.5rem;
+      text-align: center;
+      font-family: 'Space Grotesk', sans-serif;
+      margin-bottom: 1rem;
+    }
+
+    p.description {
+      text-align: center;
+      color: var(--text-muted);
+      margin-bottom: 3rem;
+      line-height: 1.6;
+      font-size: 1.1rem;
+      max-width: 800px;
+      margin-inline: auto;
+    }
+
+    code {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 0.2em 0.4em;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+
+    .column {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      padding: 2rem;
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .column h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .column.untrimmed-col h2::before {
+      content: '';
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #ef4444;
+    }
+
+    .column.trimmed-col h2::before {
+      content: '';
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #10b981;
+    }
+
+    .card {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 32px;
+      position: relative;
+    }
+
+    .card p {
+      margin: 0;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.15rem;
+      line-height: 1.6;
+      color: #f1f5f9;
+      position: relative;
+      z-index: 2;
+    }
+
+    .trimmed {
+      text-box: trim-both cap alphabetic;
+    }
+
+    /* Visualization grids */
+    .card::before, .card::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 32px;
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(244, 114, 182, 0.1),
+        rgba(244, 114, 182, 0.1) 4px,
+        transparent 4px,
+        transparent 8px
+      );
+      z-index: 1;
+    }
+
+    .card::before {
+      top: 0;
+      border-bottom: 1px dashed rgba(244, 114, 182, 0.5);
+    }
+
+    .card::after {
+      bottom: 0;
+      border-top: 1px dashed rgba(244, 114, 182, 0.5);
+    }
+
+    .code-snippet {
+      margin-top: auto;
+      background: #000;
+      color: #e2e8f0;
+      padding: 1.25rem;
+      border-radius: 8px;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      overflow-x: auto;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .code-snippet span.property { color: #93c5fd; }
+    .code-snippet span.value { color: #fcd34d; }
+    .code-snippet span.comment { color: #64748b; font-style: italic; }
+
+    h2.section-title {
+      margin-top: 5rem;
+      font-size: 2rem;
+      text-align: center;
+      font-family: 'Space Grotesk', sans-serif;
+      margin-bottom: 1rem;
+    }
+
+    .icon-card {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      min-height: 160px;
+    }
+
+    .icon-box {
+      width: 48px;
+      height: 48px;
+      background: rgba(244, 114, 182, 0.1);
+      border: 1px dashed rgba(244, 114, 182, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #f472b6;
+    }
+
+    .icon-box svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .icon-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 3rem;
+      margin: 0;
+      color: #f1f5f9;
+      background: rgba(96, 165, 250, 0.1);
+      border: 1px dashed rgba(96, 165, 250, 0.5);
+      line-height: normal;
+    }
+
+    @media (max-width: 768px) {
+      .comparison-grid {
+        grid-template-columns: 1fr;
+      }
+      .container {
+        padding: 2rem 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Precise Text Alignment</h1>
+    <p class="description">
+      When rendering multiline text, the "ghost space" above the first line's cap height and below the last line's baseline can make the container's physical padding look inaccurate. <code>text-box: trim-both cap alphabetic;</code> trims this internal leading off the block edges of the paragraph, ensuring your actual spacing matches your intended CSS padding.
+      <br><br>
+      <i>(The striped magenta areas represent exactly 32px of CSS padding from the top and bottom of the card.)</i>
+    </p>
+
+    <div class="comparison-grid">
+      
+      <!-- WITHOUT TEXT-BOX -->
+      <div class="column untrimmed-col">
+        <h2>Ghost Space (Untrimmed)</h2>
+        
+        <div class="card">
+          <p>
+            Many modern display fonts have large internal leading. Without trimming, the text's bounding box includes this invisible space above and below the visible letters. As you can see, the distance to the actual letters looks much larger than 32px.
+          </p>
+        </div>
+
+        <pre class="code-snippet"><code><span class="comment">/* Container has exactly 32px padding,</span>
+<span class="comment">   but the visual gap is much larger. */</span>
+.card {
+  <span class="property">padding</span>: <span class="value">32px</span>;
+}
+
+.card p {
+  <span class="property">font-family</span>: <span class="value">'Space Grotesk'</span>;
+}</code></pre>
+      </div>
+
+      <!-- WITH TEXT-BOX -->
+      <div class="column trimmed-col">
+        <h2>Precise Fit (Trimmed)</h2>
+        
+        <div class="card">
+          <p class="trimmed">
+            Using text-box-trim removes the ghost space. The padding now perfectly hugs the top of the capital letters and the bottom of the alphabetic baseline. The visual gap matches your CSS values exactly.
+          </p>
+        </div>
+
+        <pre class="code-snippet"><code><span class="comment">/* The paragraph's block edges are trimmed,</span>
+<span class="comment">   so the 32px gap is perfectly accurate. */</span>
+.card {
+  <span class="property">padding</span>: <span class="value">32px</span>;
+}
+
+.card p {
+  <span class="property">font-family</span>: <span class="value">'Space Grotesk'</span>;
+  <span class="property">text-box</span>: <span class="value">trim-both cap alphabetic</span>;
+}</code></pre>
+      </div>
+
+    </div>
+
+    <h2 class="section-title">Icon Alignment</h2>
+    <p class="description">
+      When aligning text next to an icon using flexbox, the text's internal leading will often prevent perfect visual centering. Trimming the text-box allows layout engines like Flexbox or Grid to align against the actual visible letters.
+      <br><br>
+      <i>(The dashed borders show the actual bounding boxes used for flex alignment.)</i>
+    </p>
+
+    <div class="comparison-grid">
+      
+      <!-- WITHOUT TEXT-BOX -->
+      <div class="column untrimmed-col">
+        <h2>Misaligned (Untrimmed)</h2>
+        
+        <div class="icon-card">
+          <div class="icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          </div>
+          <p class="icon-text">Info</p>
+        </div>
+
+        <pre class="code-snippet"><code><span class="comment">/* The text box includes ghost space,</span>
+<span class="comment">   skewing the flex center alignment. */</span>
+.icon-card {
+  <span class="property">display</span>: <span class="value">flex</span>;
+  <span class="property">align-items</span>: <span class="value">center</span>;
+}
+
+.icon-text {
+  <span class="property">font-family</span>: <span class="value">'Space Grotesk'</span>;
+}</code></pre>
+      </div>
+
+      <!-- WITH TEXT-BOX -->
+      <div class="column trimmed-col">
+        <h2>Perfect Center (Trimmed)</h2>
+        
+        <div class="icon-card">
+          <div class="icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          </div>
+          <p class="icon-text trimmed">Info</p>
+        </div>
+
+        <pre class="code-snippet"><code><span class="comment">/* The block edges hug the letters, so</span>
+<span class="comment">   flex container perfectly centers it. */</span>
+.icon-card {
+  <span class="property">display</span>: <span class="value">flex</span>;
+  <span class="property">align-items</span>: <span class="value">center</span>;
+}
+
+.icon-text {
+  <span class="property">font-family</span>: <span class="value">'Space Grotesk'</span>;
+  <span class="property">text-box</span>: <span class="value">trim-both cap alphabetic</span>;
+}</code></pre>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>
