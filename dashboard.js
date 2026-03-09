@@ -667,11 +667,11 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     modal.dataset.view = 'diff';
 
     try {
-        let setupText = '';
+        let setupText = null;
         try {
             setupText = await api.getFileText(setupPath);
         } catch (e) {
-            // If setup is missing (404), treat as empty string. 
+            // If setup is missing (404), treat as null to show banner
             // If it's a real error, throw
             if (!e.message.includes('404')) {
                 throw new Error(`Failed to load setup file: ${setupPath}`);
@@ -680,21 +680,27 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 
         const resultText = await api.getFileText(resultPath);
 
-        const diff = Diff.diffLines(setupText, resultText);
-
         let diffHtml = '<div class="diff-container">';
 
-        diff.forEach((part, index) => {
-            const colorClass = part.added ? 'diff-added' :
-                part.removed ? 'diff-removed' : 'diff-unchanged';
+        if (setupText === null) {
+            diffHtml += `<div style="background-color: rgba(218, 165, 32, 0.2); border-left: 4px solid #daa520; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+                <span style="font-weight: bold; color: #daa520;">Original file not found.</span> Displaying current file content below.
+            </div>`;
+            diffHtml += `<pre style="white-space: pre-wrap; margin: 0; color: var(--text-primary); font-family: monospace;">${escapeHtml(resultText)}</pre>`;
+        } else {
+            const diff = Diff.diffLines(setupText, resultText);
 
-            if (part.added || part.removed) {
-                diffHtml += `<span class="${colorClass}">${escapeHtml(part.value)}</span>`;
-                return;
-            }
-
-            // Unchanged part
-            let lines = part.value.split('\n');
+            diff.forEach((part, index) => {
+                const colorClass = part.added ? 'diff-added' :
+                    part.removed ? 'diff-removed' : 'diff-unchanged';
+    
+                if (part.added || part.removed) {
+                    diffHtml += `<span class="${colorClass}">${escapeHtml(part.value)}</span>`;
+                    return;
+                }
+    
+                // Unchanged part
+                let lines = part.value.split('\n');
             // If the last element is empty (common with trailing newline), temporarily remove it for counting
             let trailingNewline = false;
             if (lines.length > 0 && lines[lines.length - 1] === '') {
@@ -736,8 +742,9 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
                 }
             }
 
-            diffHtml += `<span class="${colorClass}">${escapeHtml(part.value)}</span>`;
-        });
+                diffHtml += `<span class="${colorClass}">${escapeHtml(part.value)}</span>`;
+            });
+        }
 
         diffHtml += '</div>';
 

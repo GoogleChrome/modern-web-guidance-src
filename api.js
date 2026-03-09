@@ -242,12 +242,9 @@ export class ApiClient {
         const isTasks = path.startsWith('tasks/');
 
         // If trying to retrieve a task definition from Github Pages, fetch from repo source directly
-        if (isTasks && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-            const rawUrl = `https://raw.githubusercontent.com/GoogleChrome/guidance/main/harness/${path}`;
-            const res = await fetch(rawUrl);
-            if (!res.ok) throw new Error('File not found (404).');
-            return await res.text();
-        }
+        // We no longer fetch from raw.githubusercontent.com as it requires auth for private repos
+        // and returns a 404. Instead we let it fall through to fetch('/tasks/...') which is served
+        // statically by gh-pages.
 
         if (this.source === 'remote' && !isBaseApp && !isTasks) {
             const exists = await this._checkRemoteFileExists(path);
