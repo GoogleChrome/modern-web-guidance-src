@@ -1,2 +1,3 @@
-- can you make the scrollbar color change while i scroll down the page on this daily grind site? i want it to look really smooth and cool.
-- hey i want to use scroll-driven animations to change the scrollbar thumb color from the primary brown to the accent orange as you scroll. can you update base-app.html with this? i heard you need to use @property to make the color transition actually work smooth.
+
+- hey can u make the scrollbar color change as i scroll down the page? like it should start as one color and shift to another as you get to the bottom. make it look smooth.
+- i want to try those new css scroll driven animations for the scrollbar. can u set up an animation that changes a --thumb-color variable from #4e342e to #ffab40 using @property so it interpolates correctly? need fallbacks too for older browsers.
