@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Position-Aware Tooltips</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 0 1rem;
+      }
+
+      .spacer {
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #777;
+      }
+
+      p {
+        text-align: center;
+        font-size: 1.25rem;
+        line-height: 1.5;
+        margin: 0;
+      }
+
+      .anchor {
+        anchor-name: --my-anchor;
+        background: #e0e0e0;
+        padding: 0.1em 0.3em;
+        border-radius: 0.25em;
+      }
+
+      .tooltip {
+        position: fixed;
+        position-anchor: --my-anchor;
+        position-area: top;
+        position-try-fallbacks: flip-block;
+        margin-bottom: 0.5rem;
+        container-type: anchored;
+        padding: 0.5rem;
+        border: 1px solid black;
+        background: white;
+      }
+
+      .tooltip::before {
+        content: '▼';
+        position: absolute;
+        top: 100%;
+        left: 1rem;
+      }
+
+      @container anchored(fallback: flip-block) {
+        .tooltip {
+          margin-bottom: 0;
+          margin-top: 0.5rem;
+        }
+        .tooltip::before {
+          content: '▲';
+          top: auto;
+          bottom: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="spacer">↓ Scroll down ↓</div>
+    <p>
+      Here is an inline <span class="anchor">anchor</span> within some text.
+    </p>
+    <div class="tooltip">Tooltip</div>
+    <div class="spacer">↑ Scroll up ↑</div>
+  </body>
+</html>

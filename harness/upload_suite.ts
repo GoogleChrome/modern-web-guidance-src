@@ -32,12 +32,15 @@ async function uploadDirectory(bucket: any, dirPath: string, gcsPrefix: string) 
 }
 
 async function main() {
-  const suiteName = process.argv[2];
+  let suiteName = process.argv[2];
 
   if (!suiteName) {
-    console.error('❌ Please provide a suite name as an argument. e.g. pnpm upload <suite-name>');
+    console.error('❌ Please provide a suite name or path as an argument. e.g. pnpm upload <suite-name>');
     process.exit(1);
   }
+
+  // Strip trailing slashes and normalize to just the suite ID
+  suiteName = path.basename(suiteName);
 
   const resultsDir = path.join(__dirname, 'results', suiteName);
   const evalsJsonPath = path.join(resultsDir, 'evals.json');
