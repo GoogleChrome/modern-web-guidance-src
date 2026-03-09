@@ -29,13 +29,14 @@ dotenv.config({ path: path.join(REPO_ROOT, '.env') });
 
 
 /**
- * Recursively find all guide.md files in a directory.
+ * Recursively find all use case directories.
  */
-function findGuides(dir: string): string[] {
-  const guideFiles: string[] = [];
+function findUseCaseDirs(dir: string): string[] {
+  const useCaseDirs: string[] = [];
 
   function find(currentDir: string) {
     const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    let isUseCase = false;
     for (const entry of entries) {
       const fullPath = path.join(currentDir, entry.name);
       if (entry.isDirectory()) {
@@ -43,14 +44,17 @@ function findGuides(dir: string): string[] {
         if (!entry.name.includes('test')) {
           find(fullPath);
         }
-      } else if (entry.name === 'guide.md') {
-        guideFiles.push(fullPath);
+      } else if (['guide.md', 'demo.html', 'grader.ts', 'prompts.md'].includes(entry.name)) {
+        isUseCase = true;
       }
+    }
+    if (isUseCase) {
+      useCaseDirs.push(currentDir);
     }
   }
 
   find(dir);
-  return guideFiles;
+  return useCaseDirs;
 }
 
 /**
@@ -248,13 +252,38 @@ async function run() {
 
   const activeIssueNumbers = new Set<number>();
 
-  // 3. Find and validate all guide.md files
+  // 3. Find and validate all use case directories
   const guidesDir = path.resolve(REPO_ROOT, 'guides');
-  const guideFiles = findGuides(guidesDir);
-  console.log(`Found ${guideFiles.length} guide.md files.`);
+  const useCaseDirs = findUseCaseDirs(guidesDir);
+  console.log(`Found ${useCaseDirs.length} use cases.`);
 
-  for (const guidePath of guideFiles) {
-    const subdir = path.dirname(guidePath);
+  for (const subdir of useCaseDirs) {
+    const relativeSubdir = path.relative(REPO_ROOT, subdir);
+    const guidePath = path.join(subdir, 'guide.md');
+    const demoPath = path.join(subdir, 'demo.html');
+    const graderPath = path.join(subdir, 'grader.ts');
+    const promptsPath = path.join(subdir, 'prompts.md');
+
+    const hasGuide = fs.existsSync(guidePath);
+    const hasDemo = fs.existsSync(demoPath);
+    const hasGrader = fs.existsSync(graderPath);
+    const hasPrompts = fs.existsSync(promptsPath);
+
+    if (hasGuide !== hasDemo) {
+      console.error(`❌ Error in ${relativeSubdir}: Must have BOTH guide.md and demo.html before advancing to the "Needs guidance" column.`);
+      hasError = true;
+    }
+
+    if (hasGrader !== hasPrompts) {
+      console.error(`❌ Error in ${relativeSubdir}: Must have BOTH grader.ts and prompts.md before advancing to the "Needs evals" column.`);
+      hasError = true;
+    }
+
+    if (!hasGuide) {
+      console.error(`❌ Error in ${relativeSubdir}: Missing guide.md.`);
+      hasError = true;
+      continue;
+    }
 
     const { errors, data, body } = validateGuide(guidePath);
 
@@ -274,11 +303,10 @@ async function run() {
     let statusName: string | null = null;
     if (body.trim().length === 0) {
       statusName = 'Needs guidance';
+    } else if (!hasGrader || !hasPrompts) {
+      statusName = 'Needs evals';
     } else {
-      const graderPath = path.join(subdir, 'grader.ts');
-      if (!fs.existsSync(graderPath)) {
-        statusName = 'Needs evals';
-      }
+      statusName = null;
     }
 
     // Build related features string
@@ -291,7 +319,6 @@ async function run() {
     }
     const relatedFeaturesStr = relatedLinks.length > 0 ? `\n\nRelated features: ${relatedLinks.join(' ')}` : '';
 
-    const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const subdirUrl = `https://github.com/${ORG}/${REPO}/tree/main/${relativeSubdir}`;
     const linkedFeatures = (featureIds as string[]).map(id => `[${id}](https://webstatus.dev/features/${id})`).join(', ');
 
