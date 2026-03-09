@@ -171,7 +171,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
           // we trick pnpm into thinking each test run is a package in a pnpm workspace.
           // This way we get \`pnpm -r\`'s great parallel scheduler and log interleaving for free.
-          // This run.mjs wrapper executes the actual agent command via spawnSync.
+// This run.mjs wrapper executes the actual agent command via spawnSync.
           const runnerContent = `
 import { spawnSync } from 'child_process';
 const args = [
@@ -184,7 +184,7 @@ const args = [
     templateDir
   ])}
 ];
-const result = spawnSync('node', args, { stdio: 'inherit' });
+const result = spawnSync('node', args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
 process.exit(result.status ?? 0);
           `.trim();
           
@@ -192,11 +192,11 @@ process.exit(result.status ?? 0);
 
           // Generate transient package.json
           // This tells pnpm that this directory is a "package" that can be run
-          // via \`pnpm test\`.
+          // via \`pnpm run-agent\`.
           fs.writeFileSync(path.join(targetDir, 'package.json'), JSON.stringify({
             name: `${task.substring(0, 30)}-${runType}`,
             type: "module",
-            scripts: { test: "node run.mjs" }
+            scripts: { "run-agent": "node run.mjs" }
           }, null, 2));
 
           pnpmWorkspacePackages.push(`${task}/${runType}`);
@@ -204,7 +204,7 @@ process.exit(result.status ?? 0);
       }
 
       if (pnpmWorkspacePackages.length > 0) {
-        console.log(`\n>>> Running all tests for Run ${runNumber} with pnpm -r test (parallel)...`);
+        console.log(`\n>>> Running all tests for Run ${runNumber} with pnpm -r run-agent (parallel)...`);
         // Drop a transient pnpm-workspace.yaml at the root of the run directory.
         // The '**' pattern tells pnpm to recursively discover all the targetDirs
         // we just seeded with package.json files.
@@ -212,7 +212,7 @@ process.exit(result.status ?? 0);
         
         try {
           // Fire off the parallel execution!
-          await runCommand('pnpm', ['-r', 'test'], runDir);
+          await runCommand('pnpm', ['-r', 'run-agent'], runDir);
           console.log(`✅ Completed Run ${runNumber} test executions`);
         } catch (error) {
           console.error(`❌ Failed during Run ${runNumber} test execution`, error);
