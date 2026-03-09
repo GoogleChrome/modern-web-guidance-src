@@ -140,7 +140,7 @@ async function processSingleGuideFile(
   }
 
   if (markdownBody.trim().length === 0) {
-    console.log(`Skipping ${id} (${category}) as it has no markdown content.`);
+    // Just a stub guide. No content to index.
     return;
   }
 

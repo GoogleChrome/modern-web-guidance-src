@@ -12,17 +12,7 @@ const __dirname = dirname(__filename);
 
 import { config } from './config.ts';
 
-async function main() {
-  console.log('Starting Evaluation...'.cyan.bold);
-
-  const resultsDirBase = path.join(__dirname, 'results');
-  let suiteName = config.eval.suiteName;
-  if (!suiteName) {
-    console.error('❌ No suite name provided! Please specify a suite to evaluate.'.red);
-    process.exit(1);
-  }
-  const resultsDir = path.join(resultsDirBase, suiteName);
-
+export async function evaluateSuite(resultsDir: string, suiteName: string) {
   console.log(`Evaluating suite: ${suiteName}`.cyan);
   console.log(`Results directory: ${resultsDir}`.cyan);
 
@@ -38,12 +28,11 @@ async function main() {
     const metrics = calculateMetrics(allResults, numRuns);
     const mdReport = generateMarkdownReport(metrics, allResults);
     const timestamp = new Date().toISOString();
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns);
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, config.suite.agent, config.suite.enableSkills);
 
     saveReports(resultsDir, mdReport, jsonReport);
 
-    console.log(`
-Report generated: ${path.resolve(path.join(resultsDir, 'evals.md'))}`.green.bold);
+    console.log(`\nReport generated: ${path.resolve(path.join(resultsDir, 'evals.md'))}`.green.bold);
     console.log(`JSON Report generated: ${path.resolve(path.join(resultsDir, 'evals.json'))}`.green.bold);
     console.log(`Pass Rate - Unguided: ${metrics.summary.unguidedPassRate}%, Guided: ${metrics.summary.guidedPassRate}%`.cyan);
 
@@ -52,4 +41,33 @@ Report generated: ${path.resolve(path.join(resultsDir, 'evals.md'))}`.green.bold
   }
 }
 
-main().catch(console.error);
+export async function evaluate() {
+  console.log('Starting Evaluation...'.cyan.bold);
+
+  const resultsDirBase = path.join(__dirname, 'results');
+  let suiteName = process.argv[2] || config.suite?.name;
+
+  if (!suiteName) {
+    const manifestPath = path.join(resultsDirBase, 'tests.json');
+    if (fs.existsSync(manifestPath)) {
+      try {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        if (manifest.tests && manifest.tests.length > 0) {
+          suiteName = manifest.tests[manifest.tests.length - 1].id;
+        }
+      } catch { }
+    }
+  }
+
+  if (!suiteName) {
+    console.error('❌ No suite name provided and no previous tests found!'.red);
+    process.exit(1);
+  }
+
+  const resultsDir = path.join(resultsDirBase, suiteName);
+  await evaluateSuite(resultsDir, suiteName);
+}
+
+if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
+  evaluate().catch(console.error);
+}

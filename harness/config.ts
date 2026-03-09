@@ -40,10 +40,10 @@ export const environmentConfig: EnvironmentConfig = {
   mcpApiKey: process.env.MCP_API_KEY || '', // For google-developer-knowledge MCP server
 };
 
-// *******************************
-// *** Set suite configuration ***
-// *** Run with: `pnpm suite`  ***
-// *******************************
+// **************************************
+// *** Set suite & eval configuration ***
+// *** Run with: `pnpm suite`         ***
+// **************************************
 export const suiteConfig: SuiteConfig = {
   name: 'jetski-test',
   numRuns: 1,
@@ -83,14 +83,9 @@ export interface SuiteConfig {
   agent: string;
 }
 
-export interface EvalConfig {
-  suiteName: string | null;
-}
-
 export const config = {
   environment: environmentConfig,
   suite: suiteConfig,
-  eval: evalConfig,
 };
 
 // Validate critical paths exist during configuration
