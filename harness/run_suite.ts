@@ -301,11 +301,12 @@ function restoreLogging(originals: any) {
   }
 }
 
-async function runCommand(command: string, args: string[] = []) {
+async function runCommand(command: string, args: string[] = [], cwd?: string) {
   return new Promise((resolve, reject) => {
     const process = spawn(command, args, {
       stdio: 'inherit',
-      shell: true
+      shell: true,
+      cwd
     });
 
     process.on('close', (code) => {
