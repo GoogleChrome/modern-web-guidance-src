@@ -560,7 +560,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
 export async function devAll(options: DevGuideOptions = {}): Promise<void> {
   const taskMap = getTaskMap();
   const incompleteGuides = scanAllGuides(taskMap).filter(inv =>
-    inv.hasGuide && inv.hasDemo && (!inv.hasNegativeDemo || !inv.hasGrader)
+    inv.hasGuide && inv.hasDemo && (!inv.hasNegativeDemo || !inv.hasGrader || !inv.hasPrompts || !inv.hasTask)
   );
 
   if (incompleteGuides.length === 0) {
@@ -573,6 +573,8 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
     const missing = [];
     if (!inv.hasNegativeDemo) missing.push(NEGATIVE_DEMO_FILE);
     if (!inv.hasGrader) missing.push(GRADER_FILE);
+    if (!inv.hasPrompts) missing.push(PROMPTS_FILE);
+    if (!inv.hasTask) missing.push('task');
     console.log(`  ${inv.name} ${cDim(`(missing: ${missing.join(', ')})`)}`);
   }
   console.log('');
