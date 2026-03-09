@@ -124,7 +124,24 @@ async function loadDashboardData(testId) {
         }
     } catch (error) {
         console.error('Error:', error);
-        document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;">Error loading dashboard data: ${error.message}</div>`;
+        
+        let errorHtml = `<div style="text-align:center; padding: 50px; color: red;">
+            <h3>Error loading dashboard data</h3>
+            <p>${error.message}</p>
+        </div>`;
+        
+        if (api && api.source === 'remote') {
+            errorHtml += `<div style="text-align:center; color: var(--text-secondary); margin-top: -20px;">
+                <p>If your session has expired, please use the <strong>Sign in with Google</strong> button above to re-authenticate.</p>
+            </div>`;
+        }
+        
+        const grid = document.getElementById('dashboard-grid');
+        if (grid) {
+            grid.innerHTML = errorHtml;
+        } else {
+            document.body.innerHTML = errorHtml;
+        }
     }
 }
 
