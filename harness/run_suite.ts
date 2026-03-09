@@ -46,6 +46,9 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string)
     fs.mkdirSync(targetDir, { recursive: true });
   }
 
+  // Save the exact prompt that will be sent to the agent
+  fs.writeFileSync(path.join(targetDir, 'prompt.txt'), promptContent);
+
   try {
     const agentScript = path.join(__dirname, 'agents',
       agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
@@ -164,6 +167,9 @@ export async function runSuite(options: RunSuiteOptions = {}) {
             fs.mkdirSync(targetDir, { recursive: true });
           }
 
+          // Save the exact prompt that will be sent to the agent
+          fs.writeFileSync(path.join(targetDir, 'prompt.txt'), promptContent);
+
           const agentScript = path.join(__dirname, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
             agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
               'jetski-agent.ts');
@@ -226,21 +232,6 @@ process.exit(result.status ?? 0);
         }
       }
 
-    }
-
-    if (!options.outputDir) {
-      const manifestPath = path.join(resultsDir, 'tests.json');
-      let manifest: { tests: any[] } = { tests: [] };
-      if (fs.existsSync(manifestPath)) {
-        try {
-          manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-        } catch { }
-      }
-
-      if (!manifest.tests.some(t => t.id === testID)) {
-        manifest.tests.push({ id: testID, timestamp: new Date().toISOString(), runCount: numRuns });
-        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-      }
     }
 
     if (hasErrors) {
