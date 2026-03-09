@@ -30,7 +30,7 @@ If you make modifications to the `eval-view` code (HTML, CSS, JS), you can deplo
 
 From the **project root directory**, run:
 ```bash
-pnpm deploy:dashboard
+gd deploy
 ```
 
 This will automatically bundle the current `eval-view` directory and push it to the `gh-pages` branch on GitHub in the `eval-view` folder, which GitHub Pages uses to host the web app. It takes about 2-3 minutes for GitHub Actions to process the deployment and update the live URL.

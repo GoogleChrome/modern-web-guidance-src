@@ -41,7 +41,7 @@ function listGuideDirs(): string[] {
 const completion = omelette('gd <command> <arg1> <arg2>');
 
 completion.on('command', ({ reply }) => {
-  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'setup-completion']);
+  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'setup-completion']);
 });
 
 completion.on('arg1', ({ before, reply }) => {
@@ -137,6 +137,8 @@ ${cBold('Evaluation:')}
   ${cCyan('run')} <tmpl> <prompt>    Run an ad-hoc agent test against a template
 
 ${cBold('Other:')}
+  ${cCyan('deploy')}                 Deploy the dashboard to GitHub Pages
+  ${cCyan('upload')}                 Upload generated evaluation results to GCS
   ${cCyan('setup-completion')}       Install shell auto-completion
 
 ${cBold('Options:')}
@@ -229,6 +231,17 @@ ${cBold('Options:')}
         await runSuite();
       }
       break;
+    }
+
+    case 'upload': {
+      const args = positionals.slice(1);
+      const code = await runNpm(['upload', ...args]);
+      process.exit(code);
+    }
+
+    case 'deploy': {
+      const code = await runNpm(['deploy:dashboard']);
+      process.exit(code);
     }
 
     default: {

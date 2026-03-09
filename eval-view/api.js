@@ -228,12 +228,20 @@ export class ApiClient {
 
     /** Downloads raw text content for a specific URL Path (e.g. from viewContent modal). */
     async getFileText(path) {
-        if (this.source === 'remote') {
+        // base_apps are never uploaded to GCS. They are only available if the user
+        // is running the dashboard locally. Let's force them to be fetched locally.
+        const isBaseApp = path.startsWith('base_apps/');
+
+        if (this.source === 'remote' && !isBaseApp) {
             const exists = await this._checkRemoteFileExists(path);
             if (!exists) throw new Error('File not found (404).');
         }
         
-        const res = await this._fetch(path);
+        // Force local fetching for base_apps, otherwise it tries to read from GCS
+        const res = isBaseApp 
+            ? await fetch(`/${path}?source=local`) 
+            : await this._fetch(path);
+            
         if (!res.ok) {
             if (res.status === 404) throw new Error('File not found (404).');
             throw new Error(`Failed to load from ${path} (${res.status})`);

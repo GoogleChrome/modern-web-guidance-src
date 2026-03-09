@@ -164,14 +164,38 @@ const server = http.createServer(async (req, res) => {
         filePath = localEvalViewPath;
     } else {
         const useLocal = req.url.includes('source=local');
-        if (!useLocal && decodedPath.includes('/')) {
-            // Give a decent error if someone tries to stream a remote file
+        const refererLocal = req.headers.referer && (req.headers.referer.includes('source=local') || req.headers.referer.includes('localhost'));
+        
+        if (!useLocal && !refererLocal && decodedPath.includes('/')) {
+            // Give a decent error if someone tries to stream a remote file directly
             res.writeHead(400);
             res.end('400 Bad Request: Remote GCS streaming must use client-side authenticated fetches directly to GCS.');
             return;
         }
+
+        // If this is an absolute navigation link (e.g. /menu) clicked from inside a test result,
+        // it will lack the <suite>/<run>/... prefix. We must restore it from the referer.
+        let finalRelativePath = relativePath;
+        if (req.headers.referer) {
+            try {
+                const refererUrl = new URL(req.headers.referer);
+                const refPath = refererUrl.pathname.substring(1); // remove leading slash
+                
+                // If referer is a test result (e.g. suite/1/task/guided/index.html)
+                // and the requested path does NOT start with the suite name
+                const parts = refPath.split('/');
+                if (parts.length >= 4 && !finalRelativePath.startsWith(parts[0] + '/')) {
+                    // Reconstruct the base path up to the run type directory
+                    const basePath = parts.slice(0, 4).join('/');
+                    finalRelativePath = path.join(basePath, finalRelativePath);
+                }
+            } catch (e) {
+                // Ignore invalid referer URLs
+            }
+        }
+
         const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
-        filePath = path.join(resultsDir, relativePath);
+        filePath = path.join(resultsDir, finalRelativePath);
     }
   }
 
@@ -216,6 +240,21 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (err.code === 'ENOENT') {
+        // SPA Fallback: If it's a structural route (no extension or .html) that 404s,
+        // try to serve the index.html from the same base run directory instead.
+        if (!extname || extname === '.html') {
+            const pathParts = filePath.split(path.sep);
+            const runBaseIndex = pathParts.findIndex(p => p === 'guided' || p === 'unguided');
+            if (runBaseIndex !== -1) {
+                const basePath = pathParts.slice(0, runBaseIndex + 1).join(path.sep);
+                const indexPath = path.join(basePath, 'index.html');
+                if (fs.existsSync(indexPath)) {
+                    res.writeHead(200, { 'Content-Type': 'text/html' });
+                    res.end(fs.readFileSync(indexPath), 'utf-8');
+                    return;
+                }
+            }
+        }
         res.writeHead(404);
         res.end('404 Not Found');
       } else {
