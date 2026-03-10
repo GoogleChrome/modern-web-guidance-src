@@ -11,35 +11,44 @@ sources:
 
 # Build a Scroll Progress Indicator
 
-TODO: Description of what a Scroll Progress Indicator is
+A scroll progress indicator is a common user interface pattern that visually communicates the user's progress through a scrollable document or container. As the user scrolls, a visual element updates to reflect their position, providing a clear and intuitive sense of how much content has been viewed and how much remains.
 
 ## How to implement
 
-TODO: Write out the following steps:
+To create a scroll progress indicator, you need two things:
 
-- Have a progress bar element that is absolutely or fixed positioned.
-- Attach an animation to it that scales it from 0 to 1 on the x-axis
-- Add an `animation-timeline: scroll()` to it, so that the animation is now driven by scroll
+1.  An element to act as the progress bar. This element is typically `position: fixed` or `position: absolute` so that it stays in view while the user scrolls.
+2.  An animation that is linked to the scroll position.
+
+Here’s how you can achieve this:
+
+-   First, create an HTML element that will serve as your progress bar. This element can be styled to your liking.
+-   Next, in your CSS, define a `@keyframes` animation that scales the progress bar. A common approach is to scale the element from `scaleX(0)` to `scaleX(1)`.
+-   Finally, apply this animation to your progress bar element and set its `animation-timeline` to `scroll()`. This tells the browser to drive the animation's progress based on the scroll position of the nearest ancestor scroller.
 
 ## Example code
 
 This code grows the `#progress` element on scroll.
 
 ```css
-@keyframes grow-progress {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
+@media (prefers-reduced-motion: no-preference) {
+  @supports ((animation-timeline: scroll())) {
+    @keyframes grow-progress {
+      from { transform: scaleX(0); }
+      to { transform: scaleX(1); }
+    }
 
-#progress {
-  position: fixed;
-  left: 0; top: 0;
-  width: 100%; height: 1em;
-  background: red;
+    #progress {
+      position: fixed;
+      left: 0; top: 0;
+      width: 100%; height: 1em;
+      background: red;
 
-  transform-origin: 0 50%;
-  animation: grow-progress auto linear;
-  animation-timeline: scroll();
+      transform-origin: 0 50%;
+      animation: grow-progress auto linear;
+      animation-timeline: scroll();
+    }
+  }
 }
 ```
 
@@ -53,10 +62,43 @@ Because of its location in the DOM, the `scroll()` function will track its neare
 
 ## Best Practices
 
-TODO: List Best Practices here about the use of the `scroll()` function.
+When using scroll-driven animations, it's important to follow a few best practices to ensure a smooth and accessible experience:
+
+- **DO** include feature detection: Not all browsers support scroll-driven animations. Use `@supports (animation-timeline: scroll())` to check for support and provide a fallback for browsers that don't support it.
+  - **DO NOT** use the `scroll-timeline-polyfill` package for the fallback strategy as it is not feature complete and has a lot of known issues.
+  - If the animation is only considered to be decorative, opt for Progressive Enhancement and **DO NOT** provide a fallback.
+- **DO** respect user preferences: Some users prefer to have less motion on the web. Use the `prefers-reduced-motion` media query to disable or reduce your animations for these users.
+- **DO** try to animate only performant CSS properties: For the smoothest animations, stick to animating properties that can be handled by the browser's compositor thread, such as `transform` and `opacity`. Animating other properties like `width` or `height` can lead to performance issues.
+- **DO** use the correct declaration order: When using the `animation` shorthand property, declare `animation-timeline` *after* it to prevent the shorthand from resetting the timeline.
+
+When using the `scroll()` function to create a scroll-driven animation:
+
+- **OPTIONAL** be explicit about the scroller: When not targeting the nearest ancestor scroller, be explicit about which scroller you want to use with `scroll(root)` or `scroll(self)`.
+  - When `root`, `nearest`, or `self` are not sufficient, use a named scroll-timeline.
+- **OPTIONAL** be explicit about the axis to track: When not targeting the `block` axis (such as in a horizontal scroller), be explicit about which axis to track with `scroll(block)` or `scroll(inline)`.
 
 ## Browser support and fallback strategies
 
 {{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
 
-TODO: Write a JavaScript-based scroll-listener that tracks the scroll of the element’s scroller. In its callback function, it updates the `scaleX` of the progress bar based on the scroll distance.
+While browser support for scroll-driven animations is improving, a fallback is still necessary. You can use JavaScript to create a similar effect.
+
+Here’s a JavaScript-based fallback that listens for the `scroll` event and updates the progress bar's `scaleX` transform accordingly. This code is wrapped in a check to see if the browser supports `animation-timeline`, so it only runs if the CSS-based animation isn't supported.
+
+```html
+<script>
+  if (!CSS.supports('animation-timeline', 'scroll()')) {
+    const progress = document.querySelector('#progress');
+
+    window.addEventListener('scroll', () => {
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+      const scrolled = window.scrollY;
+      const progressPercentage = (scrolled / scrollable);
+
+      progress.style.transform = `scaleX(${progressPercentage})`;
+    });
+  }
+</script>
+```
+
+This script first checks if `animation-timeline: scroll()` is supported. If not, it adds a scroll event listener to the `window`. In the event listener, it calculates the scroll progress as a percentage and updates the `scaleX` of the `#progress` element. This provides a similar visual effect for browsers that don't yet support the CSS feature.
