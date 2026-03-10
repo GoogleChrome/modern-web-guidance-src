@@ -1,5 +1,5 @@
-- The implementation MUST include a parent scroll container configured with vertical scrolling (e.g., `overflow-y: auto`) and mandatory snapping (e.g., `scroll-snap-type: y mandatory`).
-- A hidden search bar element MUST be defined as the first child in the scroll container and MUST have `scroll-snap-align: start` applied to it.
+- The implementation MUST include a ancestor scroll container configured with vertical scrolling (e.g., `overflow-y: auto`) and mandatory snapping (e.g., `scroll-snap-type: y mandatory`).
+- A hidden search bar element MUST be defined as the first descendent in the scroll container and MUST have `scroll-snap-align: start` applied to it.
 - The main feed content element (which sits immediately below the hidden search bar) MUST also have `scroll-snap-align: start` applied so that it serves as a valid snap point alongside the search bar.
 - The main feed content element MUST have the `scroll-initial-target: nearest` CSS property applied directly to it so that it is exactly aligned at the top of the viewport on initial load, hiding the search bar.
 - The implementation MUST NOT rely on JavaScript to calculate the initial scroll offset as its primary mechanism. The CSS property alone must manage the positioning to avoid a visible flash.
