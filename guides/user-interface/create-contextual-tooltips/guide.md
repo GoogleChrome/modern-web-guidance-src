@@ -1,18 +1,15 @@
 ---
 name: create-contextual-tooltips
-
 description: Create contextual tooltips that provide additional information when the user shows interest. This leverages popover="hint", CSS Anchor Positioning, and the Interest Invoker API.
-
 web-feature-ids:
-* popover
-* anchor-positioning
-* popover-hint
-* interest-invokers
-
+- popover
+- anchor-positioning
+- popover-hint
+- interest-invokers
 sources:
-* https://developer.mozilla.org/docs/Web/API/Popover_API
-* https://developer.mozilla.org/docs/Web/CSS/Guides/Anchor_positioning
-* https://developer.mozilla.org/docs/Web/API/Popover_API/Using_interest_invokers
+- https://developer.mozilla.org/docs/Web/API/Popover_API
+- https://developer.mozilla.org/docs/Web/CSS/Guides/Anchor_positioning
+- https://developer.mozilla.org/docs/Web/API/Popover_API/Using_interest_invokers
 ---
 
 # Creating Contextual Tooltips
@@ -32,15 +29,12 @@ Contextual tooltips provide secondary information about a UI element. By combini
 * **DO NOT** use `z-index` to manage the tooltip's visibility; the Top Layer handles this natively.
 * **DO NOT** wire tooltip show/hide manually with `mouseenter`/`mouseleave` JavaScript when the `interestfor` attribute (or its polyfill) can be used instead.
 
-** TODO : Need to add animation and anchored CQ **
-
 ### Fallback Strategies
 #### interest-invokers
 
 The Interest Invoker API (`interestfor` attribute) is currently only supported in Chrome. For browsers that do not yet support it natively:
 
 * **Guidance:** Install and load the [`interestfor` polyfill](https://www.npmjs.com/package/interestfor). It replicates native Interest Invoker API behavior and requires no changes to markup — the same `interestfor` attribute used for the native API is also read by the polyfill.
-
 
 
 #### popover-hint

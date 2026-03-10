@@ -1,14 +1,12 @@
 ---
 name: create-persistent-app-tours
-
 description: Create persistent onboarding walkthroughs using the popover="manual" state to ensure tour steps stay open during user interaction.
-
 web-feature-ids:
-* popover
-* anchor-positioning
+- popover
+- anchor-positioning
 sources:
-* https://developer.mozilla.org/docs/Web/API/Popover_API/Using
-* https://developer.chrome.com/blog/introducing-popover-api
+- https://developer.mozilla.org/docs/Web/API/Popover_API/Using
+- https://developer.chrome.com/blog/introducing-popover-api
 ---
 
 # Creating Persistent App Tours

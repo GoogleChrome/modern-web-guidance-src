@@ -1,18 +1,15 @@
 ---
 name: create-toast-notifications
-
 description: Create non-intrusive toast and overlay notifications for persistent, stackable messaging and state communication.
-
 web-feature-ids:
-* popover
-* anchor-positioning
-* sibling-index
-* transition-behavior
-
+- popover
+- anchor-positioning
+- sibling-count
+- transition-behavior
 sources:
-* https://developer.chrome.com/blog/introducing-popover-api
-* https://web.dev/learn/css/popover-and-dialog
-* https://developer.mozilla.org/docs/Web/CSS/Guides/Anchor_positioning
+- https://developer.chrome.com/blog/introducing-popover-api
+- https://web.dev/learn/css/popover-and-dialog
+- https://developer.mozilla.org/docs/Web/CSS/Guides/Anchor_positioning
 ---
 
 # Creating Toast Notifications
