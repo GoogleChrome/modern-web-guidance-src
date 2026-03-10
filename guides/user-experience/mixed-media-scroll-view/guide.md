@@ -1,6 +1,6 @@
 ---
 name: scroll-target-on-load
-description: Build a single scrollable feed with mixed media and text that automatically renders with a specific media item scrolled into view.
+description: Build a scrollable list of elements (e.g. a carousel of images or a chat conversation thread) that can be displayed with a particular element scrolled into view on the initial render).
 web-feature-ids:
   - scroll-initial-target
   - scroll-into-view
