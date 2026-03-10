@@ -3,7 +3,7 @@ name: project-guides
 description: Best practices for authoring guidance. Use this skill any time you're writing or reviewing `guide.md` files.
 ---
 
-# Stage 2: Authoring guidance for a use case
+# Stage 2: Authoring guidance for a use case (Needs guidance)
 
 This is the second of three stages in creating guidance:
 
@@ -14,7 +14,7 @@ This is the second of three stages in creating guidance:
 **MANDATORY RULES FOR WRITING `guide.md`:**
 
 ### 1. YAML Frontmatter Schema
-You MUST start `guide.md` with EXACTLY this YAML frontmatter structure:
+`guide.md` must start with this YAML frontmatter structure:
 
 ```yaml
 ---
@@ -44,6 +44,7 @@ sources:
 * **OPTIONAL** provide an optional second argument for specific BCD keys: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
 * Show explicit code for feature detection (e.g., `CSS.supports()`, `if ('feature' in window)`) or graceful degradation techniques.
 
-## Step 3: Authoring `expectations.md` and `demo.html`
+## Authoring `expectations.md` and  `demo.html`
 
 * **`expectations.md`**: Write a natural language, bulleted list of assertions that must be true if an agent implements the `guide.md` correctly. (e.g., "The input element is styled with a red border only AFTER a blur event").
+* **`demo.html`**: The `demo.html` file should be a clean example of a correct implementation of the use case. If possible, it should be self-contained with inline scripts and styles. 
