@@ -73,7 +73,6 @@ export interface RunSuiteOptions {
   tasks?: string[];
   numRuns?: number;
   skipEval?: boolean;
-  negative?: boolean;
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
@@ -105,7 +104,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     let hasErrors = false;
     const numRuns = options.numRuns || config.suite.numRuns;
     const endRun = 1 + numRuns;
-      const isNegativeSuite = options.negative ?? (config.suite.negative === true);
+      const isNegativeSuite = config.suite.negative === true;
       const currentTasksDir = isNegativeSuite ? path.join(tasksDir, 'negative') : tasksDir;
 
       console.log(`\nStarting execution for ${numRuns} runs ${isNegativeSuite ? '(Negative Suite)' : ''}`);
@@ -332,13 +331,11 @@ async function runCommand(command: string, args: string[] = [], cwd?: string) {
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const positionalArgs = args.filter(arg => !arg.startsWith('--'));
-  const isNegative = args.includes('--negative');
-
   if (positionalArgs.length === 2 && args.includes('--with-template')) {
     runAgent(positionalArgs[0], positionalArgs[1]).catch(console.error);
   } else if (positionalArgs.length >= 1) {
-    runSuite({ tasks: positionalArgs, negative: isNegative }).catch(console.error);
+    runSuite({ tasks: positionalArgs }).catch(console.error);
   } else {
-    runSuite({ negative: isNegative }).catch(console.error);
+    runSuite().catch(console.error);
   }
 }
