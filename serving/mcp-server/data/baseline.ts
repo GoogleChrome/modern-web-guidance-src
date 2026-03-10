@@ -5,29 +5,65 @@ export type BaselineStatus = 'Limited availability' | `Baseline since ${string}`
 type Feature = typeof features[string];
 
 /**
- * Gets the Baseline status for a specific feature.
- * @param featureId - The ID of the web feature
- * @returns The Baseline status of the feature ('Limited availability' or 'Baseline since YYYY-MM-DD')
+ * Result of a feature validation check.
  */
-export function getBaselineStatus(featureId: string): BaselineStatus | undefined {
+export interface FeatureValidationResult {
+  isValid: boolean;
+  error?: 'not_found' | 'invalid_kind';
+  kind?: string;
+  suggestion?: string;
+  errorMessage?: string;
+}
+
+export interface DetailedBaselineStatus {
+  baseline: 'low' | 'high' | false;
+  baseline_low_date?: string;
+}
+
+/**
+ * Gets the detailed Baseline status for a specific feature.
+ * @param featureId - The ID of the web feature
+ * @returns Object with baseline level and low date
+ */
+export function getDetailedBaselineStatus(featureId: string): DetailedBaselineStatus | undefined {
   const resolvedIds = resolveFeatureId(featureId);
   if (resolvedIds.length === 0) {
     return;
   }
 
   let latestDate = "0000-00-00";
+  let overallBaseline: 'low' | 'high' | false = 'high';
 
   for (const id of resolvedIds) {
     const feature = features[id] as Feature;
-    if (!feature.status?.baseline_low_date) {
-      return 'Limited availability';
+    const status = feature.status;
+    if (!status?.baseline) {
+      return { baseline: false };
     }
-    if (feature.status.baseline_low_date > latestDate) {
-      latestDate = feature.status.baseline_low_date;
+    if (status.baseline === 'low') {
+      overallBaseline = 'low';
+    }
+    if (status.baseline_low_date && status.baseline_low_date > latestDate) {
+      latestDate = status.baseline_low_date;
     }
   }
 
-  return `Baseline since ${latestDate}`;
+  return {
+    baseline: overallBaseline,
+    baseline_low_date: latestDate === "0000-00-00" ? undefined : latestDate
+  };
+}
+
+/**
+ * Gets the Baseline status for a specific feature.
+ * @param featureId - The ID of the web feature
+ * @returns The Baseline status of the feature ('Limited availability' or 'Baseline since YYYY-MM-DD')
+ */
+export function getBaselineStatus(featureId: string): BaselineStatus | undefined {
+  const status = getDetailedBaselineStatus(featureId);
+  if (!status) return;
+  if (status.baseline === false) return 'Limited availability';
+  return `Baseline since ${status.baseline_low_date}`;
 }
 
 /**
@@ -53,42 +89,42 @@ export function checkBaseline(target: string, featureId: string): boolean {
     return true;
   }
 
-  // 2. Resolve Target to a Required Low Date
-  let requiredLowDate: string;
-
-  const yearMatch = target.match(/^baseline (\d{4})$/i);
-  const dateMatch = target.match(/^baseline widely available on (\d{4}-\d{2}-\d{2})$/i);
-
-  if (yearMatch) {
-    const year = parseInt(yearMatch[1], 10);
-    // "Baseline 2024" -> Available by end of 2024
-    requiredLowDate = `${year}-12-31`;
-  } else if (dateMatch) {
-    // "Baseline Widely available on X" -> Low date was 30 months before X
-    requiredLowDate = subtractMonths(dateMatch[1], 30);
-  } else {
-    // Relative targets (Newly, Widely)
-    const now = new Date().toISOString().split('T')[0];
-
-    if (normalizedTarget.includes('widely')) {
-      requiredLowDate = subtractMonths(now, 30);
-    } else if (normalizedTarget.includes('newly') || normalizedTarget.includes('baseline')) {
-      requiredLowDate = now;
-    } else {
-      return false;
-    }
-  }
-
-  // 3. Verify feature meets requirement using getBaselineStatus
-  const status = getBaselineStatus(featureId);
-
-  if (!status || status === 'Limited availability') {
+  const baselineStatus = getDetailedBaselineStatus(featureId);
+  if (!baselineStatus) {
     return false;
   }
 
-  // Status is "Baseline since YYYY-MM-DD"
-  const featureDate = status.replace('Baseline since ', '');
-  return featureDate <= requiredLowDate;
+  // 2. Handle specific historical checks first (Yearly or specific "Widely available on" dates)
+  const yearMatch = target.match(/^baseline (\d{4})$/i);
+  const dateMatch = target.match(/^baseline widely available on (\d{4}-\d{2}-\d{2})$/i);
+
+  if (yearMatch || dateMatch) {
+    if (baselineStatus.baseline === false || !baselineStatus.baseline_low_date) {
+      return false;
+    }
+
+    let requiredLowDate: string;
+    if (yearMatch) {
+      const year = parseInt(yearMatch[1], 10);
+      // "Baseline 2024" -> Available by end of 2024
+      requiredLowDate = `${year}-12-31`;
+    } else {
+      // "Baseline Widely available on X" -> Low date was 30 months before X
+      requiredLowDate = subtractMonths(dateMatch![1], 30);
+    }
+    return baselineStatus.baseline_low_date <= requiredLowDate;
+  }
+
+  // 3. Handle relative targets (Newly, Widely) strictly against the package status
+  if (normalizedTarget.includes('widely')) {
+    return baselineStatus.baseline === 'high';
+  }
+  if (normalizedTarget.includes('newly') || normalizedTarget === 'baseline' || normalizedTarget === 'baseline newly available') {
+    // "Baseline" or "Newly available" are both satisfied by low or high baseline status
+    return baselineStatus.baseline === 'low' || baselineStatus.baseline === 'high';
+  }
+
+  return false;
 }
 
 /**
@@ -114,6 +150,85 @@ export function resolveFeatureId(featureId: string): string[] {
 }
 
 /**
+ * Validates a feature ID.
+ */
+export function validateFeature(id: string): FeatureValidationResult {
+  const feature = features[id] as Feature | undefined;
+  if (!feature) {
+    return {
+      isValid: false,
+      error: 'not_found',
+      errorMessage: `Web feature ID "${id}" not found in web-features package`
+    };
+  }
+  if (feature.kind !== 'feature') {
+    let suggestion: string | undefined;
+    let suggestionStr = '';
+    if (feature.kind === 'moved') {
+      suggestion = feature.redirect_target;
+      suggestionStr = ` (It has been moved to "${suggestion}")`;
+    } else if (feature.kind === 'split') {
+      suggestion = feature.redirect_targets.join(', ');
+      suggestionStr = ` (It has been split into: ${suggestion})`;
+    }
+    return {
+      isValid: false,
+      error: 'invalid_kind',
+      kind: feature.kind,
+      suggestion,
+      errorMessage: `Web feature ID "${id}" is a ${feature.kind} record, not a primary feature${suggestionStr}`
+    };
+  }
+  return { isValid: true };
+}
+
+/**
+ * Internal helper to format status messages consistently.
+ */
+function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string }): string {
+  const { baseline, baseline_low_date } = status;
+
+  if ((baseline === 'low' || baseline === 'high') && baseline_low_date) {
+    const statusName = baseline === 'high' ? 'Widely available' : 'Newly available';
+    return `${featureName} is ${statusName}. It's been Baseline since ${baseline_low_date}.`;
+  }
+
+  return `${featureName} is not supported across all major browsers.`;
+}
+
+/**
+ * Gets a formatted status message for a feature or a specific BCD key.
+ */
+export function getStatusMessage(featureId: string, bcdKey?: string): string | undefined {
+  if (bcdKey) {
+    const status = getStatus(featureId, bcdKey);
+    if (!status) return;
+    return formatStatusMessage(`The ${bcdKey} capability`, status);
+  }
+
+  const feature = features[featureId] as Feature | undefined;
+  if (!feature) return;
+
+  const baselineStatus = getDetailedBaselineStatus(featureId);
+  if (!baselineStatus) return;
+
+  const subject = (feature as any).name || featureId;
+
+  if (baselineStatus.baseline === false) {
+    return formatStatusMessage(subject, { baseline: false });
+  }
+
+  return formatStatusMessage(subject, {
+    baseline: baselineStatus.baseline,
+    baseline_low_date: baselineStatus.baseline_low_date
+  });
+}
+
+type FeatureData = Extract<Feature, { kind: "feature" }>;
+type Status = NonNullable<FeatureData["status"]>;
+type CompatStatus = NonNullable<Status["by_compat_key"]>[string];
+
+/**
  * Gets the baseline status for a specific browser compatibility key.
  * @param featureId - Optional feature ID to search within (improves performance if known)
  * @param bcdKey - The browser compatibility data key (e.g., "api.HTMLElement.focus")
@@ -122,7 +237,7 @@ export function resolveFeatureId(featureId: string): string[] {
 export function getStatus(
   featureId: string | undefined,
   bcdKey: string,
-): { baseline?: 'high' | 'low' | false } | undefined {
+): CompatStatus | undefined {
   // Direct lookup when feature ID is provided
   if (featureId) {
     // Handle splits and redirects

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Light-Dark Theme Demo</title>
+  <style>
+    /* 
+      1. Opt into the color-scheme. 
+      This tells the browser that this document supports both light and dark themes. 
+      It usually defaults to the user's system preference. 
+    */
+    :root {
+      color-scheme: light dark;
+
+      /* 
+        2. Define semantic color palettes on a single line using light-dark().
+        The syntax is light-dark(<light-color>, <dark-color>).
+      */
+      --bg-color: light-dark(#faf8f8, #202124);
+      --text-color: light-dark(#202124, #f8f9fa);
+      --accent-color: light-dark(#1a73e8, #8ab4f8);
+
+      --card-bg: light-dark(#ffffff, #2d2e31);
+      --card-border: light-dark(#dadce0, #5f6368);
+      --card-shadow: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.4));
+
+      --btn-text-color: light-dark(white, #202124);
+      --code-bg: light-dark(#e8eaed, #3c4043);
+
+      --input-bg: light-dark(#ffffff, #303134);
+      --input-border: light-dark(#dadce0, #5f6368);
+      --input-text: light-dark(#202124, #e8eaed);
+      --input-focus: light-dark(#1a73e8, #8ab4f8);
+      --disabled-bg: light-dark(#f1f3f4, #3c4043);
+      --disabled-text: light-dark(#9aa0a6, #80868b);
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 2rem;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+
+      /* 3. Apply the variables. The browser automatically handles the switching. */
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    p.description {
+      max-width: 600px;
+      text-align: center;
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+
+    code {
+      background-color: var(--code-bg);
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 0.85em;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 2rem;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 4px 12px var(--card-shadow);
+      transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .card h2 {
+      margin-top: 0;
+      color: var(--accent-color);
+    }
+
+    .controls {
+      margin-bottom: 2rem;
+      display: flex;
+      gap: 1rem;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      background-color: var(--accent-color);
+      color: var(--btn-text-color);
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* Highlight the active mode visually on the buttons */
+    button.active {
+      outline: 2px solid var(--text-color);
+      outline-offset: 4px;
+    }
+
+    /* 
+      Showcasing forms explicitly! 
+      The form items inherit these adaptive palettes natively too.
+    */
+    .form-section {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 2rem;
+      max-width: 400px;
+      width: 100%;
+      text-align: left;
+      box-shadow: 0 4px 12px var(--card-shadow);
+      transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+      margin-top: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      box-sizing: border-box;
+    }
+
+    .form-section h3 {
+      margin-top: 0;
+      color: var(--accent-color);
+      margin-bottom: 0.5rem;
+    }
+
+    .form-input {
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 1px solid var(--input-border);
+      border-radius: 4px;
+      background-color: var(--input-bg);
+      color: var(--input-text);
+      font-family: inherit;
+      transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+    }
+
+    .form-input:focus {
+      outline: 2px solid var(--input-focus);
+      border-color: transparent;
+    }
+
+    .form-input::placeholder {
+      color: var(--disabled-text);
+    }
+
+    button:disabled {
+      background-color: var(--disabled-bg);
+      color: var(--disabled-text);
+      cursor: not-allowed;
+      border: 1px solid transparent;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Semantic <code>light-dark()</code> Palettes</h1>
+  <p class="description">
+    This demo uses the <code>light-dark()</code> CSS function to define semantic color variables for both light and dark
+    modes on a single line. The browser automatically responds to the <code>color-scheme</code> property to toggle them!
+  </p>
+
+  <div class="controls">
+    <button id="systemBtn" class="active">System Preference</button>
+    <button id="lightBtn">Force Light</button>
+    <button id="darkBtn">Force Dark</button>
+  </div>
+
+  <div class="card">
+    <h2>Example Card</h2>
+    <p>Background, text, border, and shadow colors adapt automatically. No need to use
+      <code>@media (prefers-color-scheme: dark)</code> blocks!
+    </p>
+  </div>
+
+  <div class="form-section">
+    <h3>Form Elements</h3>
+    <input type="text" class="form-input" placeholder="Type something...">
+    <select class="form-input">
+      <option value="option1">Option 1</option>
+      <option value="option2">Option 2</option>
+      <option value="option3">Option 3</option>
+    </select>
+    <button disabled>Deactivated Button</button>
+  </div>
+
+  <script>
+    // These buttons simply override the color-scheme property on the root HTML element.
+    // The light-dark() CSS variables automatically reflect this change!
+
+    const root = document.documentElement;
+    const btns = {
+      system: document.getElementById('systemBtn'),
+      light: document.getElementById('lightBtn'),
+      dark: document.getElementById('darkBtn')
+    };
+
+    function setActiveBtn(activeKey) {
+      Object.values(btns).forEach(btn => btn.classList.remove('active'));
+      btns[activeKey].classList.add('active');
+    }
+
+    btns.system.addEventListener('click', () => {
+      root.style.colorScheme = 'light dark';
+      setActiveBtn('system');
+    });
+
+    btns.light.addEventListener('click', () => {
+      root.style.colorScheme = 'light';
+      setActiveBtn('light');
+    });
+
+    btns.dark.addEventListener('click', () => {
+      root.style.colorScheme = 'dark';
+      setActiveBtn('dark');
+    });
+  </script>
+</body>
+
+</html>

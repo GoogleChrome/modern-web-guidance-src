@@ -7,13 +7,32 @@
 </head>
 
 <body>
-  <h1>Optimize Image Priority</h1>
+  <h1>Product Landing Page</h1>
 
-  <!-- LCP Image: Boosted to High Priority, includes dimensions to prevent CLS -->
-  <img src="https://picsum.photos/id/10/600/400" alt="LCP Image" fetchpriority="high" width="600" height="400">
+  <!-- LCP Image: Boosted to High Priority -->
+  <img src="hero-lcp.jpg" alt="Product Hero" fetchpriority="high" width="600" height="400">
 
-  <!-- Secondary Image (Above the fold): Dropped to Low Priority, includes dimensions -->
-  <img src="https://picsum.photos/id/20/200/200" alt="Secondary Image" fetchpriority="low" width="200" height="200">
+  <div class="gallery">
+    <!-- Visible gallery image -->
+    <img src="gallery-main.jpg" alt="Main Gallery Image" width="300" height="200">
+
+    <!-- Hidden Gallery Image: Dropped to Low Priority -->
+    <img src="gallery-alt.jpg" alt="Secondary Gallery Image" fetchpriority="low" width="300" height="200"
+      style="display: none;">
+  </div>
+  <nav>
+    <ul>
+      <li>Products
+        <div class="mega-menu" style="display: none;">
+          <!-- Image hidden in a dropdown: Dropped to Low Priority -->
+          <img src="mega-menu-promo.jpg" alt="Special Offer" fetchpriority="low" width="300" height="150">
+        </div>
+      </li>
+    </ul>
+  <footer style="margin-top: 2000px;">
+    <!-- Below the fold image: Should NOT have fetchpriority="low" if it's already lazy-loaded -->
+    <img src="footer-logo.png" alt="Footer Logo" loading="lazy" width="120" height="60">
+  </footer>
 </body>
 
 </html>

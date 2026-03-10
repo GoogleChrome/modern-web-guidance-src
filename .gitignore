@@ -9,6 +9,8 @@ serving/mcp-server/.mcp-data/
 # Test artifacts
 eval-view/test-results/
 harness/results/
+grade-report/
+test-app-results/
 
 # Environment and Logs
 .env
@@ -21,3 +23,6 @@ harness/results/
 # Coverage
 coverage/
 serving/.mcp-data/
+
+# Generated Skills (temporary. This can't be ignored when publishing the repo/skill)
+skills/modern-web/

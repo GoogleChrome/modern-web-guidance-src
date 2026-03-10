@@ -6,6 +6,7 @@ import { marked } from "marked";
 import { glob } from "glob";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
+import { replaceMacros } from "../mcp-server/lib/macros.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -139,9 +140,11 @@ async function processSingleGuideFile(
   }
 
   if (markdownBody.trim().length === 0) {
-    console.log(`Skipping ${id} (${category}) as it has no markdown content.`);
+    // Just a stub guide. No content to index.
     return;
   }
+
+  const processedMarkdown = replaceMacros(markdownBody, filePath);
 
   useCases.push({
     id,
@@ -149,7 +152,7 @@ async function processSingleGuideFile(
     category,
   });
 
-  const chunks = chunkMarkdown(markdownBody);
+  const chunks = chunkMarkdown(processedMarkdown);
   chunks.push(frontmatter);
 
   const embedder = Embedder.getInstance(); // Singleton, already init
@@ -175,7 +178,7 @@ async function processSingleGuideFile(
 
   // Write clean markdown to build dir
   const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
-  fs.writeFileSync(buildFilePath, markdownBody.trimStart());
+  fs.writeFileSync(buildFilePath, processedMarkdown.trimStart());
 }
 
 processGuides().catch(console.error);
