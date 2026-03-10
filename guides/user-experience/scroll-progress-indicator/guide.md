@@ -5,4 +5,6 @@ web-feature-ids:
   - scroll-driven-animations
 sources:
   - https://developer.chrome.com/docs/css-ui/scroll-driven-animations
+  - https://scroll-driven-animations.style/demos/progress-bar/css/scroll-defaults
+  - https://scroll-driven-animations.style/demos/progress-bar/css/
 ---
