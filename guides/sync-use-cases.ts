@@ -265,17 +265,19 @@ async function run() {
     const promptsPath = path.join(subdir, 'prompts.md');
 
     const hasGuide = fs.existsSync(guidePath);
-    const hasDemo = fs.existsSync(demoPath);
-    const hasGrader = fs.existsSync(graderPath);
-    const hasPrompts = fs.existsSync(promptsPath);
+    const hasDemo = fs.existsSync(demoPath) && fs.readFileSync(demoPath, 'utf8').trim().length > 0;
+    const hasGrader = fs.existsSync(graderPath) && fs.readFileSync(graderPath, 'utf8').trim().length > 0;
+    const hasPrompts = fs.existsSync(promptsPath) && fs.readFileSync(promptsPath, 'utf8').trim().length > 0;
 
     if (hasGuide !== hasDemo) {
-      console.error(`❌ Error in ${relativeSubdir}: Must have BOTH guide.md and demo.html before advancing to the "Needs guidance" column.`);
+      const missingFile = hasGuide ? 'demo.html' : 'guide.md';
+      console.error(`❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH guide.md and demo.html before advancing to the "Needs guidance" column.`);
       hasError = true;
     }
 
     if (hasGrader !== hasPrompts) {
-      console.error(`❌ Error in ${relativeSubdir}: Must have BOTH grader.ts and prompts.md before advancing to the "Needs evals" column.`);
+      const missingFile = hasGrader ? 'prompts.md' : 'grader.ts';
+      console.error(`❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH grader.ts and prompts.md before advancing to the "Needs evals" column.`);
       hasError = true;
     }
 
