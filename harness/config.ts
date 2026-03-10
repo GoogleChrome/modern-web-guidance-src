@@ -6,15 +6,20 @@ import "dotenv/config";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Explicitly load .env from the project root
+import dotenv from 'dotenv';
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
 export const Agents = {
   JETSKI: 'jetski',
   GEMINI_CLI: 'gemini_cli',
   CLAUDE_CODE: 'claude_code'
 } as const;
 
-// *************************************
-// *** Set environment configuration ***
-// *************************************
+// ******************************************
+// *** Set environment configuration      ***
+// *** Set env variables in guidance/.env ***
+// ******************************************
 export const environmentConfig: EnvironmentConfig = {
   // Jetski Configuration
   jetskiDir: process.env.JETSKI_DIR || path.join(os.homedir(), '.gemini/jetski'),
@@ -35,30 +40,13 @@ export const environmentConfig: EnvironmentConfig = {
   mcpApiKey: process.env.MCP_API_KEY || '', // For google-developer-knowledge MCP server
 };
 
-// *******************************
-// *** Set suite configuration ***
-// *** Run with: `pnpm suite`  ***
-// *******************************
 export const suiteConfig: SuiteConfig = {
-  name: 'cards-claude-skills-sample',
-  numRuns: 1,
-  baseApps: ['cards-app'],
-  mcpServersToEnable: [], // Available servers: 'modern-web', 'google-developer-knowledge'
-  enableSkills: true,
-  agent: Agents.CLAUDE_CODE,
-};
-
-// ************************************
-// *** Set evaluation configuration ***
-// *** Run with: `pnpm report`      ***
-// ************************************
-export const evalConfig: EvalConfig = {
-  suiteName: 'cards-claude-skills-sample',
-  guidesToTest: ['content-vis', 'preload-prerender'],
-  expectedGuides: {
-    // Structure: { <baseApp name>: <list of expected guides> }
-    'cards-app': ['content-vis', 'preload-prerender'],
-  }
+  name: `full-${new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-')}`,
+  numRuns: 2,
+  tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
+  mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
+  enableSkills: false,
+  agent: Agents.GEMINI_CLI,
 };
 
 export interface EnvironmentConfig {
@@ -77,22 +65,15 @@ export interface EnvironmentConfig {
 export interface SuiteConfig {
   name: string | null;
   numRuns: number;
-  baseApps: string[];
+  tasks: string[];
   mcpServersToEnable: string[];
   enableSkills: boolean;
   agent: string;
 }
 
-export interface EvalConfig {
-  suiteName: string | null;
-  guidesToTest: string[];
-  expectedGuides: Record<string, string[]>;
-}
-
 export const config = {
   environment: environmentConfig,
   suite: suiteConfig,
-  eval: evalConfig,
 };
 
 // Validate critical paths exist during configuration

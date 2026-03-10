@@ -1,7 +1,0 @@
-I will read the `index.html` file to understand the current structure and then search for best practices regarding instant navigation.
-I will retrieve the best practices for `preload-prerender` to determine the most effective method for implementing instant navigation.
-I will add the Speculation Rules API script to the `<head>` of `index.html` to enable instant navigation for all links except `/logout`, using the `moderate` eagerness setting.
-I will verify the changes to `index.html` by reading the file content.
-I will retrieve the current UTC timestamp in ISO 8601 format to accurately record the resource usage.
-I will create the `resources_used.json` file to document the usage of the `preload-prerender` guide from the `modern-web` source.
-I have implemented the Speculation Rules API in `index.html` to enable instant navigation for your site, as requested. This will prefetch pages on hover or pointer interaction, making subsequent navigations feel instantaneous. I also excluded the logout link to prevent accidental logouts. Additionally, I've recorded the resource usage in `resources_used.json`.

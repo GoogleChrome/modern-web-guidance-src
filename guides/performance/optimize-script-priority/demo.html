@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Optimize Script Priority Demo</title>
+</head>
+
+<body>
+  <h1>Optimize Script Priority</h1>
+
+  <!-- 
+    1. Boosted Async Script: 
+    Explicitly set to high priority. Use this for scripts critical to 
+    user interactivity so they download fast without blocking the parser.
+  -->
+  <script src="/js/app.js" async fetchpriority="high"></script>
+
+  <!-- 
+    2. Default Async Script: 
+    Implicitly "Low" priority. Perfect for background analytics or 
+    non-essential widgets.
+  -->
+  <script src="/js/tracker.js" async></script>
+
+  <!-- Simulating an LCP image that needs bandwidth -->
+  <img src="https://picsum.photos/id/10/600/400" alt="LCP Image" width="600" height="400" fetchpriority="high">
+
+  <!-- 
+    3. Deprioritized Legacy Script that are at the end of the page and so not blocking the rest of the page load: 
+    Normally, standard scripts get a High/Medium priority. 
+    Using fetchpriority="low" helps ensure this doesn't delay higher priority resources.
+  -->
+  <script src="/js/legacy-widgets.js" fetchpriority="low"></script>
+
+</body>
+
+</html>

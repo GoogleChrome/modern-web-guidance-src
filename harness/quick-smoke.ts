@@ -7,19 +7,20 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function runSmokeTest() {
+export async function runSmokeTest() {
   const tempProjectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jetski-smoke-test-'));
   const prompt = "Please create a file named 'hello.txt' containing exactly 'hello world'. No other text or files are needed.";
   
   console.log(`🚀 Starting smoke test in: ${tempProjectDir}`);
   
   try {
-    // Run the existing agent harness
-    // Usage: node jetski-agent.ts <directory> <prompt> [agentType]
     const result = spawnSync('node', [
+      '--experimental-strip-types',
       path.join(__dirname, 'agents/jetski-agent.ts'),
-      tempProjectDir,
-      prompt
+      prompt,
+      'guided', // runType expects guided or unguided
+      tempProjectDir, // targetDir
+      tempProjectDir  // templateDir (both are temp dir for smoke test)
     ], {
       stdio: 'inherit',
       env: { ...process.env }
@@ -55,4 +56,6 @@ async function runSmokeTest() {
   }
 }
 
-runSmokeTest();
+if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
+  runSmokeTest();
+}

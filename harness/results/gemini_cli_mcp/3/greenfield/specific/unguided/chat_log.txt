@@ -1,8 +1,0 @@
-I will read the `index.html` file to verify its current contents before overwriting it.
-I will create the `index.html` file with the specified requirements, including a "Details" button with a hover-triggered popover, a hero image with scroll-driven animations, and adaptive loading logic.
-I will read the `index.html` file to verify its content and ensure there are no syntax errors.
-The coffee shop product landing page has been created in `index.html`. It includes:
-*   **Adaptive Loading:** The hero image automatically switches to a low-resolution placeholder if a slow connection (2G/Slow-2G) or Data Saver is detected.
-*   **Scroll-Driven Animations:** The hero image uses native CSS `animation-timeline: view()` to fade in and scale up as it enters the viewport.
-*   **Hover Popover:** A "Details" button that reveals an ingredients list popover on hover, using the native Popover API (`showPopover()`/`hidePopover()`).
-*   **Design:** A clean, responsive layout with a coffee-themed color palette and stock imagery.

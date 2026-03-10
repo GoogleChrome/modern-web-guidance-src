@@ -1,4 +1,0 @@
-I will read the `index.html` file to understand the current page structure and locate the navigation links.
-I will insert the Speculation Rules API script into the `<head>` of `index.html`. This script will explicitly list `/menu`, `/locations`, `/rewards`, and `/account` for pre-rendering, while omitting `/logout` to strictly follow the safety requirement.
-I will read the `index.html` file one last time to verify that the Speculation Rules script has been correctly inserted and the JSON syntax is valid.
-The pre-rendering has been implemented using the Speculation Rules API for the `/menu`, `/locations`, `/rewards`, and `/account` links, explicitly omitting `/logout` to prevent accidental state changes.

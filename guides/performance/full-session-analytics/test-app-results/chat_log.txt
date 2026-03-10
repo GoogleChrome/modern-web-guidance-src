@@ -1,0 +1,8 @@
+I've updated `index.html` to implement complete Core Web Vitals monitoring using the `web-vitals` library and the modern `fetchLater()` API strategy. 
+
+Here are the key aspects of the implementation:
+1. **`web-vitals` Library**: Retrieves metrics directly from `https://unpkg.com/web-vitals@4?module`.
+2. **`fetchLater()` Polyfill**: Uses the recommended `fetchLater()` fallback pattern. Instead of using unreliable techniques like tracking `unload` events with `sendBeacon` or image pixels, `fetchLater` delegates the delivery to the browser to ensure the payload is reliably sent exactly when the session ends (i.e. tab is closed or navigated away).
+3. **Queue & Update Pattern**: The page initializes an `AbortController` and queues a payload whenever a metric change is detected. As new metrics like CLS, LCP, or INP settle or update over the user's visit, the previous deferred request is aborted and a fresh request with the newest, finalized values is pushed to the queue. 
+4. **Target Endpoint**: Scheduled to POST JSON payloads exclusively to `/collect`.
+5. **Stock Photo**: A large, high-quality stock photo is included to trigger a meaningful Largest Contentful Paint (LCP) event.

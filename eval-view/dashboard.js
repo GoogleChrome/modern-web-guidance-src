@@ -1,27 +1,63 @@
-import { getRunStats, getColor, escapeHtml, formatTestName } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth } from './utils.js';
+import { ApiClient } from './api.js';
+import { RadarChart } from './radar.js';
+
+const MCP_LOG_FILE = 'mcp-server.log';
+
+// Keep track of current details state for navigation
+let currentDetails = null;
+let allTestData = null;
+let sortedScenarios = [];
+let currentRunTypes = [];
+let currentTestID = null;
+let api;
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize API Client
+    api = new ApiClient();
+
+    // Auth Button Handling (only for remote)
+    if (api.source === 'remote') {
+        initGoogleAuth(async () => {
+            // Reload on auth success
+            const params = new URLSearchParams(window.location.search);
+            const testId = params.get('testId');
+            if (testId) {
+                await loadDashboardData(testId);
+            }
+        });
+    }
+
+    const initialParams = new URLSearchParams(window.location.search);
+    const initialTestID = initialParams.get('testId');
+
+    if (initialTestID) {
+        await loadDashboardData(initialTestID);
+    } else {
+        document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;">Error: No testId provided in query string.</div>`;
+    }
+});
+
+async function loadDashboardData(testId) {
+    // Prevent double loading
+    if (window.dashboardLoaded) return;
+    window.dashboardLoaded = true;
+
     try {
-        // Get testID from query string
-        const params = new URLSearchParams(window.location.search);
-        const testID = params.get('testID');
+        const data = await api.getEvals(testId);
 
-        if (!testID) {
-            throw new Error('No testID provided in query string');
-        }
-
-        const evalsPath = `results/${testID}/evals.json?t=${Date.now()}`;
-        const response = await fetch(evalsPath);
-        if (!response.ok) throw new Error(`Failed to load data from ${evalsPath}`);
-        const data = await response.json();
+        // Capture data for navigation
+        allTestData = data;
+        currentTestID = testId;
 
         // Fetch jetski info (optional)
         let jetskiVersion = null;
+        let manifestTimestamp = null;
         try {
-            const jetskiRes = await fetch(`results/${testID}/jetski_info.json`);
-            if (jetskiRes.ok) {
-                const jetskiData = await jetskiRes.json();
+            const jetskiData = await api.getJetskiInfo(testId);
+            if (jetskiData) {
                 jetskiVersion = jetskiData['Jetski Version'];
+                manifestTimestamp = jetskiData.timestamp;
             }
         } catch (e) {
             console.log('Could not load Jetski info:', e);
@@ -29,24 +65,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Fetch timestamp from manifest
         let timestamp = null;
-        try {
-            const manifestRes = await fetch(`results/tests.json?t=${Date.now()}`);
-            if (manifestRes.ok) {
-                const manifest = await manifestRes.json();
-                const testEntry = manifest.tests.find(t => t.id === testID);
-                if (testEntry && testEntry.timestamp) {
-                    timestamp = testEntry.timestamp;
-                }
-            }
-        } catch (e) {
-            console.log('Could not load test manifest:', e);
+        if (manifestTimestamp) {
+            timestamp = manifestTimestamp;
         }
 
-        renderTestHeader(testID, jetskiVersion, timestamp);
-        renderSummary(data, testID);
-        renderGrid(data, testID);
+        renderTestHeader(testId, jetskiVersion, timestamp);
+        renderSummary(data);
+        renderGrid(data, testId);
+        renderRadarChart(data, testId);
 
         // Check for deep link to modal
+        const params = new URLSearchParams(window.location.search);
         const testName = params.get('testName');
         const checkId = params.get('checkId');
 
@@ -57,8 +86,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             const testStats = stats[testName];
 
             if (runData && testStats) {
-                // Auto-open modal
-                await showDetails(testName, runData, testStats, testID);
+                const view = params.get('view');
+                const runNumber = parseInt(params.get('run'));
+
+                if (view === 'diff' && runNumber) {
+                    const run = runData.find(r => r.runNumber === runNumber);
+                    if (run) {
+                        currentDetails = { testName, runs: runData, stats: testStats, testId };
+                        await showDetails(testName, runData, testStats, testId);
+
+                        const { setupPath, resultPath } = await getResultPaths(testId, run, testName);
+                        await viewDiff(setupPath, resultPath, testName, run.runNumber);
+                    } else {
+                        await showDetails(testName, runData, testStats, testId);
+                    }
+                } else {
+                    // Auto-open modal
+                    await showDetails(testName, runData, testStats, testId);
+                }
 
                 // If checkId is provided, try to scroll to it
                 if (checkId) {
@@ -79,69 +124,191 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (error) {
         console.error('Error:', error);
-        document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;">Error loading dashboard data: ${error.message}</div>`;
+        
+        let errorHtml = `<div style="text-align:center; padding: 50px; color: red;">
+            <h3>Error loading dashboard data</h3>
+            <p>${error.message}</p>
+        </div>`;
+        
+        if (api && api.source === 'remote') {
+            errorHtml += `<div style="text-align:center; color: var(--text-secondary); margin-top: -20px;">
+                <p>If your session has expired, please use the <strong>Sign in with Google</strong> button above to re-authenticate.</p>
+            </div>`;
+        }
+        
+        const grid = document.getElementById('dashboard-grid');
+        if (grid) {
+            grid.innerHTML = errorHtml;
+        } else {
+            document.body.innerHTML = errorHtml;
+        }
     }
+}
 
-    // Modal close handlers
+// Modal control
+document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('modal');
+    if (!modal) return;
+
     const closeBtn = document.querySelector('.close-modal');
-    closeBtn.onclick = () => modal.classList.remove('show');
-    window.onclick = (event) => {
-        if (event.target == modal) modal.classList.remove('show');
+
+    // Close function that also cleans up URL
+    const closeModal = () => {
+        if (modal.open) modal.close();
+    };
+
+    if (closeBtn) closeBtn.onclick = closeModal;
+
+    // Close on backdrop click
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+
+    // Handle Esc key or dialog close API
+    modal.addEventListener('close', () => {
+        const url = new URL(window.location.href);
+        const paramsList = ['testName', 'checkId', 'view', 'run'];
+        let changed = false;
+        paramsList.forEach(p => {
+            if (url.searchParams.has(p)) {
+                url.searchParams.delete(p);
+                changed = true;
+            }
+        });
+        if (changed) {
+            window.history.replaceState({}, '', url);
+        }
+    });
+
+    // We no longer need popstate for modal state because we use replaceState exclusively.
+    // Full page deep links are handled via DOMContentLoaded.
+
+    // View GCS Artifacts
+    const gcsBtn = document.getElementById('view-gcs-artifacts-btn');
+    if (gcsBtn) {
+        const params = new URLSearchParams(window.location.search);
+        const source = params.get('source');
+        const testId = params.get('testId');
+        if (source === 'remote') {
+            gcsBtn.style.display = 'inline-block';
+            gcsBtn.onclick = () => window.open(`https://console.cloud.google.com/storage/browser/guidance-evals/${testId}?project=chrome-kiwi-air-force-dev`, '_blank');
+        }
     }
 
     // View Log Handler
-    const viewLogBtn = document.getElementById('view-log-btn');
-    if (viewLogBtn) {
-        const params = new URLSearchParams(window.location.search);
-        const testID = params.get('testID');
-        const logPath = `results/${testID}/test_suite.log`;
+    (async () => {
+        const viewLogBtn = document.getElementById('view-log-btn');
+        if (viewLogBtn) {
+            const params = new URLSearchParams(window.location.search);
+            const testId = params.get('testId');
 
-        // Check if log file exists
-        try {
-            const checkRes = await fetch(logPath, { method: 'HEAD' });
-            if (!checkRes.ok) {
-                // Hide button if log doesn't exist
-                viewLogBtn.style.display = 'none';
-            } else {
-                // Show button and set up click handler
-                viewLogBtn.onclick = async () => {
-                    const modal = document.getElementById('modal');
-                    const title = document.getElementById('modal-title');
-                    const body = document.getElementById('modal-body');
+            if (testId) {
+                try {
+                    const hasLog = await api.checkLogExists(testId);
+                    if (!hasLog) {
+                        viewLogBtn.style.display = 'none';
+                    } else {
+                        viewLogBtn.onclick = async () => {
+                            const modal = document.getElementById('modal');
+                            const title = document.getElementById('modal-title');
+                            const body = document.getElementById('modal-body');
 
-                    title.textContent = 'Test Suite Run Log';
-                    body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading log...</div>';
-                    modal.classList.add('show');
+                            title.textContent = 'Test Suite Run Log';
+                            body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading log...</div>';
+                            modal.dataset.view = 'log';
+                            modal.showModal();
 
-                    try {
-                        const res = await fetch(logPath);
-                        if (!res.ok) throw new Error('Failed to fetch log');
-                        const text = await res.text();
-                        body.innerHTML = `<div class="log-content">${escapeHtml(text)}</div>`;
-                    } catch (e) {
-                        body.innerHTML = `<div style="color: var(--accent-failure); padding: 20px;">Error loading log: ${e.message}</div>`;
+                            try {
+                                const text = await api.getFileText(`${testId}/test_suite.log`);
+                                body.innerHTML = `<div class="log-content">${escapeHtml(text)}</div>`;
+                            } catch (e) {
+                                body.innerHTML = `<div style="color: var(--accent-failure); padding: 20px;">Error loading log: ${e.message}</div>`;
+                            }
+                        };
                     }
-                };
+                } catch (e) {
+                    console.log('Error checking log existence:', e);
+                    viewLogBtn.style.display = 'none'; // Hide button on error
+                }
+            } else {
+                viewLogBtn.style.display = 'none'; // Hide button if no testId
             }
-        } catch {
-            // Hide button on error
-            viewLogBtn.style.display = 'none';
         }
-    }
+    })();
+
+    // Arrow key navigation
+    document.addEventListener('keydown', (e) => {
+        const modal = document.getElementById('modal');
+        if (!modal || !modal.open || modal.dataset.view !== 'details') return;
+
+        if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+            if (!currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
+
+            const parts = currentDetails.testName.split(' - ');
+            if (parts.length !== 3) return;
+            const [appName, guide, runType] = parts;
+            const currentScenario = `${appName} - ${guide}`;
+
+            let sIdx = sortedScenarios.indexOf(currentScenario);
+            let rIdx = currentRunTypes.indexOf(runType);
+
+            if (sIdx === -1 || rIdx === -1) return;
+
+            const oldSIdx = sIdx;
+            const oldRIdx = rIdx;
+
+            if (e.key === 'ArrowLeft') rIdx--;
+            if (e.key === 'ArrowRight') rIdx++;
+            if (e.key === 'ArrowUp') sIdx--;
+            if (e.key === 'ArrowDown') sIdx++;
+
+            // Circular navigation (wrap around)
+            sIdx = (sIdx + sortedScenarios.length) % sortedScenarios.length;
+            rIdx = (rIdx + currentRunTypes.length) % currentRunTypes.length;
+
+            if (sIdx === oldSIdx && rIdx === oldRIdx) return;
+
+            const nextScenario = sortedScenarios[sIdx];
+            const nextRunType = currentRunTypes[rIdx];
+            const nextTestName = `${nextScenario} - ${nextRunType}`;
+
+            if (nextTestName !== currentDetails.testName && allTestData.results[nextTestName]) {
+                e.preventDefault();
+                showDetails(
+                    nextTestName,
+                    allTestData.results[nextTestName],
+                    allTestData.stats[nextTestName],
+                    currentTestID
+                );
+
+                // Scroll to top
+                const contentDiv = modal.querySelector('.modal-content');
+                if (contentDiv) contentDiv.scrollTop = 0;
+            }
+        }
+    });
 });
 
-function renderTestHeader(testID, jetskiVersion, timestamp) {
+function renderTestHeader(testId, jetskiVersion, timestamp) {
     const container = document.getElementById('test-header');
     if (container) {
-        let html = `Test ID: <strong>${testID}</strong>`;
+        let html = `Test ID: <strong>${testId}</strong>`;
 
         if (timestamp) {
             let timeStr = timestamp;
             try {
-                timeStr = new Date(timestamp).toLocaleString();
+                const _date = new Date(timestamp);
+                timeStr = _date.toLocaleString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                }).replace(' at ', ', ');
             } catch { }
-            html += ` — Run at ${timeStr}`;
+            html += ` — ${timeStr}`;
         }
 
         if (jetskiVersion) {
@@ -151,7 +318,7 @@ function renderTestHeader(testID, jetskiVersion, timestamp) {
     }
 }
 
-function renderSummary(data, _testID) {
+function renderSummary(data) {
     const container = document.getElementById('summary-stats');
     const results = data.results;
 
@@ -201,10 +368,13 @@ function calculateGroupTotalStats(results, runType) {
     return { passed, total };
 }
 
-function renderGrid(data, testID) {
+function renderGrid(data, testId) {
     const grid = document.getElementById('dashboard-grid');
     const results = data.results;
     const stats = data.stats;
+
+    sortedScenarios = [];
+    currentRunTypes = [];
 
     // Extract dimensions dynamically from data keys
     const keys = Object.keys(results);
@@ -222,9 +392,11 @@ function renderGrid(data, testID) {
         if (a === 'guided' && b === 'unguided') return 1;
         return a.localeCompare(b);
     });
+    currentRunTypes = sortedRunTypes;
 
     sortedAppNames.forEach(appName => {
         sortedGuides.forEach(guide => {
+            sortedScenarios.push(`${appName} - ${guide}`);
             sortedRunTypes.forEach(runType => {
                 const testName = `${appName} - ${guide} - ${runType}`;
                 const runData = results[testName];
@@ -240,7 +412,7 @@ function renderGrid(data, testID) {
                 const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
                 const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
 
-                card.onclick = () => showDetails(testName, runData, testStats, testID);
+                card.onclick = () => showDetails(testName, runData, testStats, testId);
                 card.innerHTML = `
                     <h3>${formatTestName(testName)}</h3>
                     <div class="pass-rate-bar">
@@ -258,96 +430,71 @@ function renderGrid(data, testID) {
     });
 }
 
-// Keep track of current details state for "Back" navigation
-let currentDetails = null;
+// Keep track of current details state for navigation
 
-async function showDetails(testName, runs, stats, testID) {
+async function showDetails(testName, runs, stats, testId) {
+    // Update URL without reloading
+    const url = new URL(window.location.href);
+    url.searchParams.set('testName', testName);
+    url.searchParams.delete('view');
+    url.searchParams.delete('run');
+    window.history.replaceState({ testName }, '', url);
+
     // Store current details for back navigation
-    currentDetails = { testName, runs, stats, testID };
+    currentDetails = { testName, runs, stats, testId };
 
     const modal = document.getElementById('modal');
     const title = document.getElementById('modal-title');
     const contentDiv = document.querySelector('.modal-content');
     const body = document.getElementById('modal-body');
-    const [appName, guide, runType] = testName.split(' - ');
+    const [, guide] = testName.split(' - ');
 
     // Reset modifier classes
+    modal.classList.remove('diff-modal');
     contentDiv.classList.remove('diff-modal');
+    modal.dataset.view = 'details';
 
     title.textContent = formatTestName(testName);
 
-    // Fetch prompt text
-    let promptHtml = '';
-    try {
-        const promptPath = `base_apps/${appName}/PROMPT.txt`;
-        const res = await fetch(promptPath);
-        if (res.ok) {
-            const text = await res.text();
-            promptHtml = `
+    let promptHtml = ''; // Initialize promptHtml outside the map
+
+    const runDetailsPromises = runs.map(async (run) => {
+        const s = getRunStats(run.results);
+        // Determine file paths for this run
+        const { setupPath, resultPath, usedBasePath } = await getResultPaths(testId, run, testName);
+
+        // Fetch prompt text from the task definition
+        if (run === runs[0]) {
+            try {
+                const promptPath = `tasks/${guide}-task.md`;
+                const text = await api.getFileText(promptPath);
+                
+                // Strip YAML frontmatter from the markdown task file
+                const cleanedText = text.replace(/^---[\s\S]+?---\n+/, '');
+
+                promptHtml = `
                     <div class="prompt-section" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--text-secondary);">
-                    <h4 style="margin-top: 0; margin-bottom: 10px;">Prompt</h4>
-                        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; color: var(--text-primary);">${escapeHtml(text)}</pre>
+                        <h4 style="margin-top: 0; margin-bottom: 10px;">Prompt</h4>
+                        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; color: var(--text-primary);">${escapeHtml(cleanedText)}</pre>
                     </div>
                 `;
+            } catch (e) {
+                console.log('Task prompt file not found:', e.message);
+            }
         }
-    } catch (e) {
-        console.error('Failed to fetch prompt', e);
-    }
-
-    // Check for setup file asynchronously for each run to show View Diff button if applicable
-    const runDetailsPromises = runs.map(async (run, index) => {
-        const s = getRunStats(run.results);
-
-        // Cover cases for new use case format and old (greenfield, brownfield, redfield) format
-        const basePaths = [
-            `results/${testID}/${run.runNumber}/${appName}/${runType}`,
-            `results/${testID}/${run.runNumber}/${appName}/${guide}/${runType}`
-        ];
-
-        const resultPath = await findBestEntryPoint(basePaths);
-
-        // Determine which base path was used
-        const usedBasePath = basePaths.find(bp => resultPath.startsWith(bp)) || basePaths[0];
-
-        // Calculate relative path (e.g., "src/App.jsx" or "index.html")
-        const relativePath = resultPath.replace(usedBasePath + '/', '');
-        const setupPath = `base_apps/${appName}/${runType}/${relativePath}`;
 
         let guideSection = '';
-        if (run.guideResults && run.guideResults.checks) {
-            const guideStats = getRunStats(run.guideResults.checks);
-            // Toggle ID
-            const toggleId = `guide-toggle-${run.runNumber}`;
-            const contentId = `guide-content-${run.runNumber}`;
-
-            // Professional Look: Clean styling, no raw arrows
-            // Using SVG for chevron
-            const chevronRight = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="transition: transform 0.2s; margin-right: 8px;"><path d="M4 2L8 6L4 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        if (run.guideUsed !== undefined) {
+            const passed = run.guideUsed;
 
             guideSection = `
-                <div class="guide-section" style="margin-top: 15px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--border-color); overflow: hidden;">
-                    <div id="${toggleId}" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; cursor: pointer; user-select: none; background: rgba(255,255,255,0.02); transition: background 0.1s;">
-                        <div style="display: flex; align-items: center;">
-                            <span class="toggle-icon-wrapper" style="display: flex; align-items: center;">${chevronRight}</span>
-                            <strong style="font-size: 0.9em; font-weight: 600;">Guide Validation</strong>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 0.85em; color: ${getColor(guideStats.rate)}; font-weight: 600; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 10px;">${guideStats.rate}% Match</span>
-                        </div>
+                <div class="guide-section" style="margin-top: 15px; padding: 10px 15px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1rem;">${passed ? '✅' : '❌'}</span>
+                        <strong style="font-size: 0.9em; font-weight: 600;">${guide} used by agent</strong>
                     </div>
-                    
-                    <div id="${contentId}" style="display: none; padding: 0 15px 15px 15px; border-top: 1px solid var(--border-color);">
-                        <div style="padding-top: 10px; margin-bottom: 10px; text-align: right;">
-                             <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">View resources_used.json</a>
-                        </div>
-                        <ul class="check-list" style="border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden;">
-                            ${run.guideResults.checks.map(check => `
-                                <li class="check-item" style="padding: 8px 12px; font-size: 0.9em;">
-                                    <span class="check-status" style="font-size: 1rem;">${check.passed ? '✅' : '❌'}</span>
-                                    <span class="check-message" style="color: var(--text-primary); font-family: -apple-system, sans-serif;">${escapeHtml(check.message)}</span>
-                                </li>
-                            `).join('')}
-                        </ul>
+                    <div>
+                        <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${MCP_LOG_FILE}</a>
                     </div>
                 </div>
             `;
@@ -360,7 +507,6 @@ async function showDetails(testName, runs, stats, testID) {
                 <strong>Run ${run.runNumber}</strong>
                 <span style="color: ${getColor(s.rate)}">${s.rate}% Pass (${s.passed}/${s.total})</span>
                 <div class="run-actions">
-                    <a href="${resultPath}" target="_blank">View Source ↗</a>
                 </div>
             </div>
             <ul class="check-list">
@@ -374,68 +520,98 @@ async function showDetails(testName, runs, stats, testID) {
             ${guideSection}
         `;
 
-        // Handle Guide Toggle
-        const toggleBtn = runDetail.querySelector(`#guide-toggle-${run.runNumber}`);
-        const contentArea = runDetail.querySelector(`#guide-content-${run.runNumber}`);
-        if (toggleBtn && contentArea) {
-            toggleBtn.onclick = () => {
-                const isHidden = contentArea.style.display === 'none';
-                contentArea.style.display = isHidden ? 'block' : 'none';
-                const icon = toggleBtn.querySelector('svg');
-                if (icon) {
-                    icon.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
-                }
-                toggleBtn.style.background = isHidden ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)';
-            };
-
-            // Hover effect for header
-            toggleBtn.onmouseenter = () => { toggleBtn.style.background = 'rgba(255,255,255,0.05)'; };
-            toggleBtn.onmouseleave = () => { if (contentArea.style.display === 'none') toggleBtn.style.background = 'rgba(255,255,255,0.02)'; };
-        }
-
         const viewResourcesLink = runDetail.querySelector('.view-resources-link');
         if (viewResourcesLink) {
             viewResourcesLink.onclick = (e) => {
                 e.preventDefault();
-                // usedBasePath is like "results/testID/runNumber/appName/guide/runType"
-                // resources_used.json is usually in that same directory
-                const resourcesPath = `${usedBasePath}/resources_used.json`;
+                const resourcesPath = `${usedBasePath}/${MCP_LOG_FILE}`;
                 viewContent(resourcesPath, resourcesPath);
             };
         }
 
-        const diffButton = document.createElement('button');
-        diffButton.className = 'secondary-btn small-btn';
-        diffButton.textContent = 'View Diff';
-        diffButton.style.cssText = 'margin-left: 10px; font-size: 0.8em; padding: 2px 8px;';
-        diffButton.onclick = () => viewDiff(setupPath, resultPath);
+        const dropdown = document.createElement('select');
+        dropdown.className = 'run-actions-dropdown';
+        dropdown.style.cssText = 'padding: 4px; font-size: 0.9em; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;';
+        dropdown.innerHTML = '<option value="" disabled selected>Artifacts</option>';
 
-        const rawResultsPath = `${usedBasePath}/${guide}_results.json`;
-        let showRawResults = false;
+        const sourceOpt = document.createElement('option');
+        sourceOpt.value = 'source';
+        sourceOpt.textContent = 'App';
+        dropdown.appendChild(sourceOpt);
+
+        const diffOpt = document.createElement('option');
+        diffOpt.value = 'diff';
+        diffOpt.textContent = 'Diff';
+        dropdown.appendChild(diffOpt);
+
+        let sessionFile = null;
         try {
-            const rawRes = await fetch(rawResultsPath, { method: 'HEAD' });
-            if (rawRes.ok) showRawResults = true;
+            const files = await api.getRunFiles(usedBasePath);
+            if (files && files.length > 0) {
+                const rawJson = files.find(f => f === `${guide}_results.json`);
+                if (rawJson) {
+                    const rawOpt = document.createElement('option');
+                    rawOpt.value = 'raw';
+                    rawOpt.textContent = 'Raw Test Results';
+                    dropdown.appendChild(rawOpt);
+                }
+
+                sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
+                if (sessionFile) {
+                    const trajOpt = document.createElement('option');
+                    trajOpt.value = 'trajectory';
+                    trajOpt.textContent = 'Trajectory';
+                    dropdown.appendChild(trajOpt);
+                }
+            }
         } catch (e) {
-            console.log('Error checking raw results:', e);
+            console.log('Error checking run files:', e);
         }
 
-        if (showRawResults) {
-            const rawResultsBtn = document.createElement('button');
-            rawResultsBtn.className = 'secondary-btn small-btn';
-            rawResultsBtn.textContent = 'View Raw Results';
-            rawResultsBtn.style.cssText = 'margin-left: 10px; font-size: 0.8em; padding: 2px 8px;';
-            rawResultsBtn.onclick = () => viewContent(rawResultsPath, rawResultsPath);
-            runDetail.querySelector('.run-actions').appendChild(rawResultsBtn);
-        }
+        dropdown.onchange = (e) => {
+            const val = e.target.value;
+            e.target.value = ''; // reset selection
+            if (val === 'source') {
+                if (api.source === 'remote') {
+                    // Open directly via the mTLS domain which handles auth and serves raw HTML
+                    window.open(`https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`, '_blank');
+                } else {
+                    window.open(api.getAbsoluteUrl(resultPath), '_blank');
+                }
+            } else if (val === 'diff') {
+                viewDiff(setupPath, resultPath, testName, run.runNumber);
+            } else if (val === 'trajectory' && sessionFile) {
+                if (api.source === 'remote') {
+                    // For remote HTML files, fetch as blob so it renders in a new tab instead of downloading
+                    const finalPath = api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`);
+                    api._fetch(finalPath)
+                        .then(res => { if (!res.ok) throw new Error(); return res.blob(); })
+                        .then(blob => {
+                            const htmlBlob = new Blob([blob], { type: 'text/html' });
+                            const url = URL.createObjectURL(htmlBlob);
+                            window.open(url, '_blank');
+                        })
+                        .catch(e => {
+                            console.error('Error loading trajectory:', e);
+                            alert('Failed to load remote trajectory');
+                        });
+                } else {
+                    window.open(api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`), '_blank');
+                }
+            } else if (val === 'raw') {
+                const rawPath = `${usedBasePath}/${guide}_results.json`;
+                viewContent(rawPath, rawPath);
+            }
+        };
 
-        runDetail.querySelector('.run-actions').appendChild(diffButton);
+        runDetail.querySelector('.run-actions').appendChild(dropdown);
         return runDetail;
     });
 
     const runDetails = await Promise.all(runDetailsPromises);
-    body.innerHTML = promptHtml;
+    body.innerHTML = promptHtml; // Insert promptHtml first
     runDetails.forEach(detail => body.appendChild(detail));
-    modal.classList.add('show');
+    modal.showModal();
 }
 
 function renderBackButton() {
@@ -445,7 +621,7 @@ function renderBackButton() {
     btn.style.cssText = 'margin-bottom: 20px; padding: 5px 15px; font-size: 0.9em;';
     btn.onclick = () => {
         if (currentDetails) {
-            showDetails(currentDetails.testName, currentDetails.runs, currentDetails.stats, currentDetails.testID);
+            showDetails(currentDetails.testName, currentDetails.runs, currentDetails.stats, currentDetails.testId);
         }
     };
     return btn;
@@ -454,22 +630,26 @@ function renderBackButton() {
 async function viewContent(fileName, filePath) {
     const title = document.getElementById('modal-title');
     const body = document.getElementById('modal-body');
+    const modal = document.getElementById('modal');
 
     title.textContent = fileName;
+    modal.dataset.view = 'content';
     body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading content...</div>';
 
+    body.innerHTML = '';
+    body.appendChild(renderBackButton());
+
+    const pre = document.createElement('pre');
+    pre.className = 'log-content';
+    body.appendChild(pre);
+
     try {
-        const res = await fetch(filePath);
-        if (!res.ok) throw new Error('Failed to fetch file');
-        const text = await res.text();
-
-        body.innerHTML = '';
-        body.appendChild(renderBackButton());
-
-        const content = document.createElement('div');
-        content.className = 'log-content';
-        content.textContent = text;
-        body.appendChild(content);
+        const text = await api.getFileText(filePath);
+        const lines = text.split('\n');
+        const truncated = lines.length > 5000;
+        const content = truncated ? lines.slice(0, 5000).join('\n') + '\n\n...[truncated for display]...' : text;
+        pre.textContent = content; // escapeHtml not needed if using textContent on a pre
+        pre.className = '';
 
     } catch (e) {
         body.innerHTML = '';
@@ -482,50 +662,62 @@ async function viewContent(fileName, filePath) {
     }
 }
 
-async function viewDiff(setupPath, resultPath) {
+async function viewDiff(setupPath, resultPath, testName, runNumber) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', 'diff');
+    url.searchParams.set('run', runNumber);
+    window.history.replaceState({}, '', url);
+
+    const modal = document.getElementById('modal');
     const title = document.getElementById('modal-title');
     const body = document.getElementById('modal-body');
     const contentDiv = document.querySelector('.modal-content');
 
-    title.textContent = 'Diff View';
+    modal.dataset.runNumber = runNumber;
+
+    title.textContent = `Diff: ${formatTestName(testName)} (Run ${runNumber})`;
     body.innerHTML = '<div style="text-align:center; padding: 20px;">Computing diff...</div>';
 
     // Optional: Make modal wider for diff
+    modal.classList.add('diff-modal');
     contentDiv.classList.add('diff-modal');
+    modal.dataset.view = 'diff';
 
     try {
-        const [setupRes, resultRes] = await Promise.all([
-            fetch(setupPath),
-            fetch(resultPath)
-        ]);
-
-        // If setup is missing (404), treat as empty string
-        let setupText = '';
-        if (setupRes.ok) {
-            setupText = await setupRes.text();
-        } else if (setupRes.status !== 404) {
-            // If it's not OK and NOT 404, likely a real error
-            throw new Error(`Failed to load setup file: ${setupPath} (${setupRes.status})`);
+        let setupText = null;
+        try {
+            setupText = await api.getFileText(setupPath);
+        } catch (e) {
+            // If setup is missing (404), treat as null to show banner
+            // If it's a real error, throw
+            if (!e.message.includes('404')) {
+                throw new Error(`Failed to load setup file: ${setupPath}`);
+            }
         }
 
-        if (!resultRes.ok) throw new Error(`Failed to load result file: ${resultPath}`);
-        const resultText = await resultRes.text();
-
-        const diff = Diff.diffLines(setupText, resultText);
+        const resultText = await api.getFileText(resultPath);
 
         let diffHtml = '<div class="diff-container">';
 
-        diff.forEach((part, index) => {
-            const colorClass = part.added ? 'diff-added' :
-                part.removed ? 'diff-removed' : 'diff-unchanged';
+        if (setupText === null) {
+            diffHtml += `<div style="background-color: rgba(218, 165, 32, 0.2); border-left: 4px solid #daa520; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+                <span style="font-weight: bold; color: #daa520;">Original file not found.</span> Displaying current file content below.
+            </div>`;
+            diffHtml += `<pre style="white-space: pre-wrap; margin: 0; color: var(--text-primary); font-family: monospace;">${escapeHtml(resultText)}</pre>`;
+        } else {
+            const diff = Diff.diffLines(setupText, resultText);
 
-            if (part.added || part.removed) {
-                diffHtml += `<span class="${colorClass}">${escapeHtml(part.value)}</span>`;
-                return;
-            }
-
-            // Unchanged part
-            let lines = part.value.split('\n');
+            diff.forEach((part, index) => {
+                const colorClass = part.added ? 'diff-added' :
+                    part.removed ? 'diff-removed' : 'diff-unchanged';
+    
+                if (part.added || part.removed) {
+                    diffHtml += `<span class="${colorClass}">${escapeHtml(part.value)}</span>`;
+                    return;
+                }
+    
+                // Unchanged part
+                let lines = part.value.split('\n');
             // If the last element is empty (common with trailing newline), temporarily remove it for counting
             let trailingNewline = false;
             if (lines.length > 0 && lines[lines.length - 1] === '') {
@@ -567,8 +759,9 @@ async function viewDiff(setupPath, resultPath) {
                 }
             }
 
-            diffHtml += `<span class="${colorClass}">${escapeHtml(part.value)}</span>`;
-        });
+                diffHtml += `<span class="${colorClass}">${escapeHtml(part.value)}</span>`;
+            });
+        }
 
         diffHtml += '</div>';
 
@@ -591,35 +784,96 @@ async function viewDiff(setupPath, resultPath) {
     }
 }
 
+function renderRadarChart(data, testId) {
+    const results = data.results;
+    const apps = {};
 
-async function findBestEntryPoint(basePaths) {
-    // basePaths can be a string or array of strings
-    const pathsToCheck = Array.isArray(basePaths) ? basePaths : [basePaths];
+    Object.keys(results).forEach(key => {
+        const parts = key.split(' - ');
+        if (parts.length !== 3) return;
 
-    const candidates = [
-        'dist/index.html',
-        'src/App.jsx',
-        'src/App.js',
-        'src/main.jsx',
-        'src/main.js',
-        'src/index.jsx',
-        'src/index.js',
-        'index.html'
-    ];
+        const [appName, guide, runType] = parts;
+        const scenarioName = `${appName} (${guide})`;
 
-    for (const basePath of pathsToCheck) {
-        const checks = candidates.map(candidate =>
-            fetch(`${basePath}/${candidate}`, { method: 'HEAD' })
-                .then(res => res.ok ? `${basePath}/${candidate}` : null)
-                .catch(() => null)
-        );
+        if (!apps[scenarioName]) {
+            apps[scenarioName] = { guided: [], unguided: [] };
+        }
 
-        const results = await Promise.all(checks);
-        const best = results.find(result => result !== null);
+        const runData = results[key];
+        const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
+        const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
+        const avgRate = totalChecks > 0 ? (totalPassed / totalChecks) * 100 : 0;
 
-        if (best) return best;
+        if (runType === 'guided') {
+            apps[scenarioName].guided.push(avgRate);
+        } else if (runType === 'unguided') {
+            apps[scenarioName].unguided.push(avgRate);
+        }
+    });
+
+    const labels = Object.keys(apps).sort();
+    if (labels.length < 3) {
+        document.getElementById('chart-section').classList.add('hidden');
+        return;
     }
 
-    // Fallback to first base path index.html if nothing found
-    return `${pathsToCheck[0]}/index.html`;
+    document.getElementById('chart-section').classList.remove('hidden');
+
+    const guidedData = labels.map(label => {
+        const scores = apps[label].guided;
+        return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    });
+    const unguidedData = labels.map(label => {
+        const scores = apps[label].unguided;
+        return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    });
+
+    const chart = new RadarChart('radar-chart', {
+        size: 600,
+        levels: 5,
+        padding: 80
+    });
+
+    const handlePointClick = (index, type) => {
+        const scenarioName = labels[index]; // e.g. "redfield (vague)"
+        const runType = type.toLowerCase(); // "guided" or "unguided"
+
+        // Find the original key in the results
+        const originalKey = Object.keys(results).find(key => {
+            const parts = key.split(' - ');
+            return `${parts[0]} (${parts[1]})` === scenarioName && parts[2] === runType;
+        });
+
+        if (originalKey) {
+            const testName = originalKey;
+            const runData = results[testName];
+            const testStats = data.stats[testName];
+            showDetails(testName, runData, testStats, testId);
+        }
+    };
+
+    chart.render({
+        labels: labels,
+        datasets: [
+            {
+                label: 'Unguided',
+                data: unguidedData,
+                backgroundColor: 'rgba(218, 54, 51, 0.2)',
+                borderColor: '#da3633',
+                onClick: handlePointClick
+            },
+            {
+                label: 'Guided',
+                data: guidedData,
+                backgroundColor: 'rgba(35, 134, 54, 0.2)',
+                borderColor: '#238636',
+                onClick: handlePointClick
+            }
+        ]
+    });
+}
+
+
+async function getResultPaths(testId, run, testName) {
+    return await api.getResultInfo(testId, run, testName);
 }

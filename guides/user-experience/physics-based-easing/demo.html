@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Physics-based Easing Demo</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        padding: 2rem;
+      }
+      .demo-area {
+        margin-top: 2rem;
+        padding: 2rem;
+        background: #f0f0f0;
+        border-radius: 8px;
+        cursor: pointer;
+        container-type: inline-size;
+      }
+      .box {
+        width: 80px;
+        height: 80px;
+        background: #007bff;
+        border-radius: 8px;
+        /* Custom spring/bounce easing using linear() */
+        transition: transform 0.8s
+          linear(
+            0,
+            0.012 0.8%,
+            0.051 1.8%,
+            0.291 6.3%,
+            0.418 9%,
+            0.513 11.4%,
+            0.596 13.9%,
+            0.681 17.1%,
+            0.754 20.6%,
+            0.815 24.4%,
+            0.866 28.7%,
+            0.905 33.3%,
+            0.935 38.4%,
+            0.975 51.2%,
+            0.993 68.9%,
+            1
+          );
+      }
+      .demo-area.is-active .box {
+        transform: translateX(calc(100cqi - 100%));
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Physics-based Easing</h1>
+    <p>
+      This demo illustrates how to create a custom bounce or spring animation
+      using the <code>linear()</code> easing function in CSS. Click the gray
+      area below to trigger the animation.
+    </p>
+
+    <div class="demo-area">
+      <div class="box"></div>
+    </div>
+    <script>
+      const demoArea = document.querySelector('.demo-area');
+      demoArea.addEventListener('click', () => {
+        demoArea.classList.toggle('is-active');
+      });
+    </script>
+  </body>
+</html>

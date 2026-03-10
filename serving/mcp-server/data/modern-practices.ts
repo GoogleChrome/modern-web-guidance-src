@@ -34,7 +34,7 @@ export async function getGuide(useCaseId: string): Promise<string | null> {
   const useCase = USE_CASES.find((u) => u.id === useCaseId);
   if (!useCase) return null;
 
-  const guidesDir = path.resolve(__dirname, "../guides");
+  const guidesDir = path.resolve(__dirname, "../../build/guides");
   const filePath = path.join(guidesDir, useCase.category, `${useCaseId}.md`);
 
   try {

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll-Driven Animations: Reveal and Unreveal Effects</title>
+  <style>
+    @layer reset, base, demo;
+
+    @layer demo {
+      @layer scroll-driven-animations {
+        @keyframes grow {
+          from {
+            scale: 0.5;
+          }
+        }
+        @keyframes shrink {
+          to {
+            scale: 0.5;
+          }
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+          @supports ((animation-timeline: view())) {
+            .scroller > * {
+              animation:
+                grow auto linear backwards,
+                shrink auto linear forwards;
+              animation-timeline: view(inline);
+              animation-range: entry, exit;
+            }
+          }
+        }
+      }
+    }
+
+    @layer base {
+      html {
+        height: 100%;
+      }
+      body {
+        height: 100%;
+        place-content: center;
+      }
+      .scroller {
+        display: flex;
+        gap: 0.5em;
+        overflow-x: scroll;
+        scroll-behavior: smooth;
+        border: 1px solid black;
+        padding: 1em;
+        width: 800px;
+        max-width: 90vw;
+        margin: 0 auto;
+      }
+
+      .scroller > * {
+        flex-shrink: 0;
+        width: 200px;
+        aspect-ratio: 1/1.4;
+        border: 1px solid black;
+        place-content: center;
+        text-align: center;
+      }
+    }
+
+    @layer reset {
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      ul[class] {
+        list-style: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <ul class="scroller">
+    <li class="entry">1</li>
+    <li class="entry">2</li>
+    <li class="entry">3</li>
+    <li class="entry">4</li>
+    <li class="entry">5</li>
+    <li class="entry">6</li>
+    <li class="entry">7</li>
+    <li class="entry">8</li>
+    <li class="entry">9</li>
+    <li class="entry">10</li>
+  </ul>
+</body>
+</html>

@@ -4,9 +4,13 @@ A unified repository for modern web development guidance, containing both an MCP
 
 ## Project Structure
 
+- **`guides/`**: All guide content, organized by discipline (performance, user-experience, etc.). Also contains the dev pipeline scripts (`dev-guide.ts`, `run-grader.ts`, `grader-gen.ts`, `negative-gen.ts`).
+- **`harness/`**: The Guidance eval harness for executing and scoring tests. Includes task definitions, agent runners, and base apps.
 - **`serving/`**: The Modern Web MCP server. This provides semantic search over curated web development guides and browser support data.
-- **`harness/`**: The Guidance eval harness for executing and scoring tests.
 - **`eval-view/`**: A static dashboard for visualizing and analyzing evaluation results.
+- **`bin/gd.ts`**: The unified CLI entry point.
+
+See [CONTEXT.md](./CONTEXT.md) for a comprehensive project overview, architecture details, and contributor workflow.
 
 ## Getting Started
 
@@ -16,6 +20,16 @@ This project is managed as a **pnpm workspace**. You can install all dependencie
 pnpm install
 pnpm setup:playwright
 ```
+
+### 0. CLI Setup
+
+The `gd` CLI is the main way to run this project. To make it available globally and set up shell auto-completion, run:
+
+```bash
+pnpm link --global && gd setup-completion
+```
+
+*Note: For the auto-completion to take effect, you must refresh your shell (e.g., open a new terminal or source your config).*
 
 ### 1. Serving
 
@@ -46,18 +60,25 @@ Skills live in the `skills/` directory, and they are copied directly into the ag
 
 The evaluation suite measures how effectively AI models use modern web APIs.
 
+## Usage
+
+Run commands via the `gd` CLI.. run `gd --help`: 
+
 ```bash
-# To run the full evaluation suite
-pnpm suite
+# Guide Development
+gd audit                      # show status of all guides
+gd dev [dir] [options]        # auto-generate/calibrate 
 
-# To run a single isolated task
-pnpm task <directory> "<prompt>"
+# You can still run individual steps if you need to, like `gd dev <dir> --gen-grader`
 
-# To generate reports from results
-pnpm report
+# Evaluation
+gd eval                       # run the full evaluation suite
+gd eval [task1] [task2]       # run specific tasks
+gd dashboard                  # start the evaluation dashboard
 
-# To view the results in the dashboard
-pnpm dashboard
+# To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
+gd upload <suite-name>
+# Example: gd upload analytics-suite
 ```
 
 ## Configuration
@@ -65,10 +86,9 @@ pnpm dashboard
 All configuration is centralized in [`harness/config.ts`](./harness/config.ts). This file controls:
 
 -   **Environment**: Paths to binaries (Jetski, Gemini CLI, Claude Code), API keys, and server locations.
--   **Suite**: Agent selection, number of runs, base apps, enabled MCP servers, and skills.
--   **Evaluation**: Target suite name and specific guides to run evaluation for.
+-   **Suite**: Agent selection, number of runs, tasks to run, enabled MCP servers, and skills.
 
-All settings must be adjusted in `harness/config.ts` or via environment variables in `harness/.env`.
+All settings must be adjusted in `harness/config.ts` or via environment variables in `.env` at the `guidance/` root.
 
 ### Agents
 
@@ -82,7 +102,7 @@ Jetski is the default agent that will be used. When running, be sure to update t
 
 When using Gemini CLI, set the `GEMINI_API_KEY` environment variable with your API key.
 
-Set the Gemini model with the environment variable (e.g. `GEMINI_MODEL='gemini-3-pro-preview'`).
+Set the Gemini model with the environment variable (e.g. `GEMINI_MODEL='gemini-3.1-pro-preview'`).
 
 #### Claude
 
@@ -97,23 +117,12 @@ Set the following environment variables:
 CLAUDE_CODE_USE_VERTEX=1
 CLOUD_ML_REGION=global
 ANTHROPIC_VERTEX_PROJECT_ID=<YOUR-GCP-PROJECT-ID>
-DISABLE_PROMPT_CACHING=1
 ANTHROPIC_MODEL='claude-opus-4-6'
 ```
 
-## Adding Guides
+## Guides
 
-Guides specific to agent tasks can be added from the `use-cases` directory to either the `skills` folder or the MCP server, depending on your architecture.
-
-1.  **Select a Guide**: Choose a guide from the `use-cases` folder.
-2.  **Add to Architecture**:
-    *   **Skills**: Add the guide to the relevant `skills/` folder, and update the `SKILL.md` file to include the new guide.
-    *   **MCP Server**: Add the guide to `serving/mcp-server/guides/`. **Important**: Run `pnpm build:mcp` after adding to update the server.
-3.  **Enable Evaluation**:
-    *   Ensure the guide has an associated `.grader.js` file for scoring.
-    *   Add the guide name to the `guidesToTest` array in the `EvalConfig` object in [`harness/config.ts`](./harness/config.ts) to run the grader during suite evaluation.
-
-For details on running tests independently for the specific use cases, see the [Use Cases README](./use-cases/README.md).
+For adding and testing guides, see the [guides README](./guides/README.md).
 
 ## Quality Control
 
@@ -125,8 +134,7 @@ pnpm preflight
 
 ## Development
 
-- Add implementation guides to `serving/mcp-server/guides/`.
-- Add evaluation scenarios or checks to `harness/setup/` and `harness/checks/`.
+- Add guides under `guides/<discipline>/` (e.g. `guides/performance/my-feature/`). See [guides README](./guides/README.md) and [CONTEXT.md](./CONTEXT.md) for the full workflow.
 - Build-free TypeScript is supported in `serving` (requires Node 24+).
 
 ## License
