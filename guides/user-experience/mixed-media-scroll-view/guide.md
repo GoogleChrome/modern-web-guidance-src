@@ -1,5 +1,5 @@
 ---
-name: mixed-media-scroll-view
+name: scroll-target-on-load
 description: Build a single scrollable feed with mixed media and text that automatically renders with a specific media item scrolled into view.
 web-feature-ids:
   - scroll-initial-target
