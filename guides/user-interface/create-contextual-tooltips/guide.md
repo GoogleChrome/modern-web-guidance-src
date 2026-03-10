@@ -44,15 +44,15 @@ This creates an implicit anchor relationship, positions the tooltip at the top c
 * **DO** include the `interestfor` polyfill (`npm: interestfor`) as a `<script>` tag for browsers that do not yet natively support the Interest Invoker API. The polyfill monitors hover and keyboard focus on `document.body` and fires `interest`/`loseinterest` events, automatically showing and hiding the popover target to match native behavior.
 * **DO** use `popover=auto` if `popover=hint` is not supported in your browser support matrix.
 * **DO** set `inset: auto` on the popover to reset the browser's default centering behavior before applying anchor styles.
-* **DO** use `position-area` for simplified placement. For example, `position-area: top center` places the tooltip directly above the anchor. Note: if the user wants to animate, do not use `position-area` and use `top/left/bottom/right` positioning instead.
+* **DO** use `position-area` for simplified placement. For example, `position-area: top center` places the tooltip directly above the anchor. Note: if the user wants to animate the tooltip between positions, do not use `position-area` and use `top/left/bottom/right` positioning instead.
 * **DO** use `position-try-options: flip-block` to ensure the tooltip remains visible by flipping to the bottom if it overflows the top of the viewport.
 * **DO NOT** use `z-index` to manage the tooltip's visibility; the Top Layer handles this natively.
-* **DO NOT** wire tooltip show/hide manually with `mouseenter`/`mouseleave` JavaScript when the `interestfor` attribute (or its polyfill) can be used instead.
+* **DO NOT** wire tooltip show/hide events manually with `mouseenter`/`mouseleave` JavaScript when the `interestfor` attribute (or its polyfill) can be used instead.
 
 ### Fallback Strategies
 #### interest-invokers
 
-The Interest Invoker API (`interestfor` attribute) is currently only supported in Chrome. For browsers that do not yet support it natively:
+The Interest Invoker API (`interestfor` attribute) is Baseline Limited availability. For browsers that do not yet support it natively:
 
 * **Guidance:** Feature detect and load the [`interestfor` polyfill](https://www.npmjs.com/package/interestfor). It replicates native Interest Invoker API behavior and requires no changes to markup — the same `interestfor` attribute used for the native API is also read by the polyfill.
 
