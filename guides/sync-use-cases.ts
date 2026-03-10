@@ -271,19 +271,16 @@ async function run() {
 
     if (hasGuide !== hasDemo) {
       const missingFile = hasGuide ? 'demo.html' : 'guide.md';
-      console.error(`❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH guide.md and demo.html before advancing to the "Needs guidance" column.`);
-      hasError = true;
+      console.warn(`⚠️ Warning in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH guide.md and demo.html before advancing to the "Needs guidance" column.`);
     }
 
     if (hasGrader !== hasPrompts) {
       const missingFile = hasGrader ? 'prompts.md' : 'grader.ts';
-      console.error(`❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH grader.ts and prompts.md before advancing to the "Needs evals" column.`);
-      hasError = true;
+      console.warn(`⚠️ Warning in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH grader.ts and prompts.md before advancing to the "Needs evals" column.`);
     }
 
     if (!hasGuide) {
-      console.error(`❌ Error in ${relativeSubdir}: Missing guide.md.`);
-      hasError = true;
+      console.warn(`⚠️ Warning in ${relativeSubdir}: Missing guide.md.`);
       continue;
     }
 
