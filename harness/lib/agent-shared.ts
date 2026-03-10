@@ -3,6 +3,7 @@ import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { fileURLToPath } from 'url';
 import { Agents } from '../config.ts';
+import { isGuideReady } from './guide_validation.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -162,13 +163,15 @@ export function updateMcpConfig(
 }
 
 /**
- * Copies the skills directory to the isolated home directory.
+ * Copies the guides directory to the isolated home directory for the agent.
+ * Copies SKILL.md for categories and guide.md for "ready" guides.
  * @param homeDir Path to the isolated home directory
+ * @param agent The agent type
  * @returns True if successful, false otherwise
  */
 export function copySkills(homeDir: string, agent: string): boolean {
   const harnessRoot = path.resolve(__dirname, '..');
-  const skillsSource = path.join(harnessRoot, '..', 'skills');
+  const guidesSource = path.join(harnessRoot, '..', 'guides');
 
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {
@@ -179,21 +182,55 @@ export function copySkills(homeDir: string, agent: string): boolean {
     destDir = path.join(homeDir, '.gemini', 'skills');
   }
 
-  if (!fs.existsSync(skillsSource)) {
-    console.warn(`Warning: Skills directory not found at ${skillsSource}`);
+  if (!fs.existsSync(guidesSource)) {
+    console.warn(`Warning: Guides directory not found at ${guidesSource}`);
     return false;
   }
 
   try {
     fs.mkdirSync(destDir, { recursive: true });
-    execSync(`cp -R "${skillsSource}/." "${destDir}/"`);
-    console.log(`Copied skills to ${destDir}`);
+
+    const categories = fs.readdirSync(guidesSource, { withFileTypes: true })
+      .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+      .map(d => d.name);
+
+    for (const cat of categories) {
+      const catSrc = path.join(guidesSource, cat);
+      const catDest = path.join(destDir, cat);
+
+      // Copy SKILL.md if lists guides
+      const skillPath = path.join(catSrc, 'SKILL.md');
+      if (fs.existsSync(skillPath)) {
+        fs.mkdirSync(catDest, { recursive: true });
+        fs.copyFileSync(skillPath, path.join(catDest, 'SKILL.md'));
+      }
+
+      // Process subfolders
+      const entries = fs.readdirSync(catSrc, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const guideDir = path.join(catSrc, entry.name);
+
+        if (isGuideReady(guideDir)) {
+          const guideDest = path.join(catDest, entry.name);
+          fs.mkdirSync(guideDest, { recursive: true });
+
+          const guideFileSrc = path.join(guideDir, 'guide.md');
+          const guideFileDest = path.join(guideDest, 'guide.md');
+          fs.copyFileSync(guideFileSrc, guideFileDest);
+        }
+      }
+
+    }
+
+    console.log(`Copied guides to ${destDir}`);
     return true;
   } catch (e: any) {
-    console.error(`Failed to copy skills: ${e.message}`);
+    console.error(`Failed to copy guides: ${e.message}`);
     return false;
   }
 }
+
 
 /**
  * Sleeps for the specified number of milliseconds.

@@ -7,6 +7,8 @@ import { glob } from "glob";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
 import { replaceMacros } from "../mcp-server/lib/macros.ts";
+import { isGuideReady } from "../../harness/lib/guide_validation.ts";
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,6 +72,11 @@ async function processGuides() {
 
     for (const guidePath of guideFiles) {
       const guideDir = path.dirname(guidePath);
+
+      if (!isGuideReady(guideDir)) {
+        continue;
+      }
+
       // Derive category and id from folder structure
       // Example structure: guides/performance/content-vis/guide.md
       // id becomes "content-vis", category becomes "performance"

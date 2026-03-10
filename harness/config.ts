@@ -41,11 +41,11 @@ export const environmentConfig: EnvironmentConfig = {
 };
 
 export const suiteConfig: SuiteConfig = {
-  name: `full-${new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-')}`,
+  name: `full-${new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-')}-gcli-skills`,
   numRuns: 2,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
-  mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
-  enableSkills: false,
+  mcpServersToEnable: [], // Available servers: 'modern-web', 'google-developer-knowledge'
+  enableSkills: true,
   agent: Agents.GEMINI_CLI,
   negative: false, // When `true`, runs the suite on all tasks in `tasks/negative/`
 };
