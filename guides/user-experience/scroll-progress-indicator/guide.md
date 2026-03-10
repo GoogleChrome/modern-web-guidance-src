@@ -26,6 +26,8 @@ Here’s how you can achieve this:
 -   Next, in your CSS, define a `@keyframes` animation that scales the progress bar. A common approach is to scale the element from `scaleX(0)` to `scaleX(1)`.
 -   Finally, apply this animation to your progress bar element and set its `animation-timeline` to a scroll-timeline. This tells the browser to drive the animation's progress based on the scroll position of the nearest ancestor scroller.
 
+## Example code
+
 This code grows the `#progress` element on scroll using an anonymous scroll-timeline, created by the `scroll()` function.
 
 ```css
