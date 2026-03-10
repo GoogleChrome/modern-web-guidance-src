@@ -48,18 +48,6 @@ export async function evaluate() {
   let suiteName = process.argv[2] || config.suite?.name;
 
   if (!suiteName) {
-    const manifestPath = path.join(resultsDirBase, 'tests.json');
-    if (fs.existsSync(manifestPath)) {
-      try {
-        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-        if (manifest.tests && manifest.tests.length > 0) {
-          suiteName = manifest.tests[manifest.tests.length - 1].id;
-        }
-      } catch { }
-    }
-  }
-
-  if (!suiteName) {
     console.error('❌ No suite name provided and no previous tests found!'.red);
     process.exit(1);
   }

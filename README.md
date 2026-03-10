@@ -77,8 +77,8 @@ gd eval [task1] [task2]       # run specific tasks
 gd dashboard                  # start the evaluation dashboard
 
 # To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
-pnpm upload <suite-name>
-# Example: pnpm upload analytics-suite
+gd upload <suite-name>
+# Example: gd upload analytics-suite
 ```
 
 ## Configuration
