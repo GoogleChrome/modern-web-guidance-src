@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll-Driven Animations: Scrollytelling</title>
+  <style>
+    @layer reset, base, demo;
+
+    @layer demo {
+      html {
+        timeline-scope: --tl-1, --tl-2, --tl-3, --tl-4, --tl-5;
+      }
+
+      #tracked {
+        section:nth-child(1){ view-timeline: --tl-1 block; }
+        section:nth-child(2){ view-timeline: --tl-2 block; }
+        section:nth-child(3){ view-timeline: --tl-3 block; }
+        section:nth-child(4){ view-timeline: --tl-4 block; }
+        section:nth-child(5){ view-timeline: --tl-5 block; }
+      }
+
+      @keyframes animate-in {
+        from { scale: 0.5; opacity: 0; transform: rotateY(-180deg); }
+        to { transform: rotateY(0deg); }
+      }
+      @keyframes animate-out {
+        to { translate: 100% 0; opacity: 0; }
+      }
+
+      #animated {
+        section {
+          animation: animate-in auto linear both, animate-out auto linear forwards;
+          animation-range: entry 25% cover 50%, exit 50% exit 75%;
+          backface-visibility: hidden;
+        }
+
+        section:nth-child(1){ animation-timeline: --tl-1; }
+        section:nth-child(2){ animation-timeline: --tl-2; }
+        section:nth-child(3){ animation-timeline: --tl-3; }
+        section:nth-child(4){ animation-timeline: --tl-4; }
+        section:nth-child(5){ animation-timeline: --tl-5; }
+      }
+    }
+
+    @layer base {
+      #tracked {
+        section {
+          height: 100dvh;
+          place-content: center;
+          text-align: center;
+          border: 5px dashed grey;
+        }
+      }
+
+      #animated {
+        position: fixed;
+        top: 50%;
+        translate: 0 -50%;
+        right: 10vw;
+        height: 25vh;
+        width: 25vh;
+
+        section {
+          position: absolute;
+          inset: 0;
+          place-content: center;
+          text-align: center;
+
+          background-color: white;
+          border: 5px dotted lime;
+        }
+      }
+    }
+
+    @layer reset {
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="tracked">
+    <section>TRACKED 1</section>
+    <section>TRACKED 2</section>
+    <section>TRACKED 3</section>
+    <section>TRACKED 4</section>
+    <section>TRACKED 5</section>
+  </div>
+  <div id="animated">
+    <section>ANIMATED 1</section>
+    <section>ANIMATED 2</section>
+    <section>ANIMATED 3</section>
+    <section>ANIMATED 4</section>
+    <section>ANIMATED 5</section>
+  </div>
+</body>
+</html>
