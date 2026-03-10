@@ -12,7 +12,7 @@ sources:
   - https://webstatus.dev/features/scroll-initial-target
 ---
 
-# Mixed Media Scroll View
+# Set a scroll target for the initial render
 
 The CSS property `scroll-initial-target` offers a declarative, CSS-only way to bring a specific child element into the visible area of its scroll container as soon as that container is rendered. Previously, developers relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#item-id`) both of which have limitations and are tricky to implement.
 
