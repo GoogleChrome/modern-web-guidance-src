@@ -4,7 +4,6 @@ description: Build a scrollable list of elements (e.g. a carousel of images or a
 web-feature-ids:
   - scroll-initial-target
   - scroll-into-view
-  - scroll-snap
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/scroll-initial-target
   - https://github.com/DavMila/explainer-scroll-initial-target
