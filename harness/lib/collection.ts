@@ -4,6 +4,7 @@ import fs from 'fs';
 import { collectGuidesUsed } from './guide_validation.ts';
 import { fileURLToPath } from 'url';
 import matter from 'gray-matter';
+import { config } from '../config.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,7 +37,9 @@ export async function collectResults(resultsDir: string) {
       const [taskName, runType] = parts;
       const targetFile = path.join(dir, 'index.html');
       
-      const taskPath = path.resolve(__dirname, `../tasks/${taskName}.md`);
+      const isNegative = config.suite.negative === true;
+      const taskPath = path.resolve(__dirname, `../tasks/${isNegative ? 'negative/' : ''}${taskName}.md`);
+      
       if (!fs.existsSync(taskPath)) continue;
 
       const fileContent = fs.readFileSync(taskPath, 'utf8');
@@ -139,7 +142,9 @@ run();
 
       const targetFile = path.join(dir, 'index.html');
 
-      const taskPath = path.resolve(__dirname, `../tasks/${taskName}.md`);
+      const isNegative = config.suite.negative === true;
+      const taskPath = path.resolve(__dirname, `../tasks/${isNegative ? 'negative/' : ''}${taskName}.md`);
+
       if (!fs.existsSync(taskPath)) {
         console.warn(`Skipping grading: Task ${taskName} not found at ${taskPath}`);
         continue;
