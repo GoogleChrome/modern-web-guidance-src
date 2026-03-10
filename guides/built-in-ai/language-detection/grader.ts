@@ -70,11 +70,11 @@ test.describe(`Language Detection Expectations: ${demoName}`, () => {
           window.__calls.push('availability');
           return 'available';
         },
-        create: async (options) => {
+        create: async (_options) => {
           window.__calls.push('create');
           // Basic validation of options if needed, but we just track the call
           return {
-            detect: async (text) => {
+            detect: async (_text) => {
               window.__calls.push('detect');
               return [{ detectedLanguage: 'en', confidence: 0.95 }];
             }
