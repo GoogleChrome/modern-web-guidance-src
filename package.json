@@ -51,7 +51,7 @@
     }
   },
   "devDependencies": {
-    "@types/node": "^22.19.11",
+    "@types/node": "^25.3.3",
     "@types/omelette": "^0.4.5",
     "gh-pages": "^6.3.0",
     "oxlint": "^1.50.0",
