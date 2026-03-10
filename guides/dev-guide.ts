@@ -37,7 +37,7 @@ export interface DevGuideOptions {
   verbose?: boolean;
 }
 
-interface GuideInventory {
+export interface GuideInventory {
   dir: string;
   name: string;
   category: string;
@@ -72,7 +72,7 @@ function readFileSafe(filePath: string): string {
 /**
  * Builds a map of grader names to task information.
  */
-function getTaskMap(): Map<string, TaskInfo> {
+export function getTaskMap(): Map<string, TaskInfo> {
   const taskMap = new Map<string, TaskInfo>();
   if (!fs.existsSync(TASKS_DIR)) return taskMap;
 
@@ -135,7 +135,7 @@ function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): GuideInven
   };
 }
 
-function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
+export function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
   const guides: GuideInventory[] = [];
   const categories = fs.readdirSync(__dirname, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
@@ -617,9 +617,9 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
   console.log('');
 }
 
-type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
+export type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
 
-function classifyGuide(inv: GuideInventory): GuideStatus {
+export function classifyGuide(inv: GuideInventory): GuideStatus {
   if (!inv.hasGuide && !inv.isStub) return 'incomplete';
   if (inv.isStub && !inv.hasGuide) return 'stub';
   if (!inv.hasDemo) return 'incomplete';
