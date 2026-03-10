@@ -127,7 +127,7 @@ The generated task file is automatically included in future `gd eval suite` runs
 
 ### Negative Suite
 
-To verify that guides improve agent performance even starting from a "bad" implementation, you can run a **Negative Suite**.
+To verify that guides improve agent performance starting from a "bad" implementation, you can run a **Negative Suite**.
 
 1. **Generate negative suite resources**:
    ```bash

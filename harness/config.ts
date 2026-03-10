@@ -70,7 +70,7 @@ export interface SuiteConfig {
   mcpServersToEnable: string[];
   enableSkills: boolean;
   agent: string;
-  negative?: boolean;
+  negative: boolean;
 }
 
 export const config = {

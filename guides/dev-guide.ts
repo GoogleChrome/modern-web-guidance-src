@@ -37,7 +37,7 @@ export interface DevGuideOptions {
   verbose?: boolean;
 }
 
-export interface GuideInventory {
+interface GuideInventory {
   dir: string;
   name: string;
   category: string;
