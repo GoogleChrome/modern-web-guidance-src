@@ -11,18 +11,56 @@ sources:
 
 # Add entry and exit effects to elements as they enter or exit the scrollport
 
-TODO: Description for this
+Entry and exit effects are animations that are triggered when an element enters or leaves the viewport. This can be used to create engaging and dynamic user experiences. For example, you can use an entry effect to fade in an element as it scrolls into view, or an exit effect to scale it down as it scrolls out of view.
 
 ## How to implement
 
-TODO: Add more detail to the following steps:
+To add entry and exit effects to an element, you need to combine a few CSS properties. Here’s a step-by-step guide:
 
-- Create separate `@keyframes` for the entry and exit animations
-- Attach the entry and exit keyframes to the element by definining multiple animations in the `animation` property.
-  - Be sure to give the entry animation a `animation-fill-mode` of `forwards` and the exit animation a `animation-fill-mode` of `backwards`, to prevent them from overwriting each other when not active.
-- Create a View Timeline using `view()` on the element, and use that as the `animation-timeline` for both the animations.
-  - When needed, specify the axis to track in the `view()` function, e.g. `view(inline)` to track the inline axis
-- Limit the entry animation to the `entry` `animation-range` and the exit animation to the `exit` range.
+1.  **Create separate `@keyframes` for the entry and exit animations.** The entry animation will be applied as the element enters the viewport, and the exit animation will be applied as it leaves.
+
+    ```css
+    @keyframes slide-in {
+      from { transform: translateX(-100%); }
+    }
+    @keyframes slide-out {
+      to { transform: translateX(100%); }
+    }
+    ```
+
+2.  **Attach the entry and exit keyframes to the element.** You can do this by defining multiple animations in the `animation` property.
+
+    -   Give the entry animation a `animation-fill-mode` of `forwards` so that it maintains its final state after the animation is complete.
+    -   Give the exit animation a `animation-fill-mode` of `backwards` so that it doesn't affect the element before it starts.
+
+    ```css
+    .animated-element {
+      animation:
+        slide-in 1s linear forwards,
+        slide-out 1s linear backwards;
+    }
+    ```
+
+3.  **Create a View Timeline and link it to the animations.** A View Timeline is a type of timeline that is linked to the visibility of an element in the viewport. You can create one using the `view()` function and then apply it to your animations using the `animation-timeline` property.
+
+    ```css
+    .animated-element {
+      animation-timeline: view();
+    }
+    ```
+
+    By default, `view()` tracks the element on the `block` axis. If you need to track it on the `inline` axis, you can use `view(inline)`.
+
+4.  **Limit the animations to the `entry` and `exit` ranges.** The `animation-range` property allows you to specify which part of the timeline an animation should run on.
+
+    -   The `entry` range covers the time from when the element first enters the viewport until it is fully visible.
+    -   The `exit` range covers the time from when the element starts to leave the viewport until it is completely hidden.
+
+    ```css
+    .animated-element {
+      animation-range: entry, exit;
+    }
+    ```
 
 ## Example code
 
@@ -112,4 +150,33 @@ When reusing the ViewTimeline on children
 
 {{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
 
-TODO: Write a JavaScript-based IntersectionObserver that tracks each element as it crosses its scrollport. When entering, the `grow` keyframes are applied and while exiting the `shrink` keyframes. Note that when scrolling backwards through the scroller, the animations should also play but in reverse. Use `linear` timings for the animations, or it won’t work.
+While browser support for scroll-driven animations is constantly improving, it's still a good idea to provide a fallback for browsers that don't yet support them. Here's a JavaScript-based fallback that uses an `IntersectionObserver` to create a similar effect.
+
+```html
+<script>
+  if (!CSS.supports('(animation-timeline: view()) and (animation-range: entry)')) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          entry.target.style.scale = 0.5 + entry.intersectionRatio * 0.5;
+        }
+      },
+      {
+        threshold: Array.from({ length: 101 }, (_, i) => i / 100),
+      }
+    );
+
+    document.querySelectorAll('.scroller > *').forEach((el) => {
+      observer.observe(el);
+    });
+  }
+</script>
+```
+
+This script first checks if the browser supports `animation-timeline: view()` and `animation-range: entry`. If not, it creates an `IntersectionObserver` that will fire a callback whenever one of the observed elements intersects with the viewport.
+
+The `threshold` option is an array of 101 values from 0 to 1. This means the observer will fire a callback every time 1% of the element becomes visible or hidden.
+
+In the callback, we use the `intersectionRatio` to calculate the new scale of the element and apply it directly to the element's `scale` style. This creates a smooth animation that is directly tied to the element's visibility in the viewport. This creates a similar effect to the CSS-based version, but it's important to note that it's not a perfect polyfill. The JavaScript-based version is not as performant and may not be as smooth as the native CSS version.
+
+Note that not every effect can be recreated using this approach.
