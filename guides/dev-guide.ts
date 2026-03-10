@@ -361,6 +361,7 @@ The prompts should:
 - Vary in specificity: include vague developer requests and specific technical asks
 - Be phrased as a developer asking an AI for help with their existing web app. lowercase text, occasional typos, etc.
 - Not reference the guide itself or indicate that guidance exists
+- Don't reference the name of the base app.. a real developer wouldn't do that.
 - Each be on its own line, prefixed with "- "
 
 Only create the ${PROMPTS_FILE} file. Do not modify any other files.`;
