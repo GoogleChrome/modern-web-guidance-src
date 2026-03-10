@@ -16,6 +16,7 @@
     "README.md"
   ],
   "scripts": {
+    "wf": "node scripts/wf.ts",
     "prepublishOnly": "npm run build",
     "build": "node scripts/build-guides.ts",
     "build:megaskill": "node scripts/build-megaskill.ts",
