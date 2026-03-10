@@ -1,3 +1,1 @@
-Build a web app feed that has a hidden search bar at the very top of the screen. When the user first loads the app. The search bar should be hidden up until the user attempts
-to scroll up and pull down from the top of the feed to reveal it, similar to native apps. Please avoid using JavaScript to manage the initial offset, and avoid any visible scrolling
-animation or flash on initial render.
+Build a web app feed with a hidden top search bar that is only revealed when the user pulls down from the top of the feed, ensuring no JavaScript is used for the initial offset and no visible scrolling animation or flash occurs on initial render.

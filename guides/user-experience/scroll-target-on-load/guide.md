@@ -14,22 +14,19 @@ sources:
 
 # Set a scroll target for the initial render
 
-The CSS property `scroll-initial-target` offers a declarative, CSS-only way to bring a specific child element into the visible area of its scroll container as soon as that container is rendered. Previously, developers relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#item-id`) both of which have limitations and are tricky to implement.
+The CSS property `scroll-initial-target` offers a declarative, CSS-only way to bring a specific descendent element into the visible area of its scroll container as soon as that container is rendered. Previously, developers relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#item-id`) both of which have limitations and are tricky to implement.
 
 ## How to Implement
 
-The `scroll-initial-target` property allows you to set which child element should be the starting point of a scroll container. This is particularly effective for mixed-media feeds where content height is unpredictable.
-
 To implement this successfully:
 
-1.  **Define the Container:** Ensure the parent element is a scroll container. You do not need to enforce `scroll-snap-type` if you want users to scroll freely after the initial load.
-2.  **Target the Item:** Apply `scroll-initial-target: nearest` to the specific child element you want to bring into view. You do not need to apply `scroll-snap-align` to the feed items, allowing the scrolling experience to remain smooth and native without forced snapping.
+> **Target the Item:** Apply `scroll-initial-target: nearest` to the specific descendent element you want to bring into view. You do not need to apply `scroll-snap-align` to the feed items, allowing the scrolling experience to remain smooth and native without forced snapping.
 
 > **The "First-Wins" Rule:** If multiple elements within the same container specify `nearest`, the browser selects the one that appears first in the DOM tree order.
 
 ## Example Code: Vertical Media Feed
 
-In this example, the feed starts focused on a specific "featured" item rather than the very top of the list.
+In this example, a feed starts scrolled to a specific "featured" item rather than the very top of the list.
 
 ```css
 /** 
@@ -45,12 +42,11 @@ In this example, the feed starts focused on a specific "featured" item rather th
 - **DO** use `scroll-initial-target` for "middle-start" experiences, such as a calendar starting on the current day or a gallery starting on a specific image.
 - **DO NOT** confuse this with accessibility focus. This property only moves the **visual** viewport; it does not move the keyboard focus. You must manually manage `element.focus()` if the target is intended to be the starting point for keyboard users.
 - **DO NOT** use this if you need a smooth "scrolling" animation on load; this property is discrete and sets the position instantly during the layout phase.
-- **DO** account for the **Precedence Hierarchy**: A URL fragment (e.g., `example.com/#top`) and the container-level `scroll-start` property both take precedence over `scroll-initial-target`.
 - **DO** provide dimensions for media. Since the scroll position is calculated during initial layout, ensure images or videos have `aspect-ratio` or fixed `height`/`width` to prevent the target from shifting after the media loads.
 
 ## Fallback Strategy
 
-For browsers that do not yet support the API, use a JavaScript fallback. For feeds containing images or mixed media, use the `window.load` event to ensure the browser has calculated the full height of all elements before triggering the scroll.
+For browsers that do not yet support the API, use a JavaScript fallback. Use the `DOMContentLoaded` event to ensure the browser scrolls the element into view as soon as the HTML parsing completes, providing a faster experience than waiting for all images and resources to load.
 
 ```javascript
 /**
@@ -64,11 +60,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (feedTarget) {
         // 'block: center' ensures the featured media is centered in view
-        feedTarget.scrollIntoView({ behavior: 'instant', block: 'center' });
+        feedTarget.scrollIntoView({ behavior: "instant", block: "center" });
       }
     }, 50); // delay ensures layout metrics and images are fully resolved
   }
 });
 ```
-
-Leave the default scroll position as a safe fallback for progressive enhancement if the specific target content isn't critical for the initial view.

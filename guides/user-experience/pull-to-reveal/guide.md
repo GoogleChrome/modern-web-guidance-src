@@ -13,17 +13,17 @@ sources:
 
 # Pull to Reveal
 
-The CSS property `scroll-initial-target` offers a declarative, CSS-only way to bring a specific child element into the visible area of its scroll container as soon as that container is rendered. Previously, developers relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#content-id`) to hide a top search bar or refresh control on initial load, forcing the user to scroll up (pull down) to reveal it.
+The CSS property `scroll-initial-target` offers a declarative, CSS-only way to bring a specific descendent element into the visible area of its scroll container as soon as that container is rendered. Previously, developers relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#content-id`) to hide a top search bar or refresh control on initial load, forcing the user to scroll up (pull down) to reveal it.
 
 ## How to Implement
 
-The `scroll-initial-target` property allows you to declaratively set which child element should be scrolled into view when a scroll container is first displayed.
+The `scroll-initial-target` property allows you to declaratively set which descendent element should be scrolled into view when a scroll container is first displayed.
 
 To implement this successfully:
 
-1.  **Define the Container:** The parent element must be a scroll container and can optionally add `scroll-snap-type`.
-2.  **Set Alignment (Required):** Apply `scroll-snap-align` (e.g., `start`) to the child elements. **Note:** If the child's alignment is `none` (the default), `scroll-initial-target` will not function because the browser has no reference point for positioning.
-3.  **Target the Item:** Apply `scroll-initial-target: nearest` to the specific child element you want to snap into view.
+1.  **Define the Container:** The ancestor element must be a scroll container and can optionally add `scroll-snap-type`.
+2.  **Set Alignment (Required):** Apply `scroll-snap-align` (e.g., `start`) to the descendent elements. **Note:** If the descendent's alignment is `none` (the default), `scroll-initial-target` will not function because the browser has no reference point for positioning.
+3.  **Target the Item:** Apply `scroll-initial-target: nearest` to the specific descendent element you want to snap into view.
 
 > **The "First-Wins" Rule:** If multiple elements within the same container specify `nearest`, the browser selects the one that appears first in the DOM tree order.
 
@@ -31,17 +31,17 @@ To implement this successfully:
 
 ```css
 /**  
- * PARENT: The scroll container.
+ * ANCESTOR: Define the scroll container and
+ * enable snapping for subsequent user scrolls.
  */
 .scroll-container {
   height: 100vh;
   overflow-y: auto;
-  /* Optional: Enables snapping for subsequent user scrolls */
   scroll-snap-type: y mandatory;
 }
 
 /** 
- * CHILDREN: Both the search bar and the main content need snap alignment.
+ * DESCENDENTS: Both the search bar and the main content need snap alignment.
  * The main content aligns to start to serve as the initial target position
  * and to act as a valid snap point after scrolling.
  */
@@ -94,5 +94,3 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 ```
-
-Leave the default scroll position as a safe fallback for progressive enhancement if the specific target content isn't critical for the initial view (users will just see the search bar immediately instead of having to pull to reveal it).
