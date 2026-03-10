@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Directional Navigation (Cross-Document)</title>
+
+  <!-- 1. Opt-in to Cross-Document View Transitions -->
+  <style>
+    @view-transition {
+      navigation: auto;
+    }
+  </style>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      overflow-x: hidden;
+      background-color: #f0f2f5;
+      color: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      background: #ffffff;
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .nav-btn {
+      padding: 0.8rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      background-color: #007bff;
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .nav-btn:hover {
+      background-color: #0056b3;
+    }
+
+    /* 2. Custom Directional Animations */
+    @keyframes slide-to-left {
+      to { transform: translateX(-100%); }
+    }
+    @keyframes slide-from-right {
+      from { transform: translateX(100%); }
+    }
+    @keyframes slide-to-right {
+      to { transform: translateX(100%); }
+    }
+    @keyframes slide-from-left {
+      from { transform: translateX(-100%); }
+    }
+
+    /* 3. Apply animations based on view-transition-type */
+    html:active-view-transition-type(forward) ::view-transition-old(root) {
+      animation: 0.4s ease both slide-to-left;
+    }
+    html:active-view-transition-type(forward) ::view-transition-new(root) {
+      animation: 0.4s ease both slide-from-right;
+    }
+
+    html:active-view-transition-type(backward) ::view-transition-old(root) {
+      animation: 0.4s ease both slide-to-right;
+    }
+    html:active-view-transition-type(backward) ::view-transition-new(root) {
+      animation: 0.4s ease both slide-from-left;
+    }
+  </style>
+
+  <script>
+    // 4. Client-side Direction Tracking (Navigation Activation API)
+    // Registered in head to guarantee execution before pagereveal fires on incoming page
+    window.addEventListener('pagereveal', (e) => {
+      if (e.viewTransition) {
+        if (window.navigation && navigation.activation && navigation.activation.from) {
+          try {
+            const fromURL = new URL(navigation.activation.from.url);
+            const currentURL = new URL(navigation.activation.entry.url);
+            
+            const fromStep = parseInt(fromURL.searchParams.get('step')) || 1;
+            const currentStep = parseInt(currentURL.searchParams.get('step')) || 1;
+
+            if (currentStep > fromStep) {
+              e.viewTransition.types.add('forward');
+            } else if (currentStep < fromStep) {
+              e.viewTransition.types.add('backward');
+            }
+          } catch (err) {
+            console.error('Error determining navigation direction:', err);
+          }
+        } else {
+          // Fallback to sessionStorage
+          const dir = sessionStorage.getItem('nav-direction');
+          if (dir) {
+            e.viewTransition.types.add(dir);
+            sessionStorage.removeItem('nav-direction');
+          }
+        }
+      }
+    });
+  </script>
+</head>
+
+<body>
+
+  <header>
+    <h1>Step Navigator</h1>
+  </header>
+
+  <main>
+    <div id="content"></div>
+    <div class="nav-buttons" id="nav-container"></div>
+  </main>
+
+  <script>
+    const url = new URL(window.location.href);
+    let step = parseInt(url.searchParams.get('step')) || 1;
+
+    // Render Content
+    const contentDiv = document.getElementById('content');
+    contentDiv.innerHTML = `
+      <div style="font-size: 5rem; font-weight: bold; color: #007bff;">${step}</div>
+      <p style="font-size: 1.2rem; color: #666;">You are on Step ${step}</p>
+    `;
+
+    // Render Navigation
+    const navContainer = document.getElementById('nav-container');
+    let navHTML = '';
+    if (step > 1) {
+      navHTML += `<a href="demo.html?step=${step - 1}" class="nav-btn" data-dir="backward">← Step ${step - 1}</a>`;
+    }
+    if (step < 5) {
+      navHTML += `<a href="demo.html?step=${step + 1}" class="nav-btn" data-dir="forward">Step ${step + 1} →</a>`;
+    }
+    navContainer.innerHTML = navHTML;
+
+    // Save direction on click as fallback
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest('a');
+      if (link && link.dataset.dir) {
+        sessionStorage.setItem('nav-direction', link.dataset.dir);
+      }
+    });
+  </script>
+
+</body>
+
+</html>

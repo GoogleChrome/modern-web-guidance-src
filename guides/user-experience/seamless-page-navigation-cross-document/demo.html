@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seamless Page Navigation (Cross-Document)</title>
+
+  <!-- 1. Opt-in to Cross-Document View Transitions -->
+  <style>
+    @view-transition {
+      navigation: auto;
+    }
+  </style>
+
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      margin: 0;
+      background-color: #0f172a;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    nav {
+      background: rgba(30, 41, 59, 0.8);
+      backdrop-filter: blur(8px);
+      padding: 1rem 2rem;
+      display: flex;
+      gap: 2rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    nav a {
+      color: #94a3b8;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    nav a.active {
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
+    main {
+      flex: 1;
+      padding: 3rem 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* 2. Custom Page-Level Animations */
+    @keyframes fade-in {
+      from { opacity: 0; transform: scale(0.98); }
+    }
+    @keyframes fade-out {
+      to { opacity: 0; transform: scale(1.02); }
+    }
+
+    /* Customize the transition for the root element */
+    ::view-transition-old(root) {
+      animation: 0.3s ease-out both fade-out;
+    }
+
+    ::view-transition-new(root) {
+      animation: 0.3s ease-in both fade-in;
+    }
+
+    /* Content Styles */
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      background: linear-gradient(to right, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p {
+      line-height: 1.6;
+      color: #cbd5e1;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .card {
+      background: #1e293b;
+      padding: 1.5rem;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+  </style>
+</head>
+
+<body>
+
+  <nav>
+    <a href="demo.html" id="nav-home">Home</a>
+    <a href="demo.html?p=about" id="nav-about">About</a>
+    <a href="demo.html?p=services" id="nav-services">Services</a>
+  </nav>
+
+  <main id="content">
+    <!-- Content injected by JS -->
+  </main>
+
+  <script>
+    const url = new URL(window.location.href);
+    const page = url.searchParams.get('p') || 'home';
+
+    // Update Nav Active State
+    document.querySelectorAll('nav a').forEach(a => {
+      const href = a.getAttribute('href');
+      if ((page === 'home' && href === 'demo.html') || href.includes(`p=${page}`)) {
+        a.classList.add('active');
+      }
+    });
+
+    // Render Content
+    const content = document.getElementById('content');
+    if (page === 'home') {
+      content.innerHTML = `
+        <h1>Welcome to the Future of MPAs</h1>
+        <p>This page demonstrates a seamless full-page transition. Traditional Multi-Page Applications often suffer from a white flash or abrupt content jump during navigation.</p>
+        <p>With Cross-Document View Transitions, the browser captures a snapshot of the old page and morphs it into the new page, creating a Single-Page Application (SPA) feel with standard HTML navigation.</p>
+        <div class="grid">
+          <div class="card"><h3>Fast</h3><p>Leverages native browser rendering without hydrating large JS bundles.</p></div>
+          <div class="card"><h3>Smooth</h3><p>Eliminate jarring full-page refreshes with standard CSS animations.</p></div>
+        </div>
+      `;
+    } else if (page === 'about') {
+      content.innerHTML = `
+        <h1>About Us</h1>
+        <p>We are exploring the boundaries of modern web standards. View Transitions are one of the most exciting additions to the web platform, filling the gaps between static content and dynamic applications.</p>
+        <p>This demo uses single files making self-navigating links to simulate a multi-page environment and trigger direct document swapping transitions.</p>
+      `;
+    } else if (page === 'services') {
+      content.innerHTML = `
+        <h1>Our Services</h1>
+        <p>Check out what we offer to make your web experience better.</p>
+        <div class="grid">
+          <div class="card"><h3>Design</h3><p>Interfaces that feel responsive and alive with hover and view effects.</p></div>
+          <div class="card"><h3>SEO</h3><p>Preserved by server-side rendered structures without heavy single page JS routers.</p></div>
+        </div>
+      `;
+    }
+  </script>
+
+</body>
+
+</html>
