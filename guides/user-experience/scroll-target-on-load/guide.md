@@ -14,13 +14,13 @@ sources:
 
 # Set a scroll target for the initial render
 
-The CSS property `scroll-initial-target` offers a declarative, CSS-only way to bring a specific descendent element into the visible area of its scroll container as soon as that container is rendered. Previously, developers relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#item-id`) both of which have limitations and are tricky to implement.
+The CSS property `scroll-initial-target` offers a declarative, CSS-only way to bring a specific descendant element into the visible area of its scroll container as soon as that container is rendered. Previously, developers relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#item-id`) both of which have limitations and are tricky to implement.
 
 ## How to Implement
 
 To implement this successfully:
 
-> **Target the Item:** Apply `scroll-initial-target: nearest` to the specific descendent element you want to bring into view. You do not need to apply `scroll-snap-align` to the feed items, allowing the scrolling experience to remain smooth and native without forced snapping.
+> **Target the Item:** Apply `scroll-initial-target: nearest` to the specific descendant element you want to bring into view. You do not need to apply `scroll-snap-align` to the feed items, allowing the scrolling experience to remain smooth and native without forced snapping.
 
 > **The "First-Wins" Rule:** If multiple elements within the same container specify `nearest`, the browser selects the one that appears first in the DOM tree order.
 
@@ -55,14 +55,11 @@ For browsers that do not yet support the API, use a JavaScript fallback. Use the
 document.addEventListener("DOMContentLoaded", () => {
   // Check for native CSS support
   if (!CSS.supports("scroll-initial-target", "nearest")) {
-    setTimeout(() => {
-      const feedTarget = document.querySelector(".item.target");
-
-      if (feedTarget) {
-        // 'block: center' ensures the featured media is centered in view
-        feedTarget.scrollIntoView({ behavior: "instant", block: "center" });
-      }
-    }, 50); // delay ensures layout metrics and images are fully resolved
+    const feedTarget = document.querySelector(".item.target");
+    if (feedTarget) {
+      // 'block: center' ensures the featured media is centered in view
+      feedTarget.scrollIntoView({ behavior: "instant", block: "center" });
+    }
   }
 });
 ```

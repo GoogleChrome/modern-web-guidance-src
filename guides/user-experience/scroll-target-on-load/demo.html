@@ -218,12 +218,10 @@
     // Fallback strategy for browsers that don't support scroll-initial-target
     document.addEventListener("DOMContentLoaded", () => {
       if (!CSS.supports('scroll-initial-target', 'nearest')) {
-        setTimeout(() => {
-          const feedTarget = document.querySelector('.feed-container .item.target');
-          if (feedTarget) {
-            feedTarget.scrollIntoView({ behavior: 'instant', block: 'center' });
-          }
-        }, 50); // delay ensures layout is complete 
+        const feedTarget = document.querySelector('.feed-container .item.target');
+        if (feedTarget) {
+          feedTarget.scrollIntoView({ behavior: 'instant', block: 'center' });
+        }
       }
     });
   </script>
