@@ -1,6 +1,6 @@
-import { getRunStats, getColor, escapeHtml, capitalize } from './utils.js';
+import { getRunStats, getColor, escapeHtml, capitalize, initGoogleAuth, authenticatedFetch, getAccessToken } from './utils.js';
 
-let allTestData = {}; // Cache all test data by testID
+let allTestData = {}; // Cache all test data by testId
 let currentTab = 'suites';
 let currentScenarioFilter = 'all';
 let selectedTestIds = new Set(); // Set of test IDs to show
@@ -8,11 +8,8 @@ let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
 let currentSkillsFilter = 'all';
 
-
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        await loadAllTests();
-
         // Initialize UI
         setupTabs();
         setupFilters();
@@ -20,6 +17,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupTableFilters();
 
         const params = new URLSearchParams(window.location.search);
+        
+        // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
+        initGoogleAuth(async () => {
+             await loadRemoteTests();
+        });
+
+        await loadLocalTests();
+        if (getAccessToken()) {
+             await loadRemoteTests();
+        }
 
         // Initialize with default states relative to compoundKeys instead of simple testIDs
         selectedTestIds = new Set(Object.keys(allTestData));
@@ -27,16 +34,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         let initialTests = params.get('tests');
         if (initialTests && initialTests.trim() !== '') {
             const requestedIds = initialTests.split(',').filter(id => id.trim() !== '');
-            // Map requested IDs (which might just be testIDs from old links) to the new compound keys if possible
             const matchIds = new Set();
             requestedIds.forEach(req => {
                 if (allTestData[req]) { matchIds.add(req); }
-                else {
-                    // try finding a match by bare testID
-                    Object.keys(allTestData).forEach(ck => {
-                        if (ck.startsWith(req + '|||')) matchIds.add(ck);
-                    });
-                }
             });
 
             if (matchIds.size > 0) {
@@ -71,10 +71,6 @@ window.addEventListener('popstate', () => {
         activateTab(view, false);
     }
 
-    // Also handle tests param update on popstate if needed
-    // Ideally we re-init selectedTestIds but that might be heavy?
-    // Let's just reload for now if tests param changes drastically, or re-render.
-    // For simplicity, we can reload or just re-read params.
     selectedTestIds = new Set(Object.keys(allTestData)); // Default to all
     const testsParam = params.get('tests');
     if (testsParam && testsParam.trim() !== '') {
@@ -82,11 +78,6 @@ window.addEventListener('popstate', () => {
         const matchIds = new Set();
         requestedIds.forEach(req => {
             if (allTestData[req]) { matchIds.add(req); }
-            else {
-                Object.keys(allTestData).forEach(ck => {
-                    if (ck.startsWith(req + '|||')) matchIds.add(ck);
-                });
-            }
         });
         if (matchIds.size > 0) {
             selectedTestIds = matchIds;
@@ -253,7 +244,7 @@ function renderFilterMenuItems() {
         const testInfo = allTestData[compoundKey];
 
         const idSpan = document.createElement('span');
-        idSpan.textContent = testInfo.testID.replace('test_', '') + ` (${testInfo.source})`;
+        idSpan.textContent = testInfo.testId.replace('test_', '') + ` (${testInfo.source})`;
 
         const dateSpan = document.createElement('span');
         dateSpan.className = 'filter-item-date';
@@ -297,55 +288,100 @@ function renderAll() {
     renderTrends();
 }
 
-async function loadAllTests() {
+async function loadLocalTests() {
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        return; // Avoid 404s by skipping local network fetches when hosted on Github Pages
+    }
+    
     try {
         const response = await fetch(`/api/suites?t=${Date.now()}`);
-        if (!response.ok) throw new Error('Failed to fetch suites');
+        if (!response.ok) return; // Silent fail for local if we are on gh-pages
         const manifest = await response.json();
 
-        if (!manifest.suites || manifest.suites.length === 0) {
-            document.getElementById('empty-state').style.display = 'block';
-            return;
+        if (manifest.suites && manifest.suites.length > 0) {
+            document.getElementById('empty-state').style.display = 'none';
         }
 
-        document.getElementById('empty-state').style.display = 'none';
-
-        // Load all test data
+        // Load local test data
         for (const suite of manifest.suites) {
-            const isObj = typeof suite === 'object';
-            const testID = isObj ? suite.id : suite;
-            const source = isObj ? suite.source : (manifest.isLocal ? 'local' : 'remote');
-
+            if (suite.source !== 'local') continue;
+            
+            const testId = suite.id;
             try {
-                const response = await fetch(`results/${testID}/evals.json?source=${source}&t=${Date.now()}`);
+                const response = await fetch(`${testId}/evals.json?source=local&t=${Date.now()}`);
                 if (response.ok) {
                     const parsed = await response.json();
-
-                    let servingArch = 'unknown';
-                    if (parsed.enableSkills !== undefined) {
-                        servingArch = parsed.enableSkills ? 'skills' : 'mcp';
-                    }
-
-                    const compoundKey = `${testID}|||${source}`;
-
-                    allTestData[compoundKey] = {
-                        testID: testID,
-                        timestamp: parsed.timestamp || new Date().toISOString(), // Fallback
-                        data: parsed,
-                        source: source,
-                        agent: parsed.agent || 'unknown',
-                        servingArch: servingArch
-                    };
+                    registerTestData(testId, 'local', parsed);
                 }
             } catch (e) {
-                console.warn(`Failed to load test ${testID}:`, e);
+                console.warn(`Failed to load local test ${testId}:`, e);
             }
         }
-    } catch (error) {
-        console.warn('Error loading suites:', error);
-        document.getElementById('empty-state').style.display = 'block';
-        throw error;
+    } catch {
+        console.warn('Local proxy not available');
     }
+}
+
+async function loadRemoteTests() {
+    try {
+        // Fetch from GCS JSON API directly instead of our node proxy
+        const response = await authenticatedFetch(`https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/`);
+        if (!response.ok) throw new Error('Failed to fetch remote suites');
+        
+        const data = await response.json();
+        const prefixes = data.prefixes || [];
+        
+        if (prefixes.length > 0) {
+             document.getElementById('empty-state').style.display = 'none';
+        }
+
+        // Load remote test data
+        for (const prefix of prefixes) {
+            const testId = prefix.slice(0, -1); // Remove trailing slash
+            
+            try {
+                const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(prefix + 'evals.json')}?alt=media`;
+                
+                const response = await authenticatedFetch(fileUrl);
+                if (response.ok) {
+                    const parsed = await response.json();
+                    registerTestData(testId, 'remote', parsed);
+                }
+            } catch (e) {
+                console.warn(`Failed to load remote test ${testId}:`, e);
+            }
+        }
+        
+        // Re-render UI now that we have remote data
+        const params = new URLSearchParams(window.location.search);
+        let initialTests = params.get('tests');
+        if (!initialTests || initialTests.trim() === '') {
+            selectedTestIds = new Set(Object.keys(allTestData));
+        }
+        renderFilterMenuItems();
+        renderAll();
+
+    } catch (error) {
+        console.error('Error loading remote suites:', error);
+    }
+}
+
+function registerTestData(testId, source, parsed) {
+    let servingArch = 'unknown';
+    if (parsed.enableSkills !== undefined) {
+        servingArch = parsed.enableSkills ? 'skills' : 'mcp';
+    }
+
+    const compoundKey = `${testId}|||${source}`;
+
+    allTestData[compoundKey] = {
+        testId: testId,
+        timestamp: parsed.timestamp || new Date().toISOString(), // Fallback
+        data: parsed,
+        source: source,
+        agent: parsed.agent || 'unknown',
+        servingArch: servingArch
+    };
 }
 
 // ==========================================
@@ -362,7 +398,7 @@ function renderSuites() {
 
     testIds.forEach(compoundKey => {
         const testInfo = allTestData[compoundKey];
-        const testID = testInfo.testID;
+        const testId = testInfo.testId;
 
         // Apply filters
         if (currentSourceFilter !== 'all' && testInfo.source !== currentSourceFilter) return;
@@ -387,11 +423,11 @@ function renderSuites() {
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
 
-        const localLink = `dashboard.html?testID=${testID}&source=${testInfo.source}`;
+        const localLink = `dashboard.html?testId=${testId}&source=${testInfo.source}`;
 
         html += `
             <tr class="suite-table-row" onclick="window.location.href='${localLink}'" style="cursor: pointer;">
-                <td style="padding-left:15px; text-align: left; font-weight: 600;">${testID}</td>
+                <td style="padding-left:15px; text-align: left; font-weight: 600;">${testId}</td>
                 <td style="text-transform: capitalize;">${testInfo.source}</td>
                 <td>${testInfo.agent}</td>
                 <td style="text-transform: capitalize;">${testInfo.servingArch.replace('mcp', 'MCP')}</td>
@@ -495,12 +531,12 @@ function renderGridRow(testName) {
 
             const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
 
-            const testId = allTestData[compoundTestId].testID;
+            const testId = allTestData[compoundTestId].testId;
             const source = allTestData[compoundTestId].source;
             const dateStr = new Date(allTestData[compoundTestId].timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
             cellsHtml.push(`
                 <a class="test-grid-cell"
-                     href="dashboard.html?testID=${testId}&source=${source}"
+                     href="dashboard.html?testId=${testId}&source=${source}"
                      style="background-color: ${getColor(avgRate)}"
                      title="${testId} - ${dateStr}: ${avgRate}% (${totalPassed}/${totalChecks})">
                     ${avgRate}%
@@ -576,7 +612,7 @@ function renderComparisonHistory(scenario, prompt) {
                 const results = data.results;
 
                 let hasRuns = false;
-                const testId = allTestData[compoundTestId].testID;
+                const testId = allTestData[compoundTestId].testId;
                 const source = allTestData[compoundTestId].source;
 
                 if (results && results[testName]) {
@@ -604,7 +640,7 @@ function renderComparisonHistory(scenario, prompt) {
                             const encodedCheckId = encodeURIComponent(checkId);
 
                             sparklinesHtml += `
-                                <a href="dashboard.html?testID=${testId}&source=${source}&testName=${encodedTestName}&checkId=${encodedCheckId}"
+                                <a href="dashboard.html?testId=${testId}&source=${source}&testName=${encodedTestName}&checkId=${encodedCheckId}"
                                    class="history-sparkline-item"
                                    style="background-color: ${color}; border: ${border};"
                                    title="${escapeHtml(tooltip)}"></a>
@@ -623,7 +659,7 @@ function renderComparisonHistory(scenario, prompt) {
                     const encodedCheckId = encodeURIComponent(checkId);
 
                     sparklinesHtml += `
-                        <a href="dashboard.html?testID=${testId}&source=${source}&testName=${encodedTestName}&checkId=${encodedCheckId}"
+                        <a href="dashboard.html?testId=${testId}&source=${source}&testName=${encodedTestName}&checkId=${encodedCheckId}"
                            class="history-sparkline-item"
                            style="background-color: ${color}; border: ${border};"
                            title="${escapeHtml(tooltip)}"></a>
@@ -658,7 +694,7 @@ function renderTrends() {
     const renderBars = (groupType) => {
         return testIds.map(compoundTestId => {
             const testInfo = allTestData[compoundTestId];
-            const testId = testInfo.testID;
+            const testId = testInfo.testId;
             const source = testInfo.source;
             const data = testInfo.data;
             const stats = calculateGroupTotalStats(data.results, groupType);
@@ -666,7 +702,7 @@ function renderTrends() {
             const timestamp = new Date(testInfo.timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
 
             return `
-                <a class="timeline-bar" href="dashboard.html?testID=${testId}&source=${source}" title="${testId} - ${timestamp}: ${value}%">
+                <a class="timeline-bar" href="dashboard.html?testId=${testId}&source=${source}" title="${testId} - ${timestamp}: ${value}%">
                     <div class="timeline-bar-fill" style="height: ${Math.max(value * 2, 10)}px; background-color: ${getColor(value)}"></div>
                     <div class="timeline-bar-label">${value}%</div>
                 </a>
