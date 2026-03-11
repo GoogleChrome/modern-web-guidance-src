@@ -63,8 +63,8 @@ if (matches.length === 0) {
   const cols = [
     { key: 'featureId', label: 'web-feature-id' },
     { key: 'name', label: 'Feature name' },
+    { key: 'baselineSince', label: 'Baseline since', align: 'right' },
     { key: 'baseline', label: 'Baseline' },
-    { key: 'baselineSince', label: 'Baseline since' },
     { key: 'chrome', label: 'Chrome', align: 'right' },
     { key: 'edge', label: 'Edge', align: 'right' },
     { key: 'firefox', label: 'Firefox', align: 'right' },
