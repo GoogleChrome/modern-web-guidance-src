@@ -302,7 +302,7 @@ async function run(): Promise<void> {
       throw new Error("Could not find Agent Panel conversation panel after 60 seconds.");
     }
    
-    // Heuristic Model Selection
+    // Patch: Meant to select the second latest model to avoid any issues with the very latest model
     try {
       console.log("Attempting to select model...");
       
