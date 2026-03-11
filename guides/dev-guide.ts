@@ -42,7 +42,7 @@ export interface DevGuideOptions {
   verbose?: boolean;
 }
 
-function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
+export function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
   const guides: GuideInventory[] = [];
   const categories = fs.readdirSync(__dirname, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')

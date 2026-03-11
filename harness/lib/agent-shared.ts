@@ -3,7 +3,7 @@ import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { fileURLToPath } from 'url';
 import { Agents } from '../config.ts';
-import { inventoryGuide, classifyGuide } from './utils.ts';
+import { inventoryGuide, classifyGuide, getTaskMap } from './utils.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -190,6 +190,7 @@ export function copySkills(homeDir: string, agent: string): boolean {
   try {
     fs.mkdirSync(destDir, { recursive: true });
 
+    const taskMap = getTaskMap();
     const categories = fs.readdirSync(guidesSource, { withFileTypes: true })
       .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
       .map(d => d.name);
@@ -211,7 +212,7 @@ export function copySkills(homeDir: string, agent: string): boolean {
         if (!entry.isDirectory()) continue;
         const guideDir = path.join(catSrc, entry.name);
 
-        const inv = inventoryGuide(guideDir, new Map());
+        const inv = inventoryGuide(guideDir, taskMap);
         const isReady = classifyGuide(inv) === 'eval-ready';
         if (isReady) {
           const guideDest = path.join(catDest, entry.name);
@@ -232,7 +233,6 @@ export function copySkills(homeDir: string, agent: string): boolean {
     return false;
   }
 }
-
 
 /**
  * Sleeps for the specified number of milliseconds.

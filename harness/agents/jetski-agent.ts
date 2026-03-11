@@ -96,8 +96,6 @@ function setupIsolatedWorkDir(): string {
   return workDir;
 }
 
-
-
 async function extractJetskiVersionInfo(page: Page, outputPath: string): Promise<any> {
   try {
     // 1. Ensure the window is focused to receive keyboard events
