@@ -29,8 +29,6 @@ const GRADER_FILE = 'grader.ts';
 const PROMPTS_FILE = 'prompts.md';
 const TASKS_DIR = path.join(rootDir, 'harness', 'tasks');
 
-
-
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
   test?: boolean;        // default: true — run agent test after calibration
@@ -72,7 +70,7 @@ function readFileSafe(filePath: string): string {
 /**
  * Builds a map of grader names to task information.
  */
-function getTaskMap(): Map<string, TaskInfo> {
+export function getTaskMap(): Map<string, TaskInfo> {
   const taskMap = new Map<string, TaskInfo>();
   if (!fs.existsSync(TASKS_DIR)) return taskMap;
 
@@ -135,7 +133,7 @@ function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): GuideInven
   };
 }
 
-function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
+export function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
   const guides: GuideInventory[] = [];
   const categories = fs.readdirSync(__dirname, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
@@ -619,7 +617,7 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
 
 type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
 
-function classifyGuide(inv: GuideInventory): GuideStatus {
+export function classifyGuide(inv: GuideInventory): GuideStatus {
   if (!inv.hasGuide && !inv.isStub) return 'incomplete';
   if (inv.isStub && !inv.hasGuide) return 'stub';
   if (!inv.hasDemo) return 'incomplete';

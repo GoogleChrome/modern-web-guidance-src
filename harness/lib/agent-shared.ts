@@ -274,8 +274,8 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
     fs.mkdirSync(workDir, { recursive: true });
     return workDir;
   }
-  // For the suite run, copy the template directory to the isolated home directory
-  execSync(`cp -R "${templateDir}" "${homeDir}/"`);
+  // For the suite run, copy the template directory to the isolated home directory, following symlinks
+  execSync(`cp -RL "${templateDir}" "${homeDir}/"`);
   console.log(`Copied ${templateDir} to ${homeDir}...`);
   return path.join(homeDir, path.basename(templateDir));
 }
