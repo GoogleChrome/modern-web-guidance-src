@@ -1,5 +1,5 @@
 ---
-name: Web Baseline Status
+name: baseline-status
 description: Use this skill to check the browser support and Baseline status of web features using the local `baselinestatus` CLI.
 ---
 
@@ -9,21 +9,21 @@ Use this skill when you need to verify if a web feature is ready for use or when
 
 ## Tool Usage
 
-The CLI tool is located at `serving/scripts/baseline-status.ts` and is exposed via an npm script in the `serving` directory.
+The CLI tool is exposed via a root npm script.
 
 ### Commands
 
 **Basic Search:**
 To search for features by ID or description:
 ```bash
-npm run baselinestatus -- <query>
+pnpm baselinestatus <query>
 ```
-Example: `npm run baselinestatus -- overflow`
+Example: `pnpm baselinestatus overflow`
 
 **Filter by Status:**
 To filter results by their Baseline status:
 ```bash
-npm run baselinestatus -- <query> --status <low|high|false>
+pnpm baselinestatus <query> --status <low|high|false>
 ```
 
 ### Baseline Status Mapping
