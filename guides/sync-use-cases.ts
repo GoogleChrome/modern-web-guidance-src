@@ -412,20 +412,30 @@ async function run() {
   }
 
   if (GITHUB_TOKEN) {
-    // 4. Cleanup: Close issues for use cases that no longer exist
-    console.log('🧹 Checking for orphaned issues to close...');
+    // 4. Cleanup: Close issues and remove labels for use cases that no longer exist
+    console.log('🧹 Checking for orphaned issues to cleanup...');
     for (const issue of allUseCases) {
-      if (issue.state === 'open' && !activeIssueNumbers.has(issue.number)) {
-        console.log(`${IS_DRY_RUN ? '[DRY RUN] Would close' : 'Closing'} orphaned issue #${issue.number} ("${issue.title}")...`);
+      if (!activeIssueNumbers.has(issue.number)) {
+        if (issue.state === 'open') {
+          console.log(`${IS_DRY_RUN ? '[DRY RUN] Would close' : 'Closing'} orphaned issue #${issue.number} ("${issue.title}")...`);
+          if (!IS_DRY_RUN) {
+            try {
+              await octokit.rest.issues.update({
+                owner: ORG,
+                repo: REPO,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'not_planned'
+              });
+            } catch (err: any) {
+              console.warn(`⚠️ Could not close orphaned issue #${issue.number}: ${err.message}`);
+            }
+          }
+        }
+
+        console.log(`${IS_DRY_RUN ? '[DRY RUN] Would remove label' : 'Removing label'} from orphaned issue #${issue.number} ("${issue.title}")...`);
         if (!IS_DRY_RUN) {
           try {
-            await octokit.rest.issues.update({
-              owner: ORG,
-              repo: REPO,
-              issue_number: issue.number,
-              state: 'closed',
-              state_reason: 'not_planned'
-            });
             await octokit.rest.issues.removeLabel({
               owner: ORG,
               repo: REPO,
@@ -433,7 +443,7 @@ async function run() {
               name: 'new-use-case'
             });
           } catch (err: any) {
-            console.warn(`⚠️ Could not close orphaned issue #${issue.number}: ${err.message}`);
+            console.warn(`⚠️ Could not remove label from orphaned issue #${issue.number}: ${err.message}`);
           }
         }
       }
