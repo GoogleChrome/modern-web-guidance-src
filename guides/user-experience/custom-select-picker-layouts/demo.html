@@ -34,9 +34,12 @@
     }
 
     /* The magic starts here */
-    select {
-      /* Opt-in to customizable select */
+    select,
+    select::picker(select) {
       appearance: base-select;
+    }
+
+    select {
       padding: 0.5rem 1rem;
       border: 1px solid var(--border-color);
       border-radius: 4px;
@@ -48,7 +51,6 @@
 
     /* Styling the picker (the dropdown) */
     select::picker(select) {
-      appearance: base-select;
       /* Default hidden state is handled by base-select, 
          but we ensure it's grid only when open */
       display: none;

@@ -52,9 +52,14 @@
       text-align: left;
     }
 
+    /* Base select styling opt-in */
+    select,
+    ::picker(select) {
+      appearance: base-select;
+    }
+
     /* Base select styling */
     select {
-      appearance: base-select;
       width: 100%;
       padding: 12px 16px;
       border: 2px solid var(--select-border);
@@ -84,7 +89,6 @@
 
     /* Custom Picker Styling */
     ::picker(select) {
-      appearance: base-select;
       border: 2px solid var(--brand-primary);
       border-radius: var(--brand-radius);
       padding: 8px;
