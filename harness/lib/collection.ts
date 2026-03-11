@@ -36,10 +36,10 @@ export async function collectResults(resultsDir: string) {
 
       const [taskName, runType] = parts;
       const targetFile = path.join(dir, 'index.html');
-      
+
       const isNegative = config.suite.negative === true;
       const taskPath = path.resolve(__dirname, `../tasks/${isNegative ? 'negative/' : ''}${taskName}.md`);
-      
+
       if (!fs.existsSync(taskPath)) continue;
 
       const fileContent = fs.readFileSync(taskPath, 'utf8');
@@ -50,7 +50,7 @@ export async function collectResults(resultsDir: string) {
       const guidesDir = path.resolve(__dirname, '../../guides');
       const graderMatches = glob.sync(`**/${guide}/grader.ts`, { cwd: guidesDir, absolute: true });
       const graderPath = graderMatches.length > 0 ? graderMatches[0] : path.join(guidesDir, guide, `grader.ts`);
-      
+
       const graderResults = path.join(dir, `${guide}_results.json`);
 
       // If grader is missing, target file is missing, or results already exist, skip generating a runner.
@@ -88,10 +88,10 @@ run();
       fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
         name: `${taskName.substring(0, 30)}-${runType}-grader`,
         type: "module",
-        scripts: { 
+        scripts: {
           // The --id flag is not used by grade.mjs, it is purely added here 
           // so that the pnpm log output clearly identifies which test is running.
-          "run-grader": `node grade.mjs --id ${relativeId}` 
+          "run-grader": `node grade.mjs --id ${relativeId}`
         }
       }, null, 2));
 
@@ -141,7 +141,6 @@ run();
       }
 
       const targetFile = path.join(dir, 'index.html');
-
       const isNegative = config.suite.negative === true;
       const taskPath = path.resolve(__dirname, `../tasks/${isNegative ? 'negative/' : ''}${taskName}.md`);
 
@@ -154,15 +153,12 @@ run();
       const { data } = matter(fileContent);
 
       if (!data || !data.grader) {
-         continue;
+        continue;
       }
 
       const guide = data.grader.trim();
-
       const actualBaseApp = data.base_app ? data.base_app.trim() : taskName;
-
       const testName = `${taskName} - ${guide} - ${runType}`;
-
       const guidesDir = path.resolve(__dirname, '../../guides');
       const graderMatches = glob.sync(`**/${guide}/grader.ts`, {
         cwd: guidesDir,

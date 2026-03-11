@@ -48,14 +48,14 @@ async function main() {
     }
 
     // 1. Create base app
-    const baseAppDir = path.join(BASE_APPS_DIR, `${inv.name}-app`);
+    const baseAppDir = path.join(BASE_APPS_DIR, 'negative', `${inv.name}`);
     if (!fs.existsSync(baseAppDir)) {
       fs.mkdirSync(baseAppDir, { recursive: true });
     }
 
     const destIndexHtml = path.join(baseAppDir, 'index.html');
     fs.copyFileSync(negativeDemoPath, destIndexHtml);
-    console.log(`  ✅ Created base app: harness/base_apps/${inv.name}-app/index.html`);
+    console.log(`  ✅ Created base app: harness/base_apps/negative/${inv.name}`);
 
     // 2. Read prompt from prompts.md
     const promptsPath = path.join(inv.dir, 'prompts.md');
@@ -74,7 +74,7 @@ async function main() {
     // 3. Create task
     const taskName = `${inv.name}-task-negative`;
     const taskContent = `---
-base_app: ${inv.name}-app
+base_app: negative/${inv.name}
 grader: ${inv.name}
 ---
 ${prompt}
