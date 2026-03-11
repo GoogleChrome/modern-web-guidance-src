@@ -1,5 +1,5 @@
 import { features } from 'web-features';
-import { getFeatureStatus, mapBaseline } from '../mcp-server/data/baseline.ts';
+import { getFeatureStatus, mapBaseline, SUPPORTED_BROWSERS } from '../mcp-server/data/baseline.ts';
 
 const args = process.argv.slice(2);
 
@@ -57,17 +57,18 @@ if (matches.length === 0) {
 
     const support = (data as any).status?.support || {};
     
-    return {
+    const row: Record<string, string> = {
       featureId: id,
       name: data.name || '-',
       baselineSince,
-      baseline,
-      chrome: String(support.chrome || '-'),
-      edge: String(support.edge || '-'),
-      firefox: String(support.firefox || '-'),
-      safari: String(support.safari || '-'),
-      safariIos: String(support.safari_ios || '-')
+      baseline
     };
+
+    for (const browser of SUPPORTED_BROWSERS) {
+      row[browser.id] = String(support[browser.id] || '-');
+    }
+    
+    return row;
   });
 
   if (jsonMode) {
@@ -80,18 +81,14 @@ if (matches.length === 0) {
     { key: 'name', label: 'Feature name' },
     { key: 'baselineSince', label: 'Baseline since', align: 'right' },
     { key: 'baseline', label: 'Baseline' },
-    { key: 'chrome', label: 'Chrome', align: 'right' },
-    { key: 'edge', label: 'Edge', align: 'right' },
-    { key: 'firefox', label: 'Firefox', align: 'right' },
-    { key: 'safari', label: 'Safari', align: 'right' },
-    { key: 'safariIos', label: 'Safari iOS', align: 'right' }
+    ...SUPPORTED_BROWSERS.map(b => ({ key: b.id, label: b.label, align: 'right' as const }))
   ];
 
   const widths: Record<string, number> = {};
   for (const col of cols) {
     widths[col.key] = Math.max(
       col.label.length,
-      ...rows.map(r => String(r[col.key as keyof typeof r]).length)
+      ...rows.map(r => String(r[col.key] || '').length)
     );
   }
 
@@ -116,7 +113,7 @@ if (matches.length === 0) {
 
   for (const row of rows) {
     const line = cols.map(c => {
-      const text = String(row[c.key as keyof typeof row]);
+      const text = String(row[c.key] || '');
       const padded = pad(text, widths[c.key], c.align);
       if (c.key === 'baseline' && colors[text]) {
         return padded.replace(text, style(text, colors[text]));
