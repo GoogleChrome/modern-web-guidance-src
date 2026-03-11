@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Branded Select Styling Demo</title>
+  <style>
+    :root {
+      --brand-primary: #6366f1; /* Indigo */
+      --brand-bg: #0f172a; /* Slate 900 */
+      --brand-surface: #1e293b; /* Slate 800 */
+      --brand-text: #f8fafc; /* Slate 50 */
+      --brand-text-muted: #94a3b8; /* Slate 400 */
+      --brand-border: #334155; /* Slate 700 */
+      --brand-hover: #2d3e50;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--brand-bg);
+      color: var(--brand-text);
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      text-align: center;
+      width: 100%;
+      max-width: 400px;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      color: var(--brand-text-muted);
+      margin-bottom: 2rem;
+      font-size: 0.9rem;
+    }
+
+    /* Target the select element */
+    select {
+      appearance: base-select;
+      width: 100%;
+    }
+
+    /* Style the trigger button */
+    select > button {
+      appearance: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background-color: var(--brand-surface);
+      border: 1px solid var(--brand-border);
+      border-radius: 0.75rem;
+      color: var(--brand-text);
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    select > button:hover {
+      border-color: var(--brand-primary);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+
+    /* Custom SVG arrow */
+    .arrow-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+      fill: none;
+      stroke: var(--brand-text-muted);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: transform 0.2s ease;
+    }
+
+    select:open > button .arrow-icon {
+      transform: rotate(180deg);
+      stroke: var(--brand-primary);
+    }
+
+    /* Style the picker (dropdown) */
+    select::picker(select) {
+      appearance: base-select;
+      background-color: var(--brand-surface);
+      border: 1px solid var(--brand-border);
+      border-radius: 0.75rem;
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      width: anchor-size(width);
+    }
+
+    /* Style options */
+    option {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 0.75rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      font-size: 0.9375rem;
+    }
+
+    option:hover, 
+    option:focus {
+      background-color: var(--brand-hover);
+      outline: none;
+    }
+
+    option:checked {
+      background-color: rgba(99, 102, 241, 0.1);
+      color: var(--brand-primary);
+    }
+
+    /* Style the checkmark */
+    option::checkmark {
+      content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+      margin-left: auto; /* Push to the right */
+    }
+
+    /* Hide checkmark when not checked (optional, usually handled by browser) */
+    option:not(:checked)::checkmark {
+      display: none;
+    }
+
+    /* Selected option display */
+    selectedoption {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Select Theme</h1>
+    <p>A branded select component with custom typography, colors, and iconography.</p>
+    
+    <select>
+      <button>
+        <selectedoption></selectedoption>
+        <svg class="arrow-icon" viewBox="0 0 24 24">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      <option value="midnight" selected>Midnight Blue</option>
+      <option value="forest">Forest Green</option>
+      <option value="sunset">Sunset Orange</option>
+      <option value="lavender">Modern Lavender</option>
+    </select>
+  </div>
+</body>
+</html>
