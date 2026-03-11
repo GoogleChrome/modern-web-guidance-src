@@ -3,7 +3,7 @@ name: project-use-cases
 description: Best practices for creating use cases for a given feature. This is the first step in creating a new guide. Use this skill any time you're writing or reviewing a use case under the guides/ directory.
 ---
 
-# Stage 1: Identifying use cases for a feature
+# Stage 1: Identifying use cases for a feature (Needs use cases)
 
 The primary goal of this stage is to translate a technical web platform feature into a carefully selected set of its most common and important use cases. This is the first of three stages in creating guidance:
 
