@@ -9,22 +9,94 @@ sources:
 
 # Scrollytelling
 
-TODO: Description of Scrollytelling. Include a note to say that this is using Scroll-driven Animations, so the animations are still controlled by scroll instead of running on a time-based clock.
+Scrollytelling is a popular technique used to create engaging and immersive web experiences. It involves animating elements on a page as the user scrolls, effectively telling a story or guiding the user through a narrative. With CSS Scroll-Driven Animations, you can create these effects directly in CSS, without needing to rely on JavaScript. The animations are controlled by the scroll position, not a time-based clock, which ensures they are always in sync with the user's scroll.
 
 ## How to implement
 
-TODO: Write out the following steps, by looking at the `demo.html` for the code that goes along with it:
+To create a scrollytelling experience, you need two sets of elements: one to track the scroll position and another to be animated.
 
-- Have a set of elements that you track to drive the animations. Create named View Timelines on each of those.
-- Have a set of (possibly) different elements that you want to animate. Set their individual `animation-timeline` to the ViewTimeline you want to use
-- To make sure the ViewTimelines are visible, make the names of the ViewTimelines more broadly visible by using the `timeline-scope` property.
-  - Set its value to a comma-separate list of all timeline names.
-  - Use this property on a shared parent of both the tracked subjects and the animation subjects. The easiest way to do this, is to use it on the `:root` element.
-- Optionally Use the `animation-range` to determine when the animation should run.
+First, define a named `view-timeline` on the elements you want to track. These will act as the drivers for your animations.
+
+```css
+#tracked {
+  section:nth-child(1){ view-timeline: --tl-1 block; }
+  section:nth-child(2){ view-timeline: --tl-2 block; }
+  section:nth-child(3){ view-timeline: --tl-3 block; }
+  section:nth-child(4){ view-timeline: --tl-4 block; }
+  section:nth-child(5){ view-timeline: --tl-5 block; }
+}
+```
+
+Next, apply animations to the elements you want to animate and link them to the timelines you just created using the `animation-timeline` property.
+
+```css
+#animated {
+  section {
+    animation: animate-in auto linear both, animate-out auto linear forwards;
+    animation-range: entry 25% cover 50%, exit 50% exit 75%;
+  }
+
+  section:nth-child(1){ animation-timeline: --tl-1; }
+  section:nth-child(2){ animation-timeline: --tl-2; }
+  section:nth-child(3){ animation-timeline: --tl-3; }
+  section:nth-child(4){ animation-timeline: --tl-4; }
+  section:nth-child(5){ animation-timeline: --tl-5; }
+}
+```
+
+For the `animation-timeline` to be able to reference the named timelines, they need to be in the same scope. You can use the `timeline-scope` property on a common ancestor to make the timelines available to all the elements that need them. The `:root` element is often a good choice for this.
+
+```css
+html {
+  timeline-scope: --tl-1, --tl-2, --tl-3, --tl-4, --tl-5;
+}
+```
+
+Finally, you can use the `animation-range` property to specify the exact range of the timeline during which the animation should run. This gives you fine-grained control over when the animations are triggered and how they progress.
+
+```css
+#animated section {
+  animation-range: entry 25% cover 50%, exit 50% exit 75%;
+}
+```
 
 ## Example code
 
-@TODO: Include relevant CSS from `demo.html` in a code block
+```css
+html {
+  timeline-scope: --tl-1, --tl-2, --tl-3, --tl-4, --tl-5;
+}
+
+#tracked {
+  section:nth-child(1){ view-timeline: --tl-1 block; }
+  section:nth-child(2){ view-timeline: --tl-2 block; }
+  section:nth-child(3){ view-timeline: --tl-3 block; }
+  section:nth-child(4){ view-timeline: --tl-4 block; }
+  section:nth-child(5){ view-timeline: --tl-5 block; }
+}
+
+@keyframes animate-in {
+  from { scale: 0.5; opacity: 0; transform: rotateY(-180deg); }
+  to { transform: rotateY(0deg); }
+}
+@keyframes animate-out {
+  to { translate: 100% 0; opacity: 0; }
+}
+
+#animated {
+  section {
+    animation: animate-in auto linear both, animate-out auto linear forwards;
+    animation-range: entry 25% cover 50%, exit 50% exit 75%;
+    backface-visibility: hidden;
+  }
+
+  section:nth-child(1){ animation-timeline: --tl-1; }
+  section:nth-child(2){ animation-timeline: --tl-2; }
+  section:nth-child(3){ animation-timeline: --tl-3; }
+  section:nth-child(4){ animation-timeline: --tl-4; }
+  section:nth-child(5){ animation-timeline: --tl-5; }
+}
+```
 
 ## Best Practices
 
@@ -48,4 +120,47 @@ When using the `view-timeline` property to create a scroll-driven animation:
 
 {{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
 
-TODO: Write a JavaScript-based version of the CSS approach. Use a IntersectionObserver to create a similar effect.
+For browsers that do not support scroll-driven animations, you can use the `IntersectionObserver` API to create a similar effect. This JavaScript-based approach tracks the visibility of elements and applies animations when they enter or leave the viewport.
+
+Here is an example of how you can implement a fallback for the scrollytelling effect:
+
+```js
+const animatedSections = document.querySelectorAll('#animated section');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    const sectionIndex = Array.from(document.querySelectorAll('#tracked section')).indexOf(entry.target);
+    if (sectionIndex !== -1) {
+      const animatedSection = animatedSections[sectionIndex];
+      const ratio = entry.intersectionRatio;
+
+      // Animate-in
+      animatedSection.style.opacity = ratio;
+      animatedSection.style.transform = `scale(${0.5 + ratio * 0.5}) rotateY(${-180 + ratio * 180}deg)`;
+
+      // Animate-out
+      if (ratio < 0.5) {
+        animatedSection.style.translate = `${(0.5 - ratio) * 2 * 100}% 0`;
+      } else {
+        animatedSection.style.translate = '0 0';
+      }
+    }
+  });
+}, { threshold: Array.from({length: 101}, (_, i) => i / 100) });
+
+document.querySelectorAll('#tracked section').forEach(section => {
+  observer.observe(section);
+});
+```
+
+And the accompanying CSS:
+
+```css
+#animated section {
+  opacity: 0;
+  transform: scale(0.5)  rotateY(-180deg);
+  backface-visibility: hidden;
+}
+```
+
+This fallback provides a more accurate, scroll-driven animation for browsers that do not support the native CSS feature, ensuring a more consistent experience for all users. By using a series of thresholds for the `IntersectionObserver`, we can track the scroll position with more precision and create a smoother animation.
