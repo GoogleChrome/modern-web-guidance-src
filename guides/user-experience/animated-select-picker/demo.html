@@ -89,15 +89,11 @@
       color: var(--text-muted);
     }
 
-    /* Base Select Stying Opt-In */
-    .custom-select,
-    .custom-select::picker(select) {
-      appearance: base-select;
-      font-family: inherit;
-    }
 
     /* Style the main trigger */
     .custom-select {
+      appearance: base-select;
+      font-family: inherit;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -138,6 +134,7 @@
        Picker (Dropdown Menu) Styling & Core Animations
        ========================================================= */
     .custom-select::picker(select) {
+      appearance: base-select;
       background: var(--surface-color);
       border: 1px solid var(--border-color);
       border-radius: 12px;
