@@ -269,13 +269,7 @@ async function run(): Promise<void> {
     const inputSelector = '[contenteditable="true"][role="textbox"]';
     const sendButtonSelector = '[data-tooltip-id="input-send-button-send-tooltip"]';
     const cancelButtonSelector = '[data-tooltip-id="input-send-button-cancel-tooltip"]';
-    const allowOnceButtonSelector = 'button.bg-ide-button-background';
-
-    // The double slashes are deliberate. These IDs include the dot.
     const agentPanelSelector = ':is(#chat, #conversation) #antigravity\\.agentSidePanelInputBox';
-
-    // TODO: Remove these variables once the default model is stable. (Part of patch)
-    const modelSelector = 'div[role="dialog"][aria-modal="false"].bg-ide-chat-background.text-editor-foreground.origin-bottom';
     const optionSelector = 'div.flex.items-center.justify-between.cursor-pointer';
 
     console.log(`Waiting for Agent Panel conversation box...`);
@@ -283,7 +277,7 @@ async function run(): Promise<void> {
     let targetPanel: any = null;
     let targetInputBox: any = null;
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 60; i++) {
       targetPanel = await page.$(agentPanelSelector);
 
       if (targetPanel) {
@@ -297,78 +291,101 @@ async function run(): Promise<void> {
       if (targetPanel && targetInputBox) {
         break;
       }
-      console.log(`... Agent Panel conversation box not found or loading, checking again in 3s (Attempt ${i + 1}/20)`)
+      console.log(`... Agent Panel conversation box not found or loading, checking again in 1s (Attempt ${i + 1}/60)`)
       await sleep(1000);
+      if (i > 0 && i % 5 === 0) {
+        await page.keyboard.press('Escape');
+      }
     }
 
     if (!targetPanel) {
       throw new Error("Could not find Agent Panel conversation panel after 60 seconds.");
     }
    
-    // Patch: This intends to select the lower model for the agent rather than the latest.
-    // TODO: Remove this patch once the default model is stable.
+    // Heuristic Model Selection
     try {
-      const selectedLowerModel = await page.waitForSelector(`${modelSelector}`, { timeout: 1000 });
-      selectedLowerModel && await selectedLowerModel.click();
+      console.log("Attempting to select model...");
+      
+      const modelButton = await page.evaluateHandle(() => {
+        const candidates = Array.from(document.querySelectorAll('button, div[role="button"], div.flex.cursor-pointer'));
+        return candidates.find(el => {
+          const text = el.textContent || '';
+          return (text.includes('Gemini') || text.includes('Flash') || text.includes('Pro')) && text.length < 50;
+        });
+      });
 
-      const selectedLowerModelOption = await page.waitForSelector(`${optionSelector}:nth-of-type(2)`, { timeout: 1000 });
-      selectedLowerModelOption && await selectedLowerModelOption.click();
-            
-      console.log("Selected model ...")
-    } catch {
-      console.log("Warning: Model selector didn't appear.");
+      if (modelButton) {
+        console.log("Found model trigger button, clicking...");
+        await (modelButton as any).click();
+        await sleep(2000); 
+
+        const options = await page.$$(optionSelector);
+        let selected = false;
+        for (const option of options) {
+          const text = await page.evaluate(el => el.textContent, option);
+          if (text && text.toLowerCase().includes('low')) {
+            console.log(`Selecting option: ${text.trim()}`);
+            await option.click();
+            await sleep(1000); 
+            selected = true;
+            break;
+          }
+        }
+        
+        if (!selected && options.length > 0) {
+          console.log("Could not find 'Low' model, selecting first available option.");
+          await options[0].click();
+          await sleep(500);
+        }
+
+        const afterText = await page.evaluate(el => el?.textContent, modelButton);
+        console.log(`Model selection completed. Selector button text: "${afterText?.trim()}"`);
+      } else {
+        console.log("Warning: Could not find model trigger button.");
+      }
+    } catch (e: any) {
+      console.log(`Warning: Model selection failed: ${e.message}`);
     }
-    
-    // Focus and type
+
     console.log(`Typing prompt: "${userPrompt}"`);
     await targetInputBox.type(userPrompt);
 
     try {
-      const sendButton = await targetPanel.waitForSelector(sendButtonSelector, { timeout: 1000 });
+      const sendButton = await targetPanel.waitForSelector(sendButtonSelector, { timeout: 10000 });
       console.log("Submitting prompt...");
       await sendButton.click();
     } catch {
-      console.log("Warning: Submit button didn't appear.");
+      console.log("Warning: Submit button didn't appear or was not clickable.");
     }
 
-    // Wait for completion (cancel button to disappear)
-    // First, wait for the cancel button to APPEAR (meaning it started)
     try {
-      await targetPanel.waitForSelector(cancelButtonSelector, { timeout: 10000 });
+      await targetPanel.waitForSelector(cancelButtonSelector, { timeout: 2000 });
       console.log("Agent started working...");
     } catch {
-      console.log("Warning: Cancel button didn't appear quickly. Agent might have finished very fast or failed to start.");
+      console.log("Warning: Cancel button didn't appear quickly.");
     }
 
-    // Now wait for it to disappear
     console.log("Waiting for agent to finish...");
-
     while (true) {
-      const cancelButton = await targetPanel.$(cancelButtonSelector);
+      const currentPanel = await page.$(agentPanelSelector);
+      if (!currentPanel) {
+        console.log("Agent Panel disappeared, assuming finished or closed.");
+        break;
+      }
+      
+      const cancelButton = await currentPanel.$(cancelButtonSelector);
       if (!cancelButton) {
         console.log("Agent finished.");
         break;
       }
-      
-      try {
-        const allowOnceButton = await page.waitForSelector(allowOnceButtonSelector, { timeout: 5000 });
-        if (allowOnceButton) {
-          console.log("Found 'Allow once' button, clicking it...");
-          await allowOnceButton.click();
-        }
-      } catch {
-        console.log("Warning: 'Allow once' button didn't appear.");
-      }
-
       await sleep(1000);
     }
 
     // Attempt to preserve chat log before closing Jetski
     try {
       console.log("Saving chat log...");
-      // Ensure agent conversation exists in the target frame
-      await page.waitForSelector(':is(#chat, #conversation)', { timeout: 1000 });
-      const chatText = await page.$eval(':is(#chat, #conversation)', (el: any) => el.innerText || '');
+      await page.waitForSelector(':is(#chat, #conversation)', { timeout: 10000 });
+      const chatText = await page.$eval(':is(#chat, #conversation)', (el: any) => (el as any).innerText || '');
       const chatLogPath = path.resolve(targetDir, 'chat_log.txt');
       fs.writeFileSync(chatLogPath, chatText, 'utf8');
       console.log(`Saved chat log to: ${chatLogPath}`);
@@ -376,8 +393,8 @@ async function run(): Promise<void> {
       console.warn('Could not save chat log:', e.message);
     }
 
-    // Close Jetski
     console.log("Closing Jetski...");
+    // Close Jetski
     if (page) {
       // Cmd+Q
       await page.keyboard.down('Meta');
@@ -387,13 +404,11 @@ async function run(): Promise<void> {
     }
 
     stopWatchingMcpLog();
-
     await sleep(1000);
     await browser.disconnect();
     console.log("Disconnected.");
 
     copyResultsToTarget(workDir, targetDir);
-
     // Extract trajectory pb from isolated home
     const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
     exportTrajectories(conversationsDir, '*.pb', targetDir);
