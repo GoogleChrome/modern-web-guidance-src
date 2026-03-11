@@ -134,7 +134,7 @@ To verify that guides improve agent performance starting from a "bad" implementa
    gd gen-negative-suite
    ```
    This script scans for "eval-ready" guides and creates:
-   - A base app in `harness/base_apps/<guideName>-app/` using the `negative-demo.html`.
+   - A base app in `harness/base_apps/negative/<guideName>/` using the `negative-demo.html`.
    - A task in `harness/tasks/negative/<guideName>-task-negative.md` pointing to that base app.
 
 2. **Run the negative suite**:

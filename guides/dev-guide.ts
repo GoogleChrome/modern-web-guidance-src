@@ -29,8 +29,6 @@ const GRADER_FILE = 'grader.ts';
 const PROMPTS_FILE = 'prompts.md';
 const TASKS_DIR = path.join(rootDir, 'harness', 'tasks');
 
-
-
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
   test?: boolean;        // default: true — run agent test after calibration
@@ -617,7 +615,7 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
   console.log('');
 }
 
-export type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
+type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
 
 export function classifyGuide(inv: GuideInventory): GuideStatus {
   if (!inv.hasGuide && !inv.isStub) return 'incomplete';

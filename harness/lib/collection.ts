@@ -36,7 +36,6 @@ export async function collectResults(resultsDir: string) {
 
       const [taskName, runType] = parts;
       const targetFile = path.join(dir, 'index.html');
-
       const isNegative = config.suite.negative === true;
       const taskPath = path.resolve(__dirname, `../tasks/${isNegative ? 'negative/' : ''}${taskName}.md`);
 
@@ -50,7 +49,6 @@ export async function collectResults(resultsDir: string) {
       const guidesDir = path.resolve(__dirname, '../../guides');
       const graderMatches = glob.sync(`**/${guide}/grader.ts`, { cwd: guidesDir, absolute: true });
       const graderPath = graderMatches.length > 0 ? graderMatches[0] : path.join(guidesDir, guide, `grader.ts`);
-
       const graderResults = path.join(dir, `${guide}_results.json`);
 
       // If grader is missing, target file is missing, or results already exist, skip generating a runner.
