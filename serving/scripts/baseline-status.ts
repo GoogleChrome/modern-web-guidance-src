@@ -1,4 +1,5 @@
 import { features } from 'web-features';
+import { getFeatureStatus, mapBaseline } from '../mcp-server/data/baseline-utils.ts';
 
 const args = process.argv.slice(2);
 
@@ -22,6 +23,7 @@ for (let i = 0; i < args.length; i++) {
 }
 
 const matches = Object.entries(features).filter(([id, data]) => {
+  if (data.kind !== 'feature') return false;
   const matchesQuery = id.toLowerCase().includes(query.toLowerCase());
   
   let targetStatus: string | boolean | undefined | null = statusFilter;
@@ -36,27 +38,23 @@ if (matches.length === 0) {
   console.log(`No features found matching "${query}"${statusFilter ? ` with status "${statusFilter}"` : ''}.`);
 } else {
   const rows = matches.map(([id, data]) => {
-    const name = data.name || '-';
-    let baseline = String(data.status?.baseline ?? 'unknown');
-    let baselineSince = '-';
+    const status = getFeatureStatus(id);
+    const baseline = mapBaseline(status?.baseline).replace(' availability', '').replace(' available', '');
     
-    if (baseline === 'low') {
-      baseline = 'Newly';
-      baselineSince = data.status?.baseline_low_date || '-';
-    } else if (baseline === 'high') {
-      baseline = 'Widely';
-      baselineSince = data.status?.baseline_high_date || data.status?.baseline_low_date || '-';
-    } else if (baseline === 'false') {
-      baseline = 'Limited';
+    let baselineSince = '-';
+    if (status?.baseline === 'low') {
+      baselineSince = status.baseline_low_date || '-';
+    } else if (status?.baseline === 'high') {
+      baselineSince = status.baseline_high_date || status.baseline_low_date || '-';
     }
 
-    const support = data.status?.support || {};
+    const support = (data as any).status?.support || {};
     
     return {
       featureId: id,
-      name,
-      baseline,
+      name: data.name || '-',
       baselineSince,
+      baseline,
       chrome: String(support.chrome || '-'),
       edge: String(support.edge || '-'),
       firefox: String(support.firefox || '-'),
@@ -81,7 +79,7 @@ if (matches.length === 0) {
   for (const col of cols) {
     widths[col.key] = Math.max(
       col.label.length,
-      ...rows.map(r => r[col.key as keyof typeof r].length)
+      ...rows.map(r => String(r[col.key as keyof typeof r]).length)
     );
   }
 
@@ -106,7 +104,7 @@ if (matches.length === 0) {
 
   for (const row of rows) {
     const line = cols.map(c => {
-      const text = row[c.key as keyof typeof row];
+      const text = String(row[c.key as keyof typeof row]);
       const padded = pad(text, widths[c.key], c.align);
       if (c.key === 'baseline' && colors[text]) {
         return padded.replace(text, style(text, colors[text]));
@@ -116,4 +114,3 @@ if (matches.length === 0) {
     console.log(`| ${line} |`);
   }
 }
-
