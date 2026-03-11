@@ -33,9 +33,17 @@ if (matches.length === 0) {
   const rows = matches.map(([id, data]) => {
     const name = data.name || '-';
     let baseline = String(data.status?.baseline ?? 'unknown');
-    if (baseline === 'low') baseline = 'Newly';
-    else if (baseline === 'high') baseline = 'Widely';
-    else if (baseline === 'false') baseline = 'Limited';
+    let baselineSince = '-';
+    
+    if (baseline === 'low') {
+      baseline = 'Newly';
+      baselineSince = data.status?.baseline_low_date || '-';
+    } else if (baseline === 'high') {
+      baseline = 'Widely';
+      baselineSince = data.status?.baseline_high_date || data.status?.baseline_low_date || '-';
+    } else if (baseline === 'false') {
+      baseline = 'Limited';
+    }
 
     const support = data.status?.support || {};
     
@@ -43,6 +51,7 @@ if (matches.length === 0) {
       featureId: id,
       name,
       baseline,
+      baselineSince,
       chrome: String(support.chrome || '-'),
       edge: String(support.edge || '-'),
       firefox: String(support.firefox || '-'),
@@ -55,6 +64,7 @@ if (matches.length === 0) {
     { key: 'featureId', label: 'web-feature-id' },
     { key: 'name', label: 'Feature name' },
     { key: 'baseline', label: 'Baseline' },
+    { key: 'baselineSince', label: 'Baseline since' },
     { key: 'chrome', label: 'Chrome', align: 'right' },
     { key: 'edge', label: 'Edge', align: 'right' },
     { key: 'firefox', label: 'Firefox', align: 'right' },
