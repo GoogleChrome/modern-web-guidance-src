@@ -70,7 +70,7 @@ The Interest Invoker API (`interestfor` attribute) is Baseline Limited availabil
 
 #### popover-hint
 
-The hint state is currently only in Chrome. If the browser does not support `popover="hint"`, it will treat the value as `popover="auto"`, which may close other open auto popovers when the tooltip appears. This is still preferable to not using the Popover API at all.
+The hint state is currently only in Chrome. If the browser does not support `popover="hint"`, use `popover="auto"`, which may close other open auto popovers when the tooltip appears. This is still preferable to not using the Popover API at all.
 
 * **Guidance:** Keep `popover="hint"` on the tooltip element and let it naturally degrade to `popover="auto"` behavior in unsupported browsers. Do **not** replace it with `popover="manual"` + JavaScript event listeners — `popover="auto"` still provides Top Layer promotion, correct stacking, and light-dismiss behavior, which are all better than a manually managed element.
 
