@@ -4,13 +4,12 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "deploy-pages": "cp -r ../harness/tasks ./tasks && cp -r ../harness/base_apps ./base_apps && gh-pages --nojekyll --dist . ; rm -rf ./tasks ./base_apps"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "gh-pages": "^6.3.0",
     "playwright": "^1.58.2"
-  },
-  "dependencies": {
-    "@google-cloud/storage": "^7.19.0"
   }
 }

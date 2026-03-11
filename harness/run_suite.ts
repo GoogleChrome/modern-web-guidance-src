@@ -228,21 +228,6 @@ process.exit(result.status ?? 0);
 
     }
 
-    if (!options.outputDir) {
-      const manifestPath = path.join(resultsDir, 'tests.json');
-      let manifest: { tests: any[] } = { tests: [] };
-      if (fs.existsSync(manifestPath)) {
-        try {
-          manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-        } catch { }
-      }
-
-      if (!manifest.tests.some(t => t.id === testID)) {
-        manifest.tests.push({ id: testID, timestamp: new Date().toISOString(), runCount: numRuns });
-        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-      }
-    }
-
     if (hasErrors) {
       console.log(`\n❌ Test suite completed with errors! Results saved to: ${testDir}`);
     } else {
