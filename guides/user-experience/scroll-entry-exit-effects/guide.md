@@ -144,7 +144,7 @@ When using the `view-timeline` property to create a scroll-driven animation:
 - **OPTIONAL** be explicit about the axis to track: When not targeting the default `block` axis (such as in a horizontal scroller), be explicit about which axis to track with `view-timeline-axis`.
 - **DO** make sure the scope of the lookup works: When the element that is declaring the `view-timeline` is not a flat tree ancestor of the animated element, hoist up the visibility of the `view-timeline`’s name by using `timeline-scope` on a shared ancestor.
 
-When reusing the ViewTimeline on children
+Prefer a named `view-timeline` when multiple elements or children of the tracked subject need to animate.
 
 ## Browser support and fallback strategies
 
