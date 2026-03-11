@@ -93,7 +93,18 @@ if (matches.length === 0) {
   console.log(sep);
   
   for (const row of rows) {
-    console.log('| ' + cols.map(c => pad(row[c.key as keyof typeof row], widths[c.key], c.align)).join(' | ') + ' |');
+    console.log('| ' + cols.map(c => {
+      const text = row[c.key as keyof typeof row];
+      let cell = pad(text, widths[c.key], c.align);
+      
+      if (c.key === 'baseline' && process.stdout.isTTY) {
+        if (text === 'Newly') cell = cell.replace('Newly', '\x1b[34mNewly\x1b[0m');
+        else if (text === 'Widely') cell = cell.replace('Widely', '\x1b[32mWidely\x1b[0m');
+        else if (text === 'Limited') cell = cell.replace('Limited', '\x1b[38;5;208mLimited\x1b[0m');
+      }
+      
+      return cell;
+    }).join(' | ') + ' |');
   }
 }
 
