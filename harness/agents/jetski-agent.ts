@@ -292,7 +292,7 @@ async function run(): Promise<void> {
         break;
       }
       console.log(`... Agent Panel conversation box not found or loading, checking again in 1s (Attempt ${i + 1}/60)`)
-      await sleep(1000);
+      await sleep(3000);
       if (i > 0 && i % 5 === 0) {
         await page.keyboard.press('Escape');
       }
