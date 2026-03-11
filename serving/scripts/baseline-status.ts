@@ -3,9 +3,9 @@ import { features } from 'web-features';
 const args = process.argv.slice(2);
 
 if (args.length === 0) {
-  console.log('Usage: node scripts/wf.ts <query> [--status <baseline>]');
-  console.log('Example: node scripts/wf.ts overflow');
-  console.log('Example: node scripts/wf.ts o --status low');
+  console.log('Usage: pnpm baselinestatus <query> [--status <baseline>]');
+  console.log('Example: pnpm baselinestatus overflow');
+  console.log('Example: pnpm baselinestatus o --status low');
   process.exit(0);
 }
 

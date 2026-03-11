@@ -26,6 +26,11 @@ To filter results by their Baseline status:
 pnpm baselinestatus <query> --status <low|high|false>
 ```
 
+The `--status` filter is essential for making architectural decisions:
+- **`high`**: Finds features that are "safe" and broad-reaching (Widely).
+- **`low`**: Identifies features that recently became available across all browsers (Newly), which might need close monitoring or minimal polyfills.
+- **`false`**: Highlights "bleeding edge" features (Limited) that are not yet universal and require careful progressive enhancement or fallback strategies.
+
 ### Baseline Status Mapping
 
 The output maps internal status codes to human-readable terms:
