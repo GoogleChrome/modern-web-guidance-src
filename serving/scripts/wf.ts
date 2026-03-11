@@ -40,7 +40,7 @@ if (matches.length === 0) {
     const support = data.status?.support || {};
     
     return {
-      featureId: `\`${id}\``,
+      featureId: id,
       name,
       baseline,
       chrome: String(support.chrome || '-'),
@@ -52,14 +52,14 @@ if (matches.length === 0) {
   });
 
   const cols = [
-    { key: 'featureId', label: 'Feature ID' },
-    { key: 'name', label: 'Name' },
+    { key: 'featureId', label: 'web-feature-id' },
+    { key: 'name', label: 'Feature name' },
     { key: 'baseline', label: 'Baseline' },
-    { key: 'chrome', label: 'Chrome' },
-    { key: 'edge', label: 'Edge' },
-    { key: 'firefox', label: 'Firefox' },
-    { key: 'safari', label: 'Safari' },
-    { key: 'safariIos', label: 'Safari iOS' }
+    { key: 'chrome', label: 'Chrome', align: 'right' },
+    { key: 'edge', label: 'Edge', align: 'right' },
+    { key: 'firefox', label: 'Firefox', align: 'right' },
+    { key: 'safari', label: 'Safari', align: 'right' },
+    { key: 'safariIos', label: 'Safari iOS', align: 'right' }
   ];
 
   const widths: Record<string, number> = {};
@@ -70,16 +70,20 @@ if (matches.length === 0) {
     );
   }
 
-  const pad = (str: string, width: number) => str.padEnd(width, ' ');
+  const pad = (str: string, width: number, align?: string) => 
+    align === 'right' ? str.padStart(width, ' ') : str.padEnd(width, ' ');
 
-  const header = '| ' + cols.map(c => pad(c.label, widths[c.key])).join(' | ') + ' |';
-  const sep = '|' + cols.map(c => '-'.repeat(widths[c.key] + 2)).join('|') + '|';
+  const header = '| ' + cols.map(c => pad(c.label, widths[c.key], c.align)).join(' | ') + ' |';
+  const sep = '|' + cols.map(c => {
+    const w = widths[c.key];
+    return c.align === 'right' ? '-'.repeat(w + 1) + ':' : '-'.repeat(w + 2);
+  }).join('|') + '|';
   
   console.log(header);
   console.log(sep);
   
   for (const row of rows) {
-    console.log('| ' + cols.map(c => pad(row[c.key as keyof typeof row], widths[c.key])).join(' | ') + ' |');
+    console.log('| ' + cols.map(c => pad(row[c.key as keyof typeof row], widths[c.key], c.align)).join(' | ') + ' |');
   }
 }
 
