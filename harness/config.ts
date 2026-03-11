@@ -47,6 +47,7 @@ export const suiteConfig: SuiteConfig = {
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: false,
   agent: Agents.GEMINI_CLI,
+  negative: false, // When `true`, runs the suite on all tasks in `tasks/negative/`
 };
 
 export interface EnvironmentConfig {
@@ -69,6 +70,7 @@ export interface SuiteConfig {
   mcpServersToEnable: string[];
   enableSkills: boolean;
   agent: string;
+  negative: boolean;
 }
 
 export const config = {
