@@ -124,6 +124,7 @@ async function loadDashboardData(testId) {
         }
     } catch (error) {
         console.error('Error:', error);
+        window.dashboardLoaded = false;
         
         let errorHtml = `<div style="text-align:center; padding: 50px; color: red;">
             <h3>Error loading dashboard data</h3>
