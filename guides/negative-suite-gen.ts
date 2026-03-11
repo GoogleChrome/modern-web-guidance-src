@@ -19,7 +19,7 @@ function readFileSafe(filePath: string): string {
   }
 }
 
-async function main() {
+export async function generateNegativeSuite() {
   console.log('Scanning guides...');
   const taskMap = getTaskMap();
   const allGuides = scanAllGuides(taskMap);
@@ -47,15 +47,26 @@ async function main() {
       continue;
     }
 
-    // 1. Create base app
+    // 1. Create base apps (with symlink to negative-demo.html)
     const baseAppDir = path.join(BASE_APPS_DIR, 'negative', `${inv.name}`);
     if (!fs.existsSync(baseAppDir)) {
       fs.mkdirSync(baseAppDir, { recursive: true });
     }
 
     const destIndexHtml = path.join(baseAppDir, 'index.html');
-    fs.copyFileSync(negativeDemoPath, destIndexHtml);
-    console.log(`  ✅ Created base app: harness/base_apps/negative/${inv.name}`);
+
+    // Remove any existing file/symlink
+    try {
+      if (fs.existsSync(destIndexHtml) || fs.lstatSync(destIndexHtml).isSymbolicLink()) {
+        fs.unlinkSync(destIndexHtml);
+      }
+    } catch {
+      // Ignore if it doesn't exist
+    }
+
+    const relPath = path.relative(baseAppDir, negativeDemoPath);
+    fs.symlinkSync(relPath, destIndexHtml);
+    console.log(`  ✅ Created symlink for base app: harness/base_apps/negative/${inv.name}`);
 
     // 2. Read prompt from prompts.md
     const promptsPath = path.join(inv.dir, 'prompts.md');
@@ -88,4 +99,3 @@ ${prompt}
   console.log('\nNegative suite resources generation complete!');
 }
 
-main().catch(console.error);
