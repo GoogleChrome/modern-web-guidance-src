@@ -92,19 +92,23 @@ if (matches.length === 0) {
   console.log(header);
   console.log(sep);
   
+  const style = (text: string, color: string) => process.stdout.isTTY ? `${color}${text}\x1b[0m` : text;
+  const colors: Record<string, string> = {
+    'Newly': '\x1b[34m',
+    'Widely': '\x1b[32m',
+    'Limited': '\x1b[38;5;208m'
+  };
+
   for (const row of rows) {
-    console.log('| ' + cols.map(c => {
+    const line = cols.map(c => {
       const text = row[c.key as keyof typeof row];
-      let cell = pad(text, widths[c.key], c.align);
-      
-      if (c.key === 'baseline' && process.stdout.isTTY) {
-        if (text === 'Newly') cell = cell.replace('Newly', '\x1b[34mNewly\x1b[0m');
-        else if (text === 'Widely') cell = cell.replace('Widely', '\x1b[32mWidely\x1b[0m');
-        else if (text === 'Limited') cell = cell.replace('Limited', '\x1b[38;5;208mLimited\x1b[0m');
+      const padded = pad(text, widths[c.key], c.align);
+      if (c.key === 'baseline' && colors[text]) {
+        return padded.replace(text, style(text, colors[text]));
       }
-      
-      return cell;
-    }).join(' | ') + ' |');
+      return padded;
+    }).join(' | ');
+    console.log(`| ${line} |`);
   }
 }
 
