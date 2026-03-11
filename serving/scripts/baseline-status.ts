@@ -1,5 +1,5 @@
 import { features } from 'web-features';
-import { getFeatureStatus, mapBaseline } from '../mcp-server/data/baseline.ts';
+import { getFeatureStatus, mapBaseline, validateFeature, resolveFeatureId } from '../mcp-server/data/baseline.ts';
 
 const args = process.argv.slice(2);
 
@@ -25,17 +25,39 @@ for (let i = 0; i < args.length; i++) {
   }
 }
 
-const matches = Object.entries(features).filter(([id, data]) => {
-  if (data.kind !== 'feature') return false;
-  const matchesQuery = id.toLowerCase().includes(query.toLowerCase());
-  
+// 1. Try exact ID match first
+const validation = validateFeature(query);
+let targetIds: string[] = [];
+
+if (validation.isValid) {
+  targetIds = [query];
+} else if (validation.error === 'invalid_kind') {
+  if (!jsonMode) {
+    console.log(`\x1b[33mNote: "${query}" is a ${validation.kind} record.${validation.suggestion ? ` (Target: ${validation.suggestion})` : ''}\x1b[0m\n`);
+  }
+  targetIds = resolveFeatureId(query);
+}
+
+// 2. Fall back to search if no exact match or if it's a general search query
+let matches: [string, any][] = [];
+
+if (targetIds.length > 0) {
+  matches = targetIds.map(id => [id, features[id]]);
+} else {
+  matches = Object.entries(features).filter(([id, data]) => {
+    if (data.kind !== 'feature') return false;
+    return id.toLowerCase().includes(query.toLowerCase());
+  });
+}
+
+// 3. Apply status filter
+if (statusFilter) {
   let targetStatus: string | boolean | undefined | null = statusFilter;
   if (statusFilter === 'false') targetStatus = false;
   if (statusFilter === 'unknown' || statusFilter === 'undefined') targetStatus = undefined;
   
-  const matchesStatus = !statusFilter || data.status?.baseline === targetStatus;
-  return matchesQuery && matchesStatus;
-});
+  matches = matches.filter(([id, data]) => data.status?.baseline === targetStatus);
+}
 
 if (matches.length === 0) {
   if (jsonMode) {
