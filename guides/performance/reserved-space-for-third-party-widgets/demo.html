@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reserved Space for Third-Party Widgets</title>
+  <style>
+    /* Google Sans is used for clean, professional typography */
+    @font-face {
+      font-family: 'Google Sans';
+      src: url('https://fonts.gstatic.com/s/googlesans/v35/4UaGrENHsxJlGwyg_OUCIzQyLQ.woff2') format('woff2');
+      font-weight: 400;
+    }
+
+    body {
+      font-family: 'Google Sans', sans-serif;
+      line-height: 1.6;
+      color: #111;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .widget-slot {
+      /* 'strict' combines size, layout, and paint containment.
+         It tells the browser the element's size is independent of its children. */
+      contain: strict;
+
+      /* Sets the placeholder dimensions used for layout calculation.
+         This prevents the container from collapsing to 0px while the widget loads. */
+      contain-intrinsic-size: 300px 250px;
+
+      /* Visual styling for the placeholder slot */
+      width: 300px;
+      height: 250px;
+      margin: 20px 0;
+      background-color: #f1f3f4;
+      border: 1px dashed #dadce0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #70757a;
+    }
+
+    .content-block {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Optimized Widget Integration</h1>
+
+  <p class="content-block">
+    Below is a designated slot for a third-party advertisement. Notice that the text following the slot does not jump or
+    shift when the page loads, because the browser has already reserved the exact 300x250px area. Reload the page a
+    couple times to see the reserved space and content remain fixed.
+  </p>
+
+  <div class="widget-slot">
+    <iframe src="about:blank" width="300" height="250" style="border:0;" title="Third-party Widget">
+    </iframe>
+  </div>
+
+  <p class="content-block">
+    By using <strong>contain-intrinsic-size</strong>, we provide a stable "placeholder" geometry
+  </p>
+
+</body>
+
+</html>
