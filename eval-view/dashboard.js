@@ -402,7 +402,8 @@ function renderGrid(data, testId) {
                 if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined) {
                     const count = testStats.runsUsingGuide;
                     const total = testStats.runCount;
-                    const color = count === total ? 'var(--accent-success)' : count === 0 ? 'var(--accent-failure)' : '#dbab09';
+                    const usageRate = total > 0 ? Math.round((count / total) * 100) : 0;
+                    const color = getColor(usageRate);
                     guideUsageHtml = `
                         <div style="font-size: 0.85em; margin-top: 6px; color: ${color}; font-weight: 500;">
                             ${guide} used (${count}/${total} runs)
