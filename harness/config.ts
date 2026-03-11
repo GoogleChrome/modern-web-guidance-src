@@ -46,15 +46,7 @@ export const suiteConfig: SuiteConfig = {
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: false,
-  agent: Agents.JETSKI,
-};
-
-// ************************************
-// *** Set evaluation configuration ***
-// *** Run with: `pnpm report`      ***
-// ************************************
-export const evalConfig: EvalConfig = {
-  suiteName: 'jetski-test'
+  agent: Agents.GEMINI_CLI,
 };
 
 export interface EnvironmentConfig {
