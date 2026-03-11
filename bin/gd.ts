@@ -41,7 +41,7 @@ function listGuideDirs(): string[] {
 const completion = omelette('gd <command> <arg1> <arg2>');
 
 completion.on('command', ({ reply }) => {
-  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'setup-completion']);
+  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'baselinestatus', 'setup-completion']);
 });
 
 completion.on('arg1', ({ before, reply }) => {
@@ -139,6 +139,7 @@ ${cBold('Evaluation:')}
   ${cCyan('upload')} <suite>         Upload generated evaluation suite to GCS
 
 ${cBold('Other:')}
+  ${cCyan('baselinestatus')} <query>      Check browser support and Baseline status
   ${cCyan('setup-completion')}       Install shell auto-completion
 
 ${cBold('Options:')}
@@ -241,6 +242,12 @@ ${cBold('Options:')}
 
     case 'deploy': {
       const code = await runNpm(['deploy:dashboard']);
+      process.exit(code);
+    }
+
+    case 'baselinestatus': {
+      const args = positionals.slice(1);
+      const code = await runNpm(['baselinestatus', ...args]);
       process.exit(code);
     }
 
