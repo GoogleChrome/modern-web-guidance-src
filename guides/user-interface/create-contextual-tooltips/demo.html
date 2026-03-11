@@ -33,7 +33,7 @@
     // If the browser doesn't support it, dynamically load the polyfill.
     if (!('interestForElement' in HTMLButtonElement.prototype)) {
       const script = document.createElement('script');
-      script.src = 'https://unpkg.com/interestfor/dist/interestfor.min.js';
+      script.src = 'https://unpkg.com/interestfor/src/interestfor.min.js';
       document.head.appendChild(script);
     }
   </script>
