@@ -47,7 +47,7 @@
       background-color: #e8eaed;
     }
 
-    imgcaption {
+    figcaption {
       contain: inline-size;
 
       contain-intrinsic-size: auto 4.5em;
@@ -88,10 +88,10 @@
       <figure>
         <img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=300&q=80"
           alt="Mountain landscape">
-        <imgcaption>
+        <figcaption>
           In standard behavior, this long caption forces the entire figure container to expand horizontally to match the
           sentence length, breaking the alignment with the image.
-        </imgcaption>
+        </figcaption>
       </figure>
     </div>
 
@@ -100,10 +100,10 @@
       <figure>
         <img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=300&q=80"
           alt="Mountain landscape">
-        <imgcaption>
+        <figcaption>
           With containment, the caption is "caged" horizontally. It ignores its own width and wraps automatically to the
           image's 300px footprint, while <strong>intrinsic-size</strong> preserves the height.
-        </imgcaption>
+        </figcaption>
       </figure>
     </div>
   </div>
