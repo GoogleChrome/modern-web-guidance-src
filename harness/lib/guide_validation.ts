@@ -4,13 +4,12 @@ import { fileURLToPath } from 'url';
 import { MCP_LOG_FILE } from '../../constants.ts';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
-export async function guideUsed(dirPath: string, taskName: string): Promise<boolean> {
+export async function collectGuidesUsed(dirPath: string): Promise<string[]> {
   const logPath = path.join(dirPath, MCP_LOG_FILE);
   
   if (!fs.existsSync(logPath)) {
-    return false;
+    return [];
   }
 
   const logContent = fs.readFileSync(logPath, 'utf8').trim();
@@ -29,27 +28,13 @@ export async function guideUsed(dirPath: string, taskName: string): Promise<bool
     }
   }
 
-  const taskPath = path.resolve(__dirname, `../tasks/${taskName}.md`);
-  if (!fs.existsSync(taskPath)) {
-    console.error(`Task ${taskName} not found at ${taskPath}`);
-    return false;
-  }
-
-  const fileContent = fs.readFileSync(taskPath, 'utf8');
-  const frontmatterMatch = fileContent.match(/^---\n(?:[\s\S]*?)grader:\s*(.+)\n(?:[\s\S]*?)---\n([\s\S]*)$/m);
-
-  if (!frontmatterMatch) {
-    console.error(`No 'grader:' found in frontmatter for task ${taskName}`);
-    return false;
-  }
-
-  const guide = frontmatterMatch[1].trim();
-
   // Extract all use case IDs requested via get_best_practices
   const requestedGuides = toolCalls
     .filter(call => call.tool === 'get_best_practices' && Array.isArray(call.result))
     .flatMap(call => call.result.map((r: any) => r.id || ''))
     .filter(Boolean);
 
-  return requestedGuides.some(id => id === guide);
+  const uniqueGuides = [...new Set(requestedGuides)];
+
+  return uniqueGuides;
 }

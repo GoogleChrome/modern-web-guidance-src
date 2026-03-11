@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="light dark">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Color Scheme Demo</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: system-ui, sans-serif;
+    }
+
+    body {
+      padding: 1rem;
+    }
+
+    .scroll-container {
+      width: 200px;
+      height: 100px;
+      overflow: auto;
+      border: 1px solid;
+      margin-block-end: 1rem;
+    }
+
+    .scroll-content {
+      height: 300px;
+      padding: 0.5rem;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+  </style>
+</head>
+<body>
+  <h1>Color Scheme Demo</h1>
+  <p>Change your system's light/dark theme preference to see the built-in browser UI adapt.</p>
+
+  <div class="scroll-container">
+    <div class="scroll-content">
+      Scroll me!
+    </div>
+  </div>
+
+  <form>
+    <input type="text" placeholder="Text input">
+    <textarea placeholder="Text area"></textarea>
+    <label>
+      <input type="checkbox" checked> Checkbox
+    </label>
+    <label>
+      <input type="radio" checked> Radio
+    </label>
+    <select>
+      <option>Option 1</option>
+      <option>Option 2</option>
+    </select>
+    <button type="button">Button</button>
+  </form>
+</body>
+</html>
