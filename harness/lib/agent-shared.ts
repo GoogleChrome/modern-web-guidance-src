@@ -3,7 +3,7 @@ import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { fileURLToPath } from 'url';
 import { Agents } from '../config.ts';
-import { isGuideReady } from './guide_validation.ts';
+import { inventoryGuide, classifyGuide } from './utils.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -211,7 +211,9 @@ export function copySkills(homeDir: string, agent: string): boolean {
         if (!entry.isDirectory()) continue;
         const guideDir = path.join(catSrc, entry.name);
 
-        if (isGuideReady(guideDir)) {
+        const inv = inventoryGuide(guideDir, new Map());
+        const isReady = classifyGuide(inv) === 'eval-ready';
+        if (isReady) {
           const guideDest = path.join(catDest, entry.name);
           fs.mkdirSync(guideDest, { recursive: true });
 

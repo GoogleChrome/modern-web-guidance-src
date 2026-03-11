@@ -7,7 +7,7 @@ import { glob } from "glob";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
 import { replaceMacros } from "../mcp-server/lib/macros.ts";
-import { isGuideReady } from "../../harness/lib/guide_validation.ts";
+import { inventoryGuide, classifyGuide } from "../../harness/lib/utils.ts";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -73,7 +73,9 @@ async function processGuides() {
     for (const guidePath of guideFiles) {
       const guideDir = path.dirname(guidePath);
 
-      if (!isGuideReady(guideDir)) {
+      const inv = inventoryGuide(guideDir, new Map());
+      const isReady = classifyGuide(inv) === 'eval-ready';
+      if (!isReady) {
         continue;
       }
 
