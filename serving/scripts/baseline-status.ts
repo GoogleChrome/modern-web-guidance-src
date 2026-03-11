@@ -24,8 +24,9 @@ for (let i = 0; i < args.length; i++) {
 const matches = Object.entries(features).filter(([id, data]) => {
   const matchesQuery = id.toLowerCase().includes(query.toLowerCase());
   
-  let targetStatus: string | boolean | null = statusFilter;
+  let targetStatus: string | boolean | undefined | null = statusFilter;
   if (statusFilter === 'false') targetStatus = false;
+  if (statusFilter === 'unknown' || statusFilter === 'undefined') targetStatus = undefined;
   
   const matchesStatus = !statusFilter || data.status?.baseline === targetStatus;
   return matchesQuery && matchesStatus;

@@ -14,7 +14,7 @@ To search for features by ID or description:
 ```bash
 pnpm baselinestatus <query>
 ```
-Example: `pnpm baselinestatus overflow`
+Example: `pnpm baselinestatus over`
 
 **Filter by Status:**
 To filter results by their Baseline status:
