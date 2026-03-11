@@ -246,9 +246,9 @@ ${cBold('Options:')}
     }
 
     case 'gen-negative-suite': {
-      // Run the negative-suite-gen.ts script
-      const code = await spawnChild('node', ['--experimental-strip-types', 'guides/negative-suite-gen.ts']);
-      process.exit(code);
+      const { generateNegativeSuite } = await import('../guides/negative-suite-gen.ts');
+      await generateNegativeSuite();
+      break;
     }
 
     default: {
