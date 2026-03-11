@@ -30,14 +30,20 @@ const matches = Object.entries(features).filter(([id, data]) => {
 if (matches.length === 0) {
   console.log(`No features found matching "${query}"${statusFilter ? ` with status "${statusFilter}"` : ''}.`);
 } else {
-  console.table(
-    matches.map(([id, data]) => ({
-      id,
-      name: data.name,
-      baseline: data.status?.baseline ?? 'unknown',
-      support: Object.entries(data.status?.support || {})
-        .map(([browser, version]) => `${browser}: ${version}`)
-        .join(', '),
-    }))
-  );
+  console.log('| Feature ID | Name | Baseline | Chrome | Edge | Firefox | Safari | Safari iOS |');
+  console.log('|---|---|---|---|---|---|---|---|');
+  
+  for (const [id, data] of matches) {
+    const name = data.name || '-';
+    const baseline = data.status?.baseline ?? 'unknown';
+    const support = data.status?.support || {};
+    
+    const chrome = support.chrome || '-';
+    const edge = support.edge || '-';
+    const firefox = support.firefox || '-';
+    const safari = support.safari || '-';
+    const safari_ios = support.safari_ios || '-';
+    
+    console.log(`| \`${id}\` | ${name} | ${baseline} | ${chrome} | ${edge} | ${firefox} | ${safari} | ${safari_ios} |`);
+  }
 }
