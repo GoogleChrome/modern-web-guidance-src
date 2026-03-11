@@ -60,7 +60,7 @@ export async function generateNegativeSuite() {
       if (fs.existsSync(destIndexHtml) || fs.lstatSync(destIndexHtml).isSymbolicLink()) {
         fs.unlinkSync(destIndexHtml);
       }
-    } catch (e) {
+    } catch {
       // Ignore if it doesn't exist
     }
 
