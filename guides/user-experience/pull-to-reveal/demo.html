@@ -29,12 +29,14 @@
       position: relative;
     }
 
-    .header {
+    h1 {
       background: #0f172a;
       color: white;
       padding: 20px;
       text-align: center;
       font-weight: bold;
+      font-size: 1rem;
+      margin: 0;
       z-index: 10;
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
@@ -42,7 +44,6 @@
     .scroll-container {
       flex: 1;
       overflow-y: auto;
-      scroll-behavior: smooth;
       scroll-snap-type: y mandatory;
     }
 
@@ -62,6 +63,18 @@
       border: 1px solid #cbd5e1;
       border-radius: 20px;
       outline: none;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     .main-content {
@@ -108,13 +121,14 @@
 <body>
 
   <div class="device-mockup">
-    <div class="header">App Title</div>
+    <h1>App Title</h1>
 
     <div class="scroll-container">
 
       <!-- The element hidden initially through scrolling -->
       <div class="search-bar">
-        <input type="text" class="search-input" placeholder="Search for anything...">
+        <label for="search-input" class="visually-hidden">Search content</label>
+        <input type="text" id="search-input" class="search-input" placeholder="Search for anything...">
       </div>
 
       <!-- The specific target element capturing the initial scroll -->
