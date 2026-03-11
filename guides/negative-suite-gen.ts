@@ -1,0 +1,91 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.resolve(__dirname, '..');
+
+import { scanAllGuides, classifyGuide, getTaskMap } from './dev-guide.ts';
+
+const BASE_APPS_DIR = path.join(rootDir, 'harness', 'base_apps');
+const TASKS_DIR = path.join(rootDir, 'harness', 'tasks', 'negative');
+
+function readFileSafe(filePath: string): string {
+  try {
+    return fs.readFileSync(filePath, 'utf-8').trim();
+  } catch {
+    return '';
+  }
+}
+
+async function main() {
+  console.log('Scanning guides...');
+  const taskMap = getTaskMap();
+  const allGuides = scanAllGuides(taskMap);
+
+  const evalReadyGuides = allGuides.filter(inv => classifyGuide(inv) === 'eval-ready');
+
+  if (evalReadyGuides.length === 0) {
+    console.log('No eval-ready guides found.');
+    return;
+  }
+
+  console.log(`Found ${evalReadyGuides.length} eval-ready guides.`);
+
+  // Create tasks/negative directory if it doesn't exist
+  if (!fs.existsSync(TASKS_DIR)) {
+    fs.mkdirSync(TASKS_DIR, { recursive: true });
+  }
+
+  for (const inv of evalReadyGuides) {
+    console.log(`\nProcessing ${inv.name}...`);
+
+    const negativeDemoPath = path.join(inv.dir, 'negative-demo.html');
+    if (!fs.existsSync(negativeDemoPath)) {
+      console.warn(`  ⚠️  Missing negative-demo.html for ${inv.name}, skipping.`);
+      continue;
+    }
+
+    // 1. Create base app
+    const baseAppDir = path.join(BASE_APPS_DIR, 'negative', `${inv.name}`);
+    if (!fs.existsSync(baseAppDir)) {
+      fs.mkdirSync(baseAppDir, { recursive: true });
+    }
+
+    const destIndexHtml = path.join(baseAppDir, 'index.html');
+    fs.copyFileSync(negativeDemoPath, destIndexHtml);
+    console.log(`  ✅ Created base app: harness/base_apps/negative/${inv.name}`);
+
+    // 2. Read prompt from prompts.md
+    const promptsPath = path.join(inv.dir, 'prompts.md');
+    let prompt = `Implement the guidance from ${inv.name}`;
+
+    if (fs.existsSync(promptsPath)) {
+      const promptsContent = readFileSafe(promptsPath);
+      const firstLine = promptsContent.split('\n').find(l => l.trim().startsWith('- '));
+      if (firstLine) {
+        prompt = firstLine.replace(/^-\s*/, '').trim();
+      }
+    } else {
+      console.warn(`  ⚠️  Missing prompts.md for ${inv.name}, using default prompt.`);
+    }
+
+    // 3. Create task
+    const taskName = `${inv.name}-task-negative`;
+    const taskContent = `---
+base_app: negative/${inv.name}
+grader: ${inv.name}
+---
+${prompt}
+`;
+
+    const taskFilePath = path.join(TASKS_DIR, `${taskName}.md`);
+    fs.writeFileSync(taskFilePath, taskContent);
+    console.log(`  ✅ Created task: harness/tasks/negative/${taskName}.md`);
+  }
+
+  console.log('\nNegative suite resources generation complete!');
+}
+
+main().catch(console.error);

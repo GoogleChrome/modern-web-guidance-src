@@ -430,8 +430,6 @@ function renderGrid(data, testId) {
     });
 }
 
-// Keep track of current details state for navigation
-
 async function showDetails(testName, runs, stats, testId) {
     // Update URL without reloading
     const url = new URL(window.location.href);
@@ -466,7 +464,8 @@ async function showDetails(testName, runs, stats, testId) {
         // Fetch prompt text from the task definition
         if (run === runs[0]) {
             try {
-                const promptPath = `tasks/${guide}-task.md`;
+                const isNegative = run.taskName && run.taskName.endsWith('-negative');
+                const promptPath = `tasks/${isNegative ? 'negative/' : ''}${run.taskName}.md`;
                 const text = await api.getFileText(promptPath);
                 
                 // Strip YAML frontmatter from the markdown task file

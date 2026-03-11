@@ -1,13 +1,10 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { MCP_LOG_FILE } from '../../constants.ts';
-
-const __filename = fileURLToPath(import.meta.url);
 
 export async function collectGuidesUsed(dirPath: string): Promise<string[]> {
   const logPath = path.join(dirPath, MCP_LOG_FILE);
-  
+
   if (!fs.existsSync(logPath)) {
     return [];
   }
