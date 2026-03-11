@@ -484,18 +484,36 @@ async function showDetails(testName, runs, stats, testId) {
         }
 
         let guideSection = '';
-        if (run.guideUsed !== undefined) {
-            const passed = run.guideUsed;
+        const guidesUsed = run.guidesUsed || (run.guideUsed !== undefined ? (typeof run.guideUsed === 'object' && run.guideUsed !== null ? run.guideUsed.guidesUsed : []) : []);
+        const oldPassed = run.guideUsed !== undefined ? (typeof run.guideUsed === 'object' && run.guideUsed !== null ? run.guideUsed.expectedGuideUsed : run.guideUsed) : undefined;
+
+        const hasData = run.guidesUsed !== undefined || run.guideUsed !== undefined;
+
+        if (hasData) {
+            const passed = run.guidesUsed !== undefined ? run.guidesUsed.includes(guide) : oldPassed;
+
+            let guidesHtml = '';
+            const otherGuides = guidesUsed.filter(g => g !== guide);
+            if (otherGuides.length > 0) {
+                guidesHtml = `
+                    <div style="margin-top: 8px; font-size: 0.85em; color: var(--text-secondary);">
+                        <strong style="color: var(--text-primary);">Other Guides Used:</strong> ${otherGuides.map(g => `<code style="background: rgba(255,b255,255,0.05); padding: 2px 4px; border-radius: 3px; font-size: 0.9em;">${escapeHtml(g)}</code>`).join(', ')}
+                    </div>
+                `;
+            }
 
             guideSection = `
-                <div class="guide-section" style="margin-top: 15px; padding: 10px 15px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 1rem;">${passed ? '✅' : '❌'}</span>
-                        <strong style="font-size: 0.9em; font-weight: 600;">${guide} used by agent</strong>
+                <div class="guide-section" style="margin-top: 15px; padding: 12px 15px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1rem;">${passed ? '✅' : '❌'}</span>
+                            <strong style="font-size: 0.9em; font-weight: 600;">${guide} used by agent</strong>
+                        </div>
+                        <div>
+                            <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${MCP_LOG_FILE}</a>
+                        </div>
                     </div>
-                    <div>
-                        <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${MCP_LOG_FILE}</a>
-                    </div>
+                    ${guidesHtml}
                 </div>
             `;
         }

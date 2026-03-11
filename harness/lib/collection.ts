@@ -1,7 +1,7 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
-import { guideUsed } from './guide_validation.ts';
+import { collectGuidesUsed } from './guide_validation.ts';
 import { fileURLToPath } from 'url';
 import matter from 'gray-matter';
 
@@ -132,9 +132,9 @@ run();
 
       const [taskName, runType] = parts;
 
-      let guideUsedResult = undefined;
+      let guidesUsedResult: string[] = [];
       if (runType === 'guided') {
-        guideUsedResult = await guideUsed(dir, taskName);
+        guidesUsedResult = await collectGuidesUsed(dir);
       }
 
       const targetFile = path.join(dir, 'index.html');
@@ -215,7 +215,7 @@ run();
       allResults[testName].push({
         runNumber: parseInt(runDir),
         results: scenarioResults,
-        guideUsed: guideUsedResult,
+        guidesUsed: guidesUsedResult,
         baseApp: actualBaseApp,
         taskName: taskName
       });
