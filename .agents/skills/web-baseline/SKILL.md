@@ -22,6 +22,14 @@ To filter results by their Baseline status:
 pnpm baselinestatus <query> --status <low|high|false>
 ```
 
+**JSON Output:**
+To get structured output for easier parsing:
+```bash
+pnpm baselinestatus <query> --json
+```
+
+Example: `pnpm baselinestatus over --json`
+
 The `--status` filter is essential for making architectural decisions:
 - **`high`**: Finds features that are "safe" and broad-reaching (Widely).
 - **`low`**: Identifies features that recently became available across all browsers (Newly), which might need close monitoring or minimal polyfills.

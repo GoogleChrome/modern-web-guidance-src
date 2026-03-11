@@ -4,19 +4,22 @@ import { getFeatureStatus, mapBaseline } from '../mcp-server/data/baseline-utils
 const args = process.argv.slice(2);
 
 if (args.length === 0) {
-  console.log('Usage: pnpm baselinestatus <query> [--status <baseline>]');
+  console.log('Usage: pnpm baselinestatus <query> [--status <baseline>] [--json]');
   console.log('Example: pnpm baselinestatus overflow');
-  console.log('Example: pnpm baselinestatus o --status low');
+  console.log('Example: pnpm baselinestatus o --status low --json');
   process.exit(0);
 }
 
 let query = '';
 let statusFilter: string | null = null;
+let jsonMode = false;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--status') {
     statusFilter = args[i + 1];
     i++;
+  } else if (args[i] === '--json') {
+    jsonMode = true;
   } else {
     query = args[i];
   }
@@ -35,7 +38,11 @@ const matches = Object.entries(features).filter(([id, data]) => {
 });
 
 if (matches.length === 0) {
-  console.log(`No features found matching "${query}"${statusFilter ? ` with status "${statusFilter}"` : ''}.`);
+  if (jsonMode) {
+    console.log('[]');
+  } else {
+    console.log(`No features found matching "${query}"${statusFilter ? ` with status "${statusFilter}"` : ''}.`);
+  }
 } else {
   const rows = matches.map(([id, data]) => {
     const status = getFeatureStatus(id);
@@ -62,6 +69,11 @@ if (matches.length === 0) {
       safariIos: String(support.safari_ios || '-')
     };
   });
+
+  if (jsonMode) {
+    console.log(JSON.stringify(rows, null, 2));
+    process.exit(0);
+  }
 
   const cols = [
     { key: 'featureId', label: 'web-feature-id' },

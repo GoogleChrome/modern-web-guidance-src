@@ -1,0 +1,55 @@
+import { describe, it, expect } from 'vitest';
+import { spawnSync } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const scriptPath = path.resolve(__dirname, './baseline-status.ts');
+
+describe('baseline-status CLI', () => {
+  const runCLI = (args: string[]) => {
+    const result = spawnSync('node', ['--experimental-strip-types', scriptPath, ...args], {
+      encoding: 'utf8',
+      env: { ...process.env, NO_COLOR: '1' } // Ensure no colors in tests
+    });
+    return result;
+  };
+
+  it('prints usage when no arguments provided', () => {
+    const { stdout } = runCLI([]);
+    expect(stdout).toContain('Usage: pnpm baselinestatus');
+  });
+
+  it('filters by query and outputs markdown table', () => {
+    const { stdout } = runCLI(['overflow']);
+    expect(stdout).toContain('| web-feature-id');
+    expect(stdout).toContain('| overflow ');
+    expect(stdout).toContain('| overflow-clip ');
+  });
+
+  it('filters by status', () => {
+    const { stdout } = runCLI(['overflow', '--status', 'high']);
+    expect(stdout).toContain('Widely');
+    expect(stdout).not.toContain('Newly');
+    expect(stdout).not.toContain('Limited');
+  });
+
+  it('outputs JSON when --json flag is provided', () => {
+    const { stdout } = runCLI(['overflow', '--json']);
+    const data = JSON.parse(stdout);
+    expect(Array.isArray(data)).toBe(true);
+    expect(data.length).toBeGreaterThan(0);
+    expect(data[0]).toHaveProperty('featureId');
+    expect(data[0]).toHaveProperty('baseline');
+  });
+
+  it('handles unknown status filter', () => {
+    const { stdout } = runCLI(['--status', 'unknown']);
+    expect(stdout).toContain('unknown');
+  });
+
+  it('outputs empty array for no matches in JSON mode', () => {
+    const { stdout } = runCLI(['nonexistentfeaturexyz', '--json']);
+    expect(stdout.trim()).toBe('[]');
+  });
+});
