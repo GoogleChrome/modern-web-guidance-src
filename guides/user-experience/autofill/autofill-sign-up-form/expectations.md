@@ -1,4 +1,4 @@
-# Expectations: `autofill-address-form`
+# Expectations: `autofill-sign-up-form`
 
 - Custom form controls (UI components for data entry) built using JavaScript **MUST NOT** be used if they break the autofill experience. A custom form control built using JavaScript that uses hidden inputs **MUST** reflect the selected value as well as the `:autofill` state in its custom UI.
 - `<input>`, `<select>`, and `<textarea>` elements **MUST** be within a `<form>` element.
@@ -41,7 +41,12 @@
 - If an address form is to be used unchanged in multiple geographical regions (that is, without localization), use the label "ZIP or postal code (optional)" for an `<input>` element that has the attribute `autocomplete="postal-code"`.
 - The appropriate `autocomplete` attribute and grouping identifier **MUST** be used with form fields in an address form for a shipping or billing address. For example: `<textarea id="shipping-address" name="shipping-address" autocomplete="shipping address" maxlength="300" required></textarea>` or `<textarea id="billing-address" name="billing-address" autocomplete="billing address" maxlength="300" required></textarea>`.
 - An `<input>`, `<select>`, or `<textarea>` element **MUST** have a `required` attribute if it is mandatory for the user to provide a value for that form field.
+- An `<input>` element used for password entry **MUST** have `aria-label` and `aria-describedby` attributes.
+- `autocomplete="new-password"` and `id="new-password"` attributes **MUST** be included in an `<input>` element used for entry of a new password in a sign-up form, or for the new password in a change-password form.
+- `autocomplete="current-password"` and `id="current-password"` attributes **MUST** be provided in an `<input>` element used for entry of a password in a sign-in form, or for input of the user's old password in a change-password form.
 - Do not double-up form fields for passwords or email addresses: do not make the user enter passwords and email addresses twice. Instead, ensure that users confirm their email address, and make it easy for users to reset their password if necessary.
+- An `<input>` element used for password entry **MUST** have a `type="password"` attribute.
+- The `type="password"`attribute **MUST** only be included on `<input>` elements used for password entry. The `type="password"`attribute **MUST NOT** be used on other types of form fields, such as for an OTP (one-time password) or a credit card security code.
 - The `type="email"` attribute **MUST** be included in an `<input>` element used for email entry, to ensure mobile users are provided with an appropriate keyboard.
 - For forms, use well-known and easily understood names such as "Sign In", "Create Account", "Register".
 - For form fields, use well-known and easily understood label values such as "Name", "Email", "Telephone", and "Password".
