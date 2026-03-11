@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0 -->
 <html lang="en">
 
 <head>
-  <title>Form best practice</title>
+  <title>Address form best practice</title>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -209,10 +209,6 @@ SPDX-License-Identifier: Apache-2.0 -->
         font-size: var(--desktop-font-size);
       }
 
-      section#cc-exp-csc div:not(:last-child) {
-        margin: 0 20px 0 0;
-      }
-
       form {
         margin: 0 0 20px 0;
         padding: 0 0 100px 0;
@@ -254,7 +250,7 @@ SPDX-License-Identifier: Apache-2.0 -->
 
    <!-- On a production site, the value of the `action` attribute is the URL of the site's
    backend service that handles form submission, and the `method` attribute has the value `post` -->
-    <form action="." id="form" name="form">
+    <form action="." id="address-form" name="address-form">
 
       <h1>Address form</h1>
 
@@ -269,7 +265,7 @@ SPDX-License-Identifier: Apache-2.0 -->
       </section>
 
       <!-- Use the following commented-out code for address entry instead of the previous section,
-      if separate inputs are preferred for address parts -->
+      if separate inputs are required for address parts -->
 
       <!--
       <section>
@@ -568,28 +564,28 @@ SPDX-License-Identifier: Apache-2.0 -->
 
     function handleFormSubmission(event) {
       event.preventDefault();
-      // Call a validate() function if validation is required for specific form fields.
+      // If validation is required for specific form fields, call the validate() function.
       // validate();
       form.reportValidity();
       if (form.checkValidity() === false) {
         // Handle invalid form data.
       } else {
-        // On a production site do form submission.
         submitInput.value = "Saving...";
         submitInput.disabled = "true";
         form.submit();
       }
     }
 
-    // Do form validation for specific form fields.
+    // Use the commented-out code below for any form fields where data
+    // entered by the user must be in a specific, valid format.
     function validate() {
       let message = "";
 
-      // If validation is required for a specific form field (`someField`),
-      // use the commented-out code below. Repeat this code for each form field to be validated.
+      // If validation is required for a specific form field, use the commented-out code below.
+      // Repeat this code for each form field to be validated.
       // Notes:
-      // - `someregex` is a regular expression used to test the validity of the field.
-      // - `someField` is the form field being tested.
+      // - `someField` is the form field to be tested for a valid value.
+      // - `someregex` is a regular expression used to test the validity of the field value.
 
       // if (!/someregex/.test(someField.value)) {
       //   console.log(`Invalid value ${someField.value} for someField`);
