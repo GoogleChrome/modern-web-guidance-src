@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node server.js",
     "test:e2e": "playwright test",
-    "deploy-pages": "cp -r ../harness/tasks ./tasks && cp -r ../harness/base_apps ./base_apps && gh-pages --nojekyll --dist . ; rm -rf ./tasks ./base_apps"
+    "deploy-pages": "cp -r ../harness/tasks ./tasks && cp -RL ../harness/base_apps ./base_apps && gh-pages --nojekyll --dist . ; rm -rf ./tasks ./base_apps"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

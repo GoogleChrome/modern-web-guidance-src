@@ -125,6 +125,24 @@ The agent and base app are selected from the [harness config](../harness/config.
 
 The generated task file is automatically included in future `gd eval suite` runs — the suite discovers all task files in `harness/tasks/` by default.
 
+### Negative Suite
+
+To verify that guides improve agent performance starting from a "bad" implementation, you can run a **Negative Suite**.
+
+1. **Generate negative suite resources**:
+   ```bash
+   gd gen-negative-suite
+   ```
+   This script scans for "eval-ready" guides and creates:
+   - A base app in `harness/base_apps/negative/<guideName>/` using the `negative-demo.html`.
+   - A task in `harness/tasks/negative/<guideName>-task-negative.md` pointing to that base app.
+
+2. **Run the negative suite**:
+   Update `suiteConfig.negative = true` in [`harness/config.ts`](../harness/config.ts) and run:
+   ```bash
+   gd eval
+   ```
+
 ### Manual Steps
 
 If you need more control, you can run each step individually:
