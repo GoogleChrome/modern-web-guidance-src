@@ -11,24 +11,75 @@ sources:
 
 # Shrinking headder on scroll
 
-TODO: Description of the Shrinking header on scroll feature, in which a fixed element shrinks as you scroll over a fixed scroll distance.
+A shrinking header on scroll is a common UI pattern where a fixed header element at the top of the page smoothly transitions to a smaller size as the user scrolls down. This effect is often used to maximize screen real estate for the main content while keeping essential navigation or branding elements accessible. With CSS scroll-driven animations, this effect can be achieved in a declarative and performant way, by linking an animation to the scroll position of the document.
 
 ## How to implement
 
-TODO: Write out the following steps, by looking at the `demo.html` for the code that goes along with it:
+Here’s how to create a shrinking header on scroll:
 
-- Have a fixed element, with a predefined height.
-- Add a `shrink` animation to that element
-- Let the animation be driven by scroll, using a ScrollTimeline (using the `scroll()` function)
-- Use the `animation-range` to determine the scroll distance over which this should happen, e.g. `animation-range: 0px 200px;`
+1.  **Create a fixed header:** Start with a header element that is fixed to the top of the page and has a predefined height.
 
-- TIP: To prevent the contents that follow the fixed element from ending up underneath that fixed element, add a `padding-top` to those contents.
-- TIP: When having a fixed element that shrinks from `100vh` to `10vh`, the `animation-range` is `0 90vh`. The `animation-range-end` there is the difference between the start and end size.
+    ```html
+    <header>HEADER</header>
+    ```
+
+    ```css
+    header {
+      position: fixed;
+      height: 200px;
+      top: 0;
+      left: 0;
+      right: 0;
+    }
+    ```
+
+2.  **Define the shrink animation:** Create a CSS animation that changes the height of the header.
+
+    ```css
+    @keyframes shrink {
+      to {
+        height: 50px;
+      }
+    }
+    ```
+
+3.  **Apply the animation and scroll timeline:** Attach the animation to the header and use the `scroll()` function to link it to the document’s scroll position.
+
+    ```css
+    header {
+      animation: shrink auto linear both;
+      animation-timeline: scroll(block root);
+    }
+    ```
+
+4.  **Set the `animation-range`:** Use the `animation-range` property to specify the scroll distance over which the animation should occur. For example, to shrink the header over the first 200 pixels of scrolling, you would use `animation-range: 0px 200px;`.
+
+    ```css
+    header {
+      animation-range: 0px 200px;
+    }
+    ```
+
+**Tip:** To prevent the content following the header from being obscured by it, add a `padding-top` to the `body` (or the main content container) that is equal to the initial height of the header.
+
+**Tip:** When your header shrinks from a large height (e.g., `100vh`) to a smaller one (e.g., `10vh`), the `animation-range-end` should be the difference between the start and end sizes (e.g., `90vh`). This ensures the animation completes precisely when the header reaches its final size.
 
 
 ## Example code
 
-@TODO: Include relevant CSS from `demo.html` in a code block
+```css
+@keyframes shrink {
+  to {
+    height: 50px;
+  }
+}
+
+header {
+  animation: shrink auto linear both;
+  animation-timeline: scroll(block root);
+  animation-range: 0px 200px;
+}
+```
 
 ## Best Practices
 
@@ -42,8 +93,38 @@ When using scroll-driven animations, it's important to follow a few best practic
 - **DO** try to animate only performant CSS properties: For the smoothest animations, stick to animating properties that can be handled by the browser's compositor thread, such as `transform` and `opacity`. Animating other properties like `width` or `height` can lead to performance issues.
 - **DO** use the correct declaration order: When using the `animation` shorthand property, declare `animation-timeline` and `animation-range` *after* it to prevent the shorthand from resetting the timeline.
 
+When using the `scroll()` function to create a scroll-driven animation:
+
+- **OPTIONAL** be explicit about the scroller: When not targeting the nearest ancestor scroller, be explicit about which scroller you want to use with `scroll(root)` or `scroll(self)`.
+  - When `root`, `nearest`, or `self` are not sufficient, use a named scroll-timeline.
+- **OPTIONAL** be explicit about the axis to track: When not targeting the default `block` axis (such as in a horizontal scroller), be explicit about which axis to track with `scroll(block)` or `scroll(inline)`.
+
+As for this use case specifically:
+
+- The element that you animate **MUST** not be `position: static` or `position: relative` when using percentages in the `animation-range`.
+  - This is because those elements are considered “in-flow”. Shrinking those elements as you scroll, would shrink the total scroll distance, thereby affecting the computed value of — for example — `10%` into the scroll.
+
 ## Browser support and fallback strategies
 
 {{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
 
-TODO: Write a JavaScript-based version of the CSS approach. Use a `scroll` listener for this that runs the `shrink` animation over a fixed scroll distance.
+For browsers that do not support scroll-driven animations, you can achieve a similar effect using JavaScript. This fallback script listens for the `scroll` event and manually calculates and updates the header's height based on the scroll position.
+
+```js
+// Fallback for browsers that don't support scroll-driven animations
+if (!CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)')) {
+  const header = document.querySelector('header');
+
+  const initialHeight = 200;
+  const finalHeight = 50;
+  const scrollDistance = 200;
+
+  window.addEventListener('scroll', () => {
+    const scrollY = window.scrollY;
+    const scrollPercent = Math.min(1, scrollY / scrollDistance);
+    const newHeight = initialHeight - (initialHeight - finalHeight) * scrollPercent;
+
+    header.style.height = `${newHeight}px`;
+  });
+}
+```
