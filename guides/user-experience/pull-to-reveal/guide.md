@@ -24,8 +24,7 @@ To implement this successfully:
 1.  **Define the Container:** The ancestor element must be a scroll container and can optionally add `scroll-snap-type`.
 2.  **Set Alignment (Required):** Apply `scroll-snap-align` (e.g., `start`) to the descendant elements. **Note:** If the descendant's alignment is `none` (the default), `scroll-initial-target` will not function because the browser has no reference point for positioning.
 3.  **Target the Item:** Apply `scroll-initial-target: nearest` to the specific descendant element you want to snap into view.
-
-> **The "First-Wins" Rule:** If multiple elements within the same container specify `nearest`, the browser selects the one that appears first in the DOM tree order.
+4. **The "First-Wins" Rule:** If multiple elements within the same container specify `nearest`, the browser selects the one that appears first in the DOM tree order.
 
 ## Example Code: Pull to Reveal Search
 
@@ -41,7 +40,7 @@ To implement this successfully:
 }
 
 /** 
- * descendantS: Both the search bar and the main content need snap alignment.
+ * DESCENDANTS: Both the search bar and the main content need snap alignment.
  * The main content aligns to start to serve as the initial target position
  * and to act as a valid snap point after scrolling.
  */
@@ -75,7 +74,7 @@ To implement this successfully:
 
 ## Fallback Strategy
 
-For browsers that do not yet support the API, use a JavaScript fallback. Note that for pulling content to reveal, you want the main content to bound to the `start` (top) of the container.
+For browsers that do not yet support the API, use a JavaScript fallback. Note that for pulling content to reveal, you want the main content to be bound to the `start` (top) of the container.
 
 ```javascript
 /**

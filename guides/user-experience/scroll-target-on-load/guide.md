@@ -1,6 +1,6 @@
 ---
 name: scroll-target-on-load
-description: Build a scrollable list of elements (e.g. a carousel of images or a chat conversation thread) that can be displayed with a particular element scrolled into view on the initial render).
+description: Build a scrollable list of elements (e.g. a carousel of images or a chat conversation thread) that can be displayed with a particular element scrolled into view on the initial render.
 web-feature-ids:
   - scroll-initial-target
   - scroll-into-view
@@ -14,15 +14,15 @@ sources:
 
 # Set a scroll target for the initial render
 
-The CSS property `scroll-initial-target` offers a declarative, CSS-only way to bring a specific descendant element into the visible area of its scroll container as soon as that container is rendered. Previously, developers relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#item-id`) both of which have limitations and are tricky to implement.
+The CSS property `scroll-initial-target` offers a declarative, CSS-only way to bring a specific descendant element into the visible area of its scroll container as soon as that container is rendered. Previously, developers relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#item-id`), both of which have limitations and are tricky to implement.
 
 ## How to Implement
 
 To implement this successfully:
 
-> **Target the Item:** Apply `scroll-initial-target: nearest` to the specific descendant element you want to bring into view. You do not need to apply `scroll-snap-align` to the feed items, allowing the scrolling experience to remain smooth and native without forced snapping.
+1. **Target the Item:** Apply `scroll-initial-target: nearest` to the specific descendant element you want to bring into view.
 
-> **The "First-Wins" Rule:** If multiple elements within the same container specify `nearest`, the browser selects the one that appears first in the DOM tree order.
+2. **The "First-Wins" Rule:** If multiple elements within the same container specify `nearest`, the browser selects the one that appears first in the DOM tree order.
 
 ## Example Code: Vertical Media Feed
 

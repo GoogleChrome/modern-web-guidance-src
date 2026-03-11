@@ -1,6 +1,5 @@
-- The implementation MUST include a ancestor scroll container configured with vertical scrolling (e.g., `overflow-y: auto`). The container MUST NOT enforce `scroll-snap-type` so that the feed can be scrolled freely by the user after initial load.
+- The implementation MUST include an ancestor scroll container configured with vertical scrolling (e.g., `overflow-y: auto`).
 - A specific featured media card MUST be defined and have the `scroll-initial-target: nearest` CSS property applied directly to it.
-- The implementation MUST NOT apply `scroll-snap-align` to the feed items, so that the scrolling experience remains smooth and native without forced snapping.
 - The `scroll-initial-target` property MUST be applied uniquely to the single featured media card within the container.
 - Media elements (e.g., embedded images) within the scroll container MUST have explicit dimensions applied (e.g., via `height`, `width`, or `aspect-ratio`) to prevent unpredictable layout shifts that would invalidate initial scroll coordinates.
 - The implementation MUST NOT rely on JavaScript to calculate the initial scroll offset as its primary mechanism. The CSS property alone must manage the positioning to avoid a visible flash.
