@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Caption Wrapping for Visual Media</title>
+  <title>Proportional Caption Wrapping Demo</title>
   <style>
     @font-face {
       font-family: 'Google Sans';
@@ -22,7 +22,7 @@
       background-color: #fff;
     }
 
-    .grid {
+    .demo-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 40px;
@@ -49,7 +49,6 @@
 
     figcaption {
       contain: inline-size;
-
       contain-intrinsic-size: auto 4.5em;
 
       padding-top: 12px;
@@ -65,12 +64,12 @@
       color: #111;
     }
 
-    .no-contain imgcaption {
+    .no-contain figcaption {
       contain: none;
     }
 
     @media (max-width: 600px) {
-      .grid {
+      .demo-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -82,7 +81,7 @@
   <h1>Visual Media: Caption Wrapping</h1>
   <p>Compare how the horizontal axis isolation prevents text from breaking your layout structure.</p>
 
-  <div class="grid">
+  <div class="demo-grid">
     <div class="no-contain">
       <span class="label">Standard (No Containment)</span>
       <figure>
@@ -107,6 +106,7 @@
       </figure>
     </div>
   </div>
+
 
 </body>
 
