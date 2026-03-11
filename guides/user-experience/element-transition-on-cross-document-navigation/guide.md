@@ -1,6 +1,7 @@
 ---
-name: element-transition-on-cross-document-navigation
-description: Animate the entire screen state when a user navigates between distinct HTML documents, such as creating seamless cross-fades or custom page-level slide effects without relying on single-page application architectures.
+name: seamless-full-page-transitions
+description: Create smooth, seamless transitions between full page navigations, such as cross-fades, custom reveal effects, or morphing of content from one page to the next.
 web-feature-ids:
   - view-transitions
+  - cross-document-view-transitions
 ---
