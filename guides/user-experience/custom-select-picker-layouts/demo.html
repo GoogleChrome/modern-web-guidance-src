@@ -49,8 +49,9 @@
     /* Styling the picker (the dropdown) */
     select::picker(select) {
       appearance: base-select;
-      /* Ensure it's in base-select mode */
-      display: grid;
+      /* Default hidden state is handled by base-select, 
+         but we ensure it's grid only when open */
+      display: none;
       grid-template-columns: repeat(2, 1fr);
       gap: 10px;
       padding: 15px;
@@ -59,6 +60,10 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       background: white;
       margin-top: 5px;
+    }
+
+    select:open::picker(select) {
+      display: grid;
     }
 
     /* Styling each option */

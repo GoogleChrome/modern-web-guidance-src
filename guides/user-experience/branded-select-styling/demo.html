@@ -6,162 +6,191 @@
   <title>Branded Select Styling Demo</title>
   <style>
     :root {
-      --brand-primary: #6366f1; /* Indigo */
-      --brand-bg: #0f172a; /* Slate 900 */
-      --brand-surface: #1e293b; /* Slate 800 */
-      --brand-text: #f8fafc; /* Slate 50 */
-      --brand-text-muted: #94a3b8; /* Slate 400 */
-      --brand-border: #334155; /* Slate 700 */
-      --brand-hover: #2d3e50;
+      --brand-primary: #6200ee;
+      --brand-secondary: #03dac6;
+      --brand-radius: 8px;
+      
+      /* Light theme defaults */
+      --bg-color: #f5f5f5;
+      --text-color: #333;
+      --select-bg: white;
+      --select-border: #ccc;
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #121212;
+      --text-color: #e0e0e0;
+      --select-bg: #1e1e1e;
+      --select-border: #444;
     }
 
     body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background-color: var(--brand-bg);
-      color: var(--brand-text);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: grid;
       place-items: center;
       min-height: 100vh;
       margin: 0;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.3s ease, color 0.3s ease;
     }
 
     .container {
       text-align: center;
-      width: 100%;
-      max-width: 400px;
+      max-width: 600px;
       padding: 2rem;
     }
 
     h1 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
+      margin-top: 0;
+      margin-bottom: 1rem;
     }
 
-    p {
-      color: var(--brand-text-muted);
-      margin-bottom: 2rem;
-      font-size: 0.9rem;
+    .branded-select-container {
+      margin: 2rem auto;
+      width: 300px;
+      text-align: left;
     }
 
-    /* Target the select element */
+    /* Base select styling */
     select {
       appearance: base-select;
       width: 100%;
-    }
-
-    /* Style the trigger button */
-    select > button {
-      appearance: none;
+      padding: 12px 16px;
+      border: 2px solid var(--select-border);
+      border-radius: var(--brand-radius);
+      background-color: var(--select-bg);
+      color: var(--text-color);
+      font-size: 16px;
+      cursor: pointer;
+      transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      width: 100%;
-      padding: 0.75rem 1rem;
-      background-color: var(--brand-surface);
-      border: 1px solid var(--brand-border);
-      border-radius: 0.75rem;
-      color: var(--brand-text);
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
 
-    select > button:hover {
+    select:focus {
+      outline: none;
       border-color: var(--brand-primary);
-      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
     }
 
-    /* Custom SVG arrow */
-    .arrow-icon {
-      width: 1.25rem;
-      height: 1.25rem;
-      fill: none;
-      stroke: var(--brand-text-muted);
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      transition: transform 0.2s ease;
-    }
-
-    select:open > button .arrow-icon {
-      transform: rotate(180deg);
-      stroke: var(--brand-primary);
-    }
-
-    /* Style the picker (dropdown) */
-    select::picker(select) {
-      appearance: base-select;
-      background-color: var(--brand-surface);
-      border: 1px solid var(--brand-border);
-      border-radius: 0.75rem;
-      margin-top: 0.5rem;
-      padding: 0.5rem;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-      width: anchor-size(width);
-    }
-
-    /* Style options */
-    option {
+    /* Selected content styling */
+    selectedcontent {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      padding: 0.625rem 0.75rem;
-      border-radius: 0.5rem;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-      font-size: 0.9375rem;
+      gap: 10px;
+      flex-grow: 1;
     }
 
-    option:hover, 
-    option:focus {
-      background-color: var(--brand-hover);
-      outline: none;
+    /* Custom Picker Styling */
+    ::picker(select) {
+      appearance: base-select;
+      border: 2px solid var(--brand-primary);
+      border-radius: var(--brand-radius);
+      padding: 8px;
+      background-color: var(--select-bg);
+      color: var(--text-color);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Picker Icon (Arrow) Styling */
+    ::picker-icon {
+      width: 12px;
+      height: 12px;
+      background: var(--brand-primary);
+      clip-path: polygon(100% 0%, 0% 0%, 50% 100%);
+      margin-left: 8px;
+    }
+
+    /* Option Styling */
+    option {
+      padding: 10px 12px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    option:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    [data-theme="dark"] option:hover {
+      background-color: rgba(255, 255, 255, 0.1);
     }
 
     option:checked {
-      background-color: rgba(99, 102, 241, 0.1);
-      color: var(--brand-primary);
+      background-color: var(--brand-primary);
+      color: white;
+      font-weight: bold;
     }
 
-    /* Style the checkmark */
-    option::checkmark {
-      content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
-      margin-left: auto; /* Push to the right */
+    /* Checkmark Styling */
+    ::checkmark {
+      width: 16px;
+      height: 16px;
+      background-color: white;
+      clip-path: polygon(14% 44%, 0 58%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
     }
 
-    /* Hide checkmark when not checked (optional, usually handled by browser) */
-    option:not(:checked)::checkmark {
-      display: none;
-    }
-
-    /* Selected option display */
-    selectedoption {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+    /* Rich content styling */
+    .option-icon {
+      font-size: 20px;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Select Theme</h1>
-    <p>A branded select component with custom typography, colors, and iconography.</p>
-    
-    <select>
-      <button>
-        <selectedoption></selectedoption>
-        <svg class="arrow-icon" viewBox="0 0 24 24">
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
-      </button>
-      <option value="midnight" selected>Midnight Blue</option>
-      <option value="forest">Forest Green</option>
-      <option value="sunset">Sunset Orange</option>
-      <option value="lavender">Modern Lavender</option>
+    <h1>Branded Select Styling</h1>
+    <p>This demo illustrates how to create a custom <code>&lt;select&gt;</code> that seamlessly matches a brand's design system using <code>appearance: base-select</code> and <code>&lt;selectedcontent&gt;</code>.</p>
+
+    <div class="branded-select-container">
+    <label for="theme-select" style="display: block; margin-bottom: 8px; font-weight: bold;">Select a Theme</label>
+    <select id="theme-select">
+      <selectedcontent></selectedcontent>
+      <option value="light">
+        <span class="option-icon">☀️</span>
+        <span>Light Theme</span>
+      </option>
+      <option value="dark" selected>
+        <span class="option-icon">🌙</span>
+        <span>Dark Theme</span>
+      </option>
+      <option value="system">
+        <span class="option-icon">💻</span>
+        <span>System Default</span>
+      </option>
     </select>
   </div>
+</div>
+
+<script>
+  const themeSelect = document.getElementById('theme-select');
+  const body = document.body;
+
+  function applyTheme(theme) {
+    if (theme === 'system') {
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      body.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    } else {
+      body.setAttribute('data-theme', theme);
+    }
+  }
+
+  themeSelect.addEventListener('change', (e) => {
+    applyTheme(e.target.value);
+  });
+
+  // Handle system theme changes
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (themeSelect.value === 'system') {
+      applyTheme('system');
+    }
+  });
+
+  // Initial apply
+  applyTheme(themeSelect.value);
+</script>
 </body>
 </html>
