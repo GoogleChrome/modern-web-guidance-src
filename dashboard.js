@@ -45,6 +45,10 @@ async function loadDashboardData(testId) {
 
     try {
         const data = await api.getEvals(testId);
+        if (!data) {
+            document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;">Error: Failed to load evaluation data for ${testId}.</div>`;
+            return;
+        }
 
         // Capture data for navigation
         allTestData = data;
@@ -430,6 +434,25 @@ function renderGrid(data, testId) {
     });
 }
 
+function openTrajectory(usedBasePath, sessionFile) {
+    if (api.source === 'remote') {
+        const finalPath = api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`);
+        api._fetch(finalPath)
+            .then(res => { if (!res.ok) throw new Error(); return res.blob(); })
+            .then(blob => {
+                const htmlBlob = new Blob([blob], { type: 'text/html' });
+                const url = URL.createObjectURL(htmlBlob);
+                window.open(url, '_blank');
+            })
+            .catch(e => {
+                console.error('Error loading trajectory:', e);
+                alert('Failed to load remote trajectory');
+            });
+    } else {
+        window.open(api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`), '_blank');
+    }
+}
+
 async function showDetails(testName, runs, stats, testId) {
     // Update URL without reloading
     const url = new URL(window.location.href);
@@ -460,6 +483,17 @@ async function showDetails(testName, runs, stats, testId) {
         const s = getRunStats(run.results);
         // Determine file paths for this run
         const { setupPath, resultPath, usedBasePath } = await getResultPaths(testId, run, testName);
+
+        let sessionFile = null;
+        let files = [];
+        try {
+            files = await api.getRunFiles(usedBasePath);
+            if (files && files.length > 0) {
+                sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
+            }
+        } catch (e) {
+            console.log('Error checking run files:', e);
+        }
 
         // Fetch prompt text from the task definition
         if (run === runs[0]) {
@@ -500,7 +534,7 @@ async function showDetails(testName, runs, stats, testId) {
                             </div>
                         </div>
                         <div>
-                            <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${MCP_LOG_FILE}</a>
+                            <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${allTestData.enableSkills && sessionFile ? 'Agent Trajectory' : MCP_LOG_FILE}</a>
                         </div>
                     </div>
                 </div>
@@ -531,8 +565,12 @@ async function showDetails(testName, runs, stats, testId) {
         if (viewResourcesLink) {
             viewResourcesLink.onclick = (e) => {
                 e.preventDefault();
-                const resourcesPath = `${usedBasePath}/${MCP_LOG_FILE}`;
-                viewContent(resourcesPath, resourcesPath);
+                if (allTestData.enableSkills && sessionFile) {
+                    openTrajectory(usedBasePath, sessionFile);
+                } else {
+                    const resourcesPath = `${usedBasePath}/${MCP_LOG_FILE}`;
+                    viewContent(resourcesPath, resourcesPath);
+                }
             };
         }
 
@@ -551,9 +589,7 @@ async function showDetails(testName, runs, stats, testId) {
         diffOpt.textContent = 'Diff';
         dropdown.appendChild(diffOpt);
 
-        let sessionFile = null;
         try {
-            const files = await api.getRunFiles(usedBasePath);
             if (files && files.length > 0) {
                 const rawJson = files.find(f => f === `${guide}_results.json`);
                 if (rawJson) {
@@ -563,7 +599,6 @@ async function showDetails(testName, runs, stats, testId) {
                     dropdown.appendChild(rawOpt);
                 }
 
-                sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
                 if (sessionFile) {
                     const trajOpt = document.createElement('option');
                     trajOpt.value = 'trajectory';
@@ -572,7 +607,7 @@ async function showDetails(testName, runs, stats, testId) {
                 }
             }
         } catch (e) {
-            console.log('Error checking run files:', e);
+            console.log('Error displaying options:', e);
         }
 
         dropdown.onchange = (e) => {
@@ -588,23 +623,7 @@ async function showDetails(testName, runs, stats, testId) {
             } else if (val === 'diff') {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {
-                if (api.source === 'remote') {
-                    // For remote HTML files, fetch as blob so it renders in a new tab instead of downloading
-                    const finalPath = api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`);
-                    api._fetch(finalPath)
-                        .then(res => { if (!res.ok) throw new Error(); return res.blob(); })
-                        .then(blob => {
-                            const htmlBlob = new Blob([blob], { type: 'text/html' });
-                            const url = URL.createObjectURL(htmlBlob);
-                            window.open(url, '_blank');
-                        })
-                        .catch(e => {
-                            console.error('Error loading trajectory:', e);
-                            alert('Failed to load remote trajectory');
-                        });
-                } else {
-                    window.open(api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`), '_blank');
-                }
+                openTrajectory(usedBasePath, sessionFile);
             } else if (val === 'raw') {
                 const rawPath = `${usedBasePath}/${guide}_results.json`;
                 viewContent(rawPath, rawPath);
