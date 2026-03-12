@@ -21,7 +21,7 @@ export async function collectGuidesUsed(dirPath: string, enableSkills: boolean):
                 if (tc.name === 'read_file' && tc.args && tc.args.file_path) {
                   const filePath = tc.args.file_path;
                   if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
-                    const match = filePath.match(/\/skills\/[^\/]+\/([^\/]+)\/guide\.md$/);
+                    const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
                     if (match) {
                       guidesFromSkills.push(match[1]);
                     }

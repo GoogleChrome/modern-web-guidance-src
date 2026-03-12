@@ -3,7 +3,7 @@ import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { fileURLToPath } from 'url';
 import { Agents } from '../config.ts';
-import { inventoryGuide, classifyGuide, getTaskMap, scanAllGuides } from './utils.ts';
+import { classifyGuide, scanAllGuides } from './utils.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
