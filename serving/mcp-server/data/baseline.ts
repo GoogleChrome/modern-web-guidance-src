@@ -55,7 +55,7 @@ export function getFeatureStatus(featureId: string): DetailedBaselineStatus | un
   const baseline_low_date = latestLowDate === "0000-00-00" ? undefined : latestLowDate;
   const baseline_high_date = latestHighDate === "0000-00-00" ? undefined : latestHighDate;
   
-  const shortLabel = overallBaseline === 'high' ? 'Widely' : (overallBaseline === 'low' ? 'Newly' : 'Limited');
+  const shortLabel = mapBaseline(overallBaseline).split(' ')[0];
   
   let releaseDate = '-';
   if (overallBaseline === 'low') {
@@ -244,7 +244,7 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
     // For compat keys, we manually map as the central status is for the whole feature
     const mapped = {
       baseline: status.baseline,
-      shortLabel: status.baseline === 'high' ? 'Widely' : (status.baseline === 'low' ? 'Newly' : 'Limited'),
+      shortLabel: mapBaseline(status.baseline).split(' ')[0],
       releaseDate: status.baseline_low_date || '-'
     };
     return formatStatusMessage(`The ${bcdKey} capability`, mapped);
