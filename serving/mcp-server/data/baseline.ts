@@ -1,12 +1,5 @@
 import { features } from 'web-features';
 
-export const SUPPORTED_BROWSERS = [
-  { id: 'chrome', label: 'Chrome' },
-  { id: 'edge', label: 'Edge' },
-  { id: 'firefox', label: 'Firefox' },
-  { id: 'safari', label: 'Safari' },
-] as const;
-
 export type BaselineStatus = 'Limited availability' | `Baseline since ${string}`;
 
 type Feature = typeof features[string];
