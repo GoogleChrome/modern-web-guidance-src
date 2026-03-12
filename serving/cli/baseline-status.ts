@@ -46,22 +46,13 @@ if (matches.length === 0) {
 } else {
   const rows = matches.map(([id, data]) => {
     const status = getFeatureStatus(id);
-    const baseline = mapBaseline(status?.baseline).replace(' availability', '').replace(' available', '');
-
-    let baselineSince = '-';
-    if (status?.baseline === 'low') {
-      baselineSince = status.baseline_low_date || '-';
-    } else if (status?.baseline === 'high') {
-      baselineSince = status.baseline_high_date || status.baseline_low_date || '-';
-    }
-
     const support = (data as any).status?.support || {};
-
+    
     return {
       featureId: id,
       name: data.name || '-',
-      baselineSince,
-      baseline,
+      baselineSince: status?.releaseDate || '-',
+      baseline: status?.shortLabel || 'unknown',
       chrome: String(support.chrome || '-'),
       edge: String(support.edge || '-'),
       firefox: String(support.firefox || '-'),

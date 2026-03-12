@@ -19,8 +19,9 @@ export interface DetailedBaselineStatus {
   baseline: 'low' | 'high' | false;
   baseline_low_date?: string;
   baseline_high_date?: string;
+  shortLabel: string;   // e.g. "Newly", "Widely", "Limited"
+  releaseDate: string;  // The primary date to show (Baseline High date for widely, Low for newly)
 }
-
 /**
  * Gets the detailed Baseline status for a specific feature, resolving redirects/splits.
  */
@@ -38,7 +39,7 @@ export function getFeatureStatus(featureId: string): DetailedBaselineStatus | un
       overallBaseline = false;
       continue;
     }
-
+    
     const status = feature.status;
     if (status.baseline === false) overallBaseline = false;
     else if (status.baseline === 'low' && overallBaseline === 'high') overallBaseline = 'low';
@@ -51,16 +52,30 @@ export function getFeatureStatus(featureId: string): DetailedBaselineStatus | un
     }
   }
 
+  const baseline_low_date = latestLowDate === "0000-00-00" ? undefined : latestLowDate;
+  const baseline_high_date = latestHighDate === "0000-00-00" ? undefined : latestHighDate;
+  
+  const shortLabel = overallBaseline === 'high' ? 'Widely' : (overallBaseline === 'low' ? 'Newly' : 'Limited');
+  
+  let releaseDate = '-';
+  if (overallBaseline === 'low') {
+    releaseDate = baseline_low_date || '-';
+  } else if (overallBaseline === 'high') {
+    releaseDate = baseline_high_date || baseline_low_date || '-';
+  }
+
   return {
     baseline: overallBaseline,
-    baseline_low_date: latestLowDate === "0000-00-00" ? undefined : latestLowDate,
-    baseline_high_date: latestHighDate === "0000-00-00" ? undefined : latestHighDate
+    baseline_low_date,
+    baseline_high_date,
+    shortLabel,
+    releaseDate
   };
 }
 
 /**
  * Gets the detailed Baseline status for a specific feature.
- * @param featureId - The ID of the web feature
+ * @param featureId - The ID of the web feature 
  * @returns The detailed status of the feature
  */
 export function getDetailedBaselineStatus(featureId: string): DetailedBaselineStatus | undefined {
@@ -86,20 +101,20 @@ export function getBaselineStatus(featureId: string): BaselineStatus | undefined
   const status = getFeatureStatus(featureId);
   if (!status) return;
   if (status.baseline === false) return 'Limited availability';
-  return `Baseline since ${status.baseline_low_date}`;
+  return `Baseline since ${status.releaseDate}`;
 }
 
 /**
  * Checks if a feature satisfies a specific Baseline target.
- * Supports standard statuses and date-based targets by resolving
+ * Supports standard statuses and date-based targets by resolving 
  * everything to a required "Baseline low date".
- *
+ * 
  * - "Limited": Always true (if feature exists, or even if not, consistent with legacy behavior)
  * - "Newly" / "Baseline": Requires baseline_low_date <= today
  * - "Widely": Requires baseline_low_date <= today - 30 months
  * - "Baseline YYYY": Requires baseline_low_date <= YYYY-12-31
  * - "Baseline Widely available on YYYY-MM-DD": Requires baseline_low_date <= TargetDate - 30 months
- *
+ * 
  * @param target - The Baseline target string
  * @param featureId - The ID of the feature to check
  * @returns true if the feature meets the target criteria
@@ -208,11 +223,11 @@ export function validateFeature(id: string): FeatureValidationResult {
 /**
  * Internal helper to format status messages consistently.
  */
-function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string }): string {
-  const { baseline, baseline_low_date } = status;
+function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string; shortLabel?: string; releaseDate?: string }): string {
+  const { baseline, releaseDate, shortLabel } = status;
 
-  if ((baseline === 'low' || baseline === 'high') && baseline_low_date) {
-    return `${featureName} is ${mapBaseline(baseline)}. It's been Baseline since ${baseline_low_date}.`;
+  if (baseline !== false && releaseDate && releaseDate !== '-') {
+    return `${featureName} is ${shortLabel} available. It's been Baseline since ${releaseDate}.`;
   }
 
   return `${featureName} is not supported across all major browsers.`;
@@ -225,7 +240,14 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
   if (bcdKey) {
     const status = getStatus(featureId, bcdKey);
     if (!status) return;
-    return formatStatusMessage(`The ${bcdKey} capability`, status);
+
+    // For compat keys, we manually map as the central status is for the whole feature
+    const mapped = {
+      baseline: status.baseline,
+      shortLabel: status.baseline === 'high' ? 'Widely' : (status.baseline === 'low' ? 'Newly' : 'Limited'),
+      releaseDate: status.baseline_low_date || '-'
+    };
+    return formatStatusMessage(`The ${bcdKey} capability`, mapped);
   }
 
   const feature = features[featureId] as Feature | undefined;
@@ -240,10 +262,7 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
     return formatStatusMessage(subject, { baseline: false });
   }
 
-  return formatStatusMessage(subject, {
-    baseline: baselineStatus.baseline,
-    baseline_low_date: baselineStatus.baseline_low_date
-  });
+  return formatStatusMessage(subject, baselineStatus);
 }
 
 type FeatureData = Extract<Feature, { kind: "feature" }>;
