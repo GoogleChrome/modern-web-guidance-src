@@ -28,11 +28,11 @@ for (let i = 0; i < args.length; i++) {
 const matches = Object.entries(features).filter(([id, data]) => {
   if (data.kind !== 'feature') return false;
   const matchesQuery = id.toLowerCase().includes(query.toLowerCase());
-  
+
   let targetStatus: string | boolean | undefined | null = statusFilter;
   if (statusFilter === 'false') targetStatus = false;
   if (statusFilter === 'unknown' || statusFilter === 'undefined') targetStatus = undefined;
-  
+
   const matchesStatus = !statusFilter || data.status?.baseline === targetStatus;
   return matchesQuery && matchesStatus;
 });
@@ -47,7 +47,7 @@ if (matches.length === 0) {
   const rows = matches.map(([id, data]) => {
     const status = getFeatureStatus(id);
     const baseline = mapBaseline(status?.baseline).replace(' availability', '').replace(' available', '');
-    
+
     let baselineSince = '-';
     if (status?.baseline === 'low') {
       baselineSince = status.baseline_low_date || '-';
@@ -56,7 +56,7 @@ if (matches.length === 0) {
     }
 
     const support = (data as any).status?.support || {};
-    
+
     return {
       featureId: id,
       name: data.name || '-',
@@ -100,7 +100,7 @@ if (matches.length === 0) {
     );
   }
 
-  const pad = (str: string, width: number, align?: string) => 
+  const pad = (str: string, width: number, align?: string) =>
     align === 'right' ? str.padStart(width, ' ') : str.padEnd(width, ' ');
 
   const header = '| ' + cols.map(c => pad(c.label, widths[c.key], c.align)).join(' | ') + ' |';
@@ -108,10 +108,10 @@ if (matches.length === 0) {
     const w = widths[c.key];
     return c.align === 'right' ? '-'.repeat(w + 1) + ':' : '-'.repeat(w + 2);
   }).join('|') + '|';
-  
+
   console.log(header);
   console.log(sep);
-  
+
   const style = (text: string, color: string) => process.stdout.isTTY ? `${color}${text}\x1b[0m` : text;
   const colors: Record<string, string> = {
     'Newly': '\x1b[34m',

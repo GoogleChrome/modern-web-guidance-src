@@ -22,18 +22,6 @@ export interface DetailedBaselineStatus {
 }
 
 /**
- * Resolves the feature ID to its canonical form, following moves and splits.
- */
-export function resolveFeatureId(featureId: string): string[] {
-  const feature = features[featureId] as Feature | undefined;
-  if (!feature) return [];
-  if (feature.kind === "feature") return [featureId];
-  if (feature.kind === "moved") return resolveFeatureId(feature.redirect_target);
-  if (feature.kind === "split") return feature.redirect_targets.flatMap(resolveFeatureId);
-  return [];
-}
-
-/**
  * Gets the detailed Baseline status for a specific feature, resolving redirects/splits.
  */
 export function getFeatureStatus(featureId: string): DetailedBaselineStatus | undefined {
@@ -50,7 +38,7 @@ export function getFeatureStatus(featureId: string): DetailedBaselineStatus | un
       overallBaseline = false;
       continue;
     }
-    
+
     const status = feature.status;
     if (status.baseline === false) overallBaseline = false;
     else if (status.baseline === 'low' && overallBaseline === 'high') overallBaseline = 'low';
@@ -72,7 +60,8 @@ export function getFeatureStatus(featureId: string): DetailedBaselineStatus | un
 
 /**
  * Gets the detailed Baseline status for a specific feature.
- * (Legacy wrapper for getFeatureStatus)
+ * @param featureId - The ID of the web feature
+ * @returns The detailed status of the feature
  */
 export function getDetailedBaselineStatus(featureId: string): DetailedBaselineStatus | undefined {
   return getFeatureStatus(featureId);
@@ -90,6 +79,8 @@ export function mapBaseline(baseline: string | boolean | undefined): string {
 
 /**
  * Gets the Baseline status for a specific feature.
+ * @param featureId - The ID of the web feature
+ * @returns The Baseline status of the feature ('Limited availability' or 'Baseline since YYYY-MM-DD')
  */
 export function getBaselineStatus(featureId: string): BaselineStatus | undefined {
   const status = getFeatureStatus(featureId);
@@ -100,37 +91,85 @@ export function getBaselineStatus(featureId: string): BaselineStatus | undefined
 
 /**
  * Checks if a feature satisfies a specific Baseline target.
+ * Supports standard statuses and date-based targets by resolving
+ * everything to a required "Baseline low date".
+ *
+ * - "Limited": Always true (if feature exists, or even if not, consistent with legacy behavior)
+ * - "Newly" / "Baseline": Requires baseline_low_date <= today
+ * - "Widely": Requires baseline_low_date <= today - 30 months
+ * - "Baseline YYYY": Requires baseline_low_date <= YYYY-12-31
+ * - "Baseline Widely available on YYYY-MM-DD": Requires baseline_low_date <= TargetDate - 30 months
+ *
+ * @param target - The Baseline target string
+ * @param featureId - The ID of the feature to check
+ * @returns true if the feature meets the target criteria
  */
 export function checkBaseline(target: string, featureId: string): boolean {
   const normalizedTarget = target.toLowerCase();
 
-  if (normalizedTarget.includes('limited')) return true;
+  // 1. Handle "Limited" - matches everything
+  if (normalizedTarget.includes('limited')) {
+    return true;
+  }
 
   const baselineStatus = getFeatureStatus(featureId);
-  if (!baselineStatus) return false;
+  if (!baselineStatus) {
+    return false;
+  }
 
+  // 2. Handle specific historical checks first (Yearly or specific "Widely available on" dates)
   const yearMatch = target.match(/^baseline (\d{4})$/i);
   const dateMatch = target.match(/^baseline widely available on (\d{4}-\d{2}-\d{2})$/i);
 
   if (yearMatch || dateMatch) {
-    if (baselineStatus.baseline === false || !baselineStatus.baseline_low_date) return false;
+    if (baselineStatus.baseline === false || !baselineStatus.baseline_low_date) {
+      return false;
+    }
 
     let requiredLowDate: string;
     if (yearMatch) {
       const year = parseInt(yearMatch[1], 10);
+      // "Baseline 2024" -> Available by end of 2024
       requiredLowDate = `${year}-12-31`;
     } else {
+      // "Baseline Widely available on X" -> Low date was 30 months before X
       requiredLowDate = subtractMonths(dateMatch![1], 30);
     }
     return baselineStatus.baseline_low_date <= requiredLowDate;
   }
 
-  if (normalizedTarget.includes('widely')) return baselineStatus.baseline === 'high';
+  // 3. Handle relative targets (Newly, Widely) strictly against the package status
+  if (normalizedTarget.includes('widely')) {
+    return baselineStatus.baseline === 'high';
+  }
   if (normalizedTarget.includes('newly') || normalizedTarget === 'baseline' || normalizedTarget === 'baseline newly available') {
+    // "Baseline" or "Newly available" are both satisfied by low or high baseline status
     return baselineStatus.baseline === 'low' || baselineStatus.baseline === 'high';
   }
 
   return false;
+}
+
+/**
+ * Resolves the feature ID to its canonical form, following any number of splits and redirects.
+ * @param featureId - The feature ID to resolve
+ * @returns An array of canonical feature IDs (multiple if split)
+ */
+export function resolveFeatureId(featureId: string): string[] {
+  const feature = features[featureId] as Feature | undefined;
+  if (!feature) {
+    return [];
+  }
+  if (feature.kind === "feature") {
+    return [featureId];
+  }
+  if (feature.kind === "moved") {
+    return resolveFeatureId(feature.redirect_target);
+  }
+  if (feature.kind === "split") {
+    return feature.redirect_targets.flatMap(resolveFeatureId);
+  }
+  return [];
 }
 
 /**
@@ -213,32 +252,49 @@ type CompatStatus = NonNullable<Status["by_compat_key"]>[string];
 
 /**
  * Gets the baseline status for a specific browser compatibility key.
+ * @param featureId - Optional feature ID to search within (improves performance if known)
+ * @param bcdKey - The browser compatibility data key (e.g., "api.HTMLElement.focus")
+ * @returns The baseline status object for the key, or undefined if not found
  */
 export function getStatus(
   featureId: string | undefined,
   bcdKey: string,
 ): CompatStatus | undefined {
+  // Direct lookup when feature ID is provided
   if (featureId) {
+    // Handle splits and redirects
     const resolvedFeatureIds = resolveFeatureId(featureId);
-    if (resolvedFeatureIds.length === 0) return;
-    
+    if (resolvedFeatureIds.length === 0) {
+      return;
+    }
     for (const resolvedFeatureId of resolvedFeatureIds) {
       const feature = features[resolvedFeatureId] as Feature;
-      if (feature.kind !== 'feature') continue;
+      if (feature.kind !== 'feature') {
+        continue;
+      }
       if (feature.status?.by_compat_key?.[bcdKey]) {
         return feature.status.by_compat_key[bcdKey];
       }
     }
   }
 
+  // Fall back to searching all features when no feature ID is provided
   for (const feature of Object.values(features) as Feature[]) {
-    if (feature.kind !== "feature") continue;
+    if (feature.kind !== "feature") {
+      continue;
+    }
     if (feature.status?.by_compat_key?.[bcdKey]) {
       return feature.status.by_compat_key[bcdKey];
     }
   }
 }
 
+/**
+ * Subtracts a specified number of months from a date string.
+ * @param dateStr - The date string in the format "YYYY-MM-DD"
+ * @param months - The number of months to subtract
+ * @returns The date string after subtracting the specified number of months
+ */
 function subtractMonths(dateStr: string, months: number): string {
   const date = new Date(dateStr);
   date.setMonth(date.getMonth() - months);
