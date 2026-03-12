@@ -36,7 +36,7 @@ describe('calculateMetrics', () => {
     const metrics = calculateMetrics(allResults, 2);
 
     // Summary checks
-    assert.strictEqual(metrics.summary.numRuns, 2);
+    assert.strictEqual(metrics.summary.runsPerTest, 2);
     
     // Guided: Run 1 (50%), Run 2 (100%). Median of [50, 100] is 75.
     assert.strictEqual(metrics.summary.guidedMedian, 75);
