@@ -14,14 +14,19 @@
 <body>
   <div class="container">
     <header>
-      <h1>Suite Results</h1>
-      <div id="test-header" style="font-size: 0.9em; color: var(--text-secondary); margin-top: 8px;">
-        <!-- Test ID and timestamp will be injected here -->
-      </div>
-      <div style="margin-top: 15px;">
-        <button id="auth-btn" class="secondary-btn" style="display: none;">
-          Sign in with Google
-        </button>
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px;">
+        <div>
+          <h1>Suite Results</h1>
+          <div id="test-header" style="font-size: 0.9em; color: var(--text-secondary); margin-top: 8px;">
+            <!-- Test ID and timestamp will be injected here -->
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <a href="./" class="secondary-btn" style="text-decoration: none;">← Back to Results</a>
+          <button id="auth-btn" class="secondary-btn" style="display: none;">
+            Sign in with Google
+          </button>
+        </div>
       </div>
       <div id="summary-stats">
         <!-- Summary stats will be injected here -->
