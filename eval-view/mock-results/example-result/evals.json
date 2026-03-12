@@ -8,7 +8,10 @@
     "unguidedTotal": 10,
     "guidedPassed": 8,
     "guidedTotal": 10,
-    "numRuns": 1
+    "runsPerTest": 1,
+    "guideUsageRate": 50,
+    "guideUsageCount": 1,
+    "totalGuidedRuns": 2
   },
   "results": {
     "cards-app - content-vis - unguided": [
@@ -98,6 +101,10 @@
             "message": "No console warnings for forced layout"
           }
         ],
+        "guidesUsed": [
+          "content-vis",
+          "performance-tips"
+        ],
         "guideResults": {
           "checks": [
             {
@@ -143,6 +150,7 @@
             "message": "Should NOT have deprecated <link rel=\"prerender\"> tag"
           }
         ],
+        "guidesUsed": [],
         "guideResults": {
           "checks": [
             {
@@ -183,7 +191,9 @@
       "median": 100,
       "rates": [
         100
-      ]
+      ],
+      "runsUsingGuide": 1,
+      "runCount": 1
     },
     "cards-app - preload-prerender - unguided": {
       "median": 33,
@@ -195,7 +205,9 @@
       "median": 33,
       "rates": [
         33
-      ]
+      ],
+      "runsUsingGuide": 0,
+      "runCount": 1
     }
   }
 }
