@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const scriptPath = path.resolve(__dirname, '../cli/baseline-status.ts');
+const scriptPath = path.resolve(__dirname, './baseline-status.ts');
 
 describe('baseline-status CLI', () => {
   const runCLI = (args: string[]) => {
