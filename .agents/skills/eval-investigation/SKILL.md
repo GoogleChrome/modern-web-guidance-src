@@ -11,12 +11,7 @@ This skill helps you diagnose why AI coding agents are failing evaluations, spec
 
 ## 1. Accessing Data
 
-### Via Dashboard (Preferred)
-If a browser is available, navigate to the dashboard (usually `http://localhost:{port}` or the GitHub Pages URL).
--   **Suite View**: Look for tasks where "Guided" scores are unexpectedly low.
--   **Trajectory View**: Open specific task trajectories to see the agent's step-by-step actions and grader failures.
-
-### Via Command Line (Fallback)
+### Via Command Line (Preferred)
 If no browser is available, you can pull the raw `evals.json` from GCS.
 ```bash
 # Get the latest suite ID from GCS or use a known one
@@ -26,6 +21,12 @@ gcloud storage ls gs://guidance-evals/
 gcloud storage cp gs://guidance-evals/{suite_id}/evals.json .
 ```
 
+### Via Dashboard (Fallback)
+If a browser is available, navigate to the dashboard (usually `http://localhost:{port}` or the GitHub Pages URL).
+-   **Suite View**: Look for tasks where "Guided" scores are unexpectedly low.
+-   **Trajectory View**: Open specific task trajectories to see the agent's step-by-step actions and grader failures.
+
+
 ## 2. Investigation Flow
 
 1.  **Identify Failure Mode**: Look at the grader results in the JSON or dashboard.
@@ -33,7 +34,7 @@ gcloud storage cp gs://guidance-evals/{suite_id}/evals.json .
 2.  **Inspect Trajectories**: Check if the agent performed the right action but on the wrong file, or if it was confused by prompts.
 3.  **Check Prompt Context**: verify if `COMMON_APPEND_PROMPT` or task frontmatter is providing conflicting instructions.
 
-## 3. Common Patterns & Solutions
+## 3. Some Observed Patterns & Solutions
 
 -   **Salient changes in new files**: The agent adds a new page (e.g., `rewards.html`) but the grader only checks `index.html`.
     -   *Solution*: Update task frontmatter with `target_file: rewards.html`.
@@ -43,4 +44,4 @@ gcloud storage cp gs://guidance-evals/{suite_id}/evals.json .
     -   *Solution*: Relax grader assertions or fix the agent's tool usage pattern.
 
 ## 4. Self-Improvement
-After completion of an investigation, **you MUST update this skill** if you discover a new failure pattern or a more efficient investigation technique.
+After completion of an investigation, **you MUST update this skill** if you discover a new failure pattern or a more efficient investigation technique... or if anything about the investigation process was difficult or resulted in dead-ends. Use a ‘skill-creator’ skill to make effective updates.
