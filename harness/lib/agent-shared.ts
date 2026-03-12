@@ -199,14 +199,14 @@ export function copySkills(homeDir: string, agent: string): boolean {
       const catSrc = path.join(guidesSource, cat);
       const catDest = path.join(destDir, cat);
 
-      // Copy SKILL.md if lists guides
+      // Copy SKILL.md if present
       const skillPath = path.join(catSrc, 'SKILL.md');
       if (fs.existsSync(skillPath)) {
         fs.mkdirSync(catDest, { recursive: true });
         fs.copyFileSync(skillPath, path.join(catDest, 'SKILL.md'));
       }
 
-      // Process subfolders
+      // Add subfolder and guide.md, if eval-ready
       const entries = fs.readdirSync(catSrc, { withFileTypes: true });
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
@@ -223,7 +223,6 @@ export function copySkills(homeDir: string, agent: string): boolean {
           fs.copyFileSync(guideFileSrc, guideFileDest);
         }
       }
-
     }
 
     console.log(`Copied guides to ${destDir}`);
