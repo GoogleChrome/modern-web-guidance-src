@@ -75,6 +75,8 @@ if (matches.length === 0) {
     process.exit(0);
   }
 
+  const hasSafariIosMismatch = rows.some(r => r.safari !== r.safariIos);
+
   const cols = [
     { key: 'featureId', label: 'web-feature-id' },
     { key: 'name', label: 'Feature name' },
@@ -84,8 +86,11 @@ if (matches.length === 0) {
     { key: 'edge', label: 'Edge', align: 'right' },
     { key: 'firefox', label: 'Firefox', align: 'right' },
     { key: 'safari', label: 'Safari', align: 'right' },
-    { key: 'safariIos', label: 'Safari iOS', align: 'right' }
   ];
+
+  if (hasSafariIosMismatch) {
+    cols.push({ key: 'safariIos', label: 'Safari iOS', align: 'right' });
+  }
 
   const widths: Record<string, number> = {};
   for (const col of cols) {

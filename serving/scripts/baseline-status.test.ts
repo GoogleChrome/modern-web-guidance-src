@@ -52,4 +52,16 @@ describe('baseline-status CLI', () => {
     const { stdout } = runCLI(['nonexistentfeaturexyz', '--json']);
     expect(stdout.trim()).toBe('[]');
   });
+
+  it('omits Safari iOS column when versions match', () => {
+    const { stdout } = runCLI(['overflow-clip']);
+    expect(stdout).toContain('Safari');
+    expect(stdout).not.toContain('Safari iOS');
+  });
+
+  it('includes Safari iOS column when versions differ', () => {
+    const { stdout } = runCLI(['async-clipboard']);
+    expect(stdout).toContain('Safari');
+    expect(stdout).toContain('Safari iOS');
+  });
 });
