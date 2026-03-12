@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complex Computations and Loops - Performance Demo</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-color: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-color: #38bdf8;
+      --success-color: #4ade80;
+      --warning-color: #facc15;
+      --danger-color: #f87171;
+      --border-color: #334155;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: var(--accent-color);
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid var(--border-color);
+      border-top: 5px solid var(--accent-color);
+      border-radius: 50%;
+      margin: 0 auto 1rem auto;
+    }
+
+    .counter-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: var(--success-color);
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      background-color: var(--border-color);
+      color: var(--text-color);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.1);
+    }
+
+    #run-blocking {
+      background-color: var(--danger-color);
+      color: #000;
+    }
+
+    #run-yielding {
+      background-color: var(--success-color);
+      color: #000;
+    }
+
+    .interaction-test {
+      display: flex;
+      gap: 1rem;
+      background-color: var(--card-bg);
+      padding: 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      align-items: center;
+    }
+
+    input {
+      flex: 1;
+      padding: 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-color);
+      color: var(--text-color);
+    }
+
+    .log-container {
+      background-color: #000;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1rem;
+      height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+      color: #a3e635;
+    }
+
+    .log-entry {
+      margin-bottom: 0.25rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div>
+    <h1>Complex Computations and Loops</h1>
+    <p>This demo illustrates how to prevent long-running JavaScript tasks from freezing the user interface.
+      When a heavy computation runs synchronously, it blocks the main thread, stopping layout and paint animations and
+      making clicks
+      unresponsive.</p>
+
+    <div
+      style="background: var(--card-bg); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1rem;">
+      <strong>The Task:</strong> We simulate heavy work by running 1000 iterations of a loop that performs 1,000,000
+      complex math operations (sine, cosine, sqrt) per iteration.
+    </div>
+
+    <p>
+      <strong>Test responsiveness:</strong> Click the "Click Me" button continuously while running either task.
+    </p>
+  </div>
+
+  <div class="interaction-test" style="justify-content: center; gap: 3rem; padding: 2rem;">
+    <div style="text-align: center;">
+      <div class="spinner" id="spinner"></div>
+      <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem; max-width: 150px;">
+        <em>Should freeze during blocking task, spin during yielding task.</em>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+      <button id="test-click"
+        style="font-size: 1.2rem; padding: 1rem 2rem; background-color: var(--accent-color); color: #000;">Click
+        Me</button>
+      <div id="clicks" style="font-size: 1.2rem; font-weight: bold;">Clicks: 0</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="run-blocking">Run Blocking Task (Blocks UI)</button>
+    <button id="run-yielding">Run Yielding Task (Keeps UI Responsive)</button>
+    <button id="clear-log" style="margin-left: auto;">Clear Log</button>
+  </div>
+
+  <div class="log-container" id="log"></div>
+
+  <script>
+    const spinner = document.getElementById('spinner');
+    const testClick = document.getElementById('test-click');
+    const clicksEl = document.getElementById('clicks');
+    const runBlockingBtn = document.getElementById('run-blocking');
+    const runYieldingBtn = document.getElementById('run-yielding');
+    const clearLogBtn = document.getElementById('clear-log');
+    const logContainer = document.getElementById('log');
+
+    // Main thread driven continuous animation (to visualize freezing)
+    let rotation = 0;
+    function spin() {
+      rotation = (rotation + 6) % 360;
+      spinner.style.transform = `rotate(${rotation}deg)`;
+      requestAnimationFrame(spin);
+    }
+    spin();
+
+    // Interaction test
+    let clicks = 0;
+    testClick.addEventListener('click', () => {
+      clicks++;
+      clicksEl.textContent = `Clicks: ${clicks}`;
+      log('Button Clicked!');
+    });
+
+    function log(message) {
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    // Simulates CPU intensive work
+    function doHeavyWorkChunk() {
+      let result = 0;
+      for (let i = 0; i < 1000000; i++) {
+        result += Math.sqrt(Math.sin(i) * Math.cos(i));
+      }
+      return result;
+    }
+
+    const TOTAL_CHUNKS = 1000; // Reduced for faster demo cycles, still large enough to cause jank
+
+    // Best practice fallback structure for yielding
+    async function yieldToMain() {
+      if (typeof scheduler !== 'undefined' && scheduler.yield) {
+        return scheduler.yield(); // Prioritized Task Scheduling API
+      } else if (typeof scheduler !== 'undefined' && scheduler.postTask) {
+        return scheduler.postTask(() => { }, { priority: 'background' });
+      } else {
+        return new Promise(resolve => setTimeout(resolve, 0)); // Fallback
+      }
+    }
+
+    async function runBlocking() {
+      log('Starting BLOCKING task...');
+      runBlockingBtn.disabled = true;
+      runYieldingBtn.disabled = true;
+
+      // Allow DOM to update button state before blocking
+      await new Promise(r => setTimeout(r, 50));
+
+      const startTime = performance.now();
+
+      // Run everything synchronously - Blocks the main thread
+      for (let i = 0; i < TOTAL_CHUNKS; i++) {
+        doHeavyWorkChunk();
+      }
+
+      const endTime = performance.now();
+      log(`BLOCKING task finished in ${(endTime - startTime).toFixed(0)}ms`);
+      runBlockingBtn.disabled = false;
+      runYieldingBtn.disabled = false;
+    }
+
+    async function runYielding() {
+      log('Starting YIELDING task...');
+      runBlockingBtn.disabled = true;
+      runYieldingBtn.disabled = true;
+      const startTime = performance.now();
+
+      for (let i = 0; i < TOTAL_CHUNKS; i++) {
+        doHeavyWorkChunk();
+
+        // Yield periodically to let the browser process inputs & render
+        // Yielding every 5 chunks to balance overhead vs responsiveness
+        if (i % 5 === 0) {
+          await yieldToMain();
+          if (i % 20 === 0) log(`Progress: ${(i / TOTAL_CHUNKS * 100).toFixed(0)}%`);
+        }
+      }
+
+      const endTime = performance.now();
+      log(`YIELDING task finished in ${(endTime - startTime).toFixed(0)}ms`);
+      runBlockingBtn.disabled = false;
+      runYieldingBtn.disabled = false;
+    }
+
+    runBlockingBtn.addEventListener('click', runBlocking);
+    runYieldingBtn.addEventListener('click', runYielding);
+    clearLogBtn.addEventListener('click', () => {
+      logContainer.innerHTML = '';
+      clicks = 0;
+      clicksEl.textContent = 'Clicks: 0';
+    });
+
+    log('Demo loaded. Try the buttons above.');
+    if (typeof scheduler === 'undefined' || !scheduler.yield) {
+      log('Warning: scheduler.yield() is not supported natively. Using fallback.');
+    } else {
+      log('scheduler.yield() is supported.');
+    }
+
+  </script>
+</body>
+
+</html>

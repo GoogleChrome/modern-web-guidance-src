@@ -20,13 +20,23 @@ export interface Metrics {
     unguidedTotal: number;
     guidedPassed: number;
     guidedTotal: number;
-    numRuns: number;
+    runsPerTest: number;
+    guideUsageRate?: number;
+    guideUsageCount?: number;
+    totalGuidedRuns?: number;
   };
-  testPassRates: Record<string, { median: number; rates: number[] }>;
+  testStats: Record<string, {
+    medianPassRate: number;
+    runPassRates: number[];
+    runsUsingGuide?: number;
+    runCount?: number;
+    passedChecks: number;
+    totalChecks: number;
+  }>;
   sortedKeys: string[];
 }
 
-export function calculateMetrics(allResults: Record<string, RunResult[]>, numRuns: number): Metrics {
+export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPerTest: number): Metrics {
   // Dynamic sorting: Tasks alphabetically, then Guides alphabetically, then Run Type (unguided first if present)
   const runTypeOrder: Record<string, number> = { 'unguided': 1, 'guided': 2 };
 
@@ -51,13 +61,26 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, numRun
     return runTypeA.localeCompare(runTypeB);
   });
 
-  const testPassRates: Record<string, { median: number; rates: number[] }> = {};
+  const testStats: Record<string, {
+    medianPassRate: number;
+    runPassRates: number[];
+    runsUsingGuide?: number;
+    runCount?: number;
+    passedChecks: number;
+    totalChecks: number;
+  }> = {};
+
   for (const name of sortedKeys) {
     const runs = allResults[name];
+    let passedChecks = 0;
+    let totalChecks = 0;
+
     const passRates = runs.map(run => {
       const checks = run.results;
       const passCount = checks.filter(c => c.passed).length;
       const totalCount = checks.length;
+      passedChecks += passCount;
+      totalChecks += totalCount;
       return totalCount > 0 ? (passCount / totalCount) * 100 : 0;
     }).sort((a, b) => a - b);
 
@@ -66,14 +89,30 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, numRun
       ? (passRates[mid - 1] + passRates[mid]) / 2
       : passRates[mid];
 
-    testPassRates[name] = {
-      median: Math.round(median),
-      rates: passRates.map(r => Math.round(r))
+    let guideUsageCount = 0;
+    const [, guide, runType] = name.split(' - ');
+
+    if (runType === 'guided') {
+      runs.forEach(run => {
+        const guidesUsed = run.guidesUsed || [];
+        if (guidesUsed.includes(guide)) {
+          guideUsageCount++;
+        }
+      });
+    }
+
+    testStats[name] = {
+      medianPassRate: Math.round(median),
+      runPassRates: passRates.map(r => Math.round(r)),
+      runsUsingGuide: runType === 'guided' ? guideUsageCount : undefined,
+      runCount: runs.length,
+      passedChecks,
+      totalChecks
     };
   }
 
   const calcSummary = (keys: string[]) => {
-    const medians = keys.map(k => testPassRates[k].median);
+    const medians = keys.map(k => testStats[k].medianPassRate);
 
     const sortedMedians = [...medians].sort((a, b) => a - b);
     const mid = Math.floor(sortedMedians.length / 2);
@@ -84,18 +123,32 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, numRun
 
     let passed = 0;
     let total = 0;
+    let guideUsageCount = 0;
+    let totalGuidedRuns = 0;
+
     keys.forEach(k => {
-      allResults[k].forEach(run => {
-        passed += run.results.filter(r => r.passed).length;
-        total += run.results.length;
-      });
+      const [, , runType] = k.split(' - ');
+      const stats = testStats[k];
+
+      if (stats) {
+        passed += stats.passedChecks;
+        total += stats.totalChecks;
+
+        if (runType === 'guided') {
+          guideUsageCount += stats.runsUsingGuide || 0;
+          totalGuidedRuns += stats.runCount || 0;
+        }
+      }
     });
 
     return {
       median: Math.round(median),
       passed,
       total,
-      rate: total ? Math.round((passed / total) * 100) : 0
+      rate: total ? Math.round((passed / total) * 100) : 0,
+      guideUsageCount,
+      totalGuidedRuns,
+      guideUsageRate: totalGuidedRuns ? Math.round((guideUsageCount / totalGuidedRuns) * 100) : 0
     };
   };
 
@@ -112,9 +165,12 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, numRun
       unguidedTotal: uStats.total,
       guidedPassed: gStats.passed,
       guidedTotal: gStats.total,
-      numRuns
+      runsPerTest,
+      guideUsageRate: gStats.guideUsageRate,
+      guideUsageCount: gStats.guideUsageCount,
+      totalGuidedRuns: gStats.totalGuidedRuns
     },
-    testPassRates,
+    testStats,
     sortedKeys
   };
 }

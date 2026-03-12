@@ -124,7 +124,8 @@ async function loadDashboardData(testId) {
         }
     } catch (error) {
         console.error('Error:', error);
-        
+        window.dashboardLoaded = false;
+
         let errorHtml = `<div style="text-align:center; padding: 50px; color: red;">
             <h3>Error loading dashboard data</h3>
             <p>${error.message}</p>
@@ -320,13 +321,10 @@ function renderTestHeader(testId, jetskiVersion, timestamp) {
 
 function renderSummary(data) {
     const container = document.getElementById('summary-stats');
-    const results = data.results;
+    const summary = data.summary;
 
-    const unguidedStats = calculateGroupTotalStats(results, 'unguided');
-    const guidedStats = calculateGroupTotalStats(results, 'guided');
-
-    const unguidedRate = unguidedStats.total > 0 ? Math.round((unguidedStats.passed / unguidedStats.total) * 100) : 0;
-    const guidedRate = guidedStats.total > 0 ? Math.round((guidedStats.passed / guidedStats.total) * 100) : 0;
+    const unguidedRate = summary.unguidedPassRate;
+    const guidedRate = summary.guidedPassRate;
 
     container.innerHTML = `
         <div class="stat-card">
@@ -335,7 +333,7 @@ function renderSummary(data) {
             </span>
             <span class="stat-label">Unguided Pass Rate</span>
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
-                ${unguidedStats.passed}/${unguidedStats.total} checks passed
+                ${summary.unguidedPassed}/${summary.unguidedTotal} checks passed
             </div>
         </div>
         <div class="stat-card">
@@ -344,28 +342,16 @@ function renderSummary(data) {
             </span>
             <span class="stat-label">Guided Pass Rate</span>
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
-                ${guidedStats.passed}/${guidedStats.total} checks passed
+                ${summary.guidedPassed}/${summary.guidedTotal} checks passed
             </div>
+            ${summary.guideUsageRate !== undefined ? `
+            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
+                Guide Usage: <span style="font-weight: bold; color: ${getColor(summary.guideUsageRate)}">${summary.guideUsageRate}%</span>
+                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${summary.totalGuidedRuns} runs)</span>
+            </div>
+            ` : ''}
         </div>
     `;
-}
-
-function calculateGroupTotalStats(results, runType) {
-    let passed = 0;
-    let total = 0;
-
-    Object.keys(results).forEach(key => {
-        // key format: "appName - guide - runType"
-        if (key.endsWith(` - ${runType}`)) {
-            results[key].forEach(run => {
-                const s = getRunStats(run.results);
-                passed += s.passed;
-                total += s.total;
-            });
-        }
-    });
-
-    return { passed, total };
 }
 
 function renderGrid(data, testId) {
@@ -412,6 +398,19 @@ function renderGrid(data, testId) {
                 const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
                 const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
 
+                let guideUsageHtml = '';
+                if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined) {
+                    const count = testStats.runsUsingGuide;
+                    const total = testStats.runCount;
+                    const usageRate = total > 0 ? Math.round((count / total) * 100) : 0;
+                    const color = getColor(usageRate);
+                    guideUsageHtml = `
+                        <div style="font-size: 0.85em; margin-top: 6px; color: ${color}; font-weight: 500;">
+                            ${guide} used (${count}/${total} runs)
+                        </div>
+                    `;
+                }
+
                 card.onclick = () => showDetails(testName, runData, testStats, testId);
                 card.innerHTML = `
                     <h3>${formatTestName(testName)}</h3>
@@ -420,8 +419,9 @@ function renderGrid(data, testId) {
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 0.9em; color: var(--text-secondary);">
                         <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
-                        <span>Runs: ${testStats.rates.length}</span>
+                        <span>Runs: ${runData.length}</span>
                     </div>
+                    ${guideUsageHtml}
                 `;
 
                 grid.appendChild(card);
@@ -445,7 +445,7 @@ async function showDetails(testName, runs, stats, testId) {
     const title = document.getElementById('modal-title');
     const contentDiv = document.querySelector('.modal-content');
     const body = document.getElementById('modal-body');
-    const [, guide] = testName.split(' - ');
+    const [, guide, runType] = testName.split(' - ');
 
     // Reset modifier classes
     modal.classList.remove('diff-modal');
@@ -484,35 +484,25 @@ async function showDetails(testName, runs, stats, testId) {
 
         let guideSection = '';
         const guidesUsed = run.guidesUsed || (run.guideUsed !== undefined ? (typeof run.guideUsed === 'object' && run.guideUsed !== null ? run.guideUsed.guidesUsed : []) : []);
-        const oldPassed = run.guideUsed !== undefined ? (typeof run.guideUsed === 'object' && run.guideUsed !== null ? run.guideUsed.expectedGuideUsed : run.guideUsed) : undefined;
+        const hasGuideData = run.guidesUsed !== undefined || run.guideUsed !== undefined;
 
-        const hasData = run.guidesUsed !== undefined || run.guideUsed !== undefined;
-
-        if (hasData) {
-            const passed = run.guidesUsed !== undefined ? run.guidesUsed.includes(guide) : oldPassed;
-
-            let guidesHtml = '';
-            const otherGuides = guidesUsed.filter(g => g !== guide);
-            if (otherGuides.length > 0) {
-                guidesHtml = `
-                    <div style="margin-top: 8px; font-size: 0.85em; color: var(--text-secondary);">
-                        <strong style="color: var(--text-primary);">Other Guides Used:</strong> ${otherGuides.map(g => `<code style="background: rgba(255,b255,255,0.05); padding: 2px 4px; border-radius: 3px; font-size: 0.9em;">${escapeHtml(g)}</code>`).join(', ')}
-                    </div>
-                `;
-            }
-
+        if (hasGuideData && runType !== 'unguided') {
             guideSection = `
                 <div class="guide-section" style="margin-top: 15px; padding: 12px 15px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--border-color);">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1rem;">${passed ? '✅' : '❌'}</span>
-                            <strong style="font-size: 0.9em; font-weight: 600;">${guide} used by agent</strong>
+                            <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary);">Guides Used:</strong>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                ${guidesUsed.length > 0 ? guidesUsed.map(g => {
+                                    const isExpected = g === guide;
+                                    return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
+                                }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
+                            </div>
                         </div>
                         <div>
                             <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${MCP_LOG_FILE}</a>
                         </div>
                     </div>
-                    ${guidesHtml}
                 </div>
             `;
         }
