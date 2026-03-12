@@ -148,7 +148,23 @@ export function updateMcpConfig(
 
   try {
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
-    fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
+    if (agent === Agents.CODEX_CLI) {
+      let tomlContent = '';
+      for (const [serverName, serverConfig] of Object.entries(mcpConfig.mcpServers)) {
+        tomlContent += `[mcp_servers.${serverName}]\n`;
+        for (const [key, value] of Object.entries(serverConfig as Record<string, any>)) {
+          if (Array.isArray(value)) {
+            tomlContent += `${key} = [${value.map((v: any) => `"${v}"`).join(', ')}]\n`;
+          } else {
+            tomlContent += `${key} = "${value}"\n`;
+          }
+        }
+        tomlContent += '\n';
+      }
+      fs.writeFileSync(configPath, tomlContent);
+    } else {
+      fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
+    }
     if (serversToEnable.length > 0) {
       console.log(`Added MCP server config(s) to ${configPath}: ${Object.keys(mcpConfig.mcpServers).join(', ')}`);
     } else {
@@ -173,6 +189,8 @@ export function copySkills(homeDir: string, agent: string): boolean {
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {
     destDir = path.join(homeDir, '.claude', 'skills');
+  } else if (agent === Agents.CODEX_CLI) {
+    destDir = path.join(homeDir, '.agents', 'skills');
   } else if (agent === Agents.JETSKI) {
     destDir = path.join(homeDir, '.gemini', 'jetski', 'skills');
   } else {
