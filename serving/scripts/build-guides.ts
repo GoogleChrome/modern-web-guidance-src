@@ -7,7 +7,7 @@ import { glob } from "glob";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
 import { replaceMacros } from "../mcp-server/lib/macros.ts";
-import { inventoryGuide, classifyGuide, getTaskMap } from "../../harness/lib/utils.ts";
+import { inventoryGuide, classifyGuide, scanAllGuides } from "../../harness/lib/utils.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,30 +60,17 @@ async function processGuides() {
   } else {
     // Batch process all guides
     console.log(`Scanning for guides in: ${GUIDES_DIR}`);
-    const guideFiles = glob.sync("**/guide.md", {
-      cwd: GUIDES_DIR,
-      absolute: true
-    });
+    const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
 
-    if (guideFiles.length === 0) {
+    if (readyGuides.length === 0) {
       console.log("No guides found.");
     }
 
-    const taskMap = getTaskMap();
-    for (const guidePath of guideFiles) {
-      const guideDir = path.dirname(guidePath);
-
-      const inv = inventoryGuide(guideDir, taskMap);
-      const isReady = classifyGuide(inv) === 'eval-ready';
-      if (!isReady) {
-        continue;
-      }
-
-      // Derive category and id from folder structure
-      // Example structure: guides/performance/content-vis/guide.md
-      // id becomes "content-vis", category becomes "performance"
-      const id = path.basename(guideDir);
-      const category = path.basename(path.dirname(guideDir));
+    for (const inv of readyGuides) {
+      const guideDir = inv.dir;
+      const guidePath = path.join(guideDir, "guide.md");
+      const id = inv.name;
+      const category = inv.category;
 
       await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
     }

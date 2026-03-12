@@ -3,7 +3,7 @@ import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { fileURLToPath } from 'url';
 import { Agents } from '../config.ts';
-import { inventoryGuide, classifyGuide, getTaskMap } from './utils.ts';
+import { inventoryGuide, classifyGuide, getTaskMap, scanAllGuides } from './utils.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -190,10 +190,8 @@ export function copySkills(homeDir: string, agent: string): boolean {
   try {
     fs.mkdirSync(destDir, { recursive: true });
 
-    const taskMap = getTaskMap();
-    const categories = fs.readdirSync(guidesSource, { withFileTypes: true })
-      .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
-      .map(d => d.name);
+    const allGuides = scanAllGuides();
+    const categories = new Set(allGuides.map(inv => inv.category));
 
     for (const cat of categories) {
       const catSrc = path.join(guidesSource, cat);
@@ -205,23 +203,17 @@ export function copySkills(homeDir: string, agent: string): boolean {
         fs.mkdirSync(catDest, { recursive: true });
         fs.copyFileSync(skillPath, path.join(catDest, 'SKILL.md'));
       }
+    }
 
-      // Add subfolder and guide.md, if eval-ready
-      const entries = fs.readdirSync(catSrc, { withFileTypes: true });
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-        const guideDir = path.join(catSrc, entry.name);
+    for (const inv of allGuides) {
+      if (classifyGuide(inv) === 'eval-ready') {
+        const catDest = path.join(destDir, inv.category);
+        const guideDest = path.join(catDest, inv.name);
+        fs.mkdirSync(guideDest, { recursive: true });
 
-        const inv = inventoryGuide(guideDir, taskMap);
-        const isReady = classifyGuide(inv) === 'eval-ready';
-        if (isReady) {
-          const guideDest = path.join(catDest, entry.name);
-          fs.mkdirSync(guideDest, { recursive: true });
-
-          const guideFileSrc = path.join(guideDir, 'guide.md');
-          const guideFileDest = path.join(guideDest, 'guide.md');
-          fs.copyFileSync(guideFileSrc, guideFileDest);
-        }
+        const guideFileSrc = path.join(inv.dir, 'guide.md');
+        const guideFileDest = path.join(guideDest, 'guide.md');
+        fs.copyFileSync(guideFileSrc, guideFileDest);
       }
     }
 

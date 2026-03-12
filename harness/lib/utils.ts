@@ -119,3 +119,25 @@ export function classifyGuide(inv: GuideInventory): GuideStatus {
   if (!inv.hasPrompts || !inv.hasTask) return 'needs-test';
   return 'eval-ready';
 }
+
+export function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
+  const guides: GuideInventory[] = [];
+  const guidesDir = path.resolve(__dirname, '../../guides');
+  
+  if (!fs.existsSync(guidesDir)) return guides;
+
+  const categories = fs.readdirSync(guidesDir, { withFileTypes: true })
+    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+    .map(d => d.name);
+    
+  for (const category of categories) {
+    const categoryDir = path.join(guidesDir, category);
+    if (!fs.existsSync(categoryDir)) continue;
+    for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      guides.push(inventoryGuide(path.join(categoryDir, entry.name), taskMap));
+    }
+  }
+  return guides;
+}
+

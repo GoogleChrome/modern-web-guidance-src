@@ -31,7 +31,8 @@ import {
   getTaskMap,
   inventoryGuide,
   readFileSafe,
-  classifyGuide
+  classifyGuide,
+  scanAllGuides
 } from '../harness/lib/utils.ts';
 
 const TASKS_DIR = path.join(rootDir, 'harness', 'tasks');
@@ -42,21 +43,6 @@ export interface DevGuideOptions {
   verbose?: boolean;
 }
 
-export function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
-  const guides: GuideInventory[] = [];
-  const categories = fs.readdirSync(__dirname, { withFileTypes: true })
-    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
-    .map(d => d.name);
-  for (const category of categories) {
-    const categoryDir = path.join(__dirname, category);
-    if (!fs.existsSync(categoryDir)) continue;
-    for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
-      guides.push(inventoryGuide(path.join(categoryDir, entry.name), taskMap));
-    }
-  }
-  return guides;
-}
 
 function printInventory(inv: GuideInventory): void {
   const icon = (exists: boolean, willGenerate = false, warn = false) => {
@@ -474,8 +460,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
 
 // Batch mode: process all incomplete guides
 export async function devAll(options: DevGuideOptions = {}): Promise<void> {
-  const taskMap = getTaskMap();
-  const incompleteGuides = scanAllGuides(taskMap).filter(inv =>
+  const incompleteGuides = scanAllGuides().filter(inv =>
     inv.hasGuide && inv.hasDemo && (!inv.hasNegativeDemo || !inv.hasGrader || !inv.hasPrompts || !inv.hasTask)
   );
 
@@ -525,8 +510,7 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
 }
 
 export function auditGuides(): void {
-  const taskMap = getTaskMap();
-  const allGuides = scanAllGuides(taskMap);
+  const allGuides = scanAllGuides();
 
   if (allGuides.length === 0) {
     console.log('No guides found.');
