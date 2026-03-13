@@ -77,6 +77,7 @@ function setupIsolatedWorkDir(): string {
   // Set environment variables
   process.env.HOME = tempHome;
   process.env.JETSKI_DIR = jetskiDest;
+  process.env.MCP_LOG_DIR = targetDir;
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
@@ -266,6 +267,7 @@ async function startJetski(directory: string, profileDir: string): Promise<void>
 
 async function run(): Promise<void> {
   const workDir = setupIsolatedWorkDir();
+  let stopWatchingMcpLog = () => {};
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -325,8 +327,7 @@ async function run(): Promise<void> {
       console.log(`Jetski info already exists at: ${jetskiInfoPath}`);
     }
 
-    process.env.MCP_LOG_DIR = targetDir;
-    const stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
+    stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
 
     const inputSelector = '[contenteditable="true"][role="textbox"]';
     const sendButtonSelector = '[data-tooltip-id="input-send-button-send-tooltip"]';
@@ -461,6 +462,7 @@ async function run(): Promise<void> {
     console.error("Error during execution:", err);
     process.exit(1);
   } finally {
+    stopWatchingMcpLog();
     killProcessOnPort(config.environment.jetskiDebugPort);
     cleanupIsolatedHome(path.dirname(workDir));
   }
