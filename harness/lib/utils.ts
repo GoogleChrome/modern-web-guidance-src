@@ -83,9 +83,10 @@ export function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): Gui
     const hasContent = parsed.content.trim().length > 0;
     
     if (hasFrontmatter) {
-      isStub = true;
       if (hasContent) {
         hasGuide = true;
+      } else {
+        isStub = true;
       }
     } else if (hasContent) {
       hasGuide = true;
@@ -102,8 +103,8 @@ export function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): Gui
     hasExpectations,
     expectationsEmpty: hasExpectations && expectationsContent.length === 0,
     hasNegativeDemo: fs.existsSync(path.join(dir, NEGATIVE_DEMO_FILE)),
-    hasGrader: fs.existsSync(path.join(dir, GRADER_FILE)),
-    hasPrompts: fs.existsSync(path.join(dir, PROMPTS_FILE)),
+    hasGrader: readFileSafe(path.join(dir, GRADER_FILE)).length > 0,
+    hasPrompts: readFileSafe(path.join(dir, PROMPTS_FILE)).length > 0,
     hasTask: taskMap.has(name),
   };
 }
