@@ -96,13 +96,7 @@ function validateGuide(filePath: string): ValidationResult {
   return { errors, data, body, filePath };
 }
 
-interface ProjectDetails {
-  projectId: string;
-  statusFieldId: string;
-  statusOptions: { id: string; name: string }[];
-}
-
-async function getProjectDetails(org: string, number: number): Promise<ProjectDetails | null> {
+async function getProjectDetails(org: string, number: number) {
   console.log(`Fetching project details for ${org} project #${number}...`);
   const query = `
     query($org: String!, $number: Int!) {
@@ -313,7 +307,7 @@ async function syncSingleUseCase(
     featureToIssueMap: Map<string, { number: number; priorityLabel: string | null }>;
     nameToIssueMap: Map<string, any>;
     subdirToIssueMap: Map<string, any>;
-    projectDetails: ProjectDetails | null;
+    projectDetails: any;
   }
 ): Promise<{ issueNumber?: number; hasError: boolean }> {
   let hasError = false;
