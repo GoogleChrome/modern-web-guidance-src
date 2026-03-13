@@ -21,7 +21,7 @@
     "build:megaskill": "node scripts/build-megaskill.ts",
     "start": "node mcp-server/index.ts",
     "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
-    "test": "node scripts/build-guides.ts && vitest run mcp-server/",
+    "test": "node scripts/build-guides.ts && vitest run mcp-server/ scripts/",
     "typecheck": "npm run build && tsc --noEmit"
   },
   "keywords": [],
