@@ -217,7 +217,7 @@ process.exit(result.status ?? 0);
         
         try {
           // Fire off the parallel execution!
-          await runCommand('pnpm', ['-r', 'run-agent'], runDir);
+          await runCommand('pnpm', ['-r', '--workspace-concurrency', '1', 'run-agent'], runDir);
           console.log(`✅ Completed Run ${runNumber} test executions`);
         } catch (error) {
           console.error(`❌ Failed during Run ${runNumber} test execution`, error);

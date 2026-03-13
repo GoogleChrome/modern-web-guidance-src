@@ -96,6 +96,66 @@ function setupIsolatedWorkDir(): string {
   return workDir;
 }
 
+/**
+ * Bypasses common setup dialogs like "Trust authors" and "Welcome wizard".
+ */
+async function bypassInitialDialogs(page: Page): Promise<void> {
+  console.log('Bypassing initial dialogs...');
+  
+  // 1. Handle "Trust the authors" dialog persistently
+  try {
+    console.log('Checking for Trust dialog...');
+    for (let i = 0; i < 5; i++) {
+      const buttons = await page.$$('.monaco-button, .monaco-text-button, button, a');
+      let found = false;
+      for (const btn of buttons) {
+        const text = await page.evaluate(el => (el as HTMLElement).innerText || (el as HTMLElement).textContent || '', btn);
+        if (text && text.includes('Yes, I trust the authors')) {
+          console.log(`Clicking Trust button (Attempt ${i + 1}): "${text.trim()}"`);
+          await (btn as any).click();
+          await sleep(3000);
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+      if (i < 4) await sleep(2000);
+    }
+  } catch (e: any) {
+    console.log('Trust dialog handling skipped or failed:', e.message);
+  }
+
+  // 2. Bypass "Welcome" slides / Wizard / Terms
+  try {
+    console.log('Checking for Welcome/Setup Wizard...');
+    for (let i = 0; i < 15; i++) {
+      const nextButton = await page.evaluateHandle(() => {
+        const buttons = Array.from(document.querySelectorAll('button, a.monaco-button, .monaco-text-button, [role="button"]'));
+        const targetTexts = ['Next', 'Get Started', 'Done', 'Accept', 'Continue', 'Skip', 'Trust'];
+        return buttons.find(b => {
+          const text = (b as HTMLElement).innerText || '';
+          return targetTexts.some(t => text.includes(t));
+        });
+      });
+
+      if (nextButton && (nextButton as any).asElement()) {
+        const text = await page.evaluate(el => (el as HTMLElement).innerText, nextButton as any);
+        console.log(`Clicking "${text?.trim()}" button (Attempt ${i + 1})...`);
+        await (nextButton as any).click();
+        await sleep(1500);
+      } else {
+        if (i === 0) console.log('No setup wizard buttons found.');
+        break;
+      }
+    }
+  } catch (e: any) {
+    console.log('Error bypassing Welcome Wizard:', e.message);
+  }
+  
+  console.log('UI stabilization wait...');
+  await sleep(3000);
+}
+
 async function extractJetskiVersionInfo(page: Page, outputPath: string): Promise<any> {
   try {
     // 1. Ensure the window is focused to receive keyboard events
@@ -112,7 +172,6 @@ async function extractJetskiVersionInfo(page: Page, outputPath: string): Promise
 
     // 3. Wait for the Quick Input widget to appear
     const paletteInput = '.quick-input-filter input';
-    await page.waitForSelector(paletteInput, { visible: true, timeout: 15000 });
 
     // 4. Type the command with a slight delay to ensure the UI stays in sync
     await page.type(paletteInput, 'Help: About', { delay: 50 });
@@ -241,6 +300,9 @@ async function run(): Promise<void> {
       throw new Error("Could not find the Jetski workbench window.");
     }
 
+    await page.bringToFront();
+    await bypassInitialDialogs(page);
+
     // Attempt to save Jetski info (only once per Test ID, effectively)
     // If we are in the results structure (results/<testID>/<runNumber>/...), go up to the testID folder.
     // Otherwise, just put it in the target directory.
@@ -270,9 +332,6 @@ async function run(): Promise<void> {
     const sendButtonSelector = '[data-tooltip-id="input-send-button-send-tooltip"]';
     const cancelButtonSelector = '[data-tooltip-id="input-send-button-cancel-tooltip"]';
     const agentPanelSelector = ':is(#chat, #conversation) #antigravity\\.agentSidePanelInputBox';
-    const optionSelector = 'div.flex.items-center.justify-between.cursor-pointer';
-
-    console.log(`Waiting for Agent Panel conversation box...`);
 
     let targetPanel: any = null;
     let targetInputBox: any = null;
@@ -301,51 +360,6 @@ async function run(): Promise<void> {
     if (!targetPanel) {
       throw new Error("Could not find Agent Panel conversation panel after 60 seconds.");
     }
-   
-    // Patch: Meant to select the second latest model to avoid any issues with the very latest model
-    try {
-      console.log("Attempting to select model...");
-      
-      const modelButton = await page.evaluateHandle(() => {
-        const candidates = Array.from(document.querySelectorAll('button, div[role="button"], div.flex.cursor-pointer'));
-        return candidates.find(el => {
-          const text = el.textContent || '';
-          return (text.includes('Gemini') || text.includes('Flash') || text.includes('Pro')) && text.length < 50;
-        });
-      });
-
-      if (modelButton) {
-        console.log("Found model trigger button, clicking...");
-        await (modelButton as any).click();
-        await sleep(2000); 
-
-        const options = await page.$$(optionSelector);
-        let selected = false;
-        for (const option of options) {
-          const text = await page.evaluate(el => el.textContent, option);
-          if (text && text.toLowerCase().includes('low')) {
-            console.log(`Selecting option: ${text.trim()}`);
-            await option.click();
-            await sleep(1000); 
-            selected = true;
-            break;
-          }
-        }
-        
-        if (!selected && options.length > 0) {
-          console.log("Could not find 'Low' model, selecting first available option.");
-          await options[0].click();
-          await sleep(500);
-        }
-
-        const afterText = await page.evaluate(el => el?.textContent, modelButton);
-        console.log(`Model selection completed. Selector button text: "${afterText?.trim()}"`);
-      } else {
-        console.log("Warning: Could not find model trigger button.");
-      }
-    } catch (e: any) {
-      console.log(`Warning: Model selection failed: ${e.message}`);
-    }
 
     console.log(`Typing prompt: "${userPrompt}"`);
     await targetInputBox.type(userPrompt);
@@ -359,10 +373,10 @@ async function run(): Promise<void> {
     }
 
     try {
-      await targetPanel.waitForSelector(cancelButtonSelector, { timeout: 2000 });
+      await targetPanel.waitForSelector(cancelButtonSelector, { timeout: 10000 });
       console.log("Agent started working...");
     } catch {
-      console.log("Warning: Cancel button didn't appear quickly.");
+      console.log("Warning: Cancel button didn't appear quickly. Agent might have finished very fast or failed to start.");
     }
 
     console.log("Waiting for agent to finish...");
@@ -378,6 +392,26 @@ async function run(): Promise<void> {
         console.log("Agent finished.");
         break;
       }
+
+      // Check for "Allow This Conversation" button and click it if it appears
+      try {
+        const allowButton = await page.evaluateHandle(() => {
+          const buttons = Array.from(document.querySelectorAll('button'));
+          return buttons.find(b => {
+             const t = b.innerText?.toLowerCase() || '';
+             return t.includes('allow this conversation') || t.includes('allow once');
+          });
+        });
+        
+        if (allowButton && (allowButton as any).asElement()) {
+          console.log("Found 'Allow' button, clicking...");
+          await (allowButton as any).click();
+          await sleep(1000);
+        }
+      } catch {
+        // Ignore errors in polling for allow button
+      }
+
       await sleep(1000);
     }
 
@@ -393,8 +427,9 @@ async function run(): Promise<void> {
       console.warn('Could not save chat log:', e.message);
     }
 
-    console.log("Closing Jetski...");
     // Close Jetski
+    console.log("Closing Jetski...");
+
     if (page) {
       // Cmd+Q
       await page.keyboard.down('Meta');
