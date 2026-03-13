@@ -81,6 +81,7 @@ const { positionals, values } = parseArgs({
     'gen-grader': { type: 'boolean' },
     'gen-negative': { type: 'boolean' },
     verbose: { type: 'boolean' },
+    features: { type: 'boolean' },
   },
   allowPositionals: true,
   strict: false,
@@ -145,6 +146,7 @@ ${cBold('Other:')}
 ${cBold('Options:')}
   ${cDim('-h, --help')}             Show this help
   ${cDim('--verbose')}              Show additional output
+  ${cDim('--features')}             (Audit) Group by features
     `);
     process.exit(0);
   }
@@ -195,7 +197,7 @@ ${cBold('Options:')}
 
     case 'audit': {
       const { auditGuides } = await import('../guides/dev-guide.ts');
-      auditGuides();
+      auditGuides({ groupByFeatures: !!values.features });
       break;
     }
 
