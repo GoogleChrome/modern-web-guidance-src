@@ -40,17 +40,14 @@ export const environmentConfig: EnvironmentConfig = {
   mcpApiKey: process.env.MCP_API_KEY || '', // For google-developer-knowledge MCP server
 };
 
-// **************************************
-// *** Set suite & eval configuration ***
-// *** Run with: `pnpm suite`         ***
-// **************************************
 export const suiteConfig: SuiteConfig = {
-  name: `full-${new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date())}`,
+  name: `full-${new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-')}`,
   numRuns: 2,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: false,
   agent: Agents.GEMINI_CLI,
+  negative: false, // When `true`, runs the suite on all tasks in `tasks/negative/`
 };
 
 export interface EnvironmentConfig {
@@ -73,6 +70,7 @@ export interface SuiteConfig {
   mcpServersToEnable: string[];
   enableSkills: boolean;
   agent: string;
+  negative: boolean;
 }
 
 export const config = {

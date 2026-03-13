@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll-Driven Animations: Shrinking Header on Scroll</title>
+  <style>
+    @layer reset, base, demo;
+
+    @layer demo {
+      @keyframes shrink {
+        to {
+          height: 50px;
+        }
+      }
+
+      header {
+        animation: shrink auto linear both;
+        animation-timeline: scroll(block root);
+        animation-range: 0px 200px;
+      }
+    }
+
+    @layer base {
+      html {
+        height: 400vh;
+      }
+
+      header {
+        position: fixed;
+        height: 200px;
+
+        top: 0;
+        left: 0;
+        right: 0;
+        place-content: center;
+        text-align: center;
+        border-bottom: 1px solid;
+      }
+
+      body {
+        padding-top: 200px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>HEADER</header>
+</body>
+</html>
