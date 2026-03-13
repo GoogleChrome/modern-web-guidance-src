@@ -24,7 +24,10 @@ export async function generateNegativeSuite() {
   const taskMap = getTaskMap();
   const allGuides = scanAllGuides(taskMap);
 
-  const evalReadyGuides = allGuides.filter(inv => classifyGuide(inv) === 'eval-ready');
+  const evalReadyGuides = allGuides.filter(inv => {
+    const status = classifyGuide(inv);
+    return status === 'needs-evals' || status === 'done';
+  });
 
   if (evalReadyGuides.length === 0) {
     console.log('No eval-ready guides found.');
