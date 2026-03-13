@@ -101,7 +101,14 @@ export function updateMcpConfig(
   apiKey: string,
   agent: string
 ): boolean {
-  const mcpConfig: { mcpServers: Record<string, any> } = { mcpServers: {} };
+  const mcpConfig: { mcpServers: Record<string, any>; security?: any } = { 
+    mcpServers: {},
+    security: {
+      folderTrust: {
+        enabled: false
+      }
+    }
+  };
 
   for (const serverName of serversToEnable) {
     if (serverName === 'modern-web') {

@@ -80,6 +80,14 @@ async function run() {
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
     process.env.MCP_LOG_DIR = targetDir;
+
+    // Setting `GEMINI_CLI_INTEGRATION_TEST = 'true'` triggers the following behaviors:
+    // * Sandbox Isolation: Uses randomized container names to prevent naming conflicts and forces the sandbox to run as the `root` user.
+    // * Bypass Folder Trust: Disables security "folder trust" checks to prevent blocking prompts for user consent during automation.
+    // * CI Mode Override: Prevents the CLI from automatically forcing headless mode when CI environment variables (like `GITHUB_ACTIONS`) are detected.
+    // * Predictable Test Environment: Ensures consistent behavior across the test suite by disabling environmental auto-detections that would otherwise interfere with the runner.
+    process.env.GEMINI_CLI_INTEGRATION_TEST = 'true';
+
     const stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
 
     const child = spawn(command, commandArgs, {
@@ -119,6 +127,13 @@ async function run() {
     const chatLogPath = path.join(targetDir, 'chat_log.txt');
     fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
     console.log(`Saved output to: ${chatLogPath}`);
+
+    // Save stderr to agent_stderr.log to surface unexpected problems
+    if (stderrData.length > 0) {
+      const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
+      fs.writeFileSync(stderrLogPath, stderrData, 'utf8');
+      console.log(`Saved stderr to: ${stderrLogPath}`);
+    }
 
     // Extract trajectory JSON from isolated home
     const tmpDir = path.join(path.dirname(workDir), '.gemini', 'tmp');
