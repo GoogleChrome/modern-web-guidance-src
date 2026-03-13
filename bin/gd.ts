@@ -41,7 +41,7 @@ function listGuideDirs(): string[] {
 const completion = omelette('gd <command> <arg1> <arg2>');
 
 completion.on('command', ({ reply }) => {
-  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'setup-completion']);
+  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'setup-completion', 'gen-negative-suite']);
 });
 
 completion.on('arg1', ({ before, reply }) => {
@@ -135,6 +135,9 @@ ${cBold('Evaluation:')}
   ${cCyan('eval')} [suite|tasks...]  Run the full evaluation suite, or specific tasks
   ${cCyan('dashboard')}              Start the evaluation dashboard
   ${cCyan('run')} <tmpl> <prompt>    Run an ad-hoc agent test against a template
+  ${cCyan('deploy')}                 Deploy the dashboard to GitHub Pages
+  ${cCyan('upload')} <suite>         Upload generated evaluation suite to GCS
+  ${cCyan('gen-negative-suite')}     Generate resources for negative suite
 
 ${cBold('Other:')}
   ${cCyan('setup-completion')}       Install shell auto-completion
@@ -228,6 +231,23 @@ ${cBold('Options:')}
       } else {
         await runSuite();
       }
+      break;
+    }
+
+    case 'upload': {
+      const args = positionals.slice(1);
+      const code = await runNpm(['upload', ...args]);
+      process.exit(code);
+    }
+
+    case 'deploy': {
+      const code = await runNpm(['deploy:dashboard']);
+      process.exit(code);
+    }
+
+    case 'gen-negative-suite': {
+      const { generateNegativeSuite } = await import('../guides/negative-suite-gen.ts');
+      await generateNegativeSuite();
       break;
     }
 

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legacy Accordion</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    .accordion-section {
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+    .header {
+      background: #eee;
+      padding: 10px;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      border: none;
+    }
+    .content {
+      padding: 10px;
+      display: none;
+    }
+    .content.active {
+      display: block;
+    }
+    .searchable-fail {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Product Documentation</h1>
+  <div class="accordion-section">
+    <button class="header">General Information</button>
+    <div class="content">
+      <p>This is the general information about our product.</p>
+    </div>
+  </div>
+  <div class="accordion-section">
+    <button class="header">Technical Details</button>
+    <div class="content">
+      <p>The system uses a custom architecture for processing data.</p>
+    </div>
+  </div>
+  <div class="accordion-section">
+    <button class="header">User Management</button>
+    <div class="content">
+      <p>Manage your users here.</p>
+      <div id="sensitive-token" hidden="until-found" style="display: none;">
+        ADMIN_TOKEN_9921_SECRET
+      </div>
+    </div>
+  </div>
+  <script>
+    const headers = document.querySelectorAll('.header');
+    headers.forEach(header => {
+      header.addEventListener('click', () => {
+        const content = header.nextElementSibling;
+        content.classList.toggle('active');
+      });
+    });
+  </script>
+</body>
+</html>

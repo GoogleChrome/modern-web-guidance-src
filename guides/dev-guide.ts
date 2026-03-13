@@ -29,8 +29,6 @@ const GRADER_FILE = 'grader.ts';
 const PROMPTS_FILE = 'prompts.md';
 const TASKS_DIR = path.join(rootDir, 'harness', 'tasks');
 
-
-
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
   test?: boolean;        // default: true — run agent test after calibration
@@ -72,7 +70,7 @@ function readFileSafe(filePath: string): string {
 /**
  * Builds a map of grader names to task information.
  */
-function getTaskMap(): Map<string, TaskInfo> {
+export function getTaskMap(): Map<string, TaskInfo> {
   const taskMap = new Map<string, TaskInfo>();
   if (!fs.existsSync(TASKS_DIR)) return taskMap;
 
@@ -135,7 +133,7 @@ function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): GuideInven
   };
 }
 
-function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
+export function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
   const guides: GuideInventory[] = [];
   const categories = fs.readdirSync(__dirname, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
@@ -361,6 +359,7 @@ The prompts should:
 - Vary in specificity: include vague developer requests and specific technical asks
 - Be phrased as a developer asking an AI for help with their existing web app. lowercase text, occasional typos, etc.
 - Not reference the guide itself or indicate that guidance exists
+- Don't reference the name of the base app.. a real developer wouldn't do that.
 - Each be on its own line, prefixed with "- "
 
 Only create the ${PROMPTS_FILE} file. Do not modify any other files.`;
@@ -618,7 +617,7 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
 
 type GuideStatus = 'needs-use-cases' | 'needs-guidance' | 'needs-evals' | 'done';
 
-function classifyGuide(inv: GuideInventory): GuideStatus {
+export function classifyGuide(inv: GuideInventory): GuideStatus {
   if (!inv.hasGuide && !inv.isStub) return 'needs-use-cases';
   if (!inv.hasGuide || !inv.hasDemo || !inv.hasExpectations || inv.expectationsEmpty) return 'needs-guidance';
   if (!inv.hasNegativeDemo || !inv.hasGrader || !inv.hasPrompts || !inv.hasTask) return 'needs-evals';
