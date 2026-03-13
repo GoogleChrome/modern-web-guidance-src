@@ -31,17 +31,28 @@ If a browser is available, navigate to the dashboard (usually `http://localhost:
 
 1.  **Identify Failure Mode**: Look at the grader results in the JSON or dashboard.
     -   `Locator: locator('img[src*="hero-lcp.jpg"]') ... Error: element(s) not found`
-2.  **Inspect Trajectories**: Check if the agent performed the right action but on the wrong file, or if it was confused by prompts.
-3.  **Check Prompt Context**: verify if `COMMON_APPEND_PROMPT` or task frontmatter is providing conflicting instructions.
+2.  **Inspect Trajectories**: check `trajectory.json` to see if tools were correctly discovered and if the agent attempted to use them.
+    -   *Crucial*: If `guideUsed` is false, verify if `tool_definitions` included the expected MCP tools.
+3.  **Check MCP Server Logs**: Look for `mcp-server.log` in the task directory.
+    -   If missing, the server likely never started or discovery was skipped.
+4.  **Verify Harness Implementation**: Check if the agent harness (e.g., `gemini-cli-agent.ts`) captures both `stdout` and `stderr`.
+    -   Discovery-time failures are often only visible in `stderr`.
+5.  **Audit CLI Trust Logic**: For Gemini CLI, check if `security.folderTrust.enabled` is blocking discovery.
+    -   Headless mode bypasses trust, but inconsistent flag parsing can lead to silent skips.
+6.  **Inspect Agent Implementation Choice**: Determine if the agent chose a fallback (e.g., JS instead of CSS) due to missing guidance.
 
 ## 3. Some Observed Patterns & Solutions
 
+-   **Missing MCP Tools (Silent Skip)**: GCLI skips MCP discovery in untrusted folders.
+    -   *Solution*: Disable `folderTrust` in the harness `settings.json` or set `GEMINI_CLI_INTEGRATION_TEST=true`.
 -   **Salient changes in new files**: The agent adds a new page (e.g., `rewards.html`) but the grader only checks `index.html`.
     -   *Solution*: Update task frontmatter with `target_file: rewards.html`.
--   **Conflicting Image Sourcing**: The prompt specifies a filename but a global "prefer stock photos" instruction causes the agent to use external URLs.
-    -   *Solution*: Remove conflicting global instructions and ensure grader locators are flexible or task prompts are specific.
+-   **Conflicting Image Sourcing**: The prompt specifies a filename but a global instruction causes the agent to use external URLs.
+    -   *Solution*: Remove conflicting global instructions.
 -   **Grader Locator Rigidity**: Graders use strict attribute checks that fail even on correct logical changes.
     -   *Solution*: Relax grader assertions or fix the agent's tool usage pattern.
+-   **JS Fallback for CSS Tasks**: Agent uses JS listeners instead of CSS scroll-driven animations because it lacks guidance on modern browser support.
+    -   *Solution*: Ensure MCP guidance tools are available and suggest the optimal tech stack.
 
 ## 4. Self-Improvement
 After completion of an investigation, **you MUST update this skill** if you discover a new failure pattern or a more efficient investigation technique... or if anything about the investigation process was difficult or resulted in dead-ends. Use a ‘skill-creator’ skill to make effective updates.
