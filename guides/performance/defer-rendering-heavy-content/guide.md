@@ -8,7 +8,7 @@ web-feature-ids:
 
 # Defer rendering heavy content
 
-Web pages with extensive content—such as infinite scrolls, complex dashboards, or dense articles—can suffer from slow initial rendering and sluggish interactions. Modern web technologies allow you to defer the rendering workload for content that is not immediately visible, significantly boosting performance without breaking accessibility or user expectations.
+Web pages with extensive content—such as infinite scrolls, complex dashboards, or dense articles can suffer from slow initial rendering and sluggish interactions. Modern web technologies allow you to defer the rendering workload for content that is not immediately visible, significantly boosting performance without breaking accessibility or user expectations.
 
 To optimize rendering, you can utilize the CSS `content-visibility` property and the HTML `hidden="until-found"` attribute. While both aid performance, they serve distinct use cases.
 
@@ -23,7 +23,12 @@ To optimize rendering, you can utilize the CSS `content-visibility` property and
 ## How to implement `content-visibility: auto`
 
 1. **Identify heavy sections:** Locate large, self-contained layout blocks that are initially off-screen (e.g., card items in an infinite feed).
-2. **Apply CSS:** Add `content-visibility: auto` and provide an estimated height or width using `contain-intrinsic-size`.
+2. **Apply CSS:** Add `content-visibility: auto` to each off-screen element.
+3. **Provide an estimated height or width:** Add `contain-intrinsic-size` to each off-screen element.
+
+### How to use `contain-intrinsic-size`
+
+The `contain-intrinsic-size` CSS shorthand property allows you to provide an estimated height and/or width for an element. This can be used to prevent layout shifts and visual glitches when the user scrolls to the element. The `auto` keyword can be paired with a length value for the browser to remember the size of the element when it is rendered and use the "remembered" size on the next render.
 
 ### Example code
 
@@ -33,7 +38,7 @@ To optimize rendering, you can utilize the CSS `content-visibility` property and
   content-visibility: auto;
   
   /* Mandatory: Provide an estimated height to prevent layouts shifts */
-  contain-intrinsic-size: 0px 500px; 
+  contain-intrinsic-size: auto none auto 500px; 
 }
 ```
 
@@ -116,7 +121,7 @@ When `content-visibility` is not supported it will be ignored by the browser. In
 ```
 
 ### `hidden="until-found"` fallback
-When `hidden="until-found` is not supported elements will remain hidden.Use feature detection targeting `onbeforematch` and extract or reveal content accordingly.
+When `hidden="until-found` is not supported elements will remain hidden. Use feature detection targeting `onbeforematch` and extract or reveal content accordingly.
 
 ```javascript
 if (!('onbeforematch' in HTMLElement.prototype)) {
