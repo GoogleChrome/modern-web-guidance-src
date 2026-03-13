@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fluid Sizing with @function</title>
+    <title>Reduce Style Repetition with @function</title>
     <style>
         /* Define the custom function */
         @function --fluid-size(--min-size, --max-size, --min-vw, --max-vw) {
@@ -65,9 +65,9 @@
 </head>
 <body>
     <div class="card">
-        <h1>Fluid Typography</h1>
+         <h1>Reduce Style Repetition</h1>
         <p>This text scales smoothly as the viewport expands from 320px to 1200px.</p>
-        <p>The calculation is encapsulated inside a custom <code>@function</code> called <code>--fluid-size</code>.</p>
+        <p>By encapsulating this complex fluid sizing logic inside a custom <code>@function</code> called <code>--fluid-size</code>, you reduce style repetition across your stylesheet.</p>
     </div>
 </body>
 </html>
