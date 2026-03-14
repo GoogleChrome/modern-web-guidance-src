@@ -48,7 +48,7 @@ jobs:
         uses: actions/create-github-app-token@v2
         id: app-token
         with:
-          client-id: Iv1.9e748a64d911b52d
+          app-id: ${{ vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
 
       - name: Run sync script
