@@ -3,6 +3,7 @@ name: pull-to-reveal
 description: Build a pull-to-reveal feature that would enable the user to pull down on the screen to reveal more content, like a search bar.
 web-feature-ids:
   - scroll-initial-target
+  - scroll-snap
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/scroll-initial-target
   - https://github.com/DavMila/explainer-scroll-initial-target
@@ -13,25 +14,27 @@ sources:
 
 # Pull to Reveal
 
-The CSS property `scroll-initial-target` offers a declarative, CSS-only way to bring a specific descendant element into the visible area of its scroll container as soon as that container is rendered. Previously, developers relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#content-id`) to hide a top search bar or refresh control on initial load, forcing the user to scroll up (pull down) to reveal it.
+"Pull to reveal" is a UI pattern where content (such as a search bar or refresh control) is hidden above the top of a scrollable area on initial load, and the user can pull down (scroll up) to reveal it. This pattern is commonly used in mobile apps and web apps for search bars, filters, and other secondary controls that should be accessible but not immediately visible.
+
+The CSS property `scroll-initial-target` offers a declarative, CSS-only way to implement this pattern. By setting `scroll-initial-target: nearest` on the main content element, the scroll container will render with the hidden content scrolled out of view. Previously, developers relied on JavaScript (`Element.scrollIntoView()`) or URL fragment identifiers (`#content-id`) to achieve this, both of which have limitations and are tricky to implement.
 
 ## How to Implement
 
-The `scroll-initial-target` property allows you to declaratively set which descendant element should be scrolled into view when a scroll container is first displayed.
+To implement a pull-to-reveal pattern:
 
-To implement this successfully:
-
-1.  **Define the Container:** The ancestor element must be a scroll container and can optionally add `scroll-snap-type`.
-2.  **Set Alignment (Required):** Apply `scroll-snap-align` (e.g., `start`) to the descendant elements. **Note:** If the descendant's alignment is `none` (the default), `scroll-initial-target` will not function because the browser has no reference point for positioning.
-3.  **Target the Item:** Apply `scroll-initial-target: nearest` to the specific descendant element you want to snap into view.
-4. **The "First-Wins" Rule:** If multiple elements within the same container specify `nearest`, the browser selects the one that appears first in the DOM tree order.
+1. **Ensure a scroll container:** The target element must be inside a scroll container (an element with overflow that allows scrolling, such as `overflow: auto`). This can be any ancestor element, including the root `<html>` element.
+2. **Define the hidden element:** Place the content you want to hide (e.g., a search bar) as the first descendant inside the scroll container. This element will be scrolled out of view on initial load.
+3. **Define the main content:** Place the main content element immediately after the hidden element. This is the element the user should see first.
+4. **Target the main content:** Apply `scroll-initial-target: nearest` to the main content element so the scroll container renders with it scrolled into view, hiding the element above it.
+5. **Add scroll snapping:** To ensure the hidden element is always either fully visible or fully hidden (and doesn't rest in a partially-scrolled state), add `scroll-snap-type: y mandatory` to the scroll container and `scroll-snap-align: start` to both the hidden element and the main content element.
 
 ## Example Code: Pull to Reveal Search
 
 ```css
-/**  
- * ANCESTOR: Define the scroll container and
- * enable snapping for subsequent user scrolls.
+/**
+ * ANCESTOR: Define the scroll container.
+ * Scroll snapping ensures the search bar is always
+ * either fully visible or fully hidden.
  */
 .scroll-container {
   height: 100vh;
@@ -39,29 +42,24 @@ To implement this successfully:
   scroll-snap-type: y mandatory;
 }
 
-/** 
- * DESCENDANTS: Both the search bar and the main content need snap alignment.
- * The main content aligns to start to serve as the initial target position
- * and to act as a valid snap point after scrolling.
- */
-.main-content {
-  scroll-snap-align: start;
-}
-
-/** 
- * TARGET: The item that should be visible on initial load.
- */
-.main-content.target {
-  scroll-initial-target: nearest;
-}
-
 /**
- * HIDDEN ELEMENT:
- * The element we want to hide on load (e.g., search bar)
+ * HIDDEN ELEMENT: The search bar hidden above the fold on load.
+ * It has scroll-snap-align so it snaps into place when pulled down.
  */
 .search-bar {
   height: 60px;
   scroll-snap-align: start;
+}
+
+/**
+ * MAIN CONTENT + TARGET: The element the user sees first.
+ * scroll-snap-align makes it a valid snap point.
+ * scroll-initial-target tells the browser to scroll here on
+ * initial render, hiding the search bar above it.
+ */
+.main-content {
+  scroll-snap-align: start;
+  scroll-initial-target: nearest;
 }
 ```
 
@@ -70,6 +68,7 @@ To implement this successfully:
 - **DO** use `scroll-initial-target: nearest` when you want to draw the user's attention to a specific part of a scrollable area upon load and intentionally hide peripheral UI units like a search bar at the very top.
 - **DO NOT** confuse this with accessibility focus. This property only moves the **visual** viewport; it does not move the keyboard focus. You must manually manage `element.focus()` if the target is intended to be the starting point for keyboard users.
 - **DO NOT** use this if you need a smooth "scrolling" animation on load; this property is discrete and sets the position instantly during the layout phase.
+- **DO NOT** set `scroll-initial-target` on multiple elements within the same scrollable container. If multiple elements specify `scroll-initial-target: nearest`, the browser selects the one that appears first in the DOM tree order.
 - **DO** account for the **Precedence Hierarchy**: A URL fragment (e.g., `example.com/#top`) and the container-level `scroll-start` property both take precedence over `scroll-initial-target`.
 
 ## Fallback Strategy
