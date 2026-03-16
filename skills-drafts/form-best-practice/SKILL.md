@@ -1,8 +1,6 @@
 name: form-best-practice
 description: Use this skill when creating any kind of form in HTML, including address forms, payment forms, sign-up forms, or sign-in forms.
 
-
-
 A `pattern` attribute **MUST** be provided when the format of data entered in a form field is constrained and must be validated.
 
 Every `<input>`, `<select>`, or `<textarea>` element in a form **MUST** be visually labeled using a `<label>` element.
