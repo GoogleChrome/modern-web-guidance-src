@@ -13,16 +13,40 @@ The primary goal of this stage is to translate a technical web platform feature 
 
 ## Manual research and discovery
 
-Use Deep Research in NotebookLM to discover sources and real-world implementations you might not be aware of. Focus on finding complex edge cases, performance implications, and emerging best practices. Deep Research is particularly effective at surfacing GitHub discussions, W3C specifications, and developer blog posts that highlight non-obvious constraints.
+Instead of relying on your (the agent's) general knowledge to come up with a proposed list of use cases yourself, suggest that the user use [Deep Research in NotebookLM](https://notebooklm.google.com/) to discover sources and real-world implementations they might not be aware of. This tool will help them find complex edge cases, performance implications, and emerging best practices.
 
-Here's an example prompt for NotebookLM with Deep Research:
+Here is an example process for using NotebookLM with Deep Research:
 
-> Thoroughly review the following resources for the `fetchLater()` API, as well as any additional resources you can find on the web, and identify the top 2-5 developer use cases for this API.
->
-> - https://developer.mozilla.org/en-US/docs/Web/API/Window/fetchLater
-> - https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Deferred_Fetch
-> - https://developer.chrome.com/blog/fetch-later-api-origin-trial
-> - https://github.com/WICG/pending-beacon/blob/main/docs/fetch-later-api.md
+**Step 1: Research the feature**
+
+Go to https://notebooklm.google.com/ and create a new notebook. In the configuration, select "Deep Research" and provide a prompt like the following:
+
+```markdown
+Thoroughly research the `fetchLater()` API using the following resources as a starting point and find additional high-quality information from W3C specifications, MDN, developer blogs, and GitHub discussions. Focus on technical constraints, performance implications, and real-world implementation challenges.
+
+- https://developer.mozilla.org/en-US/docs/Web/API/Window/fetchLater
+- https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Deferred_Fetch
+- https://developer.chrome.com/blog/fetch-later-api-origin-trial
+- https://github.com/WICG/pending-beacon/blob/main/docs/fetch-later-api.md
+```
+
+This seeds the model with known good resources and asks it to perform deep research to surface additional technical details, constraints, and discussions.
+
+**Step 2: Identify use cases**
+
+Once the model has a deep understanding of the feature, prompt it to identify the top use cases:
+
+```markdown
+Based on your research, identify 2-5 distinct developer use cases for the `fetchLater()` API.
+
+Follow these constraints for each use case:
+- **Succinct**: Provide a single-sentence description for each use case.
+- **Action-oriented**: Frame it as a task the developer wants to perform (e.g., "Ensure analytics data is sent reliably when a user navigates away").
+- **Outcome-focused**: Focus on the problem being solved, bridging the gap between what a developer wants to build and the technical solution.
+- **Distinct**: Each use case must represent a unique implementation pattern or a significant variation in application.
+```
+
+The user should manually review the proposed use cases for accuracy and completeness, and select the most relevant ones. Your job is to confirm that their selected use cases follow the constraints described in this skill.
 
 ## Identifying action-oriented tasks
 
