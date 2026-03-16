@@ -26,3 +26,6 @@ serving/.mcp-data/
 
 # Generated Skills (temporary. This can't be ignored when publishing the repo/skill)
 skills/modern-web/
+
+# team context repo
+project-gleam/

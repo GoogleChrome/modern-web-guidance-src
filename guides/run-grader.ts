@@ -1,17 +1,14 @@
-import { spawn } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import { fileURLToPath } from 'url';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { once } from 'node:events';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const cRed = (str: string) => `\x1b[31m${str}\x1b[0m`;
-const cGreen = (str: string) => `\x1b[32m${str}\x1b[0m`;
-const cYellow = (str: string) => `\x1b[33m${str}\x1b[0m`;
-const cCyan = (str: string) => `\x1b[36m${str}\x1b[0m`;
-const cBold = (str: string) => `\x1b[1m${str}\x1b[0m`;
+import { cRed, cGreen, cYellow, cCyan, cBold } from '../lib/colors.ts';
 
 export function findGrader(startDir: string): string | null {
   let currentDir = startDir;
@@ -34,22 +31,29 @@ export interface PlaywrightOptions {
   stdio?: 'inherit' | 'ignore' | 'pipe';
 }
 
-export function executePlaywright(opts: PlaywrightOptions) {
+export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
   const playwrightConfig = path.join(__dirname, 'playwright.config.ts');
   const reporterArgs = opts.reporters.length > 0 ? ['--reporter=' + opts.reporters.join(',')] : [];
-  
-  return spawn('pnpm', ['--silent', '--filter', 'guides', 'exec', 'playwright', 'test', '-c', playwrightConfig, opts.graderPath, ...reporterArgs], {
+
+  const env: NodeJS.ProcessEnv = { ...process.env, TARGET_FILE: opts.targetFileAbs };
+
+  if (opts.htmlOutputDir) {
+    env.PLAYWRIGHT_HTML_OUTPUT_DIR = opts.htmlOutputDir;
+  }
+
+  if (opts.jsonOutputName) {
+    env.PLAYWRIGHT_JSON_OUTPUT_NAME = opts.jsonOutputName;
+  }
+
+  const playwrightBin = path.join(__dirname, 'node_modules', '.bin', 'playwright');
+
+  return spawn(playwrightBin, ['test', '-c', playwrightConfig, opts.graderPath, ...reporterArgs], {
     stdio: opts.stdio || 'inherit',
-    env: {
-      ...process.env,
-      TARGET_FILE: opts.targetFileAbs,
-      ...(opts.htmlOutputDir ? { PLAYWRIGHT_HTML_OUTPUT_DIR: opts.htmlOutputDir } : {}),
-      ...(opts.jsonOutputName ? { PLAYWRIGHT_JSON_OUTPUT_NAME: opts.jsonOutputName } : {})
-    }
+    env
   });
 }
 
-async function gradeFile(targetFileAbs: string) {
+export async function gradeFile(targetFileAbs: string): Promise<void> {
   const graderPath = findGrader(path.dirname(targetFileAbs));
   if (!graderPath) {
     console.error('Error: Could not find grader.ts in any parent directory.');
@@ -59,7 +63,6 @@ async function gradeFile(targetFileAbs: string) {
   console.log(`Target File: ${targetFileAbs}`);
   console.log(`Grader: ${graderPath}`);
 
-  // Output the HTML report to a grade-report folder inside the target file's directory
   const outputDirPath = path.join(path.dirname(targetFileAbs), 'grade-report');
 
   const child = executePlaywright({
@@ -70,188 +73,207 @@ async function gradeFile(targetFileAbs: string) {
     stdio: 'inherit'
   });
 
-  return new Promise<void>((_resolve, _reject) => {
-    child.on('close', (code) => {
-      // Automatically show the report if tests completed or failed
-      console.log(`\nTests finished with code ${code}. Opening HTML report...`);
-      const showReportChild = spawn('pnpm', ['--filter', 'guides', 'exec', 'playwright', 'show-report', outputDirPath], {
-        stdio: 'inherit'
-      });
+  const [code] = await once(child, 'close');
 
-      showReportChild.on('close', () => {
-        process.exit(code || 0); // Keep original exit code
-      });
-    });
+  console.log(`\nTests finished with code ${code}. Opening HTML report...`);
+  const playwrightBin = path.join(__dirname, 'node_modules', '.bin', 'playwright');
+  const showReportChild = spawn(playwrightBin, ['show-report', outputDirPath], {
+    stdio: 'inherit'
   });
+
+  await once(showReportChild, 'close');
+  process.exit((code as number) || 0);
 }
 
-async function runPlaywright(targetFileAbs: string, graderPath: string, htmlOutputDir: string, stdio: 'inherit' | 'ignore' = 'inherit'): Promise<any> {
+export async function runPlaywright(
+  targetFileAbs: string,
+  graderPath: string,
+  htmlOutputDir: string,
+  stdio: 'inherit' | 'ignore' | 'pipe' = 'inherit'
+): Promise<any> {
   const tmpJson = path.join(os.tmpdir(), `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
-  
-  return new Promise((resolve, reject) => {
-    const child = executePlaywright({
-      targetFileAbs,
-      graderPath,
-      reporters: ['json', 'html'],
-      htmlOutputDir,
-      jsonOutputName: tmpJson,
-      stdio
-    });
 
-    child.on('close', () => {
-      if (!fs.existsSync(tmpJson)) {
-        reject(new Error(`Playwright did not produce a JSON report at ${tmpJson}`));
-        return;
-      }
-      try {
-        const json = JSON.parse(fs.readFileSync(tmpJson, 'utf-8'));
-        fs.promises.unlink(tmpJson).catch(() => {}); // cleanup silently
-        resolve(json);
-      } catch (err) {
-        reject(err);
-      }
-    });
-
-    child.on('error', reject);
+  const child = executePlaywright({
+    targetFileAbs,
+    graderPath,
+    reporters: ['json', 'html'],
+    htmlOutputDir,
+    jsonOutputName: tmpJson,
+    stdio
   });
+
+  await once(child, 'close');
+
+  const content = await fs.promises.readFile(tmpJson, 'utf-8').catch(() => null);
+  if (!content) {
+    throw new Error(`Playwright did not produce a JSON report at ${tmpJson}`);
+  }
+
+  await fs.promises.unlink(tmpJson).catch(() => {});
+  return JSON.parse(content);
 }
 
-function printFailingSpecs(suite: any, prefix = '') {
-  if (suite.specs) {
-    for (const spec of suite.specs) {
-      if (!spec.ok) { // meaning it failed/was unexpected
-        console.log(cRed(`  - Failed: ${prefix}${spec.title}`));
-      }
+export interface PlaywrightSuite {
+  title: string;
+  specs?: Array<{ title: string; ok: boolean }>;
+  suites?: PlaywrightSuite[];
+}
+
+function collectSpecs(suite: PlaywrightSuite, ok: boolean, prefix = ''): string[] {
+  const results: string[] = [];
+  for (const spec of suite.specs || []) {
+    if (spec.ok === ok) results.push(`${prefix}${spec.title}`);
+  }
+  for (const child of suite.suites || []) {
+    results.push(...collectSpecs(child, ok, `${prefix}${child.title} > `));
+  }
+  return results;
+}
+
+export function printFailingSpecs(suite: PlaywrightSuite, prefix = ''): void {
+  const specs = suite.specs || [];
+  for (const spec of specs) {
+    if (!spec.ok) {
+      console.log(cRed(`  - Failed: ${prefix}${spec.title}`));
     }
   }
-  if (suite.suites) {
-    for (const child of suite.suites) {
-      printFailingSpecs(child, `${prefix}${child.title} > `);
-    }
+
+  const childSuites = suite.suites || [];
+  for (const child of childSuites) {
+    printFailingSpecs(child, `${prefix}${child.title} > `);
   }
 }
 
-function printPassingSpecs(suite: any, prefix = '') {
-  if (suite.specs) {
-    for (const spec of suite.specs) {
-      if (spec.ok) {  // meaning it passed/was expected
-        console.log(cRed(`  - Passed (should have failed): ${prefix}${spec.title}`));
-      }
+export function printPassingSpecs(suite: PlaywrightSuite, prefix = ''): void {
+  const specs = suite.specs || [];
+  for (const spec of specs) {
+    if (spec.ok) {
+      console.log(cRed(`  - Passed (should have failed): ${prefix}${spec.title}`));
     }
   }
-  if (suite.suites) {
-    for (const child of suite.suites) {
-      printPassingSpecs(child, `${prefix}${child.title} > `);
-    }
+
+  const childSuites = suite.suites || [];
+  for (const child of childSuites) {
+    printPassingSpecs(child, `${prefix}${child.title} > `);
   }
 }
 
-export async function testGrader(targetDirAbs: string) {
+export interface CalibrationResult {
+  success: boolean;
+  demo: { passed: number; failed: number; failingTests: string[] };
+  negative: { passed: number; failed: number; passingTests: string[] };
+}
+
+export async function testGrader(targetDirRaw: string): Promise<CalibrationResult> {
+  const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
   const demoPath = path.join(targetDirAbs, 'demo.html');
   const negativePath = path.join(targetDirAbs, 'negative-demo.html');
   const graderPath = findGrader(targetDirAbs);
 
   if (!graderPath) {
-    console.error('Error: Could not find grader.ts in the directory or any parents.');
-    process.exit(1);
+    throw new Error('Could not find grader.ts in the directory or any parents.');
   }
   if (!fs.existsSync(demoPath)) {
-    console.error(`Error: Missing demo.html in ${targetDirAbs}`);
-    process.exit(1);
+    throw new Error(`Missing demo.html in ${targetDirAbs}`);
   }
   if (!fs.existsSync(negativePath)) {
-    console.error(`Error: Missing negative-demo.html in ${targetDirAbs}`);
-    process.exit(1);
+    throw new Error(`Missing negative-demo.html in ${targetDirAbs}`);
   }
 
-  let hasError = false;
+  const result: CalibrationResult = {
+    success: false,
+    demo: { passed: 0, failed: 0, failingTests: [] },
+    negative: { passed: 0, failed: 0, passingTests: [] },
+  };
+
   let demoFailed = false;
-  let negativeFailed = false;
 
-  const demoParams = {
-    file: demoPath,
-    outDir: path.join(targetDirAbs, 'grade-report', 'demo')
-  };
-  const negativeParams = {
-    file: negativePath,
-    outDir: path.join(targetDirAbs, 'grade-report', 'negative')
-  };
+  const demoOutDir = path.join(targetDirAbs, 'grade-report', 'demo');
+  const negativeOutDir = path.join(targetDirAbs, 'grade-report', 'negative');
 
-  // 1. Test against demo.html
+  // 1. Test against demo.html — all tests should pass
   console.log(cYellow(`\nRunning against demo.html... (Expecting 100% pass)`));
-  try {
-    const demoResults = await runPlaywright(demoParams.file, graderPath, demoParams.outDir, 'inherit');
+
+  const demoResults = await runPlaywright(demoPath, graderPath, demoOutDir, 'inherit')
+    .catch(err => {
+      console.error(cRed(`Failed to test demo.html: ${err.message}`));
+      return null;
+    });
+
+  if (!demoResults) {
+    demoFailed = true;
+  } else {
     const unexpected = demoResults.stats?.unexpected || 0;
     const expected = demoResults.stats?.expected || 0;
-    
+    result.demo.passed = expected;
+    result.demo.failed = unexpected;
+
     if (expected === 0 && unexpected === 0) {
-       console.log(cYellow(`⚠️  Warning: No tests were run for demo.html`));
-       hasError = true;
-       demoFailed = true;
-    }
-    
-    if (unexpected > 0) {
-      console.log(cRed(`❌ demo.html failed ${unexpected} tests!`));
-      demoResults.suites?.forEach((suite: any) => printFailingSpecs(suite));
-      hasError = true;
+      console.log(cYellow(`\u26a0\ufe0f  Warning: No tests were run for demo.html`));
       demoFailed = true;
-    } else if (expected > 0) {
-      console.log(cGreen(`✅ demo.html passed all ${expected} tests.`));
+    } else if (unexpected > 0) {
+      result.demo.failingTests = demoResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, false)) || [];
+      console.log(cRed(`\u274c demo.html failed ${unexpected} tests!`));
+      demoResults.suites?.forEach((suite: PlaywrightSuite) => printFailingSpecs(suite));
+      demoFailed = true;
+    } else {
+      console.log(cGreen(`\u2705 demo.html passed all ${expected} tests.`));
     }
-  } catch (err: any) {
-    console.error(cRed(`Failed to test demo.html: ${err.message}`));
-    hasError = true;
-    demoFailed = true;
   }
 
   console.log('');
 
-  if (hasError) {
+  if (demoFailed) {
     console.log(cYellow(`Skipping negative-demo.html run due to failures in demo.html`));
-  } else {
-    // 2. Test against negative-demo.html
-    console.log(cYellow(`Running against negative-demo.html... (Expecting 100% fail)`));
-    try {
-      const negativeResults = await runPlaywright(negativeParams.file, graderPath, negativeParams.outDir, 'ignore');
-      const expected = negativeResults.stats?.expected || 0; // "expected" means tests passed in Playwright (bad for us)
-      const unexpected = negativeResults.stats?.unexpected || 0; // "unexpected" means tests failed (good for us)
-      
-      if (expected > 0) {
-        console.log(cRed(`❌ negative-demo.html incorrectly passed ${expected} tests!`));
-        negativeResults.suites?.forEach((suite: any) => printPassingSpecs(suite));
-        hasError = true;
-        negativeFailed = true;
-      } else if (unexpected > 0) {
-        console.log(cGreen(`✅ negative-demo.html failed all ${unexpected} tests correctly.`));
-      } else {
-         console.log(cYellow(`⚠️  Warning: No tests were run for negative-demo.html`));
-         hasError = true;
-         negativeFailed = true;
-      }
-    } catch (err: any) {
+    return result;
+  }
+
+  // 2. Test against negative-demo.html — all tests should fail
+  console.log(cYellow(`Running against negative-demo.html... (Expecting 100% fail)`));
+
+  const negativeResults = await runPlaywright(negativePath, graderPath, negativeOutDir, 'ignore')
+    .catch(err => {
       console.error(cRed(`Failed to test negative-demo.html: ${err.message}`));
-      hasError = true;
-      negativeFailed = true;
+      return null;
+    });
+
+  if (!negativeResults) {
+    // Failed to run — result.success stays false
+  } else {
+    // In Playwright stats: "expected" = passed, "unexpected" = failed
+    const passed = negativeResults.stats?.expected || 0;
+    const failed = negativeResults.stats?.unexpected || 0;
+    result.negative.passed = passed;
+    result.negative.failed = failed;
+
+    if (passed === 0 && failed === 0) {
+      console.log(cYellow(`\u26a0\ufe0f  Warning: No tests were run for negative-demo.html`));
+    } else if (passed > 0) {
+      result.negative.passingTests = negativeResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
+      console.log(cRed(`\u274c negative-demo.html incorrectly passed ${passed} tests!`));
+      negativeResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
+    } else {
+      console.log(cGreen(`\u2705 negative-demo.html failed all ${failed} tests correctly.`));
+      result.success = true;
     }
   }
 
   console.log('');
-  if (hasError) {
+
+  if (result.success) {
+    console.log(cBold(cGreen(`Success! The grader is perfectly calibrated.`)));
+  } else {
     console.log(cBold(cRed(`Failed! The grader needs calibration.`)));
     if (demoFailed) {
-      console.log(`\nView demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(__dirname, demoParams.outDir)}`);
+      console.log(`\nView demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), demoOutDir)}`);
     }
-    if (negativeFailed) {
-      console.log(`\nView negative-demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(__dirname, negativeParams.outDir)}`);
-    }
-    process.exit(1);
-  } else {
-    console.log(cBold(cGreen(`Success! The grader is perfectly calibrated.`)));
-    process.exit(0);
+    console.log(`\nView negative-demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), negativeOutDir)}`);
   }
+
+  return result;
 }
 
-async function run() {
+async function run(): Promise<void> {
   const args = process.argv.slice(2);
   if (args.length === 0) {
     console.error('Usage: pnpm grade <path-to-html-file-or-guide-directory>');
@@ -268,10 +290,11 @@ async function run() {
 
   const stat = fs.statSync(targetPathAbs);
   if (stat.isDirectory()) {
-    console.log(cCyan(`🧪 Directory detected. Running calibration suite on the grader (demo.html & negative-demo.html)...`));
-    await testGrader(targetPathAbs);
+    console.log(cCyan(`\ud83e\uddea Directory detected. Running calibration suite on the grader (demo.html & negative-demo.html)...`));
+    const result = await testGrader(targetPathAbs);
+    process.exit(result.success ? 0 : 1);
   } else if (targetPathAbs.endsWith('.html')) {
-    console.log(cCyan(`📄 HTML file detected. Grading artifact and opening visual report...`));
+    console.log(cCyan(`\ud83d\udcc4 HTML file detected. Grading artifact and opening visual report...`));
     await gradeFile(targetPathAbs);
   } else {
     console.error(`Error: Expected a directory or an .html file.`);

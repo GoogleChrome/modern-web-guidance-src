@@ -13,7 +13,7 @@ test.describe('Eval View Dashboard', () => {
     await expect(page.locator('.tab-button[data-tab="trends"]')).toBeVisible();
 
     // Check suites content
-    await expect(page.locator('.suite-item-container').first()).toBeVisible();
+    await expect(page.locator('.suite-table-row').first()).toBeVisible();
   });
 
   test('should load suites from API', async ({ page }) => {
@@ -28,7 +28,7 @@ test.describe('Eval View Dashboard', () => {
   test('should navigate to explorer tab', async ({ page }) => {
     await page.goto('/');
     // Wait for data to be loaded (suites appear)
-    await expect(page.locator('.suite-item-container').first()).toBeVisible();
+    await expect(page.locator('.suite-table-row').first()).toBeVisible();
     
     await page.click('.tab-button[data-tab="explorer"]');
     
@@ -37,7 +37,7 @@ test.describe('Eval View Dashboard', () => {
   });
 
   test('should load specific test dashboard', async ({ page }) => {
-    await page.goto('/dashboard.html?testID=example-result');
+    await page.goto('/dashboard.html?testId=example-result');
 
     // Check title
     await expect(page.locator('h1')).toContainText('Suite Results');
@@ -57,7 +57,7 @@ test.describe('Eval View Dashboard', () => {
   });
 
   test('should show details and toggle diff view', async ({ page }) => {
-    await page.goto('/dashboard.html?testID=example-result');
+    await page.goto('/dashboard.html?testId=example-result');
 
     // Wait for cards and click the first one
     const firstCard = page.locator('.test-card').first();
@@ -67,10 +67,10 @@ test.describe('Eval View Dashboard', () => {
     const modal = page.locator('#modal');
     await expect(modal).toBeVisible();
 
-    // Verify "View Diff" button exists and click it
-    const diffButton = page.locator('button:has-text("View Diff")').first();
-    await expect(diffButton).toBeVisible();
-    await diffButton.click();
+    // Verify dropdown exists and select "Diff"
+    const dropdown = page.locator('.run-actions-dropdown').first();
+    await expect(dropdown).toBeVisible();
+    await dropdown.selectOption('diff');
 
     // Verify diff content is displayed
     // The title changes to "Diff: ..."
@@ -95,7 +95,7 @@ test.describe('Eval View Dashboard', () => {
   test('should block directory traversal attempts', async () => {
     // Try to access a file that is definitely outside the project root
     const res = await fetch(`http://localhost:11432/../../../../../../../../../../etc/passwd`);
-    // Both 403 and 404 are acceptable as they block access to the host system
-    expect([403, 404]).toContain(res.status);
+    // Both 403, 404, and 400 (if it hits remote fallbacks) are acceptable as they block access to the host system
+    expect([400, 403, 404]).toContain(res.status);
   });
 });

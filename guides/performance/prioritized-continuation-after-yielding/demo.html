@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prioritized Continuation After Yielding</title>
+  <style>
+    :root {
+      --bg-color: #121212;
+      --card-bg: #1e1e1e;
+      --text-color: #e0e0e0;
+      --accent-color: #4caf50;
+      --accent-jumper: #ff9800;
+      --primary-color: #2196f3;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      color: var(--primary-color);
+      margin-bottom: 10px;
+    }
+
+    p.description {
+      max-width: 600px;
+      text-align: center;
+      margin-bottom: 20px;
+      color: #aaa;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      background-color: #333;
+      color: white;
+      border: 1px solid #444;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #444;
+    }
+
+    button.active {
+      border-color: var(--primary-color);
+    }
+
+    #btn-setTimeout {
+      border-color: #ffc107;
+    }
+
+    #btn-setTimeout:hover {
+      background-color: rgba(255, 193, 7, 0.1);
+    }
+
+    #btn-scheduler {
+      border-color: #4caf50;
+    }
+
+    #btn-scheduler:hover {
+      background-color: rgba(76, 175, 80, 0.1);
+    }
+
+    #btn-jumper {
+      border-color: #ff5722;
+    }
+
+    #btn-jumper:hover {
+      background-color: rgba(255, 87, 34, 0.1);
+    }
+
+    .viz-container {
+      display: flex;
+      gap: 40px;
+      align-items: center;
+      margin-bottom: 20px;
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .spinner-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #333;
+      border-top: 5px solid var(--primary-color);
+      border-radius: 50%;
+      /* Animation driven by JS for accurate blocking representation */
+    }
+
+    .log-container {
+      width: 100%;
+      max-width: 800px;
+      min-height: 400px;
+      background-color: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 4px;
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 10px;
+      box-sizing: border-box;
+      font-family: monospace;
+    }
+
+    .log-entry {
+      margin: 4px 0;
+      padding: 2px 5px;
+      border-left: 3px solid #666;
+    }
+
+    .log-entry.task {
+      border-color: var(--primary-color);
+    }
+
+    .log-entry.jumper {
+      border-color: #ff5722;
+      color: #ffab91;
+    }
+
+    .log-entry.system {
+      border-color: #9c27b0;
+      color: #e1bee7;
+    }
+
+    .status {
+      margin-top: 10px;
+      font-size: 0.9em;
+      color: #888;
+    }
+
+    .instructions {
+      background: var(--card-bg);
+      padding: 15px 20px;
+      border-radius: 8px;
+      max-width: 600px;
+      margin: 10px auto 20px auto;
+      border-left: 4px solid var(--primary-color);
+      text-align: left;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .instructions h3 {
+      margin-top: 0;
+      color: var(--primary-color);
+      font-size: 1.1em;
+    }
+
+    .instructions ol {
+      padding-left: 20px;
+      margin-bottom: 0;
+    }
+
+    .instructions li {
+      margin-bottom: 8px;
+      font-size: 0.95em;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Prioritized Continuation vs Queue Jumping</h1>
+
+  <p class="description">
+    This demo compares yielding with <code>setTimeout(..., 0)</code> and <code>scheduler.yield()</code>.
+    <code>scheduler.yield()</code> prioritizes the task's continuation over starting other tasks, preventing "Queue
+    Jumping" by background or 3rd party scripts.
+  </p>
+
+  <div class="instructions">
+    <h3>Simulating Queue Jumping vs Prioritized Continuation:</h3>
+    <ol>
+      <li>Click <strong>1. Schedule "Queue Jumper" Task</strong> (Arms the jumper task to compete during the next run).
+      </li>
+      <li>Click <strong>2a. Run with setTimeout()</strong>.
+        <br>👉 <em>Check Log:</em> The Jumper runs <strong>between</strong> Task Parts (Interleaving/Queue Jumping).
+      </li>
+      <li>Click <strong>Clear Log</strong>.</li>
+      <li>Click <strong>1. Schedule "Queue Jumper" Task</strong> again.</li>
+      <li>Click <strong>2b. Run with scheduler.yield()</strong>.
+        <br>👉 <em>Check Log:</em> Main task completes fully <strong>before</strong> Jumper runs (Prioritization).
+      </li>
+    </ol>
+  </div>
+
+  <div class="viz-container">
+    <div class="spinner-box">
+      <div id="spinner"></div>
+      <span>Main Thread Viz</span>
+    </div>
+    <div>
+      <div id="status-text">Ready</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="btn-jumper" onclick="scheduleJumper()">1. Schedule "Queue Jumper" Task</button>
+    <button id="btn-setTimeout" onclick="runTask('setTimeout')">2a. Run with setTimeout()</button>
+    <button id="btn-scheduler" onclick="runTask('scheduler')">2b. Run with scheduler.yield()</button>
+    <button onclick="clearLog()">Clear Log</button>
+  </div>
+
+  <div class="log-container" id="log"></div>
+
+  <script>
+    const spinner = document.getElementById('spinner');
+    const logContainer = document.getElementById('log');
+    const statusText = document.getElementById('status-text');
+
+    let rotation = 0;
+    let animationFrameId;
+    let jumperScheduled = false;
+
+    // JS Driven Animation to accurately show main thread blocking
+    function animate() {
+      rotation = (rotation + 6) % 360;
+      spinner.style.transform = `rotate(${rotation}deg)`;
+      animationFrameId = requestAnimationFrame(animate);
+    }
+    animate();
+
+    function log(message, type = 'task') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      const time = new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 }).split(' ')[0];
+      entry.textContent = `[${time}] ${message}`;
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function clearLog() {
+      logContainer.innerHTML = '';
+      log('Log cleared', 'system');
+    }
+
+    // Simulates independent background work (e.g., analytics, ads)
+    function scheduleJumper() {
+      jumperScheduled = true;
+      statusText.textContent = 'Jumper Task Armed (Will compete on Run)';
+      log('Queue Jumper Armed. Click "Run" to test.', 'jumper');
+    }
+
+    // Helper to hog the CPU
+    function heavyMath(ms) {
+      const start = performance.now();
+      while (performance.now() - start < ms) {
+        Math.sqrt(Math.random() * Math.random());
+      }
+    }
+
+    async function runTask(strategy) {
+      statusText.textContent = `Running task with ${strategy}...`;
+      log(`--- Starting Task (Strategy: ${strategy}) ---`, 'system');
+
+      if (jumperScheduled) {
+        log('Queuing "Queue Jumper" task into event loop...', 'system');
+        setTimeout(() => {
+          log('🚀 CRITICAL: Jumper task executing...', 'jumper');
+          heavyMath(1000); // Takes ~1000ms
+          log('Jumper task finished.', 'jumper');
+          jumperScheduled = false;
+        }, 0);
+      }
+
+      for (let i = 1; i <= 3; i++) {
+        log(`Task Part ${i}: Starting heavy calculation...`);
+        heavyMath(2000); // 2000ms sync task (Long Task)
+        log(`Task Part ${i}: Done.`);
+
+        if (i < 3) {
+          log(`Yielding with ${strategy}...`, 'system');
+          if (strategy === 'scheduler' && window.scheduler && window.scheduler.yield) {
+            try {
+              await scheduler.yield();
+            } catch (e) {
+              log(`scheduler.yield failed: ${e.message}`, 'system');
+              await fallbackYield();
+            }
+          } else if (strategy === 'scheduler') {
+            log('scheduler.yield not supported, falling back', 'system');
+            await fallbackYield();
+          } else {
+            await fallbackYield();
+          }
+        }
+      }
+
+      statusText.textContent = 'Task Finished';
+      log(`--- Task Finished ---`, 'system');
+    }
+
+    function fallbackYield() {
+      return new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    log('Demo loaded. Toggle buttons to test.', 'system');
+    if (!window.scheduler || !window.scheduler.yield) {
+      log('WARNING: scheduler.yield is not supported in this browser. "scheduler" button will fall back to setTimeout.', 'jumper');
+    }
+  </script>
+
+</body>
+
+</html>

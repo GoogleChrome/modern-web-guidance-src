@@ -1,37 +1,47 @@
-import { getRunStats, getColor, escapeHtml, capitalize } from './utils.js';
+import { getRunStats, getColor, escapeHtml, capitalize, initGoogleAuth, authenticatedFetch, getAccessToken } from './utils.js';
 
-let allTestData = {}; // Cache all test data by testID
+let allTestData = {}; // Cache all test data by testId
 let currentTab = 'suites';
 let currentScenarioFilter = 'all';
 let selectedTestIds = new Set(); // Set of test IDs to show
-let isLocalServer = false;
-
+let currentSourceFilter = 'all';
+let currentAgentFilter = 'all';
+let currentSkillsFilter = 'all';
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        await loadAllTests();
-
         // Initialize UI
         setupTabs();
         setupFilters();
         setupTestFilters(); // New filter setup
+        setupTableFilters();
 
         const params = new URLSearchParams(window.location.search);
+        
+        // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
+        initGoogleAuth(async () => {
+             await loadRemoteTests();
+        });
 
-        // Handle 'tests' param - if present, filter selectedTestIds
-        const testsParam = params.get('tests');
-        if (testsParam) {
-            const requestedIds = new Set(testsParam.split(','));
-            // Only keep IDs that actually exist
-            selectedTestIds = new Set(
-                [...requestedIds].filter(id => allTestData[id])
-            );
-            // If none of the requested IDs exist, fallback to all?
-            // Better to show none or empty state if user requested specific ones that don't exist?
-            // Let's stick to what we found.
-        } else {
-            // Default: Select All
-            selectedTestIds = new Set(Object.keys(allTestData));
+        await loadLocalTests();
+        if (getAccessToken()) {
+             await loadRemoteTests();
+        }
+
+        // Initialize with default states relative to compoundKeys instead of simple testIDs
+        selectedTestIds = new Set(Object.keys(allTestData));
+
+        let initialTests = params.get('tests');
+        if (initialTests && initialTests.trim() !== '') {
+            const requestedIds = initialTests.split(',').filter(id => id.trim() !== '');
+            const matchIds = new Set();
+            requestedIds.forEach(req => {
+                if (allTestData[req]) { matchIds.add(req); }
+            });
+
+            if (matchIds.size > 0) {
+                selectedTestIds = matchIds;
+            }
         }
 
         // Update filter UI to match initial state
@@ -61,16 +71,17 @@ window.addEventListener('popstate', () => {
         activateTab(view, false);
     }
 
-    // Also handle tests param update on popstate if needed
-    // Ideally we re-init selectedTestIds but that might be heavy?
-    // Let's just reload for now if tests param changes drastically, or re-render.
-    // For simplicity, we can reload or just re-read params.
+    selectedTestIds = new Set(Object.keys(allTestData)); // Default to all
     const testsParam = params.get('tests');
-    if (testsParam) {
-        const requestedIds = new Set(testsParam.split(','));
-        selectedTestIds = new Set([...requestedIds].filter(id => allTestData[id]));
-    } else {
-        selectedTestIds = new Set(Object.keys(allTestData));
+    if (testsParam && testsParam.trim() !== '') {
+        const requestedIds = testsParam.split(',').filter(id => id.trim() !== '');
+        const matchIds = new Set();
+        requestedIds.forEach(req => {
+            if (allTestData[req]) { matchIds.add(req); }
+        });
+        if (matchIds.size > 0) {
+            selectedTestIds = matchIds;
+        }
     }
     renderFilterMenuItems();
     renderAll();
@@ -139,6 +150,12 @@ function setupTestFilters() {
     const filterMenu = document.getElementById('filter-menu');
     const selectAllBtn = document.getElementById('select-all-btn');
     const deselectAllBtn = document.getElementById('deselect-all-btn');
+    const list = document.getElementById('filter-list');
+    const searchInput = document.getElementById('filter-search');
+
+    // Make list scrollable
+    list.style.maxHeight = '300px';
+    list.style.overflowY = 'auto';
 
     // Toggle Menu
     filterBtn.addEventListener('click', (e) => {
@@ -168,31 +185,54 @@ function setupTestFilters() {
         renderFilterMenuItems();
         renderAll();
     });
+
+    // Search functionality
+    searchInput.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        const items = list.querySelectorAll('.filter-item');
+        items.forEach(item => {
+            const label = item.querySelector('.filter-item-label').textContent.toLowerCase();
+            item.style.display = label.includes(term) ? 'flex' : 'none';
+        });
+    });
+
+    renderFilterMenuItems();
 }
+
+function setupTableFilters() {
+    const filterSource = document.getElementById('filter-source');
+    const filterAgent = document.getElementById('filter-agent');
+    const filterSkills = document.getElementById('filter-skills');
+
+    if (filterSource) filterSource.addEventListener('change', (e) => { currentSourceFilter = e.target.value; renderSuites(); });
+    if (filterAgent) filterAgent.addEventListener('change', (e) => { currentAgentFilter = e.target.value; renderSuites(); });
+    if (filterSkills) filterSkills.addEventListener('change', (e) => { currentSkillsFilter = e.target.value; renderSuites(); });
+}
+
 
 function renderFilterMenuItems() {
     const list = document.getElementById('filter-list');
     list.innerHTML = '';
 
     // Get all tests sorted by date
-    const allIds = Object.keys(allTestData).sort((a, b) => {
+    const sortedIds = Object.keys(allTestData).sort((a, b) => {
         return new Date(allTestData[b].timestamp) - new Date(allTestData[a].timestamp);
     });
 
-    allIds.forEach(testID => {
+    sortedIds.forEach(compoundKey => {
         const item = document.createElement('label');
         item.className = 'filter-item';
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.checked = selectedTestIds.has(testID);
-        checkbox.value = testID;
+        checkbox.checked = selectedTestIds.has(compoundKey);
+        checkbox.value = compoundKey;
 
         checkbox.addEventListener('change', (e) => {
             if (e.target.checked) {
-                selectedTestIds.add(testID);
+                selectedTestIds.add(compoundKey);
             } else {
-                selectedTestIds.delete(testID);
+                selectedTestIds.delete(compoundKey);
             }
             updateUrlParams();
             renderAll();
@@ -201,12 +241,22 @@ function renderFilterMenuItems() {
         const labelContent = document.createElement('div');
         labelContent.className = 'filter-item-label';
 
+        const testInfo = allTestData[compoundKey];
+
         const idSpan = document.createElement('span');
-        idSpan.textContent = testID.replace('test_', '');
+        idSpan.textContent = testInfo.testId.replace('test_', '') + ` (${testInfo.source})`;
 
         const dateSpan = document.createElement('span');
         dateSpan.className = 'filter-item-date';
-        dateSpan.textContent = new Date(allTestData[testID].timestamp).toLocaleString();
+
+        const _d = new Date(testInfo.timestamp);
+        dateSpan.textContent = _d.toLocaleString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        }).replace(' at ', ', ');
 
         labelContent.appendChild(idSpan);
         labelContent.appendChild(dateSpan);
@@ -238,41 +288,100 @@ function renderAll() {
     renderTrends();
 }
 
-async function loadAllTests() {
+async function loadLocalTests() {
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        return; // Avoid 404s by skipping local network fetches when hosted on Github Pages
+    }
+    
     try {
         const response = await fetch(`/api/suites?t=${Date.now()}`);
-        if (!response.ok) throw new Error('Failed to fetch suites');
+        if (!response.ok) return; // Silent fail for local if we are on gh-pages
         const manifest = await response.json();
 
-        isLocalServer = manifest.isLocal || false;
-
-        if (!manifest.suites || manifest.suites.length === 0) {
-            document.getElementById('empty-state').style.display = 'block';
-            return;
+        if (manifest.suites && manifest.suites.length > 0) {
+            document.getElementById('empty-state').style.display = 'none';
         }
 
-        document.getElementById('empty-state').style.display = 'none';
-
-        // Load all test data
-        for (const testID of manifest.suites) {
+        // Load local test data
+        for (const suite of manifest.suites) {
+            if (suite.source !== 'local') continue;
+            
+            const testId = suite.id;
             try {
-                const response = await fetch(`results/${testID}/evals.json?t=${Date.now()}`);
+                const response = await fetch(`${testId}/evals.json?source=local&t=${Date.now()}`);
                 if (response.ok) {
                     const parsed = await response.json();
-                    allTestData[testID] = {
-                        timestamp: parsed.timestamp || new Date().toISOString(), // Fallback
-                        data: parsed
-                    };
+                    registerTestData(testId, 'local', parsed);
                 }
             } catch (e) {
-                console.warn(`Failed to load test ${testID}:`, e);
+                console.warn(`Failed to load local test ${testId}:`, e);
             }
         }
-    } catch (error) {
-        console.warn('Error loading suites:', error);
-        document.getElementById('empty-state').style.display = 'block';
-        throw error;
+    } catch {
+        console.warn('Local proxy not available');
     }
+}
+
+async function loadRemoteTests() {
+    try {
+        // Fetch from GCS JSON API directly instead of our node proxy
+        const response = await authenticatedFetch(`https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/`);
+        if (!response.ok) throw new Error('Failed to fetch remote suites');
+        
+        const data = await response.json();
+        const prefixes = data.prefixes || [];
+        
+        if (prefixes.length > 0) {
+             document.getElementById('empty-state').style.display = 'none';
+        }
+
+        // Load remote test data
+        for (const prefix of prefixes) {
+            const testId = prefix.slice(0, -1); // Remove trailing slash
+            
+            try {
+                const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(prefix + 'evals.json')}?alt=media`;
+                
+                const response = await authenticatedFetch(fileUrl);
+                if (response.ok) {
+                    const parsed = await response.json();
+                    registerTestData(testId, 'remote', parsed);
+                }
+            } catch (e) {
+                console.warn(`Failed to load remote test ${testId}:`, e);
+            }
+        }
+        
+        // Re-render UI now that we have remote data
+        const params = new URLSearchParams(window.location.search);
+        let initialTests = params.get('tests');
+        if (!initialTests || initialTests.trim() === '') {
+            selectedTestIds = new Set(Object.keys(allTestData));
+        }
+        renderFilterMenuItems();
+        renderAll();
+
+    } catch (error) {
+        console.error('Error loading remote suites:', error);
+    }
+}
+
+function registerTestData(testId, source, parsed) {
+    let servingArch = 'unknown';
+    if (parsed.enableSkills !== undefined) {
+        servingArch = parsed.enableSkills ? 'skills' : 'mcp';
+    }
+
+    const compoundKey = `${testId}|||${source}`;
+
+    allTestData[compoundKey] = {
+        testId: testId,
+        timestamp: parsed.timestamp || new Date().toISOString(), // Fallback
+        data: parsed,
+        source: source,
+        agent: parsed.agent || 'unknown',
+        servingArch: servingArch
+    };
 }
 
 // ==========================================
@@ -285,13 +394,28 @@ function renderSuites() {
 
     const container = document.getElementById('suites-list');
 
-    container.innerHTML = testIds.map(testID => {
-        const testInfo = allTestData[testID];
+    let html = '';
+
+    testIds.forEach(compoundKey => {
+        const testInfo = allTestData[compoundKey];
+        const testId = testInfo.testId;
+
+        // Apply filters
+        if (currentSourceFilter !== 'all' && testInfo.source !== currentSourceFilter) return;
+        if (currentAgentFilter !== 'all' && testInfo.agent !== currentAgentFilter) return;
+        if (currentSkillsFilter !== 'all' && testInfo.servingArch !== currentSkillsFilter) return;
+
         const data = testInfo.data;
         const _date = new Date(testInfo.timestamp);
 
-        // Custom format to add time into the label:
-        const prettyTimestampStr = `${_date.toLocaleDateString()} at ${_date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        // Custom format to match "March 5, 2:25PM"
+        const prettyTimestampStr = _date.toLocaleString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        }).replace(' at ', ', ');
 
         const gStats = calculateGroupTotalStats(data.results, 'guided');
         const uStats = calculateGroupTotalStats(data.results, 'unguided');
@@ -299,35 +423,22 @@ function renderSuites() {
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
 
-        const gcpLink = `https://console.cloud.google.com/storage/browser/guidance-evals/${testID}?project=chrome-kiwi-air-force-dev`;
-        const localLink = `dashboard.html?testID=${testID}`;
+        const localLink = `dashboard.html?testId=${testId}&source=${testInfo.source}`;
 
-        const gcpButtonHtml = !isLocalServer ?
-            `<button onclick="event.stopPropagation(); window.open('${gcpLink}', '_blank');" class="secondary-btn" style="font-size: 0.8rem; padding: 6px 10px;">View Result Artifacts</button>` : '';
-
-        return `
-            <div onclick="window.location.href='${localLink}'" class="suite-item-container" style="cursor: pointer; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--primary-color)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='none';">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-                    <div style="flex: 1; min-width: 250px;">
-                        <h3 style="margin: 0; font-size: 1.25rem; color: var(--text-primary); pointer-events: none;">${testID}</h3>
-                        <div style="font-size: 0.85rem; color: var(--text-tertiary); margin-top: 4px; pointer-events: none;">${prettyTimestampStr}</div>
-                    </div>
-
-                    <div style="display: flex; gap: 32px; align-items: center; justify-content: flex-end;">
-                        <div style="text-align: right;">
-                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px;">Guided Pass Rate</div>
-                            <div style="font-size: 2rem; font-weight: 700; color: ${getColor(gRate)};">${gRate}%</div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px;">Unguided Pass Rate</div>
-                            <div style="font-size: 2rem; font-weight: 700; color: ${getColor(uRate)};">${uRate}%</div>
-                        </div>
-                        ${!isLocalServer ? `<div style="margin-left: 16px;">${gcpButtonHtml}</div>` : ''}
-                    </div>
-                </div>
-            </div>
+        html += `
+            <tr class="suite-table-row" onclick="window.location.href='${localLink}'" style="cursor: pointer;">
+                <td style="padding-left:15px; text-align: left; font-weight: 600;">${testId}</td>
+                <td style="text-transform: capitalize;">${testInfo.source}</td>
+                <td>${testInfo.agent}</td>
+                <td style="text-transform: capitalize;">${testInfo.servingArch.replace('mcp', 'MCP')}</td>
+                <td><span style="font-weight: 700; color: ${getColor(gRate)};">${gRate}%</span></td>
+                <td><span style="font-weight: 700; color: ${getColor(uRate)};">${uRate}%</span></td>
+                <td style="padding-right:15px; text-align: right; color: var(--text-tertiary); font-size: 0.85rem;">${prettyTimestampStr}</td>
+            </tr>
         `;
-    }).join('');
+    });
+
+    container.innerHTML = html;
 }
 
 
@@ -400,8 +511,8 @@ function renderGridRow(testName) {
     const cellsHtml = [];
     let hasData = false;
 
-    testIds.forEach(testID => {
-        const data = allTestData[testID].data;
+    testIds.forEach(compoundTestId => {
+        const data = allTestData[compoundTestId].data;
         const results = data.results;
 
         const runData = results[testName];
@@ -420,11 +531,14 @@ function renderGridRow(testName) {
 
             const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
 
+            const testId = allTestData[compoundTestId].testId;
+            const source = allTestData[compoundTestId].source;
+            const dateStr = new Date(allTestData[compoundTestId].timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
             cellsHtml.push(`
                 <a class="test-grid-cell"
-                     href="dashboard.html?testID=${testID}"
+                     href="dashboard.html?testId=${testId}&source=${source}"
                      style="background-color: ${getColor(avgRate)}"
-                     title="${testID} - ${new Date(allTestData[testID].timestamp).toLocaleDateString()}: ${avgRate}% (${totalPassed}/${totalChecks})">
+                     title="${testId} - ${dateStr}: ${avgRate}% (${totalPassed}/${totalChecks})">
                     ${avgRate}%
                 </a>
             `);
@@ -448,8 +562,8 @@ function renderComparisonHistory(scenario, prompt) {
     // Gather all checks from BOTH agents for this prompt
     agents.forEach(agent => {
         const testName = `${scenario} - ${prompt} - ${agent}`;
-        testIds.forEach(testID => {
-            const data = allTestData[testID].data;
+        testIds.forEach(compoundTestId => {
+            const data = allTestData[compoundTestId].data;
             const results = data.results;
             if (results && results[testName]) {
                 results[testName].forEach(run => {
@@ -493,11 +607,13 @@ function renderComparisonHistory(scenario, prompt) {
 
             // Generate sparklines for this check/agent
             let sparklinesHtml = '';
-            testIds.forEach(testID => {
-                const data = allTestData[testID].data;
+            testIds.forEach(compoundTestId => {
+                const data = allTestData[compoundTestId].data;
                 const results = data.results;
 
                 let hasRuns = false;
+                const testId = allTestData[compoundTestId].testId;
+                const source = allTestData[compoundTestId].source;
 
                 if (results && results[testName]) {
                     const runs = results[testName];
@@ -507,12 +623,12 @@ function renderComparisonHistory(scenario, prompt) {
                         // logic in evaluate.js suggests they are pushed in runDirs sort order (ascending)
                         [...runs].reverse().forEach(run => {
                             let status = 'missing';
-                            let tooltip = `Test ${testID.replace('test_', '')} (Run ${run.runNumber}): Not Run`;
+                            let tooltip = `Test ${testId.replace('test_', '')} (Run ${run.runNumber}): Not Run`;
 
                             const check = run.results.find(c => c.id === checkId);
                             if (check) {
                                 status = check.passed ? 'pass' : 'fail';
-                                tooltip = `Test ${testID.replace('test_', '')} (Run ${run.runNumber}): ${check.passed ? 'PASS' : 'FAIL'}\n${check.message}`;
+                                tooltip = `Test ${testId.replace('test_', '')} (Run ${run.runNumber}): ${check.passed ? 'PASS' : 'FAIL'}\\n${check.message}`;
                             }
 
                             let color = 'var(--bg-tertiary)';
@@ -524,8 +640,8 @@ function renderComparisonHistory(scenario, prompt) {
                             const encodedCheckId = encodeURIComponent(checkId);
 
                             sparklinesHtml += `
-                                <a href="dashboard.html?testID=${testID}&testName=${encodedTestName}&checkId=${encodedCheckId}"
-                                   class="sparkline-dot"
+                                <a href="dashboard.html?testId=${testId}&source=${source}&testName=${encodedTestName}&checkId=${encodedCheckId}"
+                                   class="history-sparkline-item"
                                    style="background-color: ${color}; border: ${border};"
                                    title="${escapeHtml(tooltip)}"></a>
                             `;
@@ -534,7 +650,7 @@ function renderComparisonHistory(scenario, prompt) {
                 }
 
                 if (!hasRuns) {
-                    let tooltip = `Test ${testID.replace('test_', '')}: Not Run`;
+                    let tooltip = `Test ${testId.replace('test_', '')}: Not Run`;
 
                     let color = 'var(--bg-tertiary)';
                     const border = '1px solid var(--border-color)';
@@ -543,8 +659,8 @@ function renderComparisonHistory(scenario, prompt) {
                     const encodedCheckId = encodeURIComponent(checkId);
 
                     sparklinesHtml += `
-                        <a href="dashboard.html?testID=${testID}&testName=${encodedTestName}&checkId=${encodedCheckId}"
-                           class="sparkline-dot"
+                        <a href="dashboard.html?testId=${testId}&source=${source}&testName=${encodedTestName}&checkId=${encodedCheckId}"
+                           class="history-sparkline-item"
                            style="background-color: ${color}; border: ${border};"
                            title="${escapeHtml(tooltip)}"></a>
                     `;
@@ -576,14 +692,17 @@ function renderTrends() {
 
     // Helper to render bars
     const renderBars = (groupType) => {
-        return testIds.map(testID => {
-            const data = allTestData[testID].data;
+        return testIds.map(compoundTestId => {
+            const testInfo = allTestData[compoundTestId];
+            const testId = testInfo.testId;
+            const source = testInfo.source;
+            const data = testInfo.data;
             const stats = calculateGroupTotalStats(data.results, groupType);
             const value = stats.total > 0 ? Math.round((stats.passed / stats.total) * 100) : 0;
-            const timestamp = new Date(allTestData[testID].timestamp).toLocaleDateString();
+            const timestamp = new Date(testInfo.timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
 
             return `
-                <a class="timeline-bar" href="dashboard.html?testID=${testID}" title="${testID} - ${timestamp}: ${value}%">
+                <a class="timeline-bar" href="dashboard.html?testId=${testId}&source=${source}" title="${testId} - ${timestamp}: ${value}%">
                     <div class="timeline-bar-fill" style="height: ${Math.max(value * 2, 10)}px; background-color: ${getColor(value)}"></div>
                     <div class="timeline-bar-label">${value}%</div>
                 </a>

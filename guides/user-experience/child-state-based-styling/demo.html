@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Child State-Based Styling Demo</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+        :root {
+            --page-bg: #f3f4f6;
+            --page-text: #111827;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--page-bg);
+            color: var(--page-text);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .demo-description {
+            text-align: center;
+            max-width: 600px;
+            margin-bottom: 3rem;
+        }
+
+        .demo-description h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.025em;
+        }
+
+        .demo-description p {
+            color: #4b5563;
+            font-size: 1.125rem;
+            line-height: 1.6;
+        }
+
+        /* 
+         * COMPONENT STYLES
+         * We define the default theme variables at the component root.
+         */
+        .dashboard-widget {
+            /* Default Light Theme Variables */
+            --widget-bg: #ffffff;
+            --widget-text-main: #111827;
+            --widget-text-muted: #6b7280;
+            --widget-border: #e5e7eb;
+            --widget-accent: #4f46e5;
+            --widget-accent-hover: #4338ca;
+            --widget-accent-soft: #e0e7ff;
+            --widget-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+            background-color: var(--widget-bg);
+            color: var(--widget-text-main);
+            border: 1px solid var(--widget-border);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: var(--widget-shadow);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 
+         * THEME OVERRIDE USING :has()
+         * When the checkbox inside the widget is checked, the widget overrides its CSS variables
+         * to switch to a dark theme. No JavaScript required!
+         */
+        .dashboard-widget:has(.theme-toggle-input:checked) {
+            /* Dark Theme Overrides */
+            --widget-bg: #1e293b;
+            --widget-text-main: #f8fafc;
+            --widget-text-muted: #94a3b8;
+            --widget-border: #334155;
+            --widget-accent: #818cf8;
+            --widget-accent-hover: #a5b4fc;
+            --widget-accent-soft: #312e81;
+            --widget-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .widget-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .widget-title {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        /* Custom Toggle Switch */
+        .theme-toggle {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--widget-text-muted);
+            font-weight: 500;
+            user-select: none;
+            transition: color 0.3s;
+        }
+
+        .theme-toggle:hover {
+            color: var(--widget-text-main);
+        }
+
+        .theme-toggle-input {
+            display: none;
+        }
+
+        .switch-track {
+            width: 40px;
+            height: 24px;
+            background-color: var(--widget-border);
+            border-radius: 9999px;
+            position: relative;
+            transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .dashboard-widget:has(.theme-toggle-input:checked) .switch-track {
+            background-color: var(--widget-accent);
+        }
+
+        .switch-thumb {
+            width: 18px;
+            height: 18px;
+            background-color: #ffffff;
+            border-radius: 50%;
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dashboard-widget:has(.theme-toggle-input:checked) .switch-thumb {
+            transform: translateX(16px);
+        }
+
+        /* Icons inside the thumb (Moon/Sun) */
+        .icon {
+            width: 12px;
+            height: 12px;
+            stroke: var(--widget-text-muted);
+            stroke-width: 2.5;
+            transition: opacity 0.3s, transform 0.5s;
+            position: absolute;
+        }
+
+        .icon-sun {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+        }
+
+        .icon-moon {
+            opacity: 0;
+            transform: scale(0.5) rotate(-90deg);
+        }
+
+        .dashboard-widget:has(.theme-toggle-input:checked) .icon {
+            stroke: var(--widget-accent);
+        }
+
+        .dashboard-widget:has(.theme-toggle-input:checked) .icon-sun {
+            opacity: 0;
+            transform: scale(0.5) rotate(90deg);
+        }
+
+        .dashboard-widget:has(.theme-toggle-input:checked) .icon-moon {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+        }
+
+        /* Widget Body Content */
+        .stat-group {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background-color: var(--widget-accent-soft);
+            border-radius: 12px;
+            transition: background-color 0.3s;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            background-color: var(--widget-bg);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--widget-accent);
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s;
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .stat-value {
+            font-size: 1.875rem;
+            font-weight: 600;
+            line-height: 1;
+            color: var(--widget-text-main);
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--widget-text-muted);
+        }
+
+        .progress-section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .progress-bar-container {
+            height: 8px;
+            background-color: var(--widget-border);
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 75%;
+            background-color: var(--widget-accent);
+            border-radius: 9999px;
+            transition: background-color 0.3s;
+        }
+
+        .action-button {
+            margin-top: 2rem;
+            width: 100%;
+            padding: 0.875rem;
+            background-color: var(--widget-accent);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .action-button:hover {
+            background-color: var(--widget-accent-hover);
+        }
+
+        .action-button:active {
+            transform: scale(0.98);
+        }
+
+        /* Decorative background element showing the reach of the theme */
+        .decoration {
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, var(--widget-accent) 0%, transparent 70%);
+            opacity: 0.1;
+            border-radius: 50%;
+            pointer-events: none;
+            transition: all 0.5s;
+        }
+
+        .dashboard-widget:has(.theme-toggle-input:checked) .decoration {
+            transform: scale(1.5);
+            opacity: 0.15;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="demo-description">
+        <h1>Component-Level Theming</h1>
+        <p>This widget implements a dark mode override purely in CSS using the <code>:has()</code> pseudo-class. Toggling the switch reassigns CSS variables at the component root, instantly changing its theme without affecting the rest of the page and without needing JavaScript.</p>
+    </div>
+
+    <div class="dashboard-widget">
+        <div class="decoration"></div>
+        <div class="widget-header">
+            <h2 class="widget-title">Analytics Outline</h2>
+            <label class="theme-toggle" title="Toggle component theme">
+                <input type="checkbox" class="theme-toggle-input">
+                <span class="switch-track">
+                    <span class="switch-thumb">
+                        <svg class="icon icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <svg class="icon icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </span>
+                </span>
+            </label>
+        </div>
+
+        <div class="stat-group">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">84.5%</span>
+                <span class="stat-label">Completion Rate</span>
+            </div>
+        </div>
+
+        <div class="progress-section">
+            <div class="progress-label">
+                <span>Monthly Goal</span>
+                <span>75%</span>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill"></div>
+            </div>
+        </div>
+
+        <button class="action-button">View Detailed Report</button>
+    </div>
+</body>
+
+</html>

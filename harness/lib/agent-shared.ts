@@ -1,10 +1,21 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { fileURLToPath } from 'url';
 import { Agents } from '../config.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Promisified version of child_process.spawn.
+ */
+export function spawnAsync(command: string, args: string[], options: SpawnOptions = {}): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, options);
+    child.on('close', (code) => resolve(code ?? 1));
+    child.on('error', reject);
+  });
+}
 
 /**
  * Creates a unique isolated HOME directory in /tmp.
@@ -263,8 +274,8 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
     fs.mkdirSync(workDir, { recursive: true });
     return workDir;
   }
-  // For the suite run, copy the template directory to the isolated home directory
-  execSync(`cp -R "${templateDir}" "${homeDir}/"`);
+  // For the suite run, copy the template directory to the isolated home directory, following symlinks
+  execSync(`cp -RL "${templateDir}" "${homeDir}/"`);
   console.log(`Copied ${templateDir} to ${homeDir}...`);
   return path.join(homeDir, path.basename(templateDir));
 }
@@ -333,9 +344,10 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
       const trajectoryId = fileName.replace(/\.(json|pb)$/, '');
       const fileBuffer = fs.readFileSync(srcFile);
       const htmlContent = generateExportHtml(new Uint8Array(fileBuffer), fileName);
-      const htmlDest = path.join(targetDir, `${trajectoryId}.html`);
+      const htmlFileName = trajectoryId.startsWith('session-') ? `${trajectoryId}.html` : `session-${trajectoryId}.html`;
+      const htmlDest = path.join(targetDir, htmlFileName);
       fs.writeFileSync(htmlDest, htmlContent, 'utf8');
-      console.log(`Generated HTML export: ${trajectoryId}.html`);
+      console.log(`Generated HTML export: ${htmlFileName}`);
     } catch (e) {
       console.error(`Failed to export trajectory ${fileName}:`, e);
     }
