@@ -16,10 +16,12 @@
   <script>
     document.getElementById('btn-fetch-both').addEventListener('click', () => {
       // 1. Critical user-initiated fetch (Executes with default 'High' priority)
-      fetch('https://httpbin.org/get?type=critical-data');
+      fetch('/api/data');
 
       // 2. Non-critical background fetch (Forced to 'Low' priority to prevent contention)
-      fetch('https://httpbin.org/get?type=background-data', {
+      fetch('/api/analytics', {
+        method: 'POST',
+        body: JSON.stringify({ click: 1 }),
         priority: 'low'
       });
     });

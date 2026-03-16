@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Context-Sensitive Sticky Headers</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #fafafa;
+      color: #333;
+    }
+
+    .scroller {
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      margin: 20px;
+      background: #fff;
+      border-radius: 8px;
+    }
+
+    .section {
+      padding-bottom: 50px;
+    }
+
+    .sticky-container {
+      /* Essential sticky and container setup */
+      position: sticky;
+      top: 0;
+      container-type: scroll-state;
+      z-index: 10;
+    }
+
+    .sticky-header {
+      /* Visual styling */
+      background: #f0f0f0;
+      padding: 20px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      transition: background-color 0.3s, box-shadow 0.3s, padding 0.3s, color 0.3s;
+    }
+
+    /* Target the inner header when the container is stuck */
+    @container scroll-state(stuck: top) {
+      .sticky-header {
+        background: #0056b3;
+        color: white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+        padding: 10px 20px; /* Switch to a more compact layout */
+      }
+    }
+
+    .content {
+      padding: 20px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="scroller">
+    <div class="section">
+      <div class="sticky-container">
+        <div class="sticky-header">
+          Section 1
+        </div>
+      </div>
+      <div class="content">
+        <p>Scroll down to see the header stick and transform.</p>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+        <p>Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula.</p>
+        <p>Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor.</p>
+        <p>Ut in nulla enim. Phasellus molestie magna non est bibendum non venenatis nisl tempor.</p>
+        <p>Suspendisse dictum feugiat nisl ut dapibus.</p>
+        <p>Mauris iaculis porttitor posuere. Praesent id metus massa, ut blandit odio.</p>
+        <p>Proin quis tortor orci. Etiam at risus et justo dignissim congue.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sticky-container">
+        <div class="sticky-header">
+          Section 2
+        </div>
+      </div>
+      <div class="content">
+        <p>Notice how this header pushes the previous one up and transforms when it hits the top.</p>
+        <p>Donec id varius nisl. Suspendisse potenti.</p>
+        <p>Nam interdum erat ac dolor pulvinar ultricies.</p>
+        <p>Integer nec mi nisl. Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+        <p>Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula.</p>
+        <p>Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor.</p>
+        <p>Ut in nulla enim. Phasellus molestie magna non est bibendum non venenatis nisl tempor.</p>
+        <p>Suspendisse dictum feugiat nisl ut dapibus.</p>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
