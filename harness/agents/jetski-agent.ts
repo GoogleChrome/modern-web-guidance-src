@@ -362,6 +362,15 @@ async function run(): Promise<void> {
     }
 
     console.log(`Typing prompt: "${userPrompt}"`);
+    const lines = userPrompt.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+        await targetInputBox.type(lines[i]);
+        if (i < lines.length - 1) {
+            await page.keyboard.down('Shift');
+            await page.keyboard.press('Enter');
+            await page.keyboard.up('Shift');
+        }
+    }
     await targetInputBox.type(userPrompt);
 
     try {
