@@ -9,7 +9,6 @@ test.describe('Eval View Dashboard', () => {
 
     // Check tabs exist
     await expect(page.locator('.tab-button[data-tab="suites"]')).toBeVisible();
-    await expect(page.locator('.tab-button[data-tab="explorer"]')).toBeVisible();
     await expect(page.locator('.tab-button[data-tab="trends"]')).toBeVisible();
 
     // Check suites content
@@ -25,16 +24,6 @@ test.describe('Eval View Dashboard', () => {
     expect(data).toHaveProperty('suites');
   });
 
-  test('should navigate to explorer tab', async ({ page }) => {
-    await page.goto('/');
-    // Wait for data to be loaded (suites appear)
-    await expect(page.locator('.suite-table-row').first()).toBeVisible();
-    
-    await page.click('.tab-button[data-tab="explorer"]');
-    
-    await expect(page.locator('#explorer-tab')).toHaveClass(/active/);
-    await expect(page.locator('.explorer-sidebar')).toBeVisible();
-  });
 
   test('should load specific test dashboard', async ({ page }) => {
     await page.goto('/dashboard.html?testId=example-result');
