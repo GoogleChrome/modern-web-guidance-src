@@ -121,7 +121,7 @@ When `content-visibility` is not supported it will be ignored by the browser. In
 ```
 
 ### `hidden="until-found"` fallback
-When `hidden="until-found` is not supported elements will remain hidden. Use feature detection targeting `onbeforematch` and extract or reveal content accordingly.
+When `hidden="until-found"` is not supported elements will remain hidden. Use feature detection targeting `onbeforematch` and extract or reveal content accordingly.
 
 ```javascript
 if (!('onbeforematch' in HTMLElement.prototype)) {
