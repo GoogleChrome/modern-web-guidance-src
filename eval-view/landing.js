@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, capitalize, initGoogleAuth, authenticatedFetch, getAccessToken } from './utils.js';
+import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken } from './utils.js';
 
 let allTestData = {}; // Cache all test data by testId
 let currentTab = 'suites';
