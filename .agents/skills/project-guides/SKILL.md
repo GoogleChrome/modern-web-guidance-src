@@ -14,7 +14,7 @@ This is the second of three stages in creating guidance:
 **MANDATORY RULES FOR WRITING `guide.md`:**
 
 ### 1. YAML Frontmatter Schema
-`guide.md` must start with this YAML frontmatter structure:
+`guide.md` must start with this YAML frontmatter structure (added in **Stage 1**):
 
 ```yaml
 ---
@@ -31,7 +31,7 @@ sources:
 
 ### 2. Tone and Formatting
 * **MANDATORY:** Use strict imperative directives. Start instructions with `MANDATORY:`, `DO`, and `DO NOT`. Coding agents respond best to rigid constraints.
-* **Focus:** Keep it abstract but short. No fluff. No conversational text. Include a brief overview of the feature and why it is useful for the use-case.
+* **Focus:** Keep it abstract but short. No fluff. No conversational text. Include a brief overview of the use case and explanation of why the solution outlined in the guide is the recommended approach.
 * **Self-Contained:** DO NOT require the reading agent to click external links to understand the code. All required knowledge to use the feature MUST be fully synthesized into the markdown body.
 
 ### 3. Code Snippets

@@ -26,11 +26,13 @@ Here's an example prompt for NotebookLM with Deep Research:
 
 ## Identifying action-oriented tasks
 
-A "use case" in this project is not a description of a feature; it's how the feature would be used in the wild.
+A "use case" in this project is not a description of a feature; it's a task that the user is trying to implement, or a problem they're trying to solve. The feature is only relevant in the sense that it's part of the recommended solution for the use case.
 
-* **Action-oriented thinking**: Frame every use case as a task. Instead of "Scroll-driven animations support horizontal scrolling," use something like "Synchronize an animation's progress with the horizontal scroll distance of a container."
+* **Action-oriented thinking**: Frame every use case as a task, and make sure it starts with a verb. Instead of "Scroll-driven animations support horizontal scrolling," use something like "Synchronize an animation's progress with the horizontal scroll distance of a container."
 * **Bridge the knowledge gap**: Assume the developer knows *what* they want to build (e.g., "I need a sticky header that shrinks on scroll") but might not know *which* modern web feature is the best solution (e.g., scroll-driven animations). Your use cases should facilitate this discovery by focusing on the desired outcome.
-* **Targeted scope**: Aim for 2-5 distinct use cases per feature. Each should represent a unique implementation pattern or a significant variation in how the feature is applied.
+* **Don't get too specific**: The use case must be general enough to match a wide range of relevant user prompts. Try to be as general as possible, while still faithfully representing the use case. For example, instead of saying "Fade an image in/out..." say "Smoothly hide/show a component...".
+* **Focus on the WHAT not the HOW**: Do not mention the solution in the use case description. For example, avoid phrases like "...by doing..." or "...through the use of...". Ideally, the use case description should remain constant, even if the recommended features or best practices for implementing it change over time.
+* **Scope**: Aim for 2-5 distinct use cases per feature. Each use case should represent a distinct implementation pattern or a significant variation in how the feature is applied. IMPORTANT: Not every sub-feature or feature variation needs a use cases.
 
 ## Minimizing overlap
 
@@ -47,7 +49,7 @@ The following steps are REQUIRED for creating a new use case:
 
 * **Step 1: Describe the use case**
 
-  You MUST choose a short, action-oriented description of the problem the feature solves. The description must be a single sentence that captures the essence of the use case.
+  You MUST choose a short (max 1024 characters), action-oriented description of the problem the feature solves. The description must be a single sentence, start with a verb, and answer the question: "What is the user trying to DO?"
   
   For example, a use case of the `fetch-priority` feature is "Deprioritize background data fetches made with the Fetch API to prevent network contention with user-initiated requests."
 
@@ -86,7 +88,7 @@ The following steps are REQUIRED for creating a new use case:
 
 * **Step 5: Create the `demo.html` file**
 
-  Create a `demo.html` file in the new subdirectory. This file should be an ultra-minimal example of a correct implementation of the use case. It should be self-contained with inline scripts and styles for any necessary functionality. Use placeholder URLs for any subresources like images or videos.
+  Create a `demo.html` file in the new subdirectory. This file should be minimal example of a correct implementation of the use case, without unnecessary fluff or polish. The demo file should be self-contained with inline scripts and styles for any necessary functionality. Use placeholder URLs for any subresources like images or videos.
 
   See [demo.html](examples/demo.html) for an example from the `deprioritize-background-fetches` use case.
 
