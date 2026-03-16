@@ -217,7 +217,12 @@ process.exit(result.status ?? 0);
         
         try {
           // Fire off the parallel execution!
-          await runCommand('pnpm', ['-r', '--workspace-concurrency', '1', 'run-agent'], runDir);
+          const pnpmArgs = ['-r'];
+          if (agent === Agents.JETSKI) {
+            pnpmArgs.push('--workspace-concurrency', '1');
+          }
+          pnpmArgs.push('run-agent');
+          await runCommand('pnpm', pnpmArgs, runDir);
           console.log(`✅ Completed Run ${runNumber} test executions`);
         } catch (error) {
           console.error(`❌ Failed during Run ${runNumber} test execution`, error);
