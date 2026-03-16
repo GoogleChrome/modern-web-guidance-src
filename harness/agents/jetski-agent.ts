@@ -371,7 +371,6 @@ async function run(): Promise<void> {
             await page.keyboard.up('Shift');
         }
     }
-    await targetInputBox.type(userPrompt);
 
     try {
       const sendButton = await targetPanel.waitForSelector(sendButtonSelector, { timeout: 10000 });
