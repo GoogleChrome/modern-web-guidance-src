@@ -208,7 +208,7 @@ process.exit(result.status ?? 0);
       }
 
       if (pnpmWorkspacePackages.length > 0) {
-        console.log(`\n>>> Running all tests for Run ${runNumber} with pnpm -r run-agent (parallel)...`);
+        console.log(`\n>>> Running all tests for Run ${runNumber} with pnpm -r run-agent ...`);
         // Drop a transient pnpm-workspace.yaml at the root of the run directory.
         // The '**' pattern tells pnpm to recursively discover all the targetDirs
         // we just seeded with package.json files.
