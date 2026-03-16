@@ -24,7 +24,6 @@ pnpm setup:playwright
 The MCP server allows AI agents to access high-quality implementation patterns and browser compatibility data.
 
 ```bash
-pnpm run build
 cd serving
 pnpm start
 ```
