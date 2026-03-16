@@ -37,8 +37,16 @@ The `contain-intrinsic-size` CSS shorthand property allows you to provide an est
   /* Skips rendering calculations when off-screen */
   content-visibility: auto;
   
-  /* Mandatory: Provide an estimated height to prevent layouts shifts */
-  contain-intrinsic-size: auto none auto 500px; 
+  /* Mandatory: Provide an estimated size to prevent layouts shifts.
+    - 'auto' is optional and enables the browser to remember the actual size
+      once rendered. It must be paired with a <length> value to be used for
+      the first render.
+    - 'none' tells the browser not to apply any intrinsic width to this element.
+      It can be used for either the height or the width value.
+    - '150px' is the estimated height of this element. This can be any valid
+      CSS <length> value.
+   */
+  contain-intrinsic-size: auto none auto 150px; 
 }
 ```
 
@@ -97,13 +105,9 @@ heavySection.addEventListener('beforematch', (event) => {
 
 ## Browser support and fallback strategies
 
-{{ BASELINE_STATUS("content-visibility") }}
-
-{{ BASELINE_STATUS("hidden-until-found") }}
-
 ### `content-visibility` fallback
 
-When `content-visibility` is not supported it will be ignored by the browser. In most cases `content-visibility: auto` will not need a fallback, though without it performance gains will be lost. An unsupported browser will leave `content-visibility: hidden` elements completely visible. Use feature detection to implement a fallback.
+{{ BASELINE_STATUS("content-visibility") }} When `content-visibility` is not supported it will be ignored by the browser. In most cases `content-visibility: auto` will not need a fallback, though without it performance gains will be lost. An unsupported browser will leave `content-visibility: hidden` elements completely visible. Use feature detection to implement a fallback.
 
 ```css
 /* Default for everyone */
@@ -121,7 +125,7 @@ When `content-visibility` is not supported it will be ignored by the browser. In
 ```
 
 ### `hidden="until-found"` fallback
-When `hidden="until-found"` is not supported elements will remain hidden. Use feature detection targeting `onbeforematch` and extract or reveal content accordingly.
+{{ BASELINE_STATUS("hidden-until-found") }} When `hidden="until-found"` is not supported elements will remain hidden. Use feature detection targeting `onbeforematch` and extract or reveal content accordingly.
 
 ```javascript
 if (!('onbeforematch' in HTMLElement.prototype)) {
