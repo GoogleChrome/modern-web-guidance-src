@@ -1,5 +1,5 @@
 ---
-base_app: daily-grind
+base_app: empty-app
 grader: optimize-script-priority
 ---
-Add the "Locations" page to this site. It requires a critical interactivity script at '/js/app.js' that should be loaded asynchronously. It also includes an older '/js/legacy-widgets.js' script that is normally parser-blocking. Finally, include an analytics script '/js/tracker.js'.
+Create an extremely minimal web page for a dashboard. It requires a critical interactivity script at '/js/app.js' that should be loaded asynchronously. It also includes an older '/js/legacy-widgets.js' script that is normally parser-blocking. Finally, include an analytics script '/js/tracker.js'.

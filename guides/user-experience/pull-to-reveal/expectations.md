@@ -1,0 +1,8 @@
+- The implementation MUST include an ancestor scroll container configured with scrolling (e.g., `overflow-y: auto`) and mandatory snapping (e.g., `scroll-snap-type: y mandatory`).
+- A hidden element (e.g., a search bar) MUST be defined as the first descendant in the scroll container and MUST have `scroll-snap-align: start` applied to it. This element is scrolled out of view on initial load.
+- The main content element (which sits immediately below the hidden element) MUST have `scroll-snap-align: start` applied and MUST have the `scroll-initial-target: nearest` CSS property applied directly to it so that it is scrolled into view on initial load, hiding the element above it.
+- The `scroll-initial-target` property MUST be applied to only one element within the scroll container.
+- The implementation MUST NOT rely on JavaScript to calculate the initial scroll offset as its primary mechanism. The CSS property alone must manage the positioning to avoid a visible flash.
+- A progressive enhancement JavaScript fallback MUST be included. It MUST evaluate native CSS capability using `!CSS.supports("scroll-initial-target", "nearest")` before executing any scroll logic.
+- The fallback script MUST execute as soon as possible after the scroll container HTML is declared, and no later than `DOMContentLoaded`.
+- Inside the fallback check, the script MUST scroll to the main content element using `element.scrollIntoView({ behavior: 'instant', block: 'start' })` to precisely mimic the native `scroll-initial-target` position.
