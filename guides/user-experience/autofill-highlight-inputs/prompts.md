@@ -1,4 +1,4 @@
-Add code to highlight autofilled form inputs.
+- Add code to highlight autofilled form inputs.
 
 Use the `:autofill` CSS pseudo-class.
 

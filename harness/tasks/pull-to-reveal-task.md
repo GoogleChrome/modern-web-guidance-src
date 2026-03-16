@@ -1,0 +1,5 @@
+---
+base_app: daily-grind
+grader: pull-to-reveal
+---
+Build a web app feed with a hidden top search bar that is only revealed when the user pulls down from the top of the feed, ensuring no JavaScript is used for the initial offset and no visible scrolling animation or flash occurs on initial render.
