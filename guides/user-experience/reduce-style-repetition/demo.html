@@ -16,6 +16,8 @@
 
         body {
             font-family: system-ui, sans-serif;
+            /* Fallback for non-supporting browsers */
+            font-size: 18px;
             /* Direct call to the custom function */
             font-size: --fluid-size(16px, 24px, 320px, 1200px);
             line-height: 1.6;
@@ -31,6 +33,8 @@
 
         .card {
             background: #1e293b;
+            /* Fallback for non-supporting browsers */
+            padding: 24px;
             padding: --fluid-size(20px, 40px, 320px, 1200px);
             border-radius: 12px;
             max-width: 600px;
@@ -40,6 +44,8 @@
         }
 
         h1 {
+            /* Fallback for non-supporting browsers */
+            font-size: 36px;
             /* Direct call to the custom function */
             font-size: --fluid-size(24px, 48px, 320px, 1200px);
             margin: 0 0 1rem 0;
