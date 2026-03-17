@@ -1,0 +1,301 @@
+<!-- Copyright 2026 Google LLC.
+SPDX-License-Identifier: Apache-2.0 -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Sign-up form best practice</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+  /* Copyright 2026 Google LLC.
+  SPDX-License-Identifier: Apache-2.0 */
+
+  :root {
+    --small-mobile-font-size: 20px;
+    --large-mobile-font-size: 22px;
+    --desktop-font-size: 18px;
+  }
+  body {
+    font-family: sans-serif;
+    font-weight: 500;
+    margin: 20px 15px 0 15px;
+  }
+  button#sign-up {
+    background-color: black;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    color: #eee;
+    cursor: pointer;
+    display: block;
+    font-size: 20px; /* fallback for browsers that do not support CSS variables  */
+    font-size: var(--small-mobile-font-size);
+    font-weight: 400;
+    margin: 3px 0 0 0;
+    padding: 14px;
+  }
+  button:disabled {
+    color: #888;
+    cursor: default;
+  }
+  button#sign-up:not(:disabled):hover {
+    background-color: #333;
+    color: white;
+  }
+  button#toggle-password {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 20px; /* fallback for browsers that do not support CSS variables  */
+    font-size: var(--small-mobile-font-size);
+    font-weight: 300;
+    padding: 0;
+    position: absolute;
+    top: 0;
+    right: 3px;
+  }
+  div#password-constraints {
+    font-weight: 300;
+    margin: 5px 0 0 0;
+    font-size: 20px;
+  }
+  h1 {
+    border-bottom: 1px solid #ccc;
+    font-size: 28px;
+    font-weight: 300;
+    margin: 0 0 50px 0;
+    padding: 5px;
+  }
+  input {
+    border: 1px solid #ccc;
+    font-size: 22px; /* fallback for browsers that do not support CSS variables  */
+    font-size: var(--large-mobile-font-size);
+    padding: 12px;
+    width: 90%; /* fallback for browsers that do not support calc()  */
+    width: calc(100% - 30px); /* full width minus padding */
+  }
+  input:not(:focus):invalid {
+    color: red;
+    outline-color: red;
+  }
+  label {
+    display: block;
+    font-size: 20px;
+    font-size: var(--large-mobile-font-size);
+    font-weight: 400;
+    margin: 0 0 3px 0;
+  }
+  main {
+    margin: 0 auto;
+    max-width: 500px;
+  }
+  p {
+    font-size: 19px;
+    font-weight: 400;
+  }
+  form section {
+    margin: 0 0 25px 0;
+    position: relative;
+  }
+  form section:last-of-type {
+    margin: 0 0 25px 0;
+  }
+  select {
+    background-color: white;
+    border: 1px solid #ccc;
+    display: inline-block;
+    font-size: var(--mobile-font-size);
+    padding: 12px 12px 12px 11px;
+    width: 100%;
+  }
+  textarea {
+    border: 1px solid#ccc;
+    font-family: sans-serif;
+    font-size: 22px; /* fallback for browsers that do not support CSS variables */
+    font-size: var(--small-mobile-font-size);
+    height: 5.5em;
+    line-height: 1.4em;
+    padding: 12px;
+    width: 90%; /* fallback for browsers that do not support calc() */
+    width: calc(100% - 30px); /* full width minus padding */
+  }
+
+  @media (min-width: 400px) {
+    button#sign-up {
+      font-size: 22px; /* fallback for browsers that do not support CSS variables  */
+      font-size: var(--large-mobile-font-size);
+    }
+    button#toggle-password {
+      font-size: 22px; /* fallback for browsers that do not support CSS variables  */
+      font-size: var(--large-mobile-font-size);
+    }
+    div.explanation {
+      font-size: 16px;
+    }
+    h1 {
+      font-size: 36px;
+      font-weight: 500;
+    }
+    input {
+      font-size: 22px; /* fallback for browsers that do not support CSS variables  */
+      font-size: var(--large-mobile-font-size);
+    }
+    label {
+      font-size: 22px; /* fallback for browsers that do not support CSS variables  */
+      font-size: var(--large-mobile-font-size);
+      margin: 0 0 5px 0;
+    }
+    p {
+      font-size: 18px;
+      font-weight: 400;
+      line-height: 1.5em;
+    }
+    form section {
+      margin: 0 0 25px 0;
+    }
+    form section:last-of-type {
+      margin: 0 0 50px 0;
+    }
+    select {
+      font-size: 22px; /* fallback for browsers that do not support CSS variables */
+      font-size: var(--large-mobile-font-size);
+    }
+    textarea {
+      font-size: 22px; /* fallback for browsers that do not support CSS variables  */
+      font-size: var(--large-mobile-font-size);
+    }
+  }
+
+  @media (min-width: 500px) {
+
+    body {
+      margin: 70px 70px 0 70px;
+    }
+    button {
+      font-size: 18px; /* fallback for browsers that do not support CSS variables  */
+      font-size: var(--desktop-font-size);
+    }
+    h1 {
+      font-size: 36px;
+      font-weight: 100;
+      margin: 0 0 60px 0;
+    }
+    input {
+      font-size: 18px; /* fallback for browsers that do not support CSS variables  */
+      font-size: var(--desktop-font-size);
+    }
+    label {
+      font-size: 18px; /* fallback for browsers that do not support CSS variables  */
+      font-size: var(--desktop-font-size);
+      margin: 0 0 6px 0;
+    }
+    form section {
+      margin: 0 0 35px 0;
+    }
+  }
+</style>
+
+</head>
+
+<body>
+
+  <main>
+
+   <!-- On a production site, the value of the `action` attribute is the URL of the site's
+   backend service that handles form submission, and the `method` attribute has the value `post` -->
+    <form action="." id="sign-up-form" name="sign-up-form">
+
+      <h1>Sign up</h1>
+
+      <section>
+        <label for="name">Full name</label>
+        <input id="name" name="name" autocomplete="name" required pattern="[\p{L}\.\- ]+">
+      </section>
+
+      <section>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" required>
+      </section>
+
+      <section>
+        <label for="password">Password</label>
+        <button id="toggle-password" type="button" aria-label="Show password as plain text. Warning: this will display your password on the screen.">Show password</button>
+        <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" aria-describedby="password-constraints" required>
+        <div id="password-constraints">Eight or more characters.</div>
+      </section>
+
+      <button id="sign-up">Sign up</button>
+
+    </form>
+
+  </main>
+
+  <script>
+  /* Copyright 2026 Google LLC.
+  SPDX-License-Identifier: Apache-2.0 */
+
+  const form = document.querySelector('form');
+  const passwordInput = document.getElementById('password');
+  const signupButton = document.querySelector('button#sign-up');
+  const togglePasswordButton = document.getElementById('toggle-password');
+
+  form.addEventListener('submit', handleFormSubmission);
+  passwordInput.addEventListener('input', resetCustomValidity);
+  togglePasswordButton.addEventListener('click', togglePassword);
+
+  function togglePassword() {
+    if (passwordInput.type === 'password') {
+      passwordInput.type = 'text';
+      togglePasswordButton.textContent = 'Hide password';
+      togglePasswordButton.setAttribute('aria-label', 'Hide password.');
+    } else {
+      passwordInput.type = 'password';
+      togglePasswordButton.textContent = 'Show password';
+      togglePasswordButton.setAttribute(
+        'aria-label',
+        'Show password as plain text. ' +
+          'Warning: this will display your password on the screen.'
+      );
+    }
+  }
+
+  function resetCustomValidity() {
+    passwordInput.setCustomValidity('');
+  }
+
+  // If required, use additional, more stringent password testing.
+  function validatePassword() {
+    let message = '';
+    if (!/.{8,}/.test(passwordInput.value)) {
+      message = 'At least eight characters. ';
+    }
+    // If required, create a function to check if the password suggested by the user has been
+    // compromised, using a service/API such as haveibeenpwned.com.
+    // If the password has been compromised, warn the user and ask them to enter a different
+    // password.
+    // if (isCompromisedPassword()) {
+    //  message += 'This password has been compromised. Please try again. ';
+    // }
+    passwordInput.setCustomValidity(message);
+  }
+
+  function handleFormSubmission(event) {
+    event.preventDefault();
+    validatePassword();
+    form.reportValidity();
+    if (form.checkValidity() === false) {
+      // Handle invalid form data if required.
+    } else {
+      form.submit();
+      alert('Signed up!');
+      signupButton.disabled = 'true';
+    }
+  }
+  </script>
+
+</body>
+
+</html>

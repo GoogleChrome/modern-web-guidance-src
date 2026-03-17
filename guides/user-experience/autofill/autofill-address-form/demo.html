@@ -1,0 +1,601 @@
+<!-- Copyright 2026 Google LLC.
+SPDX-License-Identifier: Apache-2.0 -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Address form best practice</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    /* Copyright 2026 Google LLC.
+    SPDX-License-Identifier: Apache-2.0 */
+
+    :root {
+      --small-mobile-font-size: 20px;
+      --large-mobile-font-size: 22px;
+      --desktop-font-size: 22px;
+    }
+
+    :-webkit-autofill,
+    :autofill,
+    :-webkit-autofill:hover,
+    :-webkit-autofill:focus {
+      border-color: green;
+      outline: none;
+    }
+
+    body {
+      font-family: sans-serif;
+      font-weight: 500;
+      margin: 10px 15px 0 15px;
+    }
+
+    button,
+    input#submit-button {
+      background-color: black;
+      border: 1px solid #cccccc;
+      border-radius: 2px;
+      color: #eeeeee;
+      cursor: pointer;
+      display: block;
+      font-size: 20px; /* fallback for browsers where CSS variables are not available */
+      font-size: var(--large-mobile-font-size);
+      font-weight: 400;
+      margin: 3px 0 0 0;
+      outline: none;
+      padding: 14px;
+      width: 180px;
+    }
+
+    button:disabled {
+      color: #888888;
+      cursor: default;
+    }
+
+    button:not(:disabled):hover {
+      background-color: #333333;
+      color: white;
+    }
+
+    div.explanation {
+      font-size: 14px;
+      margin: 10px 0 0 0;
+    }
+
+    section#cc-exp-csc div:not(:last-child) {
+      margin: 0 10px 0 0;
+    }
+
+    div#exp-month-year {
+      width: 50%;
+    }
+
+    h1 {
+      border-bottom: 1px solid #cccccc;
+      font-size: 28px;
+      font-weight: 300;
+      margin: 0 0 30px 0;
+      padding: 0;
+    }
+
+    input {
+      border: 1px solid #cccccc;
+      font-size: 22px; /* fallback for browsers where CSS variables are not available */
+      font-size: var(--small-mobile-font-size);
+      padding: 12px;
+      width: 90%; /* fallback for browsers where CSS calc() is not available */
+      width: calc(100% - 30px); /* full width minus padding */
+    }
+
+    input:not(:focus):invalid {
+      color: red;
+      outline-color: red;
+    }
+
+    label {
+      display: block;
+      font-size: 20px;
+      font-size: var(--small-mobile-font-size);
+      font-weight: 400;
+      margin: 0 0 1px 0;
+    }
+
+    main {
+      margin: 0 auto;
+      max-width: 500px;
+    }
+
+    p {
+      font-size: 19px;
+      font-weight: 400;
+    }
+
+    form section {
+      margin: 0 0 17px 0;
+      padding: 0 0 10px 0;
+      position: relative;
+    }
+
+    form section:last-of-type {
+      margin: 0 0 25px 0;
+    }
+
+    section#cc-exp-csc {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    select {
+      background-color: white;
+      border: 1px solid #cccccc;
+      display: inline-block;
+      font-size: var(--small-mobile-font-size);
+      padding: 12px 12px 12px 11px;
+      width: 100%;
+    }
+
+    textarea {
+      border: 1px solid #cccccc;
+      font-family: sans-serif;
+      font-size: 22px; /* fallback for browsers where CSS variables are not available */
+      font-size: var(--small-mobile-font-size);
+      height: 3.5em;
+      line-height: 1.4em;
+      padding: 12px;
+      width: 90%; /* fallback for browsers where CSS calc() is not available */
+      width: calc(100% - 30px); /* full width minus padding */
+    }
+
+    @media (min-width: 400px) {
+      button {
+        font-size: 20px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--large-mobile-font-size);
+      }
+
+      div.explanation {
+        font-size: 16px;
+      }
+
+      h1 {
+        font-size: 36px;
+        font-weight: 500;
+      }
+
+      input {
+        font-size: 22px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--large-mobile-font-size);
+      }
+
+      label {
+        font-size: 22px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--large-mobile-font-size);
+      }
+
+      p {
+        font-weight: 400;
+        line-height: 1.5em;
+      }
+
+      form section {
+        margin: 0 0 10px 0;
+      }
+
+      form section:last-of-type {
+        margin: 0 0 30px 0;
+      }
+
+      select {
+        font-size: 22px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--large-mobile-font-size);
+      }
+
+      textarea {
+        font-size: 22px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--large-mobile-font-size);
+      }
+    }
+
+    @media (min-width: 500px) {
+      body {
+        margin: 70px 70px 0 70px;
+      }
+
+      button {
+        font-size: 18px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--desktop-font-size);
+      }
+
+      form {
+        margin: 0 0 20px 0;
+        padding: 0 0 100px 0;
+      }
+
+      h1 {
+        font-size: 36px;
+        font-weight: 100;
+        margin: 0 0 60px 0;
+      }
+
+      input {
+        font-size: 18px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--desktop-font-size);
+      }
+
+      label {
+        font-size: 18px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--desktop-font-size);
+        margin: 0 0 6px 0;
+      }
+
+      form section {
+        margin: 0 0 35px 0;
+      }
+
+      form section:last-of-type {
+        margin: 0 0 60px 0;
+      }
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <main>
+
+   <!-- On a production site, the value of the `action` attribute is the URL of the site's
+   backend service that handles form submission, and the `method` attribute has the value `post` -->
+    <form action="." id="address-form" name="address-form">
+
+      <h1>Address form</h1>
+
+      <section>
+        <label for="name">Name</label>
+        <input id="name" name="name" autocomplete="name" maxlength="100" pattern="[\p{L} \-\.]+" required>
+      </section>
+
+      <section>
+        <label for="address">Address</label>
+        <textarea id="address" name="address" autocomplete="address" maxlength="300" required></textarea>
+      </section>
+
+      <!-- Use the following commented-out code for address entry instead of the previous section,
+      if separate inputs are required for address parts -->
+
+      <!--
+      <section>
+        <label for="address-line1">Address line 1</label>
+        <input required="" autocomplete="address-line1" id="address-line1" name="address-line1">
+      </section>
+
+      <section>
+        <label for="address-line2">Address line 2</label>
+        <input autocomplete="address-line2" id="address-line2" name="address-line2">
+      </section>
+      -->
+
+      <section>
+        <label for="postal-code">ZIP or postal code (optional)</label>
+        <input id="postal-code" name="postal-code" autocomplete="postal-code" maxlength="20">
+      </section>
+
+      <section id="country-region">
+        <label for="country">Country or region</label>
+        <select id="country" name="country" autocomplete="country" enterkeyhint="done" required>
+          <option selected value="SPACER"> </option>
+          <option value="AF">Afghanistan</option>
+          <option value="AX">Åland Islands</option>
+          <option value="AL">Albania</option>
+          <option value="DZ">Algeria</option>
+          <option value="AS">American Samoa</option>
+          <option value="AD">Andorra</option>
+          <option value="AO">Angola</option>
+          <option value="AI">Anguilla</option>
+          <option value="AQ">Antarctica</option>
+          <option value="AG">Antigua &amp; Barbuda</option>
+          <option value="AR">Argentina</option>
+          <option value="AM">Armenia</option>
+          <option value="AW">Aruba</option>
+          <option value="AC">Ascension Island</option>
+          <option value="AU">Australia</option>
+          <option value="AT">Austria</option>
+          <option value="AZ">Azerbaijan</option>
+          <option value="BS">Bahamas</option>
+          <option value="BH">Bahrain</option>
+          <option value="BD">Bangladesh</option>
+          <option value="BB">Barbados</option>
+          <option value="BY">Belarus</option>
+          <option value="BE">Belgium</option>
+          <option value="BZ">Belize</option>
+          <option value="BJ">Benin</option>
+          <option value="BM">Bermuda</option>
+          <option value="BT">Bhutan</option>
+          <option value="BO">Bolivia</option>
+          <option value="BA">Bosnia &amp; Herzegovina</option>
+          <option value="BW">Botswana</option>
+          <option value="BV">Bouvet Island</option>
+          <option value="BR">Brazil</option>
+          <option value="IO">British Indian Ocean Territory</option>
+          <option value="VG">British Virgin Islands</option>
+          <option value="BN">Brunei</option>
+          <option value="BG">Bulgaria</option>
+          <option value="BF">Burkina Faso</option>
+          <option value="BI">Burundi</option>
+          <option value="KH">Cambodia</option>
+          <option value="CM">Cameroon</option>
+          <option value="CA">Canada</option>
+          <option value="CV">Cape Verde</option>
+          <option value="BQ">Caribbean Netherlands</option>
+          <option value="KY">Cayman Islands</option>
+          <option value="CF">Central African Republic</option>
+          <option value="TD">Chad</option>
+          <option value="CL">Chile</option>
+          <option value="CN">China</option>
+          <option value="CX">Christmas Island</option>
+          <option value="CC">Cocos (Keeling) Islands</option>
+          <option value="CO">Colombia</option>
+          <option value="KM">Comoros</option>
+          <option value="CG">Congo - Brazzaville</option>
+          <option value="CD">Congo - Kinshasa</option>
+          <option value="CK">Cook Islands</option>
+          <option value="CR">Costa Rica</option>
+          <option value="CI">Côte d’Ivoire</option>
+          <option value="HR">Croatia</option>
+          <option value="CW">Curaçao</option>
+          <option value="CY">Cyprus</option>
+          <option value="CZ">Czechia</option>
+          <option value="DK">Denmark</option>
+          <option value="DJ">Djibouti</option>
+          <option value="DM">Dominica</option>
+          <option value="DO">Dominican Republic</option>
+          <option value="EC">Ecuador</option>
+          <option value="EG">Egypt</option>
+          <option value="SV">El Salvador</option>
+          <option value="GQ">Equatorial Guinea</option>
+          <option value="ER">Eritrea</option>
+          <option value="EE">Estonia</option>
+          <option value="SZ">Eswatini</option>
+          <option value="ET">Ethiopia</option>
+          <option value="FK">Falkland Islands (Islas Malvinas)</option>
+          <option value="FO">Faroe Islands</option>
+          <option value="FJ">Fiji</option>
+          <option value="FI">Finland</option>
+          <option value="FR">France</option>
+          <option value="GF">French Guiana</option>
+          <option value="PF">French Polynesia</option>
+          <option value="TF">French Southern Territories</option>
+          <option value="GA">Gabon</option>
+          <option value="GM">Gambia</option>
+          <option value="GE">Georgia</option>
+          <option value="DE">Germany</option>
+          <option value="GH">Ghana</option>
+          <option value="GI">Gibraltar</option>
+          <option value="GR">Greece</option>
+          <option value="GL">Greenland</option>
+          <option value="GD">Grenada</option>
+          <option value="GP">Guadeloupe</option>
+          <option value="GU">Guam</option>
+          <option value="GT">Guatemala</option>
+          <option value="GG">Guernsey</option>
+          <option value="GN">Guinea</option>
+          <option value="GW">Guinea-Bissau</option>
+          <option value="GY">Guyana</option>
+          <option value="HT">Haiti</option>
+          <option value="HM">Heard &amp; McDonald Islands</option>
+          <option value="HN">Honduras</option>
+          <option value="HK">Hong Kong</option>
+          <option value="HU">Hungary</option>
+          <option value="IS">Iceland</option>
+          <option value="IN">India</option>
+          <option value="ID">Indonesia</option>
+          <option value="IR">Iran</option>
+          <option value="IQ">Iraq</option>
+          <option value="IE">Ireland</option>
+          <option value="IM">Isle of Man</option>
+          <option value="IL">Israel</option>
+          <option value="IT">Italy</option>
+          <option value="JM">Jamaica</option>
+          <option value="JP">Japan</option>
+          <option value="JE">Jersey</option>
+          <option value="JO">Jordan</option>
+          <option value="KZ">Kazakhstan</option>
+          <option value="KE">Kenya</option>
+          <option value="KI">Kiribati</option>
+          <option value="XK">Kosovo</option>
+          <option value="KW">Kuwait</option>
+          <option value="KG">Kyrgyzstan</option>
+          <option value="LA">Laos</option>
+          <option value="LV">Latvia</option>
+          <option value="LB">Lebanon</option>
+          <option value="LS">Lesotho</option>
+          <option value="LR">Liberia</option>
+          <option value="LY">Libya</option>
+          <option value="LI">Liechtenstein</option>
+          <option value="LT">Lithuania</option>
+          <option value="LU">Luxembourg</option>
+          <option value="MO">Macao</option>
+          <option value="MG">Madagascar</option>
+          <option value="MW">Malawi</option>
+          <option value="MY">Malaysia</option>
+          <option value="MV">Maldives</option>
+          <option value="ML">Mali</option>
+          <option value="MT">Malta</option>
+          <option value="MH">Marshall Islands</option>
+          <option value="MQ">Martinique</option>
+          <option value="MR">Mauritania</option>
+          <option value="MU">Mauritius</option>
+          <option value="YT">Mayotte</option>
+          <option value="MX">Mexico</option>
+          <option value="FM">Micronesia</option>
+          <option value="MD">Moldova</option>
+          <option value="MC">Monaco</option>
+          <option value="MN">Mongolia</option>
+          <option value="ME">Montenegro</option>
+          <option value="MS">Montserrat</option>
+          <option value="MA">Morocco</option>
+          <option value="MZ">Mozambique</option>
+          <option value="MM">Myanmar (Burma)</option>
+          <option value="NA">Namibia</option>
+          <option value="NR">Nauru</option>
+          <option value="NP">Nepal</option>
+          <option value="NL">Netherlands</option>
+          <option value="NC">New Caledonia</option>
+          <option value="NZ">New Zealand</option>
+          <option value="NI">Nicaragua</option>
+          <option value="NE">Niger</option>
+          <option value="NG">Nigeria</option>
+          <option value="NU">Niue</option>
+          <option value="NF">Norfolk Island</option>
+          <option value="KP">North Korea</option>
+          <option value="MK">North Macedonia</option>
+          <option value="MP">Northern Mariana Islands</option>
+          <option value="NO">Norway</option>
+          <option value="OM">Oman</option>
+          <option value="PK">Pakistan</option>
+          <option value="PW">Palau</option>
+          <option value="PS">Palestine</option>
+          <option value="PA">Panama</option>
+          <option value="PG">Papua New Guinea</option>
+          <option value="PY">Paraguay</option>
+          <option value="PE">Peru</option>
+          <option value="PH">Philippines</option>
+          <option value="PN">Pitcairn Islands</option>
+          <option value="PL">Poland</option>
+          <option value="PT">Portugal</option>
+          <option value="PR">Puerto Rico</option>
+          <option value="QA">Qatar</option>
+          <option value="RE">Réunion</option>
+          <option value="RO">Romania</option>
+          <option value="RU">Russia</option>
+          <option value="RW">Rwanda</option>
+          <option value="WS">Samoa</option>
+          <option value="SM">San Marino</option>
+          <option value="ST">São Tomé &amp; Príncipe</option>
+          <option value="SA">Saudi Arabia</option>
+          <option value="SN">Senegal</option>
+          <option value="RS">Serbia</option>
+          <option value="SC">Seychelles</option>
+          <option value="SL">Sierra Leone</option>
+          <option value="SG">Singapore</option>
+          <option value="SX">Sint Maarten</option>
+          <option value="SK">Slovakia</option>
+          <option value="SI">Slovenia</option>
+          <option value="SB">Solomon Islands</option>
+          <option value="SO">Somalia</option>
+          <option value="ZA">South Africa</option>
+          <option value="GS">South Georgia &amp; South Sandwich Islands</option>
+          <option value="KR">South Korea</option>
+          <option value="SS">South Sudan</option>
+          <option value="ES">Spain</option>
+          <option value="LK">Sri Lanka</option>
+          <option value="BL">St Barthélemy</option>
+          <option value="SH">St Helena</option>
+          <option value="KN">St Kitts &amp; Nevis</option>
+          <option value="LC">St Lucia</option>
+          <option value="MF">St Martin</option>
+          <option value="PM">St Pierre &amp; Miquelon</option>
+          <option value="VC">St Vincent &amp; Grenadines</option>
+          <option value="SR">Suriname</option>
+          <option value="SJ">Svalbard &amp; Jan Mayen</option>
+          <option value="SE">Sweden</option>
+          <option value="CH">Switzerland</option>
+          <option value="TW">Taiwan</option>
+          <option value="TJ">Tajikistan</option>
+          <option value="TZ">Tanzania</option>
+          <option value="TH">Thailand</option>
+          <option value="TL">Timor-Leste</option>
+          <option value="TG">Togo</option>
+          <option value="TK">Tokelau</option>
+          <option value="TO">Tonga</option>
+          <option value="TT">Trinidad &amp; Tobago</option>
+          <option value="TA">Tristan da Cunha</option>
+          <option value="TN">Tunisia</option>
+          <option value="TR">Turkey</option>
+          <option value="TM">Turkmenistan</option>
+          <option value="TC">Turks &amp; Caicos Islands</option>
+          <option value="TV">Tuvalu</option>
+          <option value="UG">Uganda</option>
+          <option value="UA">Ukraine</option>
+          <option value="AE">United Arab Emirates</option>
+          <option value="GB">United Kingdom</option>
+          <option value="US">United States</option>
+          <option value="UY">Uruguay</option>
+          <option value="UM">US Outlying Islands</option>
+          <option value="VI">US Virgin Islands</option>
+          <option value="UZ">Uzbekistan</option>
+          <option value="VU">Vanuatu</option>
+          <option value="VA">Vatican City</option>
+          <option value="VE">Venezuela</option>
+          <option value="VN">Vietnam</option>
+          <option value="WF">Wallis &amp; Futuna</option>
+          <option value="EH">Western Sahara</option>
+          <option value="YE">Yemen</option>
+          <option value="ZM">Zambia</option>
+          <option value="ZW">Zimbabwe</option>
+        </select>
+      </section>
+
+      <section>
+        <label for="tel">Telephone</label>
+        <input id="tel" name="tel" autocomplete="tel" type="tel" maxlength="30" pattern="[\d \-\+]+" required>
+      </section>
+
+      <input type="submit" value="Submit" id="submit-button">
+
+    </form>
+
+  </main>
+
+  <script>
+    /* Copyright 2026 Google LLC.
+    SPDX-License-Identifier: Apache-2.0 */
+
+    const form = document.querySelector("form");
+    console.log(form);
+    console.log(form.submit);
+    const submitInput = document.querySelector("input#submit-button");
+
+    form.addEventListener("submit", handleFormSubmission);
+
+    function handleFormSubmission(event) {
+      event.preventDefault();
+      // If validation is required for specific form fields, call the validate() function.
+      // validate();
+      form.reportValidity();
+      if (form.checkValidity() === false) {
+        // Handle invalid form data.
+      } else {
+        submitInput.value = "Saving...";
+        submitInput.disabled = "true";
+        form.submit();
+      }
+    }
+
+    // Use the commented-out code below for any form fields where data
+    // entered by the user must be in a specific, valid format.
+    function validate() {
+      let message = "";
+
+      // If validation is required for a specific form field, use the commented-out code below.
+      // Repeat this code for each form field to be validated.
+      // Notes:
+      // - `someField` is the form field to be tested for a valid value.
+      // - `someregex` is a regular expression used to test the validity of the field value.
+
+      // if (!/someregex/.test(someField.value)) {
+      //   console.log(`Invalid value ${someField.value} for someField`);
+      // message = 'Explain how to enter a valid value';
+      // }
+      // someField.setCustomValidity(message);
+    }
+
+  </script>
+
+</body>
+
+</html>
