@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Validate Input After Interaction Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      line-height: 1.5;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .form-group {
+      margin-bottom: 2rem;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+    input {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+    input:invalid {
+      border-color: #d93025;
+      background-color: #fce8e6;
+    }
+    input:valid {
+      border-color: #188038;
+      background-color: #e6f4ea;
+    }
+    .error-msg {
+      display: none;
+      color: #d93025;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+    input:invalid + .error-msg {
+      display: block;
+    }
+    .rules-list {
+      display: none;
+      margin: 0;
+      padding-left: 1.5rem;
+      font-size: 0.875rem;
+    }
+    input:focus + .rules-list {
+      display: block;
+      color: #d93025;
+    }
+    input:valid + .rules-list {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Validate Input After Interaction</h1>
+  <p>Uses :invalid to validate an email field and enforce password complexity.</p>
+  <form id="demo-form" action="#">
+    <div class="form-group">
+      <label for="email">Email Address</label>
+      <input type="email" id="email" name="email" required placeholder="you@example.com">
+      <div id="email-error" class="error-msg">
+        Please enter a valid email address (e.g. name@domain.com).
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="password">New Password</label>
+      <input type="password" id="password" name="password" required minlength="8" pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}">
+      <ul id="password-rules" class="rules-list">
+        <li>At least 8 characters</li>
+        <li>One uppercase letter</li>
+        <li>One lowercase letter</li>
+        <li>One number</li>
+        <li>One special character</li>
+      </ul>
+    </div>
+    <div style="display: flex; gap: 1rem;">
+      <button type="submit">Create Account</button>
+      <button type="reset">Reset</button>
+    </div>
+  </form>
+  <script>
+    const inputs = document.querySelectorAll('input');
+    inputs.forEach(input => {
+      input.addEventListener('input', function() {
+        if (!this.checkValidity()) {
+          this.setAttribute('data-invalid', 'true');
+          this.classList.add('dirty');
+        } else {
+          this.removeAttribute('data-invalid');
+          this.classList.remove('dirty');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

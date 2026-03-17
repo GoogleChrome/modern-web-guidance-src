@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --surface: #ffffff;
+      --bg: #f8fafc;
+      --text: #1e293b;
+      --border: #e2e8f0;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    header {
+      margin-bottom: 3rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .example-section {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 3rem;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      border: 1px solid var(--border);
+    }
+    .example-header {
+      margin-bottom: 1.5rem;
+    }
+    .example-header h2 {
+      margin-top: 0;
+      color: var(--primary);
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .widget {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      min-height: 150px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .widget-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    .widget-label {
+      font-size: 0.875rem;
+      color: #64748b;
+      margin-top: 0.5rem;
+    }
+    .complex-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: 0.875rem;
+    }
+    .complex-table th,
+    .complex-table td {
+      border: 1px solid var(--border);
+      padding: 0.5rem;
+      text-align: left;
+    }
+    .toggle-content {
+      content-visibility: hidden;
+    }
+    .toggle-content.visible {
+      content-visibility: visible;
+    }
+    .btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover {
+      background: #2563eb;
+    }
+    .spacer {
+      height: 120vh;
+      display: flex;
+      align-items: top;
+      justify-content: center;
+      background: repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 20px, #e2e8f0 20px, #e2e8f0 40px);
+      border-radius: 12px;
+      margin: 2rem 0;
+      padding-top: 2rem;
+      color: #475569;
+      font-weight: bold;
+      font-size: 1.5rem;
+      text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
+    }
+    .above-fold-cv {
+      content-visibility: auto;
+    }
+    .below-fold-cv {
+      content-visibility: auto;
+    }
+    #demo3-container {
+      display: none;
+    }
+    .searchable-text {
+      font-size: 1.125rem;
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: #eff6ff;
+      border-left: 4px solid var(--primary);
+      border-radius: 0 8px 8px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header class="above-fold-cv">
+      <h1>Dashboard Techniques</h1>
+      <p>This demo implements various rendering approaches.</p>
+    </header>
+
+    <section class="example-section">
+      <div class="example-header">
+        <h2>Section 1</h2>
+        <button class="btn" id="toggle-btn" aria-expanded="false">Show Dashboard</button>
+      </div>
+      <div id="demo1-container" class="toggle-content">
+        <div id="dashboard-1"></div>
+      </div>
+    </section>
+
+    <div class="spacer">Scroll Down</div>
+
+    <section class="example-section">
+      <div class="example-header">
+        <h2>Section 2</h2>
+        <button class="btn" id="toggle-btn-2" aria-expanded="true">Hide Dashboard</button>
+      </div>
+      <div id="demo2-container">
+        <div id="dashboard-2" class="below-fold-cv"></div>
+      </div>
+    </section>
+
+    <div class="spacer">Scroll Down further</div>
+
+    <section class="example-section">
+      <div class="example-header">
+        <h2>Section 3</h2>
+        <button class="btn" id="toggle-btn-3" aria-expanded="false">Show Dashboard</button>
+      </div>
+      <div hidden="until-found" id="demo3-container">
+        <p class="searchable-text">Supercalifragilisticexpialidocious telemetry module.</p>
+        <div id="dashboard-3"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    function generateHeavyDashboard(containerId, seed) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      let dashboardHTML = '<div class="dashboard">';
+      for (let i = 0; i < 8; i++) {
+        const val = Math.floor(Math.random() * 10000);
+        dashboardHTML += `
+          <div class="widget">
+            <div class="widget-value">${val.toLocaleString()}</div>
+            <div class="widget-label">Metric ${seed}-${i}</div>
+          </div>
+        `;
+      }
+      dashboardHTML += '</div>';
+
+      dashboardHTML += `
+      <h3 style="margin-top: 2rem;">Detailed Analytics Data</h3>
+      <table class="complex-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Timestamp</th>
+            <th>Event Type</th>
+            <th>Status</th>
+            <th>Latency (ms)</th>
+            <th>Data Payload</th>
+          </tr>
+        </thead>
+        <tbody>
+      `;
+
+      for (let i = 0; i < 500; i++) {
+        dashboardHTML += `
+        <tr>
+          <td>#${seed}-${i.toString().padStart(4, '0')}</td>
+          <td>${new Date(Date.now() - i * 100000).toISOString()}</td>
+          <td>${['CLICK', 'HOVER', 'SCROLL', 'SUBMIT'][i % 4]}</td>
+          <td><span style="color: ${i % 7 === 0 ? 'red' : 'green'}">${i % 7 === 0 ? 'FAILED' : 'SUCCESS'}</span></td>
+          <td>${Math.floor(Math.random() * 500)}</td>
+          <td>{"user": "u_${Math.floor(Math.random() * 1000)}", "session": "s_${Math.floor(Math.random() * 10000)}", "flag": ${i % 2 === 0}}</td>
+        </tr>
+        `;
+      }
+
+      dashboardHTML += `
+        </tbody>
+      </table>
+      `;
+
+      container.innerHTML = dashboardHTML;
+    }
+
+    generateHeavyDashboard('dashboard-1', 'A');
+    generateHeavyDashboard('dashboard-2', 'B');
+    generateHeavyDashboard('dashboard-3', 'C');
+
+    const toggleBtn = document.getElementById('toggle-btn');
+    const demo1Container = document.getElementById('demo1-container');
+
+    toggleBtn.addEventListener('click', () => {
+      const isVisible = demo1Container.classList.contains('visible');
+
+      if (isVisible) {
+        demo1Container.classList.remove('visible');
+        toggleBtn.textContent = 'Show Dashboard';
+        toggleBtn.setAttribute('aria-expanded', 'false');
+      } else {
+        demo1Container.classList.add('visible');
+        toggleBtn.textContent = 'Hide Dashboard';
+        toggleBtn.setAttribute('aria-expanded', 'true');
+      }
+    });
+
+    const toggleBtn2 = document.getElementById('toggle-btn-2');
+    const demo2Container = document.getElementById('demo2-container');
+
+    toggleBtn2.addEventListener('click', () => {
+      const isHidden = demo2Container.style.display === 'none';
+      if (isHidden) {
+        demo2Container.style.display = 'block';
+        toggleBtn2.textContent = 'Hide Dashboard';
+        toggleBtn2.setAttribute('aria-expanded', 'true');
+      } else {
+        demo2Container.style.display = 'none';
+        toggleBtn2.textContent = 'Show Dashboard';
+        toggleBtn2.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    const toggleBtn3 = document.getElementById('toggle-btn-3');
+    const demo3Container = document.getElementById('demo3-container');
+
+    toggleBtn3.addEventListener('click', () => {
+      if (demo3Container.hasAttribute('hidden')) {
+        demo3Container.removeAttribute('hidden');
+        demo3Container.style.display = 'block';
+        toggleBtn3.textContent = 'Hide Dashboard';
+        toggleBtn3.setAttribute('aria-expanded', 'true');
+      } else {
+        demo3Container.setAttribute('hidden', 'until-found');
+        demo3Container.style.display = 'none';
+        toggleBtn3.textContent = 'Show Dashboard';
+        toggleBtn3.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Required Field Feedback</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      line-height: 1.5;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .form-group {
+      margin-bottom: 2rem;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+    }
+
+    input.error-active {
+      border-color: #d93025;
+      background-color: #fce8e6;
+    }
+
+    .error-msg {
+      display: none;
+      color: #d93025;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+
+    input.error-active+.error-msg {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Required Field Feedback</h1>
+
+  <form id="demo-form" action="#">
+    <div class="form-group">
+      <label for="full-name">Full Name *</label>
+      <input type="text" id="full-name" name="full-name" required>
+      <div id="name-error" class="error-msg">
+        Name is required.
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="username">Username *</label>
+      <input type="text" id="username" name="username" required>
+      <div id="username-error" class="error-msg">
+        Username is required.
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem;">
+      <button type="submit" id="submit-btn" disabled>Submit</button>
+      <button type="reset">Reset</button>
+    </div>
+  </form>
+
+  <script>
+    const form = document.getElementById('demo-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const inputs = document.querySelectorAll('input[required]');
+
+    window.addEventListener('load', () => {
+      inputs.forEach(input => {
+        input.classList.add('error-active');
+      });
+    });
+
+    inputs.forEach(input => {
+      input.addEventListener('blur', () => {
+        if (input.value.trim() === '') {
+          input.classList.add('error-active');
+        } else {
+          input.classList.remove('error-active');
+        }
+        
+        let isValid = true;
+        inputs.forEach(i => {
+          if (!i.value.trim()) {
+            isValid = false;
+          }
+        });
+        submitBtn.disabled = !isValid;
+      });
+    });
+  </script>
+</body>
+
+</html>

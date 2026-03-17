@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Select Menu Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      line-height: 1.5;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .form-group {
+      margin-bottom: 2rem;
+    }
+
+    .label-text {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    select {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+      background-color: white;
+    }
+
+    .error-msg {
+      display: none;
+      color: #d93025;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+
+    .has-error {
+      border-color: #d93025 !important;
+      background-color: #fce8e6 !important;
+    }
+
+    .has-success {
+      border-color: #188038 !important;
+      background-color: #e6f4ea !important;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Select Menu Interaction</h1>
+  <p>Select a valid option to proceed.</p>
+
+  <form id="demo-form">
+    <div class="form-group">
+      <div class="label-text">Country</div>
+      <select id="country" name="country" data-dirty="true" class="dirty-state has-error">
+        <option value="">Select a country...</option>
+        <option value="us">United States</option>
+        <option value="ca">Canada</option>
+        <option value="uk">United Kingdom</option>
+        <option value="au">Australia</option>
+      </select>
+      <div id="country-error" class="error-msg" style="display: block;">
+        Please select a valid country.
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem;">
+      <button type="submit">Continue</button>
+      <button type="reset">Reset</button>
+    </div>
+  </form>
+
+  <script>
+    const form = document.getElementById('demo-form');
+    const select = document.getElementById('country');
+    const errorMsg = document.getElementById('country-error');
+
+    select.onchange = function() {
+      if (select.value === '') {
+        select.classList.add('has-error');
+        select.classList.remove('has-success');
+        select.setAttribute('data-dirty', 'true');
+        errorMsg.style.display = 'block';
+      } else {
+        select.classList.add('has-success');
+        select.classList.remove('has-error');
+        select.setAttribute('data-dirty', 'false');
+        errorMsg.style.display = 'none';
+      }
+    };
+  </script>
+</body>
+</html>
