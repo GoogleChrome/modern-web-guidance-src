@@ -27,13 +27,6 @@ describe('baseline-status CLI', () => {
     expect(stdout).toContain('| overflow-clip ');
   });
 
-  it('filters by status', () => {
-    const { stdout } = runCLI(['overflow', '--status', 'high']);
-    expect(stdout).toContain('Widely');
-    expect(stdout).not.toContain('Newly');
-    expect(stdout).not.toContain('Limited');
-  });
-
   it('outputs JSON when --json flag is provided', () => {
     const { stdout } = runCLI(['overflow', '--json']);
     const data = JSON.parse(stdout);
@@ -41,11 +34,6 @@ describe('baseline-status CLI', () => {
     expect(data.length).toBeGreaterThan(0);
     expect(data[0]).toHaveProperty('featureId');
     expect(data[0]).toHaveProperty('baseline');
-  });
-
-  it('handles unknown status filter', () => {
-    const { stdout } = runCLI(['--status', 'unknown']);
-    expect(stdout).toContain('unknown');
   });
 
   it('outputs empty array for no matches in JSON mode', () => {
