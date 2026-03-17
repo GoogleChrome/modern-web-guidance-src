@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
-import { findUseCaseDirs, validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps } from './sync-use-cases.ts';
+import { findUseCaseDirs, validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync } from './sync-use-cases.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -411,30 +411,36 @@ describe('buildFeatureToIssueMap', () => {
     assert.strictEqual(buildFeatureToIssueMap([]).size, 0);
   });
 
-  test('maps feature ID to issue number', () => {
-    const issues = [{ number: 42, body: 'Feature ID: my-feature', labels: [] }];
+  test('maps feature ID to issue number and state', () => {
+    const issues = [{ number: 42, body: 'Feature ID: my-feature', labels: [], state: 'open' }];
     const map = buildFeatureToIssueMap(issues);
-    assert.deepStrictEqual(map.get('my-feature'), { number: 42, priorityLabel: null });
+    assert.deepStrictEqual(map.get('my-feature'), { number: 42, priorityLabel: null, state: 'open' });
+  });
+
+  test('captures closed state', () => {
+    const issues = [{ number: 42, body: 'Feature ID: my-feature', labels: [], state: 'closed' }];
+    const map = buildFeatureToIssueMap(issues);
+    assert.strictEqual(map.get('my-feature')?.state, 'closed');
   });
 
   test('extracts priority label from issue labels', () => {
-    const issues = [{ number: 42, body: 'Feature ID: my-feature', labels: [{ name: 'P1' }, { name: 'new-feature' }] }];
+    const issues = [{ number: 42, body: 'Feature ID: my-feature', labels: [{ name: 'P1' }, { name: 'new-feature' }], state: 'open' }];
     const map = buildFeatureToIssueMap(issues);
     assert.strictEqual(map.get('my-feature')?.priorityLabel, 'P1');
   });
 
   test('ignores issues without a feature ID in the body', () => {
-    const issues = [{ number: 42, body: 'No feature ID here', labels: [] }];
+    const issues = [{ number: 42, body: 'No feature ID here', labels: [], state: 'open' }];
     assert.strictEqual(buildFeatureToIssueMap(issues).size, 0);
   });
 
   test('ignores issues with no body', () => {
-    const issues = [{ number: 42, body: null, labels: [] }];
+    const issues = [{ number: 42, body: null, labels: [], state: 'open' }];
     assert.strictEqual(buildFeatureToIssueMap(issues).size, 0);
   });
 
   test('handles string labels as well as label objects', () => {
-    const issues = [{ number: 42, body: 'Feature ID: my-feature', labels: ['P2', 'new-feature'] }];
+    const issues = [{ number: 42, body: 'Feature ID: my-feature', labels: ['P2', 'new-feature'], state: 'open' }];
     const map = buildFeatureToIssueMap(issues);
     assert.strictEqual(map.get('my-feature')?.priorityLabel, 'P2');
   });
@@ -502,7 +508,7 @@ describe('buildIssueContent', () => {
   });
 
   test('includes related feature issue links when available', () => {
-    const featureMap = new Map([['dialog-closedby', { number: 99, priorityLabel: 'P1' }]]);
+    const featureMap = new Map([['dialog-closedby', { number: 99, priorityLabel: 'P1', state: 'open' }]]);
     const { issueBody, priorityLabel } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', featureMap);
     assert.ok(issueBody.includes('Related features: #99'));
     assert.strictEqual(priorityLabel, 'P1');
@@ -510,8 +516,8 @@ describe('buildIssueContent', () => {
 
   test('uses priority label from first matched feature only', () => {
     const featureMap = new Map([
-      ['feature-a', { number: 1, priorityLabel: 'P1' }],
-      ['feature-b', { number: 2, priorityLabel: 'P2' }],
+      ['feature-a', { number: 1, priorityLabel: 'P1', state: 'open' }],
+      ['feature-b', { number: 2, priorityLabel: 'P2', state: 'open' }],
     ]);
     const { priorityLabel } = buildIssueContent('my-use-case', 'desc', ['feature-a', 'feature-b'], 'guides/ux/my-use-case', featureMap);
     assert.strictEqual(priorityLabel, 'P1');
@@ -520,5 +526,84 @@ describe('buildIssueContent', () => {
   test('omits related features section when no features have linked issues', () => {
     const { issueBody } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap);
     assert.ok(!issueBody.includes('Related features'));
+  });
+});
+
+describe('getFeaturesNeedingSync', () => {
+  function makeFeatureMap(entries: Array<[string, { number: number; state: string }]>) {
+    return new Map(entries.map(([id, { number, state }]) => [id, { number, priorityLabel: null, state }]));
+  }
+
+  test('returns empty array when feature map is empty', () => {
+    const result = getFeaturesNeedingSync(new Map(), new Set(['autofill']), new Set(['autofill']));
+    assert.deepStrictEqual(result, []);
+  });
+
+  test('skips closed feature with no use cases', () => {
+    const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'closed' }]]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(), new Set());
+    assert.deepStrictEqual(result, []);
+  });
+
+  test('includes open feature issue when it has active use cases', () => {
+    const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(['autofill']), new Set(['autofill']));
+    assert.strictEqual(result.length, 1);
+    assert.deepStrictEqual(result[0], { featureId: 'autofill', issueNumber: 27, needsReopen: false, closeReason: null, targetStatus: 'Needs evals' });
+  });
+
+  test('flags closed feature issue for reopening when it has active use cases', () => {
+    const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'closed' }]]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(['autofill']), new Set(['autofill']));
+    assert.strictEqual(result.length, 1);
+    assert.deepStrictEqual(result[0], { featureId: 'autofill', issueNumber: 27, needsReopen: true, closeReason: null, targetStatus: 'Needs evals' });
+  });
+
+  test('closes open feature as completed when all use cases are implemented', () => {
+    const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(), new Set(['autofill']));
+    assert.strictEqual(result.length, 1);
+    assert.deepStrictEqual(result[0], { featureId: 'autofill', issueNumber: 27, needsReopen: false, closeReason: 'completed', targetStatus: null });
+  });
+
+  test('skips open feature with no use cases — it may just be waiting for use cases', () => {
+    const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(), new Set());
+    assert.deepStrictEqual(result, []);
+  });
+
+  test('skips already-closed feature with all use cases implemented', () => {
+    const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'closed' }]]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(), new Set(['autofill']));
+    assert.deepStrictEqual(result, []);
+  });
+
+  test('handles use case with multiple features, only some with issues', () => {
+    const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'closed' }]]);
+    // Use case maps to both 'autofill' and 'css-transitions', but only autofill has an issue
+    const result = getFeaturesNeedingSync(featureMap, new Set(['autofill', 'css-transitions']), new Set(['autofill', 'css-transitions']));
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].featureId, 'autofill');
+  });
+
+  test('includes multiple features when all have active use cases', () => {
+    const featureMap = makeFeatureMap([
+      ['autofill', { number: 27, state: 'closed' }],
+      ['view-transitions', { number: 55, state: 'open' }],
+    ]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(['autofill', 'view-transitions']), new Set(['autofill', 'view-transitions']));
+    assert.strictEqual(result.length, 2);
+    assert.ok(result.every(f => f.targetStatus === 'Needs evals'));
+  });
+
+  test('closes feature with completed use cases but skips feature with no use cases', () => {
+    const featureMap = makeFeatureMap([
+      ['autofill', { number: 27, state: 'open' }],
+      ['view-transitions', { number: 55, state: 'open' }],
+    ]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(), new Set(['autofill']));
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].featureId, 'autofill');
+    assert.strictEqual(result[0].closeReason, 'completed');
   });
 });

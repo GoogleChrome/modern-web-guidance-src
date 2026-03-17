@@ -36,12 +36,33 @@ export interface IssueContent {
   priorityLabel: string | null;
 }
 
+export interface FeatureIssueData {
+  number: number;
+  priorityLabel: string | null;
+  state: string;
+}
+
+export interface FeatureToSync {
+  featureId: string;
+  issueNumber: number;
+  needsReopen: boolean;
+  closeReason: 'completed' | null;
+  targetStatus: 'Needs evals' | null;
+}
+
+interface ProjectDetails {
+  projectId: string;
+  statusFieldId: string;
+  statusOptions: any[];
+  issueStatusMap: Map<number, string>;
+}
+
 interface GitHubData {
-  featureToIssueMap: Map<string, { number: number; priorityLabel: string | null }>;
+  featureToIssueMap: Map<string, FeatureIssueData>;
   allUseCases: any[];
   nameToIssueMap: Map<string, any>;
   subdirToIssueMap: Map<string, any>;
-  projectDetails: { projectId: string; statusFieldId: string; statusOptions: any[]; issueStatusMap: Map<number, string> } | null;
+  projectDetails: ProjectDetails | null;
 }
 
 // --- Constants ---
@@ -144,7 +165,7 @@ export function buildIssueContent(
   description: string,
   featureIds: string[],
   relativeSubdir: string,
-  featureToIssueMap: Map<string, { number: number; priorityLabel: string | null }>
+  featureToIssueMap: Map<string, FeatureIssueData>
 ): IssueContent {
   const relatedLinks: string[] = [];
   let priorityLabel: string | null = null;
@@ -173,18 +194,53 @@ export function buildIssueContent(
 /**
  * Builds a map from feature ID to issue number and priority label.
  */
-export function buildFeatureToIssueMap(issues: any[]): Map<string, { number: number; priorityLabel: string | null }> {
-  const map = new Map<string, { number: number; priorityLabel: string | null }>();
+export function buildFeatureToIssueMap(issues: any[]): Map<string, FeatureIssueData> {
+  const map = new Map<string, FeatureIssueData>();
   for (const issue of issues) {
     const match = issue.body?.match(/Feature ID: ([a-z0-9-]+)/);
     if (match) {
       const priorityLabel = issue.labels
         .map((l: any) => (typeof l === 'string' ? l : l.name))
         .find((l: string) => PRIORITY_LABEL_REGEX.test(l)) || null;
-      map.set(match[1], { number: issue.number, priorityLabel });
+      map.set(match[1], { number: issue.number, priorityLabel, state: issue.state });
     }
   }
   return map;
+}
+
+/**
+ * Returns the list of feature issues that need to be synced because they have
+ * at least one active (incomplete) use case depending on them.
+ */
+export function getFeaturesNeedingSync(
+  featureToIssueMap: Map<string, FeatureIssueData>,
+  featuresWithActiveUseCases: Set<string>,
+  featuresWithAnyUseCases: Set<string>
+): FeatureToSync[] {
+  const result: FeatureToSync[] = [];
+  for (const [featureId, featureData] of featureToIssueMap) {
+    const hasActiveUseCases = featuresWithActiveUseCases.has(featureId);
+    const hasCompletedUseCases = !hasActiveUseCases && featuresWithAnyUseCases.has(featureId);
+
+    if (hasActiveUseCases) {
+      result.push({
+        featureId,
+        issueNumber: featureData.number,
+        needsReopen: featureData.state === 'closed',
+        closeReason: null,
+        targetStatus: 'Needs evals',
+      });
+    } else if (hasCompletedUseCases && featureData.state === 'open') {
+      result.push({
+        featureId,
+        issueNumber: featureData.number,
+        needsReopen: false,
+        closeReason: 'completed',
+        targetStatus: null,
+      });
+    }
+  }
+  return result;
 }
 
 /**
@@ -272,7 +328,7 @@ function getUseCaseFiles(subdir: string): UseCaseFiles {
 
 // --- GitHub API ---
 
-async function getProjectDetails(org: string, number: number) {
+async function getProjectDetails(org: string, number: number): Promise<ProjectDetails | null> {
   console.log(`Fetching project details for ${org} project #${number}...`);
   const query = `
     query($org: String!, $number: Int!, $cursor: String) {
@@ -406,7 +462,7 @@ async function updateProjectItemStatus(issueNumber: number, projectId: string, f
 
 async function fetchGitHubData(): Promise<GitHubData> {
   let projectDetails = null;
-  let featureToIssueMap = new Map<string, { number: number; priorityLabel: string | null }>();
+  let featureToIssueMap = new Map<string, FeatureIssueData>();
   let allUseCases: any[] = [];
   let nameToIssueMap = new Map<string, any>();
   let subdirToIssueMap = new Map<string, any>();
@@ -531,12 +587,14 @@ async function syncIssue(
 }
 
 async function processUseCases(
-  featureToIssueMap: Map<string, { number: number; priorityLabel: string | null }>,
+  featureToIssueMap: Map<string, FeatureIssueData>,
   nameToIssueMap: Map<string, any>,
   subdirToIssueMap: Map<string, any>,
-  projectDetails: GitHubData['projectDetails']
-): Promise<{ activeIssueNumbers: Set<number>; hasError: boolean }> {
+  projectDetails: ProjectDetails | null
+): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; hasError: boolean }> {
   const activeIssueNumbers = new Set<number>();
+  const featuresWithActiveUseCases = new Set<string>();
+  const featuresWithAnyUseCases = new Set<string>();
   let hasError = false;
 
   const guidesDir = path.resolve(REPO_ROOT, 'guides');
@@ -599,6 +657,13 @@ async function processUseCases(
     const description = guideData.description || '';
     const featureIds = (guideData['web-feature-ids'] || []) as string[];
     const statusName = getStatusName(guideBody, hasGrader, hasPrompts);
+
+    for (const id of featureIds) {
+      featuresWithAnyUseCases.add(id);
+      if (statusName !== null) {
+        featuresWithActiveUseCases.add(id);
+      }
+    }
     const { issueTitle, issueBody, priorityLabel } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap);
     const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
 
@@ -631,7 +696,63 @@ async function processUseCases(
     }
   }
 
-  return { activeIssueNumbers, hasError };
+  return { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, hasError };
+}
+
+async function syncFeatureIssues(
+  featureToIssueMap: Map<string, FeatureIssueData>,
+  featuresWithActiveUseCases: Set<string>,
+  featuresWithAnyUseCases: Set<string>,
+  projectDetails: ProjectDetails | null
+) {
+  if (!GITHUB_TOKEN && !IS_DRY_RUN) return;
+
+  const featuresToSync = getFeaturesNeedingSync(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases);
+  if (featuresToSync.length === 0) return;
+
+  console.log('🔄 Syncing feature issue states based on use case progress...');
+  for (const { featureId, issueNumber, needsReopen, closeReason, targetStatus } of featuresToSync) {
+    if (needsReopen) {
+      console.log(`${IS_DRY_RUN ? '[DRY RUN] Would reopen' : 'Reopening'} feature issue #${issueNumber} (${featureId}) — has active use cases...`);
+      if (!IS_DRY_RUN) {
+        await octokit.rest.issues.update({
+          owner: ORG,
+          repo: REPO,
+          issue_number: issueNumber,
+          state: 'open'
+        });
+      }
+    } else if (closeReason) {
+      console.log(`${IS_DRY_RUN ? '[DRY RUN] Would close' : 'Closing'} feature issue #${issueNumber} (${featureId}) as completed — all use cases implemented...`);
+      if (!IS_DRY_RUN) {
+        await octokit.rest.issues.update({
+          owner: ORG,
+          repo: REPO,
+          issue_number: issueNumber,
+          state: 'closed',
+          state_reason: closeReason
+        });
+      }
+    }
+
+    const featureStatusName = targetStatus;
+    if (featureStatusName && projectDetails) {
+      const currentStatus = projectDetails.issueStatusMap.get(issueNumber);
+      if (currentStatus?.toLowerCase() !== featureStatusName.toLowerCase()) {
+        const option = projectDetails.statusOptions.find((o: any) => o.name.toLowerCase() === featureStatusName.toLowerCase());
+        if (option) {
+          console.log(`${IS_DRY_RUN ? '[DRY RUN] Would set' : 'Setting'} project status for feature #${issueNumber} to "${featureStatusName}"...`);
+          if (!IS_DRY_RUN) {
+            await updateProjectItemStatus(issueNumber, projectDetails.projectId, projectDetails.statusFieldId, option.id);
+          }
+        } else {
+          console.warn(`⚠️ Could not find option ID for status "${featureStatusName}"`);
+        }
+      }
+    } else if (featureStatusName && IS_DRY_RUN) {
+      console.log(`[DRY RUN] Would set project status to "${featureStatusName}" for feature #${issueNumber} (but project details are unavailable)`);
+    }
+  }
 }
 
 async function cleanupOrphanedIssues(allUseCases: any[], activeIssueNumbers: Set<number>) {
@@ -683,8 +804,9 @@ async function run() {
   console.log('🚀 Starting use case sync...');
 
   const { featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails } = await fetchGitHubData();
-  const { activeIssueNumbers, hasError } = await processUseCases(featureToIssueMap, nameToIssueMap, subdirToIssueMap, projectDetails);
+  const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, hasError } = await processUseCases(featureToIssueMap, nameToIssueMap, subdirToIssueMap, projectDetails);
   await cleanupOrphanedIssues(allUseCases, activeIssueNumbers);
+  await syncFeatureIssues(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, projectDetails);
 
   if (hasError) {
     console.error('\n🛑 Sync failed due to validation errors.');
