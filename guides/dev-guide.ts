@@ -632,13 +632,15 @@ export function classifyGuide(inv: GuideInventory): GuideStatus {
 }
 
 const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
-  'needs-use-cases': { label: 'Needs use cases (missing guide.md)', color: cRed },
-  'needs-guidance':  { label: 'Needs guidance (write guide.md, demo.html, expectations.md)', color: cYellow },
-  'needs-evals':     { label: 'Needs evals (run `gd dev`)', color: cCyan },
-  'done':            { label: 'Done', color: cGreen },
+  'incomplete':        { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
+  'stub':              { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
+  'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
+  'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
+  'needs-test':        { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
+  'eval-ready':        { label: 'Ready for eval', color: cGreen },
 };
 
-export function auditGuides(options: { groupByFeatures?: boolean } = {}): void {
+export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
   const taskMap = getTaskMap();
   const allGuides = scanAllGuides(taskMap);
 
@@ -654,14 +656,7 @@ export function auditGuides(options: { groupByFeatures?: boolean } = {}): void {
     byStatus.get(status)!.push(inv);
   }
 
-  const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
-    'incomplete':        { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
-    'stub':              { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
-    'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
-    'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
-    'needs-test':        { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
-    'eval-ready':        { label: 'Ready for eval', color: cGreen },
-  };
+
 
   // Summary counts
   console.log(cBold(`\nGuide Audit: ${allGuides.length} guides\n`));
@@ -671,7 +666,7 @@ export function auditGuides(options: { groupByFeatures?: boolean } = {}): void {
     console.log(`  ${color(`${String(guides.length).padStart(2)}`)}  ${label}`);
   }
 
-  if (options.groupByFeatures) {
+  if (!options.groupByUsecases) {
     renderFeatureMatrix(allGuides);
   } else {
     // Per-category detail
@@ -780,8 +775,25 @@ function renderFeatureMatrix(allGuides: GuideInventory[]): void {
   const hdr = 'guide'.padEnd(10) + 'demo'.padEnd(10) + 'expct'.padEnd(10) + '│ ' + 'neg'.padEnd(10) + 'grdr'.padEnd(10) + 'prmpt'.padEnd(10) + 'task';
   console.log(cDim(`\n  ${'feature'.padEnd(32)} count ${hdr}`));
 
+  const statusRank: Record<GuideStatus, number> = {
+    'incomplete': 0,
+    'stub': 1,
+    'needs-expectations': 2,
+    'needs-calibration': 3,
+    'needs-test': 4,
+    'eval-ready': 5,
+  };
+
   for (const fId of sortedFeatures) {
     const guides = featureToGuides.get(fId)!;
+    const col = (s: string, w = 10) => s + ' '.repeat(Math.max(0, w - guides.length));
+    
+    // Determine overall status as the minimum status rank among all guides in this feature
+    const statuses = guides.map(classifyGuide);
+    const minRank = Math.min(...statuses.map(s => statusRank[s]));
+    const overallStatus = (Object.keys(statusRank) as GuideStatus[]).find(s => statusRank[s] === minRank) || 'incomplete';
+    const { color } = statusLabel[overallStatus];
+
     const name = fId.length > 30 ? fId.substring(0, 29) + '…' : fId;
 
     const renderDots = (fn: (inv: GuideInventory) => string) => {
@@ -790,30 +802,16 @@ function renderFeatureMatrix(allGuides: GuideInventory[]): void {
 
     const expctDots = guides.map(inv => (inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations))).join('');
 
-    const col = (s: string, w = 10) => {
-      const visibleLength = guides.length;
-      return s + ' '.repeat(Math.max(0, w - visibleLength));
-    };
+    const row = col(renderDots(guideDot)) + 
+                col(renderDots(inv => dot(inv.hasDemo))) + 
+                col(expctDots) + 
+                cDim('│') + ' ' +
+                col(renderDots(inv => dot(inv.hasNegativeDemo))) + 
+                col(renderDots(inv => dot(inv.hasGrader))) + 
+                col(renderDots(inv => dot(inv.hasPrompts))) + 
+                renderDots(inv => dot(inv.hasTask));
 
-    const row =
-      col(renderDots(guideDot)) +
-      col(renderDots(inv => dot(inv.hasDemo))) +
-      col(expctDots) +
-      cDim('│') +
-      ' ' +
-      col(renderDots(inv => dot(inv.hasNegativeDemo))) +
-      col(renderDots(inv => dot(inv.hasGrader))) +
-      col(renderDots(inv => dot(inv.hasPrompts))) +
-      renderDots(inv => dot(inv.hasTask));
-
-    const statuses = guides.map(inv => classifyGuide(inv));
-    let featureStatus: GuideStatus = 'done';
-    if (statuses.includes('needs-use-cases')) featureStatus = 'needs-use-cases';
-    else if (statuses.includes('needs-guidance')) featureStatus = 'needs-guidance';
-    else if (statuses.includes('needs-evals')) featureStatus = 'needs-evals';
-
-    const { color } = statusLabel[featureStatus];
-    console.log(`  ${color(name.padEnd(32))} ${String(guides.length).padEnd(5)} ${row}`);
+    console.log(`  ${color(name.padEnd(32))} ${String(guides.length).padStart(5)}  ${row}`);
   }
 }
 
