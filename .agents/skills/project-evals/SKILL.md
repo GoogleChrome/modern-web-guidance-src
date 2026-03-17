@@ -12,6 +12,9 @@ This is the third of three stages in creating guidance:
 3. Stage 3: Evaluating guidance for a use case (you are here)
 
 * **`expectations.md`**: Write a natural language, bulleted list of assertions that must be true if an agent implements the `guide.md` correctly. (e.g., "The input element is styled with a red border only AFTER a blur event").
+  * Each bullet must be **concrete and testable** — a grader must be able to write a Playwright assertion for it. Bullets like "Keep form pages visually simple" are best practices, not expectations.
+  * DO NOT include external links in expectations. The grader generator cannot resolve them.
+  * Avoid over-constraining implementation details that don't matter for correctness (e.g., don't assert that an element must be a direct child if a descendant also works).
 
 ## Grading Note
 * Graders (`grader.ts`) live within their respective guide folders. These are Playwright test files, but they are permitted to perform non-browser tests (like `str.includes()` on file contents) as well as actual browser automation checks. A huamn may manually edit them if the generator struggles to get it perfectly tailored.
@@ -59,6 +62,10 @@ The human can manually write or revise the grader or prompts if they wish.
 - DO NOT tell the agent which web API or CSS property to use unless a real developer would naturally do so. The point is to test whether the agent discovers the right solution via the guide.
 
 **Quantity:** 1–4 prompts is typical. A single highly specific prompt is fine for technical use cases. Multiple prompts are useful for use cases with multiple valid entry points (e.g., "accordion", "tabs", "drawer" all exercising the same feature).
+
+**Test your prompts:** Before finalizing, ask yourself: would an agent reading this prompt understand what they need to build? Vague phrases like "I should be able to search" may not convey browser-native "Find in page" behavior to a model. If the prompt is ambiguous, rewrite it to make the intent explicit.
+
+**Consistency:** If writing multiple prompts, consider starting them with the same verb or structure (e.g., all starting with "Create a...") to make the list scannable and consistent.
 
 ## Troubleshooting
 

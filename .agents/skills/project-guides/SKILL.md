@@ -26,8 +26,8 @@ sources:
   - https://developer.mozilla.org/en-US/docs/Web/API/Feature
 ---
 ```
-* **web-features**: Must be a list of accurate IDs found via webstatus.dev. If the ID is missing, inform the USER.
-* **sources**: Must be a list of primary source URLs used to synthesize the document.
+* **web-features**: Must be a list of accurate IDs found via webstatus.dev. Include ALL features referenced in the guide body, not just the primary one. If an ID is missing, inform the USER.
+* **sources**: Must be a list of ALL reference URLs used to synthesize the document. Add any URL referenced in the guide's research or inline links here.
 
 ### 2. Tone and Formatting
 * **MANDATORY:** Use strict imperative directives. Start instructions with `MANDATORY:`, `DO`, and `DO NOT`. Coding agents respond best to rigid constraints.
@@ -36,13 +36,22 @@ sources:
 
 ### 3. Code Snippets
 * Include short, heavily commented code snippets.
-* Put directives directly in code comments so they are impossible to miss (e.g., `<!-- DO: Always use the required attribute -->`).
+* Put directives directly in code comments so they are impossible to miss (e.g., `<!-- Always use the required attribute -->`).
+* Code comments MUST explain **WHY** a value or approach is chosen, not just what the code does. An agent that copies magic values without understanding them will apply them incorrectly. If a value is context-dependent (e.g., a threshold that should vary by use case), say so explicitly.
 
-### 4. Fallback Strategies
+### 4. Implementation Steps
+* Only mark steps as `MANDATORY` if they are truly required for the feature to function. Optional steps (e.g., adding scroll snap, adding an event listener for progressive enhancement) must be labeled as optional. Incorrect use of `MANDATORY` causes agents to implement unnecessary complexity.
+* The guide is the agent's **only** source of truth. DO NOT reference `demo.html` or any other file — agents won't have access to them. Everything the agent needs to implement the use case must be in `guide.md`.
+* Use **Baseline** terminology to describe browser support (e.g., "Baseline Widely Available", "Baseline Limited Availability"). DO NOT say "only supported in Chrome" or reference a specific browser version.
+* When recommending feature detection, prefer checking `HTMLElement.prototype` (e.g., `'onbeforematch' in HTMLElement.prototype`) over `window` or `document`, as it is more reliable.
+
+### 5. Fallback Strategies
 * If the feature is not "Baseline Widely Available", you **MUST** include a `### Fallback strategies` section.
-* **DO** use the `{{ BASELINE_STATUS("feature-id") }}` macro to display the current support status.
+* **DO** use the `{{ BASELINE_STATUS("feature-id") }}` macro to display the current support status as the first, standalone line in the section.
 * **OPTIONAL** provide an optional second argument for specific BCD keys: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
 * Show explicit code for feature detection (e.g., `CSS.supports()`, `if ('feature' in window)`) or graceful degradation techniques.
+* When recommending a polyfill, ALWAYS show how to conditionally load it only for browsers that need it. Do not instruct agents to unconditionally load polyfills.
+* **DO NOT** recommend polyfills from polyfill.io.
 
 ## Authoring `expectations.md` and  `demo.html`
 

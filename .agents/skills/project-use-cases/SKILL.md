@@ -56,7 +56,9 @@ A "use case" in this project is not a description of a feature; it's a task that
 * **Bridge the knowledge gap**: Assume the developer knows *what* they want to build (e.g., "I need a sticky header that shrinks on scroll") but might not know *which* modern web feature is the best solution (e.g., scroll-driven animations). Your use cases should facilitate this discovery by focusing on the desired outcome.
 * **Don't get too specific**: The use case must be general enough to match a wide range of relevant user prompts. Try to be as general as possible, while still faithfully representing the use case. For example, instead of saying "Fade an image in/out..." say "Smoothly hide/show a component...".
 * **Focus on the WHAT not the HOW**: Do not mention the solution in the use case description. For example, avoid phrases like "...by doing..." or "...through the use of...". Ideally, the use case description should remain constant, even if the recommended features or best practices for implementing it change over time.
-* **Scope**: Aim for 2-5 distinct use cases per feature. Each use case should represent a distinct implementation pattern or a significant variation in how the feature is applied. IMPORTANT: Not every sub-feature or feature variation needs a use cases.
+* **Scope**: Aim for 2-5 distinct use cases per feature. Each use case should represent a distinct implementation pattern or a significant variation in how the feature is applied. IMPORTANT: Not every sub-feature or feature variation needs a use case.
+* **Drop niche use cases**: If a use case is unlikely to match real developer prompts (e.g., very specific visual effects, obscure layout tricks), omit it. Prefer use cases that represent common, everyday developer needs.
+* **Merge rather than split**: If two proposed use cases would result in guides that are 99% identical, combine them into one, more general use case. Duplicate guides bloat context windows and create confusing contradictions.
 
 ## Minimizing overlap
 
@@ -84,6 +86,8 @@ The following steps are REQUIRED for creating a new use case:
 * **Step 3: Create the use case subdirectory**
 
   Create a subdirectory under `guides/<category>/` for your use case. The subdirectory name MUST be a short, slugified version of the action-oriented use case. For example, for the use case in Step 1, the subdirectory name is `deprioritize-background-fetches`.
+
+  DO NOT prefix the slug with action verbs like `create-`, `build-`, or `add-`. Slugs are directory names scanned in lists—action verbs just add noise and make it harder to find what you're looking for.
 
 * **Step 4: Create the `guide.md` stub**
 
