@@ -244,7 +244,7 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
   const baselineStatus = getFeatureStatus(featureId);
   if (!baselineStatus) return;
 
-  const subject = (feature as any).name || featureId;
+  const subject = feature.kind === 'feature' ? feature.name : featureId;
 
   if (baselineStatus.baseline === false) {
     return formatStatusMessage(subject, { baseline: false });
@@ -276,22 +276,22 @@ export function getStatus(
     }
     for (const resolvedFeatureId of resolvedFeatureIds) {
       const feature = features[resolvedFeatureId] as Feature;
-      if (feature.kind !== 'feature') {
-        continue;
-      }
-      if ((feature as any).status?.by_compat_key?.[bcdKey]) {
-        return (feature as any).status.by_compat_key[bcdKey];
+      if (feature.kind === 'feature') {
+        const compatStatus = feature.status?.by_compat_key?.[bcdKey];
+        if (compatStatus) {
+          return compatStatus;
+        }
       }
     }
   }
 
   // Fall back to searching all features when no feature ID is provided
   for (const feature of Object.values(features) as Feature[]) {
-    if (feature.kind !== "feature") {
-      continue;
-    }
-    if ((feature as any).status?.by_compat_key?.[bcdKey]) {
-      return (feature as any).status.by_compat_key[bcdKey];
+    if (feature.kind === "feature") {
+      const compatStatus = feature.status?.by_compat_key?.[bcdKey];
+      if (compatStatus) {
+        return compatStatus;
+      }
     }
   }
 }
