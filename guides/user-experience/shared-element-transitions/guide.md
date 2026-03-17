@@ -1,7 +1,6 @@
 ---
 name: shared-element-transitions
-description: Apply uniform transition animations across multiple distinct elements, such as items in a dynamic list or grid, without needing to write or dynamically generate unique CSS selectors for every individual element's view transition name.
+description: Visually connect persisting elements across different page states or navigations (e.g. expanding a product thumbnail into a full-bleed hero image) by smoothly morphing their size, position, or other styling properties.
 web-feature-ids:
   - view-transitions
-  - view-transition-class
 ---
