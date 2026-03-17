@@ -40,6 +40,13 @@ export interface FeatureIssueData {
   number: number;
   priorityLabel: string | null;
   state: string;
+  body: string;
+}
+
+export interface UseCaseEntry {
+  name: string;
+  issueNumber: number;
+  complete: boolean;
 }
 
 export interface FeatureToSync {
@@ -202,10 +209,38 @@ export function buildFeatureToIssueMap(issues: any[]): Map<string, FeatureIssueD
       const priorityLabel = issue.labels
         .map((l: any) => (typeof l === 'string' ? l : l.name))
         .find((l: string) => PRIORITY_LABEL_REGEX.test(l)) || null;
-      map.set(match[1], { number: issue.number, priorityLabel, state: issue.state });
+      map.set(match[1], { number: issue.number, priorityLabel, state: issue.state, body: issue.body ?? '' });
     }
   }
   return map;
+}
+
+export const USE_CASES_START = '<!-- use-cases-start: automatically updated by sync-use-cases.ts, do not edit -->';
+export const USE_CASES_END = '<!-- use-cases-end -->';
+
+/**
+ * Inserts or replaces the use case checklist section in a feature issue body.
+ * Skips entries without an issue number (e.g. during dry runs before creation).
+ */
+export function buildUseCaseChecklist(useCases: UseCaseEntry[]): string {
+  return useCases
+    .filter(uc => uc.issueNumber > 0)
+    .map(uc => `- [${uc.complete ? 'x' : ' '}] #${uc.issueNumber}`)
+    .join('\n');
+}
+
+export function updateFeatureIssueBody(currentBody: string, useCases: UseCaseEntry[]): string {
+  const checklist = buildUseCaseChecklist(useCases);
+  const section = `${USE_CASES_START}\n**Use cases:**\n${checklist}\n${USE_CASES_END}`;
+
+  const startIdx = currentBody.indexOf(USE_CASES_START);
+  const endIdx = currentBody.indexOf(USE_CASES_END);
+  if (startIdx !== -1 && endIdx !== -1) {
+    const before = currentBody.slice(0, startIdx).trimEnd();
+    const after = currentBody.slice(endIdx + USE_CASES_END.length).trimStart();
+    return `${before}\n\n${section}${after ? `\n\n${after}` : ''}`;
+  }
+  return `${currentBody.trimEnd()}\n\n${section}`;
 }
 
 /**
@@ -591,10 +626,11 @@ async function processUseCases(
   nameToIssueMap: Map<string, any>,
   subdirToIssueMap: Map<string, any>,
   projectDetails: ProjectDetails | null
-): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; hasError: boolean }> {
+): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean }> {
   const activeIssueNumbers = new Set<number>();
   const featuresWithActiveUseCases = new Set<string>();
   const featuresWithAnyUseCases = new Set<string>();
+  const featureUseCaseMap = new Map<string, UseCaseEntry[]>();
   let hasError = false;
 
   const guidesDir = path.resolve(REPO_ROOT, 'guides');
@@ -669,6 +705,11 @@ async function processUseCases(
 
     const { issueNumber, changed } = await syncIssue(name, existingIssue, issueTitle, issueBody, priorityLabel, statusName, activeIssueNumbers);
 
+    for (const id of featureIds) {
+      if (!featureUseCaseMap.has(id)) featureUseCaseMap.set(id, []);
+      featureUseCaseMap.get(id)!.push({ name, issueNumber, complete: statusName === null });
+    }
+
     let statusChanged = false;
     if (statusName && (issueNumber > 0 || IS_DRY_RUN)) {
       if (projectDetails) {
@@ -696,13 +737,14 @@ async function processUseCases(
     }
   }
 
-  return { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, hasError };
+  return { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError };
 }
 
 async function syncFeatureIssues(
   featureToIssueMap: Map<string, FeatureIssueData>,
   featuresWithActiveUseCases: Set<string>,
   featuresWithAnyUseCases: Set<string>,
+  featureUseCaseMap: Map<string, UseCaseEntry[]>,
   projectDetails: ProjectDetails | null
 ) {
   if (!GITHUB_TOKEN && !IS_DRY_RUN) return;
@@ -751,6 +793,26 @@ async function syncFeatureIssues(
       }
     } else if (featureStatusName && IS_DRY_RUN) {
       console.log(`[DRY RUN] Would set project status to "${featureStatusName}" for feature #${issueNumber} (but project details are unavailable)`);
+    }
+  }
+
+  // Update use case checklists in feature issue bodies (open and closed)
+  for (const [featureId, useCases] of featureUseCaseMap) {
+    const featureData = featureToIssueMap.get(featureId);
+    if (!featureData) continue;
+
+    const newBody = updateFeatureIssueBody(featureData.body, useCases);
+    if (newBody === featureData.body) continue;
+
+    const checklist = buildUseCaseChecklist(useCases);
+    console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} use case checklist for #${featureData.number} (${featureId}):\n${checklist}`);
+    if (!IS_DRY_RUN) {
+      await octokit.rest.issues.update({
+        owner: ORG,
+        repo: REPO,
+        issue_number: featureData.number,
+        body: newBody
+      });
     }
   }
 }
@@ -804,9 +866,9 @@ async function run() {
   console.log('🚀 Starting use case sync...');
 
   const { featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails } = await fetchGitHubData();
-  const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, hasError } = await processUseCases(featureToIssueMap, nameToIssueMap, subdirToIssueMap, projectDetails);
+  const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError } = await processUseCases(featureToIssueMap, nameToIssueMap, subdirToIssueMap, projectDetails);
   await cleanupOrphanedIssues(allUseCases, activeIssueNumbers);
-  await syncFeatureIssues(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, projectDetails);
+  await syncFeatureIssues(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, projectDetails);
 
   if (hasError) {
     console.error('\n🛑 Sync failed due to validation errors.');

@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
-import { findUseCaseDirs, validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync } from './sync-use-cases.ts';
+import { findUseCaseDirs, validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -411,16 +411,22 @@ describe('buildFeatureToIssueMap', () => {
     assert.strictEqual(buildFeatureToIssueMap([]).size, 0);
   });
 
-  test('maps feature ID to issue number and state', () => {
+  test('maps feature ID to issue number, state, and body', () => {
     const issues = [{ number: 42, body: 'Feature ID: my-feature', labels: [], state: 'open' }];
     const map = buildFeatureToIssueMap(issues);
-    assert.deepStrictEqual(map.get('my-feature'), { number: 42, priorityLabel: null, state: 'open' });
+    assert.deepStrictEqual(map.get('my-feature'), { number: 42, priorityLabel: null, state: 'open', body: 'Feature ID: my-feature' });
   });
 
   test('captures closed state', () => {
     const issues = [{ number: 42, body: 'Feature ID: my-feature', labels: [], state: 'closed' }];
     const map = buildFeatureToIssueMap(issues);
     assert.strictEqual(map.get('my-feature')?.state, 'closed');
+  });
+
+  test('uses empty string for null body', () => {
+    const issues = [{ number: 42, body: null, labels: [], state: 'open' }];
+    const map = buildFeatureToIssueMap(issues);
+    assert.strictEqual(map.get('my-feature')?.body, undefined); // no match without Feature ID
   });
 
   test('extracts priority label from issue labels', () => {
@@ -508,7 +514,7 @@ describe('buildIssueContent', () => {
   });
 
   test('includes related feature issue links when available', () => {
-    const featureMap = new Map([['dialog-closedby', { number: 99, priorityLabel: 'P1', state: 'open' }]]);
+    const featureMap = new Map([['dialog-closedby', { number: 99, priorityLabel: 'P1', state: 'open', body: '' }]]);
     const { issueBody, priorityLabel } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', featureMap);
     assert.ok(issueBody.includes('Related features: #99'));
     assert.strictEqual(priorityLabel, 'P1');
@@ -516,8 +522,8 @@ describe('buildIssueContent', () => {
 
   test('uses priority label from first matched feature only', () => {
     const featureMap = new Map([
-      ['feature-a', { number: 1, priorityLabel: 'P1', state: 'open' }],
-      ['feature-b', { number: 2, priorityLabel: 'P2', state: 'open' }],
+      ['feature-a', { number: 1, priorityLabel: 'P1', state: 'open', body: '' }],
+      ['feature-b', { number: 2, priorityLabel: 'P2', state: 'open', body: '' }],
     ]);
     const { priorityLabel } = buildIssueContent('my-use-case', 'desc', ['feature-a', 'feature-b'], 'guides/ux/my-use-case', featureMap);
     assert.strictEqual(priorityLabel, 'P1');
@@ -531,7 +537,7 @@ describe('buildIssueContent', () => {
 
 describe('getFeaturesNeedingSync', () => {
   function makeFeatureMap(entries: Array<[string, { number: number; state: string }]>) {
-    return new Map(entries.map(([id, { number, state }]) => [id, { number, priorityLabel: null, state }]));
+    return new Map(entries.map(([id, { number, state }]) => [id, { number, priorityLabel: null, state, body: '' }]));
   }
 
   test('returns empty array when feature map is empty', () => {
@@ -605,5 +611,69 @@ describe('getFeaturesNeedingSync', () => {
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0].featureId, 'autofill');
     assert.strictEqual(result[0].closeReason, 'completed');
+  });
+});
+
+describe('buildUseCaseChecklist', () => {
+  test('marks completed use cases with [x]', () => {
+    const result = buildUseCaseChecklist([{ name: 'sign-up-form', issueNumber: 322, complete: true }]);
+    assert.ok(result.includes('- [x] #322'));
+  });
+
+  test('marks incomplete use cases with [ ]', () => {
+    const result = buildUseCaseChecklist([{ name: 'sign-in-form', issueNumber: 321, complete: false }]);
+    assert.ok(result.includes('- [ ] #321'));
+  });
+
+  test('skips entries with no issue number', () => {
+    const result = buildUseCaseChecklist([{ name: 'new', issueNumber: 0, complete: false }]);
+    assert.strictEqual(result, '');
+  });
+
+  test('produces one line per use case', () => {
+    const result = buildUseCaseChecklist([
+      { name: 'a', issueNumber: 1, complete: true },
+      { name: 'b', issueNumber: 2, complete: false },
+    ]);
+    assert.strictEqual(result.split('\n').length, 2);
+  });
+});
+
+describe('updateFeatureIssueBody', () => {
+  const useCases = [
+    { name: 'sign-up-form', issueNumber: 322, complete: true },
+    { name: 'sign-in-form', issueNumber: 321, complete: false },
+  ];
+
+  test('appends checklist section when none exists', () => {
+    const body = 'Feature ID: autofill\n\nSome description.';
+    const result = updateFeatureIssueBody(body, useCases);
+    assert.ok(result.includes(USE_CASES_START));
+    assert.ok(result.includes(USE_CASES_END));
+    assert.ok(result.startsWith('Feature ID: autofill'));
+  });
+
+  test('includes the checklist in the body', () => {
+    const result = updateFeatureIssueBody('', useCases);
+    assert.ok(result.includes(buildUseCaseChecklist(useCases)));
+  });
+
+  test('replaces existing checklist section', () => {
+    const body = updateFeatureIssueBody('Feature ID: autofill', [{ name: 'sign-up-form', issueNumber: 322, complete: false }]);
+    const result = updateFeatureIssueBody(body, useCases);
+    assert.ok(result.includes('- [x] #322'));
+    assert.strictEqual(result.indexOf(USE_CASES_START), result.lastIndexOf(USE_CASES_START));
+  });
+
+  test('preserves content before and after existing checklist with consistent spacing', () => {
+    const body = `Before\n\n${updateFeatureIssueBody('', [{ name: 'old', issueNumber: 1, complete: false }])}\n\nAfter`;
+    const result = updateFeatureIssueBody(body, useCases);
+    assert.ok(result.startsWith('Before\n\n'));
+    assert.ok(result.endsWith('\n\nAfter'));
+  });
+
+  test('returns unchanged body if checklist is already up to date', () => {
+    const body = updateFeatureIssueBody('Feature ID: autofill', useCases);
+    assert.strictEqual(updateFeatureIssueBody(body, useCases), body);
   });
 });
