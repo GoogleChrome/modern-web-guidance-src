@@ -39,6 +39,7 @@ The MCP server allows AI agents to access high-quality implementation patterns a
 
 ```bash
 cd serving
+pnpm run build
 pnpm start
 ```
 

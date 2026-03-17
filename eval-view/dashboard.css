@@ -325,6 +325,8 @@ dialog#modal[open] {
   font-size: 1rem;
   cursor: pointer;
   transition: background 0.2s;
+  text-decoration: none;
+  display: inline-block;
 }
 
 .secondary-btn:hover {

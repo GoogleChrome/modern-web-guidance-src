@@ -44,8 +44,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate GitHub App token
+        uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
       - name: Run sync script
         run: node --experimental-strip-types guides/sync-use-cases.ts
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           DRY_RUN: ${{ github.event.inputs.dry_run || (github.event_name == 'pull_request' && 'true') || 'false' }}
