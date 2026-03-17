@@ -19,7 +19,7 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
 
 1.  **HTML Constraint**: Add the `required` attribute to your inputs.
 2.  **Visual Feedback**: Use `:user-invalid` to style the border red and show a "Required" helper text.
-3.  **Timing**: Rely on the browser's native timing. You don't need `onBlur` handlers to add a `touched` class anymore!
+3.  **Timing**: Rely on the browser's native timing for visual feedback. You don't need `onBlur` handlers to add a `touched` class anymore, though some JavaScript is still needed to sync ARIA attributes (see below).
 
 ## Implementation Guide
 
@@ -28,10 +28,10 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
 <form>
   <div class="field">
     <label for="full-name">Full Name</label>
-    <input 
-      type="text" 
-      id="full-name" 
-      name="full-name" 
+    <input
+      type="text"
+      id="full-name"
+      name="full-name"
       required
       aria-errormessage="name-error"
     >
@@ -51,7 +51,7 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
   margin-top: 0.25rem;
 }
 
-/* 
+/*
   Only highlight empty required fields AFTER the user visits them.
 */
 input:user-invalid {
@@ -164,4 +164,17 @@ UserInvalidFallback.init(form);
 
 1.  **Asterisks**: It is still best practice to indicate required fields visually (e.g., with an asterisk `*`) in the label, so users know what to expect *before* they interact.
 2.  **Submit Buttons**: Unlike `disabled` buttons, keep your submit button enabled. If the user clicks it, the browser will automatically trigger `:user-invalid` on all empty required fields and focus the first one. This is excellent for accessibility and UX.
-3.  **Accessibility**: While the fallback script automatically toggles `aria-invalid`, native `:user-invalid` does not automatically sync with ARIA attributes. To ensure a consistent accessibility experience for all users, see the [Accessible Error Announcement](../accessible-error-announcement/guide.md) guide.
+3.  **Accessibility**: Native `:user-invalid` does not automatically sync with ARIA attributes. Add the following JavaScript to keep `aria-invalid` in sync with the visual state:
+
+```javascript
+// Sync aria-invalid with the CSS :user-invalid state
+const syncAria = (el) => {
+  el.toggleAttribute?.('aria-invalid', el.matches(':user-invalid'));
+};
+
+// Update on blur (to show error) and input (to clear it)
+document.addEventListener('blur', (e) => syncAria(e.target), true);
+document.addEventListener('input', (e) => {
+  if (e.target.hasAttribute('aria-invalid')) syncAria(e.target);
+});
+```

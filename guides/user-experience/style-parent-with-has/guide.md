@@ -1,6 +1,6 @@
 ---
 name: style-parent-with-has
-description: Declaratively style parent elements like labels or fieldsets when a child input is in the :user-invalid state, eliminating the need for JavaScript state management.
+description: Style parent elements of a form field (e.g. labels or fieldsets) when the field is invalid.
 web-feature-ids:
   - user-pseudos
 ---
@@ -29,7 +29,7 @@ By combining `:has()` with `:user-invalid`, we can declaratively style any ances
       <h3>Profile Settings</h3>
       <span class="status-icon"></span>
     </div>
-    
+
     <div class="field">
       <label for="username">Username</label>
       <input type="text" id="username" required>
@@ -46,17 +46,17 @@ By combining `:has()` with `:user-invalid`, we can declaratively style any ances
   border-left: 4px solid #ccc;
 }
 
-/* 
+/*
   Parent Styling Logic:
   If the card contains ANY user-invalid input, turn the whole card's edge red.
 */
-.card-section:has(input:user-invalid) {
+.card-section:has(:user-invalid) {
   border-left-color: #d93025;
   background-color: #fff8f8;
 }
 
 /* Change the icon too */
-.card-section:has(input:user-invalid) .status-icon::after {
+.card-section:has(:user-invalid) .status-icon::after {
   content: "⚠️";
 }
 ```
@@ -70,7 +70,7 @@ We use a class `.has-error` on the parent to mimic the `:has()` behavior.
 
 ```css
 /* Native */
-.card-section:has(input:user-invalid) {
+.card-section:has(:user-invalid) {
   border-left-color: #d93025;
 }
 
@@ -152,10 +152,10 @@ const form = document.querySelector('#demo-form');
 UserInvalidFallback.init(form);
 
 // 2. Add specialized "parent styling" logic (Separate from fallback)
-// Listen for changes to form validity after interaction 
+// Listen for changes to form validity after interaction
 form.addEventListener('blur', (e) => {
   if (!e.target.matches('input, select, textarea')) return;
-  
+
   // Find the container we want to style (sync with CSS)
   const container = e.target.closest('.card-section');
   if (!container) return;
@@ -184,4 +184,17 @@ form.addEventListener('reset', () => {
 
 ## Other Considerations
 
-1.  **Accessibility**: While the fallback script automatically toggles `aria-invalid`, native `:user-invalid` does not automatically sync with ARIA attributes. To ensure a consistent accessibility experience for all users, see the [Accessible Error Announcement](../accessible-error-announcement/guide.md) guide.
+1.  **Accessibility**: Native `:user-invalid` does not automatically sync with ARIA attributes. Add the following JavaScript to keep `aria-invalid` in sync with the visual state:
+
+```javascript
+// Sync aria-invalid with the CSS :user-invalid state
+const syncAria = (el) => {
+  el.toggleAttribute?.('aria-invalid', el.matches(':user-invalid'));
+};
+
+// Update on blur (to show error) and input (to clear it)
+document.addEventListener('blur', (e) => syncAria(e.target), true);
+document.addEventListener('input', (e) => {
+  if (e.target.hasAttribute('aria-invalid')) syncAria(e.target);
+});
+```

@@ -1,6 +1,6 @@
 ---
 name: validate-input-after-interaction
-description: Validation feedback for form inputs that only appears after the user has finished their initial interaction, avoiding premature errors on page load or while the user is typing. This consolidated guide covers sub-use-cases including password complexity validation and validating email after interaction.
+description: Show form field validation feedback (e.g. password complexity or email format requirements) only after the user has finished their initial interaction, avoiding premature errors on page load or while the user is typing.
 web-feature-ids:
   - user-pseudos
 sources:
@@ -35,10 +35,10 @@ MANDATORY: Rely on standard HTML5 attributes for email fields. The error message
   <div class="field">
     <label for="email">Email Address</label>
     <!-- DO: Use standard HTML validation attributes like type="email" and required -->
-    <input 
-      type="email" 
-      id="email" 
-      name="email" 
+    <input
+      type="email"
+      id="email"
+      name="email"
       required
       autocomplete="email"
       placeholder="you@example.com"
@@ -59,7 +59,7 @@ MANDATORY: Rely on standard HTML5 attributes for email fields. The error message
   margin-top: 0.25rem;
 }
 
-/* 
+/*
   DO: Only show error styles after user interaction.
   This prevents the "angry red border" on page load.
 */
@@ -87,17 +87,17 @@ MANDATORY: Define the complexity rule using a Regex Lookahead pattern in the `pa
 <form>
   <div class="field">
     <label for="password">New Password</label>
-    <!-- DO: Use pattern and minlength for complex password validation 
+    <!-- DO: Use pattern and minlength for complex password validation
          DO: Match all constraints with lookaheads via pattern attribute
          (?=.*\d)       : Must contain at least one digit
          (?=.*[a-z])    : Must contain at least one lowercase letter
          (?=.*[A-Z])    : Must contain at least one uppercase letter
          (?=.*[\W_])    : Must contain at least one special char
-         .{8,}          : Must be at least 8 chars long   
+         .{8,}          : Must be at least 8 chars long
      -->
-    <input 
-      type="password" 
-      id="password" 
+    <input
+      type="password"
+      id="password"
       autocomplete="new-password"
       required
       pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}"
@@ -245,10 +245,23 @@ UserInvalidFallback.init(form);
 
 ## Other Considerations
 
-1.  **Accessibility**: 
+1.  **Accessibility**:
     *   MANDATORY: Use `aria-describedby` to link the rules list to the input.
     *   DO NOT: Hide rules lists entirely until the input is valid; users need to know what to type!
 2.  **Pattern Attribute Limits**: MANDATORY: The `pattern` attribute performs a full match (implied `^...$`). Ensure your password regex accounts for the entire string.
 3.  **Validation Strictness**: DO note that the browser's default `type="email"` validation is quite permissive (e.g., `user@localserver` might pass). If you need stricter validation, you may need to use a more robust validation library or a custom validation function alongside `type="email"`.
 4.  **Focus Management**: MANDATORY: If a user submits the form with an invalid field, the browser will automatically focus the first invalid field. Your `:user-invalid` styles will apply immediately because a submission attempt counts as an interaction.
-5.  **Consistent ARIA Experience**: MANDATORY: While the fallback script automatically toggles `aria-invalid`, native `:user-invalid` does not automatically sync with ARIA attributes. To ensure a consistent accessibility experience for all users, see the [Accessible Error Announcement](../accessible-error-announcement/guide.md) guide.
+5.  **Consistent ARIA Experience**: Native `:user-invalid` does not automatically sync with ARIA attributes. Add the following JavaScript to keep `aria-invalid` in sync with the visual state:
+
+```javascript
+// Sync aria-invalid with the CSS :user-invalid state
+const syncAria = (el) => {
+  el.toggleAttribute?.('aria-invalid', el.matches(':user-invalid'));
+};
+
+// Update on blur (to show error) and input (to clear it)
+document.addEventListener('blur', (e) => syncAria(e.target), true);
+document.addEventListener('input', (e) => {
+  if (e.target.hasAttribute('aria-invalid')) syncAria(e.target);
+});
+```

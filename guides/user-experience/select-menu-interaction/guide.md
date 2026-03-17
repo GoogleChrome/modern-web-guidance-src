@@ -28,9 +28,9 @@ The "placeholder" option is key here.
 <form>
   <div class="field">
     <label for="country">Country</label>
-    <select 
-      id="country" 
-      name="country" 
+    <select
+      id="country"
+      name="country"
       required
       aria-errormessage="country-error"
     >
@@ -55,7 +55,7 @@ The "placeholder" option is key here.
   margin-top: 0.25rem;
 }
 
-/* 
+/*
   Only show error after the user visits the select menu.
 */
 select:user-invalid {
@@ -166,4 +166,17 @@ UserInvalidFallback.init(form);
 ## Other Considerations
 
 1.  **Mobile behavior**: On mobile devices, "blur" might happen differently depending on the OS picker. Testing on actual devices is recommended.
-2.  **Accessibility**: While the fallback script automatically toggles `aria-invalid`, native `:user-invalid` does not automatically sync with ARIA attributes. To ensure a consistent accessibility experience for all users, see the [Accessible Error Announcement](../accessible-error-announcement/guide.md) guide.
+2.  **Accessibility**: Native `:user-invalid` does not automatically sync with ARIA attributes. Add the following JavaScript to keep `aria-invalid` in sync with the visual state:
+
+```javascript
+// Sync aria-invalid with the CSS :user-invalid state
+const syncAria = (el) => {
+  el.toggleAttribute?.('aria-invalid', el.matches(':user-invalid'));
+};
+
+// Update on blur (to show error) and input (to clear it)
+document.addEventListener('blur', (e) => syncAria(e.target), true);
+document.addEventListener('input', (e) => {
+  if (e.target.hasAttribute('aria-invalid')) syncAria(e.target);
+});
+```
