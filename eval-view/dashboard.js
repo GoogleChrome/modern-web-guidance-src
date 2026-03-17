@@ -2,7 +2,7 @@ import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth } fro
 import { ApiClient } from './api.js';
 import { RadarChart } from './radar.js';
 
-const MCP_LOG_FILE = 'mcp-server.log';
+
 
 // Keep track of current details state for navigation
 let currentDetails = null;
@@ -460,6 +460,7 @@ async function showDetails(testName, runs, stats, testId) {
         const s = getRunStats(run.results);
         // Determine file paths for this run
         const { setupPath, resultPath, usedBasePath } = await getResultPaths(testId, run, testName);
+        const files = await api.getRunFiles(usedBasePath).catch(() => []);
 
         // Fetch prompt text from the task definition
         if (run === runs[0]) {
@@ -511,7 +512,7 @@ async function showDetails(testName, runs, stats, testId) {
                             </div>
                         </div>
                         <div>
-                            <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${MCP_LOG_FILE}</a>
+                            <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${files.includes('modern-web.log') ? 'modern-web.log' : 'mcp-server.log'}</a>
                         </div>
                     </div>
                 </div>
@@ -542,7 +543,8 @@ async function showDetails(testName, runs, stats, testId) {
         if (viewResourcesLink) {
             viewResourcesLink.onclick = (e) => {
                 e.preventDefault();
-                const resourcesPath = `${usedBasePath}/${MCP_LOG_FILE}`;
+                const logFileToShow = files.includes('modern-web.log') ? 'modern-web.log' : 'mcp-server.log';
+                const resourcesPath = `${usedBasePath}/${logFileToShow}`;
                 viewContent(resourcesPath, resourcesPath);
             };
         }
@@ -564,7 +566,6 @@ async function showDetails(testName, runs, stats, testId) {
 
         let sessionFile = null;
         try {
-            const files = await api.getRunFiles(usedBasePath);
             if (files && files.length > 0) {
                 const rawJson = files.find(f => f === `${guide}_results.json`);
                 if (rawJson) {

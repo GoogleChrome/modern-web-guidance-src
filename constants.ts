@@ -1,1 +1,1 @@
-export const MCP_LOG_FILE = 'mcp-server.log';
+export const MODERN_WEB_LOG_FILE = 'modern-web.log';

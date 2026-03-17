@@ -1,25 +1,22 @@
 import fs from 'fs';
 import path from 'path';
-import { MCP_LOG_FILE } from '../../constants.ts';
+import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 export async function collectGuidesUsed(dirPath: string): Promise<string[]> {
-  const logPath = path.join(dirPath, MCP_LOG_FILE);
-
-  if (!fs.existsSync(logPath)) {
-    return [];
-  }
-
-  const logContent = fs.readFileSync(logPath, 'utf8').trim();
+  const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
   let toolCalls: any[] = [];
 
-  if (logContent) {
-    const lines = logContent.split('\n');
-    for (const line of lines) {
-      if (line.trim().startsWith('{')) {
-        try {
-          toolCalls.push(JSON.parse(line));
-        } catch (e) {
-          console.error(`Failed to parse line in ${logPath}:`, e);
+  if (fs.existsSync(logPath)) {
+    const logContent = fs.readFileSync(logPath, 'utf8').trim();
+    if (logContent) {
+      const lines = logContent.split('\n');
+      for (const line of lines) {
+        if (line.trim().startsWith('{')) {
+          try {
+            toolCalls.push(JSON.parse(line));
+          } catch (e) {
+            console.error(`Failed to parse line in ${logPath}:`, e);
+          }
         }
       }
     }
