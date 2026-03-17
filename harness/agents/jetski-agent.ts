@@ -77,6 +77,7 @@ function setupIsolatedWorkDir(): string {
   // Set environment variables
   process.env.HOME = tempHome;
   process.env.JETSKI_DIR = jetskiDest;
+  process.env.MCP_LOG_DIR = targetDir;
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
@@ -101,7 +102,7 @@ function setupIsolatedWorkDir(): string {
  */
 async function bypassInitialDialogs(page: Page): Promise<void> {
   console.log('Bypassing initial dialogs...');
-  
+
   // 1. Handle "Trust the authors" dialog persistently
   try {
     console.log('Checking for Trust dialog...');
@@ -151,7 +152,7 @@ async function bypassInitialDialogs(page: Page): Promise<void> {
   } catch (e: any) {
     console.log('Error bypassing Welcome Wizard:', e.message);
   }
-  
+
   console.log('UI stabilization wait...');
   await sleep(3000);
 }
@@ -266,6 +267,7 @@ async function startJetski(directory: string, profileDir: string): Promise<void>
 
 async function run(): Promise<void> {
   const workDir = setupIsolatedWorkDir();
+  let stopWatchingMcpLog = () => {};
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -325,8 +327,7 @@ async function run(): Promise<void> {
       console.log(`Jetski info already exists at: ${jetskiInfoPath}`);
     }
 
-    process.env.MCP_LOG_DIR = targetDir;
-    const stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
+    stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
 
     const inputSelector = '[contenteditable="true"][role="textbox"]';
     const sendButtonSelector = '[data-tooltip-id="input-send-button-send-tooltip"]';
@@ -364,12 +365,12 @@ async function run(): Promise<void> {
     console.log(`Typing prompt: "${userPrompt}"`);
     const lines = userPrompt.split('\n');
     for (let i = 0; i < lines.length; i++) {
-        await targetInputBox.type(lines[i]);
-        if (i < lines.length - 1) {
-            await page.keyboard.down('Shift');
-            await page.keyboard.press('Enter');
-            await page.keyboard.up('Shift');
-        }
+      await targetInputBox.type(lines[i]);
+      if (i < lines.length - 1) {
+        await page.keyboard.down('Shift');
+        await page.keyboard.press('Enter');
+        await page.keyboard.up('Shift');
+      }
     }
 
     try {
@@ -394,7 +395,7 @@ async function run(): Promise<void> {
         console.log("Agent Panel disappeared, assuming finished or closed.");
         break;
       }
-      
+
       const cancelButton = await currentPanel.$(cancelButtonSelector);
       if (!cancelButton) {
         console.log("Agent finished.");
@@ -406,11 +407,11 @@ async function run(): Promise<void> {
         const allowButton = await page.evaluateHandle(() => {
           const buttons = Array.from(document.querySelectorAll('button'));
           return buttons.find(b => {
-             const t = b.innerText?.toLowerCase() || '';
-             return t.includes('allow this conversation') || t.includes('allow once');
+            const t = b.innerText?.toLowerCase() || '';
+            return t.includes('allow this conversation') || t.includes('allow once');
           });
         });
-        
+
         if (allowButton && (allowButton as any).asElement()) {
           console.log("Found 'Allow' button, clicking...");
           await (allowButton as any).click();
@@ -452,6 +453,7 @@ async function run(): Promise<void> {
     console.log("Disconnected.");
 
     copyResultsToTarget(workDir, targetDir);
+
     // Extract trajectory pb from isolated home
     const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
     exportTrajectories(conversationsDir, '*.pb', targetDir);
@@ -460,6 +462,7 @@ async function run(): Promise<void> {
     console.error("Error during execution:", err);
     process.exit(1);
   } finally {
+    stopWatchingMcpLog();
     killProcessOnPort(config.environment.jetskiDebugPort);
     cleanupIsolatedHome(path.dirname(workDir));
   }
