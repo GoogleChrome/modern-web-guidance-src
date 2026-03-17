@@ -55,7 +55,8 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const ORG = 'GoogleChrome';
 const REPO = 'guidance';
 const PROJECT_NUMBER = 30;
-const IS_DRY_RUN = process.env.DRY_RUN === 'true';
+// Default to dry run mode unless explicitly disabled.
+const IS_DRY_RUN = process.env.DRY_RUN !== 'false';
 
 if (IS_DRY_RUN) {
   console.log('🏃 Dry run mode enabled. No changes will be made to GitHub.');
