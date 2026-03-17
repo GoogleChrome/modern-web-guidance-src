@@ -41,7 +41,7 @@ function listGuideDirs(): string[] {
 const completion = omelette('gd <command> <arg1> <arg2>');
 
 completion.on('command', ({ reply }) => {
-  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'setup-completion']);
+  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'setup-completion', 'gen-negative-suite']);
 });
 
 completion.on('arg1', ({ before, reply }) => {
@@ -81,6 +81,7 @@ const { positionals, values } = parseArgs({
     'gen-grader': { type: 'boolean' },
     'gen-negative': { type: 'boolean' },
     verbose: { type: 'boolean' },
+    usecases: { type: 'boolean' },
   },
   allowPositionals: true,
   strict: false,
@@ -137,6 +138,7 @@ ${cBold('Evaluation:')}
   ${cCyan('run')} <tmpl> <prompt>    Run an ad-hoc agent test against a template
   ${cCyan('deploy')}                 Deploy the dashboard to GitHub Pages
   ${cCyan('upload')} <suite>         Upload generated evaluation suite to GCS
+  ${cCyan('gen-negative-suite')}     Generate resources for negative suite
 
 ${cBold('Other:')}
   ${cCyan('setup-completion')}       Install shell auto-completion
@@ -144,6 +146,7 @@ ${cBold('Other:')}
 ${cBold('Options:')}
   ${cDim('-h, --help')}             Show this help
   ${cDim('--verbose')}              Show additional output
+  ${cDim('--usecases')}             (Audit) Group by categories/usecases (default is features)
     `);
     process.exit(0);
   }
@@ -194,10 +197,10 @@ ${cBold('Options:')}
 
     case 'audit': {
       const { auditGuides } = await import('../guides/dev-guide.ts');
-      auditGuides();
+      auditGuides({ groupByUsecases: !!values.usecases });
       break;
     }
-
+    
     case 'run': {
       const tmpl = requireArg(positionals[1], 'gd run <template> <prompt>');
       const prompt = requireArg(positionals[2], 'gd run <template> <prompt>');
@@ -242,6 +245,12 @@ ${cBold('Options:')}
     case 'deploy': {
       const code = await runNpm(['deploy:dashboard']);
       process.exit(code);
+    }
+
+    case 'gen-negative-suite': {
+      const { generateNegativeSuite } = await import('../guides/negative-suite-gen.ts');
+      await generateNegativeSuite();
+      break;
     }
 
     default: {

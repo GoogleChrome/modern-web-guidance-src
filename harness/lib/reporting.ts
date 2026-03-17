@@ -3,24 +3,24 @@ import path from 'path';
 import type { Metrics, RunResult, ScenarioCheck } from './metrics.ts';
 
 export function generateMarkdownReport(metrics: Metrics, allResults: Record<string, RunResult[]>): string {
-  const { summary, testPassRates, sortedKeys } = metrics;
+  const { summary, testStats, sortedKeys } = metrics;
   let md = '# Evaluation Results\n\n';
 
   md += `
 | Group | Pass Rate | Test Runs |
 |---|---|---|
-| **Unguided** | ${summary.unguidedPassRate}% (${summary.unguidedPassed}/${summary.unguidedTotal}) | ${summary.numRuns} |
-| **Guided** | ${summary.guidedPassRate}% (${summary.guidedPassed}/${summary.guidedTotal}) | ${summary.numRuns} |
+| **Unguided** | ${summary.unguidedPassRate}% (${summary.unguidedPassed}/${summary.unguidedTotal}) | ${summary.runsPerTest} |
+| **Guided** | ${summary.guidedPassRate}% (${summary.guidedPassed}/${summary.guidedTotal}) | ${summary.runsPerTest} |
 
 `;
 
   // Generate detailed sections for each test
   for (const name of sortedKeys) {
     const runs = allResults[name];
-    const stats = testPassRates[name];
+    const stats = testStats[name];
     
-    md += `## ${name.toUpperCase()} (Median: ${stats.median}%)\n\n`;
-    md += `**Pass rates across runs:** ${stats.rates.join('%, ')}%\n\n`;
+    md += `## ${name.toUpperCase()} (Median: ${stats.medianPassRate}%)\n\n`;
+    md += `**Pass rates across runs:** ${stats.runPassRates.join('%, ')}%\n\n`;
 
     // Show the median run's detailed results
     const medianRunIndex = runs.findIndex((run: RunResult) => {
@@ -28,7 +28,7 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
       const passCount = checks.filter((c: ScenarioCheck) => c.passed).length;
       const totalCount = checks.length;
       const rate = Math.round((passCount / totalCount) * 100);
-      return rate === stats.median;
+      return rate === stats.medianPassRate;
     });
 
     const displayRun = medianRunIndex >= 0 ? runs[medianRunIndex] : runs[0];
@@ -61,7 +61,7 @@ export function generateJsonReport(metrics: Metrics, allResults: Record<string, 
   return {
     summary: metrics.summary,
     results: allResults,
-    stats: metrics.testPassRates,
+    stats: metrics.testStats,
     timestamp,
     runCount,
     agent,
