@@ -41,7 +41,7 @@ interface GitHubData {
   allUseCases: any[];
   nameToIssueMap: Map<string, any>;
   subdirToIssueMap: Map<string, any>;
-  projectDetails: { projectId: string; statusFieldId: string; statusOptions: any[] } | null;
+  projectDetails: { projectId: string; statusFieldId: string; statusOptions: any[]; issueStatusMap: Map<number, string> } | null;
 }
 
 // --- Constants ---
@@ -275,7 +275,7 @@ function getUseCaseFiles(subdir: string): UseCaseFiles {
 async function getProjectDetails(org: string, number: number) {
   console.log(`Fetching project details for ${org} project #${number}...`);
   const query = `
-    query($org: String!, $number: Int!) {
+    query($org: String!, $number: Int!, $cursor: String) {
       organization(login: $org) {
         projectV2(number: $number) {
           id
@@ -291,25 +291,70 @@ async function getProjectDetails(org: string, number: number) {
               }
             }
           }
+          items(first: 100, after: $cursor) {
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+            nodes {
+              content {
+                ... on Issue {
+                  number
+                }
+              }
+              fieldValues(first: 10) {
+                nodes {
+                  ... on ProjectV2ItemFieldSingleSelectValue {
+                    name
+                    field {
+                      ... on ProjectV2SingleSelectField {
+                        name
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
   `;
 
   try {
-    const response = await octokit.graphql(query, { org, number }) as any;
-    const project = response.organization.projectV2;
-    const statusField = project.fields.nodes.find((f: any) => f.name === 'Status');
+    const issueStatusMap = new Map<number, string>();
+    let cursor: string | null = null;
+    let projectId: string | null = null;
+    let statusFieldId: string | null = null;
+    let statusOptions: any[] = [];
 
-    if (!statusField) {
-      throw new Error('Status field not found in project');
-    }
+    do {
+      const response = await octokit.graphql(query, { org, number, cursor }) as any;
+      const project = response.organization.projectV2;
 
-    return {
-      projectId: project.id,
-      statusFieldId: statusField.id,
-      statusOptions: statusField.options
-    };
+      if (!projectId) {
+        projectId = project.id;
+        const statusField = project.fields.nodes.find((f: any) => f.name === 'Status');
+        if (!statusField) throw new Error('Status field not found in project');
+        statusFieldId = statusField.id;
+        statusOptions = statusField.options;
+      }
+
+      for (const item of project.items.nodes) {
+        const issueNumber = item.content?.number;
+        if (!issueNumber) continue;
+        const statusValue = item.fieldValues.nodes.find((v: any) => v.field?.name === 'Status');
+        if (statusValue) {
+          issueStatusMap.set(issueNumber, statusValue.name);
+        }
+      }
+
+      const { hasNextPage, endCursor } = project.items.pageInfo;
+      cursor = hasNextPage ? endCursor : null;
+    } while (cursor);
+
+    console.log(`Fetched current status for ${issueStatusMap.size} project items.`);
+    return { projectId: projectId!, statusFieldId: statusFieldId!, statusOptions, issueStatusMap };
   } catch (err: any) {
     console.error('Error fetching project details:', err.message);
     return null;
@@ -559,23 +604,29 @@ async function processUseCases(
 
     const { issueNumber, changed } = await syncIssue(name, existingIssue, issueTitle, issueBody, priorityLabel, statusName, activeIssueNumbers);
 
+    let statusChanged = false;
     if (statusName && (issueNumber > 0 || IS_DRY_RUN)) {
       if (projectDetails) {
-        const option = projectDetails.statusOptions.find((o: any) => o.name.toLowerCase() === statusName.toLowerCase());
-        if (option) {
-          console.log(`${IS_DRY_RUN ? '[DRY RUN] Would set' : 'Setting'} project #${PROJECT_NUMBER} status for #${issueNumber || 'NEW'} to "${statusName}"...`);
-          if (!IS_DRY_RUN) {
-            await updateProjectItemStatus(issueNumber, projectDetails.projectId, projectDetails.statusFieldId, option.id);
+        const currentStatus = projectDetails.issueStatusMap.get(issueNumber);
+        if (currentStatus?.toLowerCase() !== statusName.toLowerCase()) {
+          const option = projectDetails.statusOptions.find((o: any) => o.name.toLowerCase() === statusName.toLowerCase());
+          if (option) {
+            statusChanged = true;
+            console.log(`${IS_DRY_RUN ? '[DRY RUN] Would set' : 'Setting'} project #${PROJECT_NUMBER} status for #${issueNumber || 'NEW'} to "${statusName}"...`);
+            if (!IS_DRY_RUN) {
+              await updateProjectItemStatus(issueNumber, projectDetails.projectId, projectDetails.statusFieldId, option.id);
+            }
+          } else {
+            console.warn(`⚠️ Could not find option ID for status "${statusName}"`);
           }
-        } else {
-          console.warn(`⚠️ Could not find option ID for status "${statusName}"`);
         }
       } else {
+        statusChanged = true;
         console.log(`[DRY RUN] Would set project #${PROJECT_NUMBER} status to "${statusName}" (but project details are unavailable)`);
       }
     }
 
-    if (!changed) {
+    if (!changed && !statusChanged) {
       console.log(`✅ Issue #${issueNumber} for "${name}" is up to date.`);
     }
   }
