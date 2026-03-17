@@ -11,7 +11,7 @@ sources:
 
 # Build a Parallax Effect on Scroll
 
-A parallax effect on scroll is a visual technique where different layers of content move at varying speeds as the user scrolls down a page. This creates an illusion of depth, with foreground elements appearing to move faster than the background elements, resulting in an engaging and immersive browsing experience. This effect can be achieved using CSS Scroll-Driven Animations, which allow you to link animations to the scroll position of a container.
+A parallax effect on scroll is a visual technique where different layers of content move at varying speeds as the user scrolls down a page. This creates an illusion of depth, with foreground elements appearing to move faster than the background elements, resulting in an engaging and immersive browsing experience. This effect is best achieved using CSS Scroll-Driven Animations, which allow you to link animations to the scroll position of a container.
 
 ## How to implement
 
