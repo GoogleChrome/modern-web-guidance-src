@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Required Field Feedback Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      line-height: 1.5;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .form-group {
+      margin-bottom: 2rem;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+    }
+
+    /* 
+      Visual State - Native & Fallback
+      Grouped for consistency
+    */
+    input:user-invalid,
+    input.user-invalid-fallback {
+      border-color: #d93025;
+      background-color: #fce8e6;
+    }
+
+    input:user-valid,
+    input.user-valid-fallback {
+      border-color: #188038;
+      background-color: #e6f4ea;
+    }
+
+    /* Error Message Visibility */
+    .error-msg {
+      display: none;
+      color: #d93025;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+
+    input:user-invalid+.error-msg,
+    input.user-invalid-fallback+.error-msg {
+      display: block;
+    }
+
+    .status-banner {
+      padding: 1rem;
+      background: #eee;
+      margin-bottom: 1rem;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Required Field Feedback</h1>
+  <p>Demonstrates how <code>:user-invalid</code> prevents required fields from looking like errors until the user skips
+    them.</p>
+
+  <div style="margin-bottom: 1rem;">
+    <label
+      style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; background: #f0f0f0; padding: 0.5rem 1rem; border-radius: 4px;">
+      <input type="checkbox" id="force-fallback">
+      <strong>Force Fallback Mode</strong> (Simulate older browser)
+    </label>
+  </div>
+
+  <div id="fallback-status" class="status-banner">
+    Checking support...
+  </div>
+
+  <form id="demo-form" action="#" onsubmit="event.preventDefault();" novalidate>
+    <div class="form-group">
+      <label for="full-name">Full Name *</label>
+      <input type="text" id="full-name" name="full-name" required aria-errormessage="name-error">
+      <div id="name-error" class="error-msg">
+        Name is required.
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="username">Username *</label>
+      <input type="text" id="username" name="username" required aria-describedby="username-error">
+      <div id="username-error" class="error-msg">
+        Username is required.
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem;">
+      <button type="submit">Submit</button>
+      <button type="reset">Reset</button>
+    </div>
+  </form>
+
+  <script>
+    const form = document.getElementById('demo-form');
+    const statusDiv = document.getElementById('fallback-status');
+    const forceFallbackCheckbox = document.getElementById('force-fallback');
+
+    let useNativeLogic = false;
+
+    // 1. Feature Detection & Mode Switching
+    const updateFeatureState = () => {
+      const nativelySupported = CSS.supports('selector(:user-invalid)');
+      const forced = forceFallbackCheckbox.checked;
+
+      useNativeLogic = nativelySupported && !forced;
+
+      if (useNativeLogic) {
+        statusDiv.textContent = "✅ Native :user-invalid supported. Using browser logic.";
+        statusDiv.style.background = "#e6f4ea";
+        statusDiv.style.color = "#137333";
+      } else {
+        const reason = forced ? "(Forced)" : "(Not supported)";
+        statusDiv.textContent = `⚠️ Using JS fallback logic ${reason}.`;
+        statusDiv.style.background = "#fff8e1";
+        statusDiv.style.color = "#b06000";
+      }
+
+      // Reset when switching modes
+      form.querySelectorAll('input').forEach(input => {
+        input.classList.remove('user-invalid-fallback');
+        input.classList.remove('user-valid-fallback');
+      });
+
+      // Initialize fallback if needed
+      if (!useNativeLogic) {
+        UserInvalidFallback.init(form);
+      }
+    };
+
+    forceFallbackCheckbox.addEventListener('change', () => {
+      // Reload page or re-init logic (for demo simplicity, we just re-run state)
+      updateFeatureState();
+    });
+
+    // 2. The Fallback (Synced from guide.md)
+    const UserInvalidFallback = (() => {
+      const dirtyState = new WeakMap();
+
+      const updateState = (input) => {
+        const isValid = input.checkValidity();
+
+        // Update both visual and ARIA state
+        input.classList.toggle('user-invalid-fallback', !isValid);
+        input.classList.toggle('user-valid-fallback', isValid);
+
+        if (!isValid) {
+          input.setAttribute('aria-invalid', 'true');
+        } else {
+          input.removeAttribute('aria-invalid');
+        }
+      };
+
+      const handleEvent = (event) => {
+        const input = event.target;
+
+        if (event.type === 'reset') {
+          const controls = input.elements || [];
+          for (const control of controls) {
+            dirtyState.delete(control);
+            control.classList.remove('user-invalid-fallback');
+            control.classList.remove('user-valid-fallback');
+            control.removeAttribute('aria-invalid');
+          }
+          return;
+        }
+
+        if (!input.checkValidity) return;
+
+        if (event.type === 'input' || event.type === 'change') {
+          const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
+          state.hasInteracted = true;
+          dirtyState.set(input, state);
+          if (state.hasBlurred) {
+            updateState(input);
+          }
+        } else if (event.type === 'blur') {
+          const state = dirtyState.get(input) || { hasInteracted: false, hasBlurred: false };
+          state.hasBlurred = true;
+          dirtyState.set(input, state);
+          if (state.hasInteracted) {
+            updateState(input);
+          }
+        }
+      };
+
+      const init = (root = document) => {
+        const nativelySupported = CSS.supports('selector(:user-invalid)');
+        if (nativelySupported && !forceFallbackCheckbox.checked) return;
+
+        root.addEventListener('blur', handleEvent, true); // Capture phase
+        root.addEventListener('input', handleEvent);
+        root.addEventListener('change', handleEvent);
+        root.addEventListener('reset', handleEvent, true); // Capture resets
+      };
+
+      return { init };
+    })();
+
+    // Init
+    updateFeatureState();
+  </script>
+</body>
+
+</html>

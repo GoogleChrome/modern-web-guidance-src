@@ -1,64 +1,28 @@
 # Noise reduction strategy:
-# 1. Weekly updates on Mondays to avoid daily interruptions.
-# 2. Group all minor and patch updates into a single PR per project.
+# 1. Weekly updates on Sundays to avoid daily interruptions.
+# 2. Group ALL updates (major, minor, patch) into a single PR per project.
 # 3. Limit total open PRs to prevent backlog accumulation.
 
 version: 2
 updates:
-  # Main Workspace (serving, harness, eval-view)
   - package-ecosystem: "npm"
-    directory: "/"
+    directories:
+      - "/"
+      - "/serving"
+      - "/harness"
+      - "/guides"
+      - "/eval-view"
     schedule:
       interval: "weekly"
-      day: "monday"
+      day: "sunday"
     open-pull-requests-limit: 3
-    cooldown:
-      default-days: 7
     groups:
-      minor-and-patch:
+      everything:
         patterns:
           - "*"
-        update-types:
-          - "minor"
-          - "patch"
 
-  # Content Visibility evaluation project
-  - package-ecosystem: "npm"
-    directory: "/expect-to-eval/content-visibility"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 2
-    cooldown:
-      default-days: 7
-    groups:
-      minor-and-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-
-  # Harness project
-  - package-ecosystem: "npm"
-    directory: "/harness"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 2
-    cooldown:
-      default-days: 7
-    groups:
-      minor-and-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-
-  # Keep GitHub Actions up to date
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 1

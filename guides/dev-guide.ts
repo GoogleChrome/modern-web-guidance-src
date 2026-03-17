@@ -48,6 +48,7 @@ interface GuideInventory {
   hasGrader: boolean;
   hasPrompts: boolean;
   hasTask: boolean;
+  featureIds: string[];
 }
 
 interface TaskInfo {
@@ -117,6 +118,8 @@ function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): GuideInven
     }
   }
 
+  const featureIds = guideContent ? (matter(guideContent).data['web-feature-ids'] || []) : [];
+
   return {
     dir,
     name,
@@ -130,6 +133,7 @@ function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): GuideInven
     hasGrader: fs.existsSync(path.join(dir, GRADER_FILE)),
     hasPrompts: fs.existsSync(path.join(dir, PROMPTS_FILE)),
     hasTask: taskMap.has(name),
+    featureIds,
   };
 }
 
@@ -627,7 +631,16 @@ export function classifyGuide(inv: GuideInventory): GuideStatus {
   return 'eval-ready';
 }
 
-export function auditGuides(): void {
+const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
+  'incomplete':        { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
+  'stub':              { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
+  'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
+  'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
+  'needs-test':        { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
+  'eval-ready':        { label: 'Ready for eval', color: cGreen },
+};
+
+export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
   const taskMap = getTaskMap();
   const allGuides = scanAllGuides(taskMap);
 
@@ -643,14 +656,7 @@ export function auditGuides(): void {
     byStatus.get(status)!.push(inv);
   }
 
-  const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
-    'incomplete':        { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
-    'stub':              { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
-    'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
-    'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
-    'needs-test':        { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
-    'eval-ready':        { label: 'Ready for eval', color: cGreen },
-  };
+
 
   // Summary counts
   console.log(cBold(`\nGuide Audit: ${allGuides.length} guides\n`));
@@ -660,12 +666,15 @@ export function auditGuides(): void {
     console.log(`  ${color(`${String(guides.length).padStart(2)}`)}  ${label}`);
   }
 
-  // Per-category detail
-  const byCategory = new Map<string, GuideInventory[]>();
-  for (const inv of allGuides) {
-    if (!byCategory.has(inv.category)) byCategory.set(inv.category, []);
-    byCategory.get(inv.category)!.push(inv);
-  }
+  if (!options.groupByUsecases) {
+    renderFeatureMatrix(allGuides);
+  } else {
+    // Per-category detail
+    const byCategory = new Map<string, GuideInventory[]>();
+    for (const inv of allGuides) {
+      if (!byCategory.has(inv.category)) byCategory.set(inv.category, []);
+      byCategory.get(inv.category)!.push(inv);
+    }
 
   const dot = (has: boolean) => has ? '●' : cDim('○');
   const guideDot = (inv: GuideInventory) => {
@@ -695,6 +704,7 @@ export function auditGuides(): void {
 
       console.log(`  ${color(name.padEnd(42))} ${row}`);
     }
+  }
   }
 
   // Next action suggestions, ordered by pipeline stage
@@ -737,6 +747,72 @@ export function auditGuides(): void {
     console.log(cGreen(`All guides are eval-ready!`));
   }
   console.log('');
+}
+
+function renderFeatureMatrix(allGuides: GuideInventory[]): void {
+  const featureToGuides = new Map<string, GuideInventory[]>();
+  for (const inv of allGuides) {
+    const fIds = inv.featureIds.length > 0 ? inv.featureIds : ['(no-feature)'];
+    for (const fId of fIds) {
+      if (!featureToGuides.has(fId)) featureToGuides.set(fId, []);
+      featureToGuides.get(fId)!.push(inv);
+    }
+  }
+
+  const sortedFeatures = Array.from(featureToGuides.keys()).sort((a, b) => {
+    if (a === '(no-feature)') return 1;
+    if (b === '(no-feature)') return -1;
+    return a.localeCompare(b);
+  });
+
+  const dot = (has: boolean) => (has ? '●' : cDim('○'));
+  const guideDot = (inv: GuideInventory) => {
+    if (inv.hasGuide) return '●';
+    if (inv.isStub) return '◐';
+    return cDim('○');
+  };
+
+  const hdr = 'guide'.padEnd(10) + 'demo'.padEnd(10) + 'expct'.padEnd(10) + '│ ' + 'neg'.padEnd(10) + 'grdr'.padEnd(10) + 'prmpt'.padEnd(10) + 'task';
+  console.log(cDim(`\n  ${'feature'.padEnd(32)} count ${hdr}`));
+
+  const statusRank: Record<GuideStatus, number> = {
+    'incomplete': 0,
+    'stub': 1,
+    'needs-expectations': 2,
+    'needs-calibration': 3,
+    'needs-test': 4,
+    'eval-ready': 5,
+  };
+
+  for (const fId of sortedFeatures) {
+    const guides = featureToGuides.get(fId)!;
+    const col = (s: string, w = 10) => s + ' '.repeat(Math.max(0, w - guides.length));
+    
+    // Determine overall status as the minimum status rank among all guides in this feature
+    const statuses = guides.map(classifyGuide);
+    const minRank = Math.min(...statuses.map(s => statusRank[s]));
+    const overallStatus = (Object.keys(statusRank) as GuideStatus[]).find(s => statusRank[s] === minRank) || 'incomplete';
+    const { color } = statusLabel[overallStatus];
+
+    const name = fId.length > 30 ? fId.substring(0, 29) + '…' : fId;
+
+    const renderDots = (fn: (inv: GuideInventory) => string) => {
+      return guides.map(inv => fn(inv)).join('');
+    };
+
+    const expctDots = guides.map(inv => (inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations))).join('');
+
+    const row = col(renderDots(guideDot)) + 
+                col(renderDots(inv => dot(inv.hasDemo))) + 
+                col(expctDots) + 
+                cDim('│') + ' ' +
+                col(renderDots(inv => dot(inv.hasNegativeDemo))) + 
+                col(renderDots(inv => dot(inv.hasGrader))) + 
+                col(renderDots(inv => dot(inv.hasPrompts))) + 
+                renderDots(inv => dot(inv.hasTask));
+
+    console.log(`  ${color(name.padEnd(32))} ${String(guides.length).padStart(5)}  ${row}`);
+  }
 }
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {

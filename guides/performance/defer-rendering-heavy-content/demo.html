@@ -152,7 +152,7 @@
 
     .below-fold-cv {
       content-visibility: auto;
-      contain-intrinsic-size: 1000px;
+      contain-intrinsic-size: auto none auto 1000px;
       /* Estimated height to prevent scrollbar jumping */
     }
 
@@ -221,7 +221,7 @@
         <p><strong>Try it out!</strong> Hit Cmd/Ctrl+F and search for the magic word: <code
             style="font-size:1.2rem; color: #d97706; background: #fffbeb; padding: 2px 6px; border-radius: 4px;">Supercalifragilisticexpialidocious</code>.
           If it is hidden, the browser will automatically reveal this entire section!</p>
-        <button class="btn" id="toggle-btn-3" aria-expanded="true">Show Dashboard</button>
+        <button class="btn" id="toggle-btn-3" aria-expanded="false">Show Dashboard</button>
       </div>
       <div hidden="until-found" id="demo3-container">
         <p class="searchable-text">
@@ -320,7 +320,7 @@
     const demo2Container = document.getElementById('demo2-container');
 
     toggleBtn2.addEventListener('click', () => {
-      // For this one we just use standard display none approach to hide completely 
+      // For this one we just use standard display none approach to hide completely
       // or we can remove it from DOM
       const isHidden = demo2Container.style.display === 'none';
       if (isHidden) {

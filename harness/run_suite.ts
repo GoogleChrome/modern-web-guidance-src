@@ -208,7 +208,7 @@ process.exit(result.status ?? 0);
       }
 
       if (pnpmWorkspacePackages.length > 0) {
-        console.log(`\n>>> Running all tests for Run ${runNumber} with pnpm -r run-agent (parallel)...`);
+        console.log(`\n>>> Running all tests for Run ${runNumber} with pnpm -r run-agent ...`);
         // Drop a transient pnpm-workspace.yaml at the root of the run directory.
         // The '**' pattern tells pnpm to recursively discover all the targetDirs
         // we just seeded with package.json files.
@@ -216,8 +216,12 @@ process.exit(result.status ?? 0);
         fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
         
         try {
-          // Fire off the parallel execution!
-          await runCommand('pnpm', ['-r', 'run-agent'], runDir);
+          const pnpmArgs = ['-r'];
+          if (agent === Agents.JETSKI) {
+            pnpmArgs.push('--workspace-concurrency', '1');
+          }
+          pnpmArgs.push('run-agent');
+          await runCommand('pnpm', pnpmArgs, runDir);
           console.log(`✅ Completed Run ${runNumber} test executions`);
         } catch (error) {
           console.error(`❌ Failed during Run ${runNumber} test execution`, error);

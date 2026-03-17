@@ -1,0 +1,5 @@
+- On page load, all required fields must appear neutral.
+- Clicking into a required field and clicking out (blur) WITHOUT typing MUST trigger the error state (red border).
+- Typing into the field MUST remove the error state immediately.
+- Clicking "Submit" with empty fields MUST trigger the error state on all of them.
+- "Force Fallback Mode" must replicate this exact behavior.
