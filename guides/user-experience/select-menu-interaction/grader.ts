@@ -112,7 +112,7 @@ test.describe(`Select Menu Interaction Expectations: ${demoName}`, () => {
       await page.waitForTimeout(100);
       const validColor = await select.evaluate(el => window.getComputedStyle(el).borderColor);
       
-      await select.evaluate(el => { el.value = ''; });
+      await select.evaluate(el => { (el as HTMLSelectElement).value = ''; });
       await select.dispatchEvent('change');
       await select.blur();
       await page.waitForTimeout(100);
