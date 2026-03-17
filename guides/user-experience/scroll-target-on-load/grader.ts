@@ -71,8 +71,8 @@ test.describe(`Scroll Target on Load Expectations: ${demoName}`, () => {
               }
             }
           }
-        } catch(e) { 
-          if (e.name !== 'SecurityError') throw e; 
+        } catch(e) {
+          if (e instanceof Error && e.name !== 'SecurityError') throw e;
         }
       }
 
@@ -110,8 +110,8 @@ test.describe(`Scroll Target on Load Expectations: ${demoName}`, () => {
               }
             }
           }
-        } catch(e) { 
-          if (e.name !== 'SecurityError') throw e; 
+        } catch(e) {
+          if (e instanceof Error && e.name !== 'SecurityError') throw e;
         }
       }
       return count;

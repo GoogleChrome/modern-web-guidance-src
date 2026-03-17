@@ -50,7 +50,7 @@ test.describe(`Pull-to-Reveal Expectations: ${demoName}`, () => {
     const scrollIndex = html.indexOf('scrollIntoView');
     
     // It only relies on JS as fallback if scrollIntoView is inside/after the CSS support check
-    const isFallbackOnly = !!(supportsMatch && scrollIndex > supportsMatch.index);
+    const isFallbackOnly = !!(supportsMatch && supportsMatch.index !== undefined && scrollIndex > supportsMatch.index);
     expect(isFallbackOnly).toBe(true);
   });
 
