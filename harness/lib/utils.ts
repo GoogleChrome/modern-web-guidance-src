@@ -132,11 +132,16 @@ export function classifyGuide(inv: GuideInventory): GuideStatus {
 
 export function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
   const guides: GuideInventory[] = [];
-  const categories = fs.readdirSync(__dirname, { withFileTypes: true })
+  const guidesDir = path.resolve(__dirname, '../../guides');
+
+  if (!fs.existsSync(guidesDir)) return guides;
+
+  const categories = fs.readdirSync(guidesDir, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
     .map(d => d.name);
+
   for (const category of categories) {
-    const categoryDir = path.join(__dirname, category);
+    const categoryDir = path.join(guidesDir, category);
     if (!fs.existsSync(categoryDir)) continue;
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
