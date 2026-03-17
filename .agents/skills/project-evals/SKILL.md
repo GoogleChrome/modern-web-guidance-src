@@ -37,6 +37,29 @@ This command will automatically:
 
 The human can manually write or revise the grader or prompts if they wish.
 
+## Writing `prompts.md`
+
+`prompts.md` contains realistic developer prompts used to run AI agents end-to-end against the guide's grader. Each line is a separate prompt the harness can send to an agent.
+
+**Format:** Each prompt must be on its own line, prefixed with `- `. No other structure is required.
+
+```md
+- make my images load faster on the page
+- Optimize the priority of my LCP image 'hero.jpg' and deprioritize the gallery images below the fold.
+```
+
+**Critical:** The **first prompt** is the most important — it is what the harness uses for negative demo generation and as the default task. It must be specific enough to produce a grader-testable result.
+
+**Rules:**
+- DO write prompts as a developer talking to an AI coding assistant — casual, lowercase, sometimes vague.
+- DO vary specificity: include at least one vague/intent-based prompt and one specific/technical ask.
+- DO assume the developer is working on an existing app (the base app). Reference its real assets and endpoints if needed (e.g., `hero.jpg`, `/api/analytics`).
+- DO NOT mention the guide, the feature name, or hint that guidance exists.
+- DO NOT name the base app (e.g., "daily-grind") — a real developer wouldn't refer to it that way.
+- DO NOT tell the agent which web API or CSS property to use unless a real developer would naturally do so. The point is to test whether the agent discovers the right solution via the guide.
+
+**Quantity:** 1–4 prompts is typical. A single highly specific prompt is fine for technical use cases. Multiple prompts are useful for use cases with multiple valid entry points (e.g., "accordion", "tabs", "drawer" all exercising the same feature).
+
 ## Troubleshooting
 
 If `gd dev` fails to calibrate the grader:
