@@ -29,6 +29,7 @@ export interface GuideInventory {
   hasGrader: boolean;
   hasPrompts: boolean;
   hasTask: boolean;
+  featureIds: string[];
 }
 
 export interface TaskInfo {
@@ -37,6 +38,9 @@ export interface TaskInfo {
   prompt: string;
 }
 
+/**
+ * Reads a file and trims its content. Returns empty string if file doesn't exist.
+ */
 export function readFileSafe(filePath: string): string {
   try {
     return fs.readFileSync(filePath, 'utf-8').trim();
@@ -45,6 +49,9 @@ export function readFileSafe(filePath: string): string {
   }
 }
 
+/**
+ * Builds a map of grader names to task information.
+ */
 export function getTaskMap(): Map<string, TaskInfo> {
   const taskMap = new Map<string, TaskInfo>();
   if (!fs.existsSync(TASKS_DIR)) return taskMap;
@@ -69,29 +76,30 @@ export function getTaskMap(): Map<string, TaskInfo> {
 export function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): GuideInventory {
   const name = path.basename(dir);
   const category = path.basename(path.dirname(dir));
-  
+
   const expectationsContent = readFileSafe(path.join(dir, EXPECTATIONS_FILE));
   const hasExpectations = fs.existsSync(path.join(dir, EXPECTATIONS_FILE));
-  
+
   const guideContent = readFileSafe(path.join(dir, GUIDE_FILE));
   let hasGuide = false;
   let isStub = false;
-  
+
   if (guideContent) {
     const parsed = matter(guideContent);
     const hasFrontmatter = Object.keys(parsed.data).length > 0 || guideContent.startsWith('---');
     const hasContent = parsed.content.trim().length > 0;
-    
+
     if (hasFrontmatter) {
+      isStub = true;
       if (hasContent) {
         hasGuide = true;
-      } else {
-        isStub = true;
       }
     } else if (hasContent) {
       hasGuide = true;
     }
   }
+
+  const featureIds = guideContent ? (matter(guideContent).data['web-feature-ids'] || []) : [];
 
   return {
     dir,
@@ -103,9 +111,10 @@ export function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): Gui
     hasExpectations,
     expectationsEmpty: hasExpectations && expectationsContent.length === 0,
     hasNegativeDemo: fs.existsSync(path.join(dir, NEGATIVE_DEMO_FILE)),
-    hasGrader: readFileSafe(path.join(dir, GRADER_FILE)).length > 0,
-    hasPrompts: readFileSafe(path.join(dir, PROMPTS_FILE)).length > 0,
+    hasGrader: fs.existsSync(path.join(dir, GRADER_FILE)),
+    hasPrompts: fs.existsSync(path.join(dir, PROMPTS_FILE)),
     hasTask: taskMap.has(name),
+    featureIds,
   };
 }
 
@@ -123,16 +132,11 @@ export function classifyGuide(inv: GuideInventory): GuideStatus {
 
 export function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
   const guides: GuideInventory[] = [];
-  const guidesDir = path.resolve(__dirname, '../../guides');
-  
-  if (!fs.existsSync(guidesDir)) return guides;
-
-  const categories = fs.readdirSync(guidesDir, { withFileTypes: true })
+  const categories = fs.readdirSync(__dirname, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
     .map(d => d.name);
-    
   for (const category of categories) {
-    const categoryDir = path.join(guidesDir, category);
+    const categoryDir = path.join(__dirname, category);
     if (!fs.existsSync(categoryDir)) continue;
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
@@ -141,4 +145,3 @@ export function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
   }
   return guides;
 }
-
