@@ -18,9 +18,8 @@ export interface FeatureValidationResult {
 export interface DetailedBaselineStatus {
   baseline: 'low' | 'high' | false;
   baseline_low_date?: string;
-  baseline_high_date?: string;
   shortLabel: string;   // e.g. "Newly", "Widely", "Limited"
-  releaseDate: string;  // The primary date to show (Baseline High date for widely, Low for newly)
+  releaseDate: string;  // The date the feature first became Baseline (Interoperable)
 }
 /**
  * Gets the detailed Baseline status for a specific feature, resolving redirects/splits.
@@ -30,7 +29,6 @@ export function getFeatureStatus(featureId: string): DetailedBaselineStatus | un
   if (resolvedIds.length === 0) return;
 
   let latestLowDate = "0000-00-00";
-  let latestHighDate = "0000-00-00";
   let overallBaseline: 'low' | 'high' | false = 'high';
 
   for (const id of resolvedIds) {
@@ -47,13 +45,9 @@ export function getFeatureStatus(featureId: string): DetailedBaselineStatus | un
     if (status.baseline_low_date && status.baseline_low_date > latestLowDate) {
       latestLowDate = status.baseline_low_date;
     }
-    if (status.baseline_high_date && status.baseline_high_date > latestHighDate) {
-      latestHighDate = status.baseline_high_date;
-    }
   }
 
   const baseline_low_date = latestLowDate === "0000-00-00" ? undefined : latestLowDate;
-  const baseline_high_date = latestHighDate === "0000-00-00" ? undefined : latestHighDate;
   
   const shortLabel = mapBaseline(overallBaseline);
   
@@ -62,7 +56,6 @@ export function getFeatureStatus(featureId: string): DetailedBaselineStatus | un
   return {
     baseline: overallBaseline,
     baseline_low_date,
-    baseline_high_date,
     shortLabel,
     releaseDate
   };
