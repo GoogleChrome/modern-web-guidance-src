@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Declarative Button Actions Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f9f9f9;
+      color: #333;
+      padding: 20px;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+      background: white;
+      padding: 2rem 4rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      border: 1px solid #ddd;
+    }
+
+    button {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      background: #007bff;
+      color: white;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    .target {
+      width: 150px;
+      height: 150px;
+      background-color: #f06292;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 1.25rem;
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    .target.is-spun {
+      transform: rotate(180deg);
+      background-color: #4dd0e1;
+    }
+
+    .target.is-grown {
+      transform: scale(1.25);
+    }
+    
+    .target.is-rounded {
+      border-radius: 50%;
+    }
+    
+    .target.is-spun.is-grown {
+      transform: rotate(180deg) scale(1.25);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="actions">
+      <!-- 
+        Buttons are declaratively connected to the target element 
+        using the 'commandfor' attribute. They dispatch custom 
+        commands (e.g. '--spin') to that element when clicked. 
+      -->
+      <button commandfor="action-target" command="--spin">Spin</button>
+      <button commandfor="action-target" command="--grow">Grow</button>
+      <button commandfor="action-target" command="--round">Make Round</button>
+      <button commandfor="action-target" command="--reset">Reset All</button>
+    </div>
+    
+    <!-- The target element that will receive the command event -->
+    <div id="action-target" class="target">
+      Action Target
+    </div>
+  </div>
+
+  <script>
+    const targetEl = document.getElementById('action-target');
+    
+    // Listen for the command event on the target element
+    targetEl.addEventListener('command', (event) => {
+      // Check which custom command was dispatched
+      if (event.command === '--spin') {
+        targetEl.classList.toggle('is-spun');
+      } else if (event.command === '--grow') {
+        targetEl.classList.toggle('is-grown');
+      } else if (event.command === '--round') {
+        targetEl.classList.toggle('is-rounded');
+      } else if (event.command === '--reset') {
+        // Reset to initial state
+        targetEl.className = 'target';
+      }
+    });
+  </script>
+
+</body>
+</html>
