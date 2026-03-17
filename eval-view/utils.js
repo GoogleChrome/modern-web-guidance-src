@@ -35,3 +35,87 @@ export function formatTestName(name) {
     if (!name) return name;
     return name.split(' - ').join(' / ');
 }
+
+// Google Identity Services (OAuth) Integration
+const GOOGLE_CLIENT_ID = '169412140096-fk4rtf6iqk982d43385s1ilucrda91g2.apps.googleusercontent.com';
+let accessToken = localStorage.getItem('gcs_access_token') || null;
+
+export function getAccessToken() {
+    return accessToken;
+}
+
+export function initGoogleAuth(onAuthSuccess) {
+    const init = () => {
+        if (!window.google || !window.google.accounts) {
+            // Wait for script to load
+            setTimeout(init, 50);
+            return;
+        }
+
+        const authBtn = document.getElementById('auth-btn');
+        if (authBtn) {
+            authBtn.style.display = 'block';
+            if (accessToken) {
+                authBtn.textContent = 'Authenticated ✓';
+                authBtn.disabled = true;
+                authBtn.style.backgroundColor = 'var(--accent-success)';
+                authBtn.style.color = 'white';
+                authBtn.style.borderColor = 'var(--accent-success)';
+            }
+        }
+
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: 'https://www.googleapis.com/auth/devstorage.read_only',
+            callback: (response) => {
+                if (response.error !== undefined) {
+                    console.error('OAuth Error:', response);
+                    return;
+                }
+                accessToken = response.access_token;
+                localStorage.setItem('gcs_access_token', accessToken);
+                console.log('Successfully authenticated with Google.');
+                if (authBtn) {
+                    authBtn.textContent = 'Authenticated ✓';
+                    authBtn.disabled = true;
+                    authBtn.style.backgroundColor = 'var(--accent-success)';
+                    authBtn.style.color = 'white';
+                    authBtn.style.borderColor = 'var(--accent-success)';
+                }
+                if (onAuthSuccess) onAuthSuccess();
+            },
+        });
+
+        if (authBtn) {
+            authBtn.addEventListener('click', () => {
+                // Request an access token
+                tokenClient.requestAccessToken();
+            });
+        }
+    };
+    init();
+}
+
+export async function authenticatedFetch(url, options = {}) {
+    if (accessToken) {
+        options.headers = options.headers || {};
+        options.headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+        console.warn('Google Access Token expired or invalid. Clearing token.');
+        localStorage.removeItem('gcs_access_token');
+        accessToken = null;
+        
+        // Reset button UI if available
+        const authBtn = document.getElementById('auth-btn');
+        if (authBtn) {
+            authBtn.textContent = 'Sign in with Google';
+            authBtn.disabled = false;
+            authBtn.style.backgroundColor = '';
+            authBtn.style.color = '';
+            authBtn.style.borderColor = '';
+        }
+    }
+    return res;
+}

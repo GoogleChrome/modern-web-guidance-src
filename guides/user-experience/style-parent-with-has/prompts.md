@@ -1,0 +1,3 @@
+- Build a form where the parent card section gets a red left border and warning icon when any input inside it becomes invalid after user interaction.
+- Style a fieldset or card container to visually change (background color, border) when it contains an invalid form field, using only CSS.
+- Create a profile settings form where the entire card highlights with an error state when any required field inside it is left empty after interaction, using `:has(:user-invalid)`.

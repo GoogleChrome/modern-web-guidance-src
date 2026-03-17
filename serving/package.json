@@ -17,11 +17,12 @@
   ],
   "scripts": {
     "prepublishOnly": "npm run build",
-    "build": "tsx scripts/build-guides.ts",
-    "start": "tsx mcp-server/index.ts",
-    "dev": "tsx scripts/build-guides.ts && tsx --watch mcp-server/index.ts",
-    "test": "tsx scripts/build-guides.ts && vitest run mcp-server/",
-    "typecheck": "tsc --noEmit"
+    "build": "node scripts/build-guides.ts",
+    "build:megaskill": "node scripts/build-megaskill.ts",
+    "start": "node mcp-server/index.ts",
+    "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
+    "test": "node scripts/build-guides.ts && vitest run mcp-server/ scripts/",
+    "typecheck": "npm run build && tsc --noEmit"
   },
   "keywords": [],
   "author": "",
@@ -30,16 +31,15 @@
     "@huggingface/transformers": "^3.8.1",
     "@lancedb/lancedb": "^0.26.2",
     "@modelcontextprotocol/sdk": "^1.27.1",
-    "apache-arrow": "18.1.0",
-    "marked": "^17.0.3",
-    "web-features": "^3.18.0",
-    "zod": "^3.25.76"
+    "apache-arrow": "21.1.0",
+    "marked": "^17.0.4",
+    "web-features": "^3.20.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/node": "^22.19.11",
+    "@types/node": "^25.5.0",
     "gray-matter": "^4.0.3",
-    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.0"
   }
 }

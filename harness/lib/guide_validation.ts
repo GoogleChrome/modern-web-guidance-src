@@ -1,45 +1,37 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { MCP_LOG_FILE } from '../../constants.ts';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+export async function collectGuidesUsed(dirPath: string): Promise<string[]> {
+  const logPath = path.join(dirPath, MCP_LOG_FILE);
 
-export async function guideUsed(dirPath: string, appName: string): Promise<boolean> {
-  const resourcesPath = path.join(dirPath, 'resources_used.json');
-  
-  if (!fs.existsSync(resourcesPath)) {
-    return false;
+  if (!fs.existsSync(logPath)) {
+    return [];
   }
 
-  let resources: { name?: string }[];
-  try {
-    resources = JSON.parse(fs.readFileSync(resourcesPath, 'utf8'));
-  } catch {
-    return false;
+  const logContent = fs.readFileSync(logPath, 'utf8').trim();
+  let toolCalls: any[] = [];
+
+  if (logContent) {
+    const lines = logContent.split('\n');
+    for (const line of lines) {
+      if (line.trim().startsWith('{')) {
+        try {
+          toolCalls.push(JSON.parse(line));
+        } catch (e) {
+          console.error(`Failed to parse line in ${logPath}:`, e);
+        }
+      }
+    }
   }
 
-  const taskPath = path.resolve(__dirname, `../tasks/${appName}.md`);
-  if (!fs.existsSync(taskPath)) {
-    console.error(`Task ${appName} not found at ${taskPath}`);
-    return false;
-  }
+  // Extract all use case IDs requested via get_best_practices
+  const requestedGuides = toolCalls
+    .filter(call => call.tool === 'get_best_practices' && Array.isArray(call.result))
+    .flatMap(call => call.result.map((r: any) => r.id || ''))
+    .filter(Boolean);
 
-  const fileContent = fs.readFileSync(taskPath, 'utf8');
-  const frontmatterMatch = fileContent.match(/^---\n(?:[\s\S]*?)grader:\s*(.+)\n(?:[\s\S]*?)---\n([\s\S]*)$/m);
+  const uniqueGuides = [...new Set(requestedGuides)];
 
-  if (!frontmatterMatch) {
-    console.error(`No 'grader:' found in frontmatter for task ${appName}`);
-    return false;
-  }
-
-  const guide = frontmatterMatch[1].trim();
-
-  // Extract all resource names for easier searching
-  const resourceNames = resources.map(r => r.name || '').filter(Boolean);
-
-  const found = resourceNames.some(name => name.includes(guide));
-  const isOnlyOne = resourceNames.length === 1;
-
-  return found && isOnlyOne;
+  return uniqueGuides;
 }

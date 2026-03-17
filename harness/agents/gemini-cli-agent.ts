@@ -5,7 +5,8 @@ import { spawn } from 'child_process';
 
 import config, { Agents } from '../config.ts';
 
-import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, copyAgentContext, parseAgentArgs, createWorkDir, copyResultsToTarget, copySkills } from '../lib/agent-shared.ts';
+import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copyResultsToTarget, copySkills, watchLogFile, exportTrajectories } from '../lib/agent-shared.ts';
+import { MCP_LOG_FILE } from '../../constants.ts';
 
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
 const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('gemini-cli-agent.ts');
@@ -40,8 +41,6 @@ function setupIsolatedWorkDir(): string {
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
-    copyAgentContext(tempHome, Agents.GEMINI_CLI);
-
     if (config.suite.enableSkills) {
       copySkills(tempHome, Agents.GEMINI_CLI)
     }
@@ -80,6 +79,9 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
+    process.env.MCP_LOG_DIR = targetDir;
+    const stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
+
     const child = spawn(command, commandArgs, {
       cwd: workDir,
       env: { ...process.env }, // Pass through environment variables (including new HOME)
@@ -105,6 +107,8 @@ async function run() {
       child.on('close', resolve);
     });
 
+    stopWatchingMcpLog();
+
     if (exitCode !== 0) {
       throw new Error(`Gemini CLI exited with code ${exitCode}`);
     }
@@ -115,6 +119,10 @@ async function run() {
     const chatLogPath = path.join(targetDir, 'chat_log.txt');
     fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
     console.log(`Saved output to: ${chatLogPath}`);
+
+    // Extract trajectory JSON from isolated home
+    const tmpDir = path.join(path.dirname(workDir), '.gemini', 'tmp');
+    exportTrajectories(tmpDir, '*/chats/*.json', targetDir);
 
     console.log("Gemini CLI agent finished successfully.");
 
