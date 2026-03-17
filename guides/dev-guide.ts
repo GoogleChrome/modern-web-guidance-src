@@ -509,12 +509,12 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
 }
 
 const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
-  'incomplete': { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
-  'stub': { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
+  'incomplete':         { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
+  'stub':               { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
   'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
-  'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
-  'needs-test': { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
-  'eval-ready': { label: 'Ready for eval', color: cGreen },
+  'needs-calibration':  { label: 'Needs calibration (run gd dev)', color: cYellow },
+  'needs-test':         { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
+  'eval-ready':         { label: 'Ready for eval', color: cGreen },
 };
 
 export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
@@ -677,13 +677,13 @@ function renderFeatureMatrix(allGuides: GuideInventory[]): void {
     const expctDots = guides.map(inv => (inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations))).join('');
 
     const row = col(renderDots(guideDot)) +
-      col(renderDots(inv => dot(inv.hasDemo))) +
-      col(expctDots) +
-      cDim('│') + ' ' +
-      col(renderDots(inv => dot(inv.hasNegativeDemo))) +
-      col(renderDots(inv => dot(inv.hasGrader))) +
-      col(renderDots(inv => dot(inv.hasPrompts))) +
-      renderDots(inv => dot(inv.hasTask));
+                col(renderDots(inv => dot(inv.hasDemo))) +
+                col(expctDots) +
+                cDim('│') + ' ' +
+                col(renderDots(inv => dot(inv.hasNegativeDemo))) +
+                col(renderDots(inv => dot(inv.hasGrader))) +
+                col(renderDots(inv => dot(inv.hasPrompts))) +
+                renderDots(inv => dot(inv.hasTask));
 
     console.log(`  ${color(name.padEnd(32))} ${String(guides.length).padStart(5)}  ${row}`);
   }
