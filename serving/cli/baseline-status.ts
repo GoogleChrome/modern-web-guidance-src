@@ -4,21 +4,17 @@ import { getFeatureStatus, mapBaseline } from '../mcp-server/data/baseline.ts';
 const args = process.argv.slice(2);
 
 if (args.length === 0) {
-  console.log('Usage: pnpm baselinestatus <query> [--status <baseline>] [--json]');
+  console.log('Usage: pnpm baselinestatus <query> [--json]');
   console.log('Example: pnpm baselinestatus overflow');
-  console.log('Example: pnpm baselinestatus o --status low --json');
+  console.log('Example: pnpm baselinestatus overflow --json');
   process.exit(0);
 }
 
 let query = '';
-let statusFilter: string | null = null;
 let jsonMode = false;
 
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--status') {
-    statusFilter = args[i + 1];
-    i++;
-  } else if (args[i] === '--json') {
+  if (args[i] === '--json') {
     jsonMode = true;
   } else {
     query = args[i];
@@ -27,30 +23,24 @@ for (let i = 0; i < args.length; i++) {
 
 const matches = Object.entries(features).filter(([id, data]) => {
   if (data.kind !== 'feature') return false;
-  const matchesQuery = id.toLowerCase().includes(query.toLowerCase());
-
-  let targetStatus: string | boolean | undefined | null = statusFilter;
-  if (statusFilter === 'false') targetStatus = false;
-  if (statusFilter === 'unknown' || statusFilter === 'undefined') targetStatus = undefined;
-
-  const matchesStatus = !statusFilter || data.status?.baseline === targetStatus;
-  return matchesQuery && matchesStatus;
+  return id.toLowerCase().includes(query.toLowerCase());
 });
 
 if (matches.length === 0) {
   if (jsonMode) {
     console.log('[]');
   } else {
-    console.log(`No features found matching "${query}"${statusFilter ? ` with status "${statusFilter}"` : ''}.`);
+    console.log(`No features found matching "${query}".`);
   }
 } else {
   const rows = matches.map(([id, data]) => {
+    const featureData = data as any;
     const status = getFeatureStatus(id);
-    const support = (data as any).status?.support || {};
+    const support = featureData.status?.support || {};
     
     return {
       featureId: id,
-      name: data.name || '-',
+      name: featureData.name || '-',
       baselineSince: status?.releaseDate || '-',
       baseline: status?.shortLabel || 'unknown',
       chrome: String(support.chrome || '-'),
