@@ -3,13 +3,9 @@ import path from 'path';
 import fs from 'fs';
 import { Octokit } from '@octokit/rest';
 import matter from 'gray-matter';
-import { features } from 'web-features';
 import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = path.resolve(__dirname, '..');
-dotenv.config({ path: path.join(REPO_ROOT, '.env') });
-
+import { validateMacros } from '../serving/mcp-server/lib/macros.ts';
+import { validateFeature } from '../serving/mcp-server/data/baseline.ts';
 
 interface GuideData {
   name?: string;
@@ -25,14 +21,24 @@ interface ValidationResult {
   filePath: string;
 }
 
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(__dirname, '..');
+dotenv.config({ path: path.join(REPO_ROOT, '.env') });
+
+const PRIORITY_LABEL_REGEX = /^P\d+$/;
+
+
+
 /**
- * Recursively find all guide.md files in a directory.
+ * Recursively find all use case directories.
  */
-function findGuides(dir: string): string[] {
-  const guideFiles: string[] = [];
+function findUseCaseDirs(dir: string): string[] {
+  const useCaseDirs: string[] = [];
 
   function find(currentDir: string) {
     const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    let isUseCase = false;
     for (const entry of entries) {
       const fullPath = path.join(currentDir, entry.name);
       if (entry.isDirectory()) {
@@ -40,14 +46,17 @@ function findGuides(dir: string): string[] {
         if (!entry.name.includes('test')) {
           find(fullPath);
         }
-      } else if (entry.name === 'guide.md') {
-        guideFiles.push(fullPath);
+      } else if (['guide.md', 'demo.html', 'grader.ts', 'prompts.md'].includes(entry.name)) {
+        isUseCase = true;
       }
+    }
+    if (isUseCase) {
+      useCaseDirs.push(currentDir);
     }
   }
 
   find(dir);
-  return guideFiles;
+  return useCaseDirs;
 }
 
 /**
@@ -89,20 +98,15 @@ function validateGuide(filePath: string): ValidationResult {
     errors.push(`"web-feature-ids" must be an array in ${relativePath}.`);
   } else {
     for (const id of featureIds) {
-      const feature = (features as any)[id];
-      if (!feature) {
-        errors.push(`Web feature ID "${id}" not found in web-features package (${relativePath}).`);
-      } else if (feature.kind !== 'feature') {
-        let suggestion = '';
-        if (feature.kind === 'moved') {
-          suggestion = ` (It has been moved to "${feature.redirect_target}")`;
-        } else if (feature.kind === 'split') {
-          suggestion = ` (It has been split into: ${feature.redirect_targets.join(', ')})`;
-        }
-        errors.push(`Web feature ID "${id}" is a ${feature.kind} record, not a primary feature${suggestion} in ${relativePath}.`);
+      const result = validateFeature(id);
+      if (!result.isValid) {
+        errors.push(`${result.errorMessage} (${relativePath}).`);
       }
     }
   }
+
+  // Validate macros in the body
+  errors.push(...validateMacros(body, relativePath));
 
   return { errors, data, body, filePath };
 }
@@ -185,7 +189,7 @@ async function run() {
     console.warn('⚠️ GITHUB_TOKEN is not set. Project status updates will be skipped in this dry run.');
   }
 
-  const featureToIssueMap = new Map<string, number>();
+  const featureToIssueMap = new Map<string, { number: number; priorityLabel: string | null }>();
   const nameToIssueMap = new Map<string, any>();
   const subdirToIssueMap = new Map<string, any>();
   let allUseCases: any[] = [];
@@ -204,7 +208,10 @@ async function run() {
       for (const issue of featureIssues) {
         const match = issue.body?.match(/Feature ID: ([a-z0-9-]+)/);
         if (match) {
-          featureToIssueMap.set(match[1], issue.number);
+          const priorityLabel = issue.labels
+            .map((l: any) => (typeof l === 'string' ? l : l.name))
+            .find((l: string) => PRIORITY_LABEL_REGEX.test(l)) || null;
+          featureToIssueMap.set(match[1], { number: issue.number, priorityLabel });
         }
       }
       console.log(`Found ${featureToIssueMap.size} features with issues.`);
@@ -250,13 +257,42 @@ async function run() {
 
   const activeIssueNumbers = new Set<number>();
 
-  // 3. Find and validate all guide.md files
+  // 3. Find and validate all use case directories
   const guidesDir = path.resolve(REPO_ROOT, 'guides');
-  const guideFiles = findGuides(guidesDir);
-  console.log(`Found ${guideFiles.length} guide.md files.`);
+  const useCaseDirs = findUseCaseDirs(guidesDir);
+  console.log(`Found ${useCaseDirs.length} use cases.`);
 
-  for (const guidePath of guideFiles) {
-    const subdir = path.dirname(guidePath);
+  for (const subdir of useCaseDirs) {
+    const relativeSubdir = path.relative(REPO_ROOT, subdir);
+    const guidePath = path.join(subdir, 'guide.md');
+    const demoPath = path.join(subdir, 'demo.html');
+    const graderPath = path.join(subdir, 'grader.ts');
+    const promptsPath = path.join(subdir, 'prompts.md');
+
+    const hasGuide = fs.existsSync(guidePath);
+    const hasDemo = fs.existsSync(demoPath) && fs.readFileSync(demoPath, 'utf8').trim().length > 0;
+    const hasGrader = fs.existsSync(graderPath) && fs.readFileSync(graderPath, 'utf8').trim().length > 0;
+    const hasPrompts = fs.existsSync(promptsPath) && fs.readFileSync(promptsPath, 'utf8').trim().length > 0;
+
+    if (hasGuide !== hasDemo) {
+      const missingFile = hasGuide ? 'demo.html' : 'guide.md';
+      console.warn(`⚠️ Warning in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH guide.md and demo.html before advancing to the "Needs guidance" column.`);
+    }
+
+    if (hasGrader !== hasPrompts) {
+      const missingFile = hasGrader ? 'prompts.md' : 'grader.ts';
+      console.warn(`⚠️ Warning in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH grader.ts and prompts.md before advancing to completed.`);
+    }
+
+    if (!hasGuide || !hasDemo) {
+      // Prevent the cleanup step from treating any existing issue as an orphan —
+      // the use case directory exists, it's just missing some required files.
+      const partialIssue = subdirToIssueMap.get(relativeSubdir);
+      if (partialIssue) {
+        activeIssueNumbers.add(partialIssue.number);
+      }
+      continue;
+    }
 
     const { errors, data, body } = validateGuide(guidePath);
 
@@ -276,44 +312,54 @@ async function run() {
     let statusName: string | null = null;
     if (body.trim().length === 0) {
       statusName = 'Needs guidance';
-    } else {
-      const graderPath = path.join(subdir, 'grader.ts');
-      if (!fs.existsSync(graderPath)) {
-        statusName = 'Needs evals';
-      }
+    } else if (!hasGrader || !hasPrompts) {
+      statusName = 'Needs evals';
     }
 
     // Build related features string
     const relatedLinks: string[] = [];
+    let priorityLabel: string | null = null;
     for (const id of featureIds) {
-      const issueNum = featureToIssueMap.get(id);
-      if (issueNum) {
-        relatedLinks.push(`#${issueNum}`);
+      const featureData = featureToIssueMap.get(id);
+      if (featureData) {
+        relatedLinks.push(`#${featureData.number}`);
+        if (!priorityLabel && featureData.priorityLabel) {
+          priorityLabel = featureData.priorityLabel;
+        }
       }
     }
     const relatedFeaturesStr = relatedLinks.length > 0 ? `\n\nRelated features: ${relatedLinks.join(' ')}` : '';
 
-    const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const subdirUrl = `https://github.com/${ORG}/${REPO}/tree/main/${relativeSubdir}`;
     const linkedFeatures = (featureIds as string[]).map(id => `[${id}](https://webstatus.dev/features/${id})`).join(', ');
 
     const issueTitle = `Create guide and evals for the ${name} use case`;
     const issueBody = `${description}\n\nAffected web-feature IDs: ${linkedFeatures}\n\nUse case subdir: [${relativeSubdir}](${subdirUrl})${relatedFeaturesStr}`;
 
-    let existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
-
+    const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
     let issueNumber: number;
 
     if (existingIssue) {
       const shouldBeOpen = statusName !== null;
+      const needsClose = !shouldBeOpen && existingIssue.state === 'open';
       const needsReopen = shouldBeOpen && existingIssue.state === 'closed';
-      const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody || needsReopen;
+
+      const currentLabels = (existingIssue.labels as any[]).map(l => typeof l === 'string' ? l : l.name);
+      const desiredLabels = [...new Set([...currentLabels, 'new-use-case'])];
+
+      // Only add priority if the issue doesn't have one yet
+      if (priorityLabel && !currentLabels.some(l => PRIORITY_LABEL_REGEX.test(l))) {
+        desiredLabels.push(priorityLabel);
+      }
+      const labelsChanged = desiredLabels.length !== currentLabels.length || desiredLabels.some(l => !currentLabels.includes(l));
+
+      const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody || needsReopen || needsClose || labelsChanged;
 
       issueNumber = existingIssue.number;
       activeIssueNumbers.add(issueNumber);
 
       if (needsUpdate) {
-        console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"${needsReopen ? ' (reopening)' : ''}...`);
+        console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"${needsReopen ? ' (reopening)' : ''}${needsClose ? ' (closing as completed)' : ''}${labelsChanged ? ' (updating labels)' : ''}...`);
         if (!IS_DRY_RUN) {
           await octokit.rest.issues.update({
             owner: ORG,
@@ -321,38 +367,49 @@ async function run() {
             issue_number: issueNumber,
             title: issueTitle,
             body: issueBody,
-            ...(needsReopen ? { state: 'open' } : {})
+            labels: desiredLabels,
+            ...(needsReopen ? { state: 'open' } : {}),
+            ...(needsClose ? { state: 'closed', state_reason: 'completed' } : {})
           });
         } else {
           console.log(`[DRY RUN] Title: ${issueTitle}`);
-          console.log(`[DRY RUN] Labels: new-use-case`);
+          console.log(`[DRY RUN] Labels: ${desiredLabels.join(', ')}`);
           if (needsReopen) console.log(`[DRY RUN] State: open`);
+          if (needsClose) console.log(`[DRY RUN] State: closed (completed)`);
           console.log(`[DRY RUN] Body:\n${issueBody}\n`);
         }
       } else {
         console.log(`✅ Issue #${issueNumber} for "${name}" is up to date.`);
       }
     } else {
-      if (statusName === null) {
-        // This is a completed guide, so we don't need to create an issue just to immediately close it.
-        console.log(`ℹ️ Skipping issue creation for "${name}" (already complete).`);
-        continue;
-      }
+      const isComplete = statusName === null;
+      const labels = ['new-use-case'];
+      if (priorityLabel) labels.push(priorityLabel);
 
-      console.log(`${IS_DRY_RUN ? '[DRY RUN] Would create' : 'Creating'} new issue for "${name}"...`);
+      console.log(`${IS_DRY_RUN ? '[DRY RUN] Would create' : 'Creating'} new issue for "${name}"${isComplete ? ' (closing immediately as completed)' : ''}...`);
       if (!IS_DRY_RUN) {
         const newIssue = await octokit.rest.issues.create({
           owner: ORG,
           repo: REPO,
           title: issueTitle,
           body: issueBody,
-          labels: ['new-use-case']
+          labels
         });
         issueNumber = newIssue.data.number;
         activeIssueNumbers.add(issueNumber);
+        if (isComplete) {
+          await octokit.rest.issues.update({
+            owner: ORG,
+            repo: REPO,
+            issue_number: issueNumber,
+            state: 'closed',
+            state_reason: 'completed'
+          });
+        }
       } else {
         console.log(`[DRY RUN] Title: ${issueTitle}`);
-        console.log(`[DRY RUN] Labels: new-use-case`);
+        console.log(`[DRY RUN] Labels: ${labels.join(', ')}`);
+        if (isComplete) console.log(`[DRY RUN] State: closed (completed)`);
         console.log(`[DRY RUN] Body:\n${issueBody}\n`);
         issueNumber = 0; // Placeholder for dry run
       }
@@ -377,22 +434,38 @@ async function run() {
   }
 
   if (GITHUB_TOKEN) {
-    // 4. Cleanup: Close issues for use cases that no longer exist
-    console.log('🧹 Checking for orphaned issues to close...');
+    // 4. Cleanup: Close issues and remove labels for use cases that no longer exist
+    console.log('🧹 Checking for orphaned issues to cleanup...');
     for (const issue of allUseCases) {
-      if (issue.state === 'open' && !activeIssueNumbers.has(issue.number)) {
-        console.log(`${IS_DRY_RUN ? '[DRY RUN] Would close' : 'Closing'} orphaned issue #${issue.number} ("${issue.title}")...`);
+      if (!activeIssueNumbers.has(issue.number)) {
+        if (issue.state === 'open') {
+          console.log(`${IS_DRY_RUN ? '[DRY RUN] Would close' : 'Closing'} orphaned issue #${issue.number} ("${issue.title}")...`);
+          if (!IS_DRY_RUN) {
+            try {
+              await octokit.rest.issues.update({
+                owner: ORG,
+                repo: REPO,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'not_planned'
+              });
+            } catch (err: any) {
+              console.warn(`⚠️ Could not close orphaned issue #${issue.number}: ${err.message}`);
+            }
+          }
+        }
+
+        console.log(`${IS_DRY_RUN ? '[DRY RUN] Would remove label' : 'Removing label'} from orphaned issue #${issue.number} ("${issue.title}")...`);
         if (!IS_DRY_RUN) {
           try {
-            await octokit.rest.issues.update({
+            await octokit.rest.issues.removeLabel({
               owner: ORG,
               repo: REPO,
               issue_number: issue.number,
-              state: 'closed',
-              state_reason: 'not_planned'
+              name: 'new-use-case'
             });
           } catch (err: any) {
-            console.warn(`⚠️ Could not close orphaned issue #${issue.number}: ${err.message}`);
+            console.warn(`⚠️ Could not remove label from orphaned issue #${issue.number}: ${err.message}`);
           }
         }
       }

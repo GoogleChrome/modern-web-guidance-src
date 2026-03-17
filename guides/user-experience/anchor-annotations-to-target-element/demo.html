@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anchor Annotations Demo | CSS Anchor Positioning</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Space+Grotesk:wght@500;700&display=swap');
+
+    :root {
+      --bg-dark: #090b14;
+      --bg-card: #13172a;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.4);
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --border: #242b42;
+      --sidebar-width: 320px;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Outfit', sans-serif;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.05) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.05) 0px, transparent 50%);
+    }
+
+    header {
+      background: linear-gradient(to bottom, var(--bg-card), var(--bg-dark));
+      padding: 3rem 2rem;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 2.5rem;
+      margin: 0 0 0.5rem 0;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr var(--sidebar-width);
+      gap: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem 5rem 2rem;
+      position: relative;
+    }
+
+    .main-content {
+      max-width: 700px;
+      line-height: 1.8;
+      font-size: 1.1rem;
+      color: #cbd5e1;
+    }
+
+    .section {
+      margin-bottom: 3rem;
+    }
+
+    h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      color: white;
+      font-size: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    /* Anchor Styling */
+    .anchor-point {
+      background-color: rgba(56, 189, 248, 0.1);
+      border-bottom: 2px dashed var(--accent);
+      padding: 2px 4px;
+      border-radius: 4px;
+      color: white;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .anchor-point:hover {
+      background-color: rgba(56, 189, 248, 0.2);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    /* Naming the anchors */
+    #note1 {
+      anchor-name: --note1-anchor;
+    }
+
+    #note2 {
+      anchor-name: --note2-anchor;
+    }
+
+    #note3 {
+      anchor-name: --note3-anchor;
+    }
+
+    /* Annotation Box */
+    .annotation {
+      position: absolute;
+      width: 260px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+      animation: fadeIn 0.3s ease-out;
+      left: calc(100% - var(--sidebar-width) + 20px);
+    }
+
+    .annotation::before {
+      content: '';
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background-color: var(--accent);
+      border-radius: 50%;
+      left: -15px;
+      top: 18px;
+      box-shadow: 0 0 6px var(--accent);
+    }
+
+    /* Applying anchors to specific annotations */
+    .annotation-1 {
+      position-anchor: --note1-anchor;
+      top: anchor(top);
+    }
+
+    .annotation-2 {
+      position-anchor: --note2-anchor;
+      top: anchor(top);
+    }
+
+    .annotation-3 {
+      position-anchor: --note3-anchor;
+      top: anchor(top);
+    }
+
+    .annotation:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.5);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: var(--text-main);
+    }
+
+    .annotation-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      color: white;
+      font-weight: 600;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .annotation-header i {
+      color: var(--accent);
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Scroll trigger spacer to ensure page is scrollable */
+    .spacer {
+      height: 50vh;
+    }
+
+    /* Supportive text helpers */
+    .code-snippet {
+      font-family: monospace;
+      background: #0f172a;
+      padding: 2px 4px;
+      border-radius: 4px;
+      color: #38bdf8;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>Anchor Annotations</h1>
+    <p class="subtitle">Demonstrating CSS Anchor Positioning to keep sidenotes flawlessly aligned with document text
+      during scroll and resize.</p>
+  </header>
+
+  <div class="container">
+    <div class="main-content">
+      <div class="section">
+        <h2>Introduction to Fluid Typography</h2>
+        <p>
+          Modern web design demands layouts that feel responsive and alive. Static sidebars often fail to maintain
+          context when dealing with long-form content.
+          Traditionally, keeping comments or footnotes aligned with specific sentences required heavy JavaScript
+          listeners that calculated bounding rects on every scroll tick.
+        </p>
+        <p>
+          With <span id="note1" class="anchor-point">CSS Anchor Positioning</span>, this paradigm shifts entirely to the
+          browser's rendering engine.
+          By defining an anchor and aligning an absolute element to it, the browser handles position updates with zero
+          custom script execution, leading to 60fps scrolling animations.
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>The Implementation Details</h2>
+        <p>
+          To achieve this effect, we name our anchor using the <span class="code-snippet">anchor-name</span> property.
+          This sets up a reference that other elements can lock onto.
+          The annotation boxes listed on the right are absolutely positioned, but their vertical coordinates are locked
+          to the anchor points inside this continuous text flow.
+        </p>
+        <p>
+          For instance, observing the sidebar element referencing <span id="note2" class="anchor-point">Scroll
+            Performance</span> reveals that even as the text wraps on resize,
+          the note maintains its exact vertical level relative to its source anchor.
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>Advanced Edge Cases</h2>
+        <p>
+          We also must consider responsiveness. On mobile views, absolute positioning anchored to the right may break
+          layouts.
+          For devices with constrained width, a progressive enhancement approach would fall back to inline tooltips or
+          collapsible panels.
+        </p>
+        <p>
+          Another critical feature is handling <span id="note3" class="anchor-point">Viewport Clipping</span>. If an
+          anchor scrolls off-screen on the top or bottom,
+          Anchor Positioning provides fallbacks or position-try rules that allow the element to reposition itself
+          elegantly, avoiding being rendered outside containing boxes.
+        </p>
+      </div>
+
+      <div class="spacer"></div>
+    </div>
+
+    <!-- Annotations reside in the same containing block for relative positioning alignment -->
+    <div class="annotation annotation-1">
+      <div class="annotation-header">
+        🚀 Dynamic Anchoring
+      </div>
+      CSS Anchor Positioning allows any element to identify as an anchor, creating fully reactive alignment models for
+      relative UI components.
+    </div>
+
+    <div class="annotation annotation-2">
+      <div class="annotation-header">
+        📊 Zero-JS Layouts
+      </div>
+      Ensures buttery smooth framing rates. The position updates run on the compositor thread without triggering JS
+      paint loops.
+    </div>
+
+    <div class="annotation annotation-3">
+      <div class="annotation-header">
+        🛡️ Edge Detection
+      </div>
+      Can be coupled with `position-try` to prevent annotations from getting cut off at the viewport bounding box
+      borders.
+    </div>
+
+  </div>
+
+</body>
+
+</html>

@@ -6,6 +6,7 @@ import { marked } from "marked";
 import { glob } from "glob";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
+import { replaceMacros } from "../mcp-server/lib/macros.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,13 +23,13 @@ interface UseCase {
   category: string;
 }
 
-// Ensure clean build/guides exists
-if (fs.existsSync(BUILD_GUIDES_DIR)) {
-  fs.rmSync(BUILD_GUIDES_DIR, { recursive: true, force: true });
-}
-fs.mkdirSync(BUILD_GUIDES_DIR, { recursive: true });
-
 async function processGuides() {
+  // Ensure clean build/guides exists
+  if (fs.existsSync(BUILD_GUIDES_DIR)) {
+    fs.rmSync(BUILD_GUIDES_DIR, { recursive: true, force: true });
+  }
+  fs.mkdirSync(BUILD_GUIDES_DIR, { recursive: true });
+
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
 
@@ -99,7 +100,7 @@ export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
 
 }
 
-function chunkMarkdown(markdown: string): string[] {
+export function chunkMarkdown(markdown: string): string[] {
   const tokens = marked.lexer(markdown);
   const chunks: string[] = [];
   let currentChunk: string[] = [];
@@ -123,7 +124,6 @@ function chunkMarkdown(markdown: string): string[] {
   return chunks.filter(chunk => chunk.trim().length > 0);
 }
 
-
 async function processSingleGuideFile(
   filePath: string,
   category: string,
@@ -139,9 +139,11 @@ async function processSingleGuideFile(
   }
 
   if (markdownBody.trim().length === 0) {
-    console.log(`Skipping ${id} (${category}) as it has no markdown content.`);
+    // Just a stub guide. No content to index.
     return;
   }
+
+  const processedMarkdown = replaceMacros(markdownBody, filePath);
 
   useCases.push({
     id,
@@ -149,7 +151,7 @@ async function processSingleGuideFile(
     category,
   });
 
-  const chunks = chunkMarkdown(markdownBody);
+  const chunks = chunkMarkdown(processedMarkdown);
   chunks.push(frontmatter);
 
   const embedder = Embedder.getInstance(); // Singleton, already init
@@ -175,7 +177,10 @@ async function processSingleGuideFile(
 
   // Write clean markdown to build dir
   const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
-  fs.writeFileSync(buildFilePath, markdownBody.trimStart());
+  fs.writeFileSync(buildFilePath, processedMarkdown.trimStart());
 }
 
-processGuides().catch(console.error);
+// Only run automatically if executed directly
+if (process.argv[1] === __filename) {
+  processGuides().catch(console.error);
+}

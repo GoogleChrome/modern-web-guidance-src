@@ -2,6 +2,12 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
+declare global {
+  interface Window {
+    abortCallCount: number;
+  }
+}
+
 // Setup
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {

@@ -6,7 +6,7 @@ import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config, Agents } from '../config.ts';
 
-import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, watchLogFile } from '../lib/agent-shared.ts';
+import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, exportTrajectories, watchLogFile } from '../lib/agent-shared.ts';
 import { MCP_LOG_FILE } from '../../constants.ts';
 
 // Usage: node jetski-agent.ts <prompt> <runType> <targetDir> <templateDir>
@@ -77,6 +77,7 @@ function setupIsolatedWorkDir(): string {
   // Set environment variables
   process.env.HOME = tempHome;
   process.env.JETSKI_DIR = jetskiDest;
+  process.env.MCP_LOG_DIR = targetDir;
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
@@ -96,7 +97,65 @@ function setupIsolatedWorkDir(): string {
   return workDir;
 }
 
+/**
+ * Bypasses common setup dialogs like "Trust authors" and "Welcome wizard".
+ */
+async function bypassInitialDialogs(page: Page): Promise<void> {
+  console.log('Bypassing initial dialogs...');
 
+  // 1. Handle "Trust the authors" dialog persistently
+  try {
+    console.log('Checking for Trust dialog...');
+    for (let i = 0; i < 5; i++) {
+      const buttons = await page.$$('.monaco-button, .monaco-text-button, button, a');
+      let found = false;
+      for (const btn of buttons) {
+        const text = await page.evaluate(el => (el as HTMLElement).innerText || (el as HTMLElement).textContent || '', btn);
+        if (text && text.includes('Yes, I trust the authors')) {
+          console.log(`Clicking Trust button (Attempt ${i + 1}): "${text.trim()}"`);
+          await (btn as any).click();
+          await sleep(3000);
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+      if (i < 4) await sleep(2000);
+    }
+  } catch (e: any) {
+    console.log('Trust dialog handling skipped or failed:', e.message);
+  }
+
+  // 2. Bypass "Welcome" slides / Wizard / Terms
+  try {
+    console.log('Checking for Welcome/Setup Wizard...');
+    for (let i = 0; i < 15; i++) {
+      const nextButton = await page.evaluateHandle(() => {
+        const buttons = Array.from(document.querySelectorAll('button, a.monaco-button, .monaco-text-button, [role="button"]'));
+        const targetTexts = ['Next', 'Get Started', 'Done', 'Accept', 'Continue', 'Skip', 'Trust'];
+        return buttons.find(b => {
+          const text = (b as HTMLElement).innerText || '';
+          return targetTexts.some(t => text.includes(t));
+        });
+      });
+
+      if (nextButton && (nextButton as any).asElement()) {
+        const text = await page.evaluate(el => (el as HTMLElement).innerText, nextButton as any);
+        console.log(`Clicking "${text?.trim()}" button (Attempt ${i + 1})...`);
+        await (nextButton as any).click();
+        await sleep(1500);
+      } else {
+        if (i === 0) console.log('No setup wizard buttons found.');
+        break;
+      }
+    }
+  } catch (e: any) {
+    console.log('Error bypassing Welcome Wizard:', e.message);
+  }
+
+  console.log('UI stabilization wait...');
+  await sleep(3000);
+}
 
 async function extractJetskiVersionInfo(page: Page, outputPath: string): Promise<any> {
   try {
@@ -114,7 +173,6 @@ async function extractJetskiVersionInfo(page: Page, outputPath: string): Promise
 
     // 3. Wait for the Quick Input widget to appear
     const paletteInput = '.quick-input-filter input';
-    await page.waitForSelector(paletteInput, { visible: true, timeout: 15000 });
 
     // 4. Type the command with a slight delay to ensure the UI stays in sync
     await page.type(paletteInput, 'Help: About', { delay: 50 });
@@ -209,6 +267,7 @@ async function startJetski(directory: string, profileDir: string): Promise<void>
 
 async function run(): Promise<void> {
   const workDir = setupIsolatedWorkDir();
+  let stopWatchingMcpLog = () => {};
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -243,6 +302,9 @@ async function run(): Promise<void> {
       throw new Error("Could not find the Jetski workbench window.");
     }
 
+    await page.bringToFront();
+    await bypassInitialDialogs(page);
+
     // Attempt to save Jetski info (only once per Test ID, effectively)
     // If we are in the results structure (results/<testID>/<runNumber>/...), go up to the testID folder.
     // Otherwise, just put it in the target directory.
@@ -265,73 +327,108 @@ async function run(): Promise<void> {
       console.log(`Jetski info already exists at: ${jetskiInfoPath}`);
     }
 
-    process.env.MCP_LOG_DIR = targetDir;
-    const stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
+    stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
 
-    const inputSelector = '#chat [contenteditable="true"][role="textbox"]';
-    const sendButtonSelector = '#chat button[data-tooltip-id="input-send-button-send-tooltip"]';
+    const inputSelector = '[contenteditable="true"][role="textbox"]';
+    const sendButtonSelector = '[data-tooltip-id="input-send-button-send-tooltip"]';
     const cancelButtonSelector = '[data-tooltip-id="input-send-button-cancel-tooltip"]';
-    const allowOnceButtonSelector = 'button[aria-label="Allow once"]';
+    const agentPanelSelector = ':is(#chat, #conversation) #antigravity\\.agentSidePanelInputBox';
 
-    // The double slashes are deliberate. These IDs include the dot.
-    const iframeSelector = '#antigravity\\.agentPanel, #antigravity\\.cascadePanel';
+    let targetPanel: any = null;
+    let targetInputBox: any = null;
 
-    console.log(`Waiting for Agent Panel iframe...`);
-    let targetFrame: any = null;
-    for (let i = 0; i < 20; i++) {
-      const iframeElement = await page.$(iframeSelector);
-      if (iframeElement) {
-        targetFrame = await iframeElement.contentFrame();
-        if (targetFrame && await targetFrame.$(inputSelector)) {
-          break;
+    for (let i = 0; i < 60; i++) {
+      targetPanel = await page.$(agentPanelSelector);
+
+      if (targetPanel) {
+        try {
+          targetInputBox = await targetPanel.$(inputSelector);
+        } catch (e: any) {
+          console.error("Failed to find input box:", e.message);
         }
       }
-      console.log(`... Agent Panel iframe not found or loading, checking again in 3s (Attempt ${i + 1}/20)`);
-      targetFrame = null;
+
+      if (targetPanel && targetInputBox) {
+        break;
+      }
+      console.log(`... Agent Panel conversation box not found or loading, checking again in 1s (Attempt ${i + 1}/60)`)
       await sleep(3000);
+      if (i > 0 && i % 5 === 0) {
+        await page.keyboard.press('Escape');
+      }
     }
 
-    if (!targetFrame) {
-      throw new Error("Could not find Agent Panel iframe after 60 seconds.");
+    if (!targetPanel) {
+      throw new Error("Could not find Agent Panel conversation panel after 60 seconds.");
     }
 
-    // Focus and type
     console.log(`Typing prompt: "${userPrompt}"`);
-    await targetFrame.type(inputSelector, userPrompt);
-    console.log("Submitting...");
-    await targetFrame.click(sendButtonSelector);
+    const lines = userPrompt.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      await targetInputBox.type(lines[i]);
+      if (i < lines.length - 1) {
+        await page.keyboard.down('Shift');
+        await page.keyboard.press('Enter');
+        await page.keyboard.up('Shift');
+      }
+    }
 
-    // Wait for completion (cancel button to disappear)
-    // First, wait for the cancel button to APPEAR (meaning it started)
     try {
-      await targetFrame.waitForSelector(cancelButtonSelector, { timeout: 10000 });
+      const sendButton = await targetPanel.waitForSelector(sendButtonSelector, { timeout: 10000 });
+      console.log("Submitting prompt...");
+      await sendButton.click();
+    } catch {
+      console.log("Warning: Submit button didn't appear or was not clickable.");
+    }
+
+    try {
+      await targetPanel.waitForSelector(cancelButtonSelector, { timeout: 10000 });
       console.log("Agent started working...");
     } catch {
       console.log("Warning: Cancel button didn't appear quickly. Agent might have finished very fast or failed to start.");
     }
 
-    // Now wait for it to disappear
     console.log("Waiting for agent to finish...");
     while (true) {
-      const cancelButton = await targetFrame.$(cancelButtonSelector);
+      const currentPanel = await page.$(agentPanelSelector);
+      if (!currentPanel) {
+        console.log("Agent Panel disappeared, assuming finished or closed.");
+        break;
+      }
+
+      const cancelButton = await currentPanel.$(cancelButtonSelector);
       if (!cancelButton) {
         console.log("Agent finished.");
         break;
       }
-      const allowOnceButton = await targetFrame.$(allowOnceButtonSelector);
-      if (allowOnceButton) {
-        console.log("Found 'Allow once' button, clicking it...");
-        await allowOnceButton.click();
+
+      // Check for "Allow This Conversation" button and click it if it appears
+      try {
+        const allowButton = await page.evaluateHandle(() => {
+          const buttons = Array.from(document.querySelectorAll('button'));
+          return buttons.find(b => {
+            const t = b.innerText?.toLowerCase() || '';
+            return t.includes('allow this conversation') || t.includes('allow once');
+          });
+        });
+
+        if (allowButton && (allowButton as any).asElement()) {
+          console.log("Found 'Allow' button, clicking...");
+          await (allowButton as any).click();
+          await sleep(1000);
+        }
+      } catch {
+        // Ignore errors in polling for allow button
       }
+
       await sleep(1000);
     }
 
     // Attempt to preserve chat log before closing Jetski
     try {
       console.log("Saving chat log...");
-      // Ensure #chat exists in the target frame
-      await targetFrame.waitForSelector('#chat', { timeout: 5000 });
-      const chatText = await targetFrame.$eval('#chat', (el: any) => el.innerText || '');
+      await page.waitForSelector(':is(#chat, #conversation)', { timeout: 10000 });
+      const chatText = await page.$eval(':is(#chat, #conversation)', (el: any) => (el as any).innerText || '');
       const chatLogPath = path.resolve(targetDir, 'chat_log.txt');
       fs.writeFileSync(chatLogPath, chatText, 'utf8');
       console.log(`Saved chat log to: ${chatLogPath}`);
@@ -341,6 +438,7 @@ async function run(): Promise<void> {
 
     // Close Jetski
     console.log("Closing Jetski...");
+
     if (page) {
       // Cmd+Q
       await page.keyboard.down('Meta');
@@ -350,17 +448,21 @@ async function run(): Promise<void> {
     }
 
     stopWatchingMcpLog();
-
     await sleep(1000);
     await browser.disconnect();
     console.log("Disconnected.");
 
     copyResultsToTarget(workDir, targetDir);
 
+    // Extract trajectory pb from isolated home
+    const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
+    exportTrajectories(conversationsDir, '*.pb', targetDir);
+
   } catch (err) {
     console.error("Error during execution:", err);
     process.exit(1);
   } finally {
+    stopWatchingMcpLog();
     killProcessOnPort(config.environment.jetskiDebugPort);
     cleanupIsolatedHome(path.dirname(workDir));
   }
