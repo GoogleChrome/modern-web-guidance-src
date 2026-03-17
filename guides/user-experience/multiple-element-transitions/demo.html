@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Multiple Element Transitions</title>
+  <style>
+    /* CORE: Customize the transition animation */
+    /* Apply transitions to the parent container, so all child elements morph together as a group */
+    ::view-transition-group(product) {
+      animation-duration: 1s;
+    }
+
+    /* DEMO: Basic styling */
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0 auto;
+      padding: 20px;
+      max-width: 500px;
+    }
+
+    button {
+      padding: 10px 16px;
+      background: #0066cc;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* DEMO: Grid layout */
+    .grid {
+      display: grid;
+      grid-template-columns: 150px;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .product-card {
+      background: white;
+      padding: 10px;
+      cursor: pointer;
+      border: 1px solid #ddd;
+    }
+
+    .product-image {
+      width: 100%;
+      height: 120px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+
+    .product-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0 0 5px 0;
+    }
+
+    .product-price {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0066cc;
+      margin: 0;
+    }
+
+    /* DEMO: Detail view */
+    .detail-view {
+      position: fixed;
+      inset: 0;
+      background: white;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .detail-hero {
+      width: 100%;
+      height: 300px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 100px;
+    }
+
+    .detail-content {
+      padding: 30px 20px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .detail-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 10px 0;
+    }
+
+    .detail-price {
+      font-size: 24px;
+      color: #0066cc;
+      margin: 0 0 20px 0;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Multiple Element Transitions</h1>
+  <p>Click a product to see multiple elements transition together</p>
+
+  <div id="grid-view" class="grid"></div>
+
+  <div id="detail-view" class="detail-view hidden">
+    <div class="detail-hero" id="detail-hero"></div>
+    <div class="detail-content">
+      <h2 id="detail-title" class="detail-title"></h2>
+      <p id="detail-price" class="detail-price"></p>
+      <button onclick="closeDetail()">Back</button>
+    </div>
+  </div>
+
+  <script>
+    const products = [
+      { id: 1, title: 'Product Alpha', price: '$49.99', emoji: '🎨' },
+    ];
+
+    /* DEMO: Render grid view */
+    function renderGrid() {
+      const grid = document.getElementById('grid-view');
+      grid.innerHTML = products.map(product => `
+        <div class="product-card" style="view-transition-name: product" onclick="openDetail(${product.id})">
+          <div class="product-image">
+            ${product.emoji}
+          </div>
+          <h3 class="product-title">
+            ${product.title}
+          </h3>
+          <p class="product-price">
+            ${product.price}
+          </p>
+        </div>
+      `).join('');
+    }
+
+    /* CORE: Wrap DOM update in startViewTransition to enable smooth morphing */
+    function openDetail(productId) {
+      if (!document.startViewTransition) {
+        showDetail(productId);
+        return;
+      }
+      document.startViewTransition(() => showDetail(productId));
+    }
+
+    /* DEMO: Update DOM to detail view */
+    function showDetail(productId) {
+      const product = products.find(p => p.id === productId);
+      const hero = document.getElementById('detail-hero');
+      const title = document.getElementById('detail-title');
+      const price = document.getElementById('detail-price');
+
+      hero.textContent = product.emoji;
+      hero.style.viewTransitionName = `product-${productId}`;
+      title.textContent = product.title;
+      price.textContent = product.price;
+
+      document.getElementById('detail-view').classList.remove('hidden');
+      document.getElementById('grid-view').classList.add('hidden');
+    }
+
+    /* CORE: Wrap DOM update in startViewTransition to enable smooth morphing */
+    function closeDetail() {
+      if (!document.startViewTransition) {
+        hideDetail();
+        return;
+      }
+      document.startViewTransition(() => hideDetail());
+    }
+
+    /* DEMO: Update DOM back to grid view */
+    function hideDetail() {
+      document.getElementById('detail-view').classList.add('hidden');
+      document.getElementById('grid-view').classList.remove('hidden');
+    }
+
+    renderGrid();
+  </script>
+</body>
+
+</html>
