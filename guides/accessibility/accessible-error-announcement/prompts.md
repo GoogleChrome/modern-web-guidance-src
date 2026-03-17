@@ -1,0 +1,3 @@
+- Build a form with email and password fields that announces validation errors to screen readers only after the user has interacted with each field, not on page load.
+- Add accessible error messages to a signup form so that `aria-invalid` is set at the same time the `:user-invalid` visual styles appear.
+- Implement a form with synchronized visual and programmatic error states, using `:user-invalid` for styling and `aria-invalid` plus `aria-errormessage` for assistive technology, with a JavaScript bridge to keep them in sync.

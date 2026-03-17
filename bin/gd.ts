@@ -81,6 +81,7 @@ const { positionals, values } = parseArgs({
     'gen-grader': { type: 'boolean' },
     'gen-negative': { type: 'boolean' },
     verbose: { type: 'boolean' },
+    usecases: { type: 'boolean' },
   },
   allowPositionals: true,
   strict: false,
@@ -145,6 +146,7 @@ ${cBold('Other:')}
 ${cBold('Options:')}
   ${cDim('-h, --help')}             Show this help
   ${cDim('--verbose')}              Show additional output
+  ${cDim('--usecases')}             (Audit) Group by categories/usecases (default is features)
     `);
     process.exit(0);
   }
@@ -195,10 +197,10 @@ ${cBold('Options:')}
 
     case 'audit': {
       const { auditGuides } = await import('../guides/dev-guide.ts');
-      auditGuides();
+      auditGuides({ groupByUsecases: !!values.usecases });
       break;
     }
-
+    
     case 'run': {
       const tmpl = requireArg(positionals[1], 'gd run <template> <prompt>');
       const prompt = requireArg(positionals[2], 'gd run <template> <prompt>');

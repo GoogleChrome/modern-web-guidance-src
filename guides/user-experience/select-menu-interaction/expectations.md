@@ -1,0 +1,5 @@
+- On page load, the select menu should look neutral (no red border).
+- Clicking/Tapping the menu to open it, and then clicking away without selecting an option MUST trigger the error state (red border).
+- Selecting a valid option MUST remove the error state.
+- Selecting the "placeholder" option (if enabled) or submitting while empty MUST trigger the error state.
+- "Force Fallback Mode" must replicate this behavior.

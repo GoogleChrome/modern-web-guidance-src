@@ -344,9 +344,10 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
       const trajectoryId = fileName.replace(/\.(json|pb)$/, '');
       const fileBuffer = fs.readFileSync(srcFile);
       const htmlContent = generateExportHtml(new Uint8Array(fileBuffer), fileName);
-      const htmlDest = path.join(targetDir, `${trajectoryId}.html`);
+      const htmlFileName = trajectoryId.startsWith('session-') ? `${trajectoryId}.html` : `session-${trajectoryId}.html`;
+      const htmlDest = path.join(targetDir, htmlFileName);
       fs.writeFileSync(htmlDest, htmlContent, 'utf8');
-      console.log(`Generated HTML export: ${trajectoryId}.html`);
+      console.log(`Generated HTML export: ${htmlFileName}`);
     } catch (e) {
       console.error(`Failed to export trajectory ${fileName}:`, e);
     }

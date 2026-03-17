@@ -48,6 +48,7 @@ interface GuideInventory {
   hasGrader: boolean;
   hasPrompts: boolean;
   hasTask: boolean;
+  featureIds: string[];
 }
 
 interface TaskInfo {
@@ -117,6 +118,8 @@ function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): GuideInven
     }
   }
 
+  const featureIds = guideContent ? (matter(guideContent).data['web-feature-ids'] || []) : [];
+
   return {
     dir,
     name,
@@ -130,6 +133,7 @@ function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): GuideInven
     hasGrader: fs.existsSync(path.join(dir, GRADER_FILE)),
     hasPrompts: fs.existsSync(path.join(dir, PROMPTS_FILE)),
     hasTask: taskMap.has(name),
+    featureIds,
   };
 }
 
@@ -615,16 +619,28 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
   console.log('');
 }
 
-type GuideStatus = 'needs-use-cases' | 'needs-guidance' | 'needs-evals' | 'done';
+type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
 
 export function classifyGuide(inv: GuideInventory): GuideStatus {
-  if (!inv.hasGuide && !inv.isStub) return 'needs-use-cases';
-  if (!inv.hasGuide || !inv.hasDemo || !inv.hasExpectations || inv.expectationsEmpty) return 'needs-guidance';
-  if (!inv.hasNegativeDemo || !inv.hasGrader || !inv.hasPrompts || !inv.hasTask) return 'needs-evals';
-  return 'done';
+  if (!inv.hasGuide && !inv.isStub) return 'incomplete';
+  if (inv.isStub && !inv.hasGuide) return 'stub';
+  if (!inv.hasDemo) return 'incomplete';
+  if (!inv.hasExpectations || inv.expectationsEmpty) return 'needs-expectations';
+  if (!inv.hasNegativeDemo || !inv.hasGrader) return 'needs-calibration';
+  if (!inv.hasPrompts || !inv.hasTask) return 'needs-test';
+  return 'eval-ready';
 }
 
-export function auditGuides(): void {
+const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
+  'incomplete':        { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
+  'stub':              { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
+  'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
+  'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
+  'needs-test':        { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
+  'eval-ready':        { label: 'Ready for eval', color: cGreen },
+};
+
+export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
   const taskMap = getTaskMap();
   const allGuides = scanAllGuides(taskMap);
 
@@ -640,27 +656,25 @@ export function auditGuides(): void {
     byStatus.get(status)!.push(inv);
   }
 
-  const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
-    'needs-use-cases': { label: 'Needs use cases (missing guide.md)', color: cRed },
-    'needs-guidance':  { label: 'Needs guidance (write guide.md, demo.html, expectations.md)', color: cYellow },
-    'needs-evals':     { label: 'Needs evals (run `gd dev`)', color: cCyan },
-    'done':            { label: 'Done', color: cGreen },
-  };
+
 
   // Summary counts
   console.log(cBold(`\nGuide Audit: ${allGuides.length} guides\n`));
-  for (const status of ['needs-use-cases', 'needs-guidance', 'needs-evals', 'done'] as GuideStatus[]) {
+  for (const status of ['incomplete', 'stub', 'needs-expectations', 'needs-calibration', 'needs-test', 'eval-ready'] as GuideStatus[]) {
     const guides = byStatus.get(status) || [];
     const { label, color } = statusLabel[status];
     console.log(`  ${color(`${String(guides.length).padStart(2)}`)}  ${label}`);
   }
 
-  // Per-category detail
-  const byCategory = new Map<string, GuideInventory[]>();
-  for (const inv of allGuides) {
-    if (!byCategory.has(inv.category)) byCategory.set(inv.category, []);
-    byCategory.get(inv.category)!.push(inv);
-  }
+  if (!options.groupByUsecases) {
+    renderFeatureMatrix(allGuides);
+  } else {
+    // Per-category detail
+    const byCategory = new Map<string, GuideInventory[]>();
+    for (const inv of allGuides) {
+      if (!byCategory.has(inv.category)) byCategory.set(inv.category, []);
+      byCategory.get(inv.category)!.push(inv);
+    }
 
   const dot = (has: boolean) => has ? '●' : cDim('○');
   const guideDot = (inv: GuideInventory) => {
@@ -691,29 +705,36 @@ export function auditGuides(): void {
       console.log(`  ${color(name.padEnd(42))} ${row}`);
     }
   }
+  }
 
   // Next action suggestions, ordered by pipeline stage
-  const nextEvals = byStatus.get('needs-evals')?.[0];
-  const nextGuidance = byStatus.get('needs-guidance')?.[0];
-  const nextUseCases = byStatus.get('needs-use-cases')?.[0];
+  const nextCalibrate = byStatus.get('needs-calibration')?.[0];
+  const nextTest = byStatus.get('needs-test')?.[0];
+  const nextExpectations = byStatus.get('needs-expectations')?.[0];
+  const nextStub = byStatus.get('stub')?.[0];
+  const nextIncomplete = byStatus.get('incomplete')?.[0];
 
   const actions: string[] = [];
 
   // Automatable: ready for `gd dev`
-  if (nextEvals) {
-    const rel = path.relative(process.cwd(), nextEvals.dir);
+  const devTarget = nextCalibrate || nextTest;
+  if (devTarget) {
+    const rel = path.relative(process.cwd(), devTarget.dir);
     actions.push(`${cCyan('Run:')}    ${cCyan(`gd dev ${rel}`)}`);
   }
 
-  // Needs human writing
-  if (nextGuidance) {
-    const rel = path.relative(process.cwd(), nextGuidance.dir);
-    actions.push(`${cYellow('Write:')}  flesh out ${cBold('guide.md')}, ${cBold('demo.html')}, and ${cBold('expectations.md')} in ${rel}`);
-    actions.push(`          (Then run ${cCyan(`gd dev ${rel}`)} to generate evals)`);
+  // Needs human writing before `gd dev` can run
+  if (nextExpectations) {
+    const rel = path.relative(process.cwd(), nextExpectations.dir);
+    actions.push(`${cYellow('Write:')}  add ${cBold('expectations.md')} to ${rel}`);
   }
-  if (nextUseCases) {
-    const rel = path.relative(process.cwd(), nextUseCases.dir);
-    actions.push(`${cYellow('Write:')}  map use case by creating ${cBold('guide.md')} (frontmatter) and ${cBold('demo.html')} in ${rel}`);
+  if (nextStub) {
+    const rel = path.relative(process.cwd(), nextStub.dir);
+    actions.push(`${cYellow('Write:')}  flesh out ${cBold('guide.md')}, ${cBold('demo.html')}, and ${cBold('expectations.md')} in ${rel}`);
+  }
+  if (nextIncomplete) {
+    const rel = path.relative(process.cwd(), nextIncomplete.dir);
+    actions.push(`${cYellow('Write:')}  add missing ${cBold('guide.md')} or ${cBold('demo.html')} in ${rel}`);
   }
 
   console.log('');
@@ -723,9 +744,75 @@ export function auditGuides(): void {
       console.log(`  ${action}`);
     }
   } else {
-    console.log(cGreen(`All guides are Done!`));
+    console.log(cGreen(`All guides are eval-ready!`));
   }
   console.log('');
+}
+
+function renderFeatureMatrix(allGuides: GuideInventory[]): void {
+  const featureToGuides = new Map<string, GuideInventory[]>();
+  for (const inv of allGuides) {
+    const fIds = inv.featureIds.length > 0 ? inv.featureIds : ['(no-feature)'];
+    for (const fId of fIds) {
+      if (!featureToGuides.has(fId)) featureToGuides.set(fId, []);
+      featureToGuides.get(fId)!.push(inv);
+    }
+  }
+
+  const sortedFeatures = Array.from(featureToGuides.keys()).sort((a, b) => {
+    if (a === '(no-feature)') return 1;
+    if (b === '(no-feature)') return -1;
+    return a.localeCompare(b);
+  });
+
+  const dot = (has: boolean) => (has ? '●' : cDim('○'));
+  const guideDot = (inv: GuideInventory) => {
+    if (inv.hasGuide) return '●';
+    if (inv.isStub) return '◐';
+    return cDim('○');
+  };
+
+  const hdr = 'guide'.padEnd(10) + 'demo'.padEnd(10) + 'expct'.padEnd(10) + '│ ' + 'neg'.padEnd(10) + 'grdr'.padEnd(10) + 'prmpt'.padEnd(10) + 'task';
+  console.log(cDim(`\n  ${'feature'.padEnd(32)} count ${hdr}`));
+
+  const statusRank: Record<GuideStatus, number> = {
+    'incomplete': 0,
+    'stub': 1,
+    'needs-expectations': 2,
+    'needs-calibration': 3,
+    'needs-test': 4,
+    'eval-ready': 5,
+  };
+
+  for (const fId of sortedFeatures) {
+    const guides = featureToGuides.get(fId)!;
+    const col = (s: string, w = 10) => s + ' '.repeat(Math.max(0, w - guides.length));
+    
+    // Determine overall status as the minimum status rank among all guides in this feature
+    const statuses = guides.map(classifyGuide);
+    const minRank = Math.min(...statuses.map(s => statusRank[s]));
+    const overallStatus = (Object.keys(statusRank) as GuideStatus[]).find(s => statusRank[s] === minRank) || 'incomplete';
+    const { color } = statusLabel[overallStatus];
+
+    const name = fId.length > 30 ? fId.substring(0, 29) + '…' : fId;
+
+    const renderDots = (fn: (inv: GuideInventory) => string) => {
+      return guides.map(inv => fn(inv)).join('');
+    };
+
+    const expctDots = guides.map(inv => (inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations))).join('');
+
+    const row = col(renderDots(guideDot)) + 
+                col(renderDots(inv => dot(inv.hasDemo))) + 
+                col(expctDots) + 
+                cDim('│') + ' ' +
+                col(renderDots(inv => dot(inv.hasNegativeDemo))) + 
+                col(renderDots(inv => dot(inv.hasGrader))) + 
+                col(renderDots(inv => dot(inv.hasPrompts))) + 
+                renderDots(inv => dot(inv.hasTask));
+
+    console.log(`  ${color(name.padEnd(32))} ${String(guides.length).padStart(5)}  ${row}`);
+  }
 }
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {

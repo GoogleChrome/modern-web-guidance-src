@@ -26,6 +26,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 dotenv.config({ path: path.join(REPO_ROOT, '.env') });
 
+const PRIORITY_LABEL_REGEX = /^P\d+$/;
+
 
 
 /**
@@ -187,7 +189,7 @@ async function run() {
     console.warn('⚠️ GITHUB_TOKEN is not set. Project status updates will be skipped in this dry run.');
   }
 
-  const featureToIssueMap = new Map<string, number>();
+  const featureToIssueMap = new Map<string, { number: number; priorityLabel: string | null }>();
   const nameToIssueMap = new Map<string, any>();
   const subdirToIssueMap = new Map<string, any>();
   let allUseCases: any[] = [];
@@ -206,7 +208,10 @@ async function run() {
       for (const issue of featureIssues) {
         const match = issue.body?.match(/Feature ID: ([a-z0-9-]+)/);
         if (match) {
-          featureToIssueMap.set(match[1], issue.number);
+          const priorityLabel = issue.labels
+            .map((l: any) => (typeof l === 'string' ? l : l.name))
+            .find((l: string) => PRIORITY_LABEL_REGEX.test(l)) || null;
+          featureToIssueMap.set(match[1], { number: issue.number, priorityLabel });
         }
       }
       console.log(`Found ${featureToIssueMap.size} features with issues.`);
@@ -313,10 +318,14 @@ async function run() {
 
     // Build related features string
     const relatedLinks: string[] = [];
+    let priorityLabel: string | null = null;
     for (const id of featureIds) {
-      const issueNum = featureToIssueMap.get(id);
-      if (issueNum) {
-        relatedLinks.push(`#${issueNum}`);
+      const featureData = featureToIssueMap.get(id);
+      if (featureData) {
+        relatedLinks.push(`#${featureData.number}`);
+        if (!priorityLabel && featureData.priorityLabel) {
+          priorityLabel = featureData.priorityLabel;
+        }
       }
     }
     const relatedFeaturesStr = relatedLinks.length > 0 ? `\n\nRelated features: ${relatedLinks.join(' ')}` : '';
@@ -327,21 +336,30 @@ async function run() {
     const issueTitle = `Create guide and evals for the ${name} use case`;
     const issueBody = `${description}\n\nAffected web-feature IDs: ${linkedFeatures}\n\nUse case subdir: [${relativeSubdir}](${subdirUrl})${relatedFeaturesStr}`;
 
-    let existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
-
+    const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
     let issueNumber: number;
 
     if (existingIssue) {
       const shouldBeOpen = statusName !== null;
       const needsClose = !shouldBeOpen && existingIssue.state === 'open';
       const needsReopen = shouldBeOpen && existingIssue.state === 'closed';
-      const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody || needsReopen || needsClose;
+
+      const currentLabels = (existingIssue.labels as any[]).map(l => typeof l === 'string' ? l : l.name);
+      const desiredLabels = [...new Set([...currentLabels, 'new-use-case'])];
+
+      // Only add priority if the issue doesn't have one yet
+      if (priorityLabel && !currentLabels.some(l => PRIORITY_LABEL_REGEX.test(l))) {
+        desiredLabels.push(priorityLabel);
+      }
+      const labelsChanged = desiredLabels.length !== currentLabels.length || desiredLabels.some(l => !currentLabels.includes(l));
+
+      const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody || needsReopen || needsClose || labelsChanged;
 
       issueNumber = existingIssue.number;
       activeIssueNumbers.add(issueNumber);
 
       if (needsUpdate) {
-        console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"${needsReopen ? ' (reopening)' : ''}${needsClose ? ' (closing as completed)' : ''}...`);
+        console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"${needsReopen ? ' (reopening)' : ''}${needsClose ? ' (closing as completed)' : ''}${labelsChanged ? ' (updating labels)' : ''}...`);
         if (!IS_DRY_RUN) {
           await octokit.rest.issues.update({
             owner: ORG,
@@ -349,12 +367,13 @@ async function run() {
             issue_number: issueNumber,
             title: issueTitle,
             body: issueBody,
+            labels: desiredLabels,
             ...(needsReopen ? { state: 'open' } : {}),
             ...(needsClose ? { state: 'closed', state_reason: 'completed' } : {})
           });
         } else {
           console.log(`[DRY RUN] Title: ${issueTitle}`);
-          console.log(`[DRY RUN] Labels: new-use-case`);
+          console.log(`[DRY RUN] Labels: ${desiredLabels.join(', ')}`);
           if (needsReopen) console.log(`[DRY RUN] State: open`);
           if (needsClose) console.log(`[DRY RUN] State: closed (completed)`);
           console.log(`[DRY RUN] Body:\n${issueBody}\n`);
@@ -364,6 +383,9 @@ async function run() {
       }
     } else {
       const isComplete = statusName === null;
+      const labels = ['new-use-case'];
+      if (priorityLabel) labels.push(priorityLabel);
+
       console.log(`${IS_DRY_RUN ? '[DRY RUN] Would create' : 'Creating'} new issue for "${name}"${isComplete ? ' (closing immediately as completed)' : ''}...`);
       if (!IS_DRY_RUN) {
         const newIssue = await octokit.rest.issues.create({
@@ -371,7 +393,7 @@ async function run() {
           repo: REPO,
           title: issueTitle,
           body: issueBody,
-          labels: ['new-use-case']
+          labels
         });
         issueNumber = newIssue.data.number;
         activeIssueNumbers.add(issueNumber);
@@ -386,7 +408,7 @@ async function run() {
         }
       } else {
         console.log(`[DRY RUN] Title: ${issueTitle}`);
-        console.log(`[DRY RUN] Labels: new-use-case`);
+        console.log(`[DRY RUN] Labels: ${labels.join(', ')}`);
         if (isComplete) console.log(`[DRY RUN] State: closed (completed)`);
         console.log(`[DRY RUN] Body:\n${issueBody}\n`);
         issueNumber = 0; // Placeholder for dry run
