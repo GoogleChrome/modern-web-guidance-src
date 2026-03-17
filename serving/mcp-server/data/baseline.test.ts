@@ -4,7 +4,7 @@ import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatu
 describe('baseline data', () => {
   describe('getBaselineStatus', () => {
     it('returns Baseline since YYYY-MM-DD for known widely available features', () => {
-      expect(getBaselineStatus('grid')).toBe('Baseline since 2020-04-17');
+      expect(getBaselineStatus('grid')).toBe('Baseline since 2017-10-17');
     });
 
     it('returns aggregate status for split feature', () => {
@@ -20,7 +20,7 @@ describe('baseline data', () => {
 
   describe('getStatusMessage', () => {
     it('returns status message for a feature', () => {
-      expect(getStatusMessage('grid')).toBe('Grid is Widely. It\'s been Baseline since 2020-04-17.');
+      expect(getStatusMessage('grid')).toBe('Grid is Widely. It\'s been Baseline since 2017-10-17.');
     });
 
     it('returns status message for a BCD key', () => {

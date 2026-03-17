@@ -57,12 +57,7 @@ export function getFeatureStatus(featureId: string): DetailedBaselineStatus | un
   
   const shortLabel = mapBaseline(overallBaseline);
   
-  let releaseDate = '-';
-  if (overallBaseline === 'low') {
-    releaseDate = baseline_low_date || '-';
-  } else if (overallBaseline === 'high') {
-    releaseDate = baseline_high_date || baseline_low_date || '-';
-  }
+  const releaseDate = (overallBaseline !== false && baseline_low_date) ? baseline_low_date : '-';
 
   return {
     baseline: overallBaseline,
