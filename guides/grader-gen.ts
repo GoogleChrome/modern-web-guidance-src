@@ -7,35 +7,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 import config from '../harness/config.ts';
 import { createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders } from '../harness/lib/agent-shared.ts';
+import type { CalibrationResult } from './run-grader.ts';
 
-// Get the path to the guide folder from the command line arguments
-const args = process.argv.slice(2);
-if (args.length < 1) {
-  console.error('Usage: pnpm generate-grader <path/to/guide>');
-  process.exit(1);
-}
-
-const targetDirRaw = args[0];
-const targetDir = path.resolve(process.cwd(), targetDirRaw);
-
-if (!fs.existsSync(targetDir)) {
-  console.error(`Error: Directory not found: ${targetDir}`);
-  process.exit(1);
-}
-
-// Read input files
-const guidePath = path.join(targetDir, 'guide.md');
-const demoPath = path.join(targetDir, 'demo.html');
-const negativeDemoPath = path.join(targetDir, 'negative-demo.html');
-const expectationsPath = path.join(targetDir, 'expectations.md');
-const templatePath = path.join(__dirname, 'template.grader.ts');
-
-if (!fs.existsSync(guidePath) || !fs.existsSync(demoPath) || !fs.existsSync(expectationsPath) || !fs.existsSync(negativeDemoPath) || !fs.existsSync(templatePath)) {
-  console.error(`Error: Missing required files. Need guide.md, demo.html, negative-demo.html, expectations.md, and template.grader.ts in the respective directories.`);
-  process.exit(1);
-}
-
-const userPrompt = `
+const BASE_PROMPT = `
 Read the guide.md and expectations.md files to understand the guidance and expectations.
 Then, read the demo.html file, which represents a perfect working example of the guides and expectations, and the negative-demo.html file, which represents an anti-example that fails the expectations.
 
@@ -48,25 +22,21 @@ The grader can be run with the following commands:
 TARGET_FILE=$(pwd)/demo.html npx playwright test grader.ts
 TARGET_FILE=$(pwd)/negative-demo.html npx playwright test grader.ts
 
+Important rules for the generated grader:
+- Do not use generic try/catch blocks that aggressively swallow exceptions (e.g. \`catch (e) { /* ignore */ }\`). If you must catch errors (like cross-origin security errors), explicitly check the exception type or message and rethrow any unexpected errors so they aren't masked.
+
 The output should be a single file named grader.ts. Do not modify any other files.
 `;
 
-/**
- * Sets up an isolated HOME and work directory to ensure isolation.
- */
-function setupIsolatedWorkDir(baseDir: string): string {
+function setupIsolatedWorkDir(targetDir: string): string {
   const tempHome = createIsolatedHome('ghh-grader-gen');
-  // Copy over the source folder content as our working directory base
   const workDir = path.join(tempHome, 'work');
   fs.mkdirSync(workDir, { recursive: true });
 
-  // copy files from target dir to work dir
-  const filesToStage = ['guide.md', 'demo.html', 'expectations.md', 'negative-demo.html'];
-  filesToStage.forEach(file => {
-    copyFileIfExists(path.join(baseDir, file), path.join(workDir, file));
-  });
+  // Copy all files and folders from target dir to work dir
+  fs.cpSync(targetDir, workDir, { recursive: true });
 
-  // copy template.grader.ts from the guides directory
+  // Copy template.grader.ts from the guides directory
   copyFileIfExists(path.join(__dirname, 'template.grader.ts'), path.join(workDir, 'template.grader.ts'));
 
   // Provide testing config to the agent
@@ -76,7 +46,6 @@ function setupIsolatedWorkDir(baseDir: string): string {
   const geminiDest = path.join(tempHome, '.gemini');
   fs.mkdirSync(geminiDest, { recursive: true });
 
-  // Copy necessary auth and identification files
   const filesToCopy = [
     'oauth_creds.json',
     'google_accounts.json',
@@ -90,63 +59,77 @@ function setupIsolatedWorkDir(baseDir: string): string {
 
   createTrustedFolders(geminiDest, [workDir]);
 
-  // Set environment variables
   process.env.HOME = tempHome;
 
   return workDir;
 }
 
-async function run() {
+async function runGraderGeneration(targetDir: string, prompt: string): Promise<void> {
   const workDir = setupIsolatedWorkDir(targetDir);
 
   try {
     console.log(`Setting up Playwright in isolated environment...`);
-    // Provide isolated Playwright install to the directory
     const { execSync } = await import('child_process');
     execSync('npm init -y', { cwd: workDir, stdio: 'ignore' });
     execSync('npm install -D @playwright/test', { cwd: workDir, stdio: 'ignore' });
     execSync('npx playwright install chromium', { cwd: workDir, stdio: 'ignore', env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: path.join(workDir, '.cache', 'ms-playwright') } });
 
-    console.log(`Starting Gemini CLI agent for grader generation in ${workDir}`);
-
     const command = config.environment.geminiCliBin;
     const commandArgs = [
-      '-p', userPrompt,
-      '--yolo' // Ensure it runs without user interaction
+      '-p', prompt,
+      '--yolo'
     ];
 
-    console.log(`Executing prompt...`);
+    let attempt = 0;
+    const maxRetries = 3;
 
-    const child = spawn(command, commandArgs, {
-      cwd: workDir,
-      env: { ...process.env }, // Pass through environment variables (including new HOME)
-      stdio: ['ignore', 'pipe', 'pipe'] // Capture stdout/stderr
-    });
+    while (attempt < maxRetries) {
+      attempt++;
+      console.log(`Starting Gemini CLI agent for grader generation in ${workDir} (Attempt ${attempt}/${maxRetries})`);
+      console.log(`Executing prompt...`);
 
-    let stdoutData = '';
-    let stderrData = '';
+      const child = spawn(command, commandArgs, {
+        cwd: workDir,
+        env: { ...process.env },
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
 
-    child.stdout.on('data', (data) => {
-      const chunk = data.toString();
-      stdoutData += chunk;
-      process.stdout.write(chunk); // Mirror to console
-    });
+      let stdoutData = '';
+      let stderrData = '';
 
-    child.stderr.on('data', (data) => {
-      const chunk = data.toString();
-      stderrData += chunk;
-      process.stderr.write(chunk); // Mirror to console
-    });
+      child.stdout.on('data', (data) => {
+        const chunk = data.toString();
+        stdoutData += chunk;
+        process.stdout.write(chunk);
+      });
 
-    const exitCode = await new Promise((resolve) => {
-      child.on('close', resolve);
-    });
+      child.stderr.on('data', (data) => {
+        const chunk = data.toString();
+        stderrData += chunk;
+        process.stderr.write(chunk);
+      });
 
-    if (exitCode !== 0) {
+      const exitCode = await new Promise((resolve) => {
+        child.on('close', resolve);
+      });
+
+      if (exitCode === 0) {
+        break; // Success
+      }
+
+      const combinedOutput = stdoutData + '\n' + stderrData;
+      const isInternalApiError = combinedOutput.includes('ApiError: got status: INTERNAL') || combinedOutput.includes('"status":"INTERNAL"');
+
+      if (isInternalApiError && attempt < maxRetries) {
+        const backoffMs = Math.pow(2, attempt) * 1000;
+        console.warn(`\n⚠️ Gemini API returned an INTERNAL error. Retrying in ${backoffMs / 1000} seconds...`);
+        await new Promise(r => setTimeout(r, backoffMs));
+        continue;
+      }
+
       throw new Error(`Gemini CLI exited with code ${exitCode}`);
     }
 
-    // After gemini cli finishes, copy grader.ts back to the original target dir
     const generatedFile = path.join(workDir, 'grader.ts');
     const destFile = path.join(targetDir, 'grader.ts');
     if (fs.existsSync(generatedFile)) {
@@ -160,10 +143,66 @@ async function run() {
 
   } catch (err) {
     console.error("Error during Gemini CLI execution:", err);
-    process.exit(1);
+    throw err;
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));
   }
 }
 
-run();
+export async function generateGrader(targetDirRaw: string): Promise<void> {
+  const targetDir = path.resolve(process.cwd(), targetDirRaw);
+
+  if (!fs.existsSync(targetDir)) {
+    console.error(`Error: Directory not found: ${targetDir}`);
+    process.exit(1);
+  }
+
+  const guidePath = path.join(targetDir, 'guide.md');
+  const demoPath = path.join(targetDir, 'demo.html');
+  const negativeDemoPath = path.join(targetDir, 'negative-demo.html');
+  const expectationsPath = path.join(targetDir, 'expectations.md');
+  const templatePath = path.join(__dirname, 'template.grader.ts');
+
+  if (!fs.existsSync(guidePath) || !fs.existsSync(demoPath) || !fs.existsSync(expectationsPath) || !fs.existsSync(negativeDemoPath) || !fs.existsSync(templatePath)) {
+    console.error(`Error: Missing required files. Need guide.md, demo.html, negative-demo.html, expectations.md, and template.grader.ts in the respective directories.`);
+    process.exit(1);
+  }
+
+  await runGraderGeneration(targetDir, BASE_PROMPT);
+}
+
+export async function generateGraderWithContext(targetDirRaw: string, calibrationResult: CalibrationResult): Promise<void> {
+  const targetDir = path.resolve(process.cwd(), targetDirRaw);
+
+  if (!fs.existsSync(targetDir)) {
+    throw new Error(`Directory not found: ${targetDir}`);
+  }
+
+  const failureLines: string[] = [];
+  if (calibrationResult.demo.failingTests.length > 0) {
+    failureLines.push(`- demo.html failed these tests (they should pass): ${calibrationResult.demo.failingTests.join(', ')}`);
+  }
+  if (calibrationResult.negative.passingTests.length > 0) {
+    failureLines.push(`- negative-demo.html passed these tests (they should fail): ${calibrationResult.negative.passingTests.join(', ')}`);
+  }
+
+  const contextSuffix = `
+
+A previous attempt at generating grader.ts failed calibration:
+${failureLines.join('\n')}
+Revise the grader to fix these issues.`;
+
+  await runGraderGeneration(targetDir, BASE_PROMPT + contextSuffix);
+}
+
+if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
+  const args = process.argv.slice(2);
+  if (args.length < 1) {
+    console.error('Usage: gd dev <path/to/guide> --gen-grader');
+    process.exit(1);
+  }
+  generateGrader(args[0]).catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
+}

@@ -3,19 +3,19 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getGuide } from "../data/modern-practices.ts";
 import { appendFileSync } from "fs";
 import path from "path";
+import { MCP_LOG_FILE } from "../../../constants.ts";
 
 function logToolResult(toolName: string, result: { id: string; distance?: string | number }[]) {
   try {
     const logDir = process.env.MCP_LOG_DIR || process.cwd();
-    const logPath = path.join(logDir, "mcp_tool_calls.log");
+    const logPath = path.join(logDir, MCP_LOG_FILE);
     const logEntry = {
       timestamp: new Date().toISOString(),
       tool: toolName,
       result
     };
-    appendFileSync(logPath, JSON.stringify(logEntry, null, 2) + "\n\n", "utf8");
+    appendFileSync(logPath, JSON.stringify(logEntry) + "\n", "utf8");
   } catch (err) {
-    // Ignore error
     console.error(err);
   }
 }

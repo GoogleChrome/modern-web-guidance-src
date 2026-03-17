@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reduce Style Repetition with @function</title>
+    <style>
+        /* Define the custom function */
+        @function --fluid-size(--min-size, --max-size, --min-vw, --max-vw) {
+            result: clamp(
+                var(--min-size),
+                calc(var(--min-size) + (var(--max-size) - var(--min-size)) * ((100vw - var(--min-vw)) / (var(--max-vw) - var(--min-vw)))),
+                var(--max-size)
+            );
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            /* Direct call to the custom function */
+            font-size: --fluid-size(16px, 24px, 320px, 1200px);
+            line-height: 1.6;
+            padding: 2rem;
+            background: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: --fluid-size(20px, 40px, 320px, 1200px);
+            border-radius: 12px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            /* Direct call to the custom function */
+            font-size: --fluid-size(24px, 48px, 320px, 1200px);
+            margin: 0 0 1rem 0;
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            margin: 0 0 1rem 0;
+            color: #cbd5e1;
+        }
+
+        code {
+            background: #334155;
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #38bdf8;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+         <h1>Reduce Style Repetition</h1>
+        <p>This text scales smoothly as the viewport expands from 320px to 1200px.</p>
+        <p>By encapsulating this complex fluid sizing logic inside a custom <code>@function</code> called <code>--fluid-size</code>, you reduce style repetition across your stylesheet.</p>
+    </div>
+</body>
+</html>

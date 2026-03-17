@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll-Driven Animations: Parallax Animation</title>
+  <style>
+    @layer reset, base, demo;
+
+    @layer demo {
+      @media (prefers-reduced-motion: no-preference) {
+        @supports ((animation-timeline: scroll())) {
+          @keyframes parallax {
+            from {
+              transform: translateY(calc(100px * sibling-index()));
+            }
+          }
+
+          .wrapper {
+            view-timeline: --wrapper;
+          }
+
+          .layer {
+            animation: parallax linear both;
+            animation-timeline: --wrapper;
+          }
+        }
+      }
+    }
+
+    @layer base {
+      html {
+        height: 100%;
+      }
+      body {
+        height: 400dvh;
+      }
+      .wrapper {
+        position: relative;
+        height: 100vh;
+        border: 1px dotted;
+        overflow: clip;
+
+        background-color: #fedcc8;
+      }
+
+      .layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-size: cover;
+        background-position: 50% 100%;
+        background-repeat: no-repeat;
+
+        place-content: center;
+        text-align: center;
+        font-size: 10dvw;
+        color: hsl(0 0% 0% / 0.2);
+      }
+    }
+
+    @layer reset {
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      ul[class] {
+        list-style: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="layer" style="background-image: url(https://github.com/samdbeckham/blog/blob/master/dev/_assets/images/articles/firewatch/layer_0.png?raw=true);"></div>
+    <div class="layer" style="background-image: url(https://github.com/samdbeckham/blog/blob/master/dev/_assets/images/articles/firewatch/layer_1.png?raw=true);"></div>
+    <div class="layer" style="background-image: url(https://github.com/samdbeckham/blog/blob/master/dev/_assets/images/articles/firewatch/layer_2.png?raw=true);"></div>
+    <div class="layer" style="background-image: url(https://github.com/samdbeckham/blog/blob/master/dev/_assets/images/articles/firewatch/layer_3.png?raw=true);"></div>
+    <div class="layer" style="background-image: url(https://github.com/samdbeckham/blog/blob/master/dev/_assets/images/articles/firewatch/layer_4.png?raw=true);"></div>
+    <div class="layer" style="background-image: url(https://github.com/samdbeckham/blog/blob/master/dev/_assets/images/articles/firewatch/layer_5.png?raw=true);"></div>
+    <div class="layer" style="background-image: url(https://github.com/samdbeckham/blog/blob/master/dev/_assets/images/articles/firewatch/layer_6.png?raw=true);"></div>
+  </div>
+</body>
+</html>

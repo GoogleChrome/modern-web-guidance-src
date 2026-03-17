@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   basics:
     runs-on: ubuntu-latest
@@ -38,7 +41,7 @@ jobs:
       #
       # - name: Generate guides diagram and commit
       #   run: |
-      #     node scripts/guide-features-diagram.mjs
+      #     node guides/guide-features-diagram.mjs
       #     git config user.name "github-actions[bot]"
       #     git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       #     git add guides/features-and-use-cases.md

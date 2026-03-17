@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Brand Consistent Forms Demo</title>
+    <style>
+      /*
+      By setting an accent-color on a container (or the document root),
+      it applies to checkboxes, radio buttons, range sliders, and
+      progress bars inside it.
+    */
+      :root {
+        --brand-color: #6200ee;
+      }
+
+      body {
+        accent-color: var(--brand-color); /* A vibrant brand color */
+        font-family: system-ui, sans-serif;
+        padding: 2rem;
+      }
+
+      .demo-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        max-width: 300px;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      label {
+        cursor: pointer;
+      }
+
+      .brand-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--brand-color);
+        margin-bottom: 1rem;
+      }
+
+      .brand-title {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="brand-header">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2L2 22h20L12 2z" />
+      </svg>
+      <h1 class="brand-title">Acme Corp</h1>
+    </div>
+    <p>
+      Notice how all native form controls automatically match the Acme Corp
+      brand color using the <code>accent-color</code> CSS property.
+    </p>
+
+    <form class="demo-container" onsubmit="event.preventDefault()">
+      <!-- Checkboxes -->
+      <div class="control-group">
+        <label>
+          <input type="checkbox" name="subscribe" checked />
+          Subscribe to newsletter
+        </label>
+        <label>
+          <input type="checkbox" name="terms" />
+          Accept terms and conditions
+        </label>
+      </div>
+
+      <!-- Radio Buttons -->
+      <div class="control-group">
+        <label>
+          <input type="radio" name="plan" value="monthly" />
+          Monthly Plan
+        </label>
+        <label>
+          <input type="radio" name="plan" value="yearly" checked />
+          Yearly Plan
+        </label>
+      </div>
+
+      <!-- Range Slider -->
+      <div class="control-group">
+        <label for="volume">Volume:</label>
+        <input
+          type="range"
+          id="volume"
+          name="volume"
+          min="0"
+          max="100"
+          value="75"
+        />
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="control-group">
+        <label for="loading">Loading Progress:</label>
+        <progress id="loading" max="100" value="65">65%</progress>
+      </div>
+    </form>
+  </body>
+</html>

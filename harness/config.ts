@@ -40,25 +40,14 @@ export const environmentConfig: EnvironmentConfig = {
   mcpApiKey: process.env.MCP_API_KEY || '', // For google-developer-knowledge MCP server
 };
 
-// *******************************
-// *** Set suite configuration ***
-// *** Run with: `pnpm suite`  ***
-// *******************************
 export const suiteConfig: SuiteConfig = {
-  name: 'good-effort1',
-  numRuns: 1,
-  tasks: ['cards-render'],
+  name: `full-${new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-')}`,
+  numRuns: 2,
+  tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: false,
-  agent: Agents.GEMINI_CLI,
-};
-
-// ************************************
-// *** Set evaluation configuration ***
-// *** Run with: `pnpm report`      ***
-// ************************************
-export const evalConfig: EvalConfig = {
-  suiteName: 'good-effort1'
+  agent: Agents.JETSKI,
+  negative: false, // When `true`, runs the suite on all tasks in `tasks/negative/`
 };
 
 export interface EnvironmentConfig {
@@ -81,16 +70,12 @@ export interface SuiteConfig {
   mcpServersToEnable: string[];
   enableSkills: boolean;
   agent: string;
-}
-
-export interface EvalConfig {
-  suiteName: string | null;
+  negative: boolean;
 }
 
 export const config = {
   environment: environmentConfig,
   suite: suiteConfig,
-  eval: evalConfig,
 };
 
 // Validate critical paths exist during configuration
