@@ -1,0 +1,5 @@
+- On page load, the parent card should have a neutral border.
+- Interacting with the input (focus -> blur empty) MUST trigger the error state on the *parent container* (e.g., left border turns red).
+- The "Status Icon" in the header should appear or change when the input is invalid.
+- Correcting the input MUST revert the parent container to the neutral state.
+- "Force Fallback Mode" must replicate this parent-styling behavior using JS class toggling.

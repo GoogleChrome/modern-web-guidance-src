@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="landing.css">
   <link rel="stylesheet" href="dashboard-layout.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <div class="landing-container">
@@ -15,7 +16,10 @@
         <h1 class="landing-title">Guidance Evals</h1>
         <p class="landing-subtitle">All suite runs and performance over time</p>
       </div>
-      <div class="filter-container-nav">
+      <div class="filter-container-nav" style="display: flex; gap: 10px; align-items: center;">
+        <button id="auth-btn" class="secondary-btn" style="display: none;">
+          Sign in with Google
+        </button>
         <button id="filter-btn" class="secondary-btn">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"
             style="vertical-align: text-bottom; margin-right: 4px;">
@@ -45,7 +49,6 @@
 
     <nav class="dashboard-tabs">
       <button class="tab-button active" data-tab="suites">Suites</button>
-      <button class="tab-button" data-tab="explorer">Explorer</button>
       <button class="tab-button" data-tab="trends">Trends</button>
     </nav>
 
@@ -87,25 +90,6 @@
             <!-- populated by JS -->
           </tbody>
           </table>
-      </div>
-    </div>
-
-    <!-- Explorer Tab -->
-    <div id="explorer-tab" class="tab-content">
-      <div class="explorer-container">
-        <aside class="explorer-sidebar">
-          <div class="filter-group">
-            <div class="filter-title">Scenario</div>
-            <div class="filter-option active" data-filter-type="scenario" data-filter-value="all">All Scenarios</div>
-            <div class="filter-option" data-filter-type="scenario" data-filter-value="greenfield">Greenfield</div>
-            <div class="filter-option" data-filter-type="scenario" data-filter-value="brownfield">Brownfield</div>
-            <div class="filter-option" data-filter-type="scenario" data-filter-value="redfield">Redfield</div>
-          </div>
-        </aside>
-        <main class="explorer-content">
-          <div id="explorer-grids"></div>
-          <div id="explorer-timelines"></div>
-        </main>
       </div>
     </div>
 

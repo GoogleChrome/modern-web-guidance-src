@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatusMessage } from './baseline.js';
-
+import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatusMessage, validateFeature } from './baseline.js';
 describe('baseline data', () => {
   describe('getBaselineStatus', () => {
     it('returns Baseline since YYYY-MM-DD for known widely available features', () => {
@@ -11,7 +10,7 @@ describe('baseline data', () => {
     it('returns aggregate status for split feature', () => {
       const status = getBaselineStatus('single-color-gradients');
       expect(status).toMatch(/^Baseline since \d{4}-\d{2}-\d{2}$/);
-      expect(status).not.toBe('Limited availability');
+      expect(status).not.toBe('Limited');
     });
 
     it('returns undefined for unknown features', () => {
@@ -21,15 +20,15 @@ describe('baseline data', () => {
 
   describe('getStatusMessage', () => {
     it('returns status message for a feature', () => {
-      expect(getStatusMessage('grid')).toBe('Grid is Widely available. It\'s been Baseline since 2017-10-17.');
+      expect(getStatusMessage('grid')).toBe('Grid is Widely. It\'s been Baseline since 2017-10-17.');
     });
 
     it('returns status message for a BCD key', () => {
-      expect(getStatusMessage('grid', 'css.properties.grid-template-columns')).toBe('The css.properties.grid-template-columns capability is Widely available. It\'s been Baseline since 2017-10-17.');
+      expect(getStatusMessage('grid', 'css.properties.grid-template-columns')).toBe('The css.properties.grid-template-columns capability is Widely. It\'s been Baseline since 2017-10-17.');
     });
 
     it('returns status message for a non-Baseline feature', () => {
-      expect(getStatusMessage('accelerometer')).toBe('Accelerometer is not supported across all major browsers.');
+      expect(getStatusMessage('accelerometer')).toBe('Accelerometer is Limited.');
     });
 
     it('returns undefined for unknown features or keys', () => {
@@ -39,6 +38,40 @@ describe('baseline data', () => {
   });
 
 
+
+  describe('validateFeature', () => {
+    it('returns valid for a standard feature', () => {
+      expect(validateFeature('grid')).toEqual({ isValid: true });
+    });
+
+    it('returns error for a non-existent feature', () => {
+      expect(validateFeature('non-existent-feature')).toEqual({
+        isValid: false,
+        error: 'not_found',
+        errorMessage: 'Web feature ID "non-existent-feature" not found in web-features package'
+      });
+    });
+
+    it('returns error and suggestion for a moved feature', () => {
+      const result = validateFeature('numeric-seperators');
+      expect(result).toEqual({
+        isValid: false,
+        error: 'invalid_kind',
+        kind: 'moved',
+        suggestion: 'numeric-separators',
+        errorMessage: 'Web feature ID "numeric-seperators" is a moved record, not a primary feature (It has been moved to "numeric-separators")'
+      });
+    });
+
+    it('returns error and suggestion for a split feature', () => {
+      const result = validateFeature('single-color-gradients');
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBe('invalid_kind');
+      expect(result.kind).toBe('split');
+      expect(result.suggestion).toContain('gradients'); // It might contain multiple targets
+      expect(result.errorMessage).toContain('is a split record, not a primary feature');
+    });
+  });
 
   describe('resolveFeatureId', () => {
     it('resolves simple feature ID', () => {

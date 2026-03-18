@@ -2,14 +2,8 @@ import * as http from "http";
 import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
-import { Storage } from '@google-cloud/storage';
 
 const PORT = process.env.PORT || 8081;
-const PROJECT_ID = 'chrome-kiwi-air-force-dev';
-const BUCKET_NAME = 'guidance-evals';
-
-const storage = new Storage({ projectId: PROJECT_ID });
-const bucket = storage.bucket(BUCKET_NAME);
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -23,6 +17,7 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon',
   '.txt': 'text/plain',
   '.log': 'text/plain',
+  '.ts': 'application/javascript',
 };
 
 const server = http.createServer(async (req, res) => {
@@ -48,8 +43,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Explicitly block hidden files (starting with dot)
-  if (decodedPath.split('/').some(part => part.startsWith('.'))) {
+  // Explicitly block hidden files (starting with dot), exempting .well-known
+  if (decodedPath.split('/').some(part => part.startsWith('.') && part !== '.well-known')) {
     console.log(`403 Forbidden: Hidden file access - ${req.method} ${req.url}`);
     res.writeHead(403);
     res.end('403 Forbidden: Access to hidden files is not allowed');
@@ -71,19 +66,6 @@ const server = http.createServer(async (req, res) => {
       }
     } catch (e) {
       console.error('Error reading local suites:', e.message);
-    }
-
-    // Remote
-    try {
-      const [_, __, apiResponse] = await bucket.getFiles({ delimiter: '/' });
-      const prefixes = apiResponse.prefixes || [];
-      const remoteDirs = prefixes.map(p => p.slice(0, -1)); // Remove trailing slash
-
-      remoteDirs.forEach(d => {
-        suitesList.push({ id: d, source: 'remote' });
-      });
-    } catch (e) {
-      console.error('Error reading remote suites:', e.message);
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -116,12 +98,7 @@ const server = http.createServer(async (req, res) => {
         console.error('Error reading local dir:', e.message);
       }
     } else {
-      try {
-        const [gcsFiles] = await bucket.getFiles({ prefix: relativePath });
-        files = gcsFiles.map(f => path.basename(f.name));
-      } catch (e) {
-        console.error('Error reading remote dir:', e.message);
-      }
+      console.error('Remote directory listing must be performed via client-side API calls.');
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -129,57 +106,94 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  let filePath;
-  // Map results and setup to the harness directory
-  if (decodedPath.startsWith('/results/')) {
-    const relativeResultPath = decodedPath.substring(9);
-    const useLocal = req.url.includes('source=local');
-
-    if (!useLocal) {
-      // Stream from GCS
-      const extname = path.extname(relativeResultPath) || '';
-      let contentType = MIME_TYPES[extname] || 'application/octet-stream';
-      // If fetching the suite root instead of a file
-      if (relativeResultPath === '' || relativeResultPath.endsWith('/')) {
-        contentType = 'text/html';
-        // Serve an index.html equivalent or 404
-      }
-
-      const file = bucket.file(relativeResultPath);
-      file.exists().then(([exists]) => {
-        if (!exists) {
-          res.writeHead(404);
-          res.end('404 Not Found');
-          return;
-        }
-
-        res.writeHead(200, { 'Content-Type': contentType });
-        file.createReadStream()
-          .on('error', (err) => {
-            console.error('Error streaming from GCS:', err);
-            // We can't write head here if we already wrote 200, but we can end
-            res.end();
-          })
-          .pipe(res);
-      }).catch(err => {
-        console.error('GCS exists check failed:', err);
-        res.writeHead(500);
-        res.end(`Server Error: ${err.message}`);
-      });
+  // --- Silent File Probing API ---
+  // Avoids native browser 404 console errors by returning JSON { exists: boolean }
+  if (decodedPath === '/api/exists') {
+    const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+    const checkPath = parsedUrl.searchParams.get('path');
+    if (!checkPath) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: "Missing path parameter" }));
       return;
     }
 
-    const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
-    filePath = path.join(resultsDir, relativeResultPath);
-  } else if (decodedPath.startsWith('/base_apps/')) {
+    let filePath;
+    if (checkPath.startsWith('base_apps/')) {
+      filePath = path.join('../harness/base_apps', checkPath.substring(10));
+    } else if (checkPath.startsWith('tasks/')) {
+      filePath = path.join('../harness/tasks', checkPath.substring(6));
+    } else {
+      const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
+      filePath = path.join(resultsDir, checkPath);
+    }
+
+    const absolutePath = path.resolve(filePath);
+    const evalViewRoot = path.resolve('.');
+    const harnessRoot = path.resolve('../harness');
+    const isInsideEvalView = absolutePath === evalViewRoot || absolutePath.startsWith(evalViewRoot + path.sep);
+    const isInsideHarness = absolutePath === harnessRoot || absolutePath.startsWith(harnessRoot + path.sep);
+
+    let exists = false;
+    if (isInsideEvalView || isInsideHarness) {
+        exists = fs.existsSync(absolutePath);
+    }
+    
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ exists }));
+    return;
+  }
+
+  let filePath;
+  // Map results and setup to the harness directory
+  if (decodedPath.startsWith('/base_apps/')) {
     filePath = path.join('../harness/base_apps', decodedPath.substring(11));
+  } else if (decodedPath.startsWith('/tasks/')) {
+    filePath = path.join('../harness/tasks', decodedPath.substring(7));
   } else {
-    // Default to serving from current directory (eval-view)
-    // Remove leading slash to ensure path.join treats it as relative to '.'
     const relativePath = decodedPath.startsWith('/') ? decodedPath.substring(1) : decodedPath;
-    filePath = path.join('.', relativePath);
+    let localEvalViewPath = path.join('.', relativePath);
     if (decodedPath === '/' || decodedPath === '') {
-      filePath = './index.html';
+      localEvalViewPath = './index.html';
+    }
+
+    // If the file exists in eval-view, serve it.
+    // Otherwise, assume it's a test result file in ../harness/results
+    if (fs.existsSync(localEvalViewPath)) {
+        filePath = localEvalViewPath;
+    } else {
+        const useLocal = req.url.includes('source=local');
+        const refererLocal = req.headers.referer && (req.headers.referer.includes('source=local') || req.headers.referer.includes('localhost'));
+        
+        if (!useLocal && !refererLocal && decodedPath.includes('/')) {
+            // Give a decent error if someone tries to stream a remote file directly
+            res.writeHead(400);
+            res.end('400 Bad Request: Remote GCS streaming must use client-side authenticated fetches directly to GCS.');
+            return;
+        }
+
+        // If this is an absolute navigation link (e.g. /menu) clicked from inside a test result,
+        // it will lack the <suite>/<run>/... prefix. We must restore it from the referer.
+        let finalRelativePath = relativePath;
+        if (req.headers.referer) {
+            try {
+                const refererUrl = new URL(req.headers.referer);
+                const refPath = refererUrl.pathname.substring(1); // remove leading slash
+                
+                // If referer is a test result (e.g. suite/1/task/guided/index.html)
+                // and the requested path does NOT start with the suite name
+                const parts = refPath.split('/');
+                if (parts.length >= 4 && !finalRelativePath.startsWith(parts[0] + '/')) {
+                    // Reconstruct the base path up to the run type directory
+                    const basePath = parts.slice(0, 4).join('/');
+                    finalRelativePath = path.join(basePath, finalRelativePath);
+                }
+            } catch {
+                // Ignore invalid referer URLs
+            }
+        }
+
+        const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
+        filePath = path.join(resultsDir, finalRelativePath);
     }
   }
 
@@ -200,7 +214,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Debug logging. Do not keep enabled.
-  // console.log(`${req.method} ${req.url} -> ${filePath}`);
+  console.log(`${req.method} ${req.url} -> ${filePath}`);
 
   const extname = path.extname(filePath);
   let contentType = MIME_TYPES[extname] || 'application/octet-stream';
@@ -223,6 +237,21 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (err.code === 'ENOENT') {
+        // SPA Fallback: If it's a structural route (no extension or .html) that 404s,
+        // try to serve the index.html from the same base run directory instead.
+        if (!extname || extname === '.html') {
+            const pathParts = filePath.split(path.sep);
+            const runBaseIndex = pathParts.findIndex(p => p === 'guided' || p === 'unguided');
+            if (runBaseIndex !== -1) {
+                const basePath = pathParts.slice(0, runBaseIndex + 1).join(path.sep);
+                const indexPath = path.join(basePath, 'index.html');
+                if (fs.existsSync(indexPath)) {
+                    res.writeHead(200, { 'Content-Type': 'text/html' });
+                    res.end(fs.readFileSync(indexPath), 'utf-8');
+                    return;
+                }
+            }
+        }
         res.writeHead(404);
         res.end('404 Not Found');
       } else {

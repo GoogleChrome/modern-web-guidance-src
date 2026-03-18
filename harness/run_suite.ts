@@ -73,6 +73,7 @@ export interface RunSuiteOptions {
   tasks?: string[];
   numRuns?: number;
   skipEval?: boolean;
+  guidedOnly?: boolean;
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
@@ -104,31 +105,34 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     let hasErrors = false;
     const numRuns = options.numRuns || config.suite.numRuns;
     const endRun = 1 + numRuns;
-    console.log(`\nStarting execution for ${numRuns} runs`);
+      const isNegativeSuite = config.suite.negative === true;
+      const currentTasksDir = isNegativeSuite ? path.join(tasksDir, 'negative') : tasksDir;
 
-    for (let runNumber = 1; runNumber < endRun; runNumber++) {
+      console.log(`\nStarting execution for ${numRuns} runs ${isNegativeSuite ? '(Negative Suite)' : ''}`);
 
-      console.log(`\n${'='.repeat(60)}`);
-      console.log(`>>> STARTING RUN ${runNumber} <<<`);
-      console.log(`${'='.repeat(60)}\n`);
+      for (let runNumber = 1; runNumber < endRun; runNumber++) {
 
-      const runDir = path.join(testDir, String(runNumber));
-      if (!fs.existsSync(runDir)) {
-        fs.mkdirSync(runDir, { recursive: true });
-      }
+        console.log(`\n${'='.repeat(60)}`);
+        console.log(`>>> STARTING RUN ${runNumber} <<<`);
+        console.log(`${'='.repeat(60)}\n`);
 
-      const pnpmWorkspacePackages: string[] = [];
+        const runDir = path.join(testDir, String(runNumber));
+        if (!fs.existsSync(runDir)) {
+          fs.mkdirSync(runDir, { recursive: true });
+        }
 
-      // Use configured tasks, or discover all tasks in the tasks directory
-      const tasksToRun = options.tasks && options.tasks.length > 0
-        ? options.tasks
-        : (config.suite.tasks.length > 0
-          ? config.suite.tasks
-          : fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, '')));
+        const pnpmWorkspacePackages: string[] = [];
 
-      for (const task of tasksToRun) {
-        // Read prompt from task
-        const taskPath = path.join(tasksDir, `${task}.md`);
+        // Use configured tasks, or discover all tasks in the tasks directory
+        const tasksToRun = options.tasks && options.tasks.length > 0
+          ? options.tasks
+          : (config.suite.tasks.length > 0
+            ? config.suite.tasks
+            : fs.readdirSync(currentTasksDir).filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, '')));
+
+        for (const task of tasksToRun) {
+          // Read prompt from task
+          const taskPath = path.join(currentTasksDir, `${task}.md`);
         if (!fs.existsSync(taskPath)) {
           console.warn(`Skipping task ${task}: ${taskPath} not found`);
           continue;
@@ -152,7 +156,8 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
         promptContent += COMMON_APPEND_PROMPT;
 
-        for (const runType of RUN_TYPES) {
+        const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
+        for (const runType of runTypesToRun) {
           const templateDir = path.join(baseAppsDir, baseApp);
 
           if (!fs.existsSync(templateDir)) {
@@ -205,7 +210,7 @@ process.exit(result.status ?? 0);
       }
 
       if (pnpmWorkspacePackages.length > 0) {
-        console.log(`\n>>> Running all tests for Run ${runNumber} with pnpm -r run-agent (parallel)...`);
+        console.log(`\n>>> Running all tests for Run ${runNumber} with pnpm -r run-agent ...`);
         // Drop a transient pnpm-workspace.yaml at the root of the run directory.
         // The '**' pattern tells pnpm to recursively discover all the targetDirs
         // we just seeded with package.json files.
@@ -213,8 +218,12 @@ process.exit(result.status ?? 0);
         fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
         
         try {
-          // Fire off the parallel execution!
-          await runCommand('pnpm', ['-r', 'run-agent'], runDir);
+          const pnpmArgs = ['-r'];
+          if (agent === Agents.JETSKI) {
+            pnpmArgs.push('--workspace-concurrency', '1');
+          }
+          pnpmArgs.push('run-agent');
+          await runCommand('pnpm', pnpmArgs, runDir);
           console.log(`✅ Completed Run ${runNumber} test executions`);
         } catch (error) {
           console.error(`❌ Failed during Run ${runNumber} test execution`, error);
@@ -226,21 +235,6 @@ process.exit(result.status ?? 0);
         }
       }
 
-    }
-
-    if (!options.outputDir) {
-      const manifestPath = path.join(resultsDir, 'tests.json');
-      let manifest: { tests: any[] } = { tests: [] };
-      if (fs.existsSync(manifestPath)) {
-        try {
-          manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-        } catch { }
-      }
-
-      if (!manifest.tests.some(t => t.id === testID)) {
-        manifest.tests.push({ id: testID, timestamp: new Date().toISOString(), runCount: numRuns });
-        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-      }
     }
 
     if (hasErrors) {

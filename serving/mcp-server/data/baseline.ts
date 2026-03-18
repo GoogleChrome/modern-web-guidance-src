@@ -1,6 +1,6 @@
 import { features } from 'web-features';
 
-export type BaselineStatus = 'Limited availability' | `Baseline since ${string}`;
+export type BaselineStatus = 'Limited' | `Baseline since ${string}`;
 
 type Feature = typeof features[string];
 
@@ -18,40 +18,66 @@ export interface FeatureValidationResult {
 export interface DetailedBaselineStatus {
   baseline: 'low' | 'high' | false;
   baseline_low_date?: string;
+  shortLabel: string;   // e.g. "Newly", "Widely", "Limited"
+  releaseDate: string;  // The date the feature first became Baseline (Interoperable)
 }
-
 /**
- * Gets the detailed Baseline status for a specific feature.
- * @param featureId - The ID of the web feature
- * @returns Object with baseline level and low date
+ * Gets the detailed Baseline status for a specific feature, resolving redirects/splits.
  */
-export function getDetailedBaselineStatus(featureId: string): DetailedBaselineStatus | undefined {
+export function getFeatureStatus(featureId: string): DetailedBaselineStatus | undefined {
   const resolvedIds = resolveFeatureId(featureId);
-  if (resolvedIds.length === 0) {
-    return;
-  }
+  if (resolvedIds.length === 0) return;
 
-  let latestDate = "0000-00-00";
+  let latestLowDate = "0000-00-00";
   let overallBaseline: 'low' | 'high' | false = 'high';
 
   for (const id of resolvedIds) {
     const feature = features[id] as Feature;
+    if (feature.kind !== 'feature' || !feature.status) {
+      overallBaseline = false;
+      continue;
+    }
+    
     const status = feature.status;
-    if (!status?.baseline) {
-      return { baseline: false };
-    }
-    if (status.baseline === 'low') {
-      overallBaseline = 'low';
-    }
-    if (status.baseline_low_date && status.baseline_low_date > latestDate) {
-      latestDate = status.baseline_low_date;
+    if (status.baseline === false) overallBaseline = false;
+    else if (status.baseline === 'low' && overallBaseline === 'high') overallBaseline = 'low';
+
+    if (status.baseline_low_date && status.baseline_low_date > latestLowDate) {
+      latestLowDate = status.baseline_low_date;
     }
   }
 
+  const baseline_low_date = latestLowDate === "0000-00-00" ? undefined : latestLowDate;
+  
+  const shortLabel = mapBaseline(overallBaseline);
+  
+  const releaseDate = (overallBaseline !== false && baseline_low_date) ? baseline_low_date : '-';
+
   return {
     baseline: overallBaseline,
-    baseline_low_date: latestDate === "0000-00-00" ? undefined : latestDate
+    baseline_low_date,
+    shortLabel,
+    releaseDate
   };
+}
+
+/**
+ * Gets the detailed Baseline status for a specific feature.
+ * @param featureId - The ID of the web feature 
+ * @returns The detailed status of the feature
+ */
+export function getDetailedBaselineStatus(featureId: string): DetailedBaselineStatus | undefined {
+  return getFeatureStatus(featureId);
+}
+
+/**
+ * Maps baseline internal values to human-readable terms.
+ */
+export function mapBaseline(baseline: string | boolean | undefined): string {
+  if (baseline === 'low') return 'Newly';
+  if (baseline === 'high') return 'Widely';
+  if (baseline === false) return 'Limited';
+  return 'unknown';
 }
 
 /**
@@ -60,10 +86,10 @@ export function getDetailedBaselineStatus(featureId: string): DetailedBaselineSt
  * @returns The Baseline status of the feature ('Limited availability' or 'Baseline since YYYY-MM-DD')
  */
 export function getBaselineStatus(featureId: string): BaselineStatus | undefined {
-  const status = getDetailedBaselineStatus(featureId);
+  const status = getFeatureStatus(featureId);
   if (!status) return;
-  if (status.baseline === false) return 'Limited availability';
-  return `Baseline since ${status.baseline_low_date}`;
+  if (status.baseline === false) return 'Limited';
+  return `Baseline since ${status.releaseDate}`;
 }
 
 /**
@@ -89,7 +115,7 @@ export function checkBaseline(target: string, featureId: string): boolean {
     return true;
   }
 
-  const baselineStatus = getDetailedBaselineStatus(featureId);
+  const baselineStatus = getFeatureStatus(featureId);
   if (!baselineStatus) {
     return false;
   }
@@ -185,15 +211,14 @@ export function validateFeature(id: string): FeatureValidationResult {
 /**
  * Internal helper to format status messages consistently.
  */
-function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string }): string {
-  const { baseline, baseline_low_date } = status;
+function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string; shortLabel?: string; releaseDate?: string }): string {
+  const { baseline, releaseDate, shortLabel } = status;
 
-  if ((baseline === 'low' || baseline === 'high') && baseline_low_date) {
-    const statusName = baseline === 'high' ? 'Widely available' : 'Newly available';
-    return `${featureName} is ${statusName}. It's been Baseline since ${baseline_low_date}.`;
+  if (baseline !== false && releaseDate && releaseDate !== '-') {
+    return `${featureName} is ${shortLabel}. It's been Baseline since ${releaseDate}.`;
   }
 
-  return `${featureName} is not supported across all major browsers.`;
+  return `${featureName} is Limited.`;
 }
 
 /**
@@ -203,25 +228,29 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
   if (bcdKey) {
     const status = getStatus(featureId, bcdKey);
     if (!status) return;
-    return formatStatusMessage(`The ${bcdKey} capability`, status);
+
+    // For compat keys, we manually map as the central status is for the whole feature
+    const mapped = {
+      baseline: status.baseline,
+      shortLabel: mapBaseline(status.baseline),
+      releaseDate: status.baseline_low_date || '-'
+    };
+    return formatStatusMessage(`The ${bcdKey} capability`, mapped);
   }
 
   const feature = features[featureId] as Feature | undefined;
   if (!feature) return;
 
-  const baselineStatus = getDetailedBaselineStatus(featureId);
+  const baselineStatus = getFeatureStatus(featureId);
   if (!baselineStatus) return;
 
-  const subject = (feature as any).name || featureId;
+  const subject = feature.kind === 'feature' ? feature.name : featureId;
 
   if (baselineStatus.baseline === false) {
     return formatStatusMessage(subject, { baseline: false });
   }
 
-  return formatStatusMessage(subject, {
-    baseline: baselineStatus.baseline,
-    baseline_low_date: baselineStatus.baseline_low_date
-  });
+  return formatStatusMessage(subject, baselineStatus);
 }
 
 type FeatureData = Extract<Feature, { kind: "feature" }>;
@@ -247,22 +276,22 @@ export function getStatus(
     }
     for (const resolvedFeatureId of resolvedFeatureIds) {
       const feature = features[resolvedFeatureId] as Feature;
-      if (feature.kind !== 'feature') {
-        continue;
-      }
-      if (feature.status?.by_compat_key?.[bcdKey]) {
-        return feature.status.by_compat_key[bcdKey];
+      if (feature.kind === 'feature') {
+        const compatStatus = feature.status?.by_compat_key?.[bcdKey];
+        if (compatStatus) {
+          return compatStatus;
+        }
       }
     }
   }
 
   // Fall back to searching all features when no feature ID is provided
   for (const feature of Object.values(features) as Feature[]) {
-    if (feature.kind !== "feature") {
-      continue;
-    }
-    if (feature.status?.by_compat_key?.[bcdKey]) {
-      return feature.status.by_compat_key[bcdKey];
+    if (feature.kind === "feature") {
+      const compatStatus = feature.status?.by_compat_key?.[bcdKey];
+      if (compatStatus) {
+        return compatStatus;
+      }
     }
   }
 }

@@ -1,0 +1,3 @@
+- Build a form with a required country dropdown that only shows an error if the user opens the menu and closes it without selecting a valid option.
+- Create a form with a required dropdown where the error message and red border appear only after the user interacts with the select or tries to submit the form, not on page load.
+- Implement a required select field that shows a green border when a valid option is chosen and a red border with error text only after user interaction if no valid option was selected.

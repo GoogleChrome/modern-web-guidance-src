@@ -10,6 +10,7 @@
   },
   "scripts": {
     "test": "pnpm -r test",
+    "baselinestatus": "pnpm --filter modern-web-mcp baselinestatus",
     "lint": "oxlint --ignore-path .oxlintignore",
     "typecheck": "pnpm -r typecheck",
     "preflight": "pnpm typecheck && pnpm lint && pnpm test",
@@ -28,7 +29,8 @@
     "generate-grader": "node --env-file=.env --experimental-strip-types guides/grader-gen.ts",
     "test-grader": "node --experimental-strip-types guides/test-grader.ts",
     "grade": "node --experimental-strip-types guides/run-grader.ts",
-    "dev-guide": "node --env-file=.env --experimental-strip-types guides/dev-guide.ts"
+    "dev-guide": "node --env-file=.env --experimental-strip-types guides/dev-guide.ts",
+    "deploy:dashboard": "pnpm --filter eval-view deploy-pages"
   },
   "keywords": [],
   "author": "",
@@ -50,13 +52,14 @@
     }
   },
   "devDependencies": {
-    "@types/node": "^22.19.11",
+    "@types/node": "^25.5.0",
     "@types/omelette": "^0.4.5",
-    "oxlint": "^1.50.0",
+    "gh-pages": "^6.3.0",
+    "oxlint": "^1.55.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "glob": "^10.5.0",
+    "glob": "^13.0.6",
     "omelette": "^0.4.17"
   }
 }
