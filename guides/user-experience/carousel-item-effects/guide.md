@@ -103,6 +103,7 @@ This code animates the carousel items of a horizontal scroller on scroll using a
   }
 }
 
+/* This creates a named view-timeline on each carousel item. The timeline is used to drive the animation that is applied on the same element. */
 .scroller > * {
   view-timeline: --item inline;
   animation: animate auto linear both;
