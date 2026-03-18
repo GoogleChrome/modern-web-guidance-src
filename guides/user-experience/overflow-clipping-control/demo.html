@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Overflow Clipping Control</title>
+  <style>
+    body {
+      font: 1em/1.5 system-ui, sans-serif;
+      padding: 2rem;
+    }
+
+    .container {
+      background: #eee;
+      width: 10em;
+      height: 10em;
+      padding: 1em;
+
+      /* Essential CSS */
+      overflow: clip;
+      overflow-clip-margin: content-box;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc pretium, diam id vehicula blandit, mauris risus condimentum nunc, sit amet vehicula dui sem in orci. Praesent ac lectus mattis, varius nunc non, commodo nulla. Phasellus viverra, est nec pharetra blandit, sem ipsum porta lacus, non sodales erat purus id nisl. Suspendisse condimentum tellus a nibh mattis, ut tempor orci cursus. Pellentesque nulla quam, finibus at nunc sed, euismod tincidunt orci. Mauris eu ipsum nec mi aliquam ultrices. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Sed quis sapien vitae elit venenatis tincidunt in ac orci. Mauris cursus lacus vel velit laoreet imperdiet. Nulla facilisi. Duis eu orci mauris.
+    </p>
+  </div>
+  <p>The overflow in the above box is clipped to the content box rather than the usual padding box, allowing the padding border to be present on all sides without requiring extra wrapper elements.</p>
+</body>
+</html>
