@@ -40,6 +40,7 @@ const TASKS_DIR = path.join(rootDir, 'harness', 'tasks');
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
   test?: boolean;        // default: true — run agent test after calibration
+  guidedOnly?: boolean;  // skip calibration and only run the guided agent test
   verbose?: boolean;
 }
 
@@ -118,52 +119,56 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     console.log(cDim(`\nSkipping ${GRADER_FILE} generation (already exists)`));
   }
 
-  // Step 4: Calibration retry loop
-  console.log(cCyan(`\n--- Calibrating grader ---`));
-
+  // Step 4: Calibration retry loop (skipped when guidedOnly)
   let calibrationResult: CalibrationResult | null = null;
   let calibrationAttempt = 0;
 
-  for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-    calibrationAttempt = attempt;
-    console.log(cYellow(`\nCalibration attempt ${attempt}...`));
-
-    try {
-      calibrationResult = await testGrader(targetDirRaw);
-    } catch (err) {
-      console.error(cRed(`Calibration error: ${err}`));
-      calibrationResult = {
-        success: false,
-        demo: { passed: 0, failed: 0, failingTests: [] },
-        negative: { passed: 0, failed: 0, passingTests: [] },
-      };
-    }
-
-    if (calibrationResult.success) {
-      console.log(cGreen(`\u2705 Grader calibrated on attempt ${attempt}!`));
-      break;
-    }
-
-    if (attempt <= maxRetries) {
-      console.log(cYellow(`Attempt ${attempt} failed. Regenerating grader with failure context...`));
-
-      const graderPath = path.join(targetDir, GRADER_FILE);
-      if (fs.existsSync(graderPath)) {
-        fs.unlinkSync(graderPath);
-      }
+  if (options.guidedOnly) {
+    console.log(cDim(`\nSkipping calibration (--guided)`));
+    calibrationResult = { success: true, demo: { passed: 0, failed: 0, failingTests: [] }, negative: { passed: 0, failed: 0, passingTests: [] } };
+  } else {
+    console.log(cCyan(`\n--- Calibrating grader ---`));
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      calibrationAttempt = attempt;
+      console.log(cYellow(`\nCalibration attempt ${attempt}...`));
 
       try {
-        await generateGraderWithContext(targetDirRaw, calibrationResult);
-        if (!fs.existsSync(graderPath)) {
-          console.error(cRed(`Failed: ${GRADER_FILE} was not regenerated`));
-          break;
-        }
+        calibrationResult = await testGrader(targetDirRaw);
       } catch (err) {
-        console.error(cRed(`Failed to regenerate ${GRADER_FILE}: ${err}`));
+        console.error(cRed(`Calibration error: ${err}`));
+        calibrationResult = {
+          success: false,
+          demo: { passed: 0, failed: 0, failingTests: [] },
+          negative: { passed: 0, failed: 0, passingTests: [] },
+        };
+      }
+
+      if (calibrationResult.success) {
+        console.log(cGreen(`\u2705 Grader calibrated on attempt ${attempt}!`));
         break;
       }
-    } else {
-      console.log(cRed(`\u274c Grader failed to calibrate after ${maxRetries + 1} attempts.`));
+
+      if (attempt <= maxRetries) {
+        console.log(cYellow(`Attempt ${attempt} failed. Regenerating grader with failure context...`));
+
+        const graderPath = path.join(targetDir, GRADER_FILE);
+        if (fs.existsSync(graderPath)) {
+          fs.unlinkSync(graderPath);
+        }
+
+        try {
+          await generateGraderWithContext(targetDirRaw, calibrationResult);
+          if (!fs.existsSync(graderPath)) {
+            console.error(cRed(`Failed: ${GRADER_FILE} was not regenerated`));
+            break;
+          }
+        } catch (err) {
+          console.error(cRed(`Failed to regenerate ${GRADER_FILE}: ${err}`));
+          break;
+        }
+      } else {
+        console.log(cRed(`\u274c Grader failed to calibrate after ${maxRetries + 1} attempts.`));
+      }
     }
   }
 
@@ -191,7 +196,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
   // Step 6: Optional agent test
   if (options.test !== false && calibrationResult?.success) {
-    await runAgentTest(targetDir, currentInv.name, taskMap);
+    await runAgentTest(targetDir, currentInv.name, taskMap, options.guidedOnly);
   }
 
   // Step 7: Summary
@@ -304,7 +309,7 @@ ${prompt}
   return { taskName, baseApp: 'daily-grind', prompt };
 }
 
-async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<string, TaskInfo>): Promise<void> {
+async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<string, TaskInfo>, guidedOnly = false): Promise<void> {
   console.log(cCyan(`\n--- Running agent test ---`));
 
   const taskInfo = taskMap.get(guideName);
@@ -348,11 +353,13 @@ async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<s
     outputDir: testOutputDir,
     tasks: [taskInfo.taskName],
     numRuns: 1,
-    skipEval: true
+    skipEval: true,
+    guidedOnly,
   });
 
   // 3. Grade agent output (unguided + guided)
-  for (const runType of ['unguided', 'guided']) {
+  const runTypes = guidedOnly ? ['guided'] : ['unguided', 'guided'];
+  for (const runType of runTypes) {
     const resultDir = path.join(testOutputDir, '1', taskInfo.taskName, runType);
     if (!fs.existsSync(resultDir)) continue;
 
