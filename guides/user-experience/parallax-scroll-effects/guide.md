@@ -17,12 +17,19 @@ A parallax effect on scroll is a visual technique where different layers of cont
 
 Here’s how to create a basic parallax effect:
 
-1.  **Create a wrapper element:** This element will contain all the layers of your parallax animation.
+1.  **Create a wrapper element:** This element simply groups all the layers of the parallax effect together. It is not the scrollable element, so its overflow should be clipped. Also give it a `height` that matches the height of one of the layers of the parallax effect.
 
     ```html
     <div class="wrapper">
       …
     </div>
+    ```
+
+    ```css
+    .wrapper {
+      overflow: clip;
+      height: 100vh; /* Height of one of the layers of the parallax */
+    }
     ```
 
 2.  **Declare the layers:** Inside the wrapper, add the individual layers that will move at different speeds.
