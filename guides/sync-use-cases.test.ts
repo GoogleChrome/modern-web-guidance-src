@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
-import { findUseCaseDirs, validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
+import { validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,97 +16,6 @@ function removeTempDir(dir: string) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
-describe('findUseCaseDirs', () => {
-  let tempDir: string;
-
-  beforeEach(() => {
-    tempDir = createTempDir();
-  });
-
-  afterEach(() => {
-    removeTempDir(tempDir);
-  });
-
-  test('returns empty array for empty directory', () => {
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), []);
-  });
-
-  test('finds directory with guide.md', () => {
-    const useCase = path.join(tempDir, 'my-use-case');
-    fs.mkdirSync(useCase);
-    fs.writeFileSync(path.join(useCase, 'guide.md'), 'content');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), [useCase]);
-  });
-
-  test('finds directory with demo.html', () => {
-    const useCase = path.join(tempDir, 'my-use-case');
-    fs.mkdirSync(useCase);
-    fs.writeFileSync(path.join(useCase, 'demo.html'), '<html></html>');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), [useCase]);
-  });
-
-  test('finds directory with grader.ts', () => {
-    const useCase = path.join(tempDir, 'my-use-case');
-    fs.mkdirSync(useCase);
-    fs.writeFileSync(path.join(useCase, 'grader.ts'), 'export {}');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), [useCase]);
-  });
-
-  test('finds directory with prompts.md', () => {
-    const useCase = path.join(tempDir, 'my-use-case');
-    fs.mkdirSync(useCase);
-    fs.writeFileSync(path.join(useCase, 'prompts.md'), 'prompts');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), [useCase]);
-  });
-
-  test('ignores directories without use case files', () => {
-    const notUseCase = path.join(tempDir, 'not-a-use-case');
-    fs.mkdirSync(notUseCase);
-    fs.writeFileSync(path.join(notUseCase, 'README.md'), 'readme');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), []);
-  });
-
-  test('skips node_modules directories', () => {
-    const pkg = path.join(tempDir, 'node_modules', 'some-package');
-    fs.mkdirSync(pkg, { recursive: true });
-    fs.writeFileSync(path.join(pkg, 'guide.md'), 'content');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), []);
-  });
-
-  test('skips .git directories', () => {
-    const hooks = path.join(tempDir, '.git', 'hooks');
-    fs.mkdirSync(hooks, { recursive: true });
-    fs.writeFileSync(path.join(hooks, 'guide.md'), 'content');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), []);
-  });
-
-  test('finds nested use case directories', () => {
-    const nested = path.join(tempDir, 'category', 'use-case');
-    fs.mkdirSync(nested, { recursive: true });
-    fs.writeFileSync(path.join(nested, 'guide.md'), 'content');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), [nested]);
-  });
-
-  test('finds multiple use case directories', () => {
-    const useCase1 = path.join(tempDir, 'use-case-1');
-    const useCase2 = path.join(tempDir, 'use-case-2');
-    fs.mkdirSync(useCase1);
-    fs.mkdirSync(useCase2);
-    fs.writeFileSync(path.join(useCase1, 'guide.md'), 'content');
-    fs.writeFileSync(path.join(useCase2, 'demo.html'), '<html></html>');
-    const dirs = findUseCaseDirs(tempDir);
-    assert.strictEqual(dirs.length, 2);
-    assert.ok(dirs.includes(useCase1));
-    assert.ok(dirs.includes(useCase2));
-  });
-
-  test('finds actual use case directories in the repo', () => {
-    const dirs = findUseCaseDirs(__dirname);
-    assert.ok(Array.isArray(dirs));
-    assert.ok(dirs.length > 0, 'Repo should have at least one use case directory');
-    assert.ok(dirs.every(d => typeof d === 'string'));
-  });
-});
 
 describe('validateGuide', () => {
   let tempDir: string;

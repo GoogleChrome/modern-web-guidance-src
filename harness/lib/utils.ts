@@ -130,9 +130,8 @@ export function classifyGuide(inv: GuideInventory): GuideStatus {
   return 'eval-ready';
 }
 
-export function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
+export function scanAllGuides(guidesDir = path.resolve(__dirname, '../../guides'), taskMap = getTaskMap()): GuideInventory[] {
   const guides: GuideInventory[] = [];
-  const guidesDir = path.resolve(__dirname, '../../guides');
 
   if (!fs.existsSync(guidesDir)) return guides;
 

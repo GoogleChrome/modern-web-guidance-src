@@ -6,6 +6,7 @@ import matter from 'gray-matter';
 import { fileURLToPath } from 'url';
 import { validateMacros } from '../serving/mcp-server/lib/macros.ts';
 import { validateFeature } from '../serving/mcp-server/data/baseline.ts';
+import { scanAllGuides } from '../harness/lib/utils.ts';
 
 // --- Types ---
 
@@ -99,32 +100,6 @@ const octokit: any = new Octokit({ auth: GITHUB_TOKEN });
 
 // --- Pure helpers ---
 
-/**
- * Recursively find all use case directories.
- */
-export function findUseCaseDirs(dir: string): string[] {
-  const useCaseDirs: string[] = [];
-
-  function find(currentDir: string) {
-    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
-    let isUseCase = false;
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        if (entry.name !== 'node_modules' && entry.name !== '.git') {
-          find(path.join(currentDir, entry.name));
-        }
-      } else if (['guide.md', 'demo.html', 'grader.ts', 'prompts.md'].includes(entry.name)) {
-        isUseCase = true;
-      }
-    }
-    if (isUseCase) {
-      useCaseDirs.push(currentDir);
-    }
-  }
-
-  find(dir);
-  return useCaseDirs;
-}
 
 /**
  * Determines the project status name for a use case based on its completeness.
@@ -348,18 +323,6 @@ export function validateGuide(filePath: string): ValidationResult {
   return { errors, data, body, filePath };
 }
 
-// --- File system helpers ---
-
-function getUseCaseFiles(subdir: string): UseCaseFiles {
-  const exists = (file: string) => fs.existsSync(path.join(subdir, file));
-  const nonEmpty = (file: string) => exists(file) && fs.readFileSync(path.join(subdir, file), 'utf8').trim().length > 0;
-  return {
-    hasGuide: exists('guide.md'),
-    hasDemo: nonEmpty('demo.html'),
-    hasGrader: nonEmpty('grader.ts'),
-    hasPrompts: nonEmpty('prompts.md'),
-  };
-}
 
 // --- GitHub API ---
 
@@ -633,16 +596,16 @@ async function processUseCases(
   const featureUseCaseMap = new Map<string, UseCaseEntry[]>();
   let hasError = false;
 
-  const guidesDir = path.resolve(REPO_ROOT, 'guides');
-  const useCaseDirs = findUseCaseDirs(guidesDir);
-  console.log(`Found ${useCaseDirs.length} use cases.`);
+  const guides = scanAllGuides();
+  console.log(`Found ${guides.length} use cases.`);
 
-  for (const subdir of useCaseDirs) {
+  for (const inv of guides) {
+    const subdir = inv.dir;
+    const { hasGuide, hasDemo, hasGrader, hasPrompts } = inv;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
-    const { hasGuide, hasDemo, hasGrader, hasPrompts } = getUseCaseFiles(subdir);
-
-    if (hasGuide !== hasDemo) {
-      const missingFile = hasGuide ? 'demo.html' : 'guide.md';
+    const guideExists = hasGuide || inv.isStub;
+    if (guideExists !== hasDemo) {
+      const missingFile = guideExists ? 'demo.html' : 'guide.md';
       console.error(`❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH guide.md and demo.html.`);
       hasError = true;
     }
