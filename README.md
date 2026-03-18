@@ -121,6 +121,12 @@ ANTHROPIC_VERTEX_PROJECT_ID=<YOUR-GCP-PROJECT-ID>
 ANTHROPIC_MODEL='claude-opus-4-6'
 ```
 
+#### Codex CLI
+
+When using Codex CLI, set the `OPENAI_API_KEY` environment variable with your API key.
+You will also need to request an exception to use the Codex CLI.
+This request should file a bug similar to b/492300931, which includes a screenshot to the PCounsel approval.
+
 ## Guides
 
 For adding and testing guides, see the [guides README](./guides/README.md).

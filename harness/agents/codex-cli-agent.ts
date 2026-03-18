@@ -1,7 +1,8 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { spawn } from 'child_process';
-import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, updateMcpConfig, watchLogFile } from '../lib/agent-shared.ts';
+import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, updateMcpConfig, watchLogFile, copyFileIfExists } from '../lib/agent-shared.ts';
 import config, { Agents } from '../config.ts';
 import { MCP_LOG_FILE } from '../../constants.ts';
 
@@ -11,6 +12,12 @@ const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('codex-cl
 function setupIsolatedWorkDir(): string {
   const tempHome = createIsolatedHome('ghh-codex');
   const workDir = createWorkDir(templateDir, tempHome, runType);
+
+  // Copy Codex auth file
+  const codexGlobalDir = path.join(os.homedir(), '.codex');
+  const codexDestDir = path.join(tempHome, '.codex');
+  fs.mkdirSync(codexDestDir, { recursive: true });
+  copyFileIfExists(path.join(codexGlobalDir, 'auth.json'), path.join(codexDestDir, 'auth.json'));
 
   process.env.HOME = tempHome;
 
