@@ -5,7 +5,7 @@ web-feature-ids:
     - top-level-await
 ---
 
-# Conditional polyfill dependency fetching and initialization with top-level await
+# Conditionally load or initialize async dependencies
 
 Top-level await enables ECMAScript Modules (ESM) to act as asynchronous functions, pausing their own evaluation and blocking downstream imports until specific Promises resolve. This makes it an ideal mechanism for conditional dependency loading, such as fetching environment-specific polyfills before application code executes.
 
@@ -28,7 +28,7 @@ Top-level await enables ECMAScript Modules (ESM) to act as asynchronous function
   if (typeof globalThis.IntersectionObserver === 'undefined') {
     try {
       // 3 & 4: Dynamically await the polyfill import
-      await import('https://cdn.polyfill.io/v3/polyfill.min.js?features=IntersectionObserver');
+      await import('path/to/polyfill.js');
     } catch (error) {
       // 5: Handle network or loading failures gracefully
       console.error('Failed to load IntersectionObserver polyfill:', error);
