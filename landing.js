@@ -1,8 +1,7 @@
-import { getRunStats, getColor, escapeHtml, capitalize, initGoogleAuth, authenticatedFetch, getAccessToken } from './utils.js';
+import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken } from './utils.js';
 
 let allTestData = {}; // Cache all test data by testId
 let currentTab = 'suites';
-let currentScenarioFilter = 'all';
 let selectedTestIds = new Set(); // Set of test IDs to show
 let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
@@ -12,7 +11,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         // Initialize UI
         setupTabs();
-        setupFilters();
         setupTestFilters(); // New filter setup
         setupTableFilters();
 
@@ -48,13 +46,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderFilterMenuItems();
 
         const view = params.get('view');
-        if (view && ['overview', 'explorer', 'trends'].includes(view)) {
+        if (view && ['overview', 'trends'].includes(view)) {
             activateTab(view, false);
         }
 
         // Initial Render
         renderSuites();
-        renderExplorer();
         renderTrends();
 
     } catch (error) {
@@ -67,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.addEventListener('popstate', () => {
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view') || 'suites';
-    if (['suites', 'explorer', 'trends'].includes(view)) {
+    if (['suites', 'trends'].includes(view)) {
         activateTab(view, false);
     }
 
@@ -129,21 +126,6 @@ function activateTab(tabName, updateUrl = true) {
     }
 }
 
-function setupFilters() {
-    const filters = document.querySelectorAll('.filter-option[data-filter-type="scenario"]');
-    filters.forEach(filter => {
-        filter.addEventListener('click', () => {
-            // Update active filter state
-            filters.forEach(f => f.classList.remove('active'));
-            filter.classList.add('active');
-
-            currentScenarioFilter = filter.dataset.filterValue;
-
-            // Re-render Explorer content
-            renderExplorer();
-        });
-    });
-}
 
 function setupTestFilters() {
     const filterBtn = document.getElementById('filter-btn');
@@ -284,7 +266,6 @@ function updateUrlParams() {
 
 function renderAll() {
     renderSuites();
-    renderExplorer();
     renderTrends();
 }
 
@@ -439,247 +420,6 @@ function renderSuites() {
     });
 
     container.innerHTML = html;
-}
-
-
-function renderExplorer() {
-    const containerGrids = document.getElementById('explorer-grids');
-    const containerTimelines = document.getElementById('explorer-timelines');
-
-    containerGrids.innerHTML = '';
-    containerTimelines.innerHTML = '';
-
-    const scenarios = ['greenfield', 'brownfield', 'redfield'];
-    const prompts = ['specific', 'vague'];
-    const agents = ['unguided', 'guided'];
-
-    // Filter scenarios
-    const activeScenarios = currentScenarioFilter === 'all'
-        ? scenarios
-        : scenarios.filter(s => s === currentScenarioFilter);
-
-    activeScenarios.forEach(scenario => {
-        // Create Section for this Scenario
-        const section = document.createElement('div');
-        section.className = 'scenario-section';
-        section.innerHTML = `<h3 class="scenario-title">${capitalize(scenario)}</h3>`;
-
-        // 1. Render Grids for this scenario
-        prompts.forEach(prompt => {
-            const gridWrapper = document.createElement('div');
-            gridWrapper.className = 'dashboard-grid-row-pair';
-
-            agents.forEach(agent => {
-                const title = `${capitalize(prompt)} - ${capitalize(agent)}`;
-                const testName = `${scenario} - ${prompt} - ${agent}`; // Key for data lookup
-
-                const rowHtml = renderGridRow(testName);
-                if (rowHtml) {
-                    const gridContainer = document.createElement('div');
-                    gridContainer.className = 'dashboard-grid-item';
-                    gridContainer.innerHTML = `
-                        <div class="test-grid-label mt-15">${title}</div>
-                        <div class="test-grid-row">${rowHtml}</div>
-                    `;
-                    gridWrapper.appendChild(gridContainer);
-                }
-            });
-
-            if (gridWrapper.children.length > 0) {
-                section.appendChild(gridWrapper);
-            }
-        });
-
-        // 2. Render Comparison History (Side-by-Side Subgrid)
-        prompts.forEach(prompt => {
-            const historyHtml = renderComparisonHistory(scenario, prompt);
-            if (historyHtml) {
-                const historyContainer = document.createElement('div');
-                historyContainer.className = 'check-timeline-wrapper';
-                historyContainer.innerHTML = historyHtml;
-                section.appendChild(historyContainer);
-            }
-        });
-
-        containerGrids.appendChild(section);
-    });
-}
-
-
-function renderGridRow(testName) {
-    const testIds = getSortedTestIds();
-    const cellsHtml = [];
-    let hasData = false;
-
-    testIds.forEach(compoundTestId => {
-        const data = allTestData[compoundTestId].data;
-        const results = data.results;
-
-        const runData = results[testName];
-
-        if (runData && runData.length > 0) {
-            hasData = true;
-
-            // Calculate average across runs
-            let totalPassed = 0;
-            let totalChecks = 0;
-            runData.forEach(run => {
-                const s = getRunStats(run.results);
-                totalPassed += s.passed;
-                totalChecks += s.total;
-            });
-
-            const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
-
-            const testId = allTestData[compoundTestId].testId;
-            const source = allTestData[compoundTestId].source;
-            const dateStr = new Date(allTestData[compoundTestId].timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
-            cellsHtml.push(`
-                <a class="test-grid-cell"
-                     href="dashboard.html?testId=${testId}&source=${source}"
-                     style="background-color: ${getColor(avgRate)}"
-                     title="${testId} - ${dateStr}: ${avgRate}% (${totalPassed}/${totalChecks})">
-                    ${avgRate}%
-                </a>
-            `);
-        } else {
-            // Placeholder
-            cellsHtml.push(`
-                <div class="test-grid-cell empty" title="No Data">-</div>
-            `);
-        }
-    });
-
-    return hasData ? cellsHtml.join('') : null;
-}
-
-
-function renderComparisonHistory(scenario, prompt) {
-    const testIds = getSortedTestIds();
-    const checkDescriptions = new Map();
-    const agents = ['unguided', 'guided'];
-
-    // Gather all checks from BOTH agents for this prompt
-    agents.forEach(agent => {
-        const testName = `${scenario} - ${prompt} - ${agent}`;
-        testIds.forEach(compoundTestId => {
-            const data = allTestData[compoundTestId].data;
-            const results = data.results;
-            if (results && results[testName]) {
-                results[testName].forEach(run => {
-                    if (run.results) {
-                        run.results.forEach(check => {
-                            if (!checkDescriptions.has(check.id)) {
-                                checkDescriptions.set(check.id, check.message);
-                            }
-                        });
-                    }
-                });
-            }
-        });
-    });
-
-    if (checkDescriptions.size === 0) return null;
-
-    const sortedChecks = Array.from(checkDescriptions.keys()).sort();
-    const rowCount = sortedChecks.length + 1; // +1 for Header
-
-    let html = `
-        <div class="test-grid-label check-timeline-label">${capitalize(prompt)} - History Comparison</div>
-        <div class="comparison-grid" style="grid-template-rows: auto repeat(${sortedChecks.length}, auto);">
-    `;
-
-    // Render Columns for each Agent
-    agents.forEach(agent => {
-        const title = `${capitalize(agent)}`;
-        const testName = `${scenario} - ${prompt} - ${agent}`;
-
-        html += `
-            <div class="history-column" style="grid-row: 1 / span ${rowCount};">
-                <div class="history-header">
-                    <div class="history-header-title">${title}</div>
-                    <div class="history-header-subtitle">History (Latest → Oldest)</div>
-                </div>
-        `;
-
-        sortedChecks.forEach(checkId => {
-            const description = checkDescriptions.get(checkId) || checkId;
-
-            // Generate sparklines for this check/agent
-            let sparklinesHtml = '';
-            testIds.forEach(compoundTestId => {
-                const data = allTestData[compoundTestId].data;
-                const results = data.results;
-
-                let hasRuns = false;
-                const testId = allTestData[compoundTestId].testId;
-                const source = allTestData[compoundTestId].source;
-
-                if (results && results[testName]) {
-                    const runs = results[testName];
-                    if (runs && runs.length > 0) {
-                        hasRuns = true;
-                        // Show runs Latest -> Oldest (assuming runs are strictly ascending by runNumber)
-                        // logic in evaluate.js suggests they are pushed in runDirs sort order (ascending)
-                        [...runs].reverse().forEach(run => {
-                            let status = 'missing';
-                            let tooltip = `Test ${testId.replace('test_', '')} (Run ${run.runNumber}): Not Run`;
-
-                            const check = run.results.find(c => c.id === checkId);
-                            if (check) {
-                                status = check.passed ? 'pass' : 'fail';
-                                tooltip = `Test ${testId.replace('test_', '')} (Run ${run.runNumber}): ${check.passed ? 'PASS' : 'FAIL'}\\n${check.message}`;
-                            }
-
-                            let color = 'var(--bg-tertiary)';
-                            if (status === 'pass') color = 'var(--accent-success)';
-                            if (status === 'fail') color = 'var(--accent-failure)';
-                            const border = status === 'missing' ? '1px solid var(--border-color)' : 'none';
-
-                            const encodedTestName = encodeURIComponent(testName);
-                            const encodedCheckId = encodeURIComponent(checkId);
-
-                            sparklinesHtml += `
-                                <a href="dashboard.html?testId=${testId}&source=${source}&testName=${encodedTestName}&checkId=${encodedCheckId}"
-                                   class="history-sparkline-item"
-                                   style="background-color: ${color}; border: ${border};"
-                                   title="${escapeHtml(tooltip)}"></a>
-                            `;
-                        });
-                    }
-                }
-
-                if (!hasRuns) {
-                    let tooltip = `Test ${testId.replace('test_', '')}: Not Run`;
-
-                    let color = 'var(--bg-tertiary)';
-                    const border = '1px solid var(--border-color)';
-
-                    const encodedTestName = encodeURIComponent(testName);
-                    const encodedCheckId = encodeURIComponent(checkId);
-
-                    sparklinesHtml += `
-                        <a href="dashboard.html?testId=${testId}&source=${source}&testName=${encodedTestName}&checkId=${encodedCheckId}"
-                           class="history-sparkline-item"
-                           style="background-color: ${color}; border: ${border};"
-                           title="${escapeHtml(tooltip)}"></a>
-                    `;
-                }
-            });
-
-            html += `
-                <div class="history-item">
-                    <div class="check-id-text" title="${checkId}">${escapeHtml(description)}</div>
-                    <div class="history-sparklines">${sparklinesHtml}</div>
-                </div>
-            `;
-        });
-
-        html += `</div>`; // End column
-    });
-
-    html += `</div>`; // End grid
-    return html;
 }
 
 
