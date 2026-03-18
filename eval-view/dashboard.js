@@ -465,16 +465,27 @@ async function showDetails(testName, runs, stats, testId) {
         if (run === runs[0]) {
             try {
                 const isNegative = run.taskName && run.taskName.endsWith('-negative');
-                const promptPath = `tasks/${isNegative ? 'negative/' : ''}${run.taskName}.md`;
-                const text = await api.getFileText(promptPath);
-                
+                const taskPath = `tasks/${isNegative ? 'negative/' : ''}${run.taskName}.md`;
+                const text = await api.getFileText(taskPath);
+
+                // Extract base_app from YAML frontmatter
+                const frontmatterMatch = text.match(/^---([\s\S]+?)---/);
+                let baseApp = 'n/a';
+                if (frontmatterMatch) {
+                    const yaml = frontmatterMatch[1];
+                    const baseAppMatch = yaml.match(/base_app:\s*([^\n\r]+)/);
+                    if (baseAppMatch) {
+                        baseApp = baseAppMatch[1].trim();
+                    }
+                }
+
                 // Strip YAML frontmatter from the markdown task file
                 const cleanedText = text.replace(/^---[\s\S]+?---\n+/, '');
 
                 promptHtml = `
                     <div class="prompt-section" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--text-secondary);">
-                        <h4 style="margin-top: 0; margin-bottom: 10px;">Prompt</h4>
-                        <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; color: var(--text-primary);">${escapeHtml(cleanedText)}</pre>
+                        <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px;">Base App: <strong style="color: var(--text-primary);">${escapeHtml(baseApp)}</strong></div>
+                        <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px;">Prompt: <strong style="color: var(--text-primary); white-space: pre-wrap; font-family: inherit;">${escapeHtml(cleanedText)}</strong></div>
                     </div>
                 `;
             } catch (e) {
