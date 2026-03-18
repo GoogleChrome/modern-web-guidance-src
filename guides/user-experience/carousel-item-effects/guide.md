@@ -17,7 +17,7 @@ Carousel slide effects are a great way to add visual interest to a carousel. As 
 
 Here’s how to create carousel slide effects:
 
-1.  **Create a scroller:** This element will act as the container for your carousel slides.
+1.  **Create a scroller:** This element will act as the container for your carousel slides. In this example it uses `overflow-x: scroll` to allow horizontal scrolling.
 
     ```html
     <ul class="scroller">
@@ -26,6 +26,12 @@ Here’s how to create carousel slide effects:
       <li class="entry">3</li>
       …
     </ul>
+    ```
+
+    ```css
+    .scroller {
+      overflow-x: scroll;
+    }
     ```
 
 2.  **Define the animation:** Create a CSS animation that defines the different states of your slides as they traverse the scrollport. You can define keyframes for any part of the animation. For example, you can define a state for when the slides are in the center of the scrollport by including a `50%` keyframe. In this example, the `scale` property makes the slides grow as they approach the center and shrink as they move away.
