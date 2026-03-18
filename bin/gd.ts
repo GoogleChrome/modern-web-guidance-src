@@ -41,7 +41,7 @@ function listGuideDirs(): string[] {
 const completion = omelette('gd <command> <arg1> <arg2>');
 
 completion.on('command', ({ reply }) => {
-  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'baselinestatus', 'setup-completion', 'gen-negative-suite']);
+  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'baselinestatus', 'setup-completion', 'gen-negative-suite', 'gen-task-suite']);
 });
 
 completion.on('arg1', ({ before, reply }) => {
@@ -81,6 +81,8 @@ const { positionals, values } = parseArgs({
     'gen-grader': { type: 'boolean' },
     'gen-negative': { type: 'boolean' },
     guided: { type: 'boolean' },
+    'sync-task': { type: 'boolean' },
+    'no-test': { type: 'boolean' },
     verbose: { type: 'boolean' },
     usecases: { type: 'boolean' },
   },
@@ -128,6 +130,7 @@ ${cBold('Guide Development:')}
 ${"Piece-wise options for `dev`:"}
     ${cDim('--grade')}              Run/calibrate grader
     ${cDim('--test-grader')}        Check grader calibration (demo + negative-demo)
+    ${cDim('--sync-task')}          Force update task prompt from prompts.md
     ${cDim('--gen-grader')}         Generate a new grader script
     ${cDim('--gen-negative')}       Generate negative examples
     ${cDim('--guided')}             Skip calibration, run guided agent test only
@@ -141,6 +144,7 @@ ${cBold('Evaluation:')}
   ${cCyan('deploy')}                 Deploy the dashboard to GitHub Pages
   ${cCyan('upload')} <suite>         Upload generated evaluation suite to GCS
   ${cCyan('gen-negative-suite')}     Generate resources for negative suite
+  ${cCyan('gen-task-suite')}         Update regular tasks with latest prompts
 
 ${cBold('Other:')}
   ${cCyan('baselinestatus')} <query>      Check browser support and Baseline status
@@ -188,6 +192,8 @@ ${cBold('Options:')}
       const success = await devGuide(dir, {
         guidedOnly: !!values.guided,
         verbose: !!values.verbose,
+        syncTask: !!values['sync-task'],
+        test: !values['no-test'],
       });
       process.exit(success ? 0 : 1);
     }
@@ -260,6 +266,12 @@ ${cBold('Options:')}
     case 'gen-negative-suite': {
       const { generateNegativeSuite } = await import('../guides/negative-suite-gen.ts');
       await generateNegativeSuite();
+      break;
+    }
+
+    case 'gen-task-suite': {
+      const { generateTaskSuite } = await import('../guides/task-suite-gen.ts');
+      await generateTaskSuite();
       break;
     }
 
