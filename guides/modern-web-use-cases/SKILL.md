@@ -1,6 +1,6 @@
 ---
 name: modern-web-use-cases
-description: Search and retrieve modern web use cases and best practices. Use this skill whenever you need to implement or optimize web features to ensure alignment with modern best practices. Avoid guessing APIs; use the patterns returned by these tools.
+description: A mechanism to search for web development use cases and their corresponding best practice guides. **You MUST use this skill before starting ANY web development task.** Avoid guessing APIs; use the patterns returned by these tools.
 ---
 
 # Modern Web Use Cases

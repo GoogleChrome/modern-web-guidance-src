@@ -46,7 +46,7 @@ export const suiteConfig: SuiteConfig = {
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
   mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
   enableSkills: false,
-  agent: Agents.JETSKI,
+  agent: Agents.GEMINI_CLI,
   negative: false, // When `true`, runs the suite on all tasks in `tasks/negative/`
 };
 
