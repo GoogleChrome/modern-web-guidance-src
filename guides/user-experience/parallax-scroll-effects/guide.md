@@ -66,9 +66,27 @@ Here’s how to create a basic parallax effect:
     }
     ```
 
-5.  **Stagger the animations:** To make the layers move at different speeds, you can use one of two approaches:
+5.  **Stagger the animations:** To make the layers move at different speeds, you can use one of two main approaches: **staggering in the keyframes**, or **staggering the `animation-range`**. 
 
-    *   **Using `sibling-index()` in the keyframes:** This is the simplest approach. The `sibling-index()` function returns the index of a child element amongst its siblings, which you can then use in your keyframes to create a staggered effect.
+    Both of these approaches can use hardcoded values, or can use the `sibling-index()`/`sibling-count()` implementation. The hardcoded values are easiest and also useful when having only a limited amount of layers. The `sibling-index()`/`sibling-count()` implementation is handy when you have many layers.
+
+    *   **Staggering in the keyframes:**
+
+        Using **hardcoded values**, you can define a custom property for each layer to manually control its parallax offset.
+
+        ```css
+        .layer:nth-child(1) { --offset: 100px; }
+        .layer:nth-child(2) { --offset: 200px; }
+        .layer:nth-child(3) { --offset: 300px; }
+
+        @keyframes parallax {
+          from {
+            transform: translateY(var(--offset));
+          }
+        }
+        ```
+
+        Using **`sibling-index()`**, let the `sibling-index()` function return the index of a child element amongst its siblings to automatically calculate the staggered effect.
 
         ```css
         @keyframes parallax {
@@ -78,7 +96,17 @@ Here’s how to create a basic parallax effect:
         }
         ```
 
-    *   **Using `sibling-index()` and `sibling-count()` in `animation-range`:** This approach gives you more control over the animation. `sibling-count()` returns the total number of siblings. By combining these two functions, you can create more complex and fine-grained parallax effects.
+    *   **Staggering the `animation-range`:**
+
+        Using **hardcoded values**, you can explicitly define the boundaries of the `animation-range` on each layer individually.
+
+        ```css
+        .layer:nth-child(1) { animation-range: entry 25% exit 50%; }
+        .layer:nth-child(2) { animation-range: entry 25% exit 75%; }
+        .layer:nth-child(3) { animation-range: entry 25% exit 100%; }
+        ```
+
+        Using **`sibling-index()` and `sibling-count()`**, you can calculate the range mathematically based on the total number of layers (`sibling-count()`).
 
         ```css
         .layer {
