@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Temporal API: Location-Agnostic Data (Plain Types)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #10b981;
+      --warning-bg: #7f1d1d;
+      --warning-border: #dc2626;
+      --warning-text: #fecaca;
+      --success-bg: #064e3b;
+      --success-border: #059669;
+      --success-text: #ecfdf5;
+      --border-color: #334155;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.description {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .banner {
+      background-color: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      display: none;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .banner-icon {
+      font-size: 1.5rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--accent-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 600px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    input,
+    select {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .results-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      border: 1px solid transparent;
+      transition: border-color 0.3s;
+    }
+
+    .result-label {
+      color: var(--text-secondary);
+      font-weight: 500;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .result-sublabel {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .result-value {
+      font-family: monospace;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .badge.safe {
+      background-color: var(--success-bg);
+      color: var(--success-text);
+      border: 1px solid var(--success-border);
+    }
+
+    .badge.buggy {
+      background-color: var(--warning-bg);
+      color: var(--warning-text);
+      border: 1px solid var(--warning-border);
+    }
+
+    .explanation {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 8px;
+      border-left: 4px solid var(--accent-primary);
+    }
+
+    .separator {
+      height: 1px;
+      background: var(--border-color);
+      margin: 2rem 0;
+    }
+
+    code {
+      font-family: monospace;
+      background: #0f172a;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      color: #e2e8f0;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Location-Agnostic Data</h1>
+      <p class="description">
+        Demonstrate how <code>Temporal.PlainDate</code> and <code>Temporal.PlainTime</code> prevent "timezone drift"
+        bugs
+        by recording chronological data that remains identical regardless of the viewer's location.
+      </p>
+    </header>
+
+    <div id="unsupportedBanner" class="banner">
+      <div class="banner-icon">🚫</div>
+      <div>This demo requires a browser with native Temporal support</div>
+    </div>
+
+    <!-- Section 1: PlainDate (Birthdate) -->
+    <div class="card">
+      <div class="section-title">📅 Birthdate Simulation</div>
+
+      <div class="controls">
+        <div class="control-group">
+          <label for="birthdateInput">Enter Birthdate</label>
+          <input type="date" id="birthdateInput" value="1990-01-01">
+        </div>
+        <div class="control-group">
+          <label for="timezoneSelect">Simulate Viewer Timezone</label>
+          <select id="timezoneSelect">
+            <option value="UTC">UTC (Center)</option>
+            <option value="America/New_York">New York (UTC-5)</option>
+            <option value="Europe/Paris">Paris (UTC+1)</option>
+            <option value="Asia/Tokyo">Tokyo (UTC+9)</option>
+            <option value="Pacific/Honolulu">Honolulu (UTC-10)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="results-section">
+        <!-- Temporal.PlainDate -->
+        <div class="result-item" id="plainDateItem">
+          <div class="result-label">
+            <span>Temporal.PlainDate</span>
+            <span class="result-sublabel">Format: DD/MM/YYYY (Immutable)</span>
+          </div>
+          <div class="result-value">
+            <span id="plainDateValue">-</span>
+            <span id="plainBadge" class="badge">Checking...</span>
+          </div>
+        </div>
+
+        <!-- Standard Date -->
+        <div class="result-item" id="standardDateItem">
+          <div class="result-label">
+            <span>Standard Date Object</span>
+            <span class="result-sublabel">Format: DD/MM/YYYY (Simulated Load)</span>
+          </div>
+          <div class="result-value">
+            <span id="standardDateValue">-</span>
+            <span id="standardBadge" class="badge">Checking...</span>
+          </div>
+        </div>
+
+        <div class="explanation">
+          <strong>Discrepancy:</strong> When using standard <code>Date</code>, saving "1990-01-01" as a server-side UTC
+          instant
+          causes users in western timezones (e.g., New York) to see it as <strong>Dec 31, 1989</strong> due to the
+          offset.
+          <code>Temporal.PlainDate</code> has no concept of time or zone, staying exact.
+        </div>
+      </div>
+    </div>
+
+
+
+  </div>
+
+  <script>
+    const birthdateInput = document.getElementById('birthdateInput');
+    const timezoneSelect = document.getElementById('timezoneSelect');
+    const plainDateValue = document.getElementById('plainDateValue');
+    const plainBadge = document.getElementById('plainBadge');
+    const plainDateItem = document.getElementById('plainDateItem');
+    const standardDateValue = document.getElementById('standardDateValue');
+    const standardBadge = document.getElementById('standardBadge');
+    const standardDateItem = document.getElementById('standardDateItem');
+    const unsupportedBanner = document.getElementById('unsupportedBanner');
+
+    // Check Support
+    if (typeof Temporal === 'undefined') {
+      unsupportedBanner.style.display = 'flex';
+      birthdateInput.disabled = true;
+      timezoneSelect.disabled = true;
+    } else {
+      initializeDemo();
+    }
+
+    function initializeDemo() {
+      // Event Listeners
+      birthdateInput.addEventListener('input', updateBirthdate);
+      timezoneSelect.addEventListener('change', updateBirthdate);
+
+      // Initial Run
+      updateBirthdate();
+    }
+
+    function updateBirthdate() {
+      const selectedDate = birthdateInput.value; // YYYY-MM-DD
+      const selectedTz = timezoneSelect.value;
+
+      if (!selectedDate) return;
+
+      try {
+        // 1. Temporal.PlainDate
+        const plainDate = Temporal.PlainDate.from(selectedDate);
+        plainDateValue.textContent = plainDate.toLocaleString('en-GB');
+
+        // 1b. Check PlainDate against original input (Should ALWAYS match)
+        const isPlainDrifted = plainDate.toString() !== selectedDate;
+        if (isPlainDrifted) {
+          plainBadge.textContent = "Drifted!";
+          plainBadge.className = "badge buggy";
+          plainDateItem.style.borderColor = "var(--warning-border)";
+        } else {
+          plainBadge.textContent = "Matches Original";
+          plainBadge.className = "badge safe";
+          plainDateItem.style.borderColor = "transparent";
+        }
+
+        // 2. Simulate Standard Date drift bug
+        const instantStr = `${selectedDate}T00:00:00Z`;
+        const dateObj = new Date(instantStr);
+
+        // Format for the selected timezone using Intl (en-GB for DD/MM/YYYY)
+        const formatter = new Intl.DateTimeFormat('en-GB', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          timeZone: selectedTz
+        });
+
+        // Extract day to compare
+        const parts = formatter.formatToParts(dateObj);
+        const day = parts.find(p => p.type === 'day').value;
+        const month = parts.find(p => p.type === 'month').value;
+        const year = parts.find(p => p.type === 'year').value;
+        const currentLocalStr = `${year}-${month}-${day}`;
+
+        standardDateValue.textContent = formatter.format(dateObj);
+
+        // Check for Discrepancy against ORIGINAL date
+        const isStandardDrifted = currentLocalStr !== selectedDate;
+
+        if (isStandardDrifted) {
+          standardBadge.textContent = "Drifted!";
+          standardBadge.className = "badge buggy";
+          standardDateItem.style.borderColor = "var(--warning-border)";
+        } else {
+          standardBadge.textContent = "Matches Original";
+          standardBadge.className = "badge safe";
+          standardDateItem.style.borderColor = "transparent";
+        }
+
+      } catch (error) {
+        console.error(error);
+        plainDateValue.textContent = "Error";
+        standardDateValue.textContent = "Error";
+      }
+    }
+
+  </script>
+
+</body>
+
+</html>

@@ -1,6 +1,6 @@
 ---
 name: format-human-readable-durations
-description: Manage how time spans are displayed to users by controlling "balancing" logic. This allows developers to choose between unit-specific counts (e.g., "90 minutes") or wrapped human-friendly formats (e.g., "1 hour and 30 minutes") during formatting and display
+description: Present elapsed time or trial durations to users in a readable format, with the flexibility to display either detailed unit breakdowns (e.g., "1 hour and 30 minutes") or total unit counts (e.g., "90 minutes") depending on context.
 web-feature-ids:
   - temporal
 ---

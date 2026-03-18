@@ -1,6 +1,6 @@
 ---
 name: support-global-calendar-systems
-description: Implement native support for diverse global calendar systems (e.g., Hebrew, Islamic, or Chinese). ultilize the monthCode abstraction to handle complex logic like "leap months," enabling accurate local date manipulation without external dependencies.
+description: Display and calculate dates in non-Gregorian calendar systems (e.g., Islamic, Hebrew, or Chinese) accurately for international users.
 web-feature-ids:
   - temporal
 ---
