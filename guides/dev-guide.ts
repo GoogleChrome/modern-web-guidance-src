@@ -588,7 +588,6 @@ export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
       }
     }
   }
-  }
 
   // Next action suggestions, ordered by pipeline stage
   const nextCalibrate = byStatus.get('needs-calibration')?.[0];
