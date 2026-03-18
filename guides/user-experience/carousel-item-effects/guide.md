@@ -111,8 +111,6 @@ This code animates the carousel items of a horizontal scroller on scroll using a
 }
 ```
 
-Prefer a named `view-timeline` when multiple elements or children of the tracked subject need to animate.
-
 ## Best Practices
 
 When using scroll-driven animations, it's important to follow a few best practices to ensure a smooth and accessible experience:
@@ -125,10 +123,11 @@ When using scroll-driven animations, it's important to follow a few best practic
 - **DO** try to animate only performant CSS properties: For the smoothest animations, stick to animating properties that can be handled by the browser's compositor thread, such as `transform` and `opacity`. Animating other properties like `width` or `height` can lead to performance issues.
 - **DO** use the correct declaration order: When using the `animation` shorthand property, declare `animation-timeline` and `animation-range` *after* it to prevent the shorthand from resetting the timeline.
 
+Prefer a named `view-timeline` when multiple DOM elements need to animate based on the same timeline, or when you need to animate children of the element that has the `view-timeline` defined on it. If the element that you animate is also the element that defines the `view-timeline`, you can use an anonymous view-timeline using `view()`.
+
 When using the `view()` function to create a scroll-driven animation:
 
 - **OPTIONAL** be explicit about the axis to track: When not targeting the default `block` axis (such as in a horizontal scroller), be explicit about which axis to track with `view(block)` or `view(inline)`.
-- When the animation is not applied to the tracked subject itself, use a named view timeline.
 
 When using the `view-timeline` property to create a scroll-driven animation:
 
