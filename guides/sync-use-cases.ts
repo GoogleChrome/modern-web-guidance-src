@@ -24,13 +24,6 @@ interface ValidationResult {
   filePath: string;
 }
 
-interface UseCaseFiles {
-  hasGuide: boolean;
-  hasDemo: boolean;
-  hasGrader: boolean;
-  hasPrompts: boolean;
-}
-
 export interface IssueContent {
   issueTitle: string;
   issueBody: string;

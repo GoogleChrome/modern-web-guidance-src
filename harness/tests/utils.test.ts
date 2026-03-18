@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { inventoryGuide, scanAllGuides, getTaskMap, type GuideInventory } from '../lib/utils.ts';
+import { inventoryGuide, scanAllGuides } from '../lib/utils.ts';
 
 function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'utils-test-'));
