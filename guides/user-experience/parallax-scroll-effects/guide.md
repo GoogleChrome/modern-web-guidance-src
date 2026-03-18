@@ -206,6 +206,8 @@ if (!CSS.supports('(animation-timeline: view()) and (animation-range: entry)')) 
       const scrollPercent = (scrollY - (wrapperTop - windowHeight)) / (wrapperHeight + windowHeight);
       
       layers.forEach((layer, index) => {
+        // This matches the effect as defined in the CSS example above.
+        // Customize this further if needed.
         const initialTranslateY = 100 * index;
         const translateY = initialTranslateY * (1 - scrollPercent);
         layer.style.transform = `translateY(${translateY}px)`;

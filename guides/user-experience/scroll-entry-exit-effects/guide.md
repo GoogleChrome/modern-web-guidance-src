@@ -158,6 +158,8 @@ While browser support for scroll-driven animations is constantly improving, it's
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
+          // This matches the effect as defined in the CSS example above.
+          // Customize this further if needed.
           entry.target.style.scale = 0.5 + entry.intersectionRatio * 0.5;
         }
       },
