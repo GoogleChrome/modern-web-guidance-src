@@ -48,7 +48,7 @@ export interface FeatureToSync {
   issueNumber: number;
   needsReopen: boolean;
   closeReason: 'completed' | null;
-  targetStatus: 'Needs evals' | null;
+  targetStatus: 'Needs use cases' | 'Needs evals' | null;
 }
 
 interface ProjectDetails {
@@ -240,6 +240,14 @@ export function getFeaturesNeedingSync(
         needsReopen: false,
         closeReason: 'completed',
         targetStatus: null,
+      });
+    } else if (!featuresWithAnyUseCases.has(featureId) && featureData.state === 'open') {
+      result.push({
+        featureId,
+        issueNumber: featureData.number,
+        needsReopen: false,
+        closeReason: null,
+        targetStatus: 'Needs use cases',
       });
     }
   }

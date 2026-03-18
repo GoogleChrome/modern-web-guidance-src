@@ -481,10 +481,10 @@ describe('getFeaturesNeedingSync', () => {
     assert.deepStrictEqual(result[0], { featureId: 'autofill', issueNumber: 27, needsReopen: false, closeReason: 'completed', targetStatus: null });
   });
 
-  test('skips open feature with no use cases — it may just be waiting for use cases', () => {
+  test('sets "Needs use cases" for open feature with no use cases', () => {
     const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
     const result = getFeaturesNeedingSync(featureMap, new Set(), new Set());
-    assert.deepStrictEqual(result, []);
+    assert.deepStrictEqual(result, [{ featureId: 'autofill', issueNumber: 27, needsReopen: false, closeReason: null, targetStatus: 'Needs use cases' }]);
   });
 
   test('skips already-closed feature with all use cases implemented', () => {
@@ -511,15 +511,24 @@ describe('getFeaturesNeedingSync', () => {
     assert.ok(result.every(f => f.targetStatus === 'Needs evals'));
   });
 
-  test('closes feature with completed use cases but skips feature with no use cases', () => {
+  test('closes feature with completed use cases', () => {
     const featureMap = makeFeatureMap([
       ['autofill', { number: 27, state: 'open' }],
-      ['view-transitions', { number: 55, state: 'open' }],
     ]);
     const result = getFeaturesNeedingSync(featureMap, new Set(), new Set(['autofill']));
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0].featureId, 'autofill');
     assert.strictEqual(result[0].closeReason, 'completed');
+  });
+
+  test('sets "Needs use cases" for feature with no use cases', () => {
+    const featureMap = makeFeatureMap([
+      ['view-transitions', { number: 55, state: 'open' }],
+    ]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(), new Set());
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].featureId, 'view-transitions');
+    assert.strictEqual(result[0].targetStatus, 'Needs use cases');
   });
 });
 
