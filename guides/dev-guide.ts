@@ -466,9 +466,8 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
 
 // Batch mode: process all incomplete guides
 export async function devAll(options: DevGuideOptions = {}): Promise<void> {
-  const taskMap = getTaskMap();
-  const incompleteGuides = scanAllGuides(taskMap).filter(inv =>
-    inv.hasGuide && inv.hasDemo && inv.hasExpectations && !inv.expectationsEmpty && (!inv.hasNegativeDemo || !inv.hasGrader || !inv.hasPrompts || !inv.hasTask)
+  const incompleteGuides = scanAllGuides().filter(inv =>
+    inv.hasGuide && inv.hasDemo && (!inv.hasNegativeDemo || !inv.hasGrader || !inv.hasPrompts || !inv.hasTask)
   );
 
   if (incompleteGuides.length === 0) {

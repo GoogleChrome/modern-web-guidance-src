@@ -23,10 +23,7 @@ export async function generateNegativeSuite() {
   console.log('Scanning guides...');
   const allGuides = scanAllGuides();
 
-  const evalReadyGuides = allGuides.filter(inv => {
-    const status = classifyGuide(inv);
-    return status === 'needs-evals' || status === 'done';
-  });
+  const evalReadyGuides = allGuides.filter(inv => classifyGuide(inv) === 'eval-ready');
 
   if (evalReadyGuides.length === 0) {
     console.log('No eval-ready guides found.');
