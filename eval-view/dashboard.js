@@ -578,8 +578,7 @@ async function showDetails(testName, runs, stats, testId) {
                 if (allTestData.enableSkills && sessionFile) {
                     openTrajectory(usedBasePath, sessionFile);
                 } else {
-                    const logFileToShow = files.includes('modern-web.log') ? 'modern-web.log' : 'mcp-server.log';
-                    const resourcesPath = `${usedBasePath}/${logFileToShow}`;
+                    const resourcesPath = `${usedBasePath}/${logFile}`;
                     viewContent(resourcesPath, resourcesPath);
                 }
             };

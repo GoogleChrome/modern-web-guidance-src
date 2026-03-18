@@ -112,7 +112,7 @@ async function collectClaudeCodeGuides(dirPath: string): Promise<string[]> {
           const obj = JSON.parse(line);
           if (obj.message && obj.message.content) {
             for (const contentItem of obj.message.content) {
-              if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input && contentItem.input.command) {
+              if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input && contentItem.input.command) { // skill + cli path
                 const command = contentItem.input.command;
                 if (command.includes('serving/scripts/retrieve.ts')) {
                   const match = command.match(/retrieve\.ts\s+["']?([^"'\s]+)["']?/);
@@ -120,7 +120,7 @@ async function collectClaudeCodeGuides(dirPath: string): Promise<string[]> {
                     guidesFromSkills.push(match[1]);
                   }
                 }
-              } else if (contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input && contentItem.input.file_path) {
+              } else if (contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input && contentItem.input.file_path) { // megaskill path
                 const filePath = contentItem.input.file_path;
                 if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
                   const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
