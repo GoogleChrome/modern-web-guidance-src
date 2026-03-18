@@ -6,151 +6,42 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-import matter from 'gray-matter';
 import { generateNegative } from './negative-gen.ts';
 import { generateGrader, generateGraderWithContext } from './grader-gen.ts';
 import { testGrader, findGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
-import { 
-  createIsolatedHome, 
-  cleanupIsolatedHome, 
-  copyFileIfExists, 
+import {
+  createIsolatedHome,
+  cleanupIsolatedHome,
+  copyFileIfExists,
   createTrustedFolders,
   spawnAsync
 } from '../harness/lib/agent-shared.ts';
 import { environmentConfig } from '../harness/config.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
+import {
+  type GuideInventory,
+  type TaskInfo,
+  type GuideStatus,
+  GUIDE_FILE,
+  DEMO_FILE,
+  EXPECTATIONS_FILE,
+  NEGATIVE_DEMO_FILE,
+  GRADER_FILE,
+  PROMPTS_FILE,
+  getTaskMap,
+  inventoryGuide,
+  readFileSafe,
+  classifyGuide,
+  scanAllGuides
+} from '../harness/lib/utils.ts';
 
-// Constants
-const GUIDE_FILE = 'guide.md';
-const DEMO_FILE = 'demo.html';
-const EXPECTATIONS_FILE = 'expectations.md';
-const NEGATIVE_DEMO_FILE = 'negative-demo.html';
-const GRADER_FILE = 'grader.ts';
-const PROMPTS_FILE = 'prompts.md';
 const TASKS_DIR = path.join(rootDir, 'harness', 'tasks');
 
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
   test?: boolean;        // default: true — run agent test after calibration
+  guidedOnly?: boolean;  // skip calibration and only run the guided agent test
   verbose?: boolean;
-}
-
-interface GuideInventory {
-  dir: string;
-  name: string;
-  category: string;
-  hasGuide: boolean;
-  isStub: boolean;
-  hasDemo: boolean;
-  hasExpectations: boolean;
-  expectationsEmpty: boolean;
-  hasNegativeDemo: boolean;
-  hasGrader: boolean;
-  hasPrompts: boolean;
-  hasTask: boolean;
-  featureIds: string[];
-}
-
-interface TaskInfo {
-  taskName: string;
-  baseApp: string;
-  prompt: string;
-}
-
-/**
- * Reads a file and trims its content. Returns empty string if file doesn't exist.
- */
-function readFileSafe(filePath: string): string {
-  try {
-    return fs.readFileSync(filePath, 'utf-8').trim();
-  } catch {
-    return '';
-  }
-}
-
-/**
- * Builds a map of grader names to task information.
- */
-export function getTaskMap(): Map<string, TaskInfo> {
-  const taskMap = new Map<string, TaskInfo>();
-  if (!fs.existsSync(TASKS_DIR)) return taskMap;
-
-  const taskFiles = fs.readdirSync(TASKS_DIR).filter(f => f.endsWith('.md'));
-  for (const file of taskFiles) {
-    const rawContent = readFileSafe(path.join(TASKS_DIR, file));
-    if (!rawContent) continue;
-
-    const { data, content } = matter(rawContent);
-    if (data?.grader) {
-      taskMap.set(data.grader, {
-        taskName: file.replace(/\.md$/, ''),
-        baseApp: data.base_app || 'daily-grind',
-        prompt: content.trim()
-      });
-    }
-  }
-  return taskMap;
-}
-
-function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): GuideInventory {
-  const name = path.basename(dir);
-  const category = path.basename(path.dirname(dir));
-  
-  const expectationsContent = readFileSafe(path.join(dir, EXPECTATIONS_FILE));
-  const hasExpectations = fs.existsSync(path.join(dir, EXPECTATIONS_FILE));
-  
-  const guideContent = readFileSafe(path.join(dir, GUIDE_FILE));
-  let hasGuide = false;
-  let isStub = false;
-  
-  if (guideContent) {
-    const parsed = matter(guideContent);
-    const hasFrontmatter = Object.keys(parsed.data).length > 0 || guideContent.startsWith('---');
-    const hasContent = parsed.content.trim().length > 0;
-    
-    if (hasFrontmatter) {
-      isStub = true;
-      if (hasContent) {
-        hasGuide = true;
-      }
-    } else if (hasContent) {
-      hasGuide = true;
-    }
-  }
-
-  const featureIds = guideContent ? (matter(guideContent).data['web-feature-ids'] || []) : [];
-
-  return {
-    dir,
-    name,
-    category,
-    hasGuide,
-    isStub,
-    hasDemo: readFileSafe(path.join(dir, DEMO_FILE)).length > 0,
-    hasExpectations,
-    expectationsEmpty: hasExpectations && expectationsContent.length === 0,
-    hasNegativeDemo: fs.existsSync(path.join(dir, NEGATIVE_DEMO_FILE)),
-    hasGrader: fs.existsSync(path.join(dir, GRADER_FILE)),
-    hasPrompts: fs.existsSync(path.join(dir, PROMPTS_FILE)),
-    hasTask: taskMap.has(name),
-    featureIds,
-  };
-}
-
-export function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
-  const guides: GuideInventory[] = [];
-  const categories = fs.readdirSync(__dirname, { withFileTypes: true })
-    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
-    .map(d => d.name);
-  for (const category of categories) {
-    const categoryDir = path.join(__dirname, category);
-    if (!fs.existsSync(categoryDir)) continue;
-    for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
-      guides.push(inventoryGuide(path.join(categoryDir, entry.name), taskMap));
-    }
-  }
-  return guides;
 }
 
 function printInventory(inv: GuideInventory): void {
@@ -228,52 +119,56 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     console.log(cDim(`\nSkipping ${GRADER_FILE} generation (already exists)`));
   }
 
-  // Step 4: Calibration retry loop
-  console.log(cCyan(`\n--- Calibrating grader ---`));
-
+  // Step 4: Calibration retry loop (skipped when guidedOnly)
   let calibrationResult: CalibrationResult | null = null;
   let calibrationAttempt = 0;
 
-  for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-    calibrationAttempt = attempt;
-    console.log(cYellow(`\nCalibration attempt ${attempt}...`));
-
-    try {
-      calibrationResult = await testGrader(targetDirRaw);
-    } catch (err) {
-      console.error(cRed(`Calibration error: ${err}`));
-      calibrationResult = {
-        success: false,
-        demo: { passed: 0, failed: 0, failingTests: [] },
-        negative: { passed: 0, failed: 0, passingTests: [] },
-      };
-    }
-
-    if (calibrationResult.success) {
-      console.log(cGreen(`\u2705 Grader calibrated on attempt ${attempt}!`));
-      break;
-    }
-
-    if (attempt <= maxRetries) {
-      console.log(cYellow(`Attempt ${attempt} failed. Regenerating grader with failure context...`));
-
-      const graderPath = path.join(targetDir, GRADER_FILE);
-      if (fs.existsSync(graderPath)) {
-        fs.unlinkSync(graderPath);
-      }
+  if (options.guidedOnly) {
+    console.log(cDim(`\nSkipping calibration (--guided)`));
+    calibrationResult = { success: true, demo: { passed: 0, failed: 0, failingTests: [] }, negative: { passed: 0, failed: 0, passingTests: [] } };
+  } else {
+    console.log(cCyan(`\n--- Calibrating grader ---`));
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      calibrationAttempt = attempt;
+      console.log(cYellow(`\nCalibration attempt ${attempt}...`));
 
       try {
-        await generateGraderWithContext(targetDirRaw, calibrationResult);
-        if (!fs.existsSync(graderPath)) {
-          console.error(cRed(`Failed: ${GRADER_FILE} was not regenerated`));
-          break;
-        }
+        calibrationResult = await testGrader(targetDirRaw);
       } catch (err) {
-        console.error(cRed(`Failed to regenerate ${GRADER_FILE}: ${err}`));
+        console.error(cRed(`Calibration error: ${err}`));
+        calibrationResult = {
+          success: false,
+          demo: { passed: 0, failed: 0, failingTests: [] },
+          negative: { passed: 0, failed: 0, passingTests: [] },
+        };
+      }
+
+      if (calibrationResult.success) {
+        console.log(cGreen(`\u2705 Grader calibrated on attempt ${attempt}!`));
         break;
       }
-    } else {
-      console.log(cRed(`\u274c Grader failed to calibrate after ${maxRetries + 1} attempts.`));
+
+      if (attempt <= maxRetries) {
+        console.log(cYellow(`Attempt ${attempt} failed. Regenerating grader with failure context...`));
+
+        const graderPath = path.join(targetDir, GRADER_FILE);
+        if (fs.existsSync(graderPath)) {
+          fs.unlinkSync(graderPath);
+        }
+
+        try {
+          await generateGraderWithContext(targetDirRaw, calibrationResult);
+          if (!fs.existsSync(graderPath)) {
+            console.error(cRed(`Failed: ${GRADER_FILE} was not regenerated`));
+            break;
+          }
+        } catch (err) {
+          console.error(cRed(`Failed to regenerate ${GRADER_FILE}: ${err}`));
+          break;
+        }
+      } else {
+        console.log(cRed(`\u274c Grader failed to calibrate after ${maxRetries + 1} attempts.`));
+      }
     }
   }
 
@@ -301,7 +196,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
   // Step 6: Optional agent test
   if (options.test !== false && calibrationResult?.success) {
-    await runAgentTest(targetDir, currentInv.name, taskMap);
+    await runAgentTest(targetDir, currentInv.name, taskMap, options.guidedOnly);
   }
 
   // Step 7: Summary
@@ -414,7 +309,7 @@ ${prompt}
   return { taskName, baseApp: 'daily-grind', prompt };
 }
 
-async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<string, TaskInfo>): Promise<void> {
+async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<string, TaskInfo>, guidedOnly = false): Promise<void> {
   console.log(cCyan(`\n--- Running agent test ---`));
 
   const taskInfo = taskMap.get(guideName);
@@ -422,7 +317,7 @@ async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<s
     console.error(cRed(`Task info not found for ${guideName}, cannot run agent test.`));
     return;
   }
-  
+
   console.log(`Task: ${taskInfo.taskName} (base_app: ${taskInfo.baseApp})`);
   console.log(`Prompt: ${cDim(taskInfo.prompt.substring(0, 120))}${taskInfo.prompt.length > 120 ? '...' : ''}`);
 
@@ -458,11 +353,13 @@ async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<s
     outputDir: testOutputDir,
     tasks: [taskInfo.taskName],
     numRuns: 1,
-    skipEval: true
+    skipEval: true,
+    guidedOnly,
   });
 
   // 3. Grade agent output (unguided + guided)
-  for (const runType of ['unguided', 'guided']) {
+  const runTypes = guidedOnly ? ['guided'] : ['unguided', 'guided'];
+  for (const runType of runTypes) {
     const resultDir = path.join(testOutputDir, '1', taskInfo.taskName, runType);
     if (!fs.existsSync(resultDir)) continue;
 
@@ -484,13 +381,13 @@ async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<s
 async function gradeOutput(htmlPath: string, graderPath: string, outputDir: string): Promise<{ passed: number; total: number } | null> {
   const label = path.basename(path.dirname(outputDir));
   console.log(cYellow(`\nGrading ${label}...`));
-  
+
   try {
     const gradeResults = await runPlaywright(htmlPath, graderPath, outputDir, 'pipe');
     const passed = gradeResults.stats?.expected || 0;
     const failed = gradeResults.stats?.unexpected || 0;
     const total = passed + failed;
-    
+
     if (total > 0) {
       console.log(`  ${label}: ${passed}/${total} checks passed (${Math.round(passed / total * 100)}%)`);
     }
@@ -619,30 +516,17 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
   console.log('');
 }
 
-type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
-
-export function classifyGuide(inv: GuideInventory): GuideStatus {
-  if (!inv.hasGuide && !inv.isStub) return 'incomplete';
-  if (inv.isStub && !inv.hasGuide) return 'stub';
-  if (!inv.hasDemo) return 'incomplete';
-  if (!inv.hasExpectations || inv.expectationsEmpty) return 'needs-expectations';
-  if (!inv.hasNegativeDemo || !inv.hasGrader) return 'needs-calibration';
-  if (!inv.hasPrompts || !inv.hasTask) return 'needs-test';
-  return 'eval-ready';
-}
-
 const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
-  'incomplete':        { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
-  'stub':              { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
+  'incomplete':         { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
+  'stub':               { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
   'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
-  'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
-  'needs-test':        { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
-  'eval-ready':        { label: 'Ready for eval', color: cGreen },
+  'needs-calibration':  { label: 'Needs calibration (run gd dev)', color: cYellow },
+  'needs-test':         { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
+  'eval-ready':         { label: 'Ready for eval', color: cGreen },
 };
 
 export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
-  const taskMap = getTaskMap();
-  const allGuides = scanAllGuides(taskMap);
+  const allGuides = scanAllGuides();
 
   if (allGuides.length === 0) {
     console.log('No guides found.');
@@ -655,8 +539,6 @@ export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
     if (!byStatus.has(status)) byStatus.set(status, []);
     byStatus.get(status)!.push(inv);
   }
-
-
 
   // Summary counts
   console.log(cBold(`\nGuide Audit: ${allGuides.length} guides\n`));
@@ -676,33 +558,34 @@ export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
       byCategory.get(inv.category)!.push(inv);
     }
 
-  const dot = (has: boolean) => has ? '●' : cDim('○');
-  const guideDot = (inv: GuideInventory) => {
-    if (inv.hasGuide) return '●';
-    if (inv.isStub) return '◐';
-    return cDim('○');
-  };
-  // Pad a single visible character (possibly ANSI-wrapped) to a fixed column width
-  const col = (s: string, w = 6) => s + ' '.repeat(w - 1);
+    const dot = (has: boolean) => has ? '●' : cDim('○');
+    const guideDot = (inv: GuideInventory) => {
+      if (inv.hasGuide) return '●';
+      if (inv.isStub) return '◐';
+      return cDim('○');
+    };
+    // Pad a single visible character (possibly ANSI-wrapped) to a fixed column width
+    const col = (s: string, w = 6) => s + ' '.repeat(w - 1);
 
-  for (const [category, guides] of byCategory) {
-    console.log(cBold(`\n${category}/`));
+    for (const [category, guides] of byCategory) {
+      console.log(cBold(`\n${category}/`));
 
-    const hdr = 'guide'.padEnd(6) + 'demo'.padEnd(6) + 'expct'.padEnd(6)
-      + '│ ' + 'neg'.padEnd(6) + 'grdr'.padEnd(6) + 'prmpt'.padEnd(6) + 'task';
-    console.log(cDim(`  ${'name'.padEnd(42)} ${hdr}`));
+      const hdr = 'guide'.padEnd(6) + 'demo'.padEnd(6) + 'expct'.padEnd(6)
+        + '│ ' + 'neg'.padEnd(6) + 'grdr'.padEnd(6) + 'prmpt'.padEnd(6) + 'task';
+      console.log(cDim(`  ${'name'.padEnd(42)} ${hdr}`));
 
-    for (const inv of guides.sort((a, b) => a.name.localeCompare(b.name))) {
-      const status = classifyGuide(inv);
-      const { color } = statusLabel[status];
+      for (const inv of guides.sort((a, b) => a.name.localeCompare(b.name))) {
+        const status = classifyGuide(inv);
+        const { color } = statusLabel[status];
 
-      const name = inv.name.length > 40 ? inv.name.substring(0, 39) + '…' : inv.name;
-      const expctDot = inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations);
-      const row = col(guideDot(inv)) + col(dot(inv.hasDemo)) + col(expctDot)
-        + cDim('│') + ' ' + col(dot(inv.hasNegativeDemo)) + col(dot(inv.hasGrader))
-        + col(dot(inv.hasPrompts)) + dot(inv.hasTask);
+        const name = inv.name.length > 40 ? inv.name.substring(0, 39) + '…' : inv.name;
+        const expctDot = inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations);
+        const row = col(guideDot(inv)) + col(dot(inv.hasDemo)) + col(expctDot)
+          + cDim('│') + ' ' + col(dot(inv.hasNegativeDemo)) + col(dot(inv.hasGrader))
+          + col(dot(inv.hasPrompts)) + dot(inv.hasTask);
 
-      console.log(`  ${color(name.padEnd(42))} ${row}`);
+        console.log(`  ${color(name.padEnd(42))} ${row}`);
+      }
     }
   }
   }
@@ -787,7 +670,7 @@ function renderFeatureMatrix(allGuides: GuideInventory[]): void {
   for (const fId of sortedFeatures) {
     const guides = featureToGuides.get(fId)!;
     const col = (s: string, w = 10) => s + ' '.repeat(Math.max(0, w - guides.length));
-    
+
     // Determine overall status as the minimum status rank among all guides in this feature
     const statuses = guides.map(classifyGuide);
     const minRank = Math.min(...statuses.map(s => statusRank[s]));
@@ -802,13 +685,13 @@ function renderFeatureMatrix(allGuides: GuideInventory[]): void {
 
     const expctDots = guides.map(inv => (inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations))).join('');
 
-    const row = col(renderDots(guideDot)) + 
-                col(renderDots(inv => dot(inv.hasDemo))) + 
-                col(expctDots) + 
+    const row = col(renderDots(guideDot)) +
+                col(renderDots(inv => dot(inv.hasDemo))) +
+                col(expctDots) +
                 cDim('│') + ' ' +
-                col(renderDots(inv => dot(inv.hasNegativeDemo))) + 
-                col(renderDots(inv => dot(inv.hasGrader))) + 
-                col(renderDots(inv => dot(inv.hasPrompts))) + 
+                col(renderDots(inv => dot(inv.hasNegativeDemo))) +
+                col(renderDots(inv => dot(inv.hasGrader))) +
+                col(renderDots(inv => dot(inv.hasPrompts))) +
                 renderDots(inv => dot(inv.hasTask));
 
     console.log(`  ${color(name.padEnd(32))} ${String(guides.length).padStart(5)}  ${row}`);

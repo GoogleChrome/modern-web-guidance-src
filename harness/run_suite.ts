@@ -73,6 +73,7 @@ export interface RunSuiteOptions {
   tasks?: string[];
   numRuns?: number;
   skipEval?: boolean;
+  guidedOnly?: boolean;
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
@@ -155,7 +156,8 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
         promptContent += COMMON_APPEND_PROMPT;
 
-        for (const runType of RUN_TYPES) {
+        const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
+        for (const runType of runTypesToRun) {
           const templateDir = path.join(baseAppsDir, baseApp);
 
           if (!fs.existsSync(templateDir)) {

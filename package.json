@@ -10,6 +10,7 @@
   },
   "scripts": {
     "test": "pnpm -r test",
+    "baselinestatus": "pnpm --filter modern-web-mcp baselinestatus",
     "lint": "oxlint --ignore-path .oxlintignore",
     "typecheck": "pnpm -r typecheck",
     "preflight": "pnpm typecheck && pnpm lint && pnpm test",

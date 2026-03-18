@@ -135,7 +135,7 @@ run();
 
       let guidesUsedResult: string[] = [];
       if (runType === 'guided') {
-        guidesUsedResult = await collectGuidesUsed(dir);
+        guidesUsedResult = await collectGuidesUsed(dir, config.suite.enableSkills);
       }
 
       const targetFile = path.join(dir, 'index.html');

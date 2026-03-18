@@ -267,7 +267,7 @@ async function startJetski(directory: string, profileDir: string): Promise<void>
 
 async function run(): Promise<void> {
   const workDir = setupIsolatedWorkDir();
-  let stopWatchingMcpLog = () => {};
+  let stopWatchingMcpLog = () => { };
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);

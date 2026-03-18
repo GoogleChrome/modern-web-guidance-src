@@ -36,20 +36,20 @@ test.describe(`optimize-preload-priority Expectations: ${demoName}`, () => {
     await expect(page.locator('link[rel="preload"][as="image"][href*="poster.jpg"]')).toHaveAttribute('fetchpriority', 'high');
   });
 
-  test('The <link rel="preload" as="font"> for brand-font.woff2 has the fetchpriority="high" attribute', async ({ page }) => {
-    await expect(page.locator('link[rel="preload"][as="font"][href*="brand-font.woff2"]')).toHaveAttribute('fetchpriority', 'high');
+  test('The <link rel="preload" as="font"> for brand-font.woff2 does not have the fetchpriority="high" attribute', async ({ page }) => {
+    await expect(page.locator('link[rel="preload"][as="font"][href*="brand-font.woff2"]')).not.toHaveAttribute('fetchpriority', 'high');
   });
 
   test('The <link rel="preload" as="font"> includes the crossorigin attribute', async ({ page }) => {
     await expect(page.locator('link[rel="preload"][as="font"][href*="brand-font.woff2"]')).toHaveAttribute('crossorigin');
   });
 
-  test('The <link rel="preload" as="script"> for background-init.js has the fetchpriority="low" attribute', async ({ page }) => {
-    await expect(page.locator('link[rel="preload"][as="script"][href*="background-init.js"]')).toHaveAttribute('fetchpriority', 'low');
+  test('The <link rel="preload" as="font"> for secondary-font.woff2 has the fetchpriority="low" attribute', async ({ page }) => {
+    await expect(page.locator('link[rel="preload"][as="font"][href*="secondary-font.woff2"]')).toHaveAttribute('fetchpriority', 'low');
   });
 
-  test('No more than two <link rel="preload"> elements on the entire page have the fetchpriority="high" attribute', async ({ page }) => {
-    const count = await page.locator('link[rel="preload"][fetchpriority="high"]').count();
+  test('No more than two <link rel="preload" as="image"> elements on the entire page have the fetchpriority="high" attribute', async ({ page }) => {
+    const count = await page.locator('link[rel="preload"][as="image"][fetchpriority="high"]').count();
     expect(count).toBeLessThanOrEqual(2);
   });
 
