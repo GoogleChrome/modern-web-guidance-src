@@ -28,7 +28,7 @@ Here’s how to create carousel slide effects:
     </ul>
     ```
 
-2.  **Define the animation:** Create a CSS animation that defines the different states of your slides as they enter, center, and exit the scrollport. For example, you can use the `scale` property to make the slides grow as they approach the center and shrink as they move away.
+2.  **Define the animation:** Create a CSS animation that defines the different states of your slides as they traverse the scrollport. You can define keyframes for any part of the animation. For example, you can define a state for when the slides are in the center of the scrollport by including a `50%` keyframe. In this example, the `scale` property makes the slides grow as they approach the center and shrink as they move away.
 
     ```css
     @keyframes animate {
