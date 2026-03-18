@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Page 2</title>
+  <title>Cross-document Transitions</title>
   <style>
     /* CORE: View Transitions API */
     @view-transition {
@@ -52,9 +52,24 @@
 </head>
 
 <body>
-  <h1>Page 2</h1>
+  <h1>Cross-document Transitions</h1>
   <p>Cross-document navigation with view transitions.</p>
-  <a href="demo1.html">← Go to Page 1</a>
+  <a href="?page=2">→ Go to Page 2</a>
 </body>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const page = params.get('page');
+
+  if (page) {
+    document.title = `Page ${page}`;
+    document.querySelector('h1').textContent = `Page ${page}`;
+
+    const nextPage = Number(page) + 1;
+    const a = document.querySelector('a');
+    a.href = `?page=${nextPage}`;
+    a.textContent = `→ Go to Page ${nextPage}`;
+  }
+</script>
 
 </html>
