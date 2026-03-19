@@ -1,0 +1,236 @@
+<!-- Copyright 2026 Google LLC.
+SPDX-License-Identifier: Apache-2.0 -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Sign-in form best practice</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+  :root {
+    --desktop-font-size: 16px;
+    --mobile-font-size: 22px;
+  }
+
+  body {
+    font-family: sans-serif;
+    font-weight: 500;
+    margin: 10px 20px;
+  }
+
+  button {
+    background-color: #eee;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    color: #444;
+    cursor: pointer;
+    display: block;
+    font-size: 22px; /* fallback */
+    font-size: var(--mobile-font-size);
+    font-weight: 500;
+    margin: 3px 0 0 0;
+    padding: 10px;
+  }
+
+  button:hover {
+    background-color: #ccc;
+    color: black;
+  }
+
+  button#signin {
+    margin: 0px 0 0 0;
+  }
+
+  button#toggle-password {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 300;
+    padding: 0;
+    /* Display at the top right of the password section */
+    position: absolute;
+    top: -4px;
+    right: -2px;
+  }
+
+  div#password-constraints {
+    margin: 5px 0 0 0;
+    font-size: 16px;
+  }
+
+  form {
+    margin: 0 auto;
+    max-width: 500px;
+  }
+
+  h1 {
+    border-bottom: 1px solid #ccc;
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0 0 20px 0;
+    padding: 0 0 5px 0;
+  }
+
+  input {
+    border: 1px solid #ccc;
+    font-size: 22px; /* fallback */
+    font-size: var(--mobile-font-size);
+    padding: 15px;
+    width: 90%; /* fallback */
+    width: calc(100% - 30px); /* full width minus padding */
+  }
+
+  input[type="email"]:not(:focus):invalid,
+  input[type="password"]:not(:focus):invalid {
+    color: red;
+    outline-color: red;
+  }
+
+  label {
+    display: block;
+    font-size: 20px;
+    font-size: var(--mobile-font-size);
+    font-weight: 500;
+    margin: 0 0 3px 0;
+  }
+
+  form section {
+    margin: 0 0 20px 0;
+    position: relative; /* for password toggle positioning */
+  }
+
+  @media (min-width: 450px) {
+    body {
+      margin: 20px 50px;
+    }
+    button {
+      font-size: 14px; /* fallback */
+      font-size: var(--desktop-font-size);
+    }
+    button#signin {
+      margin: 40px 0 0 0;
+    }
+    div#password-constraints {
+      font-size: 14px;
+    }
+    h1 {
+      font-size: 28px;
+      font-size: calc(2 * var(--desktop-font-size));
+      font-weight: 500;
+      margin: 0 0 80px 0;
+    }
+    input {
+      font-size: 14px; /* fallback */
+      font-size: var(--desktop-font-size);
+    }
+    label {
+      font-size: 14px; /* fallback */
+      font-size: var(--desktop-font-size);
+    }
+  }
+
+  @media (min-width: 800px) {
+    body {
+      margin: 50px;
+    }
+  }
+</style>
+
+</head>
+
+<body>
+
+  <main>
+
+    <!-- On a production site, the value of the `action` attribute is the URL of the site's
+    backend service that handles form submission, and the `method` attribute has the value `post` -->
+    <form action="." id="sign-in-form" name="sign-in-form">
+
+      <h1>Sign in</h1>
+
+      <section>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" placeholder=" " autocomplete="username" required>
+      </section>
+
+      <section>
+        <label for="current-password">Password</label>
+        <input id="current-password" name="current-password" type="password" autocomplete="current-password" aria-describedby="password-constraints" required>
+        <button id="toggle-password" type="button" aria-label="Show password as plain text. Warning: this will display your password on the screen.">Show password</button>
+        <div id="password-constraints">Eight or more characters, with at least one&nbsp;lowercase and one uppercase letter.</div>
+      </section>
+
+      <button id="signin">Sign in</button>
+
+    </form>
+
+  </main>
+
+  <script>
+  /* Copyright 2026 Google LLC.
+  SPDX-License-Identifier: Apache-2.0 */
+
+  const form = document.querySelector('form');
+  const passwordInput = document.querySelector('input#current-password');
+  const signinButton = document.querySelector('button#signin');
+  const togglePasswordButton = document.querySelector('button#toggle-password');
+
+  togglePasswordButton.addEventListener('click', togglePassword);
+
+  function togglePassword() {
+    if (passwordInput.type === 'password') {
+      passwordInput.type = 'text';
+      togglePasswordButton.textContent = 'Hide password';
+      togglePasswordButton.setAttribute('aria-label', 'Hide password.');
+    } else {
+      passwordInput.type = 'password';
+      togglePasswordButton.textContent = 'Show password';
+      togglePasswordButton.setAttribute(
+        'aria-label',
+        'Show password as plain text. ' +
+          'Warning: this will display your password on the screen.'
+      );
+    }
+  }
+
+  passwordInput.addEventListener('input', validatePassword);
+
+  // A production site would use more stringent password testing on the client
+  // and must sanitize and validate passwords on the back end.
+  function validatePassword() {
+    let message = '';
+    if (!/.{8,}/.test(passwordInput.value)) {
+      message = 'At least eight characters. ';
+    } else if (!/.*[A-Z].*/.test(passwordInput.value)) {
+      message += '\nAt least one uppercase letter. ';
+    } else if (!/.*[a-z].*/.test(passwordInput.value)) {
+      message += '\nAt least one lowercase letter.';
+    } else {
+      message += '\nPassword is incorrect. Please try again.';
+    }
+
+    passwordInput.setCustomValidity(message);
+  }
+
+  form.addEventListener('submit', handleFormSubmit);
+
+  function handleFormSubmit(event) {
+    if (form.checkValidity() === false) {
+      console.log('Form values not valid');
+      event.preventDefault();
+    } else {
+      signinButton.disabled = 'true';
+      form.submit();
+      alert('Signed in!');
+    }
+  }
+
+  </script>
+
+</body>
+
+</html>

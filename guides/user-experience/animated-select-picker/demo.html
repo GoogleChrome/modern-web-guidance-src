@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animated Select Picker Demo</title>
+  <style>
+    /* Premium Modern Aesthetics */
+    :root {
+      interpolate-size: allow-keywords;
+      --primary: hsl(230, 85%, 60%);
+      --primary-hover: hsl(230, 85%, 55%);
+      --bg-color: hsl(220, 20%, 97%);
+      --surface-color: hsl(0, 0%, 100%);
+      --border-color: hsl(220, 15%, 85%);
+      --text-color: hsl(220, 30%, 20%);
+      --text-muted: hsl(220, 15%, 50%);
+      --radius: 12px;
+      --shadow-sm: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      --shadow-lg: 0 10px 25px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+      --font-family: "Inter", system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 2rem;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 3rem;
+      max-width: 600px;
+    }
+
+    .hero h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      margin-top: 0;
+      color: var(--text-color);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+    }
+
+    .hero p {
+      font-size: 1.125rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .demo-container {
+      background: var(--surface-color);
+      padding: 3rem;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-color);
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 2rem;
+      color: var(--text-color);
+    }
+
+    /* Container for the new customizable select */
+    .select-wrapper {
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+
+    /* Style the main trigger */
+    .custom-select {
+      appearance: base-select;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background-color: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.875rem 1rem;
+      font-size: 1rem;
+      color: var(--text-color);
+      box-shadow: var(--shadow-sm);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+      cursor: pointer;
+    }
+
+    .custom-select:hover {
+      border-color: var(--primary);
+    }
+
+    .custom-select:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+      border-color: var(--primary);
+    }
+
+    /* Built-in picker-icon rotation */
+    .custom-select::picker-icon {
+      transition: transform 0.3s ease;
+      color: var(--text-muted);
+    }
+
+    .custom-select:open::picker-icon {
+      transform: rotate(180deg);
+      color: var(--primary);
+    }
+
+    /* =========================================================
+       Picker (Dropdown Menu) Styling & Core Animations
+       ========================================================= */
+    .custom-select::picker(select) {
+      appearance: base-select;
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      padding: 0.5rem;
+      margin-top: 0.25rem;
+      width: anchor-size(width);
+      overflow: hidden;
+
+      /* The crucial transition setting for popover animations */
+      transition:
+        display 0.8s allow-discrete,
+        overlay 0.8s allow-discrete,
+        opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+        height 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        
+      opacity: 0;
+      height: 0;
+    }
+
+    /* Open State */
+    .custom-select:open::picker(select) {
+      opacity: 1;
+      height: auto;
+    }
+
+    /* @starting-style to hook the transition on initial popover open */
+    @starting-style {
+      .custom-select:open::picker(select) {
+        opacity: 0;
+        height: 0;
+      }
+    }
+
+    /* Option Item Styling */
+    .custom-select option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 0.25rem;
+      color: var(--text-color);
+      font-weight: 500;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .custom-select option:last-child {
+      margin-bottom: 0;
+    }
+
+    .custom-select option:hover {
+      background-color: var(--bg-color);
+    }
+
+    /* Selected Option */
+    .custom-select option:checked {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    /* Style the selected content mirrored in the button */
+    .custom-select selectedcontent {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+    }
+
+    /* Checked icon custom style using the new ::checkmark pseudo */
+    .custom-select::checkmark {
+      display: none; /* Hide default checkmark in favor of our active styles */
+    }
+
+    /* Support for SVG inside Options when parser changes apply */
+    .custom-select option svg,
+    .custom-select selectedcontent svg {
+      flex-shrink: 0;
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="hero">
+    <h1>Smooth Select Animations</h1>
+    <p>A visually stunning, native <code>&lt;select&gt;</code> element animated using
+      <code>appearance: base-select</code>, <code>interpolate-size</code>, and top-layer transition utilities.</p>
+  </header>
+
+  <div class="demo-container">
+    <div class="select-wrapper">
+      <label for="theme-select">Visual Theme</label>
+      <select id="theme-select" class="custom-select" name="theme">
+        <button>
+          <selectedcontent></selectedcontent>
+        </button>
+        <option value="system">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          System Default
+        </option>
+        <option value="light">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          Light UI
+        </option>
+        <option value="dark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          Dark UI
+        </option>
+      </select>
+    </div>
+  </div>
+
+</body>
+</html>

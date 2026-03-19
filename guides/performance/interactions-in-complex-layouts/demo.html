@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactions in Complex Layouts</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --surface: #ffffff;
+      --bg: #f1f5f9;
+      --board-bg: #818cf8;
+      --text: #1e293b;
+      --border: #e2e8f0;
+      --column-bg: #e2e8f0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--board-bg);
+      color: var(--text);
+      overflow-x: auto;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 1rem 2rem;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      z-index: 10;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    .explanation {
+      font-size: 0.875rem;
+      opacity: 0.9;
+      margin-top: 0.5rem;
+      max-width: 800px;
+    }
+
+    /* Kanban Board Layout */
+    .board-scroll {
+      flex: 1;
+      display: flex;
+      padding: 2rem;
+      gap: 1.5rem;
+      overflow-x: auto;
+      align-items: flex-start;
+    }
+
+    .list {
+      background: var(--column-bg);
+      border-radius: 8px;
+      min-width: 320px;
+      max-width: 320px;
+      max-height: 100%;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+
+      /* KEY PERFORMANCE IMPROVEMENT #1:
+         By isolating the columns with content-visibility, 
+         modifying/dragging items inside one column won't force 
+         the browser to recalculate the heights/layouts of the adjacent 
+         columns! Even if they contain thousands of nodes! */
+      content-visibility: auto;
+      contain-intrinsic-size: 320px 800px;
+    }
+
+    .list-header {
+      padding: 1rem;
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: #334155;
+      cursor: pointer;
+    }
+
+    .list-cards {
+      padding: 0 1rem 1rem 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-height: 50px;
+    }
+
+    /* Kanban Card Item */
+    .card {
+      background: var(--surface);
+      border-radius: 6px;
+      padding: 1rem;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      cursor: grab;
+      border-left: 4px solid transparent;
+      transition: box-shadow 0.2s;
+
+      /* KEY PERFORMANCE IMPROVEMENT #2:
+         If columns are long, cards far down the list can also defer rendering. */
+      content-visibility: auto;
+      contain-intrinsic-size: 1px 120px;
+    }
+
+    .card:active {
+      cursor: grabbing;
+    }
+
+    .card.dragging {
+      opacity: 0.5;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+      border-left-color: var(--primary);
+    }
+
+    /* Simulate a complex internal layout for each card to maximize rendering cost */
+    .card-title {
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    .card-tags {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      font-size: 0.7rem;
+      padding: 0.125rem 0.5rem;
+      border-radius: 99px;
+      background: #cbd5e1;
+      color: #334155;
+      font-weight: 500;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .card-members {
+      display: flex;
+    }
+
+    .member-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #94a3b8;
+      border: 2px solid var(--surface);
+      margin-left: -8px;
+    }
+
+    .member-avatar:first-child {
+      margin-left: 0;
+    }
+
+    /* Container for drop zone styling */
+    .list-cards.drag-over {
+      background-color: rgba(79, 70, 229, 0.1);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>Complex Interactions: The Drag & Drop Kanban</h1>
+    <div class="explanation">
+      This board contains <strong>thousands</strong> of heavy DOM nodes spread across several columns. Normally,
+      dragging a card out of one column and into another forces the browser to re-calculate the Layout tree for the
+      entire page because heights and positions have changed. By applying <code>content-visibility: auto</code> to the
+      <code>.list</code> columns and the <code>.card</code> elements browser reflows are strictly contained and
+      localized during the drag interaction, massively saving main thread calculation time and ensuring 60FPS
+      animations.
+    </div>
+  </header>
+
+  <div class="board-scroll" id="board">
+    <!-- Columns will be generated by JS -->
+  </div>
+
+  <script>
+    const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+    const LABELS = ['Frontend', 'Backend', 'Design', 'Urgent', 'Bug', 'Feature'];
+
+    // Generate the complex DOM
+    function generateBoard() {
+      const board = document.getElementById('board');
+      const columns = ['Backlog', 'To Do', 'In Progress', 'In Review', 'QA', 'Done'];
+      for (let i = 1; i <= 20; i++) {
+        columns.push(`Archive Set ${i}`);
+      }
+
+      let html = '';
+
+      columns.forEach((colName, colIndex) => {
+        // The first columns have fewer cards, the archives have hundreds to bloat the DOM
+        const numCards = colIndex < 6 ? 15 : 500;
+
+        html += `
+          <div class="list" data-list-id="list-${colIndex}">
+            <div class="list-header">${colName} <span style="color:#64748b; font-size:0.8rem; font-weight:normal">(${numCards})</span></div>
+            <div class="list-cards">
+        `;
+
+        for (let i = 0; i < numCards; i++) {
+          const numTags = Math.floor(Math.random() * 3) + 1;
+          const tagsHtml = Array(numTags).fill(0).map(() => {
+            const idx = Math.floor(Math.random() * LABELS.length);
+            return `<span class="tag" style="background-color:${COLORS[idx]}33; color:${COLORS[idx]}">${LABELS[idx]}</span>`;
+          }).join('');
+
+          const numMembers = Math.floor(Math.random() * 4);
+          const membersHtml = Array(numMembers).fill(0).map(() => {
+            return `<div class="member-avatar" style="background-color:${COLORS[Math.floor(Math.random() * COLORS.length)]}"></div>`;
+          }).join('');
+
+          html += `
+            <div class="card" draggable="true" id="card-${colIndex}-${i}">
+              <div class="card-tags">${tagsHtml}</div>
+              <div class="card-title">Task Item TKT-${Math.floor(Math.random() * 10000)}</div>
+              <div style="font-size: 0.8rem; color: #64748b;">
+                Simulated complex description text. This adds rendering weight to the text node parsed by the browser layout engine.
+              </div>
+              <div class="card-footer">
+                <span>&#128197; ${new Date(Date.now() + Math.random() * 1000000000).toLocaleDateString()}</span>
+                <div class="card-members">${membersHtml}</div>
+              </div>
+            </div>
+          `;
+        }
+
+        html += `
+            </div>
+          </div>
+        `;
+      });
+
+      board.innerHTML = html;
+      initDragAndDrop();
+    }
+
+    // Wiring up standard HTML5 Drag and Drop
+    function initDragAndDrop() {
+      const cards = document.querySelectorAll('.card');
+      const lists = document.querySelectorAll('.list-cards');
+
+      let draggedCard = null;
+
+      // Card Events
+      cards.forEach(card => {
+        card.addEventListener('dragstart', (e) => {
+          draggedCard = card;
+          setTimeout(() => {
+            card.style.display = 'none'; // visually remove from original spot during drag
+          }, 0);
+          e.dataTransfer.effectAllowed = 'move';
+        });
+
+        card.addEventListener('dragend', () => {
+          setTimeout(() => {
+            draggedCard.style.display = 'block';
+            draggedCard = null;
+          }, 0);
+
+          lists.forEach(l => l.classList.remove('drag-over'));
+        });
+      });
+
+      // List Zone Events
+      lists.forEach(list => {
+        list.addEventListener('dragover', (e) => {
+          e.preventDefault(); // necessary to allow dropping
+          e.dataTransfer.dropEffect = 'move';
+          list.classList.add('drag-over');
+
+          // Optional: Determine where to place inside the list based on mouse Y
+          const afterElement = getDragAfterElement(list, e.clientY);
+          if (draggedCard) {
+            if (afterElement == null) {
+              list.appendChild(draggedCard);
+            } else {
+              list.insertBefore(draggedCard, afterElement);
+            }
+          }
+        });
+
+        list.addEventListener('dragleave', () => {
+          list.classList.remove('drag-over');
+        });
+
+        list.addEventListener('drop', (e) => {
+          e.preventDefault();
+          list.classList.remove('drag-over');
+          // Update the counter in the header
+          updateCounts();
+        });
+      });
+    }
+
+    // Helper to snap dragged card between other cards
+    function getDragAfterElement(container, y) {
+      const draggableElements = [...container.querySelectorAll('.card:not(.dragging)')];
+
+      return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        // Check if mouse is above the middle of the card
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    function updateCounts() {
+      document.querySelectorAll('.list').forEach(list => {
+        const count = list.querySelectorAll('.card').length;
+        const headerSpan = list.querySelector('.list-header span');
+        if (headerSpan) {
+          headerSpan.textContent = `(${count})`;
+        }
+      });
+    }
+
+    // Init
+    generateBoard();
+
+  </script>
+</body>
+
+</html>

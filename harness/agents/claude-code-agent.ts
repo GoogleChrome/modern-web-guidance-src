@@ -4,6 +4,7 @@ import { spawn } from 'child_process';
 import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, copyResultsToTarget, createWorkDir, copySkills, watchLogFile } from '../lib/agent-shared.ts';
 import config, { Agents } from '../config.ts';
 import { MCP_LOG_FILE } from '../../constants.ts';
+import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
 
 // Usage: node claude-code-agent.ts <prompt> <runType> <targetDir> <templateDir>
 const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
@@ -104,6 +105,44 @@ async function run() {
     const chatLogPath = path.join(targetDir, 'chat_log.txt');
     fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
     console.log(`Saved output to: ${chatLogPath}`);
+
+    // Export Claude Code trajectory as an inline HTML viewer
+    const tempHome = path.dirname(workDir);
+    const claudeLogDir = path.join(tempHome, '.claude', 'projects');
+    if (fs.existsSync(claudeLogDir)) {
+      // Find all jsonl files in the Claude projects directory
+      const files = fs.globSync('**/*.jsonl', { cwd: claudeLogDir });
+      
+      for (const relativePath of files as string[]) {
+        const src = path.join(claudeLogDir, relativePath);
+        
+        // 1. Determine base name and copy original JSONL file to targetDir
+        const baseName = relativePath.replace(/[\\\\/]/g, '-').replace(/\.jsonl$/, '');
+        const rawDestName = `session-${baseName}.jsonl`;
+        fs.copyFileSync(src, path.join(targetDir, rawDestName));
+
+        // 2. Read and parse JSONL
+        const logContent = fs.readFileSync(src, 'utf8');
+        const jsonLines = logContent.split(/\r?\n/).filter(Boolean);
+        
+        const logData = jsonLines.map(line => {
+          try {
+            return JSON.parse(line);
+          } catch (e) {
+            console.error("Failed to parse JSONL line:", e);
+            return { error: "Failed to parse line", raw: line };
+          }
+        });
+
+        // 3. Generate and save the HTML viewer
+        const htmlContent = generateClaudeTrajectoryHtml(logData);
+
+        // 4. Save HTML viewer to target directory
+        const destName = `session-${baseName}.html`;
+        const dest = path.join(targetDir, destName);
+        fs.writeFileSync(dest, htmlContent, 'utf8');
+      }
+    }
 
     console.log("Claude Code agent finished successfully.");
 

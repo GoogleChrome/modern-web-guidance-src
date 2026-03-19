@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Declarative Dialog & Popover Control</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f9f9f9;
+      color: #333;
+      padding: 20px;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 3rem;
+      background: white;
+      padding: 3rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      border: 1px solid #ddd;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    .section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      text-align: center;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    
+    p {
+      margin: 0;
+      color: #555;
+    }
+
+    button {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      background: #007bff;
+      color: white;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    /* Dialog styling */
+    dialog {
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      padding: 2rem;
+      max-width: 400px;
+    }
+    
+    dialog::backdrop {
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(2px);
+    }
+    
+    dialog h3, [popover] h3 {
+      margin-top: 0;
+    }
+    
+    dialog .dialog-actions {
+      margin-top: 1.5rem;
+      display: flex;
+      justify-content: flex-end;
+    }
+    
+    /* Popover styling */
+    [popover] {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      margin: auto;
+      max-width: 300px;
+    }
+
+    .popover-actions {
+      margin-top: 1.5rem;
+      display: flex;
+      justify-content: flex-end;
+    }
+    
+    hr {
+      width: 100%;
+      border: none;
+      border-top: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Dialog Example -->
+    <div class="section">
+      <div>
+        <h2>Modal Dialog Control</h2>
+        <p>Use built-in invoker commands to open a modal dialog without JavaScript.</p>
+      </div>
+      
+      <div class="actions">
+        <!-- Built-in command to show a modal dialog -->
+        <button commandfor="my-dialog" command="show-modal">Show Modal</button>
+      </div>
+      
+      <dialog id="my-dialog">
+        <h3>Declarative Dialog</h3>
+        <p>This dialog was opened using <code>commandfor</code> and <code>command="show-modal"</code>.</p>
+        <div class="dialog-actions">
+          <!-- Built-in command to close a dialog -->
+          <button commandfor="my-dialog" command="close">Close Dialog</button>
+        </div>
+      </dialog>
+    </div>
+    
+    <hr>
+
+    <!-- Popover Example -->
+    <div class="section">
+      <div>
+        <h2>Popover Control</h2>
+        <p>Use built-in invoker commands to toggle, show, or hide a popover natively.</p>
+      </div>
+      
+      <div class="actions">
+        <!-- Multiple buttons demonstrating different built-in popover commands -->
+        <button commandfor="my-popover" command="toggle-popover">Toggle Popover</button>
+        <button commandfor="my-popover" command="show-popover">Show Popover</button>
+      </div>
+      
+      <div id="my-popover" popover>
+        <h3>Declarative Popover</h3>
+        <p>This popover is controlled entirely using built-in invoker commands.</p>
+        <div class="popover-actions">
+           <button commandfor="my-popover" command="hide-popover">Hide Popover</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Note: Zero JavaScript is included or required! -->
+
+</body>
+</html>

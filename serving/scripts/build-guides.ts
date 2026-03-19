@@ -3,9 +3,11 @@ import path from "path";
 import matter from "gray-matter";
 import { fileURLToPath } from "url";
 import { marked } from "marked";
-import { glob } from "glob";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
+import { replaceMacros } from "../mcp-server/lib/macros.ts";
+import { classifyGuide, scanAllGuides } from "../../harness/lib/utils.ts";
+import { getFeatureName } from "../mcp-server/data/baseline.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,15 +22,16 @@ interface UseCase {
   id: string;
   description: string;
   category: string;
+  featuresUsed: string[];
 }
-
-// Ensure clean build/guides exists
-if (fs.existsSync(BUILD_GUIDES_DIR)) {
-  fs.rmSync(BUILD_GUIDES_DIR, { recursive: true, force: true });
-}
-fs.mkdirSync(BUILD_GUIDES_DIR, { recursive: true });
 
 async function processGuides() {
+  // Ensure clean build/guides exists
+  if (fs.existsSync(BUILD_GUIDES_DIR)) {
+    fs.rmSync(BUILD_GUIDES_DIR, { recursive: true, force: true });
+  }
+  fs.mkdirSync(BUILD_GUIDES_DIR, { recursive: true });
+
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
 
@@ -58,22 +61,17 @@ async function processGuides() {
   } else {
     // Batch process all guides
     console.log(`Scanning for guides in: ${GUIDES_DIR}`);
-    const guideFiles = glob.sync("**/guide.md", {
-      cwd: GUIDES_DIR,
-      absolute: true
-    });
+    const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
 
-    if (guideFiles.length === 0) {
+    if (readyGuides.length === 0) {
       console.log("No guides found.");
     }
 
-    for (const guidePath of guideFiles) {
-      const guideDir = path.dirname(guidePath);
-      // Derive category and id from folder structure
-      // Example structure: guides/performance/content-vis/guide.md
-      // id becomes "content-vis", category becomes "performance"
-      const id = path.basename(guideDir);
-      const category = path.basename(path.dirname(guideDir));
+    for (const inv of readyGuides) {
+      const guideDir = inv.dir;
+      const guidePath = path.join(guideDir, "guide.md");
+      const id = inv.name;
+      const category = inv.category;
 
       await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
     }
@@ -85,6 +83,7 @@ export interface UseCase {
   id: string;
   description: string;
   category: string;
+  featuresUsed: string[];
 }
 
 export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
@@ -99,7 +98,7 @@ export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
 
 }
 
-function chunkMarkdown(markdown: string): string[] {
+export function chunkMarkdown(markdown: string): string[] {
   const tokens = marked.lexer(markdown);
   const chunks: string[] = [];
   let currentChunk: string[] = [];
@@ -123,7 +122,6 @@ function chunkMarkdown(markdown: string): string[] {
   return chunks.filter(chunk => chunk.trim().length > 0);
 }
 
-
 async function processSingleGuideFile(
   filePath: string,
   category: string,
@@ -139,17 +137,23 @@ async function processSingleGuideFile(
   }
 
   if (markdownBody.trim().length === 0) {
-    console.log(`Skipping ${id} (${category}) as it has no markdown content.`);
+    // Just a stub guide. No content to index.
     return;
   }
+
+  const processedMarkdown = replaceMacros(markdownBody, filePath);
+
+  const featureIds: string[] = data['web-feature-ids'] || [];
+  const featuresUsed = featureIds.map(getFeatureName);
 
   useCases.push({
     id,
     description: data.description,
     category,
+    featuresUsed,
   });
 
-  const chunks = chunkMarkdown(markdownBody);
+  const chunks = chunkMarkdown(processedMarkdown);
   chunks.push(frontmatter);
 
   const embedder = Embedder.getInstance(); // Singleton, already init
@@ -162,6 +166,7 @@ async function processSingleGuideFile(
       id,
       description: data.description,
       category,
+      featuresUsed,
       chunkContent: chunk,
       vector
     });
@@ -175,7 +180,10 @@ async function processSingleGuideFile(
 
   // Write clean markdown to build dir
   const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
-  fs.writeFileSync(buildFilePath, markdownBody.trimStart());
+  fs.writeFileSync(buildFilePath, processedMarkdown.trimStart());
 }
 
-processGuides().catch(console.error);
+// Only run automatically if executed directly
+if (process.argv[1] === __filename) {
+  processGuides().catch(console.error);
+}
