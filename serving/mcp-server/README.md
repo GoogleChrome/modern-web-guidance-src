@@ -99,7 +99,17 @@ node scripts/demo-search.ts "showing a tooltip when hovering over a button"
 #    Create dynamic, accessible color systems using modern color syntax and relative colors
 ```
 
+## Usage Statistics
 
+Google collects usage statistics (such as tool invocation success rates, latency, and environment information) to improve the reliability and performance of the Modern Web Guidance MCP.
+
+Data collection is *enabled by default*. You can opt-out by passing the `--no-usage-statistics` flag when starting the server:
+
+```bash
+"args": ["-y", "../serving/modern-web-mcp-server/index.ts", "--no-usage-statistics"]
+```
+
+Google handles this data in accordance with the [Google Privacy Policy](https://policies.google.com/privacy).
 
 ## Architecture
 
