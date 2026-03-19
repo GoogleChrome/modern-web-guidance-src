@@ -1,0 +1,3 @@
+- Build a registration form where required fields only show error styling after the user has visited and left them empty, not on initial page load.
+- Add validation to a form so that empty required fields display a "This field is required" message only after the user interacts with them and moves on.
+- Create a form with required text inputs that show a red border and error text after the user tabs through without filling them in, and a green border once they're correctly filled.

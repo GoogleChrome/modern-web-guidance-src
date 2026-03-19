@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Individual Transform Properties</title>
+  <style>
+    body {
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      text-align: center;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3rem;
+      max-width: 600px;
+      padding: 2rem;
+    }
+
+    p {
+      color: #333;
+      line-height: 1.5;
+    }
+
+    .target {
+      width: 100px;
+      height: 100px;
+      background-color: dodgerblue;
+      border-radius: 8px;
+      
+      /* Independent animations for individual transform properties */
+      animation: 
+        move 2s infinite alternate ease-in-out, 
+        spin 4s infinite linear;
+      
+      /* Transition specifically for the scale property */
+      transition: scale 0.2s ease;
+    }
+
+    .target:hover {
+      scale: 1.5;
+      background-color: deepskyblue;
+    }
+
+    @keyframes move {
+      0% { translate: -100px 0; }
+      100% { translate: 100px 0; }
+    }
+    
+    @keyframes spin {
+      0% { rotate: 0deg; }
+      100% { rotate: 360deg; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <p>
+      Notice how hovering over the box smoothly scales it up without interrupting its translation or rotation animations. This independence is possible because <code>scale</code>, <code>translate</code>, and <code>rotate</code> are now individual CSS properties, avoiding the need to recalculate a single complex <code>transform</code> string.
+    </p>
+    <div class="target"></div>
+  </div>
+</body>
+</html>

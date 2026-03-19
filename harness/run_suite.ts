@@ -73,6 +73,7 @@ export interface RunSuiteOptions {
   tasks?: string[];
   numRuns?: number;
   skipEval?: boolean;
+  guidedOnly?: boolean;
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
@@ -155,7 +156,8 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
         promptContent += COMMON_APPEND_PROMPT;
 
-        for (const runType of RUN_TYPES) {
+        const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
+        for (const runType of runTypesToRun) {
           const templateDir = path.join(baseAppsDir, baseApp);
 
           if (!fs.existsSync(templateDir)) {
@@ -208,7 +210,7 @@ process.exit(result.status ?? 0);
       }
 
       if (pnpmWorkspacePackages.length > 0) {
-        console.log(`\n>>> Running all tests for Run ${runNumber} with pnpm -r run-agent (parallel)...`);
+        console.log(`\n>>> Running all tests for Run ${runNumber} with pnpm -r run-agent ...`);
         // Drop a transient pnpm-workspace.yaml at the root of the run directory.
         // The '**' pattern tells pnpm to recursively discover all the targetDirs
         // we just seeded with package.json files.
@@ -216,8 +218,12 @@ process.exit(result.status ?? 0);
         fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
         
         try {
-          // Fire off the parallel execution!
-          await runCommand('pnpm', ['-r', 'run-agent'], runDir);
+          const pnpmArgs = ['-r'];
+          if (agent === Agents.JETSKI) {
+            pnpmArgs.push('--workspace-concurrency', '1');
+          }
+          pnpmArgs.push('run-agent');
+          await runCommand('pnpm', pnpmArgs, runDir);
           console.log(`✅ Completed Run ${runNumber} test executions`);
         } catch (error) {
           console.error(`❌ Failed during Run ${runNumber} test execution`, error);

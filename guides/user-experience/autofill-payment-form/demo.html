@@ -1,0 +1,375 @@
+<!-- Copyright 2026 Google LLC.
+SPDX-License-Identifier: Apache-2.0 -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Payment form best practice</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    /* Copyright 2026 Google LLC.
+    SPDX-License-Identifier: Apache-2.0 */
+
+    :root {
+      --small-mobile-font-size: 20px;
+      --large-mobile-font-size: 22px;
+      --desktop-font-size: 22px;
+    }
+
+    :-webkit-autofill,
+    :autofill,
+    :-webkit-autofill:hover,
+    :-webkit-autofill:focus {
+      border-color: green;
+      outline: none;
+    }
+
+    body {
+      font-family: sans-serif;
+      font-weight: 500;
+      margin: 10px 15px 0 15px;
+    }
+
+    button,
+    input#submit-button {
+      background-color: black;
+      border: 1px solid #cccccc;
+      border-radius: 2px;
+      color: #eeeeee;
+      cursor: pointer;
+      display: block;
+      font-size: 20px; /* fallback for browsers where CSS variables are not available */
+      font-size: var(--large-mobile-font-size);
+      font-weight: 400;
+      margin: 3px 0 0 0;
+      outline: none;
+      padding: 14px;
+      width: 180px;
+    }
+
+    button:disabled {
+      color: #888888;
+      cursor: default;
+    }
+
+    button:not(:disabled):hover {
+      background-color: #333333;
+      color: white;
+    }
+
+    div.explanation {
+      font-size: 14px;
+      margin: 10px 0 0 0;
+    }
+
+    section#cc-exp-csc div:not(:last-child) {
+      margin: 0 10px 0 0;
+    }
+
+    div#exp-month-year {
+      width: 50%;
+    }
+
+    h1 {
+      border-bottom: 1px solid #cccccc;
+      font-size: 28px;
+      font-weight: 300;
+      margin: 0 0 30px 0;
+      padding: 0;
+    }
+
+    input {
+      border: 1px solid #cccccc;
+      font-size: 22px; /* fallback for browsers where CSS variables are not available */
+      font-size: var(--small-mobile-font-size);
+      padding: 12px;
+      width: 90%; /* fallback for browsers where CSS calc() is not available */
+      width: calc(100% - 30px); /* full width minus padding */
+    }
+
+    input:not(:focus):invalid {
+      color: red;
+      outline-color: red;
+    }
+
+    label {
+      display: block;
+      font-size: 20px;
+      font-size: var(--small-mobile-font-size);
+      font-weight: 400;
+      margin: 0 0 1px 0;
+    }
+
+    main {
+      margin: 0 auto;
+      max-width: 500px;
+    }
+
+    p {
+      font-size: 19px;
+      font-weight: 400;
+    }
+
+    form section {
+      margin: 0 0 17px 0;
+      padding: 0 0 10px 0;
+      position: relative;
+    }
+
+    form section:last-of-type {
+      margin: 0 0 25px 0;
+    }
+
+    section#cc-exp-csc {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    select {
+      background-color: white;
+      border: 1px solid #cccccc;
+      display: inline-block;
+      font-size: var(--small-mobile-font-size);
+      padding: 12px 12px 12px 11px;
+      width: 100%;
+    }
+
+    textarea {
+      border: 1px solid #cccccc;
+      font-family: sans-serif;
+      font-size: 22px; /* fallback for browsers where CSS variables are not available */
+      font-size: var(--small-mobile-font-size);
+      height: 3.5em;
+      line-height: 1.4em;
+      padding: 12px;
+      width: 90%; /* fallback for browsers where CSS calc() is not available */
+      width: calc(100% - 30px); /* full width minus padding */
+    }
+
+    @media (min-width: 400px) {
+      button {
+        font-size: 20px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--large-mobile-font-size);
+      }
+
+      div.explanation {
+        font-size: 16px;
+      }
+
+      h1 {
+        font-size: 36px;
+        font-weight: 500;
+      }
+
+      input {
+        font-size: 22px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--large-mobile-font-size);
+      }
+
+      label {
+        font-size: 22px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--large-mobile-font-size);
+      }
+
+      p {
+        font-weight: 400;
+        line-height: 1.5em;
+      }
+
+      form section {
+        margin: 0 0 10px 0;
+      }
+
+      form section:last-of-type {
+        margin: 0 0 30px 0;
+      }
+
+      select {
+        font-size: 22px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--large-mobile-font-size);
+      }
+
+      textarea {
+        font-size: 22px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--large-mobile-font-size);
+      }
+    }
+
+    @media (min-width: 500px) {
+      body {
+        margin: 70px 70px 0 70px;
+      }
+
+      button {
+        font-size: 18px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--desktop-font-size);
+      }
+
+      form {
+        margin: 0 0 20px 0;
+        padding: 0 0 100px 0;
+      }
+
+      h1 {
+        font-size: 36px;
+        font-weight: 100;
+        margin: 0 0 60px 0;
+      }
+
+      input {
+        font-size: 18px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--desktop-font-size);
+      }
+
+      label {
+        font-size: 18px; /* fallback for browsers where CSS variables are not available */
+        font-size: var(--desktop-font-size);
+        margin: 0 0 6px 0;
+      }
+
+      form section {
+        margin: 0 0 35px 0;
+      }
+
+      form section:last-of-type {
+        margin: 0 0 60px 0;
+      }
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <main>
+
+   <!-- On a production site, the value of the `action` attribute is the URL of the site's
+   backend service that handles form submission, and the `method` attribute has the value `post` -->
+    <form action="." id="payment-form" name="payment-form">
+
+      <h1>Payment form</h1>
+
+      <section>
+        <label for="cc-number">Card number</label>
+        <input id="cc-number" name="cc-number" autocomplete="cc-number" inputmode="numeric" maxlength="50" pattern="[\d ]{10,30}" required>
+      </section>
+
+      <section>
+        <label for="cc-name">Name on card</label>
+        <input id="cc-name" name="cc-name" autocomplete="cc-name" maxlength="50" pattern="[\p{L} \-\.]+" required>
+      </section>
+
+      <section id="cc-exp-csc">
+        <div>
+          <label for="cc-exp">Expiry date</label>
+          <input id="cc-exp" name="cc-exp" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5" required>
+        </div>
+        <div>
+          <label for="cc-csc">Security code</label>
+          <input id="cc-csc" name="cc-csc" inputmode="numeric" maxlength="4" pattern="[\d ]{3,4}" required>
+          <div class="explanation">Three or four digits</div>
+        </div>
+      </section>
+
+      <!-- Use the following commented-out code if select elements are required for expiry month and year. -->
+      <!--
+        <section id="cc-exp-csc">
+          <div id="exp-month-year">
+            <label for="cc-exp-month">Expiry date</label>
+            <select id="cc-exp-month" name="cc-exp-month" autocomplete="cc-exp-month" placeholder="MM">
+              <option value="">MM</option>
+              <option value="01">01</option>
+              <option value="02">02</option>
+              <option value="03">03</option>
+              <option value="04">04</option>
+              <option value="05">05</option>
+              <option value="06">06</option>
+              <option value="07">07</option>
+              <option value="08">08</option>
+              <option value="09">09</option>
+              <option value="10">10</option>
+              <option value="11">11</option>
+              <option value="12">12</option>
+            </select>
+            <select id="cc-exp-year" name="cc-exp-year" autocomplete="cc-exp-year" placeholder="YY">
+              <option value="">YY</option>
+              <option value="26">26</option>
+              <option value="27">27</option>
+              <option value="28">28</option>
+              <option value="29">29</option>
+              <option value="30">30</option>
+              <option value="31">31</option>
+              <option value="32">32</option>
+              <option value="33">33</option>
+              <option value="34">34</option>
+              <option value="35">35</option>
+              <option value="36">36</option>
+            </select>
+          </div>
+          <div>
+            <label for="cc-csc">Security code</label>
+            <input id="cc-csc" name="cc-csc" autocomplete="cc-csc" inputmode="numeric" maxlength="4" required>
+            <div class="explanation">Three or four digits</div>
+          </div>
+        </section>
+        -->
+
+      <button id="complete-payment">Complete payment</button>
+
+    </form>
+
+  </main>
+
+  <script>
+  /* Copyright 2026 Google LLC.
+  SPDX-License-Identifier: Apache-2.0 */
+
+  const form = document.querySelector('form');
+  const completePaymentButton = document.querySelector('button#complete-payment');
+
+  form.addEventListener('submit', handleFormSubmission);
+
+  function handleFormSubmission(event) {
+    event.preventDefault();
+    // If validation is required for specific form fields, call the validate() function.
+    // validate();
+    form.reportValidity();
+    if (form.checkValidity() === false) {
+      // Handle invalid form data.
+    } else {
+      // On a production site do form submission.
+      completePaymentButton.textContent = 'Making payment...';
+      completePaymentButton.disabled = 'true';
+      alert('Made payment!');
+      completePaymentButton.textContent = 'Payment complete!';
+    }
+  }
+
+  // Use the commented-out code below for any form fields where data
+  // entered by the user must be in a specific, valid format.
+  // function validate() {
+  //   let message = "";
+
+    // If validation is required for a specific form field, use the commented-out code below.
+    // Repeat this code for each form field to be validated.
+    // Notes:
+    // - `someField` is the form field to be tested for a valid value.
+    // - `someregex` is a regular expression used to test the validity of the field value.
+
+    // if (!/someregex/.test(someField.value)) {
+    //   console.log(`Invalid value ${someField.value} for someField`);
+    // message = 'Explain how to enter a valid value';
+    // }
+    // someField.setCustomValidity(message);
+  // }
+
+  </script>
+
+</body>
+
+</html>
