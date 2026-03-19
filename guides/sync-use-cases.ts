@@ -590,12 +590,13 @@ async function processUseCases(
   nameToIssueMap: Map<string, any>,
   subdirToIssueMap: Map<string, any>,
   projectDetails: ProjectDetails | null
-): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean }> {
+): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean; errors: string[] }> {
   const activeIssueNumbers = new Set<number>();
   const featuresWithActiveUseCases = new Set<string>();
   const featuresWithAnyUseCases = new Set<string>();
   const featureUseCaseMap = new Map<string, UseCaseEntry[]>();
   let hasError = false;
+  const errors: string[] = [];
 
   const guides = scanAllGuides();
   console.log(`Found ${guides.length} use cases.`);
@@ -607,7 +608,9 @@ async function processUseCases(
     const guideExists = hasGuide || inv.isStub;
     if (guideExists !== hasDemo) {
       const missingFile = guideExists ? 'demo.html' : 'guide.md';
-      console.error(`❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH guide.md and demo.html.`);
+      const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH guide.md and demo.html.`;
+      console.error(msg);
+      errors.push(msg);
       hasError = true;
     }
 
@@ -616,7 +619,9 @@ async function processUseCases(
       const guideHasContent = fs.existsSync(path.join(subdir, 'guide.md')) &&
         matter(fs.readFileSync(path.join(subdir, 'guide.md'), 'utf8')).content.trim().length > 0;
       if (guideHasContent) {
-        console.error(`❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH grader.ts and prompts.md.`);
+        const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH grader.ts and prompts.md.`;
+        console.error(msg);
+        errors.push(msg);
         hasError = true;
       }
     }
@@ -625,7 +630,7 @@ async function processUseCases(
     let guideData: GuideData = {};
     let guideBody = '';
 
-    if (hasGuide) {
+    if (hasGuide || inv.isStub) {
       const { errors, data, body } = validateGuide(path.join(subdir, 'guide.md'));
       guideErrors = errors;
       guideData = data;
@@ -633,37 +638,36 @@ async function processUseCases(
 
       if (guideErrors.length > 0) {
         for (const error of guideErrors) {
-          console.error(`❌ Error: ${error}`);
+          const msg = `❌ Error: ${error}`;
+          console.error(msg);
+          errors.push(msg);
         }
         hasError = true;
       }
     }
 
-    if (!hasGuide || !hasDemo) {
-      // Prevent the cleanup step from treating any existing issue as an orphan —
-      // the use case directory exists, it's just missing some required files.
-      const partialIssue = subdirToIssueMap.get(relativeSubdir);
-      if (partialIssue) {
-        activeIssueNumbers.add(partialIssue.number);
-      }
-      continue;
-    }
-
-    if (guideErrors.length > 0) {
-      continue;
-    }
-
-    const name = guideData.name!;
-    const description = guideData.description || '';
-    const featureIds = (guideData['web-feature-ids'] || []) as string[];
-    const statusName = getStatusName(guideBody, hasGrader, hasPrompts);
+    const isIncomplete = (!hasGuide && !inv.isStub) || !hasDemo;
+    const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
+    const statusName = !isIncomplete && guideErrors.length === 0 ? getStatusName(guideBody, hasGrader, hasPrompts) : null;
+    const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
 
     for (const id of featureIds) {
       featuresWithAnyUseCases.add(id);
-      if (statusName !== null) {
-        featuresWithActiveUseCases.add(id);
-      }
+      if (isActive) featuresWithActiveUseCases.add(id);
     }
+
+    if (isIncomplete) {
+      // Prevent the cleanup step from treating any existing issue as an orphan —
+      // the use case directory exists, it's just missing some required files.
+      const partialIssue = subdirToIssueMap.get(relativeSubdir);
+      if (partialIssue) activeIssueNumbers.add(partialIssue.number);
+      continue;
+    }
+
+    if (guideErrors.length > 0) continue;
+
+    const name = guideData.name!;
+    const description = guideData.description || '';
     const { issueTitle, issueBody, priorityLabel } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap);
     const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
 
@@ -701,7 +705,7 @@ async function processUseCases(
     }
   }
 
-  return { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError };
+  return { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError, errors };
 }
 
 async function syncFeatureIssues(
@@ -830,12 +834,15 @@ async function run() {
   console.log('🚀 Starting use case sync...');
 
   const { featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails } = await fetchGitHubData();
-  const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError } = await processUseCases(featureToIssueMap, nameToIssueMap, subdirToIssueMap, projectDetails);
+  const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError, errors } = await processUseCases(featureToIssueMap, nameToIssueMap, subdirToIssueMap, projectDetails);
   await cleanupOrphanedIssues(allUseCases, activeIssueNumbers);
   await syncFeatureIssues(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, projectDetails);
 
   if (hasError) {
-    console.error('\n🛑 Sync failed due to validation errors.');
+    console.error('\n🛑 Sync failed due to validation errors:\n');
+    for (const error of errors) {
+      console.error(`  ${error}`);
+    }
     process.exit(1);
   }
 
