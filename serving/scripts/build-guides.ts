@@ -3,10 +3,11 @@ import path from "path";
 import matter from "gray-matter";
 import { fileURLToPath } from "url";
 import { marked } from "marked";
-import { glob } from "glob";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
 import { replaceMacros } from "../mcp-server/lib/macros.ts";
+import { classifyGuide, scanAllGuides } from "../../harness/lib/utils.ts";
+import { getFeatureName } from "../mcp-server/data/baseline.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,6 +22,7 @@ interface UseCase {
   id: string;
   description: string;
   category: string;
+  featuresUsed: string[];
 }
 
 async function processGuides() {
@@ -59,22 +61,17 @@ async function processGuides() {
   } else {
     // Batch process all guides
     console.log(`Scanning for guides in: ${GUIDES_DIR}`);
-    const guideFiles = glob.sync("**/guide.md", {
-      cwd: GUIDES_DIR,
-      absolute: true
-    });
+    const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
 
-    if (guideFiles.length === 0) {
+    if (readyGuides.length === 0) {
       console.log("No guides found.");
     }
 
-    for (const guidePath of guideFiles) {
-      const guideDir = path.dirname(guidePath);
-      // Derive category and id from folder structure
-      // Example structure: guides/performance/content-vis/guide.md
-      // id becomes "content-vis", category becomes "performance"
-      const id = path.basename(guideDir);
-      const category = path.basename(path.dirname(guideDir));
+    for (const inv of readyGuides) {
+      const guideDir = inv.dir;
+      const guidePath = path.join(guideDir, "guide.md");
+      const id = inv.name;
+      const category = inv.category;
 
       await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
     }
@@ -86,6 +83,7 @@ export interface UseCase {
   id: string;
   description: string;
   category: string;
+  featuresUsed: string[];
 }
 
 export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
@@ -145,10 +143,14 @@ async function processSingleGuideFile(
 
   const processedMarkdown = replaceMacros(markdownBody, filePath);
 
+  const featureIds: string[] = data['web-feature-ids'] || [];
+  const featuresUsed = featureIds.map(getFeatureName);
+
   useCases.push({
     id,
     description: data.description,
     category,
+    featuresUsed,
   });
 
   const chunks = chunkMarkdown(processedMarkdown);
@@ -164,6 +166,7 @@ async function processSingleGuideFile(
       id,
       description: data.description,
       category,
+      featuresUsed,
       chunkContent: chunk,
       vector
     });

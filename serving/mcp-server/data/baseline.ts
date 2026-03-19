@@ -176,6 +176,16 @@ export function resolveFeatureId(featureId: string): string[] {
 }
 
 /**
+ * Gets the human-readable name for a feature ID.
+ * @param featureId - The feature ID to look up
+ * @returns The feature name
+ */
+export function getFeatureName(featureId: string): string {
+  const feature = features[featureId] as Feature;
+  return feature.name;
+}
+
+/**
  * Validates a feature ID.
  */
 export function validateFeature(id: string): FeatureValidationResult {

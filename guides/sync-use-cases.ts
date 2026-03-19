@@ -6,6 +6,7 @@ import matter from 'gray-matter';
 import { fileURLToPath } from 'url';
 import { validateMacros } from '../serving/mcp-server/lib/macros.ts';
 import { validateFeature } from '../serving/mcp-server/data/baseline.ts';
+import { scanAllGuides } from '../harness/lib/utils.ts';
 
 // --- Types ---
 
@@ -21,13 +22,6 @@ interface ValidationResult {
   data: GuideData;
   body: string;
   filePath: string;
-}
-
-interface UseCaseFiles {
-  hasGuide: boolean;
-  hasDemo: boolean;
-  hasGrader: boolean;
-  hasPrompts: boolean;
 }
 
 export interface IssueContent {
@@ -54,7 +48,7 @@ export interface FeatureToSync {
   issueNumber: number;
   needsReopen: boolean;
   closeReason: 'completed' | null;
-  targetStatus: 'Needs evals' | null;
+  targetStatus: 'Needs use cases' | 'Needs evals' | null;
 }
 
 interface ProjectDetails {
@@ -99,32 +93,6 @@ const octokit: any = new Octokit({ auth: GITHUB_TOKEN });
 
 // --- Pure helpers ---
 
-/**
- * Recursively find all use case directories.
- */
-export function findUseCaseDirs(dir: string): string[] {
-  const useCaseDirs: string[] = [];
-
-  function find(currentDir: string) {
-    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
-    let isUseCase = false;
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        if (entry.name !== 'node_modules' && entry.name !== '.git') {
-          find(path.join(currentDir, entry.name));
-        }
-      } else if (['guide.md', 'demo.html', 'grader.ts', 'prompts.md'].includes(entry.name)) {
-        isUseCase = true;
-      }
-    }
-    if (isUseCase) {
-      useCaseDirs.push(currentDir);
-    }
-  }
-
-  find(dir);
-  return useCaseDirs;
-}
 
 /**
  * Determines the project status name for a use case based on its completeness.
@@ -273,6 +241,14 @@ export function getFeaturesNeedingSync(
         closeReason: 'completed',
         targetStatus: null,
       });
+    } else if (!featuresWithAnyUseCases.has(featureId) && featureData.state === 'open') {
+      result.push({
+        featureId,
+        issueNumber: featureData.number,
+        needsReopen: false,
+        closeReason: null,
+        targetStatus: 'Needs use cases',
+      });
     }
   }
   return result;
@@ -348,18 +324,6 @@ export function validateGuide(filePath: string): ValidationResult {
   return { errors, data, body, filePath };
 }
 
-// --- File system helpers ---
-
-function getUseCaseFiles(subdir: string): UseCaseFiles {
-  const exists = (file: string) => fs.existsSync(path.join(subdir, file));
-  const nonEmpty = (file: string) => exists(file) && fs.readFileSync(path.join(subdir, file), 'utf8').trim().length > 0;
-  return {
-    hasGuide: exists('guide.md'),
-    hasDemo: nonEmpty('demo.html'),
-    hasGrader: nonEmpty('grader.ts'),
-    hasPrompts: nonEmpty('prompts.md'),
-  };
-}
 
 // --- GitHub API ---
 
@@ -626,24 +590,27 @@ async function processUseCases(
   nameToIssueMap: Map<string, any>,
   subdirToIssueMap: Map<string, any>,
   projectDetails: ProjectDetails | null
-): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean }> {
+): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean; errors: string[] }> {
   const activeIssueNumbers = new Set<number>();
   const featuresWithActiveUseCases = new Set<string>();
   const featuresWithAnyUseCases = new Set<string>();
   const featureUseCaseMap = new Map<string, UseCaseEntry[]>();
   let hasError = false;
+  const errors: string[] = [];
 
-  const guidesDir = path.resolve(REPO_ROOT, 'guides');
-  const useCaseDirs = findUseCaseDirs(guidesDir);
-  console.log(`Found ${useCaseDirs.length} use cases.`);
+  const guides = scanAllGuides();
+  console.log(`Found ${guides.length} use cases.`);
 
-  for (const subdir of useCaseDirs) {
+  for (const inv of guides) {
+    const subdir = inv.dir;
+    const { hasGuide, hasDemo, hasGrader, hasPrompts } = inv;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
-    const { hasGuide, hasDemo, hasGrader, hasPrompts } = getUseCaseFiles(subdir);
-
-    if (hasGuide !== hasDemo) {
-      const missingFile = hasGuide ? 'demo.html' : 'guide.md';
-      console.error(`❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH guide.md and demo.html.`);
+    const guideExists = hasGuide || inv.isStub;
+    if (guideExists !== hasDemo) {
+      const missingFile = guideExists ? 'demo.html' : 'guide.md';
+      const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH guide.md and demo.html.`;
+      console.error(msg);
+      errors.push(msg);
       hasError = true;
     }
 
@@ -652,7 +619,9 @@ async function processUseCases(
       const guideHasContent = fs.existsSync(path.join(subdir, 'guide.md')) &&
         matter(fs.readFileSync(path.join(subdir, 'guide.md'), 'utf8')).content.trim().length > 0;
       if (guideHasContent) {
-        console.error(`❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH grader.ts and prompts.md.`);
+        const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH grader.ts and prompts.md.`;
+        console.error(msg);
+        errors.push(msg);
         hasError = true;
       }
     }
@@ -661,7 +630,7 @@ async function processUseCases(
     let guideData: GuideData = {};
     let guideBody = '';
 
-    if (hasGuide) {
+    if (hasGuide || inv.isStub) {
       const { errors, data, body } = validateGuide(path.join(subdir, 'guide.md'));
       guideErrors = errors;
       guideData = data;
@@ -669,37 +638,36 @@ async function processUseCases(
 
       if (guideErrors.length > 0) {
         for (const error of guideErrors) {
-          console.error(`❌ Error: ${error}`);
+          const msg = `❌ Error: ${error}`;
+          console.error(msg);
+          errors.push(msg);
         }
         hasError = true;
       }
     }
 
-    if (!hasGuide || !hasDemo) {
-      // Prevent the cleanup step from treating any existing issue as an orphan —
-      // the use case directory exists, it's just missing some required files.
-      const partialIssue = subdirToIssueMap.get(relativeSubdir);
-      if (partialIssue) {
-        activeIssueNumbers.add(partialIssue.number);
-      }
-      continue;
-    }
-
-    if (guideErrors.length > 0) {
-      continue;
-    }
-
-    const name = guideData.name!;
-    const description = guideData.description || '';
-    const featureIds = (guideData['web-feature-ids'] || []) as string[];
-    const statusName = getStatusName(guideBody, hasGrader, hasPrompts);
+    const isIncomplete = (!hasGuide && !inv.isStub) || !hasDemo;
+    const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
+    const statusName = !isIncomplete && guideErrors.length === 0 ? getStatusName(guideBody, hasGrader, hasPrompts) : null;
+    const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
 
     for (const id of featureIds) {
       featuresWithAnyUseCases.add(id);
-      if (statusName !== null) {
-        featuresWithActiveUseCases.add(id);
-      }
+      if (isActive) featuresWithActiveUseCases.add(id);
     }
+
+    if (isIncomplete) {
+      // Prevent the cleanup step from treating any existing issue as an orphan —
+      // the use case directory exists, it's just missing some required files.
+      const partialIssue = subdirToIssueMap.get(relativeSubdir);
+      if (partialIssue) activeIssueNumbers.add(partialIssue.number);
+      continue;
+    }
+
+    if (guideErrors.length > 0) continue;
+
+    const name = guideData.name!;
+    const description = guideData.description || '';
     const { issueTitle, issueBody, priorityLabel } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap);
     const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
 
@@ -737,7 +705,7 @@ async function processUseCases(
     }
   }
 
-  return { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError };
+  return { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError, errors };
 }
 
 async function syncFeatureIssues(
@@ -866,12 +834,15 @@ async function run() {
   console.log('🚀 Starting use case sync...');
 
   const { featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails } = await fetchGitHubData();
-  const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError } = await processUseCases(featureToIssueMap, nameToIssueMap, subdirToIssueMap, projectDetails);
+  const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError, errors } = await processUseCases(featureToIssueMap, nameToIssueMap, subdirToIssueMap, projectDetails);
   await cleanupOrphanedIssues(allUseCases, activeIssueNumbers);
   await syncFeatureIssues(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, projectDetails);
 
   if (hasError) {
-    console.error('\n🛑 Sync failed due to validation errors.');
+    console.error('\n🛑 Sync failed due to validation errors:\n');
+    for (const error of errors) {
+      console.error(`  ${error}`);
+    }
     process.exit(1);
   }
 
