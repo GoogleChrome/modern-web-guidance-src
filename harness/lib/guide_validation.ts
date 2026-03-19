@@ -1,56 +1,68 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { MCP_LOG_FILE } from '../../constants.ts';
-import matter from 'gray-matter';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+export async function collectGuidesUsed(dirPath: string, enableSkills: boolean): Promise<string[]> {
+  if (enableSkills) {
+    const guidesFromSkills: string[] = [];
+    try {
+      const files = fs.readdirSync(dirPath);
+      const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
 
-export async function guideUsed(dirPath: string, taskName: string): Promise<boolean> {
-  const logPath = path.join(dirPath, MCP_LOG_FILE);
-  
-  if (!fs.existsSync(logPath)) {
-    return false;
-  }
+      for (const file of sessionFiles) {
+        const sessionPath = path.join(dirPath, file);
+        const sessionContent = fs.readFileSync(sessionPath, 'utf8');
+        const session = JSON.parse(sessionContent);
 
-  const logContent = fs.readFileSync(logPath, 'utf8').trim();
-  let toolCalls: any[] = [];
-
-  if (logContent) {
-    const lines = logContent.split('\n');
-    for (const line of lines) {
-      if (line.trim().startsWith('{')) {
-        try {
-          toolCalls.push(JSON.parse(line));
-        } catch (e) {
-          console.error(`Failed to parse line in ${logPath}:`, e);
+        if (session.messages) {
+          for (const msg of session.messages) {
+            if (msg.toolCalls) {
+              for (const tc of msg.toolCalls) {
+                if (tc.name === 'read_file' && tc.args && tc.args.file_path) {
+                  const filePath = tc.args.file_path;
+                  if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
+                    const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+                    if (match) {
+                      guidesFromSkills.push(match[1]);
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
+    } catch (e) {
+      console.error(`Error reading session files in ${dirPath}:`, e);
     }
+    return [...new Set(guidesFromSkills)];
+  } else {
+    const logPath = path.join(dirPath, MCP_LOG_FILE);
+    let guidesFromLog: string[] = [];
+
+    if (fs.existsSync(logPath)) {
+      const logContent = fs.readFileSync(logPath, 'utf8').trim();
+      let toolCalls: any[] = [];
+
+      if (logContent) {
+        const lines = logContent.split('\n');
+        for (const line of lines) {
+          if (line.trim().startsWith('{')) {
+            try {
+              toolCalls.push(JSON.parse(line));
+            } catch (e) {
+              console.error(`Failed to parse line in ${logPath}:`, e);
+            }
+          }
+        }
+      }
+
+      guidesFromLog = toolCalls
+        .filter(call => call.tool === 'get_best_practices' && Array.isArray(call.result))
+        .flatMap(call => call.result.map((r: any) => r.id || ''))
+        .filter(Boolean);
+    }
+
+    return [...new Set(guidesFromLog)];
   }
-
-  const taskPath = path.resolve(__dirname, `../tasks/${taskName}.md`);
-  if (!fs.existsSync(taskPath)) {
-    console.error(`Task ${taskName} not found at ${taskPath}`);
-    return false;
-  }
-
-  const fileContent = fs.readFileSync(taskPath, 'utf8');
-  const { data } = matter(fileContent);
-
-  if (!data || !data.grader) {
-    console.error(`No 'grader:' found in frontmatter for task ${taskName}`);
-    return false;
-  }
-
-  const guide = data.grader.trim();
-
-  // Extract all use case IDs requested via get_best_practices
-  const requestedGuides = toolCalls
-    .filter(call => call.tool === 'get_best_practices' && Array.isArray(call.result))
-    .flatMap(call => call.result.map((r: any) => r.id || ''))
-    .filter(Boolean);
-
-  return requestedGuides.some(id => id === guide);
 }

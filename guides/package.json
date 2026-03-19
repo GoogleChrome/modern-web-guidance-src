@@ -3,13 +3,15 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "DRY_RUN=true node --experimental-strip-types ./sync-use-cases.ts",
+    "test": "npm run test:unit && npm run sync:dry",
+    "test:unit": "node --experimental-strip-types --test ./sync-use-cases.test.ts",
+    "sync:dry": "node --experimental-strip-types ./sync-use-cases.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@octokit/rest": "^21.1.1",
+    "@octokit/rest": "^22.0.1",
     "@playwright/test": "^1.58.2",
-    "dotenv": "^16.4.7",
+    "dotenv": "^17.3.1",
     "gray-matter": "^4.0.3",
     "web-features": "latest"
   }

@@ -1,0 +1,3 @@
+- Build an email input field that only shows a validation error after the user finishes typing and leaves the field, not while they're still typing.
+- Add a password field with complexity requirements (uppercase, number, special character, 8+ chars) that shows error styling only after the user blurs the field, and hides the rules list once the password is valid.
+- Create a signup form where validation feedback for email format and password complexity appears only after the user has committed to a value, not on focus or during typing.
