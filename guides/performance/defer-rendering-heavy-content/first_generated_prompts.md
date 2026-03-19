@@ -1,0 +1,2 @@
+- my coffee site gets super laggy when i add like 100 extra items to the seasonal favorites grid. how can i tell the browser to defer rendering for the cards that are off screen?
+- i want to add a huge collapsible faq section below the menu, but it cant slow down the initial load. can u show me how to use the hidden="until-found" attribute and content-visibility so its still searchable with ctrl+f?

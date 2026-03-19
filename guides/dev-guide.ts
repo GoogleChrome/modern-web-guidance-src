@@ -256,7 +256,8 @@ to accomplish the goal described in this guide. Write these to a file called ${P
 The prompts should:
 - Assume the project is the ${baseApp} app as seen in base-app.html.
 - Vary in specificity: include vague developer requests and specific technical asks
-- Be phrased as a developer asking an AI for help with their existing web app. lowercase text, occasional typos, etc.
+- Be phrased as a developer asking an AI for a new feature in their existing web app. lowercase text, occasional typos, etc.
+- Ask for a feature for each solution in the guide, in the same prompt, only when the guide has multiple options.
 - Not reference the guide itself or indicate that guidance exists
 - Don't reference the name of the base app.. a real developer wouldn't do that.
 - Each be on its own line, prefixed with "- "
