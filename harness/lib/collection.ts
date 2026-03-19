@@ -34,7 +34,7 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   return 'unknown';
 }
 
-export async function collectResults(resultsDir: string) {
+export async function collectResults(resultsDir: string, suiteConfig: any) {
   const runDirs = fs.readdirSync(resultsDir)
     .filter(name => {
       const fullPath = path.join(resultsDir, name);
@@ -61,7 +61,7 @@ export async function collectResults(resultsDir: string) {
 
       const [taskName, runType] = parts;
       const targetFile = path.join(dir, 'index.html');
-      const isNegative = config.suite.negative === true;
+      const isNegative = suiteConfig.negative === true;
       const taskPath = path.join(rootDir, 'harness', 'tasks', isNegative ? 'negative' : '', `${taskName}.md`);
 
       if (!fs.existsSync(taskPath)) continue;
@@ -162,13 +162,13 @@ run();
       let guidanceToolsUsedResult: string[] = [];
 
       if (runType === 'guided') {
-        const serving = config.suite.serving;
-        guidesUsedResult = await collectGuidesUsed(dir, serving, config.suite.agent);
-        guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir, serving, config.suite.agent);
+        const serving = suiteConfig.serving;
+        guidesUsedResult = await collectGuidesUsed(dir, serving, suiteConfig.agent);
+        guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir, serving, suiteConfig.agent);
       }
 
       const targetFile = path.join(dir, 'index.html');
-      const isNegative = config.suite.negative === true;
+      const isNegative = suiteConfig.negative === true;
       const taskPath = path.join(rootDir, 'harness', 'tasks', isNegative ? 'negative' : '', `${taskName}.md`);
 
       if (!fs.existsSync(taskPath)) {
@@ -187,7 +187,7 @@ run();
       const taskCategory = getGuideCategory(guide);
 
       let expectedGuidanceTool: string | undefined;
-      const serving = config.suite.serving;
+      const serving = suiteConfig.serving;
       if (serving === Serving.MCP) {
         expectedGuidanceTool = 'modern-web';
       } else if (serving === Serving.SKILLS_CLI) {
@@ -256,6 +256,17 @@ run();
         runNumber: parseInt(runDir),
         results: scenarioResults,
         guidesUsed: guidesUsedResult,
+        guidanceToolsUsed: guidanceToolsUsedResult,
+        expectedGuidanceTool: expectedGuidanceTool,
+        expectedGuide: guide,
+        baseApp: actualBaseApp,
+        taskName: taskName
+      });
+    }
+  }
+
+  return { allResults, numRuns: runDirs.length };
+}UsedResult,
         guidanceToolsUsed: guidanceToolsUsedResult,
         expectedGuidanceTool: expectedGuidanceTool,
         expectedGuide: guide,

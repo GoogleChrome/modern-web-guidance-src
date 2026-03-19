@@ -51,7 +51,7 @@ export const environmentConfig: EnvironmentConfig = {
   mcpApiKey: process.env.MCP_API_KEY || '', // For google-developer-knowledge MCP server
 };
 
-export const suiteConfig: SuiteConfig = {
+export const defaultSuiteConfig: SuiteConfig = {
   name: `full-${new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-')}`,
   numRuns: 1,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
@@ -60,6 +60,14 @@ export const suiteConfig: SuiteConfig = {
   agent: Agents.GEMINI_CLI,
   negative: false, // When `true`, runs the suite on all tasks in `tasks/negative/`
 };
+
+export let suiteConfig: SuiteConfig = { ...defaultSuiteConfig };
+
+export function mergeSuiteConfig(overrides: Partial<SuiteConfig>): SuiteConfig {
+  suiteConfig = { ...suiteConfig, ...overrides };
+  config.suite = suiteConfig;
+  return suiteConfig;
+}
 
 export interface EnvironmentConfig {
   jetskiDir: string;

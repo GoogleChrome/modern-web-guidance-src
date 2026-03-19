@@ -71,6 +71,7 @@ gd dev [dir] [options]        # auto-generate/calibrate
 # Evaluation
 gd eval                       # run the full evaluation suite
 gd eval [task1] [task2]       # run specific tasks
+gd eval [options]             # run with overrides (e.g. --agent claude_code --numRuns 5 --negative --enableSkills --mcpServers modern-web)
 gd dashboard                  # start the evaluation dashboard
 
 # To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)

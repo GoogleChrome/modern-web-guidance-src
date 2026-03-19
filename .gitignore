@@ -32,5 +32,12 @@ skills/modern-web/
 # team context repo
 project-gleam/
 
+# Local configs
+local_config_override.ts
+
 # Git worktrees directory
 .worktrees
+
+# Local agent stuff
+.gemini/
+GEMINI.md

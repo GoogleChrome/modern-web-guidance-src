@@ -124,6 +124,7 @@ pnpm link --global && gd setup-completion
 |---|---|
 | `gd eval` | Run the full evaluation suite (discovers all tasks in `harness/tasks/`) |
 | `gd eval [task1] [task2]` | Run specific tasks only |
+| `gd eval [options]` | Run with config overrides (`--agent`, `--numRuns`, `--negative`, `--enableSkills`, `--mcpServers`) |
 | `gd dashboard` | Start the eval results dashboard (eval-view) |
 | `gd run <template> <prompt>` | Run an ad-hoc agent test |
 

@@ -18,15 +18,27 @@ export async function evaluateSuite(resultsDir: string, suiteName: string) {
     return;
   }
 
+  let suiteConfig = config.suite;
+  const configPath = path.join(resultsDir, 'suite_config.json');
+  if (fs.existsSync(configPath)) {
+    try {
+      suiteConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch {
+      console.warn(`⚠️ Failed to parse suite_config.json in ${resultsDir}, using global fallback`.yellow);
+    }
+  } else {
+    console.warn(`⚠️ No suite_config.json found in ${resultsDir}, using global fallback`.yellow);
+  }
+
   try {
-    const { allResults, numRuns } = await collectResults(resultsDir);
+    const { allResults, numRuns } = await collectResults(resultsDir, suiteConfig);
     console.log(`Found ${numRuns} test run(s)`.cyan);
 
     const metrics = calculateMetrics(allResults, numRuns);
     const mdReport = generateMarkdownReport(metrics, allResults);
     const timestamp = new Date().toISOString();
-    const model = extractModelFromResults(resultsDir, config.suite.agent);
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, config.suite.agent, config.suite.serving, model);
+    const model = extractModelFromResults(resultsDir, suiteConfig.agent);
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model);
 
     saveReports(resultsDir, mdReport, jsonReport);
 

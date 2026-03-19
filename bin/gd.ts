@@ -80,6 +80,11 @@ const { positionals, values } = parseArgs({
     guided: { type: 'boolean' },
     verbose: { type: 'boolean' },
     usecases: { type: 'boolean' },
+    agent: { type: 'string' },
+    numRuns: { type: 'string' },
+    negative: { type: 'boolean' },
+    enableSkills: { type: 'boolean' },
+    mcpServers: { type: 'string' },
   },
   allowPositionals: true,
   strict: false,
@@ -147,6 +152,11 @@ ${cBold('Options:')}
   ${cDim('-h, --help')}             Show this help
   ${cDim('--verbose')}              Show additional output
   ${cDim('--usecases')}             (Audit) Group by categories/usecases (default is features)
+  ${cDim('--agent <name>')}         (Eval) Set agent (e.g. claude_code, jetski, gemini_cli)
+  ${cDim('--numRuns <n>')}          (Eval) Number of runs per task
+  ${cDim('--negative')}             (Eval) Run negative suite tasks
+  ${cDim('--enableSkills')}         (Eval) Enable agent skills
+  ${cDim('--mcpServers <list>')}    (Eval) Comma-separated list of MCP servers
     `);
     process.exit(0);
   }
@@ -228,11 +238,20 @@ ${cBold('Options:')}
       const { runSuite } = await import('../harness/run_suite.ts');
 
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
-      if (tasks.length > 0) {
-        await runSuite({ tasks });
-      } else {
-        await runSuite();
-      }
+      const overrides: any = {};
+      if (values.agent) overrides.agent = values.agent;
+      if (values.numRuns) overrides.numRuns = parseInt(values.numRuns as string, 10);
+      if (values.negative) overrides.negative = values.negative;
+      if (values.enableSkills) overrides.enableSkills = values.enableSkills;
+      if (values.mcpServers) overrides.mcpServersToEnable = (values.mcpServers as string).split(',');
+      if (process.env.SUITE_AGENT) overrides.agent = process.env.SUITE_AGENT;
+      if (process.env.SUITE_NUM_RUNS) overrides.numRuns = parseInt(process.env.SUITE_NUM_RUNS, 10);
+      if (process.env.SUITE_NEGATIVE) overrides.negative = process.env.SUITE_NEGATIVE === 'true';
+
+      const runOptions: any = { overrides };
+      if (tasks.length > 0) runOptions.tasks = tasks;
+
+      await runSuite(runOptions);
       break;
     }
 
