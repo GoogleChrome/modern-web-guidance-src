@@ -1,6 +1,6 @@
 ---
-name: detect-initial-visibility-state-prerendering
-description: Detect a page's initial visibility state to verify if prerendering occurred in a backgrounded page where other detection mechanisms may be less reliable and accurate.
+name: detect-initial-visibility-state
+description: Reliably determine whether a page was initially loaded in the background, even in cases where the script is loaded asynchronously after the user foregrounded the page.
 web-feature-ids:
     - page-visibility-state
 ---
