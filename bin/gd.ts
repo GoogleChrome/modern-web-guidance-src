@@ -41,7 +41,7 @@ function listGuideDirs(): string[] {
 const completion = omelette('gd <command> <arg1> <arg2>');
 
 completion.on('command', ({ reply }) => {
-  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'setup-completion', 'gen-negative-suite']);
+  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'baselinestatus', 'setup-completion', 'gen-negative-suite']);
 });
 
 completion.on('arg1', ({ before, reply }) => {
@@ -80,6 +80,7 @@ const { positionals, values } = parseArgs({
     'test-grader': { type: 'boolean' },
     'gen-grader': { type: 'boolean' },
     'gen-negative': { type: 'boolean' },
+    guided: { type: 'boolean' },
     verbose: { type: 'boolean' },
     usecases: { type: 'boolean' },
   },
@@ -129,6 +130,7 @@ ${"Piece-wise options for `dev`:"}
     ${cDim('--test-grader')}        Check grader calibration (demo + negative-demo)
     ${cDim('--gen-grader')}         Generate a new grader script
     ${cDim('--gen-negative')}       Generate negative examples
+    ${cDim('--guided')}             Skip calibration, run guided agent test only
     ${cDim('--no-test')}            Skip agent tests after calibration
     ${cDim('--verbose')}            Show additional output
 
@@ -141,6 +143,7 @@ ${cBold('Evaluation:')}
   ${cCyan('gen-negative-suite')}     Generate resources for negative suite
 
 ${cBold('Other:')}
+  ${cCyan('baselinestatus')} <query>      Check browser support and Baseline status
   ${cCyan('setup-completion')}       Install shell auto-completion
 
 ${cBold('Options:')}
@@ -183,6 +186,7 @@ ${cBold('Options:')}
       // Default dev-guide pipeline
       const { devGuide } = await import('../guides/dev-guide.ts');
       const success = await devGuide(dir, {
+        guidedOnly: !!values.guided,
         verbose: !!values.verbose,
       });
       process.exit(success ? 0 : 1);
@@ -244,6 +248,12 @@ ${cBold('Options:')}
 
     case 'deploy': {
       const code = await runNpm(['deploy:dashboard']);
+      process.exit(code);
+    }
+
+    case 'baselinestatus': {
+      const args = positionals.slice(1);
+      const code = await runNpm(['baselinestatus', ...args]);
       process.exit(code);
     }
 

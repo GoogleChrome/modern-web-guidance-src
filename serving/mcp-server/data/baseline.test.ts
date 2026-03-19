@@ -10,7 +10,7 @@ describe('baseline data', () => {
     it('returns aggregate status for split feature', () => {
       const status = getBaselineStatus('single-color-gradients');
       expect(status).toMatch(/^Baseline since \d{4}-\d{2}-\d{2}$/);
-      expect(status).not.toBe('Limited availability');
+      expect(status).not.toBe('Limited');
     });
 
     it('returns undefined for unknown features', () => {
@@ -20,15 +20,15 @@ describe('baseline data', () => {
 
   describe('getStatusMessage', () => {
     it('returns status message for a feature', () => {
-      expect(getStatusMessage('grid')).toBe('Grid is Widely available. It\'s been Baseline since 2017-10-17.');
+      expect(getStatusMessage('grid')).toBe('Grid is Widely. It\'s been Baseline since 2017-10-17.');
     });
 
     it('returns status message for a BCD key', () => {
-      expect(getStatusMessage('grid', 'css.properties.grid-template-columns')).toBe('The css.properties.grid-template-columns capability is Widely available. It\'s been Baseline since 2017-10-17.');
+      expect(getStatusMessage('grid', 'css.properties.grid-template-columns')).toBe('The css.properties.grid-template-columns capability is Widely. It\'s been Baseline since 2017-10-17.');
     });
 
     it('returns status message for a non-Baseline feature', () => {
-      expect(getStatusMessage('accelerometer')).toBe('Accelerometer is not supported across all major browsers.');
+      expect(getStatusMessage('accelerometer')).toBe('Accelerometer is Limited.');
     });
 
     it('returns undefined for unknown features or keys', () => {

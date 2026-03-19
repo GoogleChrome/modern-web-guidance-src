@@ -16,12 +16,13 @@
     "README.md"
   ],
   "scripts": {
+    "baselinestatus": "node cli/baseline-status.ts",
     "prepublishOnly": "npm run build",
     "build": "node scripts/build-guides.ts",
     "build:megaskill": "node scripts/build-megaskill.ts",
     "start": "node mcp-server/index.ts",
     "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
-    "test": "node scripts/build-guides.ts && vitest run mcp-server/ scripts/",
+    "test": "node scripts/build-guides.ts && vitest run",
     "typecheck": "npm run build && tsc --noEmit"
   },
   "keywords": [],

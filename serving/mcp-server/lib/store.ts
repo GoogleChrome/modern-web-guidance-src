@@ -13,6 +13,7 @@ export interface UseCase {
   id: string;
   description: string;
   category: string;
+  featuresUsed: string[];
   chunkContent?: string;
   vector?: number[];
   distance?: number;
@@ -77,6 +78,7 @@ export class Store {
         id: r.id as string,
         description: r.description as string,
         category: r.category as string,
+        featuresUsed: Array.from(r.featuresUsed as Iterable<string>),
         distance: dist.toFixed(2),
       });
 
