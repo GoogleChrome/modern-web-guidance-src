@@ -3,6 +3,7 @@ import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { fileURLToPath } from 'url';
 import { Agents } from '../config.ts';
+import { classifyGuide, scanAllGuides } from './utils.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -162,13 +163,15 @@ export function updateMcpConfig(
 }
 
 /**
- * Copies the skills directory to the isolated home directory.
+ * Copies the guides directory to the isolated home directory for the agent.
+ * Copies SKILL.md for categories and guide.md for "ready" guides.
  * @param homeDir Path to the isolated home directory
+ * @param agent The agent type
  * @returns True if successful, false otherwise
  */
 export function copySkills(homeDir: string, agent: string): boolean {
   const harnessRoot = path.resolve(__dirname, '..');
-  const skillsSource = path.join(harnessRoot, '..', 'skills');
+  const guidesSource = path.join(harnessRoot, '..', 'guides');
 
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {
@@ -179,18 +182,45 @@ export function copySkills(homeDir: string, agent: string): boolean {
     destDir = path.join(homeDir, '.gemini', 'skills');
   }
 
-  if (!fs.existsSync(skillsSource)) {
-    console.warn(`Warning: Skills directory not found at ${skillsSource}`);
+  if (!fs.existsSync(guidesSource)) {
+    console.warn(`Warning: Guides directory not found at ${guidesSource}`);
     return false;
   }
 
   try {
     fs.mkdirSync(destDir, { recursive: true });
-    execSync(`cp -R "${skillsSource}/." "${destDir}/"`);
-    console.log(`Copied skills to ${destDir}`);
+
+    const allGuides = scanAllGuides();
+    const categories = new Set(allGuides.map(inv => inv.category));
+
+    for (const cat of categories) {
+      const catSrc = path.join(guidesSource, cat);
+      const catDest = path.join(destDir, cat);
+
+      // Copy SKILL.md if present
+      const skillPath = path.join(catSrc, 'SKILL.md');
+      if (fs.existsSync(skillPath)) {
+        fs.mkdirSync(catDest, { recursive: true });
+        fs.copyFileSync(skillPath, path.join(catDest, 'SKILL.md'));
+      }
+    }
+
+    for (const inv of allGuides) {
+      if (classifyGuide(inv) === 'eval-ready') {
+        const catDest = path.join(destDir, inv.category);
+        const guideDest = path.join(catDest, inv.name);
+        fs.mkdirSync(guideDest, { recursive: true });
+
+        const guideFileSrc = path.join(inv.dir, 'guide.md');
+        const guideFileDest = path.join(guideDest, 'guide.md');
+        fs.copyFileSync(guideFileSrc, guideFileDest);
+      }
+    }
+
+    console.log(`Copied guides to ${destDir}`);
     return true;
   } catch (e: any) {
-    console.error(`Failed to copy skills: ${e.message}`);
+    console.error(`Failed to copy guides: ${e.message}`);
     return false;
   }
 }
@@ -344,9 +374,10 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
       const trajectoryId = fileName.replace(/\.(json|pb)$/, '');
       const fileBuffer = fs.readFileSync(srcFile);
       const htmlContent = generateExportHtml(new Uint8Array(fileBuffer), fileName);
-      const htmlDest = path.join(targetDir, `${trajectoryId}.html`);
+      const htmlFileName = trajectoryId.startsWith('session-') ? `${trajectoryId}.html` : `session-${trajectoryId}.html`;
+      const htmlDest = path.join(targetDir, htmlFileName);
       fs.writeFileSync(htmlDest, htmlContent, 'utf8');
-      console.log(`Generated HTML export: ${trajectoryId}.html`);
+      console.log(`Generated HTML export: ${htmlFileName}`);
     } catch (e) {
       console.error(`Failed to export trajectory ${fileName}:`, e);
     }

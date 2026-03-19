@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-import { scanAllGuides, classifyGuide, getTaskMap } from './dev-guide.ts';
+import { scanAllGuides, classifyGuide } from '../harness/lib/utils.ts';
 
 const BASE_APPS_DIR = path.join(rootDir, 'harness', 'base_apps');
 const TASKS_DIR = path.join(rootDir, 'harness', 'tasks', 'negative');
@@ -21,8 +21,7 @@ function readFileSafe(filePath: string): string {
 
 export async function generateNegativeSuite() {
   console.log('Scanning guides...');
-  const taskMap = getTaskMap();
-  const allGuides = scanAllGuides(taskMap);
+  const allGuides = scanAllGuides();
 
   const evalReadyGuides = allGuides.filter(inv => classifyGuide(inv) === 'eval-ready');
 
