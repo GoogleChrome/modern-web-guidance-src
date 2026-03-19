@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shared Element Transitions</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+
+    /* DEMO: Page states */
+    #detail-page {
+      display: none;
+    }
+
+    /* DEMO: List view styling (thumbnail) */
+    .thumbnail {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    /* DEMO: Detail view styling (full-bleed) */
+    .full-bleed {
+      width: 100vw;
+      height: 50vh;
+      cursor: pointer;
+    }
+
+    /* DEMO: Button styling */
+    button {
+      padding: 8px 16px;
+      font-size: 1rem;
+      background: #eee;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    /* CORE: Assign unique transition names to persist across states */
+    #product-1 { view-transition-name: p1; background: #0066cc; }
+    #product-2 { view-transition-name: p2; background: #cc3333; }
+    #product-3 { view-transition-name: p3; background: #33cc33; }
+  </style>
+</head>
+<body>
+  <!-- State 1: List View -->
+  <div id="list-page">
+    <div class="content">
+      <h1>Products</h1>
+      <p>Click a product thumbnail to see details.</p>
+      
+      <div class="grid">
+        <div id="product-1" class="thumbnail" onclick="navigate('detail', 'p1', '#0066cc')"></div>
+        <div id="product-2" class="thumbnail" onclick="navigate('detail', 'p2', '#cc3333')"></div>
+        <div id="product-3" class="thumbnail" onclick="navigate('detail', 'p3', '#33cc33')"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- State 2: Detail View -->
+  <div id="detail-page">
+    <!-- The shared hero element, dynamically configured via JS -->
+    <div id="hero" class="full-bleed" onclick="navigate('list')"></div>
+    <div class="content">
+      <h1>Product Overview</h1>
+      <p>This is the full-bleed hero view.</p>
+      <button onclick="navigate('list')">Back to products</button>
+    </div>
+  </div>
+
+  <script>
+    function navigate(view, transitionName, color) {
+      // CORE: Wrap the DOM update in startViewTransition
+      if (!document.startViewTransition) {
+        updateDOM(view, transitionName, color);
+        return;
+      }
+      document.startViewTransition(() => updateDOM(view, transitionName, color));
+    }
+
+    // DEMO: Update the DOM to display the requested view
+    function updateDOM(view, transitionName, color) {
+      const hero = document.getElementById('hero');
+
+      if (view === 'detail') {
+        // Connect the hero element to the clicked thumbnail
+        hero.style.viewTransitionName = transitionName;
+        hero.style.background = color;
+
+        document.getElementById('list-page').style.display = 'none';
+        document.getElementById('detail-page').style.display = 'block';
+      } else {
+        document.getElementById('list-page').style.display = 'block';
+        document.getElementById('detail-page').style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>

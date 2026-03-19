@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Core Web Vitals</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      color: #333;
+    }
+    h1 { color: #1a1a1a; }
+    .status-container {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-top: 1.5rem;
+    }
+    #logOutput {
+      font-family: monospace;
+      white-space: pre-wrap;
+      font-size: 0.9rem;
+      color: #495057;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .stock-image {
+      width: 100%;
+      max-height: 400px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin: 1rem 0;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Core Web Vitals Monitoring</h1>
+  <p>This page measures its Core Web Vitals and uses <code>fetchLater()</code> to reliably send the finalized metrics to <code>/collect</code> when you close the tab or navigate away.</p>
+
+  <img src="https://images.unsplash.com/photo-1506744626753-1fa44df14c28?auto=format&fit=crop&w=800&q=80" alt="Beautiful landscape" class="stock-image" />
+  
+  <button id="test-inp">Click to test Interaction to Next Paint (INP)</button>
+
+  <div class="status-container">
+    <strong>Activity Log:</strong>
+    <div id="logOutput"></div>
+  </div>
+
+  <script>
+    // fetchLater Polyfill
+    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
+      let timeoutHandle;
+      let activated = false;
+
+      function sendNow() {
+        if (!(init.signal && init.signal.aborted)) {
+          if (
+            'keepalive' in Request.prototype ||
+            init.method !== 'POST' ||
+            init.headers
+          ) {
+            fetch(url, Object.assign({}, init, {keepalive: true}));
+            activated = true;
+          } else {
+            activated = navigator.sendBeacon(url, init.body);
+          }
+        }
+        destroy();
+      }
+
+      function destroy() {
+        document.removeEventListener('visibilitychange', sendNow);
+        clearTimeout(timeoutHandle);
+      }
+
+      if (document.visibilityState === 'hidden') {
+        queueMicrotask(sendNow);
+      } else {
+        document.addEventListener('visibilitychange', sendNow);
+        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
+          timeoutHandle = setTimeout(sendNow, init.activateAfter);
+        }
+      }
+
+      if (init.signal) {
+        init.signal.addEventListener('abort', destroy);
+      }
+
+      return {
+        get activated() {
+          return activated;
+        },
+      };
+    };
+  </script>
+
+  <script type="module">
+    import {onCLS, onFCP, onINP, onLCP, onTTFB} from 'https://unpkg.com/web-vitals@4?module';
+
+    const ENDPOINT = '/collect';
+    const logElement = document.getElementById('logOutput');
+    
+    function logMessage(msg) {
+      const time = new Date().toLocaleTimeString();
+      logElement.textContent = `[${time}] ${msg}\n` + logElement.textContent;
+    }
+
+    const metricsData = {};
+    let fetchLaterController = null;
+
+    function queueBeacon() {
+      // Abort any pending beacons before creating a new one.
+      if (fetchLaterController) {
+        fetchLaterController.abort();
+      }
+      fetchLaterController = new AbortController();
+
+      // Schedule a fetch for the finalized data payload to be sent later.
+      try {
+        fetchLater(ENDPOINT, {
+          method: 'POST',
+          headers: {'content-type': 'application/json'},
+          body: JSON.stringify(metricsData),
+          signal: fetchLaterController.signal,
+        });
+        logMessage(`Queued fetchLater payload with metrics: ${Object.keys(metricsData).join(', ')}`);
+      } catch (error) {
+        logMessage(`Error queuing fetchLater: ${error}`);
+      }
+    }
+
+    function handleMetric(metric) {
+      // Send the entire metric object as it contains helpful metadata (rating, etc.)
+      metricsData[metric.name] = metric;
+      logMessage(`Metric updated/finalized: ${metric.name} = ${metric.value.toFixed(2)} (${metric.rating})`);
+      queueBeacon();
+    }
+
+    // Use reportAllChanges: true to capture updates to LCP/CLS immediately
+    // but the final state is what gets sent when the tab is closed
+    onCLS(handleMetric, {reportAllChanges: true});
+    onFCP(handleMetric);
+    onINP(handleMetric, {reportAllChanges: true});
+    onLCP(handleMetric, {reportAllChanges: true});
+    onTTFB(handleMetric);
+
+    // Add artificial delay to INP to test metric capturing
+    document.getElementById('test-inp').addEventListener('click', () => {
+      const start = Date.now();
+      while (Date.now() - start < 150) {
+        // Block main thread to simulate poor INP
+      }
+      logMessage('Clicked button - triggered main thread block.');
+    });
+  </script>
+</body>
+</html>

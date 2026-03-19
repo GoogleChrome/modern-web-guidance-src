@@ -1,0 +1,1 @@
+- Build a single vertical scrollable feed containing both text messages and media cards that automatically scrolls on initial load to center a specific featured media card in view, ensuring no JavaScript is used for the initial offset and no visible scrolling animation or flash occurs.

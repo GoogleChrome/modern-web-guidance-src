@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animate Scrollbar Color Demo</title>
+  <style>
+    /* ---------------------------------------------------- */
+    /* Base Layout & Reset */
+    /* ---------------------------------------------------- */
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: #f9f9f9;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+    }
+
+    p.subtitle {
+      margin-bottom: 2rem;
+      color: #666;
+      text-align: center;
+    }
+
+    .container {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ---------------------------------------------------- */
+    /* The Scrollable Element Container */
+    /* ---------------------------------------------------- */
+    .scroller {
+      width: 300px;
+      height: 350px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      position: relative;
+    }
+
+    .scroller p {
+      margin-bottom: 3rem;
+      line-height: 1.6;
+    }
+
+    .scroller .content-extender {
+      height: 1000px;
+    }
+
+    /* ---------------------------------------------------- */
+    /* 1. Register a Syntax-Aware Custom Color Property */
+    /* ---------------------------------------------------- */
+    @property --thumb-dynamic-color {
+      syntax: '<color>';
+      inherits: true;
+      initial-value: #f06292;
+      /* Light Pink */
+    }
+
+    /* ---------------------------------------------------- */
+    /* 2. Define the Scroll-Bound Keyframes */
+    /* ---------------------------------------------------- */
+    @keyframes color-shift {
+      0% {
+        --thumb-dynamic-color: #f06292;
+      }
+
+      /* Top: Pink */
+      50% {
+        --thumb-dynamic-color: #ffb74d;
+      }
+
+      /* Middle: Orange */
+      100% {
+        --thumb-dynamic-color: #4dd0e1;
+      }
+
+      /* Bottom: Cyan */
+    }
+
+    /* ---------------------------------------------------- */
+    /* 3. Apply the Animation via Scroll Timeline */
+    /* ---------------------------------------------------- */
+    .scroller.animated-scrollbar {
+      /* Apply the timeline binding */
+      animation: color-shift linear;
+      animation-timeline: scroll(self);
+
+      /* Feed the custom property into the standard scrollbar styling */
+      scrollbar-color: var(--thumb-dynamic-color, #f06292) #f1f1f1;
+      scrollbar-width: thin;
+
+      /* Prevent transparent backgrounds on macOS */
+      scrollbar-gutter: stable;
+    }
+
+    /* ---------------------------------------------------- */
+    /* 4. Support legacy browsers */
+    /* ---------------------------------------------------- */
+    @supports not (scrollbar-color: auto) {
+      .scroller.animated-scrollbar::-webkit-scrollbar {
+        width: 12px;
+      }
+
+      .scroller.animated-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+
+      .scroller.animated-scrollbar::-webkit-scrollbar-thumb {
+        /* This pseudo-element successfully inherits the actively 
+           running scroll animation's variable interpolation. 
+           We provide a static fallback for browsers missing @property support! */
+        background-color: var(--thumb-dynamic-color, #f06292);
+        border: 2px solid white;
+        border-radius: 6px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Animated Scrollbar Colors</h1>
+  <p class="subtitle">A progressive enhancement using CSS <code>@property</code> and Scroll-Driven Animations.<br>Scroll
+    down slowly inside the box.</p>
+
+  <div class="container">
+    <div class="scroller animated-scrollbar" tabindex="0">
+      <h2>Top (Pink)</h2>
+      <p>Scroll down. As the container scrolls, the embedded CSS variable bound by
+        <code>animation-timeline: scroll(self)</code> begins interpolating to Orange.</p>
+
+      <div style="height: 300px;"></div>
+
+      <h2>Middle (Orange)</h2>
+      <p>The standard <code>scrollbar-color</code> property is technically non-animatable, but passing in an
+        interpolated <code>@property</code> bypasses that limitation entirely, yielding a gorgeous color transition
+        without a drop of JavaScript.</p>
+
+      <div style="height: 300px;"></div>
+
+      <h2>Bottom (Cyan)</h2>
+      <p>You have reached the bottom! The CSS scroll timeline hits 100%, stabilizing the thumb color to a deep Cyan.</p>
+    </div>
+  </div>
+
+</body>
+
+</html>

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Intrinsic Sizes with Constraints</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        padding: 2rem;
+        background: #f8f9fa;
+      }
+      .demo-container {
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        max-width: 600px;
+      }
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-top: 1rem;
+      }
+      label {
+        font-weight: 500;
+        color: #495057;
+      }
+      textarea {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 1rem;
+        font-family: inherit;
+        resize: vertical;
+      }
+      textarea:focus {
+        outline: none;
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+      }
+      .display-container {
+        margin-top: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .preview-box {
+        box-sizing: border-box;
+        padding: 0.5rem;
+        background: #e9ecef;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 1rem;
+        min-height: 2.5rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        /*
+            Calculate size based on intrinsic fit-content,
+            constrained to be at least 150px, at most 100% of its container,
+            and padding 20px when it grows
+        */
+        width: calc-size(fit-content, clamp(150px, size + 20px, 100%));
+      }
+      code {
+        background: #e9ecef;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.9em;
+        color: #d63384;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="demo-container">
+      <h2>Constrained Intrinsic Sizing</h2>
+      <p>
+        Type into the <code>&lt;textarea&gt;</code> below. The preview box uses
+        <code>calc-size()</code> to calculate its width based on its intrinsic
+        size (<code>fit-content</code>).
+      </p>
+      <p>
+        It enforces design constraints by ensuring it never gets smaller than
+        <code>150px</code>, adds <code>20px</code> of extra width once the
+        content grows beyond that minimum size, and uses <code>clamp()</code> to
+        prevent it from growing larger than its <code>100%</code> container
+        width.
+      </p>
+      <div class="form-group">
+        <label for="input-text">Input:</label>
+        <textarea
+          id="input-text"
+          rows="3"
+          placeholder="Start typing..."
+        ></textarea>
+      </div>
+      <div class="display-container">
+        <label>Live Preview:</label>
+        <div id="preview" class="preview-box"></div>
+      </div>
+
+      <script>
+        const input = document.getElementById('input-text');
+        const preview = document.getElementById('preview');
+
+        input.addEventListener('input', () => {
+          preview.textContent = input.value;
+        });
+      </script>
+    </div>
+  </body>
+</html>
