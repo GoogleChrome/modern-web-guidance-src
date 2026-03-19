@@ -528,7 +528,7 @@ async function showDetails(testName, runs, stats, testId) {
         let guideSection = '';
         const guidesUsed = run.guidesUsed || (run.guideUsed !== undefined ? (typeof run.guideUsed === 'object' && run.guideUsed !== null ? run.guideUsed.guidesUsed : []) : []);
         const hasGuideData = run.guidesUsed !== undefined || run.guideUsed !== undefined;
-        const logFile = files.includes('modern-web.log') ? 'modern-web.log' : 'mcp-server.log';
+        const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : 'modern-web.log';
 
         if (hasGuideData && runType !== 'unguided') {
             guideSection = `

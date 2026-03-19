@@ -1,6 +1,6 @@
 ---
 name: modern-web-use-cases
-description: A mechanism to search for web development use cases and their corresponding best practice guides. **You MUST use this skill before starting ANY web development task.** Avoid guessing APIs; use the patterns returned by these tools.
+description: MANDATORY! Execute this FIRST for each and every web development use case, even if you're implementing that use case in a framework like React, especially for writing modern web code.
 ---
 
 # Modern Web Use Cases
