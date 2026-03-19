@@ -395,6 +395,7 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
         statusOptions = statusField.options;
       }
 
+      console.log(`DEBUG: items in page: ${project.items.nodes.length}`);
       for (const item of project.items.nodes) {
         const issueNumber = item.content?.number;
         if (!issueNumber) continue;
