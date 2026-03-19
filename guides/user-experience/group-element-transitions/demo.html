@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Group Element Transitions</title>
+  <style>
+    /* CORE: All list items share the same transition */
+    .item {
+      view-transition-class: item;
+    }
+
+    ::view-transition-group(.item) {
+      animation-duration: 0.2s;
+      animation-timing-function: ease-in-out;
+    }
+
+    /* DEMO: Styling */
+    body {
+      font-family: monospace;
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 0 20px;
+      text-align: center;
+    }
+
+    button {
+      padding: 8px 16px;
+      background: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .item button {
+      padding: 4px 10px;
+      font-size: 12px;
+      background: #cc3333;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Group Element Transitions</h1>
+  <button onclick="add()">Add Item</button>
+  <div id="list"></div>
+
+  <script>
+    function getRandomName() {
+      const length = Math.floor(Math.random() * 20) + 4;
+      const chars = 'abcdefghijklmnopqrstuvwxyz';
+      return Array.from({length}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    }
+
+    let items = [
+      { id: 1, name: getRandomName() },
+      { id: 2, name: getRandomName() },
+      { id: 3, name: getRandomName() }
+    ];
+    let nextId = 4;
+
+    /* CORE: Wrap list update in view transition */
+    function render() {
+      if (!document.startViewTransition) {
+        update();
+        return;
+      }
+      document.startViewTransition(() => update());
+    }
+
+    /* DEMO: Update DOM */
+    function update() {
+      const html = items.map((item) => `
+        <div class="item" style="view-transition-name: item-${item.id}">
+          <span>${item.name}</span>
+          <button onclick="remove(${item.id})">Remove</button>
+        </div>
+      `).join('');
+      document.getElementById('list').innerHTML = html;
+    }
+
+    /* DEMO: Add/Remove items */
+    function add() {
+      items.push({ id: nextId, name: getRandomName() });
+      nextId++;
+      render();
+    }
+
+    function remove(id) {
+      const index = items.findIndex(item => item.id === id);
+      if (index !== -1) items.splice(index, 1);
+      render();
+    }
+
+    update();
+  </script>
+</body>
+</html>

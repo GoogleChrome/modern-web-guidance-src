@@ -23,11 +23,7 @@ async function main() {
   console.log(`  ↳ Took ${(endSearch - startSearch).toFixed(2)}ms`);
 
   // 3. Display
-  console.log("\nTop Results:");
-  results.forEach((r, i) => {
-    console.log(`\n${i + 1}. [${r.id}] (${r.category}) - Distance: ${r.distance}`);
-    console.log(`   ${r.description}`);
-  });
+  console.log(JSON.stringify(results, null, 2));
 }
 
 main().catch(console.error);
