@@ -74,6 +74,7 @@ dotenv.config({ path: path.join(REPO_ROOT, '.env') });
 
 const PRIORITY_LABEL_REGEX = /^P\d+$/;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const PROJECT_GITHUB_TOKEN = process.env.PROJECT_GITHUB_TOKEN || GITHUB_TOKEN;
 const ORG = 'GoogleChrome';
 const REPO = 'guidance';
 const PROJECT_NUMBER = 30;
@@ -90,6 +91,7 @@ if (!GITHUB_TOKEN && !IS_DRY_RUN) {
 }
 
 const octokit: any = new Octokit({ auth: GITHUB_TOKEN });
+const projectOctokit: any = new Octokit({ auth: PROJECT_GITHUB_TOKEN });
 
 // --- Pure helpers ---
 
@@ -384,7 +386,7 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
     let statusOptions: any[] = [];
 
     do {
-      const response = await octokit.graphql(query, { org, number, cursor }) as any;
+      const response = await projectOctokit.graphql(query, { org, number, cursor }) as any;
       const project = response.organization.projectV2;
 
       if (!projectId) {

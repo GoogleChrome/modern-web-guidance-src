@@ -56,4 +56,5 @@ jobs:
         run: node --experimental-strip-types guides/sync-use-cases.ts
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          PROJECT_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           DRY_RUN: ${{ github.event.inputs.dry_run || (github.event_name == 'pull_request' && 'true') || 'false' }}
