@@ -270,14 +270,8 @@ ${cBold('Options:')}
     }
 
     case 'research': {
-      // Pass remaining args through to the research script
-      const researchArgs = process.argv.slice(3);
-      await spawnChild('node', [
-        '--env-file=.env',
-        '--experimental-strip-types',
-        path.join(rootDir, 'guides', 'research-use-cases.ts'),
-        ...researchArgs,
-      ]);
+      const { main: research } = await import('../guides/research-use-cases.ts');
+      await research(process.argv.slice(3));
       break;
     }
 

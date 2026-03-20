@@ -37,9 +37,9 @@ The command will:
 2. Propose 2–5 use cases in the correct format
 3. Scaffold `guide.md` stubs under `guides/<category>/<slug>/`
 
-Use `--dry-run` to preview the proposed stubs without writing any files, and `--category` to override the auto-detected guide category.
+Use `--dry-run` to preview the proposed stubs without writing any files, and `--category` to override the auto-detected guide category. Use `--deep-research` for more complex features to run a more thorough research pass using the deep research model (takes 10–60 minutes).
 
-**Prerequisite:** Set `GEMINI_API_KEY` in your `.env` file. Get a free key at https://aistudio.google.com/apikey.
+**Prerequisite:** Set `GEMINI_API_KEY` in your `.env` file.
 
 ### Reviewing the output
 

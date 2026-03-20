@@ -19,11 +19,11 @@
  *   # Optional flags (work with both modes):
  *   gd research --issue 359 --category performance --dry-run
  *
+ *   # Use the deep research model for a more thorough turn 1 (takes 10-60 minutes):
+ *   gd research --issue 359 --deep-research
+ *
  * Required environment variable (add to .env):
  *   GEMINI_API_KEY
- *
- * API reference:
- *   https://ai.google.dev/gemini-api/docs/google-search
  */
 
 import { parseArgs } from 'util';
@@ -31,7 +31,9 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import matter from 'gray-matter';
 import { getFeatureInfo, validateFeature } from '../serving/mcp-server/data/baseline.ts';
+import { scanAllGuides } from '../harness/lib/utils.ts';
 import type { Content, GenerateContentResponse } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -39,84 +41,10 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 // ---------------------------------------------------------------------------
-// CLI argument parsing
-// ---------------------------------------------------------------------------
-
-const { values } = parseArgs({
-  args: process.argv.slice(2),
-  options: {
-    issue: { type: 'string' },
-    'feature-id': { type: 'string' },
-    sources: { type: 'string', multiple: true },
-    category: { type: 'string' },
-    'dry-run': { type: 'boolean', default: false },
-    verbose: { type: 'boolean', default: false },
-    help: { type: 'boolean', short: 'h' },
-  },
-  strict: true,
-});
-
-if (values.help || (!values.issue && !values['feature-id'])) {
-  console.log(`
-Usage:
-  gd research --issue <number>                          # pull feature ID + sources from GitHub
-  gd research --feature-id <id> --sources <url> [...]  # explicit inputs
-
-Options:
-  --issue        GitHub issue number (feature ID and sources extracted from the issue body)
-  --feature-id   Web feature ID from the web-features package (e.g. fetchlater)
-  --sources      One or more seed source URLs
-  --category     Guide category: performance, user-experience, accessibility, security
-                 (auto-detected from existing guides if omitted)
-  --dry-run      Print proposed stubs without writing any files
-  --verbose      Print the full research summary from turn 1
-  --help         Show this help
-
-Required environment variable (set in .env):
-  GEMINI_API_KEY
-`);
-  process.exit(values.help ? 0 : 1);
-}
-
-const dryRun = values['dry-run']!;
-const verbose = values['verbose']!;
-const categoryArg = values.category;
-
-// ---------------------------------------------------------------------------
 // GitHub issue parsing
 // ---------------------------------------------------------------------------
 
-interface IssueData {
-  featureId: string;
-  sources: string[];
-}
-
-function parseIssueBody(body: string): IssueData {
-  // Extracts sections from the standard "Add <feature> guide" issue template.
-  // Expected format:
-  //   ### web-feature-id
-  //   <id>
-  //   ### Reference sources
-  //   - https://...
-  const featureIdMatch = body.match(/###\s*web-feature-id\s*\n+([^\n#]+)/);
-  if (!featureIdMatch) {
-    throw new Error('Could not find "web-feature-id" section in the issue body.');
-  }
-  const featureId = featureIdMatch[1].trim();
-
-  const sourcesMatch = body.match(/###\s*Reference sources\s*\n([\s\S]*?)(?=###|$)/);
-  const sources: string[] = [];
-  if (sourcesMatch) {
-    for (const line of sourcesMatch[1].split('\n')) {
-      const url = line.replace(/^\s*-\s*/, '').trim();
-      if (url.startsWith('http')) sources.push(url);
-    }
-  }
-
-  return { featureId, sources };
-}
-
-function fetchIssue(issueNumber: string): IssueData {
+function fetchIssue(issueNumber: string): { title: string; body: string } {
   console.log(`Fetching issue #${issueNumber} from GitHub…`);
   let json: string;
   try {
@@ -144,51 +72,15 @@ function fetchIssue(issueNumber: string): IssueData {
   }
   const { title, body } = JSON.parse(json) as { title: string; body: string };
   console.log(`  Issue: ${title}`);
-  return parseIssueBody(body);
+  return { title, body };
 }
-
-// ---------------------------------------------------------------------------
-// Resolve inputs (from --issue or explicit flags)
-// ---------------------------------------------------------------------------
-
-let featureId: string;
-let seedSources: string[];
-
-if (values.issue) {
-  const issueData = fetchIssue(values.issue);
-  featureId = issueData.featureId;
-  seedSources = issueData.sources;
-  // Allow --sources to extend (not override) what came from the issue
-  if (values.sources?.length) seedSources = [...new Set([...seedSources, ...values.sources])];
-} else {
-  if (!values['feature-id']) {
-    console.error('Error: --feature-id is required when not using --issue.');
-    process.exit(1);
-  }
-  featureId = values['feature-id']!;
-  seedSources = values.sources ?? [];
-}
-
-if (!seedSources.length) {
-  console.warn('Warning: no seed sources provided. The model will rely entirely on web search.');
-}
-
-// Validate and load feature metadata up front so we fail fast on bad IDs.
-const featureValidation = validateFeature(featureId);
-if (!featureValidation.isValid) {
-  console.error(`Error: ${featureValidation.errorMessage}`);
-  if (featureValidation.suggestion) {
-    console.error(`  Suggestion: use "${featureValidation.suggestion}" instead.`);
-  }
-  process.exit(1);
-}
-const featureInfo = getFeatureInfo(featureId)!
 
 // ---------------------------------------------------------------------------
 // Gemini API client
 // ---------------------------------------------------------------------------
 
-const GEMINI_MODEL = 'gemini-2.5-pro';
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-pro-latest';
+const GEMINI_MODEL_DEEP_RESEARCH = 'deep-research-pro-preview-12-2025';
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 function loadApiKey(): string {
@@ -207,9 +99,10 @@ function loadApiKey(): string {
 async function generate(
   apiKey: string,
   history: Content[],
-  newUserText: string
+  newUserText: string,
+  model = GEMINI_MODEL
 ): Promise<{ text: string; sources: string[]; updatedHistory: Content[] }> {
-  const url = `${GEMINI_BASE}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+  const url = `${GEMINI_BASE}/models/${model}:generateContent?key=${apiKey}`;
 
   const contents: Content[] = [...history, { role: 'user', parts: [{ text: newUserText }] }];
 
@@ -250,29 +143,111 @@ async function generate(
   return { text, sources, updatedHistory };
 }
 
+async function generateDeepResearch(
+  apiKey: string,
+  history: Content[],
+  newUserText: string
+): Promise<{ text: string; sources: string[]; updatedHistory: Content[] }> {
+  const url = `${GEMINI_BASE}/interactions`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    body: JSON.stringify({
+      agent: GEMINI_MODEL_DEEP_RESEARCH,
+      input: newUserText,
+      background: true,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`Gemini Interactions API error: ${res.status} ${res.statusText}\n${errText}`);
+  }
+
+  const { id } = (await res.json()) as { id: string };
+  console.log(`  Interaction ID: ${id} — polling for completion…`);
+
+  // Poll until the interaction completes (max 60 minutes).
+  const POLL_INTERVAL_MS = 15_000;
+  const MAX_WAIT_MS = 60 * 60 * 1000;
+  const start = Date.now();
+  while (Date.now() - start < MAX_WAIT_MS) {
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+
+    const pollRes = await fetch(`${url}/${id}`, {
+      headers: { 'x-goog-api-key': apiKey },
+    });
+    if (!pollRes.ok) {
+      const errText = await pollRes.text().catch(() => '');
+      throw new Error(`Polling error: ${pollRes.status} ${pollRes.statusText}\n${errText}`);
+    }
+
+    const interaction = (await pollRes.json()) as {
+      status: string;
+      outputs?: Array<{ text?: string }>;
+    };
+
+    if (interaction.status === 'FAILED' || interaction.status === 'CANCELLED') {
+      throw new Error(`Deep research interaction ${interaction.status.toLowerCase()}.`);
+    }
+
+    const elapsedMin = ((Date.now() - start) / 60_000).toFixed(1);
+    if (interaction.status === 'COMPLETED') {
+      console.log(`\n  Completed in ${elapsedMin}m`);
+      const text = (interaction.outputs ?? []).map((o) => o.text ?? '').join('');
+      if (!text) throw new Error('Deep research returned empty output.');
+
+      const updatedHistory: Content[] = [
+        ...history,
+        { role: 'user', parts: [{ text: newUserText }] },
+        { role: 'model', parts: [{ text }] },
+      ];
+      return { text, sources: [], updatedHistory };
+    }
+
+    process.stdout.write(`\r  Still running… ${elapsedMin}m elapsed`);
+  }
+
+  throw new Error('Deep research timed out after 60 minutes.');
+}
+
 // ---------------------------------------------------------------------------
 // Prompt templates (following SKILL.md conventions)
 // ---------------------------------------------------------------------------
 
 function buildResearchPrompt(
   featureId: string,
-  info: ReturnType<typeof getFeatureInfo> & {},
-  seedUrls: string[]
+  info: ReturnType<typeof getFeatureInfo>,
+  seedUrls: string[],
+  issueContext?: { title: string; body: string }
 ): string {
-  const lines = [
-    `Thoroughly research the \`${featureId}\` web platform feature.`,
-  ];
+  const lines: string[] = [];
 
-  // Seed the model with everything we already know from web-features so it has
-  // accurate framing before hitting the web.
-  lines.push('', '## Known metadata');
-  lines.push(`- **Name**: ${info.name}`);
-  if (info.description) lines.push(`- **Description**: ${info.description}`);
-  if (info.groups?.length) lines.push(`- **Groups**: ${info.groups.join(', ')}`);
-  lines.push(`- **Baseline status**: ${info.baselineStatus}`);
-  if (info.spec?.length) {
-    lines.push('- **Spec URL(s)**:');
-    for (const s of info.spec) lines.push(`  - ${s}`);
+  if (issueContext) {
+    lines.push(
+      'Thoroughly research the web platform feature described in the following GitHub issue.',
+      '',
+      '## Issue title',
+      issueContext.title,
+      '',
+      '## Issue body',
+      issueContext.body,
+    );
+  } else {
+    lines.push(`Thoroughly research the \`${featureId}\` web platform feature.`);
+
+    // Seed the model with everything we already know from web-features so it has
+    // accurate framing before hitting the web.
+    lines.push('', '## Known metadata');
+    lines.push(`- **Name**: ${info!.name}`);
+    if (info!.description) lines.push(`- **Description**: ${info!.description}`);
+    if (info!.groups?.length) lines.push(`- **Groups**: ${info!.groups.join(', ')}`);
+    lines.push(`- **Baseline status**: ${info!.baselineStatus}`);
+    if (info!.spec?.length) {
+      lines.push('- **Spec URL(s)**:');
+      for (const s of info!.spec) lines.push(`  - ${s}`);
+    }
   }
 
   lines.push(
@@ -285,7 +260,15 @@ function buildResearchPrompt(
   );
 
   if (seedUrls.length) {
-    lines.push('', 'Seed sources to include:');
+    if (issueContext) {
+      lines.push(
+        '',
+        'The following URLs were provided in the GitHub issue but have not been vetted.',
+        'Use only those that are genuinely relevant to the feature:',
+      );
+    } else {
+      lines.push('', 'Seed sources to include:');
+    }
     for (const url of seedUrls) lines.push(`- ${url}`);
   }
 
@@ -312,8 +295,8 @@ function loadSkillRules(): string {
   if (start === -1 || end === -1) {
     throw new Error(
       'Could not find expected sections in SKILL.md. ' +
-        'Check that "## Identifying action-oriented tasks" and ' +
-        '"## Implementation and scaffolding" still exist.'
+      'Check that "## Identifying action-oriented tasks" and ' +
+      '"## Implementation and scaffolding" still exist.'
     );
   }
   return skill.slice(start + 1, end).trim();
@@ -367,6 +350,7 @@ function buildUseCasesPrompt(
     '',
     'Respond with ONLY a JSON object, no prose or markdown fences:',
     '{',
+    '  "featureId": "web-features-id-for-this-feature",',
     '  "category": "chosen-category",',
     '  "useCases": [',
     '    {',
@@ -392,6 +376,7 @@ interface UseCase {
 }
 
 interface UseCaseResponse {
+  featureId: string;
   category: string;
   useCases: UseCase[];
 }
@@ -415,6 +400,9 @@ function parseUseCases(raw: string, availableCategories: string[]): UseCaseRespo
 
   const obj = parsed as Record<string, unknown>;
 
+  if (typeof obj.featureId !== 'string' || !obj.featureId) {
+    throw new Error(`Missing "featureId" in response.\nRaw text:\n${raw}`);
+  }
   if (typeof obj.category !== 'string' || !obj.category) {
     throw new Error(`Missing "category" in response.\nRaw text:\n${raw}`);
   }
@@ -436,7 +424,7 @@ function parseUseCases(raw: string, availableCategories: string[]): UseCaseRespo
     return { slug: uc.slug, description: uc.description, sources };
   });
 
-  return { category: obj.category, useCases };
+  return { featureId: obj.featureId, category: obj.category, useCases };
 }
 
 // ---------------------------------------------------------------------------
@@ -444,31 +432,13 @@ function parseUseCases(raw: string, availableCategories: string[]): UseCaseRespo
 // ---------------------------------------------------------------------------
 
 function collectExistingDescriptions(): string[] {
-  const guidesDir = path.join(rootDir, 'guides');
-  const descriptions: string[] = [];
-
-  for (const cat of fs.readdirSync(guidesDir, { withFileTypes: true })) {
-    if (!cat.isDirectory() || cat.name.startsWith('.')) continue;
-    const catDir = path.join(guidesDir, cat.name);
-    for (const entry of fs.readdirSync(catDir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
-      const guideMd = path.join(catDir, entry.name, 'guide.md');
-      if (!fs.existsSync(guideMd)) continue;
-      const content = fs.readFileSync(guideMd, 'utf8');
-      const match = content.match(/^description:\s*(.+)$/m);
-      if (match) descriptions.push(match[1].trim());
-    }
-  }
-
-  return descriptions;
+  return scanAllGuides(path.join(rootDir, 'guides'))
+    .map((g) => matter(fs.readFileSync(path.join(g.dir, 'guide.md'), 'utf8')).data.description as string | undefined)
+    .filter((d): d is string => !!d);
 }
 
 function getAvailableCategories(): string[] {
-  const guidesDir = path.join(rootDir, 'guides');
-  return fs
-    .readdirSync(guidesDir, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && !d.name.startsWith('.'))
-    .map((d) => d.name);
+  return [...new Set(scanAllGuides(path.join(rootDir, 'guides')).map((g) => g.category))];
 }
 
 function buildGuideMd(featureId: string, uc: UseCase, allSeedUrls: string[]): string {
@@ -502,7 +472,7 @@ function buildDemoPrompt(featureId: string, uc: UseCase): string {
   ].join('\n');
 }
 
-function createGuideStub(featureId: string, uc: UseCase, category: string, allSeedUrls: string[]): void {
+function createGuideStub(featureId: string, uc: UseCase, category: string, allSeedUrls: string[], dryRun: boolean): void {
   const dir = path.join(rootDir, 'guides', category, uc.slug);
   const guidePath = path.join(dir, 'guide.md');
 
@@ -527,10 +497,91 @@ function createGuideStub(featureId: string, uc: UseCase, category: string, allSe
 // Main
 // ---------------------------------------------------------------------------
 
-async function main() {
+export async function main(args: string[] = process.argv.slice(2)) {
+  const { values } = parseArgs({
+    args,
+    options: {
+      issue: { type: 'string' },
+      'feature-id': { type: 'string' },
+      sources: { type: 'string', multiple: true },
+      category: { type: 'string' },
+      'dry-run': { type: 'boolean', default: false },
+      'deep-research': { type: 'boolean', default: false },
+      verbose: { type: 'boolean', default: false },
+      help: { type: 'boolean', short: 'h' },
+    },
+    strict: true,
+  });
+
+  if (values.help || (!values.issue && !values['feature-id'])) {
+    console.log(`
+Usage:
+  gd research --issue <number>                          # pull feature ID + sources from GitHub
+  gd research --feature-id <id> --sources <url> [...]  # explicit inputs
+
+Options:
+  --issue          GitHub issue number (feature ID and sources extracted from the issue body)
+  --feature-id     Web feature ID from the web-features package (e.g. fetchlater)
+  --sources        One or more seed source URLs
+  --category       Guide category: performance, user-experience, accessibility, security
+                   (auto-detected from existing guides if omitted)
+  --dry-run        Print proposed stubs without writing any files
+  --deep-research  Use the deep research model for turn 1 (slower, more thorough)
+  --verbose        Print the full research summary from turn 1
+  --help           Show this help
+
+Environment variables (set in .env):
+  GEMINI_API_KEY  (required)
+  GEMINI_MODEL    Override the model (default: gemini-pro-latest)
+`);
+    process.exit(values.help ? 0 : 1);
+  }
+
+  const dryRun = values['dry-run']!;
+  const deepResearch = values['deep-research']!;
+  const verbose = values['verbose']!;
+  const categoryArg = values.category;
+
+  // ── Resolve inputs (from --issue or explicit flags) ──────────────────────
+  let featureId: string;
+  let seedSources: string[];
+  let issueContext: { title: string; body: string } | null = null;
+
+  if (values.issue) {
+    issueContext = fetchIssue(values.issue);
+    featureId = ''; // will be set from model response after turn 2
+    seedSources = values.sources ?? [];
+  } else {
+    if (!values['feature-id']) {
+      console.error('Error: --feature-id is required when not using --issue.');
+      process.exit(1);
+    }
+    featureId = values['feature-id']!;
+    seedSources = values.sources ?? [];
+  }
+
+  if (!seedSources.length && !issueContext) {
+    console.warn('Warning: no seed sources provided. The model will rely entirely on web search.');
+  }
+
+  // Validate and load feature metadata up front so we fail fast on bad IDs.
+  // Skipped in --issue mode since the feature ID is resolved by the model.
+  let featureInfo: ReturnType<typeof getFeatureInfo> = undefined;
+  if (!issueContext) {
+    const featureValidation = validateFeature(featureId);
+    if (!featureValidation.isValid) {
+      console.error(`Error: ${featureValidation.errorMessage}`);
+      if (featureValidation.suggestion) {
+        console.error(`  Suggestion: use "${featureValidation.suggestion}" instead.`);
+      }
+      process.exit(1);
+    }
+    featureInfo = getFeatureInfo(featureId)!;
+  }
+
   const apiKey = loadApiKey();
 
-  console.log(`\nResearching use cases for: ${featureId}`);
+  console.log(`\nResearching use cases for: ${issueContext ? issueContext.title : featureId}`);
   if (seedSources.length) {
     console.log(`Seed sources (${seedSources.length}):`);
     for (const s of seedSources) console.log(`  ${s}`);
@@ -540,11 +591,12 @@ async function main() {
   let history: Content[] = [];
 
   // ── Turn 1: Research ──────────────────────────────────────────────────────
-  console.log('\n[1] Researching with Google Search grounding…');
-  const researchPrompt = buildResearchPrompt(featureId, featureInfo, seedSources);
+  console.log(`\n[1] Researching with Google Search grounding${deepResearch ? ' (deep research)' : ''}…`);
+  const researchPrompt = buildResearchPrompt(featureId, featureInfo, seedSources, issueContext ?? undefined);
 
-  const { text: researchText, updatedHistory: h1 } =
-    await generate(apiKey, history, researchPrompt);
+  const { text: researchText, updatedHistory: h1 } = deepResearch
+    ? await generateDeepResearch(apiKey, history, researchPrompt)
+    : await generate(apiKey, history, researchPrompt);
   history = h1;
 
   if (verbose) {
@@ -567,6 +619,7 @@ async function main() {
   let category: string;
   try {
     const parsed = parseUseCases(useCasesText, availableCategories);
+    if (issueContext) featureId = parsed.featureId;
     useCases = parsed.useCases;
     category = categoryArg ?? parsed.category;
   } catch (err) {
@@ -589,7 +642,7 @@ async function main() {
   console.log(`    Category: ${category}`);
 
   for (const uc of useCases) {
-    createGuideStub(featureId, uc, category, seedSources);
+    createGuideStub(featureId, uc, category, seedSources, dryRun);
 
     console.log(`    Generating demo.html for ${uc.slug}…`);
     const { text: demoHtml } = await generate(apiKey, history, buildDemoPrompt(featureId, uc));
@@ -609,7 +662,10 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('\nError:', err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+// Run directly (not imported)
+if (import.meta.url === new URL(process.argv[1], 'file:').href) {
+  main().catch((err) => {
+    console.error('\nError:', err instanceof Error ? err.message : err);
+    process.exit(1);
+  });
+}
