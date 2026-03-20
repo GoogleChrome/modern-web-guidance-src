@@ -188,12 +188,13 @@ async function generateDeepResearch(
       outputs?: Array<{ text?: string }>;
     };
 
-    if (interaction.status === 'FAILED' || interaction.status === 'CANCELLED') {
-      throw new Error(`Deep research interaction ${interaction.status.toLowerCase()}.`);
+    const status = interaction.status.toLowerCase();
+    if (status === 'failed' || status === 'cancelled') {
+      throw new Error(`Deep research interaction ${status}.`);
     }
 
     const elapsedMin = ((Date.now() - start) / 60_000).toFixed(1);
-    if (interaction.status === 'COMPLETED') {
+    if (status === 'completed') {
       console.log(`\n  Completed in ${elapsedMin}m`);
       const text = (interaction.outputs ?? []).map((o) => o.text ?? '').join('');
       if (!text) throw new Error('Deep research returned empty output.');
