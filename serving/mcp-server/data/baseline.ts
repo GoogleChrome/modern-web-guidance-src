@@ -185,6 +185,37 @@ export function getFeatureName(featureId: string): string {
   return feature.name;
 }
 
+export interface FeatureInfo {
+  name: string;
+  description?: string;
+  spec?: string[];
+  groups?: string[];
+  baselineStatus: string;
+}
+
+/**
+ * Returns a summary of metadata for a feature ID, useful for framing research prompts.
+ * @param featureId - The feature ID to look up (must be a valid, non-redirected feature)
+ */
+export function getFeatureInfo(featureId: string): FeatureInfo | undefined {
+  const resolvedIds = resolveFeatureId(featureId);
+  if (resolvedIds.length === 0) return undefined;
+
+  // Use the first resolved ID as the primary source of metadata
+  const feature = features[resolvedIds[0]] as Extract<Feature, { kind: 'feature' }>;
+  const spec = feature.spec
+    ? (Array.isArray(feature.spec) ? feature.spec : [feature.spec])
+    : undefined;
+
+  return {
+    name: feature.name,
+    description: feature.description,
+    spec,
+    groups: feature.groups,
+    baselineStatus: getBaselineStatus(featureId) ?? 'unknown',
+  };
+}
+
 /**
  * Validates a feature ID.
  */

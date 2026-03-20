@@ -11,42 +11,39 @@ The primary goal of this stage is to translate a technical web platform feature 
 2. Stage 2: Authoring guidance for a use case
 3. Stage 3: Evaluating guidance for a use case
 
-## Manual research and discovery
+## Research and discovery
 
-Instead of relying on your (the agent's) general knowledge to come up with a proposed list of use cases yourself, suggest that the user use [Deep Research in NotebookLM](https://notebooklm.google.com/) to discover sources and real-world implementations they might not be aware of. This tool will help them find complex edge cases, performance implications, and emerging best practices.
+Instead of relying on your (the agent's) general knowledge to come up with a proposed list of use cases yourself, use the `gd research` command to perform Google Search-grounded research. This uses the Gemini API to surface authoritative sources and real-world implementations that may not be in your training data, including complex edge cases, performance implications, and emerging best practices.
 
-Here is an example process for using NotebookLM with Deep Research:
+### Using `gd research`
 
-**Step 1: Research the feature**
+New features are tracked as GitHub issues. Each issue includes the feature ID and seed sources in a structured template. You can pass the issue number directly to the command and it will extract everything automatically:
 
-Go to https://notebooklm.google.com/ and create a new notebook. In the configuration, select "Deep Research" and provide a prompt like the following:
-
-```markdown
-Thoroughly research the `fetchLater()` API using the following resources as a starting point and find additional high-quality information from W3C specifications, MDN, developer blogs, and GitHub discussions. Focus on technical constraints, performance implications, and real-world implementation challenges.
-
-- https://developer.mozilla.org/en-US/docs/Web/API/Window/fetchLater
-- https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Deferred_Fetch
-- https://developer.chrome.com/blog/fetch-later-api-origin-trial
-- https://github.com/WICG/pending-beacon/blob/main/docs/fetch-later-api.md
+```bash
+gd research --issue 359
 ```
 
-This seeds the model with known good resources and asks it to perform deep research to surface additional technical details, constraints, and discussions.
+This is equivalent to passing the feature ID and sources explicitly:
 
-**Step 2: Identify use cases**
-
-Once the model has a deep understanding of the feature, prompt it to identify the top use cases:
-
-```markdown
-Based on your research, identify 2-5 distinct developer use cases for the `fetchLater()` API.
-
-Follow these constraints for each use case:
-- **Succinct**: Provide a single-sentence description for each use case.
-- **Action-oriented**: Frame it as a task the developer wants to perform (e.g., "Ensure analytics data is sent reliably when a user navigates away").
-- **Outcome-focused**: Focus on the problem being solved, bridging the gap between what a developer wants to build and the technical solution.
-- **Distinct**: Each use case must represent a unique implementation pattern or a significant variation in application.
+```bash
+gd research \
+  --feature-id bfcache-blocking-reasons \
+  --sources https://web.dev/articles/bfcache \
+            https://github.com/rakina/bfcache-explainer
 ```
 
-The user should manually review the proposed use cases for accuracy and completeness, and select the most relevant ones. Your job is to confirm that their selected use cases follow the constraints described in this skill.
+The command will:
+1. Search the web using Google Search grounding to find additional authoritative sources (W3C specs, MDN, developer blogs, WICG proposals, GitHub discussions)
+2. Propose 2–5 use cases in the correct format
+3. Scaffold `guide.md` stubs under `guides/<category>/<slug>/`
+
+Use `--dry-run` to preview the proposed stubs without writing any files, and `--category` to override the auto-detected guide category.
+
+**Prerequisite:** Set `GEMINI_API_KEY` in your `.env` file. Get a free key at https://aistudio.google.com/apikey.
+
+### Reviewing the output
+
+The user should manually review the proposed use cases for accuracy and completeness before proceeding. Your job is to confirm that their selected use cases follow the constraints described in this skill.
 
 ## Identifying action-oriented tasks
 
