@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Direction-Aware Transitions</title>
+  <style>
+    /* CORE: View Transitions API */
+    html:active-view-transition-type(forward)::view-transition-old(root) {
+      animation: slide-left 0.4s ease-out forwards;
+    }
+
+    html:active-view-transition-type(forward)::view-transition-new(root) {
+      animation: slide-from-right 0.4s ease-out forwards;
+    }
+
+    html:active-view-transition-type(backward)::view-transition-old(root) {
+      animation: slide-right 0.4s ease-out forwards;
+    }
+
+    html:active-view-transition-type(backward)::view-transition-new(root) {
+      animation: slide-from-left 0.4s ease-out forwards;
+    }
+
+    @keyframes slide-left {
+      to {
+        transform: translateX(-100%);
+      }
+    }
+
+    @keyframes slide-from-right {
+      from {
+        transform: translateX(100%);
+      }
+    }
+
+    @keyframes slide-right {
+      to {
+        transform: translateX(100%);
+      }
+    }
+
+    @keyframes slide-from-left {
+      from {
+        transform: translateX(-100%);
+      }
+    }
+
+    /* DEMO: Styling */
+    body {
+      font-family: monospace;
+      max-width: 500px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .slide {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 40px;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .emoji {
+      font-size: 60px;
+      margin: 20px 0;
+    }
+
+    .controls {
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    button {
+      padding: 8px 16px;
+      margin: 0 5px;
+      background: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    a {
+      color: #0066cc;
+      display: block;
+      margin-top: 30px;
+      text-decoration: none;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Direction-Aware Transitions</h1>
+
+  <div class="slide">
+    <div class="emoji" id="emoji">→</div>
+    <h2>Navigate Forward → Backward</h2>
+    <p id="text">Each direction has its own animation</p>
+  </div>
+
+  <div class="controls">
+    <button id="prev" onclick="prev()" disabled>← Previous</button>
+    <span id="counter">Slide 1</span>
+    <button id="next" onclick="next()">Next →</button>
+  </div>
+
+  <script>
+    /* DEMO: Slide data */
+    const slides = ['→', '↗', '↓', '↙', '←'];
+    let i = 0;
+
+    /* CORE: Forward transition with types: ['forward'] */
+    function next() {
+      if (i >= slides.length - 1) return;
+      if (!document.startViewTransition) { i++; show(); return; }
+      document.startViewTransition({ update: () => { i++; show(); }, types: ['forward'] });
+    }
+
+    /* CORE: Backward transition with types: ['backward'] */
+    function prev() {
+      if (i <= 0) return;
+      if (!document.startViewTransition) { i--; show(); return; }
+      document.startViewTransition({ update: () => { i--; show(); }, types: ['backward'] });
+    }
+
+    /* DEMO: Update DOM */
+    function show() {
+      document.getElementById('emoji').textContent = slides[i];
+      document.getElementById('counter').textContent = `Slide ${i + 1}`;
+      document.getElementById('prev').disabled = i === 0;
+      document.getElementById('next').disabled = i === slides.length - 1;
+    }
+    show();
+  </script>
+</body>
+</body>
+
+</html>

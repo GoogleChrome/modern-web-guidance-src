@@ -3,15 +3,16 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "node --test **.test.ts"
+    "test": "npm run test:unit && npm run sync:dry",
+    "test:unit": "node --experimental-strip-types --test ./sync-use-cases.test.ts",
+    "sync:dry": "node --experimental-strip-types ./sync-use-cases.ts",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@octokit/rest": "^22.0.1",
     "@playwright/test": "^1.58.2",
-    "@types/js-yaml": "^4.0.9",
-    "@types/node": "^22.19.11",
-    "js-yaml": "^4.1.1",
-    "playwright": "^1.58.2",
-    "type-fest": "^5.4.4",
-    "web-features": "^3.18.0"
+    "dotenv": "^17.3.1",
+    "gray-matter": "^4.0.3",
+    "web-features": "latest"
   }
 }

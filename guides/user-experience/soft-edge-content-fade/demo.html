@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fading Out Elements</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+    }
+
+    .fade-container {
+      width: 300px;
+      max-height: 120px;
+      overflow: hidden;
+      line-height: 1.5;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+    }
+
+    h2 {
+      margin-top: 0;
+      color: #333;
+    }
+
+    p {
+      color: #555;
+      margin-bottom: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="fade-container">
+    <h2>Premium Article</h2>
+    <p>This is the start of an incredibly interesting article. Read on to find out more. But wait, you need to be a
+      premium member to read the rest! The text slowly fades out into nothingness to entice you to subscribe. This
+      content continues but is hidden by the mask.</p>
+  </div>
+</body>
+
+</html>

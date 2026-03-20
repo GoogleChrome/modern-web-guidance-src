@@ -1,0 +1,30 @@
+name: New feature
+description: Propose a new web platform feature for which guidance should be created.
+title: "<Feature Name>"
+labels: ["new-feature"]
+body:
+  - type: input
+    id: web-feature-id
+    attributes:
+      label: web-feature-id
+      description: Provide the web-feature ID from https://webstatus.dev/
+      placeholder: e.g. scroll-driven-animations
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature description
+      description: Provide the web-feature description from https://webstatus.dev/
+    validations:
+      required: true
+
+  - type: textarea
+    id: sources
+    attributes:
+      label: Reference sources
+      description: Add links to MDN, spec, Chrome blog posts, or other authoritative sources that inform the guidance.
+      placeholder: |
+        - https://developer.mozilla.org/docs/Web/CSS/animation-timeline
+        - https://developer.chrome.com/docs/css-ui/scroll-driven-animations

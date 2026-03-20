@@ -1,0 +1,60 @@
+name: Sync Use Cases
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'guides/**/guide.md'
+      - 'guides/**/grader.ts'
+  pull_request:
+    paths:
+      - 'guides/**/guide.md'
+      - 'guides/**/grader.ts'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in dry run mode'
+        required: true
+        default: 'true'
+        type: boolean
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate GitHub App token
+        uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Run sync script
+        run: node --experimental-strip-types guides/sync-use-cases.ts
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          PROJECT_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || (github.event_name == 'pull_request' && 'true') || 'false' }}

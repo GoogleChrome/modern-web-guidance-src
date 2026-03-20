@@ -5,34 +5,44 @@
   "main": "index.js",
   "type": "module",
   "private": true,
+  "bin": {
+    "gd": "./bin/gd.ts"
+  },
   "scripts": {
     "test": "pnpm -r test",
+    "baselinestatus": "pnpm --filter modern-web-mcp baselinestatus",
     "lint": "oxlint --ignore-path .oxlintignore",
     "typecheck": "pnpm -r typecheck",
     "preflight": "pnpm typecheck && pnpm lint && pnpm test",
-    "suite": "pnpm --filter harness suite",
+    "suite": "pnpm build:mcp && pnpm --filter harness suite",
     "qsmoke": "pnpm --filter harness qsmoke",
     "task": "pnpm --filter harness task",
-    "run-agent": "node harness/run_suite.ts --with-template",
+    "run-agent": "gd agent",
     "report": "pnpm --filter harness report",
+    "upload": "pnpm --filter harness upload",
     "dashboard": "pnpm --filter eval-view start",
     "build:mcp": "pnpm --filter modern-web-mcp build",
+    "build:megaskill": "pnpm --filter modern-web-mcp build:megaskill",
     "test:mcp": "pnpm --filter modern-web-mcp test",
     "setup:playwright": "pnpm --filter eval-view exec playwright install",
-    "generate-negative": "node --env-file=.env guides/negative-gen.ts",
-    "generate-grader": "node --env-file=.env guides/grader-gen.ts",
-    "grade": "node --experimental-strip-types guides/run-grader.ts"
+    "generate-negative": "node --env-file=.env --experimental-strip-types guides/negative-gen.ts",
+    "generate-grader": "node --env-file=.env --experimental-strip-types guides/grader-gen.ts",
+    "test-grader": "node --experimental-strip-types guides/test-grader.ts",
+    "grade": "node --experimental-strip-types guides/run-grader.ts",
+    "dev-guide": "node --env-file=.env --experimental-strip-types guides/dev-guide.ts",
+    "deploy:dashboard": "pnpm --filter eval-view deploy-pages"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.28.1",
+  "packageManager": "pnpm@10.30.3",
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
       "onnxruntime-node",
       "protobufjs",
-      "sharp"
+      "sharp",
+      "tree-sitter-bash"
     ],
     "packageExtensions": {
       "@google/gemini-cli": {
@@ -43,12 +53,14 @@
     }
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
-    "@types/glob": "^9.0.0",
-    "oxlint": "^1.50.0",
+    "@types/node": "^25.5.0",
+    "@types/omelette": "^0.4.5",
+    "gh-pages": "^6.3.0",
+    "oxlint": "^1.55.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "glob": "^10.5.0"
+    "glob": "^13.0.6",
+    "omelette": "^0.4.17"
   }
 }

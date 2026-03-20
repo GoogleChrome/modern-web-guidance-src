@@ -1,45 +1,68 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { MCP_LOG_FILE } from '../../constants.ts';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+export async function collectGuidesUsed(dirPath: string, enableSkills: boolean): Promise<string[]> {
+  if (enableSkills) {
+    const guidesFromSkills: string[] = [];
+    try {
+      const files = fs.readdirSync(dirPath);
+      const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
 
-export async function guideUsed(dirPath: string, appName: string): Promise<boolean> {
-  const resourcesPath = path.join(dirPath, 'resources_used.json');
-  
-  if (!fs.existsSync(resourcesPath)) {
-    return false;
+      for (const file of sessionFiles) {
+        const sessionPath = path.join(dirPath, file);
+        const sessionContent = fs.readFileSync(sessionPath, 'utf8');
+        const session = JSON.parse(sessionContent);
+
+        if (session.messages) {
+          for (const msg of session.messages) {
+            if (msg.toolCalls) {
+              for (const tc of msg.toolCalls) {
+                if (tc.name === 'read_file' && tc.args && tc.args.file_path) {
+                  const filePath = tc.args.file_path;
+                  if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
+                    const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+                    if (match) {
+                      guidesFromSkills.push(match[1]);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error(`Error reading session files in ${dirPath}:`, e);
+    }
+    return [...new Set(guidesFromSkills)];
+  } else {
+    const logPath = path.join(dirPath, MCP_LOG_FILE);
+    let guidesFromLog: string[] = [];
+
+    if (fs.existsSync(logPath)) {
+      const logContent = fs.readFileSync(logPath, 'utf8').trim();
+      let toolCalls: any[] = [];
+
+      if (logContent) {
+        const lines = logContent.split('\n');
+        for (const line of lines) {
+          if (line.trim().startsWith('{')) {
+            try {
+              toolCalls.push(JSON.parse(line));
+            } catch (e) {
+              console.error(`Failed to parse line in ${logPath}:`, e);
+            }
+          }
+        }
+      }
+
+      guidesFromLog = toolCalls
+        .filter(call => call.tool === 'get_best_practices' && Array.isArray(call.result))
+        .flatMap(call => call.result.map((r: any) => r.id || ''))
+        .filter(Boolean);
+    }
+
+    return [...new Set(guidesFromLog)];
   }
-
-  let resources: { name?: string }[];
-  try {
-    resources = JSON.parse(fs.readFileSync(resourcesPath, 'utf8'));
-  } catch {
-    return false;
-  }
-
-  const taskPath = path.resolve(__dirname, `../tasks/${appName}.md`);
-  if (!fs.existsSync(taskPath)) {
-    console.error(`Task ${appName} not found at ${taskPath}`);
-    return false;
-  }
-
-  const fileContent = fs.readFileSync(taskPath, 'utf8');
-  const frontmatterMatch = fileContent.match(/^---\n(?:[\s\S]*?)grader:\s*(.+)\n(?:[\s\S]*?)---\n([\s\S]*)$/m);
-
-  if (!frontmatterMatch) {
-    console.error(`No 'grader:' found in frontmatter for task ${appName}`);
-    return false;
-  }
-
-  const guide = frontmatterMatch[1].trim();
-
-  // Extract all resource names for easier searching
-  const resourceNames = resources.map(r => r.name || '').filter(Boolean);
-
-  const found = resourceNames.some(name => name.includes(guide));
-  const isOnlyOne = resourceNames.length === 1;
-
-  return found && isOnlyOne;
 }

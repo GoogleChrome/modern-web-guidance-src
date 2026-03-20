@@ -1,10 +1,22 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { fileURLToPath } from 'url';
 import { Agents } from '../config.ts';
+import { classifyGuide, scanAllGuides } from './utils.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Promisified version of child_process.spawn.
+ */
+export function spawnAsync(command: string, args: string[], options: SpawnOptions = {}): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, options);
+    child.on('close', (code) => resolve(code ?? 1));
+    child.on('error', reject);
+  });
+}
 
 /**
  * Creates a unique isolated HOME directory in /tmp.
@@ -150,49 +162,16 @@ export function updateMcpConfig(
   }
 }
 
-export function copyAgentContext(homeDir: string, agent: string): boolean {
-  const harnessRoot = path.resolve(__dirname, '..');
-  const instructionsSource = path.join(harnessRoot, 'INSTRUCTIONS.md');
-
-  if (!fs.existsSync(instructionsSource)) {
-    console.warn(`Warning: INSTRUCTIONS.md not found at ${instructionsSource}`);
-    return false;
-  }
-
-  let destDir = '';
-  let destFile = '';
-
-  if (agent === Agents.CLAUDE_CODE) {
-    destDir = path.join(homeDir, '.claude');
-    destFile = 'CLAUDE.md';
-  } else {
-    destDir = path.join(homeDir, '.gemini');
-    destFile = 'GEMINI.md';
-  }
-
-  const fullDestPath = path.join(destDir, destFile);
-
-  try {
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
-    }
-    fs.copyFileSync(instructionsSource, fullDestPath);
-    console.log(`Copied INSTRUCTIONS.md to ${fullDestPath}`);
-    return true;
-  } catch (e: any) {
-    console.warn(`Warning: Failed to copy INSTRUCTIONS.md: ${e.message}`);
-    return false;
-  }
-}
-
 /**
- * Copies the skills directory to the isolated home directory.
+ * Copies the guides directory to the isolated home directory for the agent.
+ * Copies SKILL.md for categories and guide.md for "ready" guides.
  * @param homeDir Path to the isolated home directory
+ * @param agent The agent type
  * @returns True if successful, false otherwise
  */
 export function copySkills(homeDir: string, agent: string): boolean {
   const harnessRoot = path.resolve(__dirname, '..');
-  const skillsSource = path.join(harnessRoot, '..', 'skills');
+  const guidesSource = path.join(harnessRoot, '..', 'guides');
 
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {
@@ -203,18 +182,45 @@ export function copySkills(homeDir: string, agent: string): boolean {
     destDir = path.join(homeDir, '.gemini', 'skills');
   }
 
-  if (!fs.existsSync(skillsSource)) {
-    console.warn(`Warning: Skills directory not found at ${skillsSource}`);
+  if (!fs.existsSync(guidesSource)) {
+    console.warn(`Warning: Guides directory not found at ${guidesSource}`);
     return false;
   }
 
   try {
     fs.mkdirSync(destDir, { recursive: true });
-    execSync(`cp -R "${skillsSource}/." "${destDir}/"`);
-    console.log(`Copied skills to ${destDir}`);
+
+    const allGuides = scanAllGuides();
+    const categories = new Set(allGuides.map(inv => inv.category));
+
+    for (const cat of categories) {
+      const catSrc = path.join(guidesSource, cat);
+      const catDest = path.join(destDir, cat);
+
+      // Copy SKILL.md if present
+      const skillPath = path.join(catSrc, 'SKILL.md');
+      if (fs.existsSync(skillPath)) {
+        fs.mkdirSync(catDest, { recursive: true });
+        fs.copyFileSync(skillPath, path.join(catDest, 'SKILL.md'));
+      }
+    }
+
+    for (const inv of allGuides) {
+      if (classifyGuide(inv) === 'eval-ready') {
+        const catDest = path.join(destDir, inv.category);
+        const guideDest = path.join(catDest, inv.name);
+        fs.mkdirSync(guideDest, { recursive: true });
+
+        const guideFileSrc = path.join(inv.dir, 'guide.md');
+        const guideFileDest = path.join(guideDest, 'guide.md');
+        fs.copyFileSync(guideFileSrc, guideFileDest);
+      }
+    }
+
+    console.log(`Copied guides to ${destDir}`);
     return true;
   } catch (e: any) {
-    console.error(`Failed to copy skills: ${e.message}`);
+    console.error(`Failed to copy guides: ${e.message}`);
     return false;
   }
 }
@@ -298,8 +304,8 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
     fs.mkdirSync(workDir, { recursive: true });
     return workDir;
   }
-  // For the suite run, copy the template directory to the isolated home directory
-  execSync(`cp -R "${templateDir}" "${homeDir}/"`);
+  // For the suite run, copy the template directory to the isolated home directory, following symlinks
+  execSync(`cp -RL "${templateDir}" "${homeDir}/"`);
   console.log(`Copied ${templateDir} to ${homeDir}...`);
   return path.join(homeDir, path.basename(templateDir));
 }
@@ -315,3 +321,146 @@ export function copyResultsToTarget(workDir: string, targetDir: string, subPath:
   execSync(`cp -R "${sourceDir}/." "${targetDir}/"`);
   console.log(`Copied results from ${sourceDir} to: ${targetDir}`);
 }
+
+/**
+ * Watches a log file and prints new lines to stdout.
+ * @param logPath The path to the log file
+ * @returns A function to stop watching
+ */
+export function watchLogFile(logPath: string): () => void {
+  let prevData = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : '';
+  const interval = setInterval(() => {
+    if (!fs.existsSync(logPath)) return;
+    try {
+      const currentData = fs.readFileSync(logPath, 'utf8');
+      if (currentData.length > prevData.length) {
+        const newLogs = currentData.slice(prevData.length).trim();
+        if (newLogs) {
+          const formattedLogs = newLogs.split('\n').map(line => `\x1b[33m[MCP Server Log]:\x1b[0m ${line}`).join('\n');
+          console.log(formattedLogs);
+        }
+        prevData = currentData;
+      }
+    } catch (e) {
+      console.error('Failed to read log file:', e);
+    }
+  }, 500);
+  return () => clearInterval(interval);
+}
+
+const DEFAULT_PROD_BASE = 'https://trajectory-dev.corp.goog/';
+
+/**
+ * Finds trajectory files, copies them to the target directory, and generates HTML exports.
+ * @param sourceDir Directory to search for trajectory files
+ * @param pattern Glob pattern for trajectory files (relative to sourceDir)
+ * @param targetDir Directory to copy files and HTML exports to
+ */
+export function exportTrajectories(sourceDir: string, pattern: string, targetDir: string): void {
+  if (!fs.existsSync(sourceDir)) return;
+
+  // fs.globSync is available in Node 22+
+  const files = fs.globSync(pattern, { cwd: sourceDir });
+  
+  for (const relativeSrc of files as string[]) {
+    const srcFile = path.join(sourceDir, relativeSrc);
+    const fileName = path.basename(srcFile);
+    const destFile = path.join(targetDir, fileName);
+    
+    try {
+      fs.copyFileSync(srcFile, destFile);
+      console.log(`Copied trajectory: ${fileName} to ${targetDir}`);
+
+      const trajectoryId = fileName.replace(/\.(json|pb)$/, '');
+      const fileBuffer = fs.readFileSync(srcFile);
+      const htmlContent = generateExportHtml(new Uint8Array(fileBuffer), fileName);
+      const htmlFileName = trajectoryId.startsWith('session-') ? `${trajectoryId}.html` : `session-${trajectoryId}.html`;
+      const htmlDest = path.join(targetDir, htmlFileName);
+      fs.writeFileSync(htmlDest, htmlContent, 'utf8');
+      console.log(`Generated HTML export: ${htmlFileName}`);
+    } catch (e) {
+      console.error(`Failed to export trajectory ${fileName}:`, e);
+    }
+  }
+}
+
+/**
+ * Generates an HTML file that can load and display a trajectory file (JSON/PB) 
+ * by embedding it as base64 and posting it to the trajectory viewer iframe.
+ * @param fileBuffer Binary content of the trajectory file
+ * @param fileName Name of the trajectory file
+ * @param prodBase Base URL of the trajectory viewer
+ * @returns HTML content
+ */
+export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, prodBase = DEFAULT_PROD_BASE): string {
+    const trajectoryId = fileName.replace(/\.(json|pb)$/, '');
+    const title = `Trajectory - ${trajectoryId}`;
+
+    // Node.js environment: Buffer is faster than manual conversion
+    const base64String = Buffer.from(fileBuffer).toString('base64');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>${title}</title>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100vh; overflow: hidden; background: #0f172a; font-family: sans-serif; }
+        iframe { border: none; width: 100%; height: 100%; display: none; }
+        .loading {
+            display: flex; align-items: center; justify-content: center; height: 100%; color: #94a3b8;
+            flex-direction: column; gap: 1rem;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid #1e293b; border-top: 4px solid #3b82f6;
+            border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="loading-state" class="loading">
+        <div class="spinner"></div>
+        <div>Loading Trajectory Browser...</div>
+    </div>
+    <iframe id="viewer-frame" src="${prodBase}index.html"></iframe>
+
+    <script id="trajectory-data" type="application/base64">
+        ${base64String}
+    </script>
+    <script>
+        const fileName = ${JSON.stringify(fileName)};
+        const b64Data = document.getElementById('trajectory-data').textContent.trim();
+        const binaryStr = atob(b64Data);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+        }
+
+        const frame = document.getElementById('viewer-frame');
+        const loading = document.getElementById('loading-state');
+
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'READY') {
+                frame.style.display = 'block';
+                loading.style.display = 'none';
+                frame.contentWindow.postMessage({
+                    type: 'LOAD_RAW_FILE',
+                    fileBuffer: bytes.buffer,
+                    fileName
+                }, '*', [bytes.buffer]);
+            }
+        });
+
+        // Fallback if production is unreachable or slow
+        setTimeout(() => {
+            if (loading.style.display !== 'none') {
+                loading.textContent = "Unable to load viewer. Ensure you are connected to the network or look for CSP errors.";
+            }
+        }, 8000);
+    </script>
+</body>
+</html>`;
+}
+
