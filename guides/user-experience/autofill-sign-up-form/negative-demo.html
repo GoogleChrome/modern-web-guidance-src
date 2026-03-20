@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Sign Up</title>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .input-row {
+      margin-bottom: 15px;
+    }
+    .input-row span {
+      display: inline-block;
+      width: 150px;
+    }
+    .input-row input {
+      padding: 5px;
+      width: 200px;
+    }
+    .submit-btn {
+      background-color: blue;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      width: 120px;
+      display: inline-block;
+      font-weight: bold;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="signup-container">
+    <h2>Register Here</h2>
+    
+    <div class="input-row">
+      <span>Title:</span>
+      <input type="text" name="usr_title" id="t1" autocomplete="off">
+    </div>
+
+    <div class="input-row">
+      <span>First Name:</span>
+      <input type="text" name="fn" id="f1" autocomplete="off">
+    </div>
+
+    <div class="input-row">
+      <span>Middle Name:</span>
+      <input type="text" name="mn" id="m1" autocomplete="off">
+    </div>
+
+    <div class="input-row">
+      <span>Last Name:</span>
+      <input type="text" name="ln" id="l1" autocomplete="off">
+    </div>
+
+    <div class="input-row">
+      <span>Username:</span>
+      <input type="text" name="usr" id="u1" autocomplete="off">
+    </div>
+    
+    <div class="input-row">
+      <span>Email Address:</span>
+      <input type="text" name="eml" id="e1" autocomplete="off">
+    </div>
+
+    <div class="input-row">
+      <span>Confirm Email:</span>
+      <input type="text" name="eml_conf" id="e2" autocomplete="off">
+    </div>
+
+    <div class="input-row">
+      <span>Phone Number:</span>
+      <input type="text" name="phn" id="p1" autocomplete="off">
+    </div>
+
+    <div class="input-row">
+      <span>Zip Code:</span>
+      <input type="number" name="zip" id="z1" autocomplete="off">
+    </div>
+
+    <div class="input-row">
+      <span>Password:</span>
+      <input type="password" name="pwd" id="pw1" autocomplete="off">
+    </div>
+
+    <div class="input-row">
+      <span>Confirm Password:</span>
+      <input type="password" name="pwd_conf" id="pw2" autocomplete="off">
+    </div>
+
+    <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+    <p>Please review our terms of service before continuing.</p>
+
+    <div class="submit-btn" onclick="submitData()">Continue</div>
+  </div>
+
+  <script>
+    document.getElementById('pw1').addEventListener('paste', function(e) {
+      e.preventDefault();
+    });
+    document.getElementById('pw2').addEventListener('paste', function(e) {
+      e.preventDefault();
+    });
+
+    function submitData() {
+      var email1 = document.getElementById('e1').value;
+      var email2 = document.getElementById('e2').value;
+      var pwd1 = document.getElementById('pw1').value;
+      var pwd2 = document.getElementById('pw2').value;
+      var usr = document.getElementById('u1').value;
+
+      if (!email1 || !email2 || !pwd1 || !pwd2 || !usr) {
+        alert("Please fill out required fields.");
+        return;
+      }
+
+      if (email1 !== email2) {
+        alert("Emails do not match");
+        return;
+      }
+
+      if (pwd1 !== pwd2) {
+        alert("Passwords do not match");
+        return;
+      }
+      
+      var latinOnly = /^[A-Za-z0-9]+$/;
+      if (!latinOnly.test(usr)) {
+        alert("Username must only contain latin letters and numbers");
+        return;
+      }
+
+      alert('Registration initiated!');
+    }
+  </script>
+</body>
+</html>
