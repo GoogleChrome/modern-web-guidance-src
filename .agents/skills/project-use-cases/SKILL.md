@@ -118,15 +118,14 @@ The following steps are REQUIRED for creating a new use case:
 
 The IDs used in `web-feature-ids` must match the canonical IDs in the [`web-features`](https://www.npmjs.com/package/web-features) package. Common marketing names or MDN titles might not exactly match the ID (e.g., "Interaction to Next Paint" is part of the `event-timing` feature, not a standalone ID).
 
-To verify IDs, you can run a one-liner in the `serving/` directory:
+To verify IDs and check their status, use the project's built-in CLI:
 
 ```bash
-# Check if specific IDs are valid
-pnpm exec node -e "import {features} from 'web-features'; ['id1', 'id2'].forEach(id => console.log(id, ':', features[id] ? features[id].kind : 'not found'))"
-
-# Search for potential IDs if you're unsure
-pnpm exec node -e "import {features} from 'web-features'; Object.keys(features).filter(id => id.includes('keyword')).forEach(id => console.log(id))"
+# Search for potential IDs using a keyword
+gd baselinestatus timing
 ```
+
+This will output a table of matching features. Ensure the ID you choose is listed in the `web-feature-id` column.
 
 * **Step 5: Create the `demo.html` file**
 
