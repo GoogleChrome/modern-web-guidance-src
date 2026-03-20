@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>App</title>
+<style>
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+.app-wrapper {
+  height: 100vh;
+  overflow-y: scroll;
+}
+.top-search {
+  padding: 20px;
+  background: #eee;
+}
+.main-feed {
+  padding: 20px;
+  height: 150vh;
+  scroll-initial-target: nearest;
+}
+.bottom-feed {
+  padding: 20px;
+  scroll-initial-target: nearest;
+}
+</style>
+</head>
+<body>
+<div class="app-wrapper">
+  <div class="top-search">
+    <input type="text" placeholder="Search">
+  </div>
+  <div class="main-feed" id="feed">
+    <h1>Feed</h1>
+    <p>Content</p>
+  </div>
+  <div class="bottom-feed">
+    <h2>More</h2>
+    <p>Content</p>
+  </div>
+</div>
+<script>
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('feed').scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, 1000);
+});
+</script>
+</body>
+</html>
