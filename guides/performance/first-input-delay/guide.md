@@ -5,5 +5,6 @@ web-feature-ids:
   - event-timing
 sources:
   - https://web.dev/articles/fid
+  - https://web.dev/articles/optimize-input-delay
   - https://developer.mozilla.org/en-US/docs/Web/API/PerformanceEventTiming
 ---

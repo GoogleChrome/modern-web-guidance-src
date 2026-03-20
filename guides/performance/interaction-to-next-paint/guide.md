@@ -5,5 +5,6 @@ web-feature-ids:
   - event-timing
 sources:
   - https://web.dev/articles/inp
+  - https://web.dev/articles/find-slow-interactions-in-the-field
   - https://web.dev/articles/event-timing
 ---
