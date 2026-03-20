@@ -9,16 +9,21 @@
         .card { border: 1px solid #ddd; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; }
         button { background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem; }
         .log { background: #f8f9fa; padding: 1rem; border-radius: 4px; border: 1px solid #ddd; height: 200px; overflow-y: scroll; font-family: monospace; }
-        .inp-value { font-size: 1.5rem; color: #dc3545; font-weight: bold; }
+        .inp-container { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; }
+        .inp-value { font-size: 2rem; color: #dc3545; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>Interaction to Next Paint (INP)</h1>
-        <p>Interact with the buttons below multiple times. This demo tracks the worst interaction (maximum duration of a grouped interaction) as the INP score.</p>
+        <p>Interact with the buttons below. This demo calculates INP by grouping events by <code>interactionId</code> and tracking the maximum duration.</p>
         <button onclick="block(50)">Medium (50ms)</button>
         <button onclick="block(200)">Slow (200ms)</button>
-        <div id="inp" class="inp-value">INP: 0ms</div>
+        
+        <div class="inp-container">
+            <div id="inp" class="inp-value">0ms</div>
+            <p>Current INP (Worst Interaction)</p>
+        </div>
     </div>
 
     <div class="log" id="log">Logs appear here...</div>
@@ -26,6 +31,9 @@
     <script>
         const logEl = document.getElementById('log');
         const inpEl = document.getElementById('inp');
+        
+        // Map to store the maximum duration for each unique interactionId
+        const interactionDurations = new Map();
         let maxInp = 0;
 
         function block(ms) {
@@ -34,13 +42,18 @@
         }
 
         const observer = new PerformanceObserver((list) => {
-            const entries = list.getEntries();
-            for (const entry of entries) {
-                if (entry.interactionId > 0) {
-                    // Update the global INP (worst interaction)
-                    if (entry.duration > maxInp) {
-                        maxInp = entry.duration;
-                        inpEl.textContent = `INP: ${maxInp}ms`;
+            for (const entry of list.getEntries()) {
+                if (entry.interactionId) {
+                    // An interaction (e.g., a click) can trigger multiple events (pointerdown, pointerup, click)
+                    // all sharing the same interactionId. The interaction's duration is the longest of these.
+                    const currentMax = interactionDurations.get(entry.interactionId) || 0;
+                    const interactionDuration = Math.max(currentMax, entry.duration);
+                    interactionDurations.set(entry.interactionId, interactionDuration);
+
+                    // Update global INP (worst interaction observed so far)
+                    if (interactionDuration > maxInp) {
+                        maxInp = interactionDuration;
+                        inpEl.textContent = `${maxInp}ms`;
                     }
                     
                     const msg = `[ID: ${entry.interactionId}] ${entry.name} - Duration: ${entry.duration}ms\n`;
@@ -49,7 +62,7 @@
             }
         });
 
-        // Set a low duration threshold to see even relatively fast interactions
+        // durationThreshold: 16 is used to capture interactions that might be fast but still contribute to INP
         observer.observe({ type: 'event', buffered: true, durationThreshold: 16 });
     </script>
 </body>

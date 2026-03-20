@@ -1,6 +1,6 @@
 ---
 name: first-input-delay
-description: Measure the First Input Delay (FID) of the first user interaction to assess initial page responsiveness.
+description: Measure the First Input Delay (FID) using the Event Timing API to assess the delay between the first user interaction and when the browser begins processing its event handlers.
 web-feature-ids:
   - event-timing
 sources:
