@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Dynamic Sibling Animations Demo</title>
+  <style>
+    .circle-layout {
+      position: relative;
+      width: 300px;
+      height: 300px;
+    }
+
+    .circle-layout > .item {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 40px;
+      height: 40px;
+      margin: -20px;
+      border-radius: 50%;
+      background: hsl(calc(sibling-index() * 60), 70%, 50%);
+
+      --angle: calc(360deg / sibling-count() * (sibling-index() - 1));
+      --radius: 120px;
+      transform: rotate(var(--angle)) translateY(calc(-1 * var(--radius)));
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Dynamic Sibling Animations</h1>
+  <p>Items are positioned in a circle using <code>sibling-count()</code> and
+    <code>sibling-index()</code> to compute each element's angle.</p>
+
+  <div class="circle-layout">
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+  </div>
+</body>
+
+</html>
