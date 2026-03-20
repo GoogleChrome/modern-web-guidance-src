@@ -1,6 +1,6 @@
 ---
-name: initial-interaction-delay
-description: Measure the delay of the first user interaction to assess initial page responsiveness.
+name: first-input-delay
+description: Measure the First Input Delay (FID) of the first user interaction to assess initial page responsiveness.
 web-feature-ids:
   - event-timing
 sources:
