@@ -5,35 +5,35 @@
   <meta charset="UTF-8">
   <title>Dynamic Sibling Animations Demo</title>
   <style>
-    .circle-layout {
-      position: relative;
-      width: 300px;
-      height: 300px;
+    .stagger-list {
+      display: flex;
+      gap: 0.5rem;
     }
 
-    .circle-layout > .item {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 40px;
-      height: 40px;
-      margin: -20px;
-      border-radius: 50%;
-      background: hsl(calc(sibling-index() * 60), 70%, 50%);
+    .stagger-list > .item {
+      width: 60px;
+      height: 60px;
+      background: steelblue;
+      border-radius: 4px;
+      animation: fade-in 0.4s ease both;
+      animation-delay: calc(sibling-index() * 0.1s);
+    }
 
-      --angle: calc(360deg / sibling-count() * (sibling-index() - 1));
-      --radius: 120px;
-      transform: rotate(var(--angle)) translateY(calc(-1 * var(--radius)));
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
     }
   </style>
 </head>
 
 <body>
   <h1>Dynamic Sibling Animations</h1>
-  <p>Items are positioned in a circle using <code>sibling-count()</code> and
-    <code>sibling-index()</code> to compute each element's angle.</p>
+  <p>Each item's <code>animation-delay</code> is computed from its
+    <code>sibling-index()</code>, creating a sequential stagger.</p>
 
-  <div class="circle-layout">
+  <div class="stagger-list">
     <div class="item"></div>
     <div class="item"></div>
     <div class="item"></div>
