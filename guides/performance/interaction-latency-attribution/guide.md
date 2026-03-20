@@ -4,5 +4,6 @@ description: Decompose interaction latency into input, processing, and presentat
 web-feature-ids:
   - event-timing
 sources:
-  - https://web.dev/articles/event-timing#reporting_on_the_event_timing_api
+  - https://web.dev/articles/optimize-inp
+  - https://web.dev/blog/better-responsiveness-metric#capture_the_full_event_duration
 ---
