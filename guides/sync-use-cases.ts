@@ -633,10 +633,10 @@ async function processUseCases(
     let guideBody = '';
 
     if (hasGuide || inv.isStub) {
-      const { errors, data, body } = validateGuide(path.join(subdir, 'guide.md'));
-      guideErrors = errors;
-      guideData = data;
-      guideBody = body;
+      const validation = validateGuide(path.join(subdir, 'guide.md'));
+      guideErrors = validation.errors;
+      guideData = validation.data;
+      guideBody = validation.body;
 
       if (guideErrors.length > 0) {
         for (const error of guideErrors) {
