@@ -2,13 +2,14 @@
 name: autofill-address-form
 description: Build an address form that follows best practice, and works correctly with browser autofill features.
 web-feature-ids:
-  - autofill sources:
-    - https://web.dev/articles/payment-and-address-form-best-practices
-    - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/autocomplete
-    - https://developer.mozilla.org/docs/Web/HTML/Element/form
-    - https://developer.mozilla.org/docs/Web/HTML/Element/input
-    - https://developer.mozilla.org/docs/Web/HTML/Element/label
-    - https://www.columbia.edu/~fdc/postal/
+  - autofill
+sources:
+  - https://web.dev/articles/payment-and-address-form-best-practices
+  - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/autocomplete
+  - https://developer.mozilla.org/docs/Web/HTML/Element/form
+  - https://developer.mozilla.org/docs/Web/HTML/Element/input
+  - https://developer.mozilla.org/docs/Web/HTML/Element/label
+  - https://www.columbia.edu/~fdc/postal/
 ---
 
 # Build an address form that follows best practice
