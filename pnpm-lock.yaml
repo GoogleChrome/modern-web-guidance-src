@@ -17,6 +17,9 @@ importers:
         specifier: ^0.4.17
         version: 0.4.17
     devDependencies:
+      '@google/genai':
+        specifier: ^1.30.0
+        version: 1.30.0(@modelcontextprotocol/sdk@1.27.1(zod@4.3.6))
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
@@ -4389,6 +4392,17 @@ snapshots:
       ws: 8.19.0
     optionalDependencies:
       '@modelcontextprotocol/sdk': 1.27.1(zod@3.25.76)
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
+  '@google/genai@1.30.0(@modelcontextprotocol/sdk@1.27.1(zod@4.3.6))':
+    dependencies:
+      google-auth-library: 10.6.1
+      ws: 8.19.0
+    optionalDependencies:
+      '@modelcontextprotocol/sdk': 1.27.1(zod@4.3.6)
     transitivePeerDependencies:
       - bufferutil
       - supports-color

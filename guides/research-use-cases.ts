@@ -32,6 +32,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getFeatureInfo, validateFeature } from '../serving/mcp-server/data/baseline.ts';
+import type { Content, GenerateContentResponse } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -203,23 +204,6 @@ function loadApiKey(): string {
   return key;
 }
 
-interface Part { text: string }
-interface Content { role: 'user' | 'model'; parts: Part[] }
-
-interface GroundingChunk {
-  web?: { uri?: string; title?: string };
-}
-
-interface GeminiResponse {
-  candidates?: Array<{
-    content?: { parts?: Part[] };
-    groundingMetadata?: {
-      webSearchQueries?: string[];
-      groundingChunks?: GroundingChunk[];
-    };
-  }>;
-}
-
 async function generate(
   apiKey: string,
   history: Content[],
@@ -231,7 +215,7 @@ async function generate(
 
   const body = {
     contents,
-    tools: [{ google_search: {} }],
+    tools: [{ google_search: {} }, { url_context: {} }],
     generationConfig: { temperature: 1.0 },
   };
 
@@ -246,7 +230,7 @@ async function generate(
     throw new Error(`Gemini API error: ${res.status} ${res.statusText}\n${text}`);
   }
 
-  const data = (await res.json()) as GeminiResponse;
+  const data = (await res.json()) as GenerateContentResponse;
   const candidate = data.candidates?.[0];
 
   const text = candidate?.content?.parts?.map((p) => p.text).join('') ?? '';
