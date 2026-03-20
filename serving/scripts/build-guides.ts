@@ -7,6 +7,7 @@ import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
 import { replaceMacros } from "../mcp-server/lib/macros.ts";
 import { classifyGuide, scanAllGuides } from "../../harness/lib/utils.ts";
+import { getFeatureName } from "../mcp-server/data/baseline.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,6 +22,7 @@ interface UseCase {
   id: string;
   description: string;
   category: string;
+  featuresUsed: string[];
 }
 
 async function processGuides() {
@@ -81,6 +83,7 @@ export interface UseCase {
   id: string;
   description: string;
   category: string;
+  featuresUsed: string[];
 }
 
 export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
@@ -140,10 +143,14 @@ async function processSingleGuideFile(
 
   const processedMarkdown = replaceMacros(markdownBody, filePath);
 
+  const featureIds: string[] = data['web-feature-ids'] || [];
+  const featuresUsed = featureIds.map(getFeatureName);
+
   useCases.push({
     id,
     description: data.description,
     category,
+    featuresUsed,
   });
 
   const chunks = chunkMarkdown(processedMarkdown);
@@ -159,6 +166,7 @@ async function processSingleGuideFile(
       id,
       description: data.description,
       category,
+      featuresUsed,
       chunkContent: chunk,
       vector
     });

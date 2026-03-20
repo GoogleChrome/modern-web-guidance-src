@@ -6,7 +6,7 @@ import matter from 'gray-matter';
 import { fileURLToPath } from 'url';
 import { validateMacros } from '../serving/mcp-server/lib/macros.ts';
 import { validateFeature } from '../serving/mcp-server/data/baseline.ts';
-import { scanAllGuides } from '../harness/lib/utils.ts';
+import { scanAllGuides, type GuideInventory } from '../harness/lib/utils.ts';
 
 // --- Types ---
 
@@ -66,6 +66,23 @@ interface GitHubData {
   projectDetails: ProjectDetails | null;
 }
 
+export interface PreparedGuide {
+  name: string;
+  description: string;
+  featureIds: string[];
+  relativeSubdir: string;
+  statusName: string | null;
+}
+
+export interface GuideInventoryResult {
+  errors: string[];
+  hasError: boolean;
+  featuresWithActiveUseCases: Set<string>;
+  featuresWithAnyUseCases: Set<string>;
+  preparedGuides: PreparedGuide[];
+  incompleteSubdirs: string[];
+}
+
 // --- Constants ---
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -74,6 +91,7 @@ dotenv.config({ path: path.join(REPO_ROOT, '.env') });
 
 const PRIORITY_LABEL_REGEX = /^P\d+$/;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const PROJECT_GITHUB_TOKEN = process.env.PROJECT_GITHUB_TOKEN || GITHUB_TOKEN;
 const ORG = 'GoogleChrome';
 const REPO = 'guidance';
 const PROJECT_NUMBER = 30;
@@ -90,6 +108,7 @@ if (!GITHUB_TOKEN && !IS_DRY_RUN) {
 }
 
 const octokit: any = new Octokit({ auth: GITHUB_TOKEN });
+const projectOctokit: any = new Octokit({ auth: PROJECT_GITHUB_TOKEN });
 
 // --- Pure helpers ---
 
@@ -384,7 +403,7 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
     let statusOptions: any[] = [];
 
     do {
-      const response = await octokit.graphql(query, { org, number, cursor }) as any;
+      const response = await projectOctokit.graphql(query, { org, number, cursor }) as any;
       const project = response.organization.projectV2;
 
       if (!projectId) {
@@ -585,20 +604,18 @@ async function syncIssue(
   }
 }
 
-async function processUseCases(
-  featureToIssueMap: Map<string, FeatureIssueData>,
-  nameToIssueMap: Map<string, any>,
-  subdirToIssueMap: Map<string, any>,
-  projectDetails: ProjectDetails | null
-): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean }> {
-  const activeIssueNumbers = new Set<number>();
+/**
+ * Processes guide inventory entries: validates frontmatter, checks for missing
+ * paired files, and collects feature ID sets. Returns structured data for the
+ * GitHub sync step without making any API calls.
+ */
+export function processGuideInventory(guides: GuideInventory[]): GuideInventoryResult {
+  const errors: string[] = [];
+  let hasError = false;
   const featuresWithActiveUseCases = new Set<string>();
   const featuresWithAnyUseCases = new Set<string>();
-  const featureUseCaseMap = new Map<string, UseCaseEntry[]>();
-  let hasError = false;
-
-  const guides = scanAllGuides();
-  console.log(`Found ${guides.length} use cases.`);
+  const preparedGuides: PreparedGuide[] = [];
+  const incompleteSubdirs: string[] = [];
 
   for (const inv of guides) {
     const subdir = inv.dir;
@@ -607,7 +624,9 @@ async function processUseCases(
     const guideExists = hasGuide || inv.isStub;
     if (guideExists !== hasDemo) {
       const missingFile = guideExists ? 'demo.html' : 'guide.md';
-      console.error(`❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH guide.md and demo.html.`);
+      const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH guide.md and demo.html.`;
+      console.error(msg);
+      errors.push(msg);
       hasError = true;
     }
 
@@ -616,7 +635,9 @@ async function processUseCases(
       const guideHasContent = fs.existsSync(path.join(subdir, 'guide.md')) &&
         matter(fs.readFileSync(path.join(subdir, 'guide.md'), 'utf8')).content.trim().length > 0;
       if (guideHasContent) {
-        console.error(`❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH grader.ts and prompts.md.`);
+        const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH grader.ts and prompts.md.`;
+        console.error(msg);
+        errors.push(msg);
         hasError = true;
       }
     }
@@ -625,45 +646,73 @@ async function processUseCases(
     let guideData: GuideData = {};
     let guideBody = '';
 
-    if (hasGuide) {
-      const { errors, data, body } = validateGuide(path.join(subdir, 'guide.md'));
-      guideErrors = errors;
-      guideData = data;
-      guideBody = body;
+    if (hasGuide || inv.isStub) {
+      const validation = validateGuide(path.join(subdir, 'guide.md'));
+      guideErrors = validation.errors;
+      guideData = validation.data;
+      guideBody = validation.body;
 
       if (guideErrors.length > 0) {
         for (const error of guideErrors) {
-          console.error(`❌ Error: ${error}`);
+          const msg = `❌ Error: ${error}`;
+          console.error(msg);
+          errors.push(msg);
         }
         hasError = true;
       }
     }
 
-    if (!hasGuide || !hasDemo) {
-      // Prevent the cleanup step from treating any existing issue as an orphan —
-      // the use case directory exists, it's just missing some required files.
-      const partialIssue = subdirToIssueMap.get(relativeSubdir);
-      if (partialIssue) {
-        activeIssueNumbers.add(partialIssue.number);
-      }
-      continue;
-    }
-
-    if (guideErrors.length > 0) {
-      continue;
-    }
-
-    const name = guideData.name!;
-    const description = guideData.description || '';
-    const featureIds = (guideData['web-feature-ids'] || []) as string[];
-    const statusName = getStatusName(guideBody, hasGrader, hasPrompts);
+    const isIncomplete = (!hasGuide && !inv.isStub) || !hasDemo;
+    const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
+    const statusName = !isIncomplete && guideErrors.length === 0 ? getStatusName(guideBody, hasGrader, hasPrompts) : null;
+    const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
 
     for (const id of featureIds) {
       featuresWithAnyUseCases.add(id);
-      if (statusName !== null) {
-        featuresWithActiveUseCases.add(id);
-      }
+      if (isActive) featuresWithActiveUseCases.add(id);
     }
+
+    if (isIncomplete) {
+      incompleteSubdirs.push(relativeSubdir);
+      continue;
+    }
+
+    if (guideErrors.length > 0) continue;
+
+    preparedGuides.push({
+      name: guideData.name!,
+      description: guideData.description || '',
+      featureIds,
+      relativeSubdir,
+      statusName,
+    });
+  }
+
+  return { errors, hasError, featuresWithActiveUseCases, featuresWithAnyUseCases, preparedGuides, incompleteSubdirs };
+}
+
+async function processUseCases(
+  featureToIssueMap: Map<string, FeatureIssueData>,
+  nameToIssueMap: Map<string, any>,
+  subdirToIssueMap: Map<string, any>,
+  projectDetails: ProjectDetails | null
+): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean; errors: string[] }> {
+  const activeIssueNumbers = new Set<number>();
+  const featureUseCaseMap = new Map<string, UseCaseEntry[]>();
+
+  const guides = scanAllGuides();
+  console.log(`Found ${guides.length} use cases.`);
+
+  const { errors, hasError, featuresWithActiveUseCases, featuresWithAnyUseCases, preparedGuides, incompleteSubdirs } = processGuideInventory(guides);
+
+  for (const relativeSubdir of incompleteSubdirs) {
+    // Prevent the cleanup step from treating any existing issue as an orphan —
+    // the use case directory exists, it's just missing some required files.
+    const partialIssue = subdirToIssueMap.get(relativeSubdir);
+    if (partialIssue) activeIssueNumbers.add(partialIssue.number);
+  }
+
+  for (const { name, description, featureIds, relativeSubdir, statusName } of preparedGuides) {
     const { issueTitle, issueBody, priorityLabel } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap);
     const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
 
@@ -701,7 +750,7 @@ async function processUseCases(
     }
   }
 
-  return { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError };
+  return { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError, errors };
 }
 
 async function syncFeatureIssues(
@@ -830,12 +879,15 @@ async function run() {
   console.log('🚀 Starting use case sync...');
 
   const { featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails } = await fetchGitHubData();
-  const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError } = await processUseCases(featureToIssueMap, nameToIssueMap, subdirToIssueMap, projectDetails);
+  const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError, errors } = await processUseCases(featureToIssueMap, nameToIssueMap, subdirToIssueMap, projectDetails);
   await cleanupOrphanedIssues(allUseCases, activeIssueNumbers);
   await syncFeatureIssues(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, projectDetails);
 
   if (hasError) {
-    console.error('\n🛑 Sync failed due to validation errors.');
+    console.error('\n🛑 Sync failed due to validation errors:\n');
+    for (const error of errors) {
+      console.error(`  ${error}`);
+    }
     process.exit(1);
   }
 

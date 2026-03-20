@@ -4,7 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
-import { validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
+import { validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, processGuideInventory, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
+import type { GuideInventory } from '../harness/lib/utils.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -593,5 +594,65 @@ describe('updateFeatureIssueBody', () => {
   test('returns unchanged body if checklist is already up to date', () => {
     const body = updateFeatureIssueBody('Feature ID: autofill', useCases);
     assert.strictEqual(updateFeatureIssueBody(body, useCases), body);
+  });
+});
+
+describe('processGuideInventory', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = createTempDir();
+  });
+
+  afterEach(() => {
+    removeTempDir(tempDir);
+  });
+
+  function makeInventory(overrides: Partial<GuideInventory> = {}): GuideInventory {
+    return {
+      dir: tempDir,
+      name: 'my-use-case',
+      category: 'test',
+      hasGuide: true,
+      isStub: false,
+      hasDemo: true,
+      hasExpectations: false,
+      expectationsEmpty: false,
+      hasNegativeDemo: false,
+      hasGrader: false,
+      hasPrompts: false,
+      hasTask: false,
+      featureIds: [],
+      ...overrides,
+    };
+  }
+
+  test('returns exactly one error for one invalid feature ID', () => {
+    fs.writeFileSync(path.join(tempDir, 'guide.md'), `---
+name: my-use-case
+description: A description
+web-feature-ids:
+  - invalid-feature-id-test
+---
+Body content.
+`);
+    const result = processGuideInventory([makeInventory()]);
+    assert.strictEqual(result.errors.length, 1);
+    assert.match(result.errors[0], /invalid-feature-id-test/);
+  });
+
+  test('returns no errors for a valid guide', () => {
+    fs.writeFileSync(path.join(tempDir, 'guide.md'), `---
+name: my-use-case
+description: A description
+web-feature-ids:
+  - dialog-closedby
+---
+Body content.
+`);
+    const result = processGuideInventory([makeInventory()]);
+    assert.strictEqual(result.errors.length, 0);
+    assert.strictEqual(result.hasError, false);
+    assert.strictEqual(result.preparedGuides.length, 1);
   });
 });
