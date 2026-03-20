@@ -80,7 +80,6 @@ async function run() {
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
     process.env.MCP_LOG_DIR = targetDir;
-
     const stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
 
     const child = spawn(command, commandArgs, {
