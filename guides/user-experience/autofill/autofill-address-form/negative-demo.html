@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Customer Information Form</title>
+  <meta charset="utf-8">
+  <style>
+    input:auto-fill {
+      background-color: yellow;
+    }
+    .fake-button {
+      background-color: blue;
+      color: white;
+      padding: 10px;
+      cursor: pointer;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="not-a-form">
+
+    <h1>Customer Information</h1>
+
+    <div>
+      <span>Title:</span>
+      <input type="text" id="title1" name="title1" autocomplete="off">
+    </div>
+
+    <div>
+      <input type="text" placeholder="First Name" id="fname" name="user_name" autocomplete="false" pattern="[a-zA-Z]+">
+    </div>
+
+    <div>
+      <input type="text" placeholder="Last Name" id="lname" name="user_name" autocomplete="nope" pattern="[a-zA-Z]+">
+    </div>
+
+    <div>
+      <input type="text" placeholder="Email Address" id="email_addr" name="email_addr">
+    </div>
+
+    <div>
+      <input type="text" placeholder="Confirm Email Address" id="email_addr2" name="email_addr2">
+    </div>
+
+    <div>
+      <input type="number" placeholder="Telephone" id="phone" name="phone">
+    </div>
+
+    <div>
+      <input type="text" placeholder="Street Address Line 1" id="addr1">
+    </div>
+    
+    <div>
+      <input type="text" placeholder="Street Address Line 2" id="addr2">
+    </div>
+
+    <div>
+      <input type="text" placeholder="City" id="city">
+    </div>
+
+    <div>
+      <span>State/Province:</span>
+      <select id="state" autocomplete="off">
+        <option value="CA">California</option>
+        <option value="NY">New York</option>
+      </select>
+    </div>
+
+    <div>
+      <span>ZIP Code:</span>
+      <input type="number" id="zip" name="zipcode" required>
+    </div>
+
+    <div class="fake-button" onclick="submitData()">
+      Click Here
+    </div>
+
+  </div>
+
+  <script>
+    function submitData() {
+      alert('Submitted!');
+    }
+  </script>
+
+</body>
+</html>
