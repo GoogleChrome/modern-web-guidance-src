@@ -97,7 +97,7 @@ The following steps are REQUIRED for creating a new use case:
 
   - **name**: Short, slugified name of the use case.
   - **description**: Action-oriented description of the use case.
-  - **web-feature-ids**: List of web feature IDs that the use case relies on. These can be found in the `web-features` package or via webstatus.dev.
+  - **web-feature-ids**: List of web feature IDs that the use case relies on. These can be found in the `web-features` package or via webstatus.dev. You MUST verify that these IDs are valid within the `web-features` package before submitting (see "Verifying Feature IDs" below).
   - **sources**: List of primary source URLs used to synthesize the document. Do NOT guess these. The user should provide them.
 
   For example:
@@ -113,6 +113,20 @@ The following steps are REQUIRED for creating a new use case:
     - https://web.dev/articles/fetch-priority
   ---
   ```
+
+### Verifying Feature IDs
+
+The IDs used in `web-feature-ids` must match the canonical IDs in the [`web-features`](https://www.npmjs.com/package/web-features) package. Common marketing names or MDN titles might not exactly match the ID (e.g., "Interaction to Next Paint" is part of the `event-timing` feature, not a standalone ID).
+
+To verify IDs, you can run a one-liner in the `serving/` directory:
+
+```bash
+# Check if specific IDs are valid
+pnpm exec node -e "import {features} from 'web-features'; ['id1', 'id2'].forEach(id => console.log(id, ':', features[id] ? features[id].kind : 'not found'))"
+
+# Search for potential IDs if you're unsure
+pnpm exec node -e "import {features} from 'web-features'; Object.keys(features).filter(id => id.includes('keyword')).forEach(id => console.log(id))"
+```
 
 * **Step 5: Create the `demo.html` file**
 
