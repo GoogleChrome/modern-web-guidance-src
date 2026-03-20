@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaction to Next Paint (INP) Demo</title>
+    <style>
+        body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto; }
+        .card { border: 1px solid #ddd; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; }
+        button { background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem; }
+        .log { background: #f8f9fa; padding: 1rem; border-radius: 4px; border: 1px solid #ddd; height: 200px; overflow-y: scroll; font-family: monospace; }
+        .inp-value { font-size: 1.5rem; color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Interaction to Next Paint (INP)</h1>
+        <p>Interact with the buttons below multiple times. This demo tracks the worst interaction (maximum duration of a grouped interaction) as the INP score.</p>
+        <button onclick="block(50)">Medium (50ms)</button>
+        <button onclick="block(200)">Slow (200ms)</button>
+        <div id="inp" class="inp-value">INP: 0ms</div>
+    </div>
+
+    <div class="log" id="log">Logs appear here...</div>
+
+    <script>
+        const logEl = document.getElementById('log');
+        const inpEl = document.getElementById('inp');
+        let maxInp = 0;
+
+        function block(ms) {
+            const start = performance.now();
+            while (performance.now() - start < ms) {}
+        }
+
+        const observer = new PerformanceObserver((list) => {
+            const entries = list.getEntries();
+            for (const entry of entries) {
+                if (entry.interactionId > 0) {
+                    // Update the global INP (worst interaction)
+                    if (entry.duration > maxInp) {
+                        maxInp = entry.duration;
+                        inpEl.textContent = `INP: ${maxInp}ms`;
+                    }
+                    
+                    const msg = `[ID: ${entry.interactionId}] ${entry.name} - Duration: ${entry.duration}ms\n`;
+                    logEl.innerText = msg + logEl.innerText;
+                }
+            }
+        });
+
+        // Set a low duration threshold to see even relatively fast interactions
+        observer.observe({ type: 'event', buffered: true, durationThreshold: 16 });
+    </script>
+</body>
+</html>
