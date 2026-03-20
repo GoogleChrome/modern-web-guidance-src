@@ -78,3 +78,6 @@ country. Do not make assumptions about "normal" addresses.
 If possible within your data requirements, consider using a single `<textarea>` element for address.
 This is the most flexible option for a variety of local and international address formats.
 
+### Help save users from accidentally missing data fields
+
+Add the `required` attribute to both email and password fields. Modern browsers automatically prompt and set focus for missing data.

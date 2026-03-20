@@ -157,5 +157,6 @@ the user (you won't have to tell them "they did something wrong"), less likely
 to interrupt conversion flow, and it's straightforward to remove spaces in
 numbers before processing.
 
+### Help save users from accidentally missing data fields
 
-
+Add the `required` attribute to both email and password fields. Modern browsers automatically prompt and set focus for missing data.
