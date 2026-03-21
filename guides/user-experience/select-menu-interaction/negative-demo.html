@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Country Selection</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .field {
+      margin-bottom: 1.5rem;
+    }
+    select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+    }
+    select:invalid,
+    select.error {
+      border: 2px solid #d93025;
+      background-color: #fce8e6;
+    }
+    .error-msg {
+      display: none;
+      color: #d93025;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+    select:invalid + .error-msg,
+    select.error + .error-msg {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <h1>Select a Country</h1>
+  <form id="form">
+    <div class="field">
+      <label for="country">Country</label>
+      <select id="country" name="country" required>
+        <option value="">Select a country...</option>
+        <option value="us">United States</option>
+        <option value="ca">Canada</option>
+        <option value="uk">United Kingdom</option>
+      </select>
+      <div class="error-msg">Please select a country.</div>
+    </div>
+    <button type="submit">Submit</button>
+  </form>
+  <script>
+    const dropdown = document.getElementById('country');
+    
+    dropdown.classList.add('error');
+    dropdown.setAttribute('aria-invalid', 'true');
+    
+    dropdown.addEventListener('change', function(e) {
+      if (!e.target.value) {
+        e.target.classList.add('error');
+        e.target.setAttribute('aria-invalid', 'true');
+      } else {
+        e.target.classList.remove('error');
+        e.target.removeAttribute('aria-invalid');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Form Validation</title>
+<style>
+  body {
+    font-family: sans-serif;
+    padding: 2rem;
+  }
+  .form-group {
+    margin-bottom: 2rem;
+  }
+  label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+  }
+  input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+  }
+  input:invalid {
+    border-color: red;
+  }
+  .error-message {
+    display: none;
+    color: red;
+    margin-top: 0.5rem;
+  }
+  input:invalid + .error-message {
+    display: block;
+  }
+</style>
+</head>
+<body>
+  <h1>Form</h1>
+  <form id="demo-form">
+    <div class="form-group">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" required minlength="3" aria-invalid="true">
+      <div class="error-message">Username must be at least 3 characters long.</div>
+    </div>
+    <div class="form-group">
+      <label for="email">Email Address</label>
+      <input type="email" id="email" name="email" required aria-invalid="true">
+      <div class="error-message">Please enter a valid email address.</div>
+    </div>
+    <button type="submit">Submit</button>
+  </form>
+  <script>
+    document.querySelectorAll('input').forEach(input => {
+      input.addEventListener('focus', (e) => {
+        e.target.setAttribute('aria-invalid', 'true');
+      });
+      input.addEventListener('blur', (e) => {
+        if (e.target.value === '') {
+          e.target.setAttribute('aria-invalid', 'true');
+        } else {
+          e.target.setAttribute('aria-invalid', 'false');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
