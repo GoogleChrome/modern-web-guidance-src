@@ -1,53 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>App</title>
-<style>
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-}
-.app-wrapper {
-  height: 100vh;
-  overflow-y: scroll;
-}
-.top-search {
-  padding: 20px;
-  background: #eee;
-}
-.main-feed {
-  padding: 20px;
-  height: 150vh;
-  scroll-initial-target: nearest;
-}
-.bottom-feed {
-  padding: 20px;
-  scroll-initial-target: nearest;
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+    }
+    .scroll-container {
+      overflow: visible;
+    }
+    .search-bar {
+      background-color: #e2e8f0;
+      padding: 15px;
+    }
+    .search-input {
+      width: 100%;
+      padding: 10px;
+    }
+    .main-content {
+      padding: 20px;
+      scroll-initial-target: nearest;
+    }
+    .content-box {
+      scroll-initial-target: nearest;
+      background: white;
+      padding: 20px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+    }
+  </style>
 </head>
 <body>
-<div class="app-wrapper">
-  <div class="top-search">
-    <input type="text" placeholder="Search">
+  <div>
+    <h1>App Title</h1>
+    <div class="scroll-container" id="container">
+      <div class="search-bar">
+        <input type="text" class="search-input" placeholder="Search...">
+      </div>
+      <div class="main-content" id="target">
+        <div class="content-box">
+          <h3>Welcome Back!</h3>
+        </div>
+        <div class="content-box">
+          <h3>Recent Activity</h3>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="main-feed" id="feed">
-    <h1>Feed</h1>
-    <p>Content</p>
-  </div>
-  <div class="bottom-feed">
-    <h2>More</h2>
-    <p>Content</p>
-  </div>
-</div>
-<script>
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    document.getElementById('feed').scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, 1000);
-});
-</script>
+  <script>
+    window.addEventListener("load", function() {
+      setTimeout(function() {
+        var target = document.getElementById("target");
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 500);
+    });
+  </script>
 </body>
 </html>
