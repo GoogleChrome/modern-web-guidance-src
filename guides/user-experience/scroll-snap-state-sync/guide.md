@@ -1,6 +1,6 @@
 ---
 name: scroll-snap-state-sync
-description: Synchronize navigation indicators and linked content panels with the actively snapped item in a scrollable container.
+description: Synchronize navigation indicators, linked content panels, and analytics tracking with the actively snapped item in a scrollable container.
 web-feature-ids:
   - scroll-snap-events
   - scroll-snap

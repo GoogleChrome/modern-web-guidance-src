@@ -117,6 +117,9 @@
 
       // Update the linked caption panel.
       caption.textContent = snappedSlide.dataset.caption;
+
+      // Track which slide the user viewed (analytics).
+      console.log('Slide viewed:', index + 1, snappedSlide.dataset.caption);
     });
 
     // Allow clicking dots to scroll to a slide.
