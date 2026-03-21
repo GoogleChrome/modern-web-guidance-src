@@ -125,7 +125,7 @@
     // Allow clicking dots to scroll to a slide.
     dots.forEach((dot, i) => {
       dot.addEventListener('click', () => {
-        slides[i].scrollIntoView({ behavior: 'smooth', inline: 'center' });
+        slides[i].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
       });
     });
   </script>

@@ -142,7 +142,7 @@
     // Allow clicking thumbnails to scroll to the corresponding item.
     thumbnails.forEach((thumb, i) => {
       thumb.addEventListener('click', () => {
-        items[i].scrollIntoView({ behavior: 'smooth', inline: 'center' });
+        items[i].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
       });
     });
   </script>
