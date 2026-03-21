@@ -407,7 +407,7 @@ function renderSuites() {
         const localLink = `dashboard.html?testId=${testId}&source=${testInfo.source}`;
 
         html += `
-            <tr class="suite-table-row" onclick="window.location.href='${localLink}'" style="cursor: pointer;">
+            <tr class="suite-table-row" onclick="window.location.href='${localLink}'" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.location.href='${localLink}'; }" tabindex="0" role="link" aria-label="View results for suite ${testId}" style="cursor: pointer;">
                 <td style="padding-left:15px; text-align: left; font-weight: 600;">${testId}</td>
                 <td style="text-transform: capitalize;">${testInfo.source}</td>
                 <td>${testInfo.agent}</td>

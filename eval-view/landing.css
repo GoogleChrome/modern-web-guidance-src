@@ -24,6 +24,12 @@
   transition: background-color 0.2s;
 }
 
+.suite-table-row:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+  background-color: var(--bg-tertiary);
+}
+
 .header-filter-select {
   margin-left: 8px;
   font-size: 0.85em;

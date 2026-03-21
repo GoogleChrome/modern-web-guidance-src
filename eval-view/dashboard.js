@@ -416,6 +416,15 @@ function renderGrid(data, testId) {
                 }
 
                 card.onclick = () => showDetails(testName, runData, testStats, testId);
+                card.tabIndex = 0;
+                card.role = 'button';
+                card.ariaLabel = `View details for ${formatTestName(testName)}`;
+                card.onkeydown = (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        showDetails(testName, runData, testStats, testId);
+                    }
+                };
                 card.innerHTML = `
                     <h3>${formatTestName(testName)}</h3>
                     <div class="pass-rate-bar">

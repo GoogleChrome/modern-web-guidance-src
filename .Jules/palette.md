@@ -1,0 +1,3 @@
+## 2026-03-21 - [Keyboard Accessibility for Interactive Grid/Table Elements]
+**Learning:** In the Guidance Eval-View dashboard, interactive elements like `test-card` (divs) and `suite-table-row` (tr) were missing keyboard navigation support. These elements use custom click handlers but weren't focusable or responsive to the 'Enter' key.
+**Action:** Always add `tabindex="0"`, a relevant ARIA `role` (`button` for modals, `link` for navigation), and an `onkeydown` listener for 'Enter' and 'Space' to custom interactive components. Pair this with `:focus-visible` styles using `var(--accent-color)` to provide a clear focus indicator.
