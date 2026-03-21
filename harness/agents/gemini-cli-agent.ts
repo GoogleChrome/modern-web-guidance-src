@@ -120,6 +120,13 @@ async function run() {
     fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
     console.log(`Saved output to: ${chatLogPath}`);
 
+    // Save stderr to agent_stderr.log to surface unexpected problems
+    if (stderrData.length > 0) {
+      const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
+      fs.writeFileSync(stderrLogPath, stderrData, 'utf8');
+      console.log(`Saved stderr to: ${stderrLogPath}`);
+    }
+
     // Extract trajectory JSON from isolated home
     const tmpDir = path.join(path.dirname(workDir), '.gemini', 'tmp');
     exportTrajectories(tmpDir, '*/chats/*.json', targetDir);

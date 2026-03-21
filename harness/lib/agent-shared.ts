@@ -102,7 +102,7 @@ export function updateMcpConfig(
   apiKey: string,
   agent: string
 ): boolean {
-  const mcpConfig: { mcpServers: Record<string, any> } = { mcpServers: {} };
+   const mcpConfig: { mcpServers: Record<string, any> } = { mcpServers: {} };
 
   for (const serverName of serversToEnable) {
     if (serverName === 'modern-web') {
