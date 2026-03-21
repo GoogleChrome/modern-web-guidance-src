@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll Target Demo</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      text-align: center;
+      padding: 20px;
+      background: #eee;
+    }
+    .feed {
+      padding: 20px;
+    }
+    .feed-item {
+      padding: 15px;
+      margin-bottom: 30px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      scroll-initial-target: nearest;
+    }
+    .feed-item img {
+      display: block;
+      margin-top: 10px;
+    }
+    .target-item {
+      background: #fffae6;
+      border-color: #fadb14;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>My Feed</h1>
+  </header>
+
+  <div class="feed">
+    <div class="feed-item">
+      <p>Here is a cool landscape.</p>
+      <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=400&auto=format&fit=crop" alt="Landscape 1">
+    </div>
+    
+    <div class="feed-item">
+      <p>Another nice view.</p>
+      <img src="https://images.unsplash.com/photo-1550684376-efcbd6e3f031?q=80&w=400&auto=format&fit=crop" alt="Landscape 2">
+    </div>
+    
+    <div class="feed-item target-item" id="main-target">
+      <p>This is the important item we want to see.</p>
+      <img src="https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=400&auto=format&fit=crop" alt="Landscape 3">
+    </div>
+    
+    <div class="feed-item">
+      <p>One more picture down here.</p>
+      <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=400&auto=format&fit=crop" alt="Landscape 4">
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        var target = document.getElementById('main-target');
+        if (target) {
+          var offset = target.offsetTop - 50;
+          window.scrollTo({
+            top: offset,
+            behavior: 'smooth'
+          });
+        }
+      }, 500);
+    };
+  </script>
+</body>
+</html>
