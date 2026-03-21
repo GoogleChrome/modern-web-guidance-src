@@ -11,6 +11,10 @@ This is the second of three stages in creating guidance:
 2. Stage 2: Authoring guidance for a use case (you are here)
 3. Stage 3: Evaluating guidance for a use case
 
+## Research
+
+Before writing a guide, check for a research file at `guides/.research/<web-feature-id>.md`. If it exists, it contains a detailed summary of the feature — use cases, technical constraints, performance implications, browser compatibility, and real-world implementation examples — generated during Stage 1. Use it to inform the guide content rather than relying solely on general knowledge.
+
 **MANDATORY RULES FOR WRITING `guide.md`:**
 
 ### 1. YAML Frontmatter Schema

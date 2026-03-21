@@ -22,6 +22,9 @@
  *   # Use the deep research model for a more thorough turn 1 (takes 10-60 minutes):
  *   gd research --issue 359 --deep-research
  *
+ *   # Resume a timed-out deep research interaction:
+ *   gd research --issue 359 --resume <interaction-id>
+ *
  * Required environment variable (add to .env):
  *   GEMINI_API_KEY
  */
@@ -146,27 +149,34 @@ async function generate(
 async function generateDeepResearch(
   apiKey: string,
   history: Content[],
-  newUserText: string
+  newUserText: string,
+  resumeId?: string
 ): Promise<{ text: string; sources: string[]; updatedHistory: Content[] }> {
   const url = `${GEMINI_BASE}/interactions`;
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify({
-      agent: GEMINI_MODEL_DEEP_RESEARCH,
-      input: newUserText,
-      background: true,
-    }),
-  });
+  let id: string;
+  if (resumeId) {
+    id = resumeId;
+    console.log(`  Resuming interaction ${id} — polling for completion…`);
+  } else {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        agent: GEMINI_MODEL_DEEP_RESEARCH,
+        input: newUserText,
+        background: true,
+      }),
+    });
 
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    throw new Error(`Gemini Interactions API error: ${res.status} ${res.statusText}\n${errText}`);
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(`Gemini Interactions API error: ${res.status} ${res.statusText}\n${errText}`);
+    }
+
+    ({ id } = (await res.json()) as { id: string });
+    console.log(`  Interaction ID: ${id} — polling for completion…`);
   }
-
-  const { id } = (await res.json()) as { id: string };
-  console.log(`  Interaction ID: ${id} — polling for completion…`);
 
   // Poll until the interaction completes (max 60 minutes).
   const POLL_INTERVAL_MS = 15_000;
@@ -311,7 +321,9 @@ function buildUseCasesPrompt(
   const skillRules = loadSkillRules();
 
   const lines = [
-    `Based on your research, identify 2-5 distinct developer use cases for the \`${featureId}\` feature.`,
+    featureId
+      ? `Based on your research, identify 2-5 distinct developer use cases for the \`${featureId}\` feature.`
+      : `Based on your research, identify 2-5 distinct developer use cases for the feature you just researched.`,
     '',
     '## Quality rules',
     '',
@@ -347,6 +359,13 @@ function buildUseCasesPrompt(
     `Choose the single most appropriate category for all of these use cases from this list: ${categories.join(', ')}.`,
     'All use cases for a feature share one category.',
     '',
+    '## Sources',
+    '',
+    'For each use case, include at least one implementation-focused source that explains',
+    'how to build something using the feature. Prefer Chrome-authored guidance first',
+    '(developer.chrome.com, web.dev), then other implementation articles (CSS-Tricks, etc.).',
+    'MDN reference pages alone are not sufficient — they describe the API but not how to apply it.',
+    '',
     '## Output format',
     '',
     'Respond with ONLY a JSON object, no prose or markdown fences:',
@@ -357,7 +376,7 @@ function buildUseCasesPrompt(
     '    {',
     '      "slug": "kebab-case-name",',
     '      "description": "Single-sentence, verb-first, WHAT-not-HOW description.",',
-    '      "sources": ["https://url-that-informed-this-use-case"]',
+    '      "sources": ["https://implementation-focused-article", "https://mdn-reference-if-needed"]',
     '    }',
     '  ]',
     '}',
@@ -508,6 +527,7 @@ export async function main(args: string[] = process.argv.slice(2)) {
       category: { type: 'string' },
       'dry-run': { type: 'boolean', default: false },
       'deep-research': { type: 'boolean', default: false },
+      resume: { type: 'string' },
       verbose: { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h' },
     },
@@ -528,6 +548,7 @@ Options:
                    (auto-detected from existing guides if omitted)
   --dry-run        Print proposed stubs without writing any files
   --deep-research  Use the deep research model for turn 1 (slower, more thorough)
+  --resume <id>    Resume a previous deep research interaction by ID (skips turn 1)
   --verbose        Print the full research summary from turn 1
   --help           Show this help
 
@@ -539,7 +560,8 @@ Environment variables (set in .env):
   }
 
   const dryRun = values['dry-run']!;
-  const deepResearch = values['deep-research']!;
+  const deepResearch = values['deep-research']! || !!values.resume;
+  const resumeId = values.resume;
   const verbose = values['verbose']!;
   const categoryArg = values.category;
 
@@ -596,7 +618,7 @@ Environment variables (set in .env):
   const researchPrompt = buildResearchPrompt(featureId, featureInfo, seedSources, issueContext ?? undefined);
 
   const { text: researchText, updatedHistory: h1 } = deepResearch
-    ? await generateDeepResearch(apiKey, history, researchPrompt)
+    ? await generateDeepResearch(apiKey, history, researchPrompt, resumeId)
     : await generate(apiKey, history, researchPrompt);
   history = h1;
 
@@ -627,6 +649,15 @@ Environment variables (set in .env):
     console.error(`\nFailed to parse use cases: ${err}`);
     console.error('Raw response:\n', useCasesText);
     process.exit(1);
+  }
+
+  // Save research output for local reference (gitignored).
+  {
+    const researchDir = path.join(rootDir, 'guides', '.research');
+    fs.mkdirSync(researchDir, { recursive: true });
+    const researchPath = path.join(researchDir, `${featureId}.md`);
+    fs.writeFileSync(researchPath, researchText, 'utf8');
+    console.log(`\n  Research saved to guides/.research/${featureId}.md`);
   }
 
   // Sources come from the model-generated JSON only (not grounding chunk URLs,

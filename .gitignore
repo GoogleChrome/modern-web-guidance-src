@@ -12,6 +12,9 @@ harness/results/
 grade-report/
 test-app-results/
 
+# Research output (local reference only, not for review)
+guides/.research/
+
 # Environment and Logs
 .env
 *.log

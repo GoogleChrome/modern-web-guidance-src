@@ -37,13 +37,34 @@ The command will:
 2. Propose 2–5 use cases in the correct format
 3. Scaffold `guide.md` stubs under `guides/<category>/<slug>/`
 
-Use `--dry-run` to preview the proposed stubs without writing any files, and `--category` to override the auto-detected guide category. Use `--deep-research` for more complex features to run a more thorough research pass using the deep research model (takes 10–60 minutes).
+Use `--category` to override the auto-detected guide category. Use `--deep-research` for more complex features to run a more thorough research pass using the deep research model (takes 10–60 minutes).
 
 **Prerequisite:** Set `GEMINI_API_KEY` in your `.env` file.
 
 ### Reviewing the output
 
 The user should manually review the proposed use cases for accuracy and completeness before proceeding. Your job is to confirm that their selected use cases follow the constraints described in this skill.
+
+After `gd research` completes, perform the following validation steps:
+
+1. **Check each use case description** against the rules in [Identifying action-oriented tasks](#identifying-action-oriented-tasks):
+   - Starts with a verb
+   - Describes WHAT the developer is trying to do, not HOW the feature works
+   - General enough to match a wide range of real developer prompts
+   - Not too similar to an existing guide (check the list of existing descriptions surfaced during research)
+
+2. **Check the scaffolded files** for each use case under `guides/<category>/<slug>/`:
+   - `guide.md` frontmatter has all required fields: `name`, `description`, `web-feature-ids`, `sources`
+   - `web-feature-ids` contains the correct feature ID(s) — verify using `pnpm baselinestatus <id>` (see `web-baseline` skill); an unrecognized ID will return no results
+   - `sources` lists real, relevant URLs (not placeholder or redirect URLs); at least one should be a Chrome-authored implementation article (developer.chrome.com, web.dev) — if only MDN is listed, search for a better source before proceeding
+   - `demo.html` exists and correctly demonstrates the use case using the feature
+
+3. **Run the test suite** to catch any structural issues:
+   ```bash
+   pnpm --filter guides test
+   ```
+
+4. **Flag any issues** to the user before proceeding to Step 7 (PR submission). If a use case description doesn't meet the quality bar, suggest a corrected version.
 
 ## Identifying action-oriented tasks
 
@@ -95,7 +116,7 @@ The following steps are REQUIRED for creating a new use case:
   - **name**: Short, slugified name of the use case.
   - **description**: Action-oriented description of the use case.
   - **web-feature-ids**: List of web feature IDs that the use case relies on. These can be found in the `web-features` package or via webstatus.dev.
-  - **sources**: List of primary source URLs used to synthesize the document. Do NOT guess these. The user should provide them.
+  - **sources**: List of primary source URLs used to synthesize the document. Do NOT guess these. Prefer Chrome-authored implementation guidance (developer.chrome.com, web.dev) above all else, then other implementation-focused articles. API reference docs (e.g. MDN) should be supplementary. At least one source should explain *how to implement* the use case, not just describe the feature's API surface.
 
   For example:
 
