@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Correlate Interaction with Long Frame Demo</title>
+</head>
+<body>
+  <h1>Correlate Interaction with Long Frame</h1>
+  <button id="interact-button">Click me</button>
+  <div id="output"></div>
+
+  <script>
+    // Observe long animation frames
+    const observer = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        // If a UI event happened during this frame
+        if (entry.firstUIEventTimestamp) {
+          console.log(`Interaction delayed!`);
+          console.log(`First UI event at: ${entry.firstUIEventTimestamp.toFixed(0)}ms`);
+          console.log(`Frame duration: ${entry.duration.toFixed(0)}ms`);
+          console.log(`Scripts involved:`, entry.scripts);
+          
+          document.getElementById('output').innerText = 
+            `Interaction was delayed by a frame lasting ${entry.duration.toFixed(0)}ms!`;
+        }
+      }
+    });
+
+    try {
+      observer.observe({ type: 'long-animation-frame', buffered: true });
+    } catch (e) {
+      console.warn('Long Animation Frames API not supported.');
+    }
+
+    document.getElementById('interact-button').addEventListener('click', () => {
+      // Simulate work that delays the frame rendering
+      const start = performance.now();
+      while (performance.now() - start < 150) {
+        // block main thread for 150ms
+      }
+    });
+  </script>
+</body>
+</html>
