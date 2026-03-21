@@ -8,5 +8,4 @@ sources:
   - https://developer.chrome.com/blog/scroll-snap-events
   - https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollsnapchange_event
   - https://developer.mozilla.org/en-US/docs/Web/API/SnapEvent
-  - https://drafts.csswg.org/css-scroll-snap-2/#snap-events
 ---
