@@ -138,12 +138,24 @@ async function generate(
     .map((c) => c.web?.uri)
     .filter((uri): uri is string => !!uri);
 
+  // Resolve redirect URLs to their final destinations.
+  const resolvedSources = await Promise.all(
+    sources.map(async (uri) => {
+      try {
+        const r = await fetch(uri, { method: 'HEAD', redirect: 'follow' });
+        return r.url;
+      } catch {
+        return uri; // fall back to redirect URL if resolution fails
+      }
+    })
+  );
+
   const updatedHistory: Content[] = [
     ...contents,
     { role: 'model', parts: [{ text }] },
   ];
 
-  return { text, sources, updatedHistory };
+  return { text, sources: resolvedSources, updatedHistory };
 }
 
 async function generateDeepResearch(
@@ -488,7 +500,8 @@ function buildDemoPrompt(featureId: string, uc: UseCase): string {
     `- Minimal: no unnecessary UI polish, placeholder text for any content, placeholder URLs for any subresources.`,
     `- Include a brief <!-- comment --> at the top explaining what the demo shows.`,
     ``,
-    `Respond with ONLY the HTML file contents, no prose or markdown fences.`,
+    `Respond with ONLY the raw HTML file contents. Do NOT wrap it in a markdown code block.`,
+    `The response must start with \`<!DOCTYPE html>\` or \`<html\`.`,
   ].join('\n');
 }
 
@@ -617,7 +630,7 @@ Environment variables (set in .env):
   console.log(`\n[1] Researching with Google Search grounding${deepResearch ? ' (deep research)' : ''}…`);
   const researchPrompt = buildResearchPrompt(featureId, featureInfo, seedSources, issueContext ?? undefined);
 
-  const { text: researchText, updatedHistory: h1 } = deepResearch
+  const { text: researchText, sources: researchSources, updatedHistory: h1 } = deepResearch
     ? await generateDeepResearch(apiKey, history, researchPrompt, resumeId)
     : await generate(apiKey, history, researchPrompt);
   history = h1;
@@ -656,7 +669,11 @@ Environment variables (set in .env):
     const researchDir = path.join(rootDir, 'guides', '.research');
     fs.mkdirSync(researchDir, { recursive: true });
     const researchPath = path.join(researchDir, `${featureId}.md`);
-    fs.writeFileSync(researchPath, researchText, 'utf8');
+    const uniqueSources = [...new Set(researchSources)];
+    const sourcesSection = uniqueSources.length
+      ? `\n\n## Sources\n\n${uniqueSources.map((s) => `- ${s}`).join('\n')}`
+      : '';
+    fs.writeFileSync(researchPath, researchText + sourcesSection, 'utf8');
     console.log(`\n  Research saved to guides/.research/${featureId}.md`);
   }
 
@@ -676,13 +693,13 @@ Environment variables (set in .env):
   for (const uc of useCases) {
     createGuideStub(featureId, uc, category, seedSources, dryRun);
 
-    console.log(`    Generating demo.html for ${uc.slug}…`);
-    const { text: demoHtml } = await generate(apiKey, history, buildDemoPrompt(featureId, uc));
-
-    const demoPath = path.join(rootDir, 'guides', category, uc.slug, 'demo.html');
     if (dryRun) {
-      console.log(`\n[dry-run] Would create guides/${category}/${uc.slug}/demo.html`);
+      console.log(`\n[dry-run] Would generate guides/${category}/${uc.slug}/demo.html`);
     } else {
+      console.log(`    Generating demo.html for ${uc.slug}…`);
+      const { text: rawDemo } = await generate(apiKey, history, buildDemoPrompt(featureId, uc));
+      const demoHtml = rawDemo.replace(/^```[\w]*\n?/m, '').replace(/\n?```\s*$/m, '').trim();
+      const demoPath = path.join(rootDir, 'guides', category, uc.slug, 'demo.html');
       fs.writeFileSync(demoPath, demoHtml, 'utf8');
       console.log(`    Created: guides/${category}/${uc.slug}/demo.html`);
     }
