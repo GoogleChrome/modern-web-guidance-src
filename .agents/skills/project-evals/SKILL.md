@@ -17,7 +17,10 @@ This is the third of three stages in creating guidance:
   * Avoid over-constraining implementation details that don't matter for correctness (e.g., don't assert that an element must be a direct child if a descendant also works).
 
 ## Grading Note
-* Graders (`grader.ts`) live within their respective guide folders. These are Playwright test files, but they are permitted to perform non-browser tests (like `str.includes()` on file contents) as well as actual browser automation checks. A huamn may manually edit them if the generator struggles to get it perfectly tailored.
+* Graders (`grader.ts`) live within their respective guide folders. These are Playwright test files.
+* **AVOID** using static assertions (like regex or `str.includes()` on `fs.readFileSync`) to test CSS or HTML syntax whenever possible. These are extremely brittle and will fail if the agent uses a different class name, semantic element, or formatting.
+* Instead, **PREFER** using Playwright's browser APIs to test computed styles and actual DOM layout. Use `element.evaluate((el) => window.getComputedStyle(el).propertyName)` to robustly verify that the browser is rendering the feature correctly, regardless of how the agent authored the code.
+* A human may manually edit the `.ts` file if the generator struggles to get it perfectly tailored.
 
 ---
 
