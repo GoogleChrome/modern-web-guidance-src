@@ -15,51 +15,6 @@ const demoUrl = `http://localhost/${demoName}`;
 
 test.describe(`Search Hidden Content Expectations: ${demoName}`, () => {
   
-  // 1. Content intended to be visually hidden but searchable MUST use <details> or hidden="until-found"
-  test('Searchable hidden content must use <details> or hidden="until-found"', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Negative demo uses a class ".content" with "display: none" for most items.
-    const usesLegacyHiddenClass = html.includes('.content {') && html.includes('display: none');
-    expect(usesLegacyHiddenClass, 'Should not use legacy display: none for searchable content').toBe(false);
-  });
-
-  // 2. Elements utilizing hidden="until-found" MUST NOT have display: none or visibility: hidden
-  test('Elements with hidden="until-found" must not have display: none or visibility: hidden', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Look for hidden="until-found" coupled with display: none or visibility: hidden in style attribute
-    const hasInlineDisplayNone = /hidden=["']until-found["'][^>]*style=["'][^"']*(display:\s*none|visibility:\s*hidden)/.test(html);
-    // Or in CSS (negative-demo has .content { display: none } and item 3 has class="content")
-    const hasClassDisplayNone = html.includes('hidden="until-found"') && html.includes('class="content"') && html.includes('.content {') && html.includes('display: none');
-    
-    expect(hasInlineDisplayNone || hasClassDisplayNone, 'hidden="until-found" elements must not have display: none or visibility: hidden').toBe(false);
-  });
-
-  // 3. hidden="until-found" MUST NOT be used for sensitive info
-  test('hidden="until-found" must not hide sensitive information', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasSensitiveInfo = /hidden=["']until-found["']/.test(html) && 
-                            /(token|secret|confidential|AX-992)/i.test(html);
-    
-    expect(hasSensitiveInfo, 'Sensitive info found in hidden="until-found" content').toBe(false);
-  });
-
-  // 4. State MUST be synchronized using a beforematch event listener
-  test('State must be synchronized using a beforematch event listener', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasBeforeMatchListener = html.includes('beforematch') || html.includes('onbeforematch');
-    
-    expect(hasBeforeMatchListener, 'Missing beforematch event listener for UI synchronization').toBe(true);
-  });
-
-  // 5. Fallback strategy MUST include explicit JS feature detection
-  test('Implementation must include explicit fallback strategy with feature detection', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasFeatureDetection = html.includes('onbeforematch') && html.includes('in HTMLElement.prototype');
-    
-    expect(hasFeatureDetection, 'Missing fallback strategy or explicit feature detection').toBe(true);
-  });
-
-  // Setup browser testing
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
@@ -75,36 +30,91 @@ test.describe(`Search Hidden Content Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  // 6. Browser check: ensure all hidden content uses the correct searchable mechanism
-  test('All visually hidden content must use searchable attributes', async ({ page }) => {
-    const hiddenIncorrectly = await page.evaluate(() => {
-      const elements = Array.from(document.querySelectorAll('.content, .accordion-pane'));
-      return elements.some(el => {
-        const style = window.getComputedStyle(el);
-        const isHidden = style.display === 'none' || style.visibility === 'hidden';
-        const hasProperAttribute = (el.getAttribute('hidden') === 'until-found') || el.closest('details');
-        
-        // If it is hidden but doesn't have the proper attribute, it's a failure.
-        // HOWEVER, even if it has hidden="until-found", if it ALSO has display: none in CSS, 
-        // it breaks searchability.
-        // UA style for hidden=until-found is display:none !important in some browsers, 
-        // but it's searchable. 
-        // If the developer ADDS display: none, it might override the searchable behavior.
-        
-        // In negative-demo, item 1 and 2 are hidden via CSS class .content { display: none }
-        // and they don't have hidden="until-found".
-        return isHidden && !hasProperAttribute;
-      });
-    });
-    
-    // Also check if ANY element has sensitive info and is hidden="until-found"
-    // (This is a repeat of static test but in browser)
-    const hasSensitiveInBrowser = await page.evaluate(() => {
-       const el = document.querySelector('[hidden="until-found"]');
-       return el && /(token|secret|confidential)/i.test(el.textContent || '');
+  // 1. The `wholesale-tab` mutually exclusive regions MUST use the `<details>` element.
+  test('The `wholesale-tab` elements MUST use the `<details>` element', async ({ page }) => {
+    const tabs = page.locator('.wholesale-tab');
+    const count = await tabs.count();
+    expect(count, 'Expected at least one element with class wholesale-tab').toBeGreaterThan(0);
+
+    const isUsingDetails = await page.evaluate(() => {
+      const els = Array.from(document.querySelectorAll('.wholesale-tab'));
+      return els.every(el => el.tagName === 'DETAILS' || el.closest('details') !== null || el.querySelector('details') !== null);
     });
 
-    expect(hiddenIncorrectly || hasSensitiveInBrowser, 'Hidden content must be searchable and not sensitive').toBe(false);
+    expect(isUsingDetails, 'wholesale-tab regions must utilize the <details> element').toBe(true);
+  });
+
+  // 2. The `wholesale-tab` mutually exclusive regions MUST share a `name` attribute.
+  test('The `<details>` mutually exclusive regions MUST share a `name` attribute', async ({ page }) => {
+    const names = await page.evaluate(() => {
+      const els = Array.from(document.querySelectorAll('.wholesale-tab'));
+      return els.map(el => {
+        const details = el.tagName === 'DETAILS' ? el : (el.closest('details') || el.querySelector('details'));
+        return details ? details.getAttribute('name') : null;
+      });
+    });
+
+    // They must all have a name, and if there are multiple, they must be identical
+    expect(names.every(n => n !== null), 'All wholesale-tabs must have a name attribute').toBe(true);
+    if (names.length > 1) {
+      expect(names.every(n => n === names[0]), 'All wholesale-tabs must share the identical name attribute for mutual exclusivity').toBe(true);
+    }
+  });
+
+  // 3. The `coupon-panel` MUST use the `hidden="until-found"` attribute.
+  test('The `coupon-panel` MUST use the `hidden="until-found"` attribute', async ({ page }) => {
+    const panel = page.locator('#coupon-panel');
+    await expect(panel, 'Missing #coupon-panel element').toBeAttached();
+    
+    const hasAttribute = await panel.evaluate(el => el.getAttribute('hidden') === 'until-found');
+    expect(hasAttribute, '#coupon-panel must use hidden="until-found"').toBe(true);
+  });
+
+  // 4. The `coupon-panel` MUST NOT have `display: none` or `visibility: hidden` applied to it directly.
+  test('The `coupon-panel` MUST NOT have `display: none` or `visibility: hidden`', async ({ page }) => {
+    const isHiddenIncorrectly = await page.evaluate(() => {
+      const el = document.getElementById('coupon-panel');
+      if (!el) return false;
+      
+      // Temporarily remove hidden to see if CSS is improperly overriding its visibility
+      const origHidden = el.getAttribute('hidden');
+      el.removeAttribute('hidden');
+      const style = window.getComputedStyle(el);
+      const isHiddenViaCSS = style.display === 'none' || style.visibility === 'hidden';
+      
+      if (origHidden) el.setAttribute('hidden', origHidden);
+      return isHiddenViaCSS;
+    });
+
+    expect(isHiddenIncorrectly, '#coupon-panel must not be visually hidden via CSS overrides').toBe(false);
+  });
+
+  // 5. The `coupon-panel` MUST NOT be used to hide sensitive information.
+  test('The `coupon-panel` MUST NOT hide sensitive information', async ({ page }) => {
+    const hasSensitiveInfo = await page.evaluate(() => {
+      const el = document.getElementById('coupon-panel');
+      if (!el) return false;
+      const text = el.textContent || '';
+      // We flag ADMIN_TOKEN or AX-992 as sensitive.
+      // We don't flag "secret discount" because it's marketing copy.
+      return /(ADMIN_TOKEN|AX-992)/i.test(text);
+    });
+    
+    expect(hasSensitiveInfo, 'Sensitive info found in #coupon-panel').toBe(false);
+  });
+
+  // 6. The state of the `coupon-panel` MUST be synchronized using a `beforematch` event listener.
+  test('State MUST be synchronized using a beforematch event listener', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    const hasBeforeMatchListener = html.includes('beforematch') || html.includes('onbeforematch');
+    expect(hasBeforeMatchListener, 'Missing beforematch event listener for UI synchronization').toBe(true);
+  });
+
+  // 7. A fallback strategy MUST be used for unsupported browsers.
+  test('Implementation MUST include explicit fallback strategy with feature detection', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    const hasFeatureDetection = html.includes('onbeforematch') && html.includes('in HTMLElement.prototype');
+    expect(hasFeatureDetection, 'Missing explicit fallback strategy or feature detection').toBe(true);
   });
 
 });

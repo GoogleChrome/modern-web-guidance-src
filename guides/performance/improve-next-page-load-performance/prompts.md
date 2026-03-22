@@ -1,9 +1,2 @@
-# Prompts: `improve-next-page-load-performance`
-
-- Improve the speed of my website
-- Improve the speed of navigating around my website
-- My website feels sluggish to navigate around
-- Implement the speculation rules API
-- Add speculation rules to my website
-- Add prefetch rules to my website
-- Add prerender rules to my website
+- hey im trying to make the next pages load faster on my site. is there a way to prefetch links before the user clicks them?
+- can you prerender all same-origin links on my page? use moderate eagerness so it triggers on hover.
