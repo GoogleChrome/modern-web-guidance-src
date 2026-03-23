@@ -77,7 +77,8 @@ async function main() {
       branch: 'main',
       repo: 'git@github.com:GoogleChrome/skills-alpha.git',
       dotfiles: true,
-      message: `Release v${newVersion}`
+      message: `Release v${newVersion}`,
+      remove: "**/*"
     });
 
     console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/skills-alpha!`);
