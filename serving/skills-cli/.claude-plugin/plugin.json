@@ -1,0 +1,8 @@
+{
+  "name": "googlechrome-skills",
+  "description": "Google Chrome's agent skills collection",
+  "version": "1.0.0",
+  "author": {
+    "name": "Google Chrome"
+  }
+}

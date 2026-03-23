@@ -1,0 +1,21 @@
+{
+  "name": "skills-alpha",
+  "displayName": "Chrome Web Development Skills",
+  "description": "Curated collection of agent skills for modern web development.",
+  "version": "1.0.0",
+  "publisher": "GoogleChrome",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "contributes": {
+    "chatSkills": [
+      {
+        "path": "./skills-cli/modern-web-use-cases/SKILL.md"
+      }
+    ]
+  }
+}
