@@ -435,7 +435,6 @@ let radarChartInstance = null;
 let currentRadarKey = null;
 let hideTimeout = null;
 const tooltipContainer = document.getElementById('radar-tooltip-container');
-const tooltipChart = document.getElementById('radar-tooltip-chart');
 
 function setupRateCellHovers() {
     const rateCells = document.querySelectorAll('.rate-cell');

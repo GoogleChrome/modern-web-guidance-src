@@ -73,7 +73,7 @@ const server = http.createServer(async (req, res) => {
             } else {
               timestamp = fs.statSync(suiteDir).mtime.toISOString();
             }
-          } catch (e) {
+          } catch {
             timestamp = new Date().toISOString();
           }
           suitesList.push({ id: d, source: 'local', timestamp });
