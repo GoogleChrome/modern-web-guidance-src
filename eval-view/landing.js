@@ -406,7 +406,10 @@ function renderSuites() {
         html += `
             <tr class="suite-table-row" onclick="window.location.href='${localLink}'" style="cursor: pointer;">
                 <td style="padding-left:15px; text-align: left; font-weight: 600;">${testId}</td>
-                <td style="text-transform: capitalize;">${testInfo.source}</td>
+                <td style="padding-left:15px; text-align: left; font-size: 0.85rem;">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">${timeAgoStr}</div>
+                    <div style="color: var(--text-secondary); font-size: 0.8em;">${prettyTimestampStr}</div>
+                </td>
                 <td>${testInfo.agent}</td>
                 <td style="text-transform: capitalize;">${testInfo.servingArch.replace('mcp', 'MCP')}</td>
                 <td class="rate-cell" data-compound-key="${compoundKey}">
@@ -417,10 +420,7 @@ function renderSuites() {
                     <div class="rate-bar" style="width: ${uRate}%;"></div>
                     <div class="rate-value"><span style="font-weight: 700; color: ${getColor(uRate)};">${uRate}%</span></div>
                 </td>
-                <td style="padding-right:15px; text-align: right; font-size: 0.85rem;">
-                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">${timeAgoStr}</div>
-                    <div style="color: var(--text-secondary); font-size: 0.8em;">${prettyTimestampStr}</div>
-                </td>
+                <td style="text-transform: capitalize;">${testInfo.source}</td>
             </tr>
         `;
     });
