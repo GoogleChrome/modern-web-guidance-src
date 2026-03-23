@@ -30,6 +30,22 @@ async function bumpVersions() {
   const geminiData = JSON.parse(await fs.readFile(geminiPath, 'utf8'));
   const newVersion = incrementVersion(geminiData.version);
   geminiData.version = newVersion;
+
+  // VSCode
+  const vscodePath = path.join(SKILLS_CLI_TEMPLATE_DIR, "vscode-ext-package.json");
+  const vscodeData = JSON.parse(await fs.readFile(vscodePath, 'utf8'));
+  vscodeData.version = newVersion;
+
+  // Claude Plugin
+  const claudePluginPath = path.join(SKILLS_CLI_TEMPLATE_DIR, ".claude-plugin/plugin.json");
+  const claudePluginData = JSON.parse(await fs.readFile(claudePluginPath, 'utf8'));
+  claudePluginData.version = newVersion;
+
+  // Claude Marketplace
+  const marketplacePath = path.join(SKILLS_CLI_TEMPLATE_DIR, ".claude-plugin/marketplace.json");
+  const marketplaceData = JSON.parse(await fs.readFile(marketplacePath, 'utf8'));
+  marketplaceData.plugins[0].version = newVersion;
+
   if (isDryRun) {
     console.log(`[Dry Run] Would have updated files to version ${newVersion}`);
   } else {
