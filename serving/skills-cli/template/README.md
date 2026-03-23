@@ -1,8 +1,14 @@
-# Web Dev Guidance
+# Modern Web Guidance
 
 A curated collection of agent skills and tools to web development.
 
 ## Installation
+
+### 🍦 Universal Skills Pack
+Consult your coding agent's documentation for installation instructions. You can also use Vercel's `skills` CLI:
+```bash
+DISABLE_TELEMETRY=1 npx skills add GoogleChrome/skills-alpha
+```
 
 ### ✴️ Claude Code
 ```bash
@@ -14,12 +20,6 @@ A curated collection of agent skills and tools to web development.
 ### ♊ Gemini CLI
 ```bash
 gemini extensions install https://github.com/GoogleChrome/skills-alpha --auto-update
-```
-
-### Universal Skills Pack
-Consult your coding agent's documentation for installation instructions. You can also use Vercel's `skills` CLI:
-```bash
-DISABLE_TELEMETRY=1 npx skills add GoogleChrome/skills-alpha
 ```
 
 ### VSCode Extension
