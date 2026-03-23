@@ -12,7 +12,7 @@ const SERVING_DIR = path.join(ROOT_DIR, "serving");
 const DIST_DIR = path.join(ROOT_DIR, "dist");
 const SKILLS_CLI_TEMPLATE_DIR = path.join(SERVING_DIR, "skills-cli");
 
-const publishAsync = promisify(ghpages.publish);
+const ghPagesPublish = promisify(ghpages.publish);
 
 function incrementVersion(version: string): string {
   const parts = version.split('.');
@@ -60,7 +60,7 @@ async function main() {
   
   console.log(`\nPublishing new dist/ to GoogleChrome/skills-alpha (main branch)...`);
   
-  await publishAsync(DIST_DIR, {
+  await ghPagesPublish(DIST_DIR, {
     branch: 'main',
     repo: 'git@github.com:GoogleChrome/skills-alpha.git',
     dotfiles: true,
