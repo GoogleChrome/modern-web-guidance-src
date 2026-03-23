@@ -169,7 +169,7 @@ export function updateMcpConfig(
  * @param agent The agent type
  * @returns True if successful, false otherwise
  */
-export function copySkills(homeDir: string, agent: string, cli: boolean = true): boolean {
+export function copySkills(homeDir: string, agent: string, cli: boolean): boolean {
   const harnessRoot = path.resolve(__dirname, '..');
   const guidesSource = path.join(harnessRoot, '..', 'guides');
 

@@ -232,7 +232,7 @@ ${cBold('Options:')}
       if (config.suite.serving === Serving.MCP) {
         buildCode = await runNpm(['build:mcp']);
       } else if (config.suite.serving === Serving.SKILLS_CLI) {
-        buildCode = await runNpm(['--filter', 'modern-web-mcp', 'dist-gen']);
+        buildCode = await runNpm(['--filter', 'modern-web-mcp', 'build-dist']);
       }
       
       if (buildCode !== 0) process.exit(buildCode);
