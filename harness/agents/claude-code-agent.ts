@@ -173,10 +173,13 @@ export async function collectClaudeCodeGuides(dirPath: string): Promise<string[]
             for (const contentItem of obj.message.content) {
               if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input && contentItem.input.command) {
                 const command = contentItem.input.command;
-                if (command.includes('serving/scripts/retrieve.ts')) {
-                  const match = command.match(/retrieve\.ts\s+["']?([^"'\s]+)["']?/);
+                if (command.includes('modern-web.cjs') && command.includes('--retrieve')) {
+                  const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
                   if (match) {
-                    guidesFromSkills.push(match[1]);
+                    const ids = match[1].split(',');
+                    for (const id of ids) {
+                      guidesFromSkills.push(id.trim());
+                    }
                   }
                 }
               } else if (contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input && contentItem.input.file_path) {

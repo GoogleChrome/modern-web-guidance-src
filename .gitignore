@@ -2,6 +2,7 @@
 node_modules/
 
 # Build artifacts
+serving/.modern-web-data/
 serving/build/
 serving/mcp-server/data/use-cases.gen.ts
 serving/mcp-server/.mcp-data/

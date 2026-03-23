@@ -167,10 +167,13 @@ export async function collectGeminiCliGuides(dirPath: string): Promise<string[]>
                 }
               } else if (tc.name === 'run_shell_command' && tc.args && tc.args.command) {
                 const command = tc.args.command;
-                if (command.includes('serving/scripts/retrieve.ts')) {
-                  const match = command.match(/retrieve\.ts\s+["']?([^"'\s]+)["']?/);
+                if (command.includes('modern-web.cjs') && command.includes('--retrieve')) {
+                  const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
                   if (match) {
-                    guidesFromSkills.push(match[1]);
+                    const ids = match[1].split(',');
+                    for (const id of ids) {
+                      guidesFromSkills.push(id.trim());
+                    }
                   }
                 }
               }
