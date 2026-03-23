@@ -11,9 +11,23 @@ export function getRunStats(checks) {
 }
 
 export function getColor(percentage) {
-    if (percentage >= 90) return 'var(--accent-success)';
-    if (percentage >= 50) return 'var(--accent-warning)';
-    return 'var(--accent-failure)';
+    const p = Math.max(0, Math.min(100, percentage)) / 100;
+    let l, c, h;
+
+    if (p < 0.5) {
+        // Red (oklch(55% 0.2 25)) to Yellow (oklch(85% 0.2 85))
+        const t = p / 0.5;
+        l = 0.55 + (0.85 - 0.55) * t;
+        c = 0.2;
+        h = 25 + (85 - 25) * t;
+    } else {
+        // Yellow (oklch(85% 0.2 85)) to Green (oklch(65% 0.2 145))
+        const t = (p - 0.5) / 0.5;
+        l = 0.85 + (0.65 - 0.85) * t;
+        c = 0.2;
+        h = 85 + (145 - 85) * t;
+    }
+    return `oklch(${Math.round(l * 100)}% ${c} ${Math.round(h)})`;
 }
 
 export function escapeHtml(text) {
