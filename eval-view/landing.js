@@ -315,13 +315,11 @@ async function loadRemoteTests() {
              document.getElementById('empty-state').style.display = 'none';
         }
 
-        // Load remote test data
-        for (const prefix of prefixes) {
+        // Load remote test data in parallel
+        await Promise.all(prefixes.map(async (prefix) => {
             const testId = prefix.slice(0, -1); // Remove trailing slash
-            
             try {
                 const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(prefix + 'evals.json')}?alt=media`;
-                
                 const response = await authenticatedFetch(fileUrl);
                 if (response.ok) {
                     const parsed = await response.json();
@@ -330,7 +328,7 @@ async function loadRemoteTests() {
             } catch (e) {
                 console.warn(`Failed to load remote test ${testId}:`, e);
             }
-        }
+        }));
         
         // Re-render UI now that we have remote data
         const params = new URLSearchParams(window.location.search);
