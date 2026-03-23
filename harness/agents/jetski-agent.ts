@@ -15,7 +15,7 @@ import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
-function setupIsolatedWorkDir(templateDir: string, runType: string): string {
+function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir: string): string {
   const tempHome = createIsolatedHome('ghh-jetski');
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
@@ -266,7 +266,7 @@ async function startJetski(directory: string, profileDir: string): Promise<void>
 
 async function run(): Promise<void> {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-agent.ts');
-  const workDir = setupIsolatedWorkDir(templateDir, runType);
+  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
   let stopWatchingMcpLog = () => { };
 
   if (!workDir || !fs.existsSync(workDir)) {
