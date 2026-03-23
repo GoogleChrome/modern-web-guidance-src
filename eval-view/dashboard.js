@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateRadarData } from './utils.js';
 import { ApiClient } from './api.js';
 import { RadarChart } from './radar.js';
 
@@ -163,11 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeBtn) closeBtn.onclick = closeModal;
 
     // Close on backdrop click
-    modal.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            closeModal();
-        }
-    });
+    modal.addEventListener('click', (event) => event.target === modal && closeModal());
 
     // Handle Esc key or dialog close API
     modal.addEventListener('close', () => {
@@ -821,48 +817,14 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 }
 
 function renderRadarChart(data, testId) {
-    const results = data.results;
-    const apps = {};
-
-    Object.keys(results).forEach(key => {
-        const parts = key.split(' - ');
-        if (parts.length !== 3) return;
-
-        const [appName, guide, runType] = parts;
-        const scenarioName = `${appName} (${guide})`;
-
-        if (!apps[scenarioName]) {
-            apps[scenarioName] = { guided: [], unguided: [] };
-        }
-
-        const runData = results[key];
-        const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
-        const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
-        const avgRate = totalChecks > 0 ? (totalPassed / totalChecks) * 100 : 0;
-
-        if (runType === 'guided') {
-            apps[scenarioName].guided.push(avgRate);
-        } else if (runType === 'unguided') {
-            apps[scenarioName].unguided.push(avgRate);
-        }
-    });
-
-    const labels = Object.keys(apps).sort();
+    const { labels, guided, unguided } = calculateRadarData(data.results);
+    
     if (labels.length < 3) {
         document.getElementById('chart-section').classList.add('hidden');
         return;
     }
 
     document.getElementById('chart-section').classList.remove('hidden');
-
-    const guidedData = labels.map(label => {
-        const scores = apps[label].guided;
-        return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-    });
-    const unguidedData = labels.map(label => {
-        const scores = apps[label].unguided;
-        return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-    });
 
     const chart = new RadarChart('radar-chart', {
         size: 600,
@@ -875,14 +837,14 @@ function renderRadarChart(data, testId) {
         const runType = type.toLowerCase(); // "guided" or "unguided"
 
         // Find the original key in the results
-        const originalKey = Object.keys(results).find(key => {
+        const originalKey = Object.keys(data.results).find(key => {
             const parts = key.split(' - ');
             return `${parts[0]} (${parts[1]})` === scenarioName && parts[2] === runType;
         });
 
         if (originalKey) {
             const testName = originalKey;
-            const runData = results[testName];
+            const runData = data.results[testName];
             const testStats = data.stats[testName];
             showDetails(testName, runData, testStats, testId);
         }
@@ -893,14 +855,14 @@ function renderRadarChart(data, testId) {
         datasets: [
             {
                 label: 'Unguided',
-                data: unguidedData,
+                data: unguided,
                 backgroundColor: 'rgba(218, 54, 51, 0.2)',
                 borderColor: '#da3633',
                 onClick: handlePointClick
             },
             {
                 label: 'Guided',
-                data: guidedData,
+                data: guided,
                 backgroundColor: 'rgba(35, 134, 54, 0.2)',
                 borderColor: '#238636',
                 onClick: handlePointClick

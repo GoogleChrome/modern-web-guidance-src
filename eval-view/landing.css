@@ -14,7 +14,7 @@
 }
 
 .suites-table td {
-  padding: 16px 10px;
+  padding: 0 10px;
   border-bottom: 1px solid var(--border-color);
   text-align: center;
 }
@@ -25,16 +25,17 @@
 }
 
 .header-filter-select {
-  margin-left: 8px;
   font-size: 0.85em;
   padding: 4px 8px;
   border-radius: 6px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
   cursor: pointer;
   outline: none;
   transition: all 0.2s;
+  font-weight: 600;
+  text-align: center;
   /* Appearance for custom dropdown arrow spacing */
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -44,11 +45,35 @@
   background-position: right 8px center;
   background-size: 1em;
   padding-right: 28px;
+  width: auto;
+  min-width: 90px;
+}
+
+.header-filter-select.is-filtered {
+  background-color: var(--bg-secondary);
+  border-color: var(--accent-color);
+  color: var(--text-primary);
+}
+
+.header-filter-select optgroup {
+  font-weight: normal;
+  text-align: left;
+}
+
+.header-filter-select option {
+  font-weight: normal;
+  text-align: left;
 }
 
 .header-filter-select:hover {
-  background-color: var(--bg-tertiary);
-  border-color: var(--text-secondary);
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.header-filter-select.is-filtered:hover {
+  border-color: var(--accent-color);
+  filter: brightness(1.1);
 }
 .landing-container {
   max-width: 1400px;
@@ -522,4 +547,75 @@
 .secondary-btn:hover {
   background: var(--bg-tertiary);
   border-color: var(--text-secondary);
+}
+
+.radar-tooltip-container {
+  position: fixed;
+  z-index: 2000;
+  background: rgba(13, 17, 23, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  padding: 15px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  transform: translateY(10px);
+}
+
+.radar-tooltip-container.hidden {
+  opacity: 0;
+  display: none;
+}
+
+.radar-tooltip-container:not(.hidden) {
+  opacity: 1;
+  transform: translateY(0);
+  display: block;
+}
+
+.radar-tooltip-title {
+  font-size: 0.9em;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+.radar-tooltip-subtitle {
+  font-size: 0.75em;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+
+.rate-cell {
+  position: relative;
+  z-index: 1;
+  padding: 0 !important;
+  vertical-align: middle;
+}
+
+.rate-bar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  background-color: var(--text-secondary);
+  opacity: 0.12;
+  z-index: -1;
+}
+
+.rate-value {
+  position: relative;
+  display: block;
+  padding: 16px 15px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  text-align: right;
 }

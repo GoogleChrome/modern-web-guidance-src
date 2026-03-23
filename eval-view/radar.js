@@ -10,6 +10,8 @@ export class RadarChart {
       padding: options.padding || 60,
       levels: options.levels || 5,
       maxValue: options.maxValue || 100,
+      hideLabels: options.hideLabels || false,
+      hideLegend: options.hideLegend || false,
       ...options
     };
 
@@ -65,13 +67,15 @@ export class RadarChart {
       this.svg.appendChild(polygon);
 
       // Level labels
-      const labelText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      labelText.setAttribute("x", this.center + 5);
-      labelText.setAttribute("y", this.centerY - levelRadius + 4);
-      labelText.setAttribute("fill", "rgba(255, 255, 255, 0.3)");
-      labelText.setAttribute("font-size", "10");
-      labelText.textContent = Math.round((this.options.maxValue / this.options.levels) * level);
-      this.svg.appendChild(labelText);
+      if (!this.options.hideLabels) {
+        const labelText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        labelText.setAttribute("x", this.center + 5);
+        labelText.setAttribute("y", this.centerY - levelRadius + 4);
+        labelText.setAttribute("fill", "rgba(255, 255, 255, 0.3)");
+        labelText.setAttribute("font-size", "10");
+        labelText.textContent = Math.round((this.options.maxValue / this.options.levels) * level);
+        this.svg.appendChild(labelText);
+      }
     }
 
     // 2. Draw Axes
@@ -90,64 +94,53 @@ export class RadarChart {
       this.svg.appendChild(line);
 
       // Axis labels with smart positioning
-      const labelOffset = 30; // Slightly reduced to avoid edges
-      const labelX = this.center + (this.radius + labelOffset) * Math.cos(angle);
-      const labelY = this.centerY + (this.radius + labelOffset) * Math.sin(angle);
+      if (!this.options.hideLabels) {
+        const labelOffset = 30; // Slightly reduced to avoid edges
+        const labelX = this.center + (this.radius + labelOffset) * Math.cos(angle);
+        const labelY = this.centerY + (this.radius + labelOffset) * Math.sin(angle);
 
-      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      text.setAttribute("x", labelX);
-      text.setAttribute("y", labelY);
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("x", labelX);
+        text.setAttribute("y", labelY);
 
-      // Smart alignment based on angle
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
+        // Smart alignment based on angle
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
 
-      if (Math.abs(cos) < 0.1) {
-        text.setAttribute("text-anchor", "middle");
-      } else if (cos > 0) {
-        text.setAttribute("text-anchor", "start");
-      } else {
-        text.setAttribute("text-anchor", "end");
-      }
+        text.setAttribute("text-anchor", Math.abs(cos) < 0.1 ? "middle" : (cos > 0 ? "start" : "end"));
+        text.setAttribute("alignment-baseline", Math.abs(sin) < 0.1 ? "middle" : (sin > 0 ? "hanging" : "baseline"));
 
-      if (Math.abs(sin) < 0.1) {
-        text.setAttribute("alignment-baseline", "middle");
-      } else if (sin > 0) {
-        text.setAttribute("alignment-baseline", "hanging");
-      } else {
-        text.setAttribute("alignment-baseline", "baseline");
-      }
-
-      text.setAttribute("fill", "#c9d1d9");
-      text.setAttribute("font-size", "11"); // Slightly smaller
-      text.setAttribute("font-weight", "500");
-
-      // Extract use case ID from format "appName (useCaseId)", or use label as-is
-      let useCaseId = label;
-      const match = label.match(/\(([^)]+)\)$/);
-      if (match) {
-        useCaseId = match[1];
-      }
-
-      text.textContent = useCaseId;
-
-      text.onmouseover = () => {
-        text.setAttribute("fill", "#fff");
-        text.style.filter = "drop-shadow(0 0 4px rgba(255,255,255,0.4))";
-      };
-      text.onmouseout = () => {
         text.setAttribute("fill", "#c9d1d9");
-        text.style.filter = "none";
-      };
+        text.setAttribute("font-size", "11"); // Slightly smaller
+        text.setAttribute("font-weight", "500");
 
-      text.onclick = () => {
-        const guidedSet = datasets.find(d => d.label === 'Guided');
-        if (guidedSet && guidedSet.onClick) {
-          guidedSet.onClick(i, 'Guided');
+        // Extract use case ID from format "appName (useCaseId)", or use label as-is
+        let useCaseId = label;
+        const match = label.match(/\(([^)]+)\)$/);
+        if (match) {
+          useCaseId = match[1];
         }
-      };
 
-      this.svg.appendChild(text);
+        text.textContent = useCaseId;
+
+        text.onmouseover = () => {
+          text.setAttribute("fill", "#fff");
+          text.style.filter = "drop-shadow(0 0 4px rgba(255,255,255,0.4))";
+        };
+        text.onmouseout = () => {
+          text.setAttribute("fill", "#c9d1d9");
+          text.style.filter = "none";
+        };
+
+        text.onclick = () => {
+          const guidedSet = datasets.find(d => d.label === 'Guided');
+          if (guidedSet && guidedSet.onClick) {
+            guidedSet.onClick(i, 'Guided');
+          }
+        };
+
+        this.svg.appendChild(text);
+      }
     });
 
     // 3. Draw All Polygons First
@@ -265,7 +258,9 @@ export class RadarChart {
     this.svg.onmousemove = handleInteraction;
     this.svg.onmouseleave = hideTooltip;
 
-    this.renderLegend(datasets);
+    if (!this.options.hideLegend) {
+      this.renderLegend(datasets);
+    }
   }
 
   renderLegend(datasets) {
