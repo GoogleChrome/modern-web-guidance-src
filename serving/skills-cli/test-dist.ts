@@ -77,3 +77,16 @@ test('Manifest source paths resolve relative to dist directory', async () => {
   const resolvedVsCodePath = path.join(DIST_DIR, vscodePath);
   await assert.doesNotReject(fs.access(resolvedVsCodePath), `VS Code skill path ${vscodePath} must resolve to an existing SKILL.md`);
 });
+
+test('README dynamic Skill Coverage content', async () => {
+  const readmeRaw = await fs.readFile(path.join(DIST_DIR, 'README.md'), 'utf8');
+  
+  // Verify it contains the new headers and format
+  assert.ok(readmeRaw.includes('#### Skill Coverage'), 'README should contain the Skill Coverage header');
+  assert.ok(readmeRaw.includes('web features with implementation guidance from Chrome\'s experts'), 'README should contain the feature count summary text');
+  assert.ok(readmeRaw.includes('<details>'), 'README should contain collapsible details tags');
+  
+  // Quick sanity check that at least one feature name format works out, e.g. webstatus links
+  assert.match(readmeRaw, /https:\/\/webstatus\.dev\/features\//, 'README should contain links to webstatus.dev');
+});
+
