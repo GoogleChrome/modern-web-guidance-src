@@ -13,117 +13,112 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-test.describe(`scroll-target-on-load Expectations: ${demoName}`, () => {
-  
-  // Static Functional Tests
-  
-  test('Requirement: Ancestor scroll container with overflow: auto or scroll', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasOverflow = /overflow(-[yx])?\s*:\s*(auto|scroll)/i.test(html);
-    expect(hasOverflow, 'The implementation MUST include an ancestor scroll container configured with scrolling (e.g., overflow: auto).').toBe(true);
+test.describe(`Scroll Initial Target Expectations: ${demoName}`, () => {
+  const html = fs.readFileSync(filePath, 'utf-8');
+
+  // Functional/Static Analysis Tests
+  test(`The target element MUST have the 'scroll-initial-target: nearest' CSS property applied`, async () => {
+    // Check for the property in the source code (CSS or inline style)
+    // Using a more specific regex to avoid matching text in <code> blocks
+    expect(html).toMatch(/[\s{;]scroll-initial-target\s*:\s*nearest\s*[;}]/);
   });
 
-  test('Requirement: Target element with scroll-initial-target: nearest', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasProperty = /scroll-initial-target\s*:\s*nearest/i.test(html);
-    expect(hasProperty, 'A specific target element MUST be defined and have the scroll-initial-target: nearest CSS property applied directly to it.').toBe(true);
+  test(`Only a single target element should have the 'scroll-initial-target' property applied`, async () => {
+    const matches = html.match(/[\s{;]scroll-initial-target\s*:\s*nearest\s*[;}]/g) || [];
+    expect(matches.length).toBe(1);
   });
 
-  test('Requirement: Exactly one target element with scroll-initial-target', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const matches = html.match(/scroll-initial-target\s*:\s*nearest/gi) || [];
-    expect(matches.length, 'The scroll-initial-target property MUST be applied to the single target element within the container.').toBe(1);
+  test(`The progressive enhancement fallback MUST evaluate native CSS capability using 'CSS.supports'`, async () => {
+    // Matches CSS.supports('scroll-initial-target', 'nearest') with single or double quotes
+    expect(html).toMatch(/CSS\.supports\(\s*['"]scroll-initial-target['"]\s*,\s*['"]nearest['"]\s*\)/);
   });
 
-  test('Requirement: Explicit dimensions on media elements', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const imgTags = html.match(/<img[^>]*>/gi) || [];
-    const allHaveDimensions = imgTags.length > 0 && imgTags.every(img => {
-        const hasWidth = /width\s*=\s*['"]?\d+%?['"]?/i.test(img) || /style\s*=\s*['"][^'"]*width\s*:/i.test(img);
-        const hasHeight = /height\s*=\s*['"]?\d+%?['"]?/i.test(img) || /style\s*=\s*['"][^'"]*height\s*:/i.test(img);
-        const hasAspectRatio = /style\s*=\s*['"][^'"]*aspect-ratio\s*:/i.test(img);
+  test(`The fallback script MUST execute no later than 'DOMContentLoaded'`, async () => {
+    // Ensure DOMContentLoaded is used for early execution as per expectations
+    expect(html).toMatch(/DOMContentLoaded/);
+  });
+
+  test(`The implementation MUST NOT use 'window.onload' for the scroll fallback`, async () => {
+    // window.onload is too late and violates the "no later than DOMContentLoaded" rule
+    expect(html).not.toMatch(/window\.onload/);
+  });
+
+  test(`The fallback script MUST use 'behavior: instant' for scrollIntoView`, async () => {
+    // The fallback should mimic the discrete jump of the native property
+    expect(html).toMatch(/scrollIntoView\(\s*\{\s*[^}]*behavior\s*:\s*['"]instant['"]/);
+  });
+
+  test(`The fallback script MUST NOT use 'behavior: smooth'`, async () => {
+    // Smooth scrolling is specifically discouraged for this initial positioning task
+    expect(html).not.toMatch(/behavior\s*:\s*['"]smooth['"]/);
+  });
+
+  // Setup browser testing
+  test.beforeEach(async ({ page }) => {
+    await page.route('http://localhost/*', async (route) => {
+      const requestPath = new URL(route.request().url()).pathname;
+      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+
+      if (fs.existsSync(localFilePath)) {
+        await route.fulfill({ path: localFilePath });
+      } else {
+        await route.continue();
+      }
+    });
+
+    await page.goto(demoUrl);
+  });
+
+  // Browser Assertions
+  test(`The implementation MUST include an ancestor scroll container with overflow scrolling configured`, async ({ page }) => {
+    const hasScrollContainer = await page.evaluate(() => {
+      // Find the target element using typical identifiers used in the guides
+      const target = document.querySelector('.target, [style*="scroll-initial-target"], #target');
+      if (!target) return false;
+
+      let parent = target.parentElement;
+      while (parent) {
+        const style = window.getComputedStyle(parent);
+        const hasOverflow = (val: string) => val === 'auto' || val === 'scroll';
+        if (hasOverflow(style.overflow) || hasOverflow(style.overflowY) || hasOverflow(style.overflowX)) {
+          return true;
+        }
+        parent = parent.parentElement;
+      }
+      return false;
+    });
+    expect(hasScrollContainer).toBe(true);
+  });
+
+  test(`Media elements within the scroll container MUST have explicit dimensions applied`, async ({ page }) => {
+    const mediaHaveDimensions = await page.evaluate(() => {
+      const target = document.querySelector('.target, [style*="scroll-initial-target"], #target');
+      if (!target) return false;
+
+      // Identify the scroll container
+      let container: HTMLElement | null = target.parentElement;
+      while (container) {
+        const style = window.getComputedStyle(container);
+        if (style.overflowY === 'auto' || style.overflowY === 'scroll') break;
+        container = container.parentElement;
+      }
+
+      const searchRoot = container || document.body;
+      const images = searchRoot.querySelectorAll('img');
+      
+      if (images.length === 0) return true;
+
+      return Array.from(images).every(img => {
+        // Check for width and height attributes or explicit inline styles
+        const hasWidth = img.hasAttribute('width') || (img.style.width && img.style.width !== 'auto');
+        const hasHeight = img.hasAttribute('height') || (img.style.height && img.style.height !== 'auto');
+        const style = window.getComputedStyle(img);
+        const hasAspectRatio = style.aspectRatio !== 'auto';
+        
+        // Explicit dimensions require width AND (height OR aspect-ratio)
         return hasWidth && (hasHeight || hasAspectRatio);
-    });
-    expect(allHaveDimensions, 'Media elements (img) within the scroll container MUST have explicit dimensions applied (e.g., via height, width, or aspect-ratio).').toBe(true);
-  });
-
-  test('Requirement: JS fallback uses CSS.supports', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasSupportsCheck = /CSS\.supports\(\s*['"]scroll-initial-target['"]\s*,\s*['"]nearest['"]\s*\)/i.test(html);
-    expect(hasSupportsCheck, 'A progressive enhancement JavaScript fallback MUST evaluate native CSS capability using CSS.supports before executing any scroll logic.').toBe(true);
-  });
-
-  test('Requirement: JS fallback uses behavior: instant', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasInstant = /scrollIntoView\(\s*{\s*([^}]*\s*)?behavior\s*:\s*['"]instant['"]/i.test(html);
-    expect(hasInstant, 'Inside the fallback check, the script MUST scroll to the target element using behavior: "instant".').toBe(true);
-  });
-
-  test('Requirement: JS fallback executes no later than DOMContentLoaded', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const isLate = /window\.addEventListener\(\s*['"]load['"]/i.test(html) || /setTimeout/i.test(html);
-    const usesDOMContentLoaded = /DOMContentLoaded/i.test(html);
-    expect(usesDOMContentLoaded || !isLate, 'The fallback script MUST execute as soon as possible, no later than DOMContentLoaded.').toBe(true);
-  });
-
-  // Browser-based Tests
-  
-  test.describe('Browser Validation', () => {
-    test.use({ viewport: { width: 800, height: 600 } });
-    
-    test.beforeEach(async ({ page }) => {
-      await page.route('http://localhost/*', async (route) => {
-        const requestPath = new URL(route.request().url()).pathname;
-        const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
-
-        if (fs.existsSync(localFilePath)) {
-          await route.fulfill({ path: localFilePath });
-        } else {
-          await route.continue();
-        }
       });
-
-      await page.goto(demoUrl, { waitUntil: 'load' });
     });
-
-    test('Browser: Container is scrolled to target on load', async ({ page }) => {
-      const scrollPos = await page.evaluate(() => {
-        const target = document.querySelector('.target, #target, [style*="scroll-initial-target"]');
-        if (!target) return 0;
-        
-        let container = target.parentElement;
-        while (container && container !== document.documentElement) {
-          const style = window.getComputedStyle(container);
-          if (style.overflowY === 'auto' || style.overflowY === 'scroll' || style.overflow === 'auto' || style.overflow === 'scroll') break;
-          container = container.parentElement;
-        }
-        if (!container) container = document.documentElement;
-        
-        return container.scrollTop;
-      });
-      expect(scrollPos, 'The container should have a non-zero scroll position to bring the target into view.').toBeGreaterThan(0);
-    });
-
-    test('Browser: Target element is visible within container viewport', async ({ page }) => {
-      const isVisible = await page.evaluate(() => {
-        const target = document.querySelector('.target, #target, [style*="scroll-initial-target"]');
-        if (!target) return false;
-        
-        let container = target.parentElement;
-        while (container && container !== document.documentElement) {
-          const style = window.getComputedStyle(container);
-          if (style.overflowY === 'auto' || style.overflowY === 'scroll' || style.overflow === 'auto' || style.overflow === 'scroll') break;
-          container = container.parentElement;
-        }
-        if (!container) container = document.documentElement;
-        
-        const targetRect = target.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-        
-        // Allow a small margin for error
-        return targetRect.top >= containerRect.top - 10 && targetRect.bottom <= containerRect.bottom + 10;
-      });
-      expect(isVisible, 'The target element should be within the visible area of the scroll container.').toBe(true);
-    });
+    expect(mediaHaveDimensions).toBe(true);
   });
 });

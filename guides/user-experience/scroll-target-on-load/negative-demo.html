@@ -1,44 +1,70 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Gallery</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feed</title>
   <style>
-    .container {
-      width: 500px;
+    body {
+      margin: 0;
+      padding: 20px;
     }
-    .item img {
+
+    .container {
+      width: 400px;
+      border: 1px solid black;
+    }
+
+    .card {
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
+    }
+
+    .card img {
       max-width: 100%;
+    }
+
+    .featured {
+      background-color: #ffffee;
     }
   </style>
 </head>
 <body>
+
   <div class="container">
-    <div class="item">
+    <div class="card">
+      <p>Intro post</p>
       <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=400&auto=format&fit=crop">
     </div>
-    <div class="item">
+    
+    <div class="card">
+      <p>More content here</p>
       <img src="https://images.unsplash.com/photo-1550684376-efcbd6e3f031?q=80&w=400&auto=format&fit=crop">
     </div>
-    <div class="item">
+
+    <div class="card">
+      <p>Another item before the one we want</p>
       <img src="https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=400&auto=format&fit=crop">
     </div>
-    <div class="item" id="target">
-      <img src="https://images.unsplash.com/photo-1550684376-efcbd6e3f031?q=80&w=400&auto=format&fit=crop">
+
+    <div id="target" class="card featured">
+      <p>This is the important post</p>
+      <img src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=400&auto=format&fit=crop">
     </div>
-    <div class="item">
-      <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=400&auto=format&fit=crop">
-    </div>
-    <div class="item">
-      <img src="https://images.unsplash.com/photo-1550684376-efcbd6e3f031?q=80&w=400&auto=format&fit=crop">
+
+    <div class="card">
+      <p>Trailing content</p>
+      <img src="https://images.unsplash.com/photo-1493612276216-ee3925520721?q=80&w=400&auto=format&fit=crop">
     </div>
   </div>
+
   <script>
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        var el = document.getElementById('target');
+    window.onload = function() {
+      const el = document.getElementById('target');
+      if (el) {
         el.scrollIntoView({ behavior: 'smooth' });
-      }, 1000);
-    });
+      }
+    };
   </script>
 </body>
 </html>
