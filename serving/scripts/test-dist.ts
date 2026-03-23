@@ -3,11 +3,18 @@ import assert from 'node:assert';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist");
+
+console.log("Running dist-gen to ensure fresh build...");
+execSync('node --experimental-strip-types scripts/skills-cli-dist-gen.ts', { 
+  cwd: path.resolve(__dirname, '..'), 
+  stdio: 'inherit' 
+});
 
 test('Claude Plugin Config in Dist', async () => {
   const marketplaceJsonRaw = await fs.readFile(path.join(DIST_DIR, '.claude-plugin/marketplace.json'), 'utf8');

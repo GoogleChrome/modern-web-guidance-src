@@ -23,7 +23,7 @@
     "dist-gen": "node --experimental-strip-types scripts/skills-cli-dist-gen.ts",
     "start": "node mcp-server/index.ts",
     "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
-    "test": "node scripts/build-guides.ts && vitest run",
+    "test": "node scripts/build-guides.ts && vitest run && node --test scripts/test-dist.ts",
     "typecheck": "npm run build && tsc --noEmit"
   },
   "keywords": [],

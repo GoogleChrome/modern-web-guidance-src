@@ -115,6 +115,9 @@ async function main() {
 
   console.log("Copying installation manifests and metadata for AI tools...");
   fs.cpSync(path.join(SERVING_DIR, "skills-cli"), path.join(ROOT_DIR, "dist"), { recursive: true });
+  
+  console.log("Renaming vscode-ext-package.json to package.json for publishing...");
+  fs.renameSync(path.join(ROOT_DIR, "dist/vscode-ext-package.json"), path.join(ROOT_DIR, "dist/package.json"));
 
   console.log("\nSuccess! standalone distribution generated in dist/");
 }
