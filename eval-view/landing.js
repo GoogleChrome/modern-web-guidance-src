@@ -429,6 +429,8 @@ function renderSuites() {
 }
 
 let radarChartInstance = null;
+let currentRadarKey = null;
+let hideTimeout = null;
 const tooltipContainer = document.getElementById('radar-tooltip-container');
 const tooltipChart = document.getElementById('radar-tooltip-chart');
 
@@ -440,7 +442,12 @@ function setupRateCellHovers() {
             const testInfo = allTestData[compoundKey];
             if (!testInfo) return;
 
-            showRadarTooltip(testInfo, e.clientX, e.clientY);
+            if (hideTimeout) {
+                clearTimeout(hideTimeout);
+                hideTimeout = null;
+            }
+
+            showRadarTooltip(testInfo, e.clientX, e.clientY, compoundKey);
         });
 
         cell.addEventListener('mousemove', (e) => {
@@ -453,7 +460,13 @@ function setupRateCellHovers() {
     });
 }
 
-function showRadarTooltip(testInfo, x, y) {
+function showRadarTooltip(testInfo, x, y, compoundKey) {
+    if (currentRadarKey === compoundKey && !tooltipContainer.classList.contains('hidden')) {
+        updateTooltipPosition(x, y);
+        return;
+    }
+
+    currentRadarKey = compoundKey;
     const data = testInfo.data;
     const results = data.results;
     
@@ -540,7 +553,12 @@ function updateTooltipPosition(x, y) {
 }
 
 function hideRadarTooltip() {
-    tooltipContainer.classList.add('hidden');
+    if (hideTimeout) clearTimeout(hideTimeout);
+    hideTimeout = setTimeout(() => {
+        currentRadarKey = null;
+        tooltipContainer.classList.add('hidden');
+        hideTimeout = null;
+    }, 50);
 }
 
 
