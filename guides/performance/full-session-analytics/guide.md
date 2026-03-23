@@ -75,9 +75,11 @@ setInterval(queueBeacon, 10000);
 
 ## Browser support and fallback strategies
 
-{{ BASELINE_STATUS("fetchlater") }}. Therefore, a fallback strategy is typically required.
+{{ BASELINE_STATUS("fetchlater") }}
 
-However, given the improved reliability and performance benefits of this API, `fetchLater()` should be used if the browser supports it.
+A fallback strategy is required if `fetchLater()` doesn't meet your Baseline target. However, given the improved reliability and performance benefits of this API, `fetchLater()` should be used if the browser supports it.
+
+The recommended fallback strategy is to use the polyfill below, which internally handles unsupporting browsers using `fetch()` with `keepalive` or `navigator.sendBeacon()`. Your own code MUST call `fetchLater()` directly — never call `fetch()`, `sendBeacon()`, or other beacon APIs yourself.
 
 ### `fetchLater()` polyfill
 
