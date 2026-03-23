@@ -412,9 +412,15 @@ function renderSuites() {
                 <td style="text-transform: capitalize;">${testInfo.source}</td>
                 <td>${testInfo.agent}</td>
                 <td style="text-transform: capitalize;">${testInfo.servingArch.replace('mcp', 'MCP')}</td>
-                <td><span style="font-weight: 700; color: ${getColor(gRate)};">${gRate}%</span></td>
-                <td><span style="font-weight: 700; color: ${getColor(uRate)};">${uRate}%</span></td>
-                <td style="padding-right:15px; text-align: right; color: var(--text-tertiary); font-size: 0.85rem;">${prettyTimestampStr}</td>
+                <td class="rate-cell">
+                    <div class="rate-bar" style="width: ${gRate}%;"></div>
+                    <div class="rate-value"><span style="font-weight: 700; color: ${getColor(gRate)};">${gRate}%</span></div>
+                </td>
+                <td class="rate-cell">
+                    <div class="rate-bar" style="width: ${uRate}%;"></div>
+                    <div class="rate-value"><span style="font-weight: 700; color: ${getColor(uRate)};">${uRate}%</span></div>
+                </td>
+                <td style="padding-right:15px; text-align: right; color: var(--text-secondary); font-size: 0.85rem;">${prettyTimestampStr}</td>
             </tr>
         `;
     });

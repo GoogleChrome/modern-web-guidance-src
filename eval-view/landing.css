@@ -523,3 +523,29 @@
   background: var(--bg-tertiary);
   border-color: var(--text-secondary);
 }
+
+.rate-cell {
+  position: relative;
+  z-index: 1;
+  padding: 0 !important;
+  vertical-align: middle;
+}
+
+.rate-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: var(--text-secondary);
+  opacity: 0.12;
+  z-index: -1;
+}
+
+.rate-value {
+  position: relative;
+  display: block;
+  padding: 16px 10px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
