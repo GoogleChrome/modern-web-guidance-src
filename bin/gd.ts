@@ -6,7 +6,16 @@ import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
 import { fileURLToPath } from 'url';
-import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
+export const colors = {
+  cRed: (str: string) => `\x1b[31m${str}\x1b[0m`,
+  cGreen: (str: string) => `\x1b[32m${str}\x1b[0m`,
+  cYellow: (str: string) => `\x1b[33m${str}\x1b[0m`,
+  cCyan: (str: string) => `\x1b[36m${str}\x1b[0m`,
+  cBold: (str: string) => `\x1b[1m${str}\x1b[0m`,
+  cDim: (str: string) => `\x1b[2m${str}\x1b[0m`,
+};
+
+const { cRed, cCyan, cBold, cDim } = colors;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -300,7 +309,9 @@ ${cBold('Options:')}
   }
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
