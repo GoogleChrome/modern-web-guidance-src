@@ -5,6 +5,7 @@ import { exec } from 'child_process';
 
 const PORT = process.env.PORT || 8081;
 
+/** @type {Record<string, string>} */
 const MIME_TYPES = {
   '.html': 'text/html',
   '.js': 'text/javascript',
@@ -21,23 +22,24 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer(async (req, res) => {
+  const reqUrl = req.url || '';
   // Ultra-strict raw URL check
-  if (req.url.includes('..') || req.url.toLowerCase().includes('%2e')) {
-    console.log(`403 Forbidden: Traversal/Encoded attempt - ${req.method} ${req.url}`);
+  if (reqUrl.includes('..') || reqUrl.toLowerCase().includes('%2e')) {
+    console.log(`403 Forbidden: Traversal/Encoded attempt - ${req.method} ${reqUrl}`);
     res.writeHead(403);
     res.end('403 Forbidden: Directory traversal is not allowed');
     return;
   }
 
   // Normalize the URL and decode components for security checks
-  const urlPath = req.url.split('?')[0];
+  const urlPath = reqUrl.split('?')[0];
   const decodedPath = decodeURIComponent(urlPath);
   // Debug logging. Do not keep enabled.
-  // console.log(`Incoming request: ${req.method} ${req.url} (path: ${urlPath}, decoded: ${decodedPath})`);
+  // console.log(`Incoming request: ${req.method} ${reqUrl} (path: ${urlPath}, decoded: ${decodedPath})`);
 
   // Block directory traversal attempts
   if (decodedPath.includes('..')) {
-    console.log(`403 Forbidden: Traversal attempt - ${req.method} ${req.url}`);
+    console.log(`403 Forbidden: Traversal attempt - ${req.method} ${reqUrl}`);
     res.writeHead(403);
     res.end('403 Forbidden: Directory traversal is not allowed');
     return;
@@ -45,7 +47,7 @@ const server = http.createServer(async (req, res) => {
 
   // Explicitly block hidden files (starting with dot), exempting .well-known
   if (decodedPath.split('/').some(part => part.startsWith('.') && part !== '.well-known')) {
-    console.log(`403 Forbidden: Hidden file access - ${req.method} ${req.url}`);
+    console.log(`403 Forbidden: Hidden file access - ${req.method} ${reqUrl}`);
     res.writeHead(403);
     res.end('403 Forbidden: Access to hidden files is not allowed');
     return;
@@ -53,6 +55,7 @@ const server = http.createServer(async (req, res) => {
 
   // Handle /api/suites endpoint
   if (decodedPath === '/api/suites') {
+    /** @type {any[]} */
     let suitesList = [];
 
     // Local
@@ -80,7 +83,8 @@ const server = http.createServer(async (req, res) => {
         });
       }
     } catch (e) {
-      console.error('Error reading local suites:', e.message);
+      const message = e instanceof Error ? e.message : String(e);
+      console.error('Error reading local suites:', message);
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -89,7 +93,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (decodedPath === '/api/run-files') {
-    const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+    const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
     const relativePath = parsedUrl.searchParams.get('dir');
     const source = parsedUrl.searchParams.get('source') || 'local';
 
@@ -99,6 +103,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    /** @type {string[]} */
     let files = [];
     if (source === 'local') {
       const resultsDir = process.env.USE_MOCK_RESULTS === 'true' ? './mock-results' : '../harness/results';
@@ -110,7 +115,8 @@ const server = http.createServer(async (req, res) => {
             .map(d => d.name);
         }
       } catch (e) {
-        console.error('Error reading local dir:', e.message);
+        const message = e instanceof Error ? e.message : String(e);
+        console.error('Error reading local dir:', message);
       }
     } else {
       console.error('Remote directory listing must be performed via client-side API calls.');
@@ -124,7 +130,7 @@ const server = http.createServer(async (req, res) => {
   // --- Silent File Probing API ---
   // Avoids native browser 404 console errors by returning JSON { exists: boolean }
   if (decodedPath === '/api/exists') {
-    const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+    const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
     const checkPath = parsedUrl.searchParams.get('path');
     if (!checkPath) {
       res.writeHead(400);
@@ -176,8 +182,9 @@ const server = http.createServer(async (req, res) => {
     if (fs.existsSync(localEvalViewPath)) {
         filePath = localEvalViewPath;
     } else {
-        const useLocal = req.url.includes('source=local');
-        const refererLocal = req.headers.referer && (req.headers.referer.includes('source=local') || req.headers.referer.includes('localhost'));
+        const useLocal = reqUrl.includes('source=local');
+        const referer = req.headers.referer;
+        const refererLocal = referer && (referer.includes('source=local') || referer.includes('localhost'));
         
         if (!useLocal && !refererLocal && decodedPath.includes('/')) {
             // Give a decent error if someone tries to stream a remote file directly
@@ -189,9 +196,9 @@ const server = http.createServer(async (req, res) => {
         // If this is an absolute navigation link (e.g. /menu) clicked from inside a test result,
         // it will lack the <suite>/<run>/... prefix. We must restore it from the referer.
         let finalRelativePath = relativePath;
-        if (req.headers.referer) {
+        if (referer) {
             try {
-                const refererUrl = new URL(req.headers.referer);
+                const refererUrl = new URL(referer);
                 const refPath = refererUrl.pathname.substring(1); // remove leading slash
                 
                 // If referer is a test result (e.g. suite/1/task/guided/index.html)
@@ -222,17 +229,17 @@ const server = http.createServer(async (req, res) => {
   const isInsideHarness = absolutePath === harnessRoot || absolutePath.startsWith(harnessRoot + path.sep);
 
   if (!isInsideEvalView && !isInsideHarness) {
-    console.log(`403 Forbidden: Access outside allowed directories - ${req.method} ${req.url} -> ${absolutePath}`);
+    console.log(`403 Forbidden: Access outside allowed directories - ${req.method} ${reqUrl} -> ${absolutePath}`);
     res.writeHead(403);
     res.end('403 Forbidden: Access outside allowed directories is not allowed');
     return;
   }
 
   // Debug logging. Do not keep enabled.
-  console.log(`${req.method} ${req.url} -> ${filePath}`);
+  console.log(`${req.method} ${reqUrl} -> ${filePath}`);
 
   const extname = path.extname(filePath);
-  let contentType = MIME_TYPES[extname] || 'application/octet-stream';
+  const contentType = MIME_TYPES[extname] || 'application/octet-stream';
 
   fs.readFile(filePath, (err, content) => {
     if (err) {
