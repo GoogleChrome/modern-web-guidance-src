@@ -13,20 +13,6 @@
   text-align: center;
 }
 
-.header-cell-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.header-label {
-  font-size: 0.85em;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-secondary);
-}
-
 .suites-table td {
   padding: 0 10px;
   border-bottom: 1px solid var(--border-color);
@@ -44,10 +30,13 @@
   border-radius: 6px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  color: var(--text-primary);
+  color: var(--text-secondary);
   cursor: pointer;
   outline: none;
   transition: all 0.2s;
+  font-weight: 600;
+  text-transform: uppercase;
+  text-align: center;
   /* Appearance for custom dropdown arrow spacing */
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -58,12 +47,25 @@
   background-size: 1em;
   padding-right: 28px;
   width: 100%;
-  max-width: 120px;
+  max-width: 130px;
+}
+
+.header-filter-select optgroup {
+  text-transform: none;
+  font-weight: normal;
+  text-align: left;
+}
+
+.header-filter-select option {
+  text-transform: none;
+  font-weight: normal;
+  text-align: left;
 }
 
 .header-filter-select:hover {
   background-color: var(--bg-tertiary);
   border-color: var(--text-secondary);
+  color: var(--text-primary);
 }
 .landing-container {
   max-width: 1400px;

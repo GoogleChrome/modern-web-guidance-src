@@ -60,37 +60,34 @@
               <th style="padding-left:15px; text-align: left;">Suite ID</th>
               <th style="padding-left:15px; text-align: left;">Date</th>
               <th>
-                <div class="header-cell-content">
-                  <span class="header-label">Agent</span>
-                  <select id="filter-agent" class="header-filter-select">
-                    <option value="all">All</option>
+                <select id="filter-agent" class="header-filter-select">
+                  <option value="all">Agent</option>
+                  <optgroup label="Select Agent">
                     <option value="jetski">jetski</option>
                     <option value="gemini_cli">gemini_cli</option>
                     <option value="claude_code">claude_code</option>
-                  </select>
-                </div>
+                  </optgroup>
+                </select>
               </th>
               <th>
-                <div class="header-cell-content">
-                  <span class="header-label">Serving</span>
-                  <select id="filter-skills" class="header-filter-select">
-                    <option value="all">All</option>
+                <select id="filter-skills" class="header-filter-select">
+                  <option value="all">Serving</option>
+                  <optgroup label="Select Architecture">
                     <option value="skills">Skills</option>
                     <option value="mcp">MCP</option>
-                  </select>
-                </div>
+                  </optgroup>
+                </select>
               </th>
               <th style="text-align: right; padding-right: 15px;">Guided</th>
               <th style="text-align: right; padding-right: 15px;">Unguided</th>
               <th>
-                <div class="header-cell-content">
-                  <span class="header-label">Source</span>
-                  <select id="filter-source" class="header-filter-select">
-                    <option value="all">All</option>
+                <select id="filter-source" class="header-filter-select">
+                  <option value="all">Source</option>
+                  <optgroup label="Select Source">
                     <option value="local">Local</option>
                     <option value="remote">Remote</option>
-                  </select>
-                </div>
+                  </optgroup>
+                </select>
               </th>
             </tr>
           </thead>

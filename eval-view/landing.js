@@ -184,9 +184,18 @@ function setupTableFilters() {
     const filterAgent = document.getElementById('filter-agent');
     const filterSkills = document.getElementById('filter-skills');
 
-    if (filterSource) filterSource.addEventListener('change', (e) => { currentSourceFilter = e.target.value; renderSuites(); });
-    if (filterAgent) filterAgent.addEventListener('change', (e) => { currentAgentFilter = e.target.value; renderSuites(); });
-    if (filterSkills) filterSkills.addEventListener('change', (e) => { currentSkillsFilter = e.target.value; renderSuites(); });
+    if (filterSource) filterSource.addEventListener('change', (e) => {
+        currentSourceFilter = e.target.value;
+        renderSuites();
+    });
+    if (filterAgent) filterAgent.addEventListener('change', (e) => {
+        currentAgentFilter = e.target.value;
+        renderSuites();
+    });
+    if (filterSkills) filterSkills.addEventListener('change', (e) => {
+        currentSkillsFilter = e.target.value;
+        renderSuites();
+    });
 }
 
 
