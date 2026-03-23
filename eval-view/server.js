@@ -21,6 +21,13 @@ const MIME_TYPES = {
   '.ts': 'application/javascript',
 };
 
+/**
+ * @typedef {Object} SuiteInfo
+ * @property {string} id
+ * @property {string} source
+ * @property {string | null} timestamp
+ */
+
 const server = http.createServer(async (req, res) => {
   const reqUrl = req.url || '';
   // Ultra-strict raw URL check
@@ -55,7 +62,7 @@ const server = http.createServer(async (req, res) => {
 
   // Handle /api/suites endpoint
   if (decodedPath === '/api/suites') {
-    /** @type {any[]} */
+    /** @type {SuiteInfo[]} */
     let suitesList = [];
 
     // Local
