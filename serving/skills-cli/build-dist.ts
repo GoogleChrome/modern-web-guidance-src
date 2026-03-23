@@ -2,6 +2,9 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
+import matter from "gray-matter";
+import { classifyGuide, scanAllGuides } from "../../harness/lib/utils.ts";
+import { getFeatureName } from "../mcp-server/data/baseline.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -126,6 +129,51 @@ async function main() {
   
   console.log("Renaming vscode-ext-package.json to package.json for publishing...");
   fs.renameSync(path.join(PUBLISH_ROOT, "vscode-ext-package.json"), path.join(PUBLISH_ROOT, "package.json"));
+
+  console.log("Generating dynamic README content around features and use cases...");
+  const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
+  
+  const featureMap = new Map<string, { name: string; useCases: { id: string; description: string }[] }>();
+
+  for (const guide of readyGuides) {
+    const guidePath = path.join(guide.dir, "guide.md");
+    if (!fs.existsSync(guidePath)) continue;
+    
+    let description = guide.name;
+    try {
+      const content = fs.readFileSync(guidePath, "utf-8");
+      const { data } = matter(content);
+      if (data.description) description = data.description;
+    } catch(e) {}
+
+    for (const featureId of guide.featureIds) {
+      if (!featureMap.has(featureId)) {
+         featureMap.set(featureId, { name: getFeatureName(featureId), useCases: [] });
+      }
+      featureMap.get(featureId)!.useCases.push({ id: guide.name, description });
+    }
+  }
+
+  const sortedFeatures = Array.from(featureMap.entries()).sort((a, b) => a[1].name.localeCompare(b[1].name));
+  
+  let dynamicMd = `\n## Supported Web Features (${sortedFeatures.length})\n\n`;
+  for (const [featureId, data] of sortedFeatures) {
+    dynamicMd += `### [${data.name}](https://webstatus.dev/features/${featureId})\n\n`;
+    dynamicMd += `<details>\n<summary>Use cases covered (${data.useCases.length})</summary>\n\n`;
+    for (const uc of data.useCases) {
+      dynamicMd += `- **${uc.id}**: ${uc.description}\n`;
+    }
+    dynamicMd += `\n</details>\n\n`;
+  }
+
+  // Update README
+  const readmePath = path.join(PUBLISH_ROOT, "README.md");
+  if (fs.existsSync(readmePath)) {
+    let readmeContent = fs.readFileSync(readmePath, "utf-8");
+    readmeContent += dynamicMd;
+    fs.writeFileSync(readmePath, readmeContent);
+    console.log("README dynamically updated with features and use cases.");
+  }
 
   console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
 }
