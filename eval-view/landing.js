@@ -452,9 +452,7 @@ function setupRateCellHovers() {
             showRadarTooltip(testInfo, e.clientX, e.clientY, compoundKey);
         });
 
-        cell.addEventListener('mousemove', (e) => {
-            updateTooltipPosition(e.clientX, e.clientY);
-        });
+        cell.addEventListener('mousemove', (e) => updateTooltipPosition(e.clientX, e.clientY));
 
         cell.addEventListener('mouseleave', () => {
             hideRadarTooltip();
