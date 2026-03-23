@@ -8,10 +8,17 @@ const __dirname = path.dirname(__filename);
 
 const ROOT_DIR = path.resolve(__dirname, "../.."); // guidance/
 const SERVING_DIR = path.resolve(__dirname, ".."); // guidance/serving/
-const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli/modern-web-use-cases");
+const ROOT_DIST_DIR = path.join(ROOT_DIR, "dist");
+const DIST_DIR = path.join(ROOT_DIST_DIR, "skills-cli/modern-web-use-cases");
 const CLI_DIR = path.join(DIST_DIR, "cli");
 
 async function main() {
+  console.log("Cleaning previous dist/ output...");
+  if (fs.existsSync(ROOT_DIST_DIR)) {
+    fs.rmSync(ROOT_DIST_DIR, { recursive: true, force: true });
+  }
+  fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
+
   console.log("Generating guides and updating vector store...");
   // 1. Run build-guides.ts to update .modern-web-data and build/guides
   try {
