@@ -472,7 +472,7 @@ function showRadarTooltip(testInfo, x, y, compoundKey) {
     if (headerDiv) {
         headerDiv.innerHTML = `
             <div class="radar-tooltip-title">${escapeHtml(testInfo.testId)}</div>
-            <div class="radar-tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(testInfo.servingArch.replace('mcp', 'MCP'))}</div>
+            <div class="radar-tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(testInfo.servingArch)}</div>
         `;
     }
 

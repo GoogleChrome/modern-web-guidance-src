@@ -581,7 +581,6 @@
   margin-bottom: 10px;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 8px;
-  text-transform: capitalize;
 }
 
 .rate-cell {
