@@ -69,9 +69,9 @@ async function main() {
     console.log(`\n[Dry Run] Skipping GitHub publishing and metadata push wrapper.`);
     console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
   } else {
-    console.log(`\nPublishing new dist/ to GoogleChrome/skills-alpha (main branch)...`);
+    console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/skills-alpha (main branch)...`);
     
-    await ghPagesPublish(DIST_DIR, {
+    await ghPagesPublish(path.join(DIST_DIR, "skills-cli"), {
       branch: 'main',
       repo: 'git@github.com:GoogleChrome/skills-alpha.git',
       dotfiles: true,

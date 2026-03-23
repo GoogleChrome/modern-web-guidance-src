@@ -14,7 +14,7 @@
   "contributes": {
     "chatSkills": [
       {
-        "path": "./skills-cli/modern-web-use-cases/SKILL.md"
+        "path": "./skills/modern-web-use-cases/SKILL.md"
       }
     ]
   }

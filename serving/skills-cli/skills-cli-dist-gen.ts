@@ -9,7 +9,8 @@ const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "../.."); // guidance/
 const SERVING_DIR = path.resolve(__dirname, ".."); // guidance/serving/
 const ROOT_DIST_DIR = path.join(ROOT_DIR, "dist");
-const DIST_DIR = path.join(ROOT_DIST_DIR, "skills-cli/modern-web-use-cases");
+const PUBLISH_ROOT = path.join(ROOT_DIST_DIR, "skills-cli");
+const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases");
 const CLI_DIR = path.join(DIST_DIR, "cli");
 
 async function main() {
@@ -121,12 +122,12 @@ async function main() {
   }
 
   console.log("Copying installation manifests and metadata for AI tools...");
-  fs.cpSync(path.join(SERVING_DIR, "skills-cli"), path.join(ROOT_DIR, "dist"), { recursive: true });
+  fs.cpSync(path.join(SERVING_DIR, "skills-cli"), PUBLISH_ROOT, { recursive: true });
   
   console.log("Renaming vscode-ext-package.json to package.json for publishing...");
-  fs.renameSync(path.join(ROOT_DIR, "dist/vscode-ext-package.json"), path.join(ROOT_DIR, "dist/package.json"));
+  fs.renameSync(path.join(PUBLISH_ROOT, "vscode-ext-package.json"), path.join(PUBLISH_ROOT, "package.json"));
 
-  console.log("\nSuccess! standalone distribution generated in dist/");
+  console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
 }
 
 main().catch(console.error);

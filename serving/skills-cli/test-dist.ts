@@ -8,7 +8,7 @@ import { execSync } from 'node:child_process';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "../.."); // guidance/
-const DIST_DIR = path.join(ROOT_DIR, "dist");
+const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
 console.log("Running dist-gen to ensure fresh build...");
 execSync('npm run dist-gen', { 
@@ -41,11 +41,11 @@ test('Gemini and VS Code manifests', async () => {
   const pkgJson = JSON.parse(pkgJsonRaw);
   assert.strictEqual(pkgJson.publisher, 'GoogleChrome');
   assert.ok(pkgJson.contributes?.chatSkills, 'Must contribute chatSkills');
-  assert.strictEqual(pkgJson.contributes.chatSkills[0].path, './skills-cli/modern-web-use-cases/SKILL.md');
+  assert.strictEqual(pkgJson.contributes.chatSkills[0].path, './skills/modern-web-use-cases/SKILL.md');
 });
 
 test('SKILL.md validations', async () => {
-  const skillPath = path.join(DIST_DIR, 'skills-cli/modern-web-use-cases/SKILL.md');
+  const skillPath = path.join(DIST_DIR, 'skills/modern-web-use-cases/SKILL.md');
   await assert.doesNotReject(fs.access(skillPath), `Missing SKILL.md in modern-web-use-cases`);
 
   const content = await fs.readFile(skillPath, 'utf8');
