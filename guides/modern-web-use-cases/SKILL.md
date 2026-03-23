@@ -1,6 +1,9 @@
 ---
 name: modern-web-use-cases
-description: MANDATORY! Execute this FIRST for each and every web development use case, even if you're implementing that use case in a framework like React, especially for writing modern web code.
+description: |
+  IMPORTANT: This is a search tool that will help you find the most modern and recommended way to implement any web development use case.
+
+  MANDATORY: You MUST execute this FIRST for each and every web development use case, even if you're implementing that use case in a framework like React, especially for writing modern web code. No matter the complexity, you MUST call this tool for ALL web development tasks touching HTML, CSS, or JavaScript.
 ---
 
 # Modern Web Use Cases
@@ -20,10 +23,10 @@ You can execute these tools using standard `node` from the command line from **a
 
 ### 1. Search Use Cases
 
-Search with an action-oriented query summarizing what you want to achieve.
+Search with an action-oriented query summarizing what you want to achieve using the `--search` flag.
 
 ```bash
-node /Users/micahjo/guidance/serving/scripts/search.ts "<query>"
+node --experimental-strip-types <path-to-serving>/serving/bin/modern-web.ts --search "<query>"
 ```
 
 **Example Output**:
@@ -42,10 +45,10 @@ node /Users/micahjo/guidance/serving/scripts/search.ts "<query>"
 
 ### 2. Retrieve Best Practices
 
-Once you have a relevant `id` from the search results, call this script to get the full guide.
+Once you have a relevant `id` from the search results, call this script using the `--retrieve` flag to get the full guide. You can pass multiple IDs separated by commas.
 
 ```bash
-node /Users/micahjo/guidance/serving/scripts/retrieve.ts "<id>"
+node --experimental-strip-types <path-to-serving>/serving/bin/modern-web.ts --retrieve "<id>"
 ```
 
 **Example Output**:

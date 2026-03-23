@@ -2,6 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import puppeteer from 'puppeteer-core';
+import { fileURLToPath } from 'url';
 import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config, Agents } from '../config.ts';
@@ -468,4 +469,13 @@ async function run(): Promise<void> {
   }
 }
 
-run();
+export async function collectJetskiGuides(dirPath: string): Promise<string[]> {
+  // TODO: Implement skills guide collection for Jetski (need gLinux-only binary, cannot land in GH)
+  console.log(`Jetski skills collection for ${dirPath} still needs to be populated.`);
+  return [];
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  run();
+}

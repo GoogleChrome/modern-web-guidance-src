@@ -2,6 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
 
 import config, { Agents } from '../config.ts';
 
@@ -142,4 +143,50 @@ async function run() {
   }
 }
 
-run();
+export async function collectGeminiCliGuides(dirPath: string): Promise<string[]> {
+  const guidesFromSkills: string[] = [];
+  try {
+    const files = fs.readdirSync(dirPath);
+    const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
+
+    for (const file of sessionFiles) {
+      const sessionPath = path.join(dirPath, file);
+      const sessionContent = fs.readFileSync(sessionPath, 'utf8');
+      const session = JSON.parse(sessionContent);
+
+      if (session.messages) {
+        for (const msg of session.messages) {
+          if (msg.toolCalls) {
+            for (const tc of msg.toolCalls) {
+              if (tc.name === 'read_file' && tc.args && tc.args.file_path) {
+                const filePath = tc.args.file_path;
+                if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
+                  const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+                  if (match) {
+                    guidesFromSkills.push(match[1]);
+                  }
+                }
+              } else if (tc.name === 'run_shell_command' && tc.args && tc.args.command) {
+                const command = tc.args.command;
+                if (command.includes('serving/scripts/retrieve.ts')) {
+                  const match = command.match(/retrieve\.ts\s+["']?([^"'\s]+)["']?/);
+                  if (match) {
+                    guidesFromSkills.push(match[1]);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error(`Error reading session files in ${dirPath}:`, e);
+  }
+  return [...new Set(guidesFromSkills)];
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  run();
+}
