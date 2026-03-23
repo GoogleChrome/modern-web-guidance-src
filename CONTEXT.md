@@ -47,7 +47,7 @@ guidance/
     scripts/                  # Build scripts (build-guides, build-megaskill)
   eval-view/                  # Dashboard for visualizing evaluation results
   bin/gd.ts                   # The unified CLI entry point
-  lib/colors.ts               # Shared color/formatting helpers
+
 ```
 
 ---

@@ -17,7 +17,8 @@ import {
   spawnAsync
 } from '../harness/lib/agent-shared.ts';
 import { environmentConfig } from '../harness/config.ts';
-import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
+import { colors } from '../bin/gd.ts';
+const { cRed, cGreen, cYellow, cCyan, cBold, cDim } = colors;
 import {
   type GuideInventory,
   type TaskInfo,
