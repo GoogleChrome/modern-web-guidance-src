@@ -5,6 +5,7 @@ node_modules/
 serving/build/
 serving/mcp-server/data/use-cases.gen.ts
 serving/mcp-server/.mcp-data/
+dist/
 
 # Test artifacts
 eval-view/test-results/
