@@ -162,7 +162,13 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
 
   const sortedFeatures = Array.from(featureMap.entries()).sort((a, b) => a[1].name.localeCompare(b[1].name));
   
-  let dynamicMd = `#### Skill Coverage\n\n`;
+  let version = "unknown";
+  try {
+    const pkgJson = JSON.parse(fs.readFileSync(path.join(publishRoot, "package.json"), "utf8"));
+    if (pkgJson.version) version = pkgJson.version;
+  } catch (e) {}
+
+  let dynamicMd = `#### Skill Coverage in \`v${version}\`\n\n`;
   const featureIds = sortedFeatures.map(([_featureId, data]) => `${data.name.replace(/</g, '&lt;')}`).join(', ');
 
   dynamicMd += `<details>
