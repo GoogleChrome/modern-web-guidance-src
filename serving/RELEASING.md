@@ -7,11 +7,12 @@ To release updates to our AI Skills infrastructure (Claude Code, Gemini CLI, van
 1. **Make changes** locally or via PR in the `guidance` repo under `serving/`.
 2. **Deploy** by running the automated publishing command from the `serving/` folder:
    ```bash
-   npm run deploy
+   pnpm run publish-skills
    ```
    *Under the hood, this script:*
-   1. Executes `dist-gen` to bundle all tools, local databases, and automatically generates extension metadata files (`gemini-extension.json`, `package.json`, `.claude-plugin/marketplace.json`).
-   2. Uses the `gh-pages` module to commit and forcibly push the entire `dist/` envelope directly up to the `main` branch of `git@github.com:GoogleChrome/skills-alpha.git`.
+   1. Increments the patch version across all AI extension manifests (`0.0.x`).
+   2. Executes `dist-gen` to bundle all tools, local databases, and new extension metadata.
+   3. Uses the `gh-pages` API to forcefully replicate the entirely newly bundled `dist/` envelope upward to the `main` branch of `git@github.com:GoogleChrome/skills-alpha.git`.
 
 ## GitHub Releases (Important for Gemini CLI)
 

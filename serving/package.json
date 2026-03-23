@@ -21,7 +21,7 @@
     "build": "node scripts/build-guides.ts",
     "build:megaskill": "node scripts/build-megaskill.ts",
     "dist-gen": "node --experimental-strip-types scripts/skills-cli-dist-gen.ts",
-    "deploy": "npm run dist-gen && gh-pages -d dist -b main -r git@github.com:GoogleChrome/skills-alpha.git -t -m 'Deploy skills distribution'",
+    "publish-skills": "node --experimental-strip-types scripts/publish-skills.ts",
     "start": "node mcp-server/index.ts",
     "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
     "test": "node scripts/build-guides.ts && vitest run && node --test scripts/test-dist.ts",
