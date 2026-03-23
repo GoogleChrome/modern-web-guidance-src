@@ -162,24 +162,24 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
 
   const sortedFeatures = Array.from(featureMap.entries()).sort((a, b) => a[1].name.localeCompare(b[1].name));
   
-  let dynamicMd = `\n## Supported Web Features (${sortedFeatures.length})\n\n`;
+  let dynamicMd = `#### Skill Coverage\n\n`;
+  const featureIds = sortedFeatures.map(([_featureId, data]) => `${data.name.replace(/</g, '&lt;')}`).join(', ');
 
-  dynamicMd += `<details>\n<summary>$
-${sortedFeatures.map(([featureId, data]) => `[${data.name.replace(/</g, '&lt;')}](https://webstatus.dev/features/${featureId})`).join(', ')}
-\n</summary>\n\n`;
+  dynamicMd += `<details>
+<summary><strong>${sortedFeatures.length} web features with implementation guidance from Chrome's experts</strong>: ${featureIds}</summary>\n\n`;
   for (const [featureId, data] of sortedFeatures) {
+    dynamicMd += `- **[${data.name.replace(/</g, '&lt;')}](https://webstatus.dev/features/${featureId})**\n`;
     for (const uc of data.useCases) {
-      dynamicMd += `- **${uc.id}**: ${uc.description}\n`;
+      dynamicMd += `  - **${uc.id}**: ${uc.description}\n`;
     }
-    dynamicMd += `\n`;
   }
-  dynamicMd += `\n</details>\n\n`;
+  dynamicMd += `</details>\n\n`;
 
   // Update README
   const readmePath = path.join(publishRoot, "README.md");
   if (fs.existsSync(readmePath)) {
     let readmeContent = fs.readFileSync(readmePath, "utf-8");
-    readmeContent += dynamicMd;
+    readmeContent = readmeContent.replace('## Installation', dynamicMd + '\n\n## Installation');
     fs.writeFileSync(readmePath, readmeContent);
     console.log("README dynamically updated with features and use cases.");
   }
