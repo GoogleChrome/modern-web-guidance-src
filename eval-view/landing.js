@@ -495,8 +495,10 @@ function showRadarTooltip(testInfo, x, y) {
     if (!radarChartInstance) {
         radarChartInstance = new RadarChart('radar-tooltip-chart', {
             size: 300,
-            padding: 40,
-            levels: 5
+            padding: 20,
+            levels: 5,
+            hideLabels: true,
+            hideLegend: true
         });
     }
 
