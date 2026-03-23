@@ -2,7 +2,6 @@ import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessTok
 import { RadarChart } from './radar.js';
 
 let allTestData = {}; // Cache all test data by testId
-let currentTab = 'suites';
 let selectedTestIds = new Set(); // Set of test IDs to show
 let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
