@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Application Metrics</title>
+</head>
+<body>
+  <h1>Application Metrics</h1>
+  <button id="trigger-work">Trigger Work</button>
+
+  <script>
+    if (!window.PerformanceLongAnimationFrameTiming) {
+      window.PerformanceLongAnimationFrameTiming = {};
+    }
+
+    setInterval(() => {
+      const tasks = performance.getEntriesByType('longtask');
+      tasks.forEach(task => {
+        console.log(task);
+      });
+    }, 1000);
+
+    async function runProfiler() {
+      if (window.Profiler) {
+        const profiler = new Profiler({ sampleInterval: 1, maxBufferSize: 10000 });
+        const result = await profiler.stop();
+        console.log(result);
+      }
+    }
+    runProfiler();
+
+    document.getElementById('trigger-work').addEventListener('click', () => {
+      const start = Date.now();
+      while (Date.now() - start < 150) {
+      }
+    });
+  </script>
+</body>
+</html>

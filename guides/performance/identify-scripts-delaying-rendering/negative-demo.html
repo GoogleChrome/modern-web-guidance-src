@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Application Performance Monitoring</title>
+  <script src="https://example.com/performance-polyfill.js"></script>
+</head>
+<body>
+  <h1>Performance Tracker</h1>
+  <button id="task-button">Process Task</button>
+  <script>
+    if ('Profiler' in window) {
+      const profiler = new Profiler({ sampleInterval: 1, maxBufferSize: 10000 });
+      document.getElementById('task-button').onclick = function() {
+        var start = Date.now();
+        while (Date.now() - start < 150) {}
+        profiler.stop().then(function(trace) {
+          console.log(JSON.stringify(trace));
+        });
+      };
+    }
+    var observer = new PerformanceObserver(function(list) {
+      var entries = list.getEntries();
+      for (var i = 0; i < entries.length; i++) {
+        alert('Event duration: ' + entries[i].duration);
+      }
+    });
+    observer.observe({ entryTypes: ["longtask"] });
+  </script>
+</body>
+</html>

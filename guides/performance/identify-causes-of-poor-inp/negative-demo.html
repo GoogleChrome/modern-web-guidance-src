@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Negative Demo</title>
+</head>
+<body>
+    <button id="btn">Click</button>
+    <script>
+        const observer = new PerformanceObserver((list) => {
+            for (const entry of list.getEntries()) {
+                if (entry.duration > 200) {
+                    performance.profile({ sampleInterval: 10 }).then(profiler => {
+                        setTimeout(() => {
+                            profiler.stop().then(trace => {
+                                console.log(trace.frames[0].name);
+                            });
+                        }, 500);
+                    });
+                }
+            }
+        });
+        observer.observe({ type: 'event', buffered: true });
+
+        document.getElementById('btn').onclick = () => {
+            const start = Date.now();
+            while (Date.now() - start < 300) {}
+        };
+    </script>
+</body>
+</html>

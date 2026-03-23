@@ -18,15 +18,13 @@
         // Even if no single script was >50ms, the combined frame might be long.
         // The Long Tasks API would not catch this, but LoAF does.
         const totalScriptTime = entry.scripts.reduce((total, script) => total + script.duration, 0);
+        // Console log for now, but in a real application would want to beacon
+        // back to an anlytics endpoint
         console.log(`Combined script time: ${totalScriptTime}ms`);
       }
     });
-    
-    try {
-      observer.observe({ type: 'long-animation-frame', buffered: true });
-    } catch (e) {
-      console.warn('Long Animation Frames API not supported.');
-    }
+
+    observer.observe({ type: 'long-animation-frame', buffered: true });
 
     document.getElementById('many-tasks-button').addEventListener('click', () => {
       // Execute 10 small microtasks (15ms each).

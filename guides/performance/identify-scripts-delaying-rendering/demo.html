@@ -15,7 +15,11 @@
         console.log('Long Animation Frame observed:', entry.duration, 'ms');
         
         // Iterate through scripts to find the specific function responsible
+        // Note script entries will be empty when loading this demo from a
+        // local file, instead of from a server.
         for (const script of entry.scripts) {
+          // Console log for now, but in a real application would want to beacon
+          // back to an anlytics endpoint
           console.log(`Script execution time: ${script.duration} ms`);
           console.log(`Function: ${script.sourceFunctionName || '(anonymous)'}`);
           console.log(`URL: ${script.sourceURL}:${script.sourceCharPosition}`);
@@ -24,11 +28,7 @@
     });
     
     // Start observing long-animation-frame entries
-    try {
-      observer.observe({ type: 'long-animation-frame', buffered: true });
-    } catch (e) {
-      console.warn('Long Animation Frames API not supported in this browser.');
-    }
+    observer.observe({ type: 'long-animation-frame', buffered: true });
 
     // A intentionally slow function that blocks the main thread
     function verySlowOperation() {
