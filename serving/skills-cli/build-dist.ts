@@ -139,7 +139,8 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   console.log("Generating dynamic README content around features and use cases...");
   const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
   
-  const featureMap = new Map<string, { name: string; useCases: { id: string; description: string }[] }>();
+  const useCaseGroupMap = new Map<string, { features: { id: string; name: string }[]; useCases: { id: string; description: string }[] }>();
+  const allFeatureIds = new Set<string>();
 
   for (const guide of readyGuides) {
     const guidePath = path.join(guide.dir, "guide.md");
@@ -152,16 +153,26 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
       if (data.description) description = data.description;
     } catch(e) {}
 
-    for (const featureId of guide.featureIds) {
-      if (!featureMap.has(featureId)) {
-         featureMap.set(featureId, { name: getFeatureName(featureId), useCases: [] });
-      }
-      featureMap.get(featureId)!.useCases.push({ id: guide.name, description });
+    const sortedFeatureIds = [...guide.featureIds].sort();
+    const signature = sortedFeatureIds.join(',');
+
+    sortedFeatureIds.forEach(id => allFeatureIds.add(id));
+
+    if (!useCaseGroupMap.has(signature)) {
+       const features = sortedFeatureIds.map(fId => ({ id: fId, name: getFeatureName(fId) }));
+       useCaseGroupMap.set(signature, { features, useCases: [] });
     }
+    useCaseGroupMap.get(signature)!.useCases.push({ id: guide.name, description });
   }
 
-  const sortedFeatures = Array.from(featureMap.entries()).sort((a, b) => a[1].name.localeCompare(b[1].name));
-  
+  // Sort groups alphabetically by the name of their first feature
+  const sortedGroups = Array.from(useCaseGroupMap.values()).sort((a, b) => a.features[0].name.localeCompare(b.features[0].name));
+
+  // Determine all features to generate the summary text
+  const allFeaturesSorted = Array.from(allFeatureIds)
+    .map(fId => ({ id: fId, name: getFeatureName(fId) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   let version = "unknown";
   try {
     const pkgJson = JSON.parse(fs.readFileSync(path.join(publishRoot, "package.json"), "utf8"));
@@ -169,13 +180,14 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   } catch (e) {}
 
   let dynamicMd = `#### Skill Coverage in \`v${version}\`\n\n`;
-  const featureIds = sortedFeatures.map(([_featureId, data]) => `${data.name.replace(/</g, '&lt;')}`).join(', ');
+  const featureNamesCsv = allFeaturesSorted.map(f => `${f.name.replace(/</g, '&lt;')}`).join(', ');
 
-  dynamicMd += `<details>
-<summary><strong>${sortedFeatures.length} web features with implementation guidance from Chrome's experts</strong>: ${featureIds}</summary>\n\n`;
-  for (const [featureId, data] of sortedFeatures) {
-    dynamicMd += `- **[${data.name.replace(/</g, '&lt;')}](https://webstatus.dev/features/${featureId})**\n`;
-    for (const uc of data.useCases) {
+  dynamicMd += `<details>\n<summary><strong>${allFeaturesSorted.length} web features with implementation guidance from Chrome's experts</strong>: ${featureNamesCsv}</summary>\n\n`;
+  
+  for (const group of sortedGroups) {
+    const featureLinks = group.features.map(f => `[${f.name.replace(/</g, '&lt;')}](https://webstatus.dev/features/${f.id})`).join(', ');
+    dynamicMd += `- **${featureLinks}**\n`;
+    for (const uc of group.useCases) {
       dynamicMd += `  - **${uc.id}**: ${uc.description}\n`;
     }
   }
