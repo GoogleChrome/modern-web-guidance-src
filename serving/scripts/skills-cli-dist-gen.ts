@@ -113,7 +113,73 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("\nSuccess! standalone distribution generated in dist/skills-cli/modern-web-use-cases/");
+  console.log("Generating installation manifests for AI tools...");
+  
+  // Gemini Extension Manifest
+  const geminiExtensionJson = {
+    name: "guidance-skills",
+    description: "Paul Irish's agent skills and web development guidance.",
+    version: "1.0.0",
+    author: { name: "Paul Irish" }
+  };
+  fs.writeFileSync(path.join(ROOT_DIR, "dist/gemini-extension.json"), JSON.stringify(geminiExtensionJson, null, 2));
+
+  // Claude Code Marketplace Manifest
+  const claudePluginDir = path.join(ROOT_DIR, "dist/.claude-plugin");
+  fs.mkdirSync(claudePluginDir, { recursive: true });
+  
+  const marketplaceJson = {
+    name: "guidance",
+    owner: { name: "Paul Irish" },
+    plugins: [
+      {
+        name: "modern-web-use-cases",
+        source: "./skills-cli/modern-web-use-cases",
+        description: "Modern Web Use Cases guidance tool",
+        version: "1.0.0"
+      }
+    ]
+  };
+  fs.writeFileSync(path.join(claudePluginDir, "marketplace.json"), JSON.stringify(marketplaceJson, null, 2));
+
+  // Inner plugin.json for Claude discovery
+  const pluginJson = {
+    name: "modern-web-use-cases",
+    description: "Modern Web Use Cases guidance tool",
+    version: "1.0.0",
+    author: { name: "Paul Irish" }
+  };
+  fs.writeFileSync(path.join(DIST_DIR, "plugin.json"), JSON.stringify(pluginJson, null, 2));
+
+  // README.md
+  const readmeContent = `# Modern Web Use Cases Skill\n\nA curated collection of web development agent skills and tools.\n\n## Installation\n\n### For Claude Code\n\`\`\`bash\n/plugin marketplace add GoogleChrome/skills-alpha\n/plugin install modern-web-use-cases@guidance\n/reload-plugins\n\`\`\`\n\n### For Gemini CLI\n\`\`\`bash\ngemini extensions install https://github.com/GoogleChrome/skills-alpha\n\`\`\`\n\n### For Vanilla Skills Pack\n\`\`\`bash\nnpx skills add GoogleChrome/skills-alpha\n\`\`\`\n`;
+  fs.writeFileSync(path.join(ROOT_DIR, "dist/README.md"), readmeContent);
+
+  // Root package.json for VS Code Extension
+  const rootPackageJson = {
+    name: "skills-alpha",
+    displayName: "Chrome Web Development Skills",
+    description: "Curated collection of agent skills for modern web development.",
+    version: "1.0.0",
+    publisher: "GoogleChrome",
+    engines: {
+      vscode: "^1.90.0"
+    },
+    categories: [
+      "AI",
+      "Other"
+    ],
+    contributes: {
+      chatSkills: [
+        {
+          path: "./skills-cli/modern-web-use-cases/SKILL.md"
+        }
+      ]
+    }
+  };
+  fs.writeFileSync(path.join(ROOT_DIR, "dist/package.json"), JSON.stringify(rootPackageJson, null, 2));
+
+  console.log("\nSuccess! standalone distribution generated in dist/");
 }
 
 main().catch(console.error);
