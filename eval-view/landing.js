@@ -11,7 +11,6 @@ let currentSkillsFilter = 'all';
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         // Initialize UI
-        setupTabs();
         setupTestFilters(); // New filter setup
         setupTableFilters();
 
@@ -46,11 +45,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Update filter UI to match initial state
         renderFilterMenuItems();
 
-        const view = params.get('view');
-        if (view && ['suites'].includes(view)) {
-            activateTab(view, false);
-        }
-
         // Initial Render
         renderSuites();
 
@@ -63,10 +57,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Handle browser back/forward
 window.addEventListener('popstate', () => {
     const params = new URLSearchParams(window.location.search);
-    const view = params.get('view') || 'suites';
-    if (['suites'].includes(view)) {
-        activateTab(view, false);
-    }
 
     selectedTestIds = new Set(Object.keys(allTestData)); // Default to all
     const testsParam = params.get('tests');
@@ -83,47 +73,6 @@ window.addEventListener('popstate', () => {
     renderFilterMenuItems();
     renderAll();
 });
-
-function setupTabs() {
-    const tabs = document.querySelectorAll('.tab-button');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => activateTab(tab.dataset.tab));
-    });
-}
-
-function activateTab(tabName, updateUrl = true) {
-    if (updateUrl && currentTab === tabName) return;
-
-    const tabs = document.querySelectorAll('.tab-button');
-
-    // Update active tab state
-    tabs.forEach(t => {
-        if (t.dataset.tab === tabName) {
-            t.classList.add('active');
-        } else {
-            t.classList.remove('active');
-        }
-    });
-
-    // Hide all content
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-    // Show selected content
-    const targetId = `${tabName}-tab`;
-    const targetContent = document.getElementById(targetId);
-    if (targetContent) {
-        targetContent.classList.add('active');
-    }
-
-    currentTab = tabName;
-
-    if (updateUrl) {
-        const url = new URL(window.location);
-        url.searchParams.set('view', tabName);
-        window.history.replaceState({}, '', url);
-    }
-}
-
 
 function setupTestFilters() {
     const filterBtn = document.getElementById('filter-btn');
