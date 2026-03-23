@@ -49,7 +49,7 @@ test.describe(`autofill-address-form Expectations: ${demoName}`, () => {
       const elements = Array.from(document.querySelectorAll('input, select, textarea'));
       const ids = elements.map(e => e.id).filter(Boolean);
       const names = elements.map(e => e.getAttribute('name')).filter(Boolean);
-      
+
       const hasUniqueIds = new Set(ids).size === ids.length;
       const hasUniqueNames = new Set(names).size === names.length;
       return hasUniqueIds && hasUniqueNames;

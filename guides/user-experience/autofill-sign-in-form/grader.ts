@@ -24,7 +24,7 @@ test.describe(`Sign-in form Expectations: ${demoName}`, () => {
   test('Static: The document MUST contain an input with type="email"', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     expect(/<input[^>]*type="email"[^>]*>/i.test(html)).toBe(true);
-  });
+  }); e
 
   test('Static: The document MUST contain an input with type="password"', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');

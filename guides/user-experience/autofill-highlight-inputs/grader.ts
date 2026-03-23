@@ -46,6 +46,9 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
         const sheet = document.styleSheets[i];
         try {
           for (let j = 0; j < sheet.cssRules.length; j++) {
+            if (!(rule instanceof CSSStyleRule)) {
+              continue;
+            }
             const rule = sheet.cssRules[j];
             if (rule.selectorText && rule.selectorText.includes(':autofill')) {
               const selectors = rule.selectorText.split(',');
