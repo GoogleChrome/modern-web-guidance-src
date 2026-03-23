@@ -132,10 +132,7 @@ export function initGoogleAuth(onAuthSuccess) {
         });
 
         if (authBtn) {
-            authBtn.addEventListener('click', () => {
-                // Request an access token
-                tokenClient.requestAccessToken();
-            });
+            authBtn.addEventListener('click', () => tokenClient.requestAccessToken());
         }
     };
     init();

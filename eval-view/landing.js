@@ -87,9 +87,7 @@ window.addEventListener('popstate', () => {
 function setupTabs() {
     const tabs = document.querySelectorAll('.tab-button');
     tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            activateTab(tab.dataset.tab);
-        });
+        tab.addEventListener('click', () => activateTab(tab.dataset.tab));
     });
 }
 
@@ -454,9 +452,7 @@ function setupRateCellHovers() {
 
         cell.addEventListener('mousemove', (e) => updateTooltipPosition(e.clientX, e.clientY));
 
-        cell.addEventListener('mouseleave', () => {
-            hideRadarTooltip();
-        });
+        cell.addEventListener('mouseleave', () => hideRadarTooltip());
     });
 }
 

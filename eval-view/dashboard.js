@@ -165,11 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeBtn) closeBtn.onclick = closeModal;
 
     // Close on backdrop click
-    modal.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            closeModal();
-        }
-    });
+    modal.addEventListener('click', (event) => event.target === modal && closeModal());
 
     // Handle Esc key or dialog close API
     modal.addEventListener('close', () => {
