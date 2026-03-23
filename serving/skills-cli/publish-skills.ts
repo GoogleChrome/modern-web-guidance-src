@@ -20,6 +20,8 @@ function incrementVersion(version: string): string {
   return `${parts[0]}.${parts[1]}.${patch}`;
 }
 
+const isDryRun = process.argv.includes('--dry-run');
+
 async function bumpVersions() {
   console.log("Bumping versions in skills-cli templates...");
   
@@ -28,25 +30,14 @@ async function bumpVersions() {
   const geminiData = JSON.parse(await fs.readFile(geminiPath, 'utf8'));
   const newVersion = incrementVersion(geminiData.version);
   geminiData.version = newVersion;
-  await fs.writeFile(geminiPath, JSON.stringify(geminiData, null, 2));
-
-  // VSCode
-  const vscodePath = path.join(SKILLS_CLI_TEMPLATE_DIR, "vscode-ext-package.json");
-  const vscodeData = JSON.parse(await fs.readFile(vscodePath, 'utf8'));
-  vscodeData.version = newVersion;
-  await fs.writeFile(vscodePath, JSON.stringify(vscodeData, null, 2));
-
-  // Claude Plugin
-  const claudePluginPath = path.join(SKILLS_CLI_TEMPLATE_DIR, ".claude-plugin/plugin.json");
-  const claudePluginData = JSON.parse(await fs.readFile(claudePluginPath, 'utf8'));
-  claudePluginData.version = newVersion;
-  await fs.writeFile(claudePluginPath, JSON.stringify(claudePluginData, null, 2));
-
-  // Claude Marketplace
-  const marketplacePath = path.join(SKILLS_CLI_TEMPLATE_DIR, ".claude-plugin/marketplace.json");
-  const marketplaceData = JSON.parse(await fs.readFile(marketplacePath, 'utf8'));
-  marketplaceData.plugins[0].version = newVersion;
-  await fs.writeFile(marketplacePath, JSON.stringify(marketplaceData, null, 2));
+  if (isDryRun) {
+    console.log(`[Dry Run] Would have updated files to version ${newVersion}`);
+  } else {
+    await fs.writeFile(geminiPath, JSON.stringify(geminiData, null, 2));
+    await fs.writeFile(vscodePath, JSON.stringify(vscodeData, null, 2));
+    await fs.writeFile(claudePluginPath, JSON.stringify(claudePluginData, null, 2));
+    await fs.writeFile(marketplacePath, JSON.stringify(marketplaceData, null, 2));
+  }
 
   console.log(`Successfully bumped to version ${newVersion}`);
   return newVersion;
@@ -58,16 +49,21 @@ async function main() {
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
   execSync('npm run dist-gen', { cwd: SERVING_DIR, stdio: 'inherit' });
   
-  console.log(`\nPublishing new dist/ to GoogleChrome/skills-alpha (main branch)...`);
-  
-  await ghPagesPublish(DIST_DIR, {
-    branch: 'main',
-    repo: 'git@github.com:GoogleChrome/skills-alpha.git',
-    dotfiles: true,
-    message: `Release v${newVersion}`
-  });
+  if (isDryRun) {
+    console.log(`\n[Dry Run] Skipping GitHub publishing and metadata push wrapper.`);
+    console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
+  } else {
+    console.log(`\nPublishing new dist/ to GoogleChrome/skills-alpha (main branch)...`);
+    
+    await ghPagesPublish(DIST_DIR, {
+      branch: 'main',
+      repo: 'git@github.com:GoogleChrome/skills-alpha.git',
+      dotfiles: true,
+      message: `Release v${newVersion}`
+    });
 
-  console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/skills-alpha!`);
+    console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/skills-alpha!`);
+  }
 }
 
 main().catch((err) => {
