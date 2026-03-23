@@ -3,6 +3,8 @@ import * as path from 'path';
 import * as os from 'os';
 
 export default defineConfig({
+  timeout: 10000,
+  expect: { timeout: 3000 },
   testDir: '.',
   testMatch: '**/grader.ts',
   fullyParallel: false,
