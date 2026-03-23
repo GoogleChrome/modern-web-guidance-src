@@ -564,6 +564,26 @@
   display: block;
 }
 
+.radar-tooltip-title {
+  font-size: 0.9em;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+.radar-tooltip-subtitle {
+  font-size: 0.75em;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+  text-transform: capitalize;
+}
+
 .rate-cell {
   position: relative;
   z-index: 1;

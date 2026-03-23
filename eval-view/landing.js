@@ -1,4 +1,4 @@
-import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken } from './utils.js';
+import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml } from './utils.js';
 import { RadarChart } from './radar.js';
 
 let allTestData = {}; // Cache all test data by testId
@@ -467,6 +467,15 @@ function showRadarTooltip(testInfo, x, y, compoundKey) {
     }
 
     currentRadarKey = compoundKey;
+
+    const headerDiv = document.getElementById('radar-tooltip-header');
+    if (headerDiv) {
+        headerDiv.innerHTML = `
+            <div class="radar-tooltip-title">${escapeHtml(testInfo.testId)}</div>
+            <div class="radar-tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(testInfo.servingArch.replace('mcp', 'MCP'))}</div>
+        `;
+    }
+
     const data = testInfo.data;
     const results = data.results;
     
