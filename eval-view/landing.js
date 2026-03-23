@@ -47,13 +47,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderFilterMenuItems();
 
         const view = params.get('view');
-        if (view && ['overview', 'trends'].includes(view)) {
+        if (view && ['suites'].includes(view)) {
             activateTab(view, false);
         }
 
         // Initial Render
         renderSuites();
-        renderTrends();
 
     } catch (error) {
         console.error('Error:', error);
@@ -65,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.addEventListener('popstate', () => {
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view') || 'suites';
-    if (['suites', 'trends'].includes(view)) {
+    if (['suites'].includes(view)) {
         activateTab(view, false);
     }
 
@@ -267,7 +266,6 @@ function updateUrlParams() {
 
 function renderAll() {
     renderSuites();
-    renderTrends();
 }
 
 async function loadLocalTests() {
@@ -545,37 +543,6 @@ function hideRadarTooltip() {
     tooltipContainer.classList.add('hidden');
 }
 
-
-function renderTrends() {
-    const testIds = getSortedTestIds();
-    const guidedTimeline = document.getElementById('guided-timeline');
-    const unguidedTimeline = document.getElementById('unguided-timeline');
-
-    if (!guidedTimeline || !unguidedTimeline) return;
-
-    // Helper to render bars
-    const renderBars = (groupType) => {
-        return testIds.map(compoundTestId => {
-            const testInfo = allTestData[compoundTestId];
-            const testId = testInfo.testId;
-            const source = testInfo.source;
-            const data = testInfo.data;
-            const stats = calculateGroupTotalStats(data.results, groupType);
-            const value = stats.total > 0 ? Math.round((stats.passed / stats.total) * 100) : 0;
-            const timestamp = new Date(testInfo.timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
-
-            return `
-                <a class="timeline-bar" href="dashboard.html?testId=${testId}&source=${source}" title="${testId} - ${timestamp}: ${value}%">
-                    <div class="timeline-bar-fill" style="height: ${Math.max(value * 2, 10)}px; background-color: ${getColor(value)}"></div>
-                    <div class="timeline-bar-label">${value}%</div>
-                </a>
-            `;
-        }).join('');
-    };
-
-    guidedTimeline.innerHTML = renderBars('guided');
-    unguidedTimeline.innerHTML = renderBars('unguided');
-}
 
 // ==========================================
 // HELPERS

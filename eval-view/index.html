@@ -49,7 +49,6 @@
 
     <nav class="dashboard-tabs">
       <button class="tab-button active" data-tab="suites">Suites</button>
-      <button class="tab-button" data-tab="trends">Trends</button>
     </nav>
 
     <!-- Suites Tab -->
@@ -59,27 +58,36 @@
           <thead>
             <tr>
               <th style="padding-left:15px; text-align: left;">Suite ID</th>
-              <th>Source
-                <select id="filter-source" class="header-filter-select">
-                  <option value="all">All</option>
-                  <option value="local">Local</option>
-                  <option value="remote">Remote</option>
-                </select>
+              <th>
+                <div class="header-cell-content">
+                  <span class="header-label">Source</span>
+                  <select id="filter-source" class="header-filter-select">
+                    <option value="all">All</option>
+                    <option value="local">Local</option>
+                    <option value="remote">Remote</option>
+                  </select>
+                </div>
               </th>
-              <th>Agent
-                <select id="filter-agent" class="header-filter-select">
-                  <option value="all">All</option>
-                  <option value="jetski">jetski</option>
-                  <option value="gemini_cli">gemini_cli</option>
-                  <option value="claude_code">claude_code</option>
-                </select>
+              <th>
+                <div class="header-cell-content">
+                  <span class="header-label">Agent</span>
+                  <select id="filter-agent" class="header-filter-select">
+                    <option value="all">All</option>
+                    <option value="jetski">jetski</option>
+                    <option value="gemini_cli">gemini_cli</option>
+                    <option value="claude_code">claude_code</option>
+                  </select>
+                </div>
               </th>
-              <th>Serving
-                <select id="filter-skills" class="header-filter-select">
-                  <option value="all">All</option>
-                  <option value="skills">Skills</option>
-                  <option value="mcp">MCP</option>
-                </select>
+              <th>
+                <div class="header-cell-content">
+                  <span class="header-label">Serving</span>
+                  <select id="filter-skills" class="header-filter-select">
+                    <option value="all">All</option>
+                    <option value="skills">Skills</option>
+                    <option value="mcp">MCP</option>
+                  </select>
+                </div>
               </th>
               <th style="text-align: right; padding-right: 15px;">Guided</th>
               <th style="text-align: right; padding-right: 15px;">Unguided</th>
@@ -90,25 +98,6 @@
             <!-- populated by JS -->
           </tbody>
           </table>
-      </div>
-    </div>
-
-    <!-- Trends Tab -->
-    <div id="trends-tab" class="tab-content">
-      <div id="timeline-section" class="timeline-section">
-        <div class="timeline-header">
-          <h2>Overall Pass Rate Timeline</h2>
-          <span class="timeline-subtitle">(Latest First)</span>
-          </div>
-        <div class="timeline-group">
-          <div class="test-grid-label">Guided Pass Rate</div>
-          <div id="guided-timeline" class="timeline-chart"></div>
-        </div>
-
-        <div class="timeline-group">
-          <div class="test-grid-label">Unguided Pass Rate</div>
-          <div id="unguided-timeline" class="timeline-chart"></div>
-        </div>
       </div>
     </div>
 
