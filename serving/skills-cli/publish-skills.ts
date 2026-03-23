@@ -62,15 +62,17 @@ async function bumpVersions() {
 async function main() {
   const newVersion = await bumpVersions();
   
-  console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  execSync('npm run build-dist', { cwd: SERVING_DIR, stdio: 'inherit' });
+  console.log(`\nRebuilding distribution and running tests with version ${newVersion}...`);
+  execSync('node --test skills-cli/test-dist.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
   
   if (isDryRun) {
-    console.log(`\n[Dry Run] Skipping GitHub publishing and metadata push wrapper.`);
+    const files = await (await fs.readdir(path.join(DIST_DIR, "skills-cli"), {recursive: true})).filter(f => !f.includes('node_modules'));
+    console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${files.join('\n - ')}`);
     console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
   } else {
     console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/skills-alpha (main branch)...`);
     
+
     await ghPagesPublish(path.join(DIST_DIR, "skills-cli"), {
       branch: 'main',
       repo: 'git@github.com:GoogleChrome/skills-alpha.git',
