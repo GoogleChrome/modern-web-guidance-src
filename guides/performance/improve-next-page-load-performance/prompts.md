@@ -1,2 +1,2 @@
-- hey im trying to make the next pages load faster on my site. is there a way to prefetch links before the user clicks them?
+- hey can you add prefetching for links on my site so the next pages load faster when users click them?
 - can you prerender all same-origin links on my page? use moderate eagerness so it triggers on hover.
