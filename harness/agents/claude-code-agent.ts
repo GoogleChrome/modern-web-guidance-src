@@ -1,19 +1,18 @@
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
 import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, copyResultsToTarget, createWorkDir, copySkills, watchLogFile } from '../lib/agent-shared.ts';
 import config, { Agents } from '../config.ts';
-import { MCP_LOG_FILE } from '../../constants.ts';
+import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
 
 // Usage: node claude-code-agent.ts <prompt> <runType> <targetDir> <templateDir>
-const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
-
 /**
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
-function setupIsolatedWorkDir(): string {
+function setupIsolatedWorkDir(templateDir: string, runType: string): string {
   const tempHome = createIsolatedHome('ghh-claude');
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
@@ -47,7 +46,8 @@ function setupIsolatedWorkDir(): string {
  * Executes the Claude CLI command and captures output.
  */
 async function run() {
-  const workDir = setupIsolatedWorkDir();
+  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
+  const workDir = setupIsolatedWorkDir(templateDir, runType);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -66,7 +66,7 @@ async function run() {
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
     process.env.MCP_LOG_DIR = targetDir;
-    const stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
+    const stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
 
     const child = spawn(command, commandArgs, {
       cwd: workDir, // Run in the isolated project directory
@@ -154,4 +154,54 @@ async function run() {
   }
 }
 
-run();
+export async function collectClaudeCodeGuides(dirPath: string): Promise<string[]> {
+  const guidesFromSkills: string[] = [];
+  try {
+    const files = fs.readdirSync(dirPath);
+    const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
+
+    for (const file of sessionFiles) {
+      const sessionPath = path.join(dirPath, file);
+      const sessionContent = fs.readFileSync(sessionPath, 'utf8');
+      const lines = sessionContent.split('\n');
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const obj = JSON.parse(line);
+          if (obj.message && obj.message.content) {
+            for (const contentItem of obj.message.content) {
+              if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input && contentItem.input.command) {
+                const command = contentItem.input.command;
+                if (command.includes('serving/scripts/retrieve.ts')) {
+                  const match = command.match(/retrieve\.ts\s+["']?([^"'\s]+)["']?/);
+                  if (match) {
+                    guidesFromSkills.push(match[1]);
+                  }
+                }
+              } else if (contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input && contentItem.input.file_path) {
+                const filePath = contentItem.input.file_path;
+                if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
+                  const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+                  if (match) {
+                    guidesFromSkills.push(match[1]);
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error(`Failed to parse jsonl line in ${sessionPath}:`, e);
+        }
+      }
+    }
+  } catch (e) {
+    console.error(`Error reading session files in ${dirPath}:`, e);
+  }
+  return [...new Set(guidesFromSkills)];
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  run();
+}

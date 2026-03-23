@@ -190,20 +190,25 @@ export function copySkills(homeDir: string, agent: string): boolean {
   try {
     fs.mkdirSync(destDir, { recursive: true });
 
-    const allGuides = scanAllGuides();
-    const categories = new Set(allGuides.map(inv => inv.category));
+    // 1. Scan top-level directories for SKILL.md and copy them
+    if (fs.existsSync(guidesSource)) {
+      const topLevelDirs = fs.readdirSync(guidesSource, { withFileTypes: true })
+        .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules');
 
-    for (const cat of categories) {
-      const catSrc = path.join(guidesSource, cat);
-      const catDest = path.join(destDir, cat);
+      for (const dir of topLevelDirs) {
+        const categorySrc = path.join(guidesSource, dir.name);
+        const categoryDest = path.join(destDir, dir.name);
+        const skillPath = path.join(categorySrc, 'SKILL.md');
 
-      // Copy SKILL.md if present
-      const skillPath = path.join(catSrc, 'SKILL.md');
-      if (fs.existsSync(skillPath)) {
-        fs.mkdirSync(catDest, { recursive: true });
-        fs.copyFileSync(skillPath, path.join(catDest, 'SKILL.md'));
+        if (fs.existsSync(skillPath)) {
+          fs.mkdirSync(categoryDest, { recursive: true });
+          fs.copyFileSync(skillPath, path.join(categoryDest, 'SKILL.md'));
+        }
       }
     }
+
+    // 2. Scan and copy guide.md for eval-ready guides
+    const allGuides = scanAllGuides();
 
     for (const inv of allGuides) {
       if (classifyGuide(inv) === 'eval-ready') {
@@ -217,7 +222,7 @@ export function copySkills(homeDir: string, agent: string): boolean {
       }
     }
 
-    console.log(`Copied guides to ${destDir}`);
+    console.log(`Copied SKILLs and guides to ${destDir}`);
     return true;
   } catch (e: any) {
     console.error(`Failed to copy guides: ${e.message}`);

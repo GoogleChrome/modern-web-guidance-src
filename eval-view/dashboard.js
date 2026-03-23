@@ -2,8 +2,6 @@ import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth } fro
 import { ApiClient } from './api.js';
 import { RadarChart } from './radar.js';
 
-const MCP_LOG_FILE = 'mcp-server.log';
-
 // Keep track of current details state for navigation
 let currentDetails = null;
 let allTestData = null;
@@ -530,6 +528,7 @@ async function showDetails(testName, runs, stats, testId) {
         let guideSection = '';
         const guidesUsed = run.guidesUsed || (run.guideUsed !== undefined ? (typeof run.guideUsed === 'object' && run.guideUsed !== null ? run.guideUsed.guidesUsed : []) : []);
         const hasGuideData = run.guidesUsed !== undefined || run.guideUsed !== undefined;
+        const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : 'modern-web.log';
 
         if (hasGuideData && runType !== 'unguided') {
             guideSection = `
@@ -545,7 +544,7 @@ async function showDetails(testName, runs, stats, testId) {
                             </div>
                         </div>
                         <div>
-                            <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${allTestData.enableSkills && sessionFile ? 'Agent Trajectory' : MCP_LOG_FILE}</a>
+                            <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${allTestData.enableSkills && sessionFile ? 'Agent Trajectory' : logFile}</a>
                         </div>
                     </div>
                 </div>
@@ -579,7 +578,7 @@ async function showDetails(testName, runs, stats, testId) {
                 if (allTestData.enableSkills && sessionFile) {
                     openTrajectory(usedBasePath, sessionFile);
                 } else {
-                    const resourcesPath = `${usedBasePath}/${MCP_LOG_FILE}`;
+                    const resourcesPath = `${usedBasePath}/${logFile}`;
                     viewContent(resourcesPath, resourcesPath);
                 }
             };

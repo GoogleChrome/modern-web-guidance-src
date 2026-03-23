@@ -1,10 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { MCP_LOG_FILE } from "../../constants.ts";
+import { MODERN_WEB_LOG_FILE } from "../../constants.ts";
 
-const logDir = process.env.MCP_LOG_DIR || process.cwd();
-const logPath = path.join(logDir, MCP_LOG_FILE);
+const logDir = process.env.MODERN_WEB_LOG_DIR || process.cwd();
+const logPath = path.join(logDir, MODERN_WEB_LOG_FILE);
 
 const originalConsoleError = console.error;
 console.error = (...args) => {
