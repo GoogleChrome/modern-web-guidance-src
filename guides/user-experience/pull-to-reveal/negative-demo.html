@@ -3,62 +3,112 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>App</title>
+  <title>Application Interface</title>
   <style>
     body {
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #cccccc;
       margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-    .scroll-container {
-      overflow: visible;
+
+    .app-window {
+      width: 320px;
+      height: 580px;
+      background: #fdfdfd;
+      border: 2px solid #333333;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
-    .search-bar {
-      background-color: #e2e8f0;
-      padding: 15px;
+
+    .header-bar {
+      background: #4a90e2;
+      color: white;
+      padding: 12px;
+      text-align: center;
+      font-size: 18px;
     }
-    .search-input {
-      width: 100%;
+
+    .scrolling-content {
+      flex: 1;
+      overflow-y: scroll;
+    }
+
+    .hidden-search {
+      background-color: #eeeeee;
       padding: 10px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid #bbbbbb;
     }
-    .main-content {
-      padding: 20px;
-      scroll-initial-target: nearest;
+
+    .hidden-search input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #999999;
     }
-    .content-box {
-      scroll-initial-target: nearest;
-      background: white;
+
+    .content-area {
+      padding: 15px;
+      height: 1200px;
+    }
+
+    .news-card {
+      background: #ffffff;
+      border: 1px solid #dddddd;
+      margin-bottom: 15px;
       padding: 20px;
-      margin-bottom: 10px;
-      border: 1px solid #ccc;
+    }
+
+    .news-card h2 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
     }
   </style>
 </head>
 <body>
-  <div>
-    <h1>App Title</h1>
-    <div class="scroll-container" id="container">
-      <div class="search-bar">
-        <input type="text" class="search-input" placeholder="Search...">
+
+  <div class="app-window">
+    <div class="header-bar">News Feed</div>
+
+    <div class="scrolling-content" id="app-scroller">
+      <div class="hidden-search">
+        <input type="text" placeholder="Search news...">
       </div>
-      <div class="main-content" id="target">
-        <div class="content-box">
-          <h3>Welcome Back!</h3>
+
+      <div class="content-area">
+        <div class="news-card">
+          <h2>Today's Headlines</h2>
+          <p>Welcome to your daily news digest. Scroll up to search for specific topics.</p>
         </div>
-        <div class="content-box">
-          <h3>Recent Activity</h3>
+        <div class="news-card">
+          <h2>Weather Update</h2>
+          <p>Expect clear skies and sunshine throughout the weekend.</p>
+        </div>
+        <div class="news-card">
+          <h2>Sports Report</h2>
+          <p>The local team secured a victory in last night's game.</p>
         </div>
       </div>
     </div>
   </div>
+
   <script>
-    window.addEventListener("load", function() {
+    window.onload = function() {
       setTimeout(function() {
-        var target = document.getElementById("target");
-        if (target) {
-          target.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      }, 500);
-    });
+        const scroller = document.getElementById('app-scroller');
+        scroller.scrollTo({
+          top: 70,
+          behavior: 'smooth'
+        });
+      }, 800);
+    };
   </script>
 </body>
 </html>
