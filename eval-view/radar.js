@@ -107,21 +107,8 @@ export class RadarChart {
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
 
-        if (Math.abs(cos) < 0.1) {
-          text.setAttribute("text-anchor", "middle");
-        } else if (cos > 0) {
-          text.setAttribute("text-anchor", "start");
-        } else {
-          text.setAttribute("text-anchor", "end");
-        }
-
-        if (Math.abs(sin) < 0.1) {
-          text.setAttribute("alignment-baseline", "middle");
-        } else if (sin > 0) {
-          text.setAttribute("alignment-baseline", "hanging");
-        } else {
-          text.setAttribute("alignment-baseline", "baseline");
-        }
+        text.setAttribute("text-anchor", Math.abs(cos) < 0.1 ? "middle" : (cos > 0 ? "start" : "end"));
+        text.setAttribute("alignment-baseline", Math.abs(sin) < 0.1 ? "middle" : (sin > 0 ? "hanging" : "baseline"));
 
         text.setAttribute("fill", "#c9d1d9");
         text.setAttribute("font-size", "11"); // Slightly smaller
