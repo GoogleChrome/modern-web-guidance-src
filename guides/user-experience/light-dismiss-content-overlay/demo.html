@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Light-Dismiss Content Overlay</title>
+  <style>
+    body {
+      font: 1em/1.5 system-ui, sans-serif;
+      margin: 2rem;
+      color: #333;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #f0f0f0;
+    }
+
+    /* Action menu popover */
+    #action-menu {
+      margin: 0;
+      padding: 0.25rem 0;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      min-width: 160px;
+      list-style: none;
+    }
+
+    #action-menu li {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+    }
+
+    #action-menu li:hover {
+      background: #f0f0f0;
+    }
+
+    /* Account panel popover */
+    #account-panel {
+      margin: 0;
+      padding: 1.25rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      width: 240px;
+    }
+
+    #account-panel h3 {
+      margin: 0 0 0.5rem;
+      font-size: 1rem;
+    }
+
+    #account-panel p {
+      margin: 0 0 0.75rem;
+      font-size: 0.875rem;
+      color: #666;
+    }
+
+    .status {
+      margin-top: 1.5rem;
+      padding: 0.75rem;
+      background: #f9f9f9;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Light-Dismiss Content Overlay</h1>
+  <p>Click a button to open an overlay. Click outside or press Escape to dismiss.</p>
+
+  <div class="toolbar">
+    <!-- Declarative popover control: no JavaScript needed to toggle -->
+    <button popovertarget="action-menu">Actions</button>
+    <button popovertarget="account-panel">Account</button>
+  </div>
+
+  <!-- Action menu using popover="auto" for light dismiss -->
+  <ul id="action-menu" popover role="menu">
+    <li role="menuitem">Edit</li>
+    <li role="menuitem">Duplicate</li>
+    <li role="menuitem">Archive</li>
+    <li role="menuitem">Delete</li>
+  </ul>
+
+  <!-- Account panel using popover="auto" for light dismiss -->
+  <div id="account-panel" popover>
+    <h3>My Account</h3>
+    <p>user@example.com</p>
+    <button popovertarget="account-panel" popovertargetaction="hide">
+      Sign Out
+    </button>
+  </div>
+
+  <div class="status" id="status">No popover events yet.</div>
+
+  <script>
+    const status = document.getElementById('status');
+
+    // Listen for toggle events on both popovers
+    document.querySelectorAll('[popover]').forEach((el) => {
+      el.addEventListener('toggle', (e) => {
+        const name = el.id;
+        if (e.newState === 'open') {
+          status.textContent = `"${name}" opened.`;
+        } else {
+          status.textContent = `"${name}" closed.`;
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>

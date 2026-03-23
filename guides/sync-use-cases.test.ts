@@ -4,7 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
-import { validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
+import { validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, processGuideInventory, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
+import type { GuideInventory } from '../harness/lib/utils.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -481,10 +482,10 @@ describe('getFeaturesNeedingSync', () => {
     assert.deepStrictEqual(result[0], { featureId: 'autofill', issueNumber: 27, needsReopen: false, closeReason: 'completed', targetStatus: null });
   });
 
-  test('skips open feature with no use cases — it may just be waiting for use cases', () => {
+  test('sets "Needs use cases" for open feature with no use cases', () => {
     const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
     const result = getFeaturesNeedingSync(featureMap, new Set(), new Set());
-    assert.deepStrictEqual(result, []);
+    assert.deepStrictEqual(result, [{ featureId: 'autofill', issueNumber: 27, needsReopen: false, closeReason: null, targetStatus: 'Needs use cases' }]);
   });
 
   test('skips already-closed feature with all use cases implemented', () => {
@@ -511,15 +512,24 @@ describe('getFeaturesNeedingSync', () => {
     assert.ok(result.every(f => f.targetStatus === 'Needs evals'));
   });
 
-  test('closes feature with completed use cases but skips feature with no use cases', () => {
+  test('closes feature with completed use cases', () => {
     const featureMap = makeFeatureMap([
       ['autofill', { number: 27, state: 'open' }],
-      ['view-transitions', { number: 55, state: 'open' }],
     ]);
     const result = getFeaturesNeedingSync(featureMap, new Set(), new Set(['autofill']));
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0].featureId, 'autofill');
     assert.strictEqual(result[0].closeReason, 'completed');
+  });
+
+  test('sets "Needs use cases" for feature with no use cases', () => {
+    const featureMap = makeFeatureMap([
+      ['view-transitions', { number: 55, state: 'open' }],
+    ]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(), new Set());
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].featureId, 'view-transitions');
+    assert.strictEqual(result[0].targetStatus, 'Needs use cases');
   });
 });
 
@@ -584,5 +594,65 @@ describe('updateFeatureIssueBody', () => {
   test('returns unchanged body if checklist is already up to date', () => {
     const body = updateFeatureIssueBody('Feature ID: autofill', useCases);
     assert.strictEqual(updateFeatureIssueBody(body, useCases), body);
+  });
+});
+
+describe('processGuideInventory', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = createTempDir();
+  });
+
+  afterEach(() => {
+    removeTempDir(tempDir);
+  });
+
+  function makeInventory(overrides: Partial<GuideInventory> = {}): GuideInventory {
+    return {
+      dir: tempDir,
+      name: 'my-use-case',
+      category: 'test',
+      hasGuide: true,
+      isStub: false,
+      hasDemo: true,
+      hasExpectations: false,
+      expectationsEmpty: false,
+      hasNegativeDemo: false,
+      hasGrader: false,
+      hasPrompts: false,
+      hasTask: false,
+      featureIds: [],
+      ...overrides,
+    };
+  }
+
+  test('returns exactly one error for one invalid feature ID', () => {
+    fs.writeFileSync(path.join(tempDir, 'guide.md'), `---
+name: my-use-case
+description: A description
+web-feature-ids:
+  - invalid-feature-id-test
+---
+Body content.
+`);
+    const result = processGuideInventory([makeInventory()]);
+    assert.strictEqual(result.errors.length, 1);
+    assert.match(result.errors[0], /invalid-feature-id-test/);
+  });
+
+  test('returns no errors for a valid guide', () => {
+    fs.writeFileSync(path.join(tempDir, 'guide.md'), `---
+name: my-use-case
+description: A description
+web-feature-ids:
+  - dialog-closedby
+---
+Body content.
+`);
+    const result = processGuideInventory([makeInventory()]);
+    assert.strictEqual(result.errors.length, 0);
+    assert.strictEqual(result.hasError, false);
+    assert.strictEqual(result.preparedGuides.length, 1);
   });
 });

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Detect Initial Visibility State Demo</title>
+</head>
+
+<body>
+  <h1>Detect Initial Visibility State</h1>
+
+  <p>This page reliably determines whether it was initially loaded in the background,
+    even if this script runs after the page has already been foregrounded.</p>
+  <p><a href="demo.html">Cmd/Ctrl+Click to open this page in a background tab</a></p>
+  <button id="check">Check initial visibility state</button>
+  <p id="result"></p>
+
+  <script>
+    function getInitialVisibilityState() {
+      const entries = performance.getEntriesByType('visibility-state');
+      if (entries.length > 0) {
+        return entries[0].name;
+      }
+      // Fallback for browsers that don't support VisibilityStateEntry.
+      return document.visibilityState;
+    }
+
+    document.getElementById('check').addEventListener('click', () => {
+      const initialState = getInitialVisibilityState();
+      document.getElementById('result').textContent =
+          `Initial visibility state: ${initialState}`;
+    });
+  </script>
+</body>
+
+</html>
