@@ -1,4 +1,4 @@
-import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo } from './utils.js';
+import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateRadarData } from './utils.js';
 import { RadarChart } from './radar.js';
 
 let allTestData = {}; // Cache all test data by testId
@@ -474,71 +474,27 @@ function showRadarTooltip(testInfo, x, y, compoundKey) {
     if (headerDiv) {
         headerDiv.innerHTML = `
             <div class="radar-tooltip-title">${escapeHtml(testInfo.testId)}</div>
-            <div class="radar-tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(testInfo.servingArch)}</div>
+            <div class="radar-tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(testInfo.servingArch.replace('mcp', 'MCP'))}</div>
         `;
     }
 
-    const data = testInfo.data;
-    const results = data.results;
-    
-    // Extract scenarios (app + guide)
-    const apps = {};
-    Object.keys(results).forEach(key => {
-        const parts = key.split(' - ');
-        if (parts.length !== 3) return;
-        const [appName, guide, runType] = parts;
-        const scenarioName = `${appName} (${guide})`;
-        if (!apps[scenarioName]) apps[scenarioName] = { guided: [], unguided: [] };
-        
-        const runData = results[key];
-        const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
-        const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
-        const avgRate = totalChecks > 0 ? (totalPassed / totalChecks) * 100 : 0;
-        
-        if (runType === 'guided') apps[scenarioName].guided.push(avgRate);
-        else if (runType === 'unguided') apps[scenarioName].unguided.push(avgRate);
-    });
-
-    const labels = Object.keys(apps).sort();
-    if (labels.length < 3) return; // Radar chart needs at least 3 axes
-
-    const guidedData = labels.map(l => {
-        const s = apps[l].guided;
-        return s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;
-    });
-    const unguidedData = labels.map(l => {
-        const s = apps[l].unguided;
-        return s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;
-    });
+    const { labels, guided, unguided } = calculateRadarData(testInfo.data.results);
+    if (labels.length < 3) return;
 
     tooltipContainer.classList.remove('hidden');
     updateTooltipPosition(x, y);
 
     if (!radarChartInstance) {
         radarChartInstance = new RadarChart('radar-tooltip-chart', {
-            size: 300,
-            padding: 20,
-            levels: 5,
-            hideLabels: true,
-            hideLegend: true
+            size: 300, padding: 20, levels: 5, hideLabels: true, hideLegend: true
         });
     }
 
     radarChartInstance.render({
-        labels: labels,
+        labels,
         datasets: [
-            {
-                label: 'Unguided',
-                data: unguidedData,
-                backgroundColor: 'rgba(218, 54, 51, 0.2)',
-                borderColor: '#da3633'
-            },
-            {
-                label: 'Guided',
-                data: guidedData,
-                backgroundColor: 'rgba(35, 134, 54, 0.2)',
-                borderColor: '#238636'
-            }
+            { label: 'Unguided', data: unguided, backgroundColor: 'rgba(218, 54, 51, 0.2)', borderColor: '#da3633' },
+            { label: 'Guided', data: guided, backgroundColor: 'rgba(35, 134, 54, 0.2)', borderColor: '#238636' }
         ]
     });
 }

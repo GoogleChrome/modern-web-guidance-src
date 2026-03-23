@@ -45,26 +45,35 @@ export function capitalize(s) {
 }
 
 export function timeAgo(date) {
-    const now = new Date();
-    const diffInSeconds = Math.floor((now - new Date(date)) / 1000);
+    const diff = Math.floor((new Date() - new Date(date)) / 1000);
     const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-
     const units = [
-        { name: 'year', seconds: 31536000 },
-        { name: 'month', seconds: 2592000 },
-        { name: 'day', seconds: 86400 },
-        { name: 'hour', seconds: 3600 },
-        { name: 'minute', seconds: 60 },
-        { name: 'second', seconds: 1 }
+        { name: 'year', s: 31536000 }, { name: 'month', s: 2592000 },
+        { name: 'day', s: 86400 }, { name: 'hour', s: 3600 },
+        { name: 'minute', s: 60 }, { name: 'second', s: 1 }
     ];
+    const u = units.find(u => Math.abs(diff) >= u.s) || units[units.length - 1];
+    return rtf.format(-Math.floor(diff / u.s), u.name);
+}
 
-    for (const unit of units) {
-        if (Math.abs(diffInSeconds) >= unit.seconds || unit.name === 'second') {
-            const value = Math.floor(diffInSeconds / unit.seconds);
-            return rtf.format(-value, unit.name);
-        }
-    }
-    return 'just now';
+export function calculateRadarData(results) {
+    const apps = {};
+    Object.keys(results).forEach(key => {
+        const [appName, guide, runType] = key.split(' - ');
+        if (!runType) return;
+        const scenario = `${appName} (${guide})`;
+        if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [] };
+        const runs = results[key];
+        const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
+        const total = runs.reduce((acc, r) => acc + r.results.length, 0);
+        apps[scenario][runType].push(total > 0 ? (passed / total) * 100 : 0);
+    });
+    const labels = Object.keys(apps).sort();
+    const getAvg = (l, type) => {
+        const s = apps[l][type];
+        return s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;
+    };
+    return { labels, guided: labels.map(l => getAvg(l, 'guided')), unguided: labels.map(l => getAvg(l, 'unguided')) };
 }
 
 export function formatTestName(name) {
