@@ -14,23 +14,24 @@ export function getColor(percentage) {
     const p = Math.max(0, Math.min(100, percentage));
     let l, c, h;
 
-    if (p < 50) {
-        // 0% to 50%: Red to Yellow
-        const t = p / 50;
+    if (p <= 50) {
+        // Constant Red
+        l = 0.53; c = 0.18; h = 26;
+    } else if (p >= 90) {
+        // Constant Green
+        l = 0.52; c = 0.13; h = 145;
+    } else if (p < 70) {
+        // 50% to 70%: Red to Yellow
+        const t = (p - 50) / 20;
         l = 0.53 + (0.72 - 0.53) * t;
         c = 0.18 + (0.15 - 0.18) * t;
         h = 26 + (74 - 26) * t;
-    } else if (p < 90) {
-        // 50% to 90%: Yellow to Green
-        const t = (p - 50) / 40;
+    } else {
+        // 70% to 90%: Yellow to Green
+        const t = (p - 70) / 20;
         l = 0.72 + (0.52 - 0.72) * t;
         c = 0.15 + (0.13 - 0.15) * t;
         h = 74 + (145 - 74) * t;
-    } else {
-        // 90% to 100%: Green
-        l = 0.52;
-        c = 0.13;
-        h = 145;
     }
     return `oklch(${Math.round(l * 100)}% ${c.toFixed(3)} ${Math.round(h)})`;
 }
