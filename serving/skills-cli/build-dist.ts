@@ -163,14 +163,17 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   const sortedFeatures = Array.from(featureMap.entries()).sort((a, b) => a[1].name.localeCompare(b[1].name));
   
   let dynamicMd = `\n## Supported Web Features (${sortedFeatures.length})\n\n`;
+
+  dynamicMd += `<details>\n<summary>$
+${sortedFeatures.map(([featureId, data]) => `[${data.name.replace(/</g, '&lt;')}](https://webstatus.dev/features/${featureId})`).join(', ')}
+\n</summary>\n\n`;
   for (const [featureId, data] of sortedFeatures) {
-    dynamicMd += `### [${data.name}](https://webstatus.dev/features/${featureId})\n\n`;
-    dynamicMd += `<details>\n<summary>Use cases covered (${data.useCases.length})</summary>\n\n`;
     for (const uc of data.useCases) {
       dynamicMd += `- **${uc.id}**: ${uc.description}\n`;
     }
-    dynamicMd += `\n</details>\n\n`;
+    dynamicMd += `\n`;
   }
+  dynamicMd += `\n</details>\n\n`;
 
   // Update README
   const readmePath = path.join(publishRoot, "README.md");

@@ -1,6 +1,6 @@
 # Modern Web Guidance
 
-The definitive source of truth for AI coding agents. This curated collection of skills, tools, and AI-ready documentation injects Chrome's platform knowledge directly into your workflow, ensuring your AI builds sites that are modern, fast, and secure by default.
+This curated collection of skills, tools, and AI-ready documentation injects Chrome's web platform knowledge directly into your workflow, ensuring your AI builds sites that are modern, fast, and secure by default.
 
 ## Installation
 
