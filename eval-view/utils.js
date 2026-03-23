@@ -12,7 +12,7 @@ export function getRunStats(checks) {
 
 export function getColor(percentage) {
     if (percentage >= 90) return 'var(--accent-success)';
-    if (percentage >= 50) return '#dbab09';
+    if (percentage >= 50) return 'var(--accent-warning)';
     return 'var(--accent-failure)';
 }
 
