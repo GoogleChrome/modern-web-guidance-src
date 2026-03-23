@@ -44,6 +44,29 @@ export function capitalize(s) {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+export function timeAgo(date) {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - new Date(date)) / 1000);
+    const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+
+    const units = [
+        { name: 'year', seconds: 31536000 },
+        { name: 'month', seconds: 2592000 },
+        { name: 'day', seconds: 86400 },
+        { name: 'hour', seconds: 3600 },
+        { name: 'minute', seconds: 60 },
+        { name: 'second', seconds: 1 }
+    ];
+
+    for (const unit of units) {
+        if (Math.abs(diffInSeconds) >= unit.seconds || unit.name === 'second') {
+            const value = Math.floor(diffInSeconds / unit.seconds);
+            return rtf.format(-value, unit.name);
+        }
+    }
+    return 'just now';
+}
+
 export function formatTestName(name) {
     if (!name) return name;
     return name.split(' - ').join(' / ');

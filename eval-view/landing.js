@@ -1,4 +1,4 @@
-import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml } from './utils.js';
+import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo } from './utils.js';
 import { RadarChart } from './radar.js';
 
 let allTestData = {}; // Cache all test data by testId
@@ -402,6 +402,7 @@ function renderSuites() {
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
 
         const localLink = `dashboard.html?testId=${testId}&source=${testInfo.source}`;
+        const timeAgoStr = timeAgo(_date);
 
         html += `
             <tr class="suite-table-row" onclick="window.location.href='${localLink}'" style="cursor: pointer;">
@@ -417,7 +418,10 @@ function renderSuites() {
                     <div class="rate-bar" style="width: ${uRate}%;"></div>
                     <div class="rate-value"><span style="font-weight: 700; color: ${getColor(uRate)};">${uRate}%</span></div>
                 </td>
-                <td style="padding-right:15px; text-align: right; color: var(--text-secondary); font-size: 0.85rem;">${prettyTimestampStr}</td>
+                <td style="padding-right:15px; text-align: right; font-size: 0.85rem;">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">${timeAgoStr}</div>
+                    <div style="color: var(--text-secondary); font-size: 0.8em;">${prettyTimestampStr}</div>
+                </td>
             </tr>
         `;
     });
