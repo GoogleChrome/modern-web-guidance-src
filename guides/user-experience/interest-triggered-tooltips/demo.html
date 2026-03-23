@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Interest-Triggered Tooltips</title>
+    <style>
+      body {
+        font: 1rem/1.5 system-ui, sans-serif;
+        margin: 2rem;
+      }
+
+      p {
+        max-width: 40rem;
+      }
+
+      button[interestfor] {
+        background: none;
+        border: none;
+        border-bottom: 1px dashed currentColor;
+        padding: 0;
+        font: inherit;
+        cursor: help;
+      }
+
+      [popover] {
+        margin: 0;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #ccc;
+        border-radius: 0.375rem;
+        background: #333;
+        color: #fff;
+        font-size: 0.875rem;
+        max-width: 20rem;
+        position: fixed;
+        position-anchor: auto;
+        position-area: top;
+        position-try-fallbacks: flip-block;
+        margin-bottom: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Interest-Triggered Tooltips</h1>
+    <p>
+      The document <button interestfor="tooltip-dom">DOM</button> is a
+      tree structure that represents the content of a web page. Each node
+      in the tree corresponds to an element, and nodes can have
+      <button interestfor="tooltip-attrs">attributes</button> that provide
+      additional information about the element.
+    </p>
+
+    <div id="tooltip-dom" popover="hint">
+      Document Object Model — the browser's in-memory representation
+      of a web page's structure.
+    </div>
+    <div id="tooltip-attrs" popover="hint">
+      Key-value pairs on HTML elements that configure behavior or
+      provide metadata, such as <code>class</code> or <code>id</code>.
+    </div>
+  </body>
+</html>
