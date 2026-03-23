@@ -13,7 +13,7 @@ A curated collection of web development agent skills and tools.
 
 ### For Gemini CLI
 ```bash
-gemini extensions install https://github.com/GoogleChrome/skills-alpha
+gemini extensions install https://github.com/GoogleChrome/skills-alpha --auto-update
 ```
 
 ### For Vanilla Skills Pack

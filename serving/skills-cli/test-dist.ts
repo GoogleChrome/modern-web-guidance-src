@@ -11,7 +11,7 @@ const ROOT_DIR = path.resolve(__dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist");
 
 console.log("Running dist-gen to ensure fresh build...");
-execSync('node --experimental-strip-types scripts/skills-cli-dist-gen.ts', { 
+execSync('npm run dist-gen', { 
   cwd: path.resolve(__dirname, '..'), 
   stdio: 'inherit' 
 });
