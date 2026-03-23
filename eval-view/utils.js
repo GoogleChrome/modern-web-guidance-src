@@ -11,23 +11,28 @@ export function getRunStats(checks) {
 }
 
 export function getColor(percentage) {
-    const p = Math.max(0, Math.min(100, percentage)) / 100;
+    const p = Math.max(0, Math.min(100, percentage));
     let l, c, h;
 
-    if (p < 0.5) {
-        // Red (oklch(55% 0.2 25)) to Yellow (oklch(85% 0.2 85))
-        const t = p / 0.5;
-        l = 0.55 + (0.85 - 0.55) * t;
-        c = 0.2;
-        h = 25 + (85 - 25) * t;
+    if (p < 50) {
+        // 0% to 50%: Red to Yellow
+        const t = p / 50;
+        l = 0.53 + (0.72 - 0.53) * t;
+        c = 0.18 + (0.15 - 0.18) * t;
+        h = 26 + (74 - 26) * t;
+    } else if (p < 90) {
+        // 50% to 90%: Yellow to Green
+        const t = (p - 50) / 40;
+        l = 0.72 + (0.52 - 0.72) * t;
+        c = 0.15 + (0.13 - 0.15) * t;
+        h = 74 + (145 - 74) * t;
     } else {
-        // Yellow (oklch(85% 0.2 85)) to Green (oklch(65% 0.2 145))
-        const t = (p - 0.5) / 0.5;
-        l = 0.85 + (0.65 - 0.85) * t;
-        c = 0.2;
-        h = 85 + (145 - 85) * t;
+        // 90% to 100%: Green
+        l = 0.52;
+        c = 0.13;
+        h = 145;
     }
-    return `oklch(${Math.round(l * 100)}% ${c} ${Math.round(h)})`;
+    return `oklch(${Math.round(l * 100)}% ${c.toFixed(3)} ${Math.round(h)})`;
 }
 
 export function escapeHtml(text) {
