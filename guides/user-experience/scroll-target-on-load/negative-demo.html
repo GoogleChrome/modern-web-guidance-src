@@ -3,66 +3,84 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Feed</title>
+  <title>Conversation Thread</title>
   <style>
     body {
+      font-family: sans-serif;
       margin: 0;
       padding: 20px;
     }
 
-    .container {
-      width: 400px;
-      border: 1px solid black;
+    .chat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
 
-    .card {
+    .message {
       padding: 10px;
-      border-bottom: 1px solid #ccc;
+      background: #f0f0f0;
+      border-radius: 8px;
     }
 
-    .card img {
+    .message img {
       max-width: 100%;
+      display: block;
+      margin-top: 5px;
     }
 
-    .featured {
-      background-color: #ffffee;
+    .highlight {
+      background: #e3f2fd;
+      border: 1px solid #2196f3;
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <div class="card">
-      <p>Intro post</p>
-      <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=400&auto=format&fit=crop">
+  <h1>Chat History</h1>
+
+  <div class="chat-list">
+    <div class="message">
+      <p>Starting the project today.</p>
     </div>
     
-    <div class="card">
-      <p>More content here</p>
-      <img src="https://images.unsplash.com/photo-1550684376-efcbd6e3f031?q=80&w=400&auto=format&fit=crop">
+    <div class="message">
+      <p>Check out this reference image:</p>
+      <img src="https://picsum.photos/id/237/400/300" alt="Reference">
     </div>
 
-    <div class="card">
-      <p>Another item before the one we want</p>
-      <img src="https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=400&auto=format&fit=crop">
+    <div class="message">
+      <p>I think we should go with a darker theme.</p>
     </div>
 
-    <div id="target" class="card featured">
-      <p>This is the important post</p>
-      <img src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=400&auto=format&fit=crop">
+    <div class="message">
+      <p>Another example here:</p>
+      <img src="https://picsum.photos/id/238/400/300" alt="Example">
     </div>
 
-    <div class="card">
-      <p>Trailing content</p>
-      <img src="https://images.unsplash.com/photo-1493612276216-ee3925520721?q=80&w=400&auto=format&fit=crop">
+    <div class="message highlight" id="msg-target">
+      <p>This is the important message we need to discuss.</p>
+    </div>
+
+    <div class="message">
+      <p>Let me know what you think.</p>
+    </div>
+
+    <div class="message">
+      <p>I'll be available later today.</p>
+    </div>
+    
+    <div class="message">
+      <p>Here is one more thing:</p>
+      <img src="https://picsum.photos/id/239/400/300" alt="Additional">
     </div>
   </div>
 
   <script>
     window.onload = function() {
-      const el = document.getElementById('target');
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth' });
+      const target = document.getElementById('msg-target');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
       }
     };
   </script>
