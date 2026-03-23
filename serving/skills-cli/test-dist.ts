@@ -10,8 +10,8 @@ const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
-console.log("Running dist-gen to ensure fresh build...");
-execSync('npm run dist-gen', { 
+console.log("Running build-dist to ensure fresh build...");
+execSync('npm run build-dist', { 
   cwd: path.resolve(__dirname, '..'), 
   stdio: 'inherit' 
 });

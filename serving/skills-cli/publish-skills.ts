@@ -63,7 +63,7 @@ async function main() {
   const newVersion = await bumpVersions();
   
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  execSync('npm run dist-gen', { cwd: SERVING_DIR, stdio: 'inherit' });
+  execSync('npm run build-dist', { cwd: SERVING_DIR, stdio: 'inherit' });
   
   if (isDryRun) {
     console.log(`\n[Dry Run] Skipping GitHub publishing and metadata push wrapper.`);

@@ -20,7 +20,7 @@
     "prepublishOnly": "npm run build",
     "build": "node scripts/build-guides.ts",
     "build:megaskill": "node scripts/build-megaskill.ts",
-    "dist-gen": "node --experimental-strip-types skills-cli/skills-cli-dist-gen.ts",
+    "build-dist": "node --experimental-strip-types */build-dist.ts",
     "publish-skills": "node --experimental-strip-types skills-cli/publish-skills.ts",
     "start": "node mcp-server/index.ts",
     "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
