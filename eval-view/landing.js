@@ -180,22 +180,26 @@ function setupTestFilters() {
 }
 
 function setupTableFilters() {
-    const filterSource = document.getElementById('filter-source');
-    const filterAgent = document.getElementById('filter-agent');
-    const filterSkills = document.getElementById('filter-skills');
+    const filters = {
+        'filter-source': (val) => currentSourceFilter = val,
+        'filter-agent': (val) => currentAgentFilter = val,
+        'filter-skills': (val) => currentSkillsFilter = val
+    };
 
-    if (filterSource) filterSource.addEventListener('change', (e) => {
-        currentSourceFilter = e.target.value;
-        renderSuites();
+    Object.entries(filters).forEach(([id, updateFn]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('change', (e) => {
+            updateFn(e.target.value);
+            syncSelectStyles(e.target);
+            renderSuites();
+        });
+        syncSelectStyles(el);
     });
-    if (filterAgent) filterAgent.addEventListener('change', (e) => {
-        currentAgentFilter = e.target.value;
-        renderSuites();
-    });
-    if (filterSkills) filterSkills.addEventListener('change', (e) => {
-        currentSkillsFilter = e.target.value;
-        renderSuites();
-    });
+}
+
+function syncSelectStyles(el) {
+    el.classList.toggle('is-filtered', el.value !== 'all');
 }
 
 

@@ -28,8 +28,8 @@
   font-size: 0.85em;
   padding: 4px 8px;
   border-radius: 6px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background-color: transparent;
+  border: 1px solid transparent;
   color: var(--text-secondary);
   cursor: pointer;
   outline: none;
@@ -46,8 +46,14 @@
   background-position: right 8px center;
   background-size: 1em;
   padding-right: 28px;
-  width: 100%;
-  max-width: 130px;
+  width: auto;
+  min-width: 80px;
+}
+
+.header-filter-select.is-filtered {
+  background-color: var(--bg-secondary);
+  border-color: var(--accent-color);
+  color: var(--text-primary);
 }
 
 .header-filter-select optgroup {
@@ -63,9 +69,14 @@
 }
 
 .header-filter-select:hover {
-  background-color: var(--bg-tertiary);
-  border-color: var(--text-secondary);
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
   color: var(--text-primary);
+}
+
+.header-filter-select.is-filtered:hover {
+  border-color: var(--accent-color);
+  filter: brightness(1.1);
 }
 .landing-container {
   max-width: 1400px;
