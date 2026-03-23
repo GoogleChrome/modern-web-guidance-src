@@ -1,43 +1,25 @@
 import fs from 'fs';
 import path from 'path';
-import { MCP_LOG_FILE } from '../../constants.ts';
+import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+import { Agents } from '../config.ts';
+import { collectGeminiCliGuides } from '../agents/gemini-cli-agent.ts';
+import { collectClaudeCodeGuides } from '../agents/claude-code-agent.ts';
+import { collectJetskiGuides } from '../agents/jetski-agent.ts';
 
-export async function collectGuidesUsed(dirPath: string, enableSkills: boolean): Promise<string[]> {
-  if (enableSkills) {
-    const guidesFromSkills: string[] = [];
-    try {
-      const files = fs.readdirSync(dirPath);
-      const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
-
-      for (const file of sessionFiles) {
-        const sessionPath = path.join(dirPath, file);
-        const sessionContent = fs.readFileSync(sessionPath, 'utf8');
-        const session = JSON.parse(sessionContent);
-
-        if (session.messages) {
-          for (const msg of session.messages) {
-            if (msg.toolCalls) {
-              for (const tc of msg.toolCalls) {
-                if (tc.name === 'read_file' && tc.args && tc.args.file_path) {
-                  const filePath = tc.args.file_path;
-                  if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
-                    const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
-                    if (match) {
-                      guidesFromSkills.push(match[1]);
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.error(`Error reading session files in ${dirPath}:`, e);
+export async function collectGuidesUsed(dirPath: string, enableSkills: boolean, agent: string): Promise<string[]> {
+  if (enableSkills) { // Skills path
+    if (agent === Agents.GEMINI_CLI) {
+      return collectGeminiCliGuides(dirPath);
+    } else if (agent === Agents.JETSKI) {
+      return collectJetskiGuides(dirPath);
+    } else if (agent === Agents.CLAUDE_CODE) {
+      return collectClaudeCodeGuides(dirPath);
+    } else {
+      console.warn(`Unknown agent ${agent} for skills collection`);
+      return [];
     }
-    return [...new Set(guidesFromSkills)];
-  } else {
-    const logPath = path.join(dirPath, MCP_LOG_FILE);
+  } else { // MCP path
+    const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
     let guidesFromLog: string[] = [];
 
     if (fs.existsSync(logPath)) {
@@ -66,3 +48,4 @@ export async function collectGuidesUsed(dirPath: string, enableSkills: boolean):
     return [...new Set(guidesFromLog)];
   }
 }
+

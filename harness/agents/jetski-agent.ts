@@ -2,21 +2,20 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import puppeteer from 'puppeteer-core';
+import { fileURLToPath } from 'url';
 import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config, Agents } from '../config.ts';
 
 import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, exportTrajectories, watchLogFile } from '../lib/agent-shared.ts';
-import { MCP_LOG_FILE } from '../../constants.ts';
+import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 // Usage: node jetski-agent.ts <prompt> <runType> <targetDir> <templateDir>
-const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-agent.ts');
-
 /**
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
-function setupIsolatedWorkDir(): string {
+function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir: string): string {
   const tempHome = createIsolatedHome('ghh-jetski');
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
@@ -266,7 +265,8 @@ async function startJetski(directory: string, profileDir: string): Promise<void>
 }
 
 async function run(): Promise<void> {
-  const workDir = setupIsolatedWorkDir();
+  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-agent.ts');
+  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
   let stopWatchingMcpLog = () => { };
 
   if (!workDir || !fs.existsSync(workDir)) {
@@ -327,7 +327,7 @@ async function run(): Promise<void> {
       console.log(`Jetski info already exists at: ${jetskiInfoPath}`);
     }
 
-    stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
+    stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
 
     const inputSelector = '[contenteditable="true"][role="textbox"]';
     const sendButtonSelector = '[data-tooltip-id="input-send-button-send-tooltip"]';
@@ -468,4 +468,13 @@ async function run(): Promise<void> {
   }
 }
 
-run();
+export async function collectJetskiGuides(dirPath: string): Promise<string[]> {
+  // TODO: Implement skills guide collection for Jetski (need gLinux-only binary, cannot land in GH)
+  console.log(`Jetski skills collection for ${dirPath} still needs to be populated.`);
+  return [];
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  run();
+}

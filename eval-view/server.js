@@ -62,7 +62,22 @@ const server = http.createServer(async (req, res) => {
         const dirs = fs.readdirSync(resultsDir, { withFileTypes: true })
           .filter(dirent => dirent.isDirectory() && dirent.name !== 'single_task')
           .map(dirent => dirent.name);
-        dirs.forEach(d => suitesList.push({ id: d, source: 'local' }));
+        
+        dirs.forEach(d => {
+          const suiteDir = path.join(resultsDir, d);
+          const evalsJsonPath = path.join(suiteDir, 'evals.json');
+          let timestamp = null;
+          try {
+            if (fs.existsSync(evalsJsonPath)) {
+              timestamp = fs.statSync(evalsJsonPath).mtime.toISOString();
+            } else {
+              timestamp = fs.statSync(suiteDir).mtime.toISOString();
+            }
+          } catch {
+            timestamp = new Date().toISOString();
+          }
+          suitesList.push({ id: d, source: 'local', timestamp });
+        });
       }
     } catch (e) {
       console.error('Error reading local suites:', e.message);
