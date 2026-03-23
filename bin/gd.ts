@@ -7,6 +7,7 @@ import { spawn } from 'child_process';
 import omelette from 'omelette';
 import { fileURLToPath } from 'url';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
+import { config, Serving } from '../harness/config.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -227,7 +228,13 @@ ${cBold('Options:')}
         process.exit(1);
       }
       
-      const buildCode = await runNpm(['build:mcp']);
+      let buildCode = 0;
+      if (config.suite.serving === Serving.MCP) {
+        buildCode = await runNpm(['build:mcp']);
+      } else if (config.suite.serving === Serving.SKILLS_CLI) {
+        buildCode = await runNpm(['--filter', 'modern-web-mcp', 'dist-gen']);
+      }
+      
       if (buildCode !== 0) process.exit(buildCode);
       const { runSuite } = await import('../harness/run_suite.ts');
 

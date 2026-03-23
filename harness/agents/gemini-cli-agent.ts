@@ -4,7 +4,7 @@ import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 
-import config, { Agents } from '../config.ts';
+import config, { Agents, Serving } from '../config.ts';
 
 import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copyResultsToTarget, copySkills, watchLogFile, exportTrajectories } from '../lib/agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
@@ -40,18 +40,19 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
-    if (config.suite.enableSkills) {
-      copySkills(tempHome, Agents.GEMINI_CLI)
-    }
+    const approach = config.suite.serving;
 
-    // Update MCP config in isolated home
-    updateMcpConfig(
-      path.join(geminiDest, 'settings.json'),
-      config.suite.mcpServersToEnable,
-      config.environment.modernWebServerPath,
-      config.environment.mcpApiKey,
-      Agents.GEMINI_CLI
-    );
+    if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
+      copySkills(tempHome, Agents.GEMINI_CLI, approach === Serving.SKILLS_CLI);
+    } else if (approach === Serving.MCP) {
+      updateMcpConfig(
+        path.join(geminiDest, 'settings.json'),
+        config.suite.mcpServersToEnable,
+        config.environment.modernWebServerPath,
+        config.environment.mcpApiKey,
+        Agents.GEMINI_CLI
+      );
+    }
   }
 
   return workDir;
@@ -142,7 +143,7 @@ async function run() {
   }
 }
 
-export async function collectGeminiCliGuides(dirPath: string): Promise<string[]> {
+export async function collectGeminiCliGuides(dirPath: string, serving: string): Promise<string[]> {
   const guidesFromSkills: string[] = [];
   try {
     const files = fs.readdirSync(dirPath);
@@ -157,7 +158,7 @@ export async function collectGeminiCliGuides(dirPath: string): Promise<string[]>
         for (const msg of session.messages) {
           if (msg.toolCalls) {
             for (const tc of msg.toolCalls) {
-              if (tc.name === 'read_file' && tc.args && tc.args.file_path) {
+              if (serving === Serving.SKILLS && tc.name === 'read_file' && tc.args && tc.args.file_path) {
                 const filePath = tc.args.file_path;
                 if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
                   const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
@@ -165,7 +166,7 @@ export async function collectGeminiCliGuides(dirPath: string): Promise<string[]>
                     guidesFromSkills.push(match[1]);
                   }
                 }
-              } else if (tc.name === 'run_shell_command' && tc.args && tc.args.command) {
+              } else if (serving === Serving.SKILLS_CLI && tc.name === 'run_shell_command' && tc.args && tc.args.command) {
                 const command = tc.args.command;
                 if (command.includes('modern-web.cjs') && command.includes('--retrieve')) {
                   const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
