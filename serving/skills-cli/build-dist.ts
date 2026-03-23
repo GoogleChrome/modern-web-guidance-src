@@ -151,7 +151,7 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
       const content = fs.readFileSync(guidePath, "utf-8");
       const { data } = matter(content);
       if (data.description) description = data.description;
-    } catch(e) {}
+    } catch {}
 
     const sortedFeatureIds = [...guide.featureIds].sort();
     const signature = sortedFeatureIds.join(',');
@@ -177,7 +177,7 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   try {
     const pkgJson = JSON.parse(fs.readFileSync(path.join(publishRoot, "package.json"), "utf8"));
     if (pkgJson.version) version = pkgJson.version;
-  } catch (e) {}
+  } catch {}
 
   let dynamicMd = `#### Skill Coverage in \`v${version}\`\n\n`;
   const featureNamesCsv = allFeaturesSorted.map(f => `${f.name.replace(/</g, '&lt;')}`).join(', ');
