@@ -35,7 +35,6 @@
   outline: none;
   transition: all 0.2s;
   font-weight: 600;
-  text-transform: uppercase;
   text-align: center;
   /* Appearance for custom dropdown arrow spacing */
   -webkit-appearance: none;
@@ -47,7 +46,7 @@
   background-size: 1em;
   padding-right: 28px;
   width: auto;
-  min-width: 80px;
+  min-width: 90px;
 }
 
 .header-filter-select.is-filtered {
@@ -57,13 +56,11 @@
 }
 
 .header-filter-select optgroup {
-  text-transform: none;
   font-weight: normal;
   text-align: left;
 }
 
 .header-filter-select option {
-  text-transform: none;
   font-weight: normal;
   text-align: left;
 }
