@@ -67,7 +67,7 @@ High-performance memory format used by LanceDB for sub-millisecond retrieval.</t
 
 ### 4.1 The Knowledge Layer (Local Storage)
 
-Instead of a remote API call, the data resides in a local hidden directory (e.g., ./.mcp-data/).
+Instead of a remote API call, the data resides in a local hidden directory (e.g., .modern-web-data/).
 
 -   **Vectors:** 384-dimensional embeddings representing the "meaning" of use cases.
 -   **Metadata:** JSON payloads containing the Use Case ID, category, and descriptive guidance.
