@@ -40,6 +40,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/gh-pages": "^6.1.0",
     "@types/node": "^25.5.0",
     "esbuild": "^0.25.0",
     "gh-pages": "^6.3.0",
