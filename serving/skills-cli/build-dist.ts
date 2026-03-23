@@ -130,6 +130,12 @@ async function main() {
   console.log("Renaming vscode-ext-package.json to package.json for publishing...");
   fs.renameSync(path.join(PUBLISH_ROOT, "vscode-ext-package.json"), path.join(PUBLISH_ROOT, "package.json"));
 
+  updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
+
+  console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
+}
+
+function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   console.log("Generating dynamic README content around features and use cases...");
   const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
   
@@ -167,15 +173,13 @@ async function main() {
   }
 
   // Update README
-  const readmePath = path.join(PUBLISH_ROOT, "README.md");
+  const readmePath = path.join(publishRoot, "README.md");
   if (fs.existsSync(readmePath)) {
     let readmeContent = fs.readFileSync(readmePath, "utf-8");
     readmeContent += dynamicMd;
     fs.writeFileSync(readmePath, readmeContent);
     console.log("README dynamically updated with features and use cases.");
   }
-
-  console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
 }
 
 main().catch(console.error);
