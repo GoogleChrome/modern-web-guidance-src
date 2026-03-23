@@ -47,11 +47,6 @@
       </div>
     </header>
 
-    <nav class="dashboard-tabs">
-      <button class="tab-button active" data-tab="suites">Suites</button>
-      <button class="tab-button" data-tab="trends">Trends</button>
-    </nav>
-
     <!-- Suites Tab -->
     <div id="suites-tab" class="tab-content active">
       <div class="suites-table-container">
@@ -59,31 +54,37 @@
           <thead>
             <tr>
               <th style="padding-left:15px; text-align: left;">Suite ID</th>
-              <th>Source
-                <select id="filter-source" class="header-filter-select">
-                  <option value="all">All</option>
-                  <option value="local">Local</option>
-                  <option value="remote">Remote</option>
-                </select>
-              </th>
-              <th>Agent
+              <th style="padding-left:15px; text-align: left;">Date</th>
+              <th>
                 <select id="filter-agent" class="header-filter-select">
-                  <option value="all">All</option>
-                  <option value="jetski">jetski</option>
-                  <option value="gemini_cli">gemini_cli</option>
-                  <option value="claude_code">claude_code</option>
+                  <option value="all">Agent</option>
+                  <optgroup label="Select Agent">
+                    <option value="jetski">jetski</option>
+                    <option value="gemini_cli">gemini_cli</option>
+                    <option value="claude_code">claude_code</option>
+                  </optgroup>
                 </select>
               </th>
-              <th>Serving
+              <th>
                 <select id="filter-skills" class="header-filter-select">
-                  <option value="all">All</option>
-                  <option value="skills">Skills</option>
-                  <option value="mcp">MCP</option>
+                  <option value="all">Serving</option>
+                  <optgroup label="Select Architecture">
+                    <option value="skills">Skills</option>
+                    <option value="mcp">MCP</option>
+                  </optgroup>
                 </select>
               </th>
-              <th>Guided</th>
-              <th>Unguided</th>
-              <th style="padding-right:15px; text-align: right;">Date</th>
+              <th style="text-align: right; padding-right: 15px;">Guided</th>
+              <th style="text-align: right; padding-right: 15px;">Unguided</th>
+              <th>
+                <select id="filter-source" class="header-filter-select">
+                  <option value="all">Source</option>
+                  <optgroup label="Select Source">
+                    <option value="local">Local</option>
+                    <option value="remote">Remote</option>
+                  </optgroup>
+                </select>
+              </th>
             </tr>
           </thead>
           <tbody id="suites-list">
@@ -93,28 +94,14 @@
       </div>
     </div>
 
-    <!-- Trends Tab -->
-    <div id="trends-tab" class="tab-content">
-      <div id="timeline-section" class="timeline-section">
-        <div class="timeline-header">
-          <h2>Overall Pass Rate Timeline</h2>
-          <span class="timeline-subtitle">(Latest First)</span>
-          </div>
-        <div class="timeline-group">
-          <div class="test-grid-label">Guided Pass Rate</div>
-          <div id="guided-timeline" class="timeline-chart"></div>
-        </div>
-
-        <div class="timeline-group">
-          <div class="test-grid-label">Unguided Pass Rate</div>
-          <div id="unguided-timeline" class="timeline-chart"></div>
-        </div>
-      </div>
-    </div>
-
     <div id="empty-state" class="empty-state" style="display: none;">
       <p>No test runs found yet. Run the test suite to get started.</p>
     </div>
+  </div>
+
+  <div id="radar-tooltip-container" class="radar-tooltip-container hidden">
+    <div id="radar-tooltip-header"></div>
+    <div id="radar-tooltip-chart" style="width: 300px; height: 300px;"></div>
   </div>
 
   <script type="module" src="landing.js"></script>
