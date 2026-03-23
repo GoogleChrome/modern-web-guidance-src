@@ -10,13 +10,11 @@ import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExi
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
-const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('gemini-cli-agent.ts');
-
 /**
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
-function setupIsolatedWorkDir(): string {
+function setupIsolatedWorkDir(templateDir: string, runType: string): string {
   const tempHome = createIsolatedHome('ghh-gemini');
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
@@ -63,7 +61,8 @@ function setupIsolatedWorkDir(): string {
  * Executes the Gemini CLI command and captures output.
  */
 async function run() {
-  const workDir = setupIsolatedWorkDir();
+  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('gemini-cli-agent.ts');
+  const workDir = setupIsolatedWorkDir(templateDir, runType);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);

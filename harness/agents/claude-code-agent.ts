@@ -8,13 +8,11 @@ import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
 
 // Usage: node claude-code-agent.ts <prompt> <runType> <targetDir> <templateDir>
-const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
-
 /**
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
-function setupIsolatedWorkDir(): string {
+function setupIsolatedWorkDir(templateDir: string, runType: string): string {
   const tempHome = createIsolatedHome('ghh-claude');
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
@@ -48,7 +46,8 @@ function setupIsolatedWorkDir(): string {
  * Executes the Claude CLI command and captures output.
  */
 async function run() {
-  const workDir = setupIsolatedWorkDir();
+  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
+  const workDir = setupIsolatedWorkDir(templateDir, runType);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);

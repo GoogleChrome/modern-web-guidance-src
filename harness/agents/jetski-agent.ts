@@ -11,13 +11,11 @@ import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrusted
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 // Usage: node jetski-agent.ts <prompt> <runType> <targetDir> <templateDir>
-const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-agent.ts');
-
 /**
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
-function setupIsolatedWorkDir(): string {
+function setupIsolatedWorkDir(templateDir: string, runType: string): string {
   const tempHome = createIsolatedHome('ghh-jetski');
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
@@ -267,7 +265,8 @@ async function startJetski(directory: string, profileDir: string): Promise<void>
 }
 
 async function run(): Promise<void> {
-  const workDir = setupIsolatedWorkDir();
+  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-agent.ts');
+  const workDir = setupIsolatedWorkDir(templateDir, runType);
   let stopWatchingMcpLog = () => { };
 
   if (!workDir || !fs.existsSync(workDir)) {
