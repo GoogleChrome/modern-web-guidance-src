@@ -287,11 +287,12 @@ async function loadLocalTests() {
             if (suite.source !== 'local') continue;
             
             const testId = suite.id;
+            const suiteTimestamp = suite.timestamp;
             try {
                 const response = await fetch(`${testId}/evals.json?source=local&t=${Date.now()}`);
                 if (response.ok) {
                     const parsed = await response.json();
-                    registerTestData(testId, 'local', parsed);
+                    registerTestData(testId, 'local', parsed, suiteTimestamp);
                 }
             } catch (e) {
                 console.warn(`Failed to load local test ${testId}:`, e);
@@ -344,7 +345,7 @@ async function loadRemoteTests() {
     }
 }
 
-function registerTestData(testId, source, parsed) {
+function registerTestData(testId, source, parsed, forcedTimestamp) {
     let servingArch = 'unknown';
     if (parsed.enableSkills !== undefined) {
         servingArch = parsed.enableSkills ? 'skills' : 'mcp';
@@ -354,7 +355,7 @@ function registerTestData(testId, source, parsed) {
 
     allTestData[compoundKey] = {
         testId: testId,
-        timestamp: parsed.timestamp || new Date().toISOString(), // Fallback
+        timestamp: forcedTimestamp || parsed.timestamp || new Date().toISOString(),
         data: parsed,
         source: source,
         agent: parsed.agent || 'unknown',
