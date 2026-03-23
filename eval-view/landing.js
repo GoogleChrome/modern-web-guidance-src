@@ -1,4 +1,5 @@
 import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken } from './utils.js';
+import { RadarChart } from './radar.js';
 
 let allTestData = {}; // Cache all test data by testId
 let currentTab = 'suites';
@@ -412,11 +413,11 @@ function renderSuites() {
                 <td style="text-transform: capitalize;">${testInfo.source}</td>
                 <td>${testInfo.agent}</td>
                 <td style="text-transform: capitalize;">${testInfo.servingArch.replace('mcp', 'MCP')}</td>
-                <td class="rate-cell">
+                <td class="rate-cell" data-compound-key="${compoundKey}">
                     <div class="rate-bar" style="width: ${gRate}%;"></div>
                     <div class="rate-value"><span style="font-weight: 700; color: ${getColor(gRate)};">${gRate}%</span></div>
                 </td>
-                <td class="rate-cell">
+                <td class="rate-cell" data-compound-key="${compoundKey}">
                     <div class="rate-bar" style="width: ${uRate}%;"></div>
                     <div class="rate-value"><span style="font-weight: 700; color: ${getColor(uRate)};">${uRate}%</span></div>
                 </td>
@@ -426,6 +427,120 @@ function renderSuites() {
     });
 
     container.innerHTML = html;
+    setupRateCellHovers();
+}
+
+let radarChartInstance = null;
+const tooltipContainer = document.getElementById('radar-tooltip-container');
+const tooltipChart = document.getElementById('radar-tooltip-chart');
+
+function setupRateCellHovers() {
+    const rateCells = document.querySelectorAll('.rate-cell');
+    rateCells.forEach(cell => {
+        cell.addEventListener('mouseenter', (e) => {
+            const compoundKey = cell.dataset.compoundKey;
+            const testInfo = allTestData[compoundKey];
+            if (!testInfo) return;
+
+            showRadarTooltip(testInfo, e.clientX, e.clientY);
+        });
+
+        cell.addEventListener('mousemove', (e) => {
+            updateTooltipPosition(e.clientX, e.clientY);
+        });
+
+        cell.addEventListener('mouseleave', () => {
+            hideRadarTooltip();
+        });
+    });
+}
+
+function showRadarTooltip(testInfo, x, y) {
+    const data = testInfo.data;
+    const results = data.results;
+    
+    // Extract scenarios (app + guide)
+    const apps = {};
+    Object.keys(results).forEach(key => {
+        const parts = key.split(' - ');
+        if (parts.length !== 3) return;
+        const [appName, guide, runType] = parts;
+        const scenarioName = `${appName} (${guide})`;
+        if (!apps[scenarioName]) apps[scenarioName] = { guided: [], unguided: [] };
+        
+        const runData = results[key];
+        const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
+        const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
+        const avgRate = totalChecks > 0 ? (totalPassed / totalChecks) * 100 : 0;
+        
+        if (runType === 'guided') apps[scenarioName].guided.push(avgRate);
+        else if (runType === 'unguided') apps[scenarioName].unguided.push(avgRate);
+    });
+
+    const labels = Object.keys(apps).sort();
+    if (labels.length < 3) return; // Radar chart needs at least 3 axes
+
+    const guidedData = labels.map(l => {
+        const s = apps[l].guided;
+        return s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;
+    });
+    const unguidedData = labels.map(l => {
+        const s = apps[l].unguided;
+        return s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;
+    });
+
+    tooltipContainer.classList.remove('hidden');
+    updateTooltipPosition(x, y);
+
+    if (!radarChartInstance) {
+        radarChartInstance = new RadarChart('radar-tooltip-chart', {
+            size: 300,
+            padding: 40,
+            levels: 5
+        });
+    }
+
+    radarChartInstance.render({
+        labels: labels,
+        datasets: [
+            {
+                label: 'Unguided',
+                data: unguidedData,
+                backgroundColor: 'rgba(218, 54, 51, 0.2)',
+                borderColor: '#da3633'
+            },
+            {
+                label: 'Guided',
+                data: guidedData,
+                backgroundColor: 'rgba(35, 134, 54, 0.2)',
+                borderColor: '#238636'
+            }
+        ]
+    });
+}
+
+function updateTooltipPosition(x, y) {
+    const offset = 20;
+    let finalX = x + offset;
+    let finalY = y + offset;
+
+    // Boundary check
+    const tooltipWidth = 330; // 300px chart + padding
+    const tooltipHeight = 330;
+    
+    if (finalX + tooltipWidth > window.innerWidth) {
+        finalX = x - tooltipWidth - offset;
+    }
+    if (finalY + tooltipHeight > window.innerHeight) {
+        finalY = y - tooltipHeight - offset;
+    }
+
+    tooltipContainer.style.left = `${finalX}px`;
+    tooltipContainer.style.top = `${finalY}px`;
+}
+
+function hideRadarTooltip() {
+    tooltipContainer.classList.add('hidden');
 }
 
 

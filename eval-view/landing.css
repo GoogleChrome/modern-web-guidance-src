@@ -524,6 +524,31 @@
   border-color: var(--text-secondary);
 }
 
+.radar-tooltip-container {
+  position: fixed;
+  z-index: 2000;
+  background: rgba(13, 17, 23, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  padding: 15px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  transform: translateY(10px);
+}
+
+.radar-tooltip-container.hidden {
+  opacity: 0;
+  display: none;
+}
+
+.radar-tooltip-container:not(.hidden) {
+  opacity: 1;
+  transform: translateY(0);
+  display: block;
+}
+
 .rate-cell {
   position: relative;
   z-index: 1;
