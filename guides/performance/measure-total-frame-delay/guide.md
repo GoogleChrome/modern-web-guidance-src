@@ -23,7 +23,7 @@ The Long Animation Frames API is a lightweight API that can be used to identify 
 
 Long animation frames are monitored using the `PerformanceObserver` interface. It emits a `long-animation-frame` entry when an animation frame takes longer than 50ms to render. The entry contains information about the long animation frame, including the duration of the frame and the scripts that were executed during the frame.
 
-Unlike the Long Tasks API, the Long Animation Frames API measures the total duration of the frame and so can be used to identify frames that are long-running, even when the cause is a number of small running tasks rather than any inidvidual long running tasks.
+Unlike the Long Tasks API, the Long Animation Frames API measures the total duration of the frame and so can be used to identify frames that are long-running, even when the cause is a number of small running tasks rather than any individual long running tasks.
 
 The `long-animation-frame` entry contains a `scripts` property which is an array of `PerformanceScript` objects. Each `PerformanceScript` object contains information about the script that was executed during the long animation frame, including the `sourceURL` and `duration` of the script.
 
@@ -33,10 +33,8 @@ The `long-animation-frame` entry contains a `scripts` property which is an array
 const observer = new PerformanceObserver((list) => {
   for (const entry of list.getEntries()) {
     console.log(`Long frame duration: ${entry.duration}ms`);
-    // Note entry.script object will be empty when loading this demo from local
-    // file, instead of from a server.
     console.log(`Total scripts executed: ${entry.scripts.length}`);
-    
+
     // Even if no single script was >50ms, the combined frame might be long.
     // The Long Tasks API would not catch this, but LoAF does.
     const totalScriptTime = entry.scripts.reduce((total, script) => total + script.duration, 0);
@@ -57,5 +55,5 @@ observer.observe({type: 'long-animation-frame', buffered: true});
 
 {{ BASELINE_STATUS("long-animation-frames") }}.
 
-The Long Animation Frames API is not supported in all browsers, but other browsers do not have alternative APIs with simialr functionality. Therefore, it should be used in supporting browsers without a fallback strategy. In most cases the performance opportunities it identifies will apply to other browsers as well.
+The Long Animation Frames API is not supported in all browsers, but other browsers do not have alternative APIs with similar functionality. Therefore, it should be used in supporting browsers without a fallback strategy. In most cases the performance opportunities it identifies will apply to other browsers as well.
 

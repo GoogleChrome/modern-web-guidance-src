@@ -3,6 +3,7 @@ name: correlate-interaction-with-long-frame
 description: Correlate a specific user interaction with the long animation frame that delayed its visual feedback.
 web-feature-ids:
   - long-animation-frames
+  - event-timing
 sources:
   - https://developer.chrome.com/docs/web-platform/long-animation-frames
   - https://developer.mozilla.org/en-US/docs/Web/API/Performance_API/Long_animation_frame_timing
@@ -17,9 +18,9 @@ Poor responsiveness to interactions leads to a poor impression of a page being s
 
 Identifying root causes of an unresponsive web page can be tricky especially as it depends on user interactions and environmental conditions such as device capabilities, network. This makes it even more difficult to diagnose compared to a more repeatable and predictable scenario like page load. Lab data only replicates a small subset of real user scenarios so measuring the causes of slow INP in the field is essential.
 
-A full performance trace using the JS Self-Profiling API is a heavyweight solution that is liable to cause peformance problems. The Long Animation Frames API is a lightweight API that can be used to identify slow running JavaScript in the field for INP interactions.
+A full performance trace using the JS Self-Profiling API is a heavyweight solution that is liable to cause performance problems. The Long Animation Frames API is a lightweight API that can be used to identify slow running JavaScript in the field for INP interactions.
 
-As an alternative to correlating any interaction with a long animation frame, you may wish to concentrate Interaction to Next Paint (INP) interactions. INP is a metric based on the Event Timing API. It measures the worst interaction (minus some outliers) as measure of the page's responsiveness. See the [Identify cuases of poor INP guide](../identify-causes-of-poor-inp/guide.md).
+As an alternative to correlating any interaction with a long animation frame, you may wish to concentrate Interaction to Next Paint (INP) interactions. INP is a metric based on the Event Timing API. It measures the worst interaction (minus some outliers) as measure of the page's responsiveness. See the [Identify causes of poor INP guide](../identify-causes-of-poor-inp/guide.md).
 
 ## How to implement
 
@@ -29,15 +30,16 @@ The `long-animation-frame` entry contains a `firstUIEventTimestamp` entry which,
 
 The `long-animation-frame` entry contains a `scripts` property which is an array of `PerformanceScript` objects. Each `PerformanceScript` object contains information about the script that was executed during the long animation frame, including the `sourceURL` and `duration` of the script.
 
-### Get data for all interactions that occured in a long animation frame
+### Get data for all interactions that occurred in a long animation frame
 
 ```javascript
 const observer = new PerformanceObserver((list) => {
   for (const entry of list.getEntries()) {
-    // If a UI event happened during this frame
+    // A non-zero firstUIEventTimestamp means a user interaction occurred
+    // during this frame, so the long frame directly impacted responsiveness.
     if (entry.firstUIEventTimestamp) {
-      // Console log for now, but in a real application would want to beacon 
-      // back to an anlytics endpoint
+      // Console log for now, but in a real application would want to beacon
+      // back to an analytics endpoint
       console.log(`Interaction delayed!`);
       console.log(`First UI event at: ${entry.firstUIEventTimestamp.toFixed(0)}ms`);
       console.log(`Frame duration: ${entry.duration.toFixed(0)}ms`);
@@ -63,4 +65,4 @@ observer.observe({ type: 'long-animation-frame', buffered: true });
 
 {{ BASELINE_STATUS("long-animation-frames") }}.
 
-The Long Animation Frames API is not supported in all browsers, but other browsers do not have alternative APIs with simialr functionality. Therefore, it should be used in supporting browsers without a fallback strategy. In most cases the performance opportunities it identifies will apply to other browsers as well.
+The Long Animation Frames API is not supported in all browsers, but other browsers do not have alternative APIs with similar functionality. Therefore, it should be used in supporting browsers without a fallback strategy. In most cases the performance opportunities it identifies will apply to other browsers as well.

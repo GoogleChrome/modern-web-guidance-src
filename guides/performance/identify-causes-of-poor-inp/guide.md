@@ -20,7 +20,7 @@ Poor responsiveness to interactions leads to a poor impression of a page being s
 
 Identifying root causes of an unresponsive web page can be tricky especially as it depends on user interactions and environmental conditions such as device capabilities, network. This makes it even more difficult to diagnose compared to a more repeatable and predictable scenario like page load. Lab data only replicates a small subset of real user scenarios so measuring the causes of slow INP in the field is essential.
 
-A full performance trace using the JS Self-Profiling API is a heavyweight solution that is liable to cause peformance problems. The Long Animation Frames API is a lightweight API that can be used to identify slow running JavaScript in the field for INP interactions.
+A full performance trace using the JS Self-Profiling API is a heavyweight solution that is liable to cause performance problems. The Long Animation Frames API is a lightweight API that can be used to identify slow running JavaScript in the field for INP interactions.
 
 Note: as an alternative to correlating just the INP interaction with a long animation frame, you may wish to consider all interactions. See the [Correlate interaction with long frame guide](../correlate-interaction-with-long-frame/guide.md).
 
@@ -32,7 +32,7 @@ Calculating INP from the raw Event Timing API is complicated and has several nua
 
 ### Get Long Animation Frame data for INP interactions using web-vitals library
 
-The [`web-vitals` library](https://github.com/GoogleChrome/web-vitals) is tiny liubrary used to meadure Core Web Vitals and other performance metrics. The `onINP` function can be used to identify the slowest interaction and includes information about the scripts that were executed during the interaction usiong the Long Animation Frames API.
+The [`web-vitals` library](https://github.com/GoogleChrome/web-vitals) is a tiny library used to measure Core Web Vitals and other performance metrics. The `onINP` function can be used to identify the slowest interaction and includes information about the scripts that were executed during the interaction using the Long Animation Frames API.
 
 ```javascript
 import { onINP } from 'web-vitals/attribution';
@@ -44,12 +44,12 @@ onINP((metric) => {
     JSON.stringify({
       name: 'INP',
       value: metric.value,
-      longestScript: metric.attribution.longestScript.entry?.invokerType,
-      longestScript: metric.attribution.longestScript.entry?.sourceURL,
-      longestScript: metric.attribution.longestScript.entry?.sourceFunctionName,
-      longestScript: metric.attribution.longestScript.entry?.sourceCharPosition,
-      longestScript: metric.attribution.longestScript.subpart,
-      longestScript: metric.attribution.longestScript.intersectingDuration
+      invokerType: metric.attribution.longestScript.entry?.invokerType,
+      sourceURL: metric.attribution.longestScript.entry?.sourceURL,
+      sourceFunctionName: metric.attribution.longestScript.entry?.sourceFunctionName,
+      sourceCharPosition: metric.attribution.longestScript.entry?.sourceCharPosition,
+      subpart: metric.attribution.longestScript.subpart,
+      intersectingDuration: metric.attribution.longestScript.intersectingDuration
     })
   );
 });
@@ -65,4 +65,4 @@ onINP((metric) => {
 
 {{ BASELINE_STATUS("long-animation-frames") }}.
 
-The Long Animation Frames API is not supported in all browsers, but other browsers do not have alternative APIs with simialr functionality. Therefore, it should be used in supporting browsers without a fallback strategy. In most cases the performance opportunities it identifies will apply to other browsers as well.
+The Long Animation Frames API is not supported in all browsers, but other browsers do not have alternative APIs with similar functionality. Therefore, it should be used in supporting browsers without a fallback strategy. In most cases the performance opportunities it identifies will apply to other browsers as well.

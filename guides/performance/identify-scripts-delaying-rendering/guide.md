@@ -29,9 +29,13 @@ The `long-animation-frame` entry contains a `scripts` property which is an array
 
 ```javascript
 const observer = new PerformanceObserver(list => {
+  // Collect all script entries across frames to find the biggest offenders.
   const allScripts = list.getEntries().flatMap(entry => entry.scripts);
+
+  // Group by sourceURL so you can identify which scripts contribute
+  // the most total time, even if each individual invocation is short.
   const scriptSource = [...new Set(allScripts.map(script => script.sourceURL))];
-  const scriptsBySource= scriptSource.map(sourceURL => ([sourceURL,
+  const scriptsBySource = scriptSource.map(sourceURL => ([sourceURL,
       allScripts.filter(script => script.sourceURL === sourceURL)
   ]));
   const processedScripts = scriptsBySource.map(([sourceURL, scripts]) => ({
@@ -39,11 +43,16 @@ const observer = new PerformanceObserver(list => {
     count: scripts.length,
     totalDuration: scripts.reduce((subtotal, script) => subtotal + script.duration, 0)
   }));
+
+  // Sort by total duration so the worst offenders appear first,
+  // making it easier to prioritize optimization efforts.
   processedScripts.sort((a, b) => b.totalDuration - a.totalDuration);
-  // Beacon the data back to the site's analytics service
+
+  // Beacon the summarized data to an analytics service so it can be
+  // analyzed across real users rather than just logged locally.
   navigator.sendBeacon(
     '/analytics',
-    processedScripts
+    JSON.stringify(processedScripts)
   );
 });
 
@@ -53,11 +62,11 @@ observer.observe({type: 'long-animation-frame', buffered: true});
 ## Best Practices
 
 - **DO** prefer the Long Animation Frames API over the JS Self-Profiling API as it is lighter and less likely to cause performance issues.
-- **DO** summarise the key information as the Long Animation Frames API contains a lot of detail.
+- **DO** summarize the key information as the Long Animation Frames API contains a lot of detail.
 - **DO** beacon back the required information to an analytics service.
 
 ## Browser support and fallback strategies
 
 {{ BASELINE_STATUS("long-animation-frames") }}.
 
-The Long Animation Frames API is not supported in all browsers, but other browsers do not have alternative APIs with simialr functionality. Therefore, it should be used in supporting browsers without a fallback strategy. In most cases the performance opportunities it identifies will apply to other browsers as well.
+The Long Animation Frames API is not supported in all browsers, but other browsers do not have alternative APIs with similar functionality. Therefore, it should be used in supporting browsers without a fallback strategy. In most cases the performance opportunities it identifies will apply to other browsers as well.
