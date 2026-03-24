@@ -26,7 +26,7 @@ You can execute these tools using standard `node` from the command line from **a
 Search with an action-oriented query summarizing what you want to achieve using the `--search` flag.
 
 ```bash
-node --experimental-strip-types <path-to-serving>/serving/bin/modern-web.ts --search "<query>"
+node ./cli/serving/bin/modern-web.cjs --search "<query>"
 ```
 
 **Example Output**:
@@ -48,7 +48,7 @@ node --experimental-strip-types <path-to-serving>/serving/bin/modern-web.ts --se
 Once you have a relevant `id` from the search results, call this script using the `--retrieve` flag to get the full guide. You can pass multiple IDs separated by commas.
 
 ```bash
-node --experimental-strip-types <path-to-serving>/serving/bin/modern-web.ts --retrieve "<id>"
+node ./cli/serving/bin/modern-web.cjs --retrieve "<id>"
 ```
 
 **Example Output**:
