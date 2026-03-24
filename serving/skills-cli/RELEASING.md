@@ -23,7 +23,7 @@ While pushing to `main` handles updating the source code, creating a formal **Gi
 **However, because the `skills-alpha` repository is currently private, creating releases is not practical.**
 
 When unauthenticated users attempt to hit the GitHub API to fetch a release, GitHub returns a `404` error. Because of this, **we skip creating GitHub Releases for now**. Instead:
-* **Gemini CLI:** Users will simply run a standard `git clone` of the repository and install it locally.
+* **Gemini CLI:** Users run the standard remote installation command (`gemini extensions install https://...`). The CLI will hit a `404` error trying to fetch a release, and will interactively ask the user: *"Would you like to attempt to install via 'git clone' instead?"* The user simply hits 'Y'. This is the expected and perfectly acceptable fallback flow.
 * **Claude Code:** Claude ignores GitHub Releases entirely. It only reads the `.claude-plugin/plugin.json` off the `main` branch. The `publish-skills` script bumping this version implies Claude auto-updates will trigger seamlessly without needing a release.
 
 *(Note: Once the repository goes public, we should resume creating GitHub Releases for each version bump to ensure lightning-fast archive downloads for the Gemini CLI!).*
