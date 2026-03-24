@@ -198,9 +198,12 @@ Base apps live in `harness/base_apps/`. Currently only `daily-grind` exists — 
 
 ---
 
-## 6. The MCP Server (serving/)
+## 6. The Modern Web Guidance Server (serving/)
 
-The MCP server (`serving/mcp-server/`) provides AI agents with semantic search over the curated guides. When an agent receives a developer prompt, it can query the MCP server to find relevant guidance.
+The code in `serving/` provides both the MCP server and standalone tools used by agents to locate guidance.
+
+- **MCP Server** (`serving/mcp-server/`): Provides semantic search over guides. This is used when `serving: 'mcp'` in the test suite configuration.
+- **Standalone CLI** (`serving/bin/modern-web.ts`): A tool that search/retrieves use cases, bundled into a distribution for use as a skill. This is used when `serving: 'skills_cli'`.
 
 ### Build process
 
@@ -208,9 +211,9 @@ The MCP server (`serving/mcp-server/`) provides AI agents with semantic search o
 
 ### How agents access guidance
 
-- **MCP mode** (`mcpServersToEnable: ['modern-web']`): The agent connects to the MCP server and can search/retrieve guides dynamically.
-- **Skills mode** (`enableSkills: true`): Guide content is copied directly into the agent's working directory as skill files. *(Note: currently not fully functional and planned for future updates.)*
-- **Unguided mode** (both disabled): Agent relies only on its training data. This is the control condition in evaluations.
+- **MCP mode** (`serving: 'mcp'` and `mcpServersToEnable: ['modern-web']`): The agent connects to the MCP server and can search/retrieve guides dynamically.
+- **Skills mode** (`serving: 'skills'` or `'skills_cli'`): Guide content is copied directly into the agent's working directory as skill files or CLI distribution.
+- **Unguided mode**: The control condition in evaluations. The agent relies only on its training data (no skills copied, no MCP servers enabled).
 
 ---
 
@@ -363,7 +366,7 @@ Suite configuration in `harness/config.ts`:
 - `numRuns`: Number of agent runs per task (default: 2)
 - `tasks`: Empty array = discover all tasks in `harness/tasks/`. Set explicitly to run a subset.
 - `mcpServersToEnable`: Which MCP servers agents can access (`['modern-web']`, `['google-developer-knowledge']`, or both)
-- `enableSkills`: Whether to copy skill files into agent working directories
+- `serving`: The approach used to serve guidance (`skills_cli`, `skills`, or `mcp`)
 - `agent`: Which agent to use (`Agents.GEMINI_CLI`, `Agents.CLAUDE_CODE`, `Agents.JETSKI`)
 
 ---

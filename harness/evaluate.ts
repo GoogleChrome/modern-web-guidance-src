@@ -28,7 +28,7 @@ export async function evaluateSuite(resultsDir: string, suiteName: string) {
     const metrics = calculateMetrics(allResults, numRuns);
     const mdReport = generateMarkdownReport(metrics, allResults);
     const timestamp = new Date().toISOString();
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, config.suite.agent, config.suite.enableSkills);
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, config.suite.agent, config.suite.serving);
 
     saveReports(resultsDir, mdReport, jsonReport);
 
