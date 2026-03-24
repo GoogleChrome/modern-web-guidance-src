@@ -175,10 +175,4 @@ While browser support for scroll-driven animations is constantly improving, it's
 </script>
 ```
 
-This script first checks if the browser supports `animation-timeline: view()` and `animation-range: entry`. If not, it creates an `IntersectionObserver` that will fire a callback whenever one of the observed elements intersects with the viewport.
-
-The `threshold` option is an array of 101 values from 0 to 1. This means the observer will fire a callback every time 1% of the element becomes visible or hidden.
-
-In the callback, we use the `intersectionRatio` to calculate the new scale of the element and apply it directly to the element's `scale` style. This creates a smooth animation that is directly tied to the element's visibility in the viewport. This creates a similar effect to the CSS-based version, but it's important to note that it's not a perfect polyfill. The JavaScript-based version is not as performant and may not be as smooth as the native CSS version.
-
-Note that not every effect can be recreated using this approach.
+This JavaScript fallback creates a similar effect to the CSS-based version, but it's important to note that it's not a perfect polyfill: it is not as performant and may not be as smooth as the native CSS version. Also note that not every effect can be recreated using this approach.
