@@ -6,7 +6,7 @@ import matter from 'gray-matter';
 import { fileURLToPath } from 'url';
 import { validateMacros } from '../serving/mcp-server/lib/macros.ts';
 import { validateFeature } from '../serving/mcp-server/data/baseline.ts';
-import { scanAllGuides } from '../harness/lib/utils.ts';
+import { scanAllGuides, type GuideInventory } from '../harness/lib/utils.ts';
 
 // --- Types ---
 
@@ -66,6 +66,23 @@ interface GitHubData {
   projectDetails: ProjectDetails | null;
 }
 
+export interface PreparedGuide {
+  name: string;
+  description: string;
+  featureIds: string[];
+  relativeSubdir: string;
+  statusName: string | null;
+}
+
+export interface GuideInventoryResult {
+  errors: string[];
+  hasError: boolean;
+  featuresWithActiveUseCases: Set<string>;
+  featuresWithAnyUseCases: Set<string>;
+  preparedGuides: PreparedGuide[];
+  incompleteSubdirs: string[];
+}
+
 // --- Constants ---
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -74,6 +91,7 @@ dotenv.config({ path: path.join(REPO_ROOT, '.env') });
 
 const PRIORITY_LABEL_REGEX = /^P\d+$/;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const PROJECT_GITHUB_TOKEN = process.env.PROJECT_GITHUB_TOKEN || GITHUB_TOKEN;
 const ORG = 'GoogleChrome';
 const REPO = 'guidance';
 const PROJECT_NUMBER = 30;
@@ -90,6 +108,7 @@ if (!GITHUB_TOKEN && !IS_DRY_RUN) {
 }
 
 const octokit: any = new Octokit({ auth: GITHUB_TOKEN });
+const projectOctokit: any = new Octokit({ auth: PROJECT_GITHUB_TOKEN });
 
 // --- Pure helpers ---
 
@@ -384,7 +403,7 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
     let statusOptions: any[] = [];
 
     do {
-      const response = await octokit.graphql(query, { org, number, cursor }) as any;
+      const response = await projectOctokit.graphql(query, { org, number, cursor }) as any;
       const project = response.organization.projectV2;
 
       if (!projectId) {
@@ -585,21 +604,18 @@ async function syncIssue(
   }
 }
 
-async function processUseCases(
-  featureToIssueMap: Map<string, FeatureIssueData>,
-  nameToIssueMap: Map<string, any>,
-  subdirToIssueMap: Map<string, any>,
-  projectDetails: ProjectDetails | null
-): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean; errors: string[] }> {
-  const activeIssueNumbers = new Set<number>();
+/**
+ * Processes guide inventory entries: validates frontmatter, checks for missing
+ * paired files, and collects feature ID sets. Returns structured data for the
+ * GitHub sync step without making any API calls.
+ */
+export function processGuideInventory(guides: GuideInventory[]): GuideInventoryResult {
+  const errors: string[] = [];
+  let hasError = false;
   const featuresWithActiveUseCases = new Set<string>();
   const featuresWithAnyUseCases = new Set<string>();
-  const featureUseCaseMap = new Map<string, UseCaseEntry[]>();
-  let hasError = false;
-  const errors: string[] = [];
-
-  const guides = scanAllGuides();
-  console.log(`Found ${guides.length} use cases.`);
+  const preparedGuides: PreparedGuide[] = [];
+  const incompleteSubdirs: string[] = [];
 
   for (const inv of guides) {
     const subdir = inv.dir;
@@ -631,10 +647,10 @@ async function processUseCases(
     let guideBody = '';
 
     if (hasGuide || inv.isStub) {
-      const { errors, data, body } = validateGuide(path.join(subdir, 'guide.md'));
-      guideErrors = errors;
-      guideData = data;
-      guideBody = body;
+      const validation = validateGuide(path.join(subdir, 'guide.md'));
+      guideErrors = validation.errors;
+      guideData = validation.data;
+      guideBody = validation.body;
 
       if (guideErrors.length > 0) {
         for (const error of guideErrors) {
@@ -657,17 +673,46 @@ async function processUseCases(
     }
 
     if (isIncomplete) {
-      // Prevent the cleanup step from treating any existing issue as an orphan —
-      // the use case directory exists, it's just missing some required files.
-      const partialIssue = subdirToIssueMap.get(relativeSubdir);
-      if (partialIssue) activeIssueNumbers.add(partialIssue.number);
+      incompleteSubdirs.push(relativeSubdir);
       continue;
     }
 
     if (guideErrors.length > 0) continue;
 
-    const name = guideData.name!;
-    const description = guideData.description || '';
+    preparedGuides.push({
+      name: guideData.name!,
+      description: guideData.description || '',
+      featureIds,
+      relativeSubdir,
+      statusName,
+    });
+  }
+
+  return { errors, hasError, featuresWithActiveUseCases, featuresWithAnyUseCases, preparedGuides, incompleteSubdirs };
+}
+
+async function processUseCases(
+  featureToIssueMap: Map<string, FeatureIssueData>,
+  nameToIssueMap: Map<string, any>,
+  subdirToIssueMap: Map<string, any>,
+  projectDetails: ProjectDetails | null
+): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean; errors: string[] }> {
+  const activeIssueNumbers = new Set<number>();
+  const featureUseCaseMap = new Map<string, UseCaseEntry[]>();
+
+  const guides = scanAllGuides();
+  console.log(`Found ${guides.length} use cases.`);
+
+  const { errors, hasError, featuresWithActiveUseCases, featuresWithAnyUseCases, preparedGuides, incompleteSubdirs } = processGuideInventory(guides);
+
+  for (const relativeSubdir of incompleteSubdirs) {
+    // Prevent the cleanup step from treating any existing issue as an orphan —
+    // the use case directory exists, it's just missing some required files.
+    const partialIssue = subdirToIssueMap.get(relativeSubdir);
+    if (partialIssue) activeIssueNumbers.add(partialIssue.number);
+  }
+
+  for (const { name, description, featureIds, relativeSubdir, statusName } of preparedGuides) {
     const { issueTitle, issueBody, priorityLabel } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap);
     const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
 

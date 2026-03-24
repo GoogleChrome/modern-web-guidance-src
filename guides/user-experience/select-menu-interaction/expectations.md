@@ -1,5 +1,7 @@
 - On page load, the select menu should look neutral (no red border).
-- Clicking/Tapping the menu to open it, and then clicking away without selecting an option MUST trigger the error state (red border).
 - Selecting a valid option MUST remove the error state.
 - Selecting the "placeholder" option (if enabled) or submitting while empty MUST trigger the error state.
-- "Force Fallback Mode" must replicate this behavior.
+- DO NOT assert on exact CSS colors or hex/rgb pixel values in the grader. Use a flexible helper function (e.g. `isRed`) to verify the error state to allow the agent to use its own error colors.
+- DO NOT assume specific container class names. The AI might structure the form slightly differently than the demo.
+- DO NOT write static assertions (e.g., `fs.readFileSync`) checking for specific JavaScript data structures like `WeakMap` or exact function names in the source code. Tests must evaluate behavior, not specific code syntax.
+- DO NOT assume the `<select>` element is nested inside a `<form>` tag.

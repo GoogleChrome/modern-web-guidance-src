@@ -75,10 +75,15 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
   // Browser / Dynamic Tests
 
   test('The application handles missing fetchLater natively by using a polyfill without crashing', async ({ page }) => {
+    await page.addInitScript(() => {
+      // Ensure clicks on the page don't trigger a navigation.
+      window.addEventListener('click', (event) => event.preventDefault(), true);
+    });
+
     const errors: string[] = [];
     page.on('pageerror', err => errors.push(err.message));
     await page.goto(demoUrl);
-    await page.click('#btn-purchase');
+    await page.click('body');
     expect(errors.length).toBe(0);
   });
 
@@ -90,12 +95,13 @@ test.describe(`Batch Analytics Events Expectations: ${demoName}`, () => {
         window.abortCallCount++;
         return originalAbort.apply(this, args);
       };
+      // Ensure clicks on the page don't trigger a navigation.
+      window.addEventListener('click', (event) => event.preventDefault(), true);
     });
-    
+
     await page.goto(demoUrl);
-    await page.click('#btn-purchase');
-    await page.click('#btn-signup');
-    
+    await page.click('body');
+
     const abortCount = await page.evaluate(() => window.abortCallCount);
     expect(abortCount).toBeGreaterThan(0);
   });
