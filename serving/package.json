@@ -11,7 +11,7 @@
   "files": [
     "mcp-server",
     "build",
-    ".mcp-data",
+    ".modern-web-data",
     "AGENTS.md",
     "README.md"
   ],
@@ -20,6 +20,7 @@
     "prepublishOnly": "npm run build",
     "build": "node scripts/build-guides.ts",
     "build:megaskill": "node scripts/build-megaskill.ts",
+    "dist-gen": "node --experimental-strip-types scripts/skills-cli-dist-gen.ts",
     "start": "node mcp-server/index.ts",
     "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
     "test": "node scripts/build-guides.ts && vitest run",
@@ -39,6 +40,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
+    "esbuild": "^0.25.0",
     "gray-matter": "^4.0.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
