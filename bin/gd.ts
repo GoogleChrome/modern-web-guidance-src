@@ -221,13 +221,6 @@ ${cBold('Options:')}
     }
 
     case 'eval': {
-      const action = positionals[1] || 'suite';
-      
-      if (action === 'dashboard') {
-        console.error(`${cRed(`'gd eval dashboard' has moved.`)} Run: ${cCyan(`gd dashboard`)}\n`);
-        process.exit(1);
-      }
-      
       let buildCode = 0;
       if (config.suite.serving === Serving.MCP) {
         buildCode = await runNpm(['build:mcp']);
