@@ -32,7 +32,7 @@ async function bumpVersions() {
   geminiData.version = newVersion;
 
   // VSCode
-  const vscodePath = path.join(SKILLS_CLI_TEMPLATE_DIR, "vscode-ext-package.json");
+  const vscodePath = path.join(SKILLS_CLI_TEMPLATE_DIR, "package.json");
   const vscodeData = JSON.parse(await fs.readFile(vscodePath, 'utf8'));
   vscodeData.version = newVersion;
 
@@ -49,10 +49,10 @@ async function bumpVersions() {
   if (isDryRun) {
     console.log(`[Dry Run] Would have updated files to version ${newVersion}`);
   } else {
-    await fs.writeFile(geminiPath, JSON.stringify(geminiData, null, 2));
-    await fs.writeFile(vscodePath, JSON.stringify(vscodeData, null, 2));
-    await fs.writeFile(claudePluginPath, JSON.stringify(claudePluginData, null, 2));
-    await fs.writeFile(marketplacePath, JSON.stringify(marketplaceData, null, 2));
+    await fs.writeFile(geminiPath, JSON.stringify(geminiData, null, 2) + '\n');
+    await fs.writeFile(vscodePath, JSON.stringify(vscodeData, null, 2) + '\n');
+    await fs.writeFile(claudePluginPath, JSON.stringify(claudePluginData, null, 2) + '\n');
+    await fs.writeFile(marketplacePath, JSON.stringify(marketplaceData, null, 2) + '\n');
   }
 
   console.log(`Successfully bumped to version ${newVersion}`);
@@ -72,7 +72,6 @@ async function main() {
   } else {
     console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/skills-alpha (main branch)...`);
     
-
     await ghPagesPublish(path.join(DIST_DIR, "skills-cli"), {
       src: ['**/*', '**/node_modules/**/*'],
       branch: 'main',

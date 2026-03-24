@@ -2,7 +2,7 @@
   "name": "skills-alpha",
   "displayName": "Chrome Web Development Skills",
   "description": "Curated collection of agent skills for modern web development.",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "publisher": "GoogleChrome",
   "engines": {
     "vscode": "^1.90.0"

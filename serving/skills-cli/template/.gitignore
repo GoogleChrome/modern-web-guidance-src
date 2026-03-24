@@ -1,0 +1,2 @@
+# Force tracking of node_modules when publishing releases from dist envelope
+!node_modules/
