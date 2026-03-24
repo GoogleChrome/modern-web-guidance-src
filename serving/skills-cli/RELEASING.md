@@ -4,15 +4,16 @@ To release updates to our AI Skills infrastructure (Claude Code, Gemini CLI, van
 
 ## The Publishing Pipeline
 
-1. **Make changes** locally or via PR in the `guidance` repo under `serving/`.
-2. **Deploy** by running the automated publishing command from the `serving/` folder:
-   ```bash
-   pnpm run publish-skills
-   ```
-   *Under the hood, this script:*
-   1. Increments the patch version across all AI extension manifests (`0.0.x`).
-   2. Executes `dist-gen` to bundle all tools, local databases, and new extension metadata.
-   3. Uses the `gh-pages` API to forcefully replicate the entirely newly bundled `dist/` envelope upward to the `main` branch of `git@github.com:GoogleChrome/skills-alpha.git`.
+**Publish the latest** by running the automated publishing command:
+```bash
+pnpm --filter serving run publish-skills
+```
+
+*Under the hood, this script:*
+1. Increments the patch version across all AI extension manifests (`0.0.x`).
+1. Executes `dist-gen` to bundle all tools, local databases, and new extension metadata, and update the readme.
+1. Runs `test-dist.ts` to verify the build at `dist/`.
+1. Publishes the `dist/` folder to the `main` branch of `git@github.com:GoogleChrome/skills-alpha.git`.
 
 ## GitHub Releases (Important for Gemini CLI)
 
@@ -20,9 +21,9 @@ When users run:
 ```bash
 gemini extensions install https://github.com/GoogleChrome/skills-alpha
 ```
-The Gemini CLI attempts to fetch an official GitHub Release by default, not just a git clone. If no releases exist via the API paths, users will see an error:
+The Gemini CLI first attempts to fetch an official GitHub Release by default, not just a git clone. If no releases exist (or the user doesn't have a GITHUB_TOKEN` with `repo` scope), users will see an error:
 `Failed to fetch release data for GoogleChrome/skills-alpha at tag undefined: Request failed with status code 404.`
-It will then prompt the user to fall back to a "git clone" installation.
+It will then prompt the user to fall back to a "git clone" installation. This is fine.
 
 **Note on Private Repositories:** 
 If `GoogleChrome/skills-alpha` is kept private, the Gemini CLI must be able to authenticate. Users must have a `GITHUB_TOKEN` environment variable exported with the `repo` scope. Without this token, the API request will fail (often presenting as a 404 since GitHub hides private repos from unauthenticated requests), and the CLI will again fall back to `git clone`.
