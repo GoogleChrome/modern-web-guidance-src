@@ -110,7 +110,7 @@ gd dev <path/to/guide_dir>
 This runs the following pipeline after the grader calibrates successfully:
 
 1. **Generate `prompts.md`** if missing — uses Gemini CLI to create a set of developer-facing prompts derived from the guide
-2. **Find or create a task file** in `harness/tasks/` — scans existing tasks for a matching `grader:` field, or creates `<guideName>-task.md` using the first prompt from `prompts.md` (defaults to `daily-grind` base app)
+2. **Find or create a task file** in `harness/tasks/` — scans existing tasks for a matching `grader:` field, or creates `<guideName>-task.md` using the first prompt from `prompts.md` (defaults to `daily-grind` base app). If the task file already exists but its prompt has drifted from `prompts.md`, `gd dev` will warn you. Run with `--sync-task` to force it to synchronize.
 3. **Grade the base app as-is** (pre-score) — establishes a baseline before any agent runs
 4. **Run the agent** in both `unguided` (no guide access) and `guided` (with MCP guide access) modes against the base app
 5. **Grade both outputs** and print a comparison:
@@ -126,6 +126,16 @@ Agent test results:
 The agent and base app are selected from the [harness config](../harness/config.ts) (`suite.agent` and the task's `base_app` field).
 
 The generated task file is automatically included in future `gd eval suite` runs — the suite discovers all task files in `harness/tasks/` by default.
+
+### Synchronizing All Regular Tasks
+
+If you update multiple `prompts.md` files or want to ensure all regular tasks are in sync with their respective guides, you can run:
+
+```bash
+gd gen-task-suite
+```
+
+This script scans for "eval-ready" guides, reads their `prompts.md`, and updates the corresponding `<guideName>-task.md` in `harness/tasks/` while preserving any custom `base_app` configuration in the task file.
 
 ### Negative Suite
 

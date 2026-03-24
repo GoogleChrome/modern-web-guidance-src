@@ -41,6 +41,7 @@ export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
   test?: boolean;        // default: true — run agent test after calibration
   guidedOnly?: boolean;  // skip calibration and only run the guided agent test
+  syncTask?: boolean;    // update task with latest prompt from prompts.md
   verbose?: boolean;
 }
 
@@ -188,9 +189,28 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
       }
     }
 
-    if (!existingTask && fs.existsSync(promptsPath)) {
-      const taskInfo = createTask(targetDir, currentInv.name);
-      taskMap.set(currentInv.name, taskInfo);
+    if (fs.existsSync(promptsPath)) {
+      const latestPrompt = getLatestPrompt(targetDir, currentInv.name);
+
+      if (existingTask) {
+        if (existingTask.prompt.trim() !== latestPrompt.trim()) {
+          if (options.syncTask) {
+            console.log(cYellow(`\nSyncing prompt for ${currentInv.name}-task.md...`));
+            const taskInfo = createTask(targetDir, currentInv.name);
+            taskMap.set(currentInv.name, taskInfo);
+          } else {
+            console.log(cYellow(`\n\u26a0\ufe0f  Task prompt is outdated!`));
+            console.log(`   Current: "${cDim(existingTask.prompt.substring(0, 100))}${existingTask.prompt.length > 100 ? '...' : ''}"`);
+            console.log(`   Latest:  "${cDim(latestPrompt.substring(0, 100))}${latestPrompt.length > 100 ? '...' : ''}"`);
+            console.log(`   Run with ${cBold('--sync-task')} to update.`);
+          }
+        } else {
+          console.log(cGreen(`\n\u2705 Task prompt is up-to-date`));
+        }
+      } else {
+        const taskInfo = createTask(targetDir, currentInv.name);
+        taskMap.set(currentInv.name, taskInfo);
+      }
     }
   }
 
@@ -289,24 +309,50 @@ Only create the ${PROMPTS_FILE} file. Do not modify any other files.`;
   }
 }
 
-function createTask(targetDir: string, guideName: string): TaskInfo {
-  const promptsContent = readFileSafe(path.join(targetDir, PROMPTS_FILE));
-  const firstLine = promptsContent.split('\n').find(l => l.trim().startsWith('- '));
-  const prompt = firstLine ? firstLine.replace(/^-\s*/, '').trim() : `Implement the guidance from ${guideName}`;
+export function getLatestPrompt(targetDir: string, guideName: string): string {
+  const promptsPath = path.join(targetDir, PROMPTS_FILE);
+  if (fs.existsSync(promptsPath)) {
+    const promptsContent = readFileSafe(promptsPath);
+    const firstLine = promptsContent.split('\n').find(l => l.trim().startsWith('- '));
+    if (firstLine) {
+      return firstLine.replace(/^-\s*/, '').trim();
+    }
+  } else {
+    console.warn(cYellow(`  ⚠️  Missing ${PROMPTS_FILE} for ${guideName}, using default prompt.`));
+  }
+  return `Implement the guidance from ${guideName}`;
+}
+
+export function createTask(targetDir: string, guideName: string): TaskInfo {
+  const prompt = getLatestPrompt(targetDir, guideName);
 
   const taskName = `${guideName}-task`;
+  const taskFilePath = path.join(TASKS_DIR, `${taskName}.md`);
+
+  // Preserve existing base_app if task file already exists
+  let baseApp = 'daily-grind';
+  if (fs.existsSync(taskFilePath)) {
+    const rawContent = readFileSafe(taskFilePath);
+    if (rawContent) {
+      const { data } = matter(rawContent);
+      if (data?.base_app) {
+        baseApp = data.base_app;
+      }
+    }
+  }
+
   const taskContent = `---
-base_app: daily-grind
+base_app: ${baseApp}
 grader: ${guideName}
 ---
 ${prompt}
 `;
 
   fs.mkdirSync(TASKS_DIR, { recursive: true });
-  fs.writeFileSync(path.join(TASKS_DIR, `${taskName}.md`), taskContent);
-  console.log(cGreen(`✅ Created task: harness/tasks/${taskName}.md`));
+  fs.writeFileSync(taskFilePath, taskContent);
+  console.log(cGreen(`✅ Created/Updated task: harness/tasks/${taskName}.md (base_app: ${baseApp})`));
 
-  return { taskName, baseApp: 'daily-grind', prompt };
+  return { taskName, baseApp, prompt };
 }
 
 async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<string, TaskInfo>, guidedOnly = false): Promise<void> {
@@ -702,11 +748,13 @@ if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(imp
   const isTest = !args.includes('--no-test');
 
   if (!dir) {
-    console.error('Usage: node --experimental-strip-types guides/dev-guide.ts <path/to/guide> [--no-test]');
+    console.error('Usage: node --experimental-strip-types guides/dev-guide.ts <path/to/guide> [--no-test] [--sync-task]');
     process.exit(1);
   }
 
-  devGuide(dir, { test: isTest }).then(success => {
+  const syncTask = args.includes('--sync-task');
+
+  devGuide(dir, { test: isTest, syncTask }).then(success => {
     process.exit(success ? 0 : 1);
   }).catch(err => {
     console.error(err);
