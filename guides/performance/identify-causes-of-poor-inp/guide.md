@@ -35,19 +35,26 @@ Calculating INP from the raw Event Timing API is complicated and has several nua
 The [`web-vitals` library](https://github.com/GoogleChrome/web-vitals) is a tiny library used to measure Core Web Vitals and other performance metrics. The `onINP` function can be used to identify the slowest interaction and includes information about the scripts that were executed during the interaction using the Long Animation Frames API.
 
 ```javascript
+// Use the attribution build to get Long Animation Frame data
+// alongside the INP metric value.
 import { onINP } from 'web-vitals/attribution';
 
 onINP((metric) => {
-  // Beacon the data back to the site's analytics service
+  // Beacon script attribution for the longest script during the INP
+  // interaction, so you can identify the root cause in production.
   navigator.sendBeacon(
     '/analytics',
     JSON.stringify({
       name: 'INP',
       value: metric.value,
+      // These fields identify which script function was responsible
+      // for the longest processing during the INP interaction.
       invokerType: metric.attribution.longestScript.entry?.invokerType,
       sourceURL: metric.attribution.longestScript.entry?.sourceURL,
       sourceFunctionName: metric.attribution.longestScript.entry?.sourceFunctionName,
       sourceCharPosition: metric.attribution.longestScript.entry?.sourceCharPosition,
+      // subpart indicates which phase (input delay, processing, or
+      // presentation delay) the longest script overlapped with most.
       subpart: metric.attribution.longestScript.subpart,
       intersectingDuration: metric.attribution.longestScript.intersectingDuration
     })

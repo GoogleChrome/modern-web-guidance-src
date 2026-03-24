@@ -56,6 +56,8 @@ const observer = new PerformanceObserver(list => {
   );
 });
 
+// Use buffered: true to capture any long frames that occurred before
+// this observer was registered.
 observer.observe({type: 'long-animation-frame', buffered: true});
 ```
 

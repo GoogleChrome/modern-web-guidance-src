@@ -35,13 +35,16 @@ const observer = new PerformanceObserver((list) => {
     console.log(`Long frame duration: ${entry.duration}ms`);
     console.log(`Total scripts executed: ${entry.scripts.length}`);
 
-    // Even if no single script was >50ms, the combined frame might be long.
-    // The Long Tasks API would not catch this, but LoAF does.
+    // Sum individual script durations to see how much of the frame was
+    // spent in JS. Even if no single script exceeded 50ms, the combined
+    // total may explain why the frame was long.
     const totalScriptTime = entry.scripts.reduce((total, script) => total + script.duration, 0);
     console.log(`Combined script time: ${totalScriptTime}ms`);
   }
 });
 
+// Use buffered: true to capture any long frames that occurred before
+// this observer was registered.
 observer.observe({type: 'long-animation-frame', buffered: true});
 ```
 

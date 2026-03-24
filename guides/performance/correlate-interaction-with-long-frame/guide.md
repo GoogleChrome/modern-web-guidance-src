@@ -38,20 +38,21 @@ const observer = new PerformanceObserver((list) => {
     // A non-zero firstUIEventTimestamp means a user interaction occurred
     // during this frame, so the long frame directly impacted responsiveness.
     if (entry.firstUIEventTimestamp) {
-      // Console log for now, but in a real application would want to beacon
-      // back to an analytics endpoint
+      // Replace with a beacon to your analytics endpoint in production.
       console.log(`Interaction delayed!`);
       console.log(`First UI event at: ${entry.firstUIEventTimestamp.toFixed(0)}ms`);
       console.log(`Frame duration: ${entry.duration.toFixed(0)}ms`);
-      // Note script entries will be empty when loading this demo from a
-      // local file, instead of from a server.
+      // Note: entry.scripts may be empty in some cases, e.g. if the
+      // scripts was loaded from an extension or cross-origin iframe.
       console.log(`Scripts involved:`, entry.scripts);
-      
-      document.getElementById('output').innerText = 
+
+      document.getElementById('output').innerText =
         `Interaction was delayed by a frame lasting ${entry.duration.toFixed(0)}ms!`;
     }
   }
 });
+// Use buffered: true to capture any long frames that occurred before
+// this observer was registered.
 observer.observe({ type: 'long-animation-frame', buffered: true });
 ```
 
