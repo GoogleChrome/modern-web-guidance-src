@@ -101,8 +101,8 @@ async function main() {
     };
     fs.writeFileSync(path.join(CLI_DIR, "package.json"), JSON.stringify(packageJson, null, 2));
 
-    console.log("Downloading external dependencies via npm install...");
-    execSync("npm install", {
+    console.log("Downloading external production dependencies via npm install...");
+    execSync("npm install --omit=dev", {
       cwd: CLI_DIR,
       stdio: "inherit",
     });
