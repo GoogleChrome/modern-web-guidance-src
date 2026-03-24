@@ -306,7 +306,9 @@ async function loadRemoteTests() {
 
 function registerTestData(testId, source, parsed, forcedTimestamp) {
     let servingArch = 'unknown';
-    if (parsed.enableSkills !== undefined) {
+    if (parsed.serving !== undefined) {
+        servingArch = parsed.serving;
+    } else if (parsed.enableSkills !== undefined) {
         servingArch = parsed.enableSkills ? 'skills' : 'mcp';
     }
 
@@ -328,6 +330,11 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
 
 function renderSuites() {
     const testIds = getSortedTestIds();
+    const servingDisplayNames = {
+        'skills': 'Skills',
+        'skills_cli': 'Skills (CLI)',
+        'mcp': 'MCP'
+    };
     if (testIds.length === 0) return;
 
     const container = document.getElementById('suites-list');
@@ -372,7 +379,7 @@ function renderSuites() {
                     <div style="color: var(--text-secondary); font-size: 0.8em;">${prettyTimestampStr}</div>
                 </td>
                 <td>${testInfo.agent}</td>
-                <td style="text-transform: capitalize;">${testInfo.servingArch.replace('mcp', 'MCP')}</td>
+                <td>${servingDisplayNames[testInfo.servingArch] || testInfo.servingArch}</td>
                 <td class="rate-cell" data-compound-key="${compoundKey}">
                     <div class="rate-bar" style="width: ${gRate}%;"></div>
                     <div class="rate-value"><span style="font-weight: 700; color: ${getColor(gRate)};">${gRate}%</span></div>
