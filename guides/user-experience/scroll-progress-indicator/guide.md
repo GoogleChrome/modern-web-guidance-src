@@ -135,4 +135,4 @@ Here’s a JavaScript-based fallback that listens for the `scroll` event and upd
 </script>
 ```
 
-This script first checks if `animation-timeline: scroll()` is supported. If not, it adds a scroll event listener to the `window`. In the event listener, it calculates the scroll progress as a percentage and updates the `scaleX` of the `#progress` element. This provides a similar visual effect for browsers that don't yet support the CSS feature.
+This JavaScript fallback creates a similar effect to the CSS-based version, but it's important to note that it's not a perfect polyfill: it is not as performant and may not be as smooth as the native CSS version. Also note that not every effect can be recreated using this approach.
