@@ -32,7 +32,7 @@ async function bumpVersions() {
   geminiData.version = newVersion;
 
   // VSCode
-  const vscodePath = path.join(SKILLS_CLI_TEMPLATE_DIR, "package.json");
+  const vscodePath = path.join(SKILLS_CLI_TEMPLATE_DIR, "vscode-ext-package.json");
   const vscodeData = JSON.parse(await fs.readFile(vscodePath, 'utf8'));
   vscodeData.version = newVersion;
 

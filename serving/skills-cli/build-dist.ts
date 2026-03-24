@@ -46,6 +46,12 @@ async function main() {
   const BUNDLE_OUT_DIR = path.join(CLI_DIR, "serving/bin");
   fs.mkdirSync(BUNDLE_OUT_DIR, { recursive: true });
 
+  console.log("Copying installation manifests and metadata for AI tools...");
+  fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), PUBLISH_ROOT, { recursive: true });
+
+  console.log("Renaming vscode-ext-package.json to package.json for publishing...");
+  fs.renameSync(path.join(PUBLISH_ROOT, "vscode-ext-package.json"), path.join(PUBLISH_ROOT, "package.json"));
+
   console.log("Copying data files...");
   // 3. Copy .modern-web-data
   const mcpDataDir = path.join(SERVING_DIR, ".modern-web-data");
@@ -89,18 +95,6 @@ async function main() {
     fs.writeFileSync(outFile, bundleContent);
     console.log("Placeholder replaced successfully.");
 
-    console.log("Generating package.json in output directory...");
-    const packageJson = {
-      name: "standalone-skills-cli",
-      version: "1.0.0",
-      type: "commonjs",
-      dependencies: {
-        "@huggingface/transformers": "^3.8.1",
-        "@lancedb/lancedb": "^0.26.2"
-      }
-    };
-    fs.writeFileSync(path.join(CLI_DIR, "package.json"), JSON.stringify(packageJson, null, 2));
-
     console.log("Downloading external production dependencies via npm install...");
     execSync("npm install --omit=dev", {
       cwd: CLI_DIR,
@@ -123,11 +117,6 @@ async function main() {
     console.error(`Error: SKILL.md source not found at ${skillMdSource}`);
     process.exit(1);
   }
-
-  console.log("Copying installation manifests and metadata for AI tools...");
-  fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), PUBLISH_ROOT, { recursive: true });
-  
-  
 
   updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
 
