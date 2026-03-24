@@ -11,35 +11,46 @@ This skill helps you diagnose why AI coding agents are failing evaluations, spec
 
 ## 1. Accessing Data
 
-### Via Command Line (Preferred)
-If no browser is available, you can pull the raw `evals.json` from GCS.
+### Running Locally (Preferred)
+The fastest way to check a use case's pass rate is:
 ```bash
-# Get the latest suite ID from GCS or use a known one
-gcloud storage ls gs://guidance-evals/
+gd dev <path/to/use-case> --guided
+```
+This runs the grader and reports how many checks passed, where each check corresponds to a test in the use case's `grader.ts`.
 
-# Download the evals.json for a specific suite
+To see **which specific tests failed**, open the Playwright results page:
+```
+guides/<category>/<use-case-slug>/test-app-results/1/<use-case-slug>-task/guided/grade-report/index.html
+```
+Open this in a browser to get a detailed view of each assertion's pass/fail status.
+
+### Via GCS (Remote / Historical)
+```bash
+gcloud storage ls gs://guidance-evals/
 gcloud storage cp gs://guidance-evals/{suite_id}/evals.json .
 ```
-
-### Via Dashboard (Fallback)
-If a browser is available, navigate to the dashboard (usually `http://localhost:{port}` or the GitHub Pages URL).
--   **Suite View**: Look for tasks where "Guided" scores are unexpectedly low.
--   **Trajectory View**: Open specific task trajectories to see the agent's step-by-step actions and grader failures.
 
 
 ## 2. Investigation Flow
 
-1.  **Identify Failure Mode**: Look at the grader results in the JSON or dashboard.
-    -   `Locator: locator('img[src*="hero-lcp.jpg"]') ... Error: element(s) not found`
-2.  **Inspect Trajectories**: check `trajectory.json` to see if tools were correctly discovered and if the agent attempted to use them.
-    -   *Crucial*: If `guideUsed` is false, verify if `tool_definitions` included the expected MCP tools.
-3.  **Check MCP Server Logs**: Look for `mcp-server.log` in the task directory.
-    -   If missing, the server likely never started or discovery was skipped.
-4.  **Verify Harness Implementation**: Check if the agent harness (e.g., `gemini-cli-agent.ts`) captures both `stdout` and `stderr`.
-    -   Discovery-time failures are often only visible in `stderr`.
-5.  **Audit CLI Trust Logic**: For Gemini CLI, check if `security.folderTrust.enabled` is blocking discovery.
-    -   Headless mode bypasses trust, but inconsistent flag parsing can lead to silent skips.
-6.  **Inspect Agent Implementation Choice**: Determine if the agent chose a fallback (e.g., JS instead of CSS) due to missing guidance.
+1.  **Run locally** with `gd dev <path/to/use-case> --guided` to get pass/fail counts.
+2.  **Check which tests failed** by opening the `grade-report/index.html` Playwright results page.
+3.  **Inspect the trajectory** to determine how (or whether) the agent used MCP tools. Trajectory files are at:
+    ```
+    guides/<category>/<use-case-slug>/test-app-results/1/<use-case-slug>-task/guided/session-<timestamp>.html
+    guides/<category>/<use-case-slug>/test-app-results/1/<use-case-slug>-task/guided/session-<timestamp>.json
+    ```
+    Since files are timestamped, always use the **most recent** one. There are three distinct failure modes — each requiring a different fix:
+
+    | Trajectory Pattern | Problem | Direction |
+    |--------------------|---------|-----------|
+    | Agent never calls MCP tools | Guide not discovered | Check tool availability, trust settings, MCP server logs |
+    | Agent searches MCP but picks the wrong guide | Guide selection / search quality | Improve guide metadata, titles, or search keywords |
+    | Agent picks the right guide but implements it wrong | Guide content quality | Improve the guide's instructions, examples, or specificity |
+
+4.  **Check MCP Server Logs**: Look for `mcp-server.log` in the task directory. If missing, the server likely never started or discovery was skipped.
+5.  **Verify Harness**: Ensure the agent harness (e.g., `gemini-cli-agent.ts`) captures both `stdout` and `stderr` — discovery failures often appear only in `stderr`.
+6.  **Audit Trust Logic**: For Gemini CLI, check if `security.folderTrust.enabled` is silently blocking MCP discovery.
 
 ## 3. Some Observed Patterns & Solutions
 

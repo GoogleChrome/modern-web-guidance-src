@@ -55,6 +55,8 @@ The human can manually write or revise the grader or prompts if they wish.
 
 **Rules:**
 - DO write prompts as a developer talking to an AI coding assistant — casual, lowercase, sometimes vague.
+- DO phrase prompts as action requests or directives (e.g. "add X", "can you build Y", "implement Z").
+- DO NOT phrase prompts as advisory questions (e.g. "how can I?", "what's the best way to?", "can you explain?"). The agent must implement, not just explain.
 - DO vary specificity: include at least one vague/intent-based prompt and one specific/technical ask.
 - DO assume the developer is working on an existing app (the base app). Reference its real assets and endpoints if needed (e.g., `hero.jpg`, `/api/analytics`).
 - DO NOT mention the guide, the feature name, or hint that guidance exists.
