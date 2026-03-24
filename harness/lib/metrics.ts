@@ -146,7 +146,6 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     keys.forEach(k => {
       const [, , runType] = k.split(' - ');
       const stats = testStats[k];
-      const runs = allResults[k];
 
       if (stats) {
         passed += stats.passedChecks;
