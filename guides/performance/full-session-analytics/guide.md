@@ -85,7 +85,7 @@ The recommended fallback strategy is to use the polyfill below, which internally
 
 Use the following minimal `fetchLater()` polyfill, which implements the API as closely as possible in unsupporting browsers.
 
-The only notable behavior difference with this polyfill is instead of sending the payload when the user leaves the page, it sends it whenever the page's `visibilityState` changes to "hidden", since this is the most reliable end-of-session signal that's widely available today.
+The only notable behavior difference with this polyfill is that it uses `visibilitychange` to detect when the user leaves, rather than relying on the browser's native unload handling. This is an internal implementation detail — your code does not need to listen for `visibilitychange` or any other page lifecycle events. Just call `fetchLater()` and the polyfill handles delivery.
 
 ```js
 globalThis.fetchLater ??= function fetchLater(url, init = {}) {
