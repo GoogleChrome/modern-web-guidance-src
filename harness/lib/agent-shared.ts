@@ -186,7 +186,7 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
     fs.mkdirSync(destDir, { recursive: true });
 
     if (cli) { // Skills-cli mode
-      const distSource = path.join(harnessRoot, '..', 'dist/skills-cli/skills');
+      const distSource = path.join(harnessRoot, '..', 'dist/skills-cli/skills/modern-web-use-cases');
       if (!fs.existsSync(distSource)) {
         console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter modern-web-mcp build-dist' automatically...`);
         try {
@@ -208,8 +208,8 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
         if (fs.existsSync(distSource)) {
           // Clear dest first to ensure clean state
           if (fs.existsSync(destSkillDir)) {
-             fs.rmSync(destSkillDir, { recursive: true, force: true });
-             fs.mkdirSync(destSkillDir, { recursive: true });
+            fs.rmSync(destSkillDir, { recursive: true, force: true });
+            fs.mkdirSync(destSkillDir, { recursive: true });
           }
           fs.cpSync(distSource, destSkillDir, { recursive: true });
         } else {
