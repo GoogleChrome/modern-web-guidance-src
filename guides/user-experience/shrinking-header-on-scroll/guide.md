@@ -52,18 +52,17 @@ Here’s how to create a shrinking header on scroll:
     }
     ```
 
-4.  **Set the `animation-range`:** Use the `animation-range` property to specify the scroll distance over which the animation should occur. For example, to shrink the header over the first 200 pixels of scrolling, you would use `animation-range: 0px 200px;`.
+4.  **Set the `animation-range`:** Use the `animation-range` property to specify the scroll distance over which the animation should occur. For example, to shrink the header over the first 150 pixels of scrolling, you would use `animation-range: 0px 150px;`.
 
     ```css
     header {
-      animation-range: 0px 200px;
+      animation-range: 0px 150px;
     }
     ```
 
 **Tip:** To prevent the content following the header from being obscured by it, add a `padding-top` to the `body` (or the main content container) that is equal to the initial height of the header.
 
-**Tip:** When your header shrinks from a large height (e.g., `100vh`) to a smaller one (e.g., `10vh`), the `animation-range-end` should be the difference between the start and end sizes (e.g., `90vh`). This ensures the animation completes precisely when the header reaches its final size.
-
+**Tip:** To make sure the contents of the page scroll in sync with the shrinking header, set the `animation-range-end` to the difference between the start and end sizes. This ensures the animation completes precisely when the header reaches its final size. In this demo the header shrinks from `200px` to `50px`, so the `animation-range-end` is set to `150px`.
 
 ## Example code
 
@@ -77,7 +76,7 @@ Here’s how to create a shrinking header on scroll:
 header {
   animation: shrink auto linear both;
   animation-timeline: scroll(block root);
-  animation-range: 0px 200px;
+  animation-range: 0px 150px;
 }
 ```
 
