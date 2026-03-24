@@ -11,15 +11,22 @@ DISABLE_TELEMETRY=1 npx skills add GoogleChrome/skills-alpha
 ```
 
 ### ✴️ Claude Code
+
+Since the repository is currently private, we recommend the `git clone` flow for installation:
+
 ```bash
-/plugin marketplace add GoogleChrome/skills-alpha
-/plugin install googlechrome-skills@skills-alpha
+git clone git@github.com:GoogleChrome/skills-alpha.git
+/plugin install ./skills-alpha
 /reload-plugins
 ```
 
 ### ♊ Gemini CLI
+
+Similarly, for the Gemini CLI, install the extension locally:
+
 ```bash
-gemini extensions install https://github.com/GoogleChrome/skills-alpha --auto-update
+# Assuming you already cloned the repo above
+gemini extensions install ./skills-alpha --auto-update
 ```
 
 ### VSCode Extension
