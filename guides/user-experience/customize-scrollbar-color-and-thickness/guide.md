@@ -24,50 +24,57 @@ MANDATORY: Use `scrollbar-color` and `scrollbar-width` on the scrollable contain
 
 ```css
 .scroller {
-  /* DO: Specify thumb color first, then track color for modern browsers */
+  /* Specify thumb color first, then track color for modern browsers */
   scrollbar-color: hotpink blue;
-  /* DO: Apply standard width property natively */
-  scrollbar-width: thin; 
+  /* Apply standard width property natively */
+  scrollbar-width: thin;
+  /* Force the track background to be visible on macOS */
+  scrollbar-gutter: stable;
 }
 
 .scroller-hidden {
-  /* DO: Use none to hide scrollbar but keep scrollability */
-  scrollbar-width: none; 
+  /* Use none to hide scrollbar but keep scrollability */
+  scrollbar-width: none;
 }
 ```
 
-## Fallbacks & Browser Support
+IMPORTANT: On macOS, the `scrollbar-color` (standard) and `::-webkit-scrollbar` (legacy) properties are ignored by default because macOS uses native "overlay" scrollbars. Therefore, you MUST apply `scrollbar-width` (e.g., `thin` or `auto`) to force macOS to render custom colors.
+
+## Fallback strategies
 
 {{ BASELINE_STATUS("scrollbar-color") }}
 
-MANDATORY: If the user's Baseline target is "Baseline Widely Available" or earlier, you SHOULD include the non-standard `::-webkit-scrollbar` pseudo-elements as fallbacks.
-MANDATORY: To prevent conflicts between standard properties and legacy WebKit selectors in browsers that support both natively (like modern Chrome), you MUST wrap legacy WebKit fallbacks in an `@supports not (scrollbar-color: auto)` block.
-MANDATORY: On macOS, `scrollbar-color` (standard) and `::-webkit-scrollbar` (legacy) properties are ignored by default because macOS uses native "overlay" scrollbars. You MUST apply `scrollbar-width` (e.g., `thin` or `auto`) to force macOS to render custom colors.
-MANDATORY: Even with `scrollbar-width` applied, macOS overlay scrollbars render the track (gutter) as transparent by default. If your design requires a visible track background color on MacOS, you MUST apply `scrollbar-gutter: stable;` to the scrollable container.
+{{ BASELINE_STATUS("scrollbar-width") }}
+
+If the user's Baseline target (or Widely available, if unavailable) does not support any of the required features, the following fallback strategies MUST be used.
+
+Include the non-standard `::-webkit-scrollbar` pseudo-elements as fallbacks.
+
+To prevent conflicts between standard properties and legacy WebKit selectors in browsers that support both natively (like modern Chrome), you MUST wrap legacy WebKit fallbacks in an `@supports not (scrollbar-color: auto)` block.
 
 ```css
 .scroller {
-  /* DO: Apply standard properties natively */
+  /* Apply standard properties natively */
   scrollbar-color: hotpink blue;
   scrollbar-width: thin;
-  /* DO: Force the track background to be visible on macOS */
+  /* Force the track background to be visible on macOS */
   scrollbar-gutter: stable;
 }
 
 /* Legacy fallback for WebKit/Blink browsers */
 @supports not (scrollbar-color: auto) {
   .scroller::-webkit-scrollbar {
-    /* DO: Must define base size in WebKit for custom colors to be visual */
+    /* Must define base size in WebKit for custom colors to be visual */
     width: 12px;
     height: 12px;
   }
   .scroller::-webkit-scrollbar-thumb {
-    /* DO: Use background to color the thumb */
+    /* Use background to color the thumb */
     background: hotpink;
     border-radius: 6px;
   }
   .scroller::-webkit-scrollbar-track {
-    /* DO: Use background to color the track */
+    /* Use background to color the track */
     background: blue;
   }
   

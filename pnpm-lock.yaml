@@ -126,12 +126,18 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
+      '@types/gh-pages':
+        specifier: ^6.1.0
+        version: 6.1.0
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
       esbuild:
         specifier: ^0.25.0
         version: 0.25.12
+      gh-pages:
+        specifier: ^6.3.0
+        version: 6.3.0
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
@@ -1543,6 +1549,9 @@ packages:
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
+
+  '@types/gh-pages@6.1.0':
+    resolution: {integrity: sha512-Ma9bmKkE+WUtywENLC1rSLXTW66cJHJMWX2RQrJTMKhYM8o+73bRJ1ebfo3RWXUcG+HW3khky2nhVaN7nCsa3Q==}
 
   '@types/gradient-string@1.1.6':
     resolution: {integrity: sha512-LkaYxluY4G5wR1M4AKQUal2q61Di1yVVCw42ImFTuaIoQVgmV0WP1xUaLB8zwb47mp82vWTpePI9JmrjEnJ7nQ==}
@@ -5530,6 +5539,8 @@ snapshots:
   '@types/deep-eql@4.0.2': {}
 
   '@types/estree@1.0.8': {}
+
+  '@types/gh-pages@6.1.0': {}
 
   '@types/gradient-string@1.1.6':
     dependencies:
