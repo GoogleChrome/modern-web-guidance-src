@@ -23,11 +23,11 @@ gemini extensions install https://github.com/GoogleChrome/skills-alpha --auto-up
 ```
 *(Note: If the CLI hits a 404 error and asks to install via "git clone" instead, simply say yes! This is perfectly normal while the project is in private alpha.)*
 
-### VSCode Extension
+### 🌐 VSCode Extension
 
 Compatible with Antigravity, Cursor, etc.
 
-*Note: We'll publish to a markplace soon; In the meantime, install the slow way.*
+*Note: We'll publish to a markplace soon; In the meantime, install the slow way:*
 
 * Clone this repo
 * In VSCode, open the Command Palette (`Cmd+Shift+P` or `Ctrl+Shift+P`)
