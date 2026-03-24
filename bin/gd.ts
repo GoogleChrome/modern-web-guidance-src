@@ -258,11 +258,6 @@ ${cBold('Options:')}
       process.exit(code);
     }
 
-    case 'dist-gen': {
-      const code = await runNpm(['--filter', 'modern-web-mcp', 'dist-gen']);
-      process.exit(code);
-    }
-
     case 'baselinestatus': {
       const args = positionals.slice(1);
       const code = await runNpm(['baselinestatus', ...args]);
