@@ -6,6 +6,11 @@ let selectedTestIds = new Set(); // Set of test IDs to show
 let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
 let currentSkillsFilter = 'all';
+let currentModelFilter = 'all';
+
+function isRemoteDashboard() {
+    return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -131,7 +136,8 @@ function setupTableFilters() {
     const filters = {
         'filter-source': (val) => currentSourceFilter = val,
         'filter-agent': (val) => currentAgentFilter = val,
-        'filter-skills': (val) => currentSkillsFilter = val
+        'filter-skills': (val) => currentSkillsFilter = val,
+        'filter-model': (val) => currentModelFilter = val
     };
 
     Object.entries(filters).forEach(([id, updateFn]) => {
@@ -320,8 +326,33 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
         data: parsed,
         source: source,
         agent: parsed.agent || 'unknown',
-        servingArch: servingArch
+        servingArch: servingArch,
+        model: parsed.model || 'unknown',
+        toolActivationRate: parsed.summary?.toolActivationRate || 0,
+        guideUsageRate: parsed.summary?.guideUsageRate || 0
     };
+    
+    updateModelFilterOptions();
+}
+
+function updateModelFilterOptions() {
+    const modelGroup = document.getElementById('filter-model-group');
+    if (!modelGroup) return;
+
+    const models = new Set();
+    Object.values(allTestData).forEach(test => {
+        if (test.model) models.add(test.model);
+    });
+
+    const sortedModels = Array.from(models).sort();
+    
+    // Only update if changed to avoid unnecessary re-renders or losing selection
+    const currentOptions = Array.from(modelGroup.querySelectorAll('option')).map(o => o.value);
+    if (JSON.stringify(currentOptions) === JSON.stringify(sortedModels)) return;
+
+    modelGroup.innerHTML = sortedModels.map(model => 
+        `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`
+    ).join('');
 }
 
 // ==========================================
@@ -330,14 +361,18 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
 
 function renderSuites() {
     const testIds = getSortedTestIds();
+    const container = document.getElementById('suites-list');
+    const headerSource = document.getElementById('header-source');
+    if (headerSource) {
+        headerSource.style.display = isRemoteDashboard() ? 'none' : '';
+    }
+
     const servingDisplayNames = {
         'skills': 'Skills',
         'skills_cli': 'Skills (CLI)',
         'mcp': 'MCP'
     };
     if (testIds.length === 0) return;
-
-    const container = document.getElementById('suites-list');
 
     let html = '';
 
@@ -349,6 +384,7 @@ function renderSuites() {
         if (currentSourceFilter !== 'all' && testInfo.source !== currentSourceFilter) return;
         if (currentAgentFilter !== 'all' && testInfo.agent !== currentAgentFilter) return;
         if (currentSkillsFilter !== 'all' && testInfo.servingArch !== currentSkillsFilter) return;
+        if (currentModelFilter !== 'all' && testInfo.model !== currentModelFilter) return;
 
         const data = testInfo.data;
         const _date = new Date(testInfo.timestamp);
@@ -380,6 +416,7 @@ function renderSuites() {
                 </td>
                 <td>${testInfo.agent}</td>
                 <td>${servingDisplayNames[testInfo.servingArch] || testInfo.servingArch}</td>
+                <td style="font-size: 0.85rem; color: var(--text-secondary);">${testInfo.model}</td>
                 <td class="rate-cell" data-compound-key="${compoundKey}">
                     <div class="rate-bar" style="width: ${gRate}%;"></div>
                     <div class="rate-value"><span style="font-weight: 700; color: ${getColor(gRate)};">${gRate}%</span></div>
@@ -388,7 +425,7 @@ function renderSuites() {
                     <div class="rate-bar" style="width: ${uRate}%;"></div>
                     <div class="rate-value"><span style="font-weight: 700; color: ${getColor(uRate)};">${uRate}%</span></div>
                 </td>
-                <td style="text-transform: capitalize;">${testInfo.source}</td>
+                ${isRemoteDashboard() ? '' : `<td style="text-transform: capitalize;">${testInfo.source}</td>`}
             </tr>
         `;
     });

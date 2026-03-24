@@ -1,13 +1,58 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
-import { collectGuidesUsed } from './guide_validation.ts';
+import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { fileURLToPath } from 'url';
 import matter from 'gray-matter';
-import { config } from '../config.ts';
+import { config, Serving } from '../config.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+export function getGuideCategory(guideName: string): string | null {
+  const guidesDir = path.resolve(__dirname, '../../guides');
+  const categories = fs.readdirSync(guidesDir).filter(f => fs.statSync(path.join(guidesDir, f)).isDirectory());
+  
+  for (const cat of categories) {
+    if (fs.existsSync(path.join(guidesDir, cat, guideName))) {
+      return cat;
+    }
+  }
+  return null;
+}
+
+export function extractModelFromResults(resultsDir: string): string {
+  // Use recursive glob to find session logs deep in the task results
+  const sessionFiles = glob.sync('**/*/session-*.{json,jsonl}', { cwd: resultsDir, absolute: true });
+  const firstSession = sessionFiles[0];
+  if (!firstSession) return 'unknown';
+
+  try {
+    const isJsonl = firstSession.endsWith('.jsonl');
+    const content = fs.readFileSync(firstSession, 'utf8');
+
+    if (isJsonl) {
+      const lines = content.split('\n');
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const obj = JSON.parse(line);
+        if (obj.message && obj.message.model) {
+          return obj.message.model;
+        }
+      }
+    } else {
+      const session = JSON.parse(content);
+      if (session.messages) {
+        for (const m of session.messages) {
+          if (m.type === 'gemini' && m.model) return m.model;
+        }
+      }
+    }
+  } catch (e) {
+    console.error(`Failed to extract model from ${firstSession}:`, e);
+  }
+  return 'unknown';
+}
 
 export async function collectResults(resultsDir: string) {
   const runDirs = fs.readdirSync(resultsDir)
@@ -134,8 +179,12 @@ run();
       const [taskName, runType] = parts;
 
       let guidesUsedResult: string[] = [];
+      let guidanceToolsUsedResult: string[] = [];
+
       if (runType === 'guided') {
-        guidesUsedResult = await collectGuidesUsed(dir, config.suite.serving, config.suite.agent);
+        const serving = config.suite.serving;
+        guidesUsedResult = await collectGuidesUsed(dir, serving, config.suite.agent);
+        guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir, serving);
       }
 
       const targetFile = path.join(dir, 'index.html');
@@ -155,6 +204,18 @@ run();
       }
 
       const guide = data.grader.trim();
+      const taskCategory = getGuideCategory(guide);
+
+      let expectedGuidanceTool: string | undefined;
+      const serving = config.suite.serving;
+      if (serving === Serving.MCP) {
+        expectedGuidanceTool = 'modern-web';
+      } else if (serving === Serving.SKILLS_CLI) {
+        expectedGuidanceTool = 'modern-web-use-cases';
+      } else if (serving === Serving.SKILLS) {
+        expectedGuidanceTool = taskCategory || undefined;
+      }
+
       const actualBaseApp = data.base_app ? data.base_app.trim() : taskName;
       const testName = `${taskName} - ${guide} - ${runType}`;
       const guidesDir = path.resolve(__dirname, '../../guides');
@@ -215,6 +276,9 @@ run();
         runNumber: parseInt(runDir),
         results: scenarioResults,
         guidesUsed: guidesUsedResult,
+        guidanceToolsUsed: guidanceToolsUsedResult,
+        expectedGuidanceTool: expectedGuidanceTool,
+        expectedGuide: guide,
         baseApp: actualBaseApp,
         taskName: taskName
       });

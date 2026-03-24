@@ -75,9 +75,17 @@
                   </optgroup>
                 </select>
               </th>
+              <th>
+                <select id="filter-model" class="header-filter-select">
+                  <option value="all">Model</option>
+                  <optgroup label="Select Model" id="filter-model-group">
+                    <!-- populated dynamically -->
+                  </optgroup>
+                </select>
+              </th>
               <th style="text-align: right; padding-right: 15px;">Guided</th>
               <th style="text-align: right; padding-right: 15px;">Unguided</th>
-              <th>
+              <th id="header-source">
                 <select id="filter-source" class="header-filter-select">
                   <option value="all">Source</option>
                   <optgroup label="Select Source">

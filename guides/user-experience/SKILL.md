@@ -1,5 +1,5 @@
 ---
-name: user-experience-guides
+name: user-experience
 description: Access and implement user experience enhancement guides for web applications. **You MUST use this skill whenever the user asks about styling, CSS, layout changes, custom components (like accordions or tabs), scrollbars, accessibility, or appearance adjustments.** Consult this guide first for any UI modification to see if a dedicated pattern or modern feature supports it.
 ---
 
@@ -15,7 +15,11 @@ This directory contains guides for enhancing the user experience of web applicat
 | [`adapt-scrollbar-to-light-dark-preferences`](./adapt-scrollbar-to-light-dark-preferences) | Ensure the scrollbar visually matches the user's operating system light/dark mode preference. | `scrollbar-color`, `color-scheme`, `prefers-color-scheme` |
 | [`animate-scrollbar-color-on-scroll`](./animate-scrollbar-color-on-scroll) | Animate the scrollbar color dynamically as the user scrolls down the page. | `scrollbar-color`, `scroll-driven-animations`, `registered-custom-properties` |
 | [`customize-scrollbar-color-and-thickness`](./customize-scrollbar-color-and-thickness) | Customize the color or thickness of a scrollbar. | `scrollbar-color`, `scrollbar-width` |
+| [`required-field-feedback`](./required-field-feedback) | Provide error message for required form fields that were skipped or left empty *only* after user interaction, to avoid preemptive errors and ensure feedback is timely and contextually relevant to the user's flow. | `user-pseudos` |
 | [`search-hidden-content`](./search-hidden-content) | Hide content from view (accordions, tabs) while ensuring it remains searchable and accessible. | `details`, `details-name`, `hidden-until-found` |
+| [`select-menu-interaction`](./select-menu-interaction) | Validate that a non-default option has been chosen in a select menu only after the user has interacted with the control. | `user-pseudos` |
+| [`style-parent-with-has`](./style-parent-with-has) | Style parent elements of a form field (e.g. labels or fieldsets) when the field is invalid. | `user-pseudos` |
+| [`validate-input-after-interaction`](./validate-input-after-interaction) | Show form field validation feedback (e.g. password complexity or email format requirements) only after the user has finished their initial interaction, avoiding premature errors on page load or while the user is typing. | `user-pseudos` |
 
 ## How to use
 
