@@ -525,6 +525,7 @@ async function showDetails(testName, runs, stats, testId) {
         const guidesUsed = run.guidesUsed || (run.guideUsed !== undefined ? (typeof run.guideUsed === 'object' && run.guideUsed !== null ? run.guideUsed.guidesUsed : []) : []);
         const hasGuideData = run.guidesUsed !== undefined || run.guideUsed !== undefined;
         const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : 'modern-web.log';
+        const shouldUseTrajectory = (allTestData.serving ? (allTestData.serving === 'skills' || allTestData.serving === 'skills_cli') : allTestData.enableSkills) && sessionFile;
 
         if (hasGuideData && runType !== 'unguided') {
             guideSection = `
@@ -540,7 +541,7 @@ async function showDetails(testName, runs, stats, testId) {
                             </div>
                         </div>
                         <div>
-                            <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${allTestData.enableSkills && sessionFile ? 'Agent Trajectory' : logFile}</a>
+                            <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${shouldUseTrajectory ? 'Agent Trajectory' : logFile}</a>
                         </div>
                     </div>
                 </div>
@@ -571,7 +572,7 @@ async function showDetails(testName, runs, stats, testId) {
         if (viewResourcesLink) {
             viewResourcesLink.onclick = (e) => {
                 e.preventDefault();
-                if (allTestData.enableSkills && sessionFile) {
+                if (shouldUseTrajectory) {
                     openTrajectory(usedBasePath, sessionFile);
                 } else {
                     const resourcesPath = `${usedBasePath}/${logFile}`;
