@@ -5,7 +5,7 @@ let allTestData = {}; // Cache all test data by testId
 let selectedTestIds = new Set(); // Set of test IDs to show
 let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
-let currentSkillsFilter = 'all';
+let currentServingFilter = 'all';
 let currentModelFilter = 'all';
 
 function isRemoteDashboard() {
@@ -136,7 +136,7 @@ function setupTableFilters() {
     const filters = {
         'filter-source': (val) => currentSourceFilter = val,
         'filter-agent': (val) => currentAgentFilter = val,
-        'filter-skills': (val) => currentSkillsFilter = val,
+        'filter-serving': (val) => currentServingFilter = val,
         'filter-model': (val) => currentModelFilter = val
     };
 
@@ -311,11 +311,11 @@ async function loadRemoteTests() {
 }
 
 function registerTestData(testId, source, parsed, forcedTimestamp) {
-    let servingArch = 'unknown';
+    let serving = 'unknown';
     if (parsed.serving !== undefined) {
-        servingArch = parsed.serving;
+        serving = parsed.serving;
     } else if (parsed.enableSkills !== undefined) {
-        servingArch = parsed.enableSkills ? 'skills' : 'mcp';
+        serving = parsed.enableSkills ? 'skills' : 'mcp';
     }
 
     const compoundKey = `${testId}|||${source}`;
@@ -326,7 +326,7 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
         data: parsed,
         source: source,
         agent: parsed.agent || 'unknown',
-        servingArch: servingArch,
+        serving: serving,
         model: parsed.model || 'unknown',
         toolActivationRate: parsed.summary?.toolActivationRate || 0,
         guideUsageRate: parsed.summary?.guideUsageRate || 0
@@ -383,7 +383,7 @@ function renderSuites() {
         // Apply filters
         if (currentSourceFilter !== 'all' && testInfo.source !== currentSourceFilter) return;
         if (currentAgentFilter !== 'all' && testInfo.agent !== currentAgentFilter) return;
-        if (currentSkillsFilter !== 'all' && testInfo.servingArch !== currentSkillsFilter) return;
+        if (currentServingFilter !== 'all' && testInfo.serving !== currentServingFilter) return;
         if (currentModelFilter !== 'all' && testInfo.model !== currentModelFilter) return;
 
         const data = testInfo.data;
@@ -415,7 +415,7 @@ function renderSuites() {
                     <div style="color: var(--text-secondary); font-size: 0.8em;">${prettyTimestampStr}</div>
                 </td>
                 <td>${testInfo.agent}</td>
-                <td>${servingDisplayNames[testInfo.servingArch] || testInfo.servingArch}</td>
+                <td>${servingDisplayNames[testInfo.serving] || testInfo.serving}</td>
                 <td style="font-size: 0.85rem; color: var(--text-secondary);">${testInfo.model}</td>
                 <td class="rate-cell" data-compound-key="${compoundKey}">
                     <div class="rate-bar" style="width: ${gRate}%;"></div>
@@ -473,7 +473,7 @@ function showRadarTooltip(testInfo, x, y, compoundKey) {
     if (headerDiv) {
         headerDiv.innerHTML = `
             <div class="radar-tooltip-title">${escapeHtml(testInfo.testId)}</div>
-            <div class="radar-tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(testInfo.servingArch.replace('mcp', 'MCP'))}</div>
+            <div class="radar-tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(testInfo.serving.replace('mcp', 'MCP'))}</div>
         `;
     }
 
