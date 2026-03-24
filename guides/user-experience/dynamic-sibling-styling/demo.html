@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Dynamic Sibling Styling Demo</title>
+  <style>
+    .circle-layout {
+      position: relative;
+      width: 300px;
+      height: 300px;
+    }
+
+    .circle-layout > .item {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      border-radius: 50%;
+
+      /* Size: shrinks with each sibling index */
+      --size: calc(20px + (sibling-count() - sibling-index()) * 5px);
+      width: var(--size);
+      height: var(--size);
+      margin-top: calc(-0.5 * var(--size));
+      margin-left: calc(-0.5 * var(--size));
+
+      /* Color: starts red, distributed around the hue wheel */
+      background: hsl(calc((sibling-index() - 1) * (360 / sibling-count())), 70%, 50%);
+
+      /* Position: arranged in a circle */
+      --angle: calc(360deg / sibling-count() * (sibling-index() - 1));
+      --radius: 120px;
+      transform: rotate(var(--angle)) translateY(calc(-1 * var(--radius)));
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Dynamic Sibling Styling</h1>
+  <p>Each item's position, color, and size are all dynamically computed from
+    <code>sibling-count()</code> and <code>sibling-index()</code>.</p>
+
+  <div class="circle-layout">
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+  </div>
+</body>
+
+</html>

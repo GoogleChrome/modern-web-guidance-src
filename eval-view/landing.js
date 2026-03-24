@@ -1,7 +1,7 @@
-import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken } from './utils.js';
+import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateRadarData } from './utils.js';
+import { RadarChart } from './radar.js';
 
 let allTestData = {}; // Cache all test data by testId
-let currentTab = 'suites';
 let selectedTestIds = new Set(); // Set of test IDs to show
 let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
@@ -10,7 +10,6 @@ let currentSkillsFilter = 'all';
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         // Initialize UI
-        setupTabs();
         setupTestFilters(); // New filter setup
         setupTableFilters();
 
@@ -45,14 +44,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Update filter UI to match initial state
         renderFilterMenuItems();
 
-        const view = params.get('view');
-        if (view && ['overview', 'trends'].includes(view)) {
-            activateTab(view, false);
-        }
-
         // Initial Render
         renderSuites();
-        renderTrends();
 
     } catch (error) {
         console.error('Error:', error);
@@ -63,10 +56,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Handle browser back/forward
 window.addEventListener('popstate', () => {
     const params = new URLSearchParams(window.location.search);
-    const view = params.get('view') || 'suites';
-    if (['suites', 'trends'].includes(view)) {
-        activateTab(view, false);
-    }
 
     selectedTestIds = new Set(Object.keys(allTestData)); // Default to all
     const testsParam = params.get('tests');
@@ -83,49 +72,6 @@ window.addEventListener('popstate', () => {
     renderFilterMenuItems();
     renderAll();
 });
-
-function setupTabs() {
-    const tabs = document.querySelectorAll('.tab-button');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            activateTab(tab.dataset.tab);
-        });
-    });
-}
-
-function activateTab(tabName, updateUrl = true) {
-    if (updateUrl && currentTab === tabName) return;
-
-    const tabs = document.querySelectorAll('.tab-button');
-
-    // Update active tab state
-    tabs.forEach(t => {
-        if (t.dataset.tab === tabName) {
-            t.classList.add('active');
-        } else {
-            t.classList.remove('active');
-        }
-    });
-
-    // Hide all content
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-    // Show selected content
-    const targetId = `${tabName}-tab`;
-    const targetContent = document.getElementById(targetId);
-    if (targetContent) {
-        targetContent.classList.add('active');
-    }
-
-    currentTab = tabName;
-
-    if (updateUrl) {
-        const url = new URL(window.location);
-        url.searchParams.set('view', tabName);
-        window.history.replaceState({}, '', url);
-    }
-}
-
 
 function setupTestFilters() {
     const filterBtn = document.getElementById('filter-btn');
@@ -182,13 +128,26 @@ function setupTestFilters() {
 }
 
 function setupTableFilters() {
-    const filterSource = document.getElementById('filter-source');
-    const filterAgent = document.getElementById('filter-agent');
-    const filterSkills = document.getElementById('filter-skills');
+    const filters = {
+        'filter-source': (val) => currentSourceFilter = val,
+        'filter-agent': (val) => currentAgentFilter = val,
+        'filter-skills': (val) => currentSkillsFilter = val
+    };
 
-    if (filterSource) filterSource.addEventListener('change', (e) => { currentSourceFilter = e.target.value; renderSuites(); });
-    if (filterAgent) filterAgent.addEventListener('change', (e) => { currentAgentFilter = e.target.value; renderSuites(); });
-    if (filterSkills) filterSkills.addEventListener('change', (e) => { currentSkillsFilter = e.target.value; renderSuites(); });
+    Object.entries(filters).forEach(([id, updateFn]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('change', (e) => {
+            updateFn(e.target.value);
+            syncSelectStyles(e.target);
+            renderSuites();
+        });
+        syncSelectStyles(el);
+    });
+}
+
+function syncSelectStyles(el) {
+    el.classList.toggle('is-filtered', el.value !== 'all');
 }
 
 
@@ -266,7 +225,6 @@ function updateUrlParams() {
 
 function renderAll() {
     renderSuites();
-    renderTrends();
 }
 
 async function loadLocalTests() {
@@ -288,11 +246,12 @@ async function loadLocalTests() {
             if (suite.source !== 'local') continue;
             
             const testId = suite.id;
+            const suiteTimestamp = suite.timestamp;
             try {
                 const response = await fetch(`${testId}/evals.json?source=local&t=${Date.now()}`);
                 if (response.ok) {
                     const parsed = await response.json();
-                    registerTestData(testId, 'local', parsed);
+                    registerTestData(testId, 'local', parsed, suiteTimestamp);
                 }
             } catch (e) {
                 console.warn(`Failed to load local test ${testId}:`, e);
@@ -316,13 +275,11 @@ async function loadRemoteTests() {
              document.getElementById('empty-state').style.display = 'none';
         }
 
-        // Load remote test data
-        for (const prefix of prefixes) {
+        // Load remote test data in parallel
+        await Promise.all(prefixes.map(async (prefix) => {
             const testId = prefix.slice(0, -1); // Remove trailing slash
-            
             try {
                 const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(prefix + 'evals.json')}?alt=media`;
-                
                 const response = await authenticatedFetch(fileUrl);
                 if (response.ok) {
                     const parsed = await response.json();
@@ -331,7 +288,7 @@ async function loadRemoteTests() {
             } catch (e) {
                 console.warn(`Failed to load remote test ${testId}:`, e);
             }
-        }
+        }));
         
         // Re-render UI now that we have remote data
         const params = new URLSearchParams(window.location.search);
@@ -347,7 +304,7 @@ async function loadRemoteTests() {
     }
 }
 
-function registerTestData(testId, source, parsed) {
+function registerTestData(testId, source, parsed, forcedTimestamp) {
     let servingArch = 'unknown';
     if (parsed.enableSkills !== undefined) {
         servingArch = parsed.enableSkills ? 'skills' : 'mcp';
@@ -357,7 +314,7 @@ function registerTestData(testId, source, parsed) {
 
     allTestData[compoundKey] = {
         testId: testId,
-        timestamp: parsed.timestamp || new Date().toISOString(), // Fallback
+        timestamp: forcedTimestamp || parsed.timestamp || new Date().toISOString(),
         data: parsed,
         source: source,
         agent: parsed.agent || 'unknown',
@@ -405,54 +362,127 @@ function renderSuites() {
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
 
         const localLink = `dashboard.html?testId=${testId}&source=${testInfo.source}`;
+        const timeAgoStr = timeAgo(_date);
 
         html += `
             <tr class="suite-table-row" onclick="window.location.href='${localLink}'" style="cursor: pointer;">
                 <td style="padding-left:15px; text-align: left; font-weight: 600;">${testId}</td>
-                <td style="text-transform: capitalize;">${testInfo.source}</td>
+                <td style="padding-left:15px; text-align: left; font-size: 0.85rem;">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">${timeAgoStr}</div>
+                    <div style="color: var(--text-secondary); font-size: 0.8em;">${prettyTimestampStr}</div>
+                </td>
                 <td>${testInfo.agent}</td>
                 <td style="text-transform: capitalize;">${testInfo.servingArch.replace('mcp', 'MCP')}</td>
-                <td><span style="font-weight: 700; color: ${getColor(gRate)};">${gRate}%</span></td>
-                <td><span style="font-weight: 700; color: ${getColor(uRate)};">${uRate}%</span></td>
-                <td style="padding-right:15px; text-align: right; color: var(--text-tertiary); font-size: 0.85rem;">${prettyTimestampStr}</td>
+                <td class="rate-cell" data-compound-key="${compoundKey}">
+                    <div class="rate-bar" style="width: ${gRate}%;"></div>
+                    <div class="rate-value"><span style="font-weight: 700; color: ${getColor(gRate)};">${gRate}%</span></div>
+                </td>
+                <td class="rate-cell" data-compound-key="${compoundKey}">
+                    <div class="rate-bar" style="width: ${uRate}%;"></div>
+                    <div class="rate-value"><span style="font-weight: 700; color: ${getColor(uRate)};">${uRate}%</span></div>
+                </td>
+                <td style="text-transform: capitalize;">${testInfo.source}</td>
             </tr>
         `;
     });
 
     container.innerHTML = html;
+    setupRateCellHovers();
 }
 
+let radarChartInstance = null;
+let currentRadarKey = null;
+let hideTimeout = null;
+const tooltipContainer = document.getElementById('radar-tooltip-container');
 
-function renderTrends() {
-    const testIds = getSortedTestIds();
-    const guidedTimeline = document.getElementById('guided-timeline');
-    const unguidedTimeline = document.getElementById('unguided-timeline');
+function setupRateCellHovers() {
+    const rateCells = document.querySelectorAll('.rate-cell');
+    rateCells.forEach(cell => {
+        cell.addEventListener('mouseenter', (e) => {
+            const compoundKey = cell.dataset.compoundKey;
+            const testInfo = allTestData[compoundKey];
+            if (!testInfo) return;
 
-    if (!guidedTimeline || !unguidedTimeline) return;
+            if (hideTimeout) {
+                clearTimeout(hideTimeout);
+                hideTimeout = null;
+            }
 
-    // Helper to render bars
-    const renderBars = (groupType) => {
-        return testIds.map(compoundTestId => {
-            const testInfo = allTestData[compoundTestId];
-            const testId = testInfo.testId;
-            const source = testInfo.source;
-            const data = testInfo.data;
-            const stats = calculateGroupTotalStats(data.results, groupType);
-            const value = stats.total > 0 ? Math.round((stats.passed / stats.total) * 100) : 0;
-            const timestamp = new Date(testInfo.timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
+            showRadarTooltip(testInfo, e.clientX, e.clientY, compoundKey);
+        });
 
-            return `
-                <a class="timeline-bar" href="dashboard.html?testId=${testId}&source=${source}" title="${testId} - ${timestamp}: ${value}%">
-                    <div class="timeline-bar-fill" style="height: ${Math.max(value * 2, 10)}px; background-color: ${getColor(value)}"></div>
-                    <div class="timeline-bar-label">${value}%</div>
-                </a>
-            `;
-        }).join('');
-    };
+        cell.addEventListener('mousemove', (e) => updateTooltipPosition(e.clientX, e.clientY));
 
-    guidedTimeline.innerHTML = renderBars('guided');
-    unguidedTimeline.innerHTML = renderBars('unguided');
+        cell.addEventListener('mouseleave', () => hideRadarTooltip());
+    });
 }
+
+function showRadarTooltip(testInfo, x, y, compoundKey) {
+    if (currentRadarKey === compoundKey && !tooltipContainer.classList.contains('hidden')) {
+        updateTooltipPosition(x, y);
+        return;
+    }
+
+    currentRadarKey = compoundKey;
+
+    const headerDiv = document.getElementById('radar-tooltip-header');
+    if (headerDiv) {
+        headerDiv.innerHTML = `
+            <div class="radar-tooltip-title">${escapeHtml(testInfo.testId)}</div>
+            <div class="radar-tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(testInfo.servingArch.replace('mcp', 'MCP'))}</div>
+        `;
+    }
+
+    const { labels, guided, unguided } = calculateRadarData(testInfo.data.results);
+    if (labels.length < 3) return;
+
+    tooltipContainer.classList.remove('hidden');
+    updateTooltipPosition(x, y);
+
+    if (!radarChartInstance) {
+        radarChartInstance = new RadarChart('radar-tooltip-chart', {
+            size: 300, padding: 20, levels: 5, hideLabels: true, hideLegend: true
+        });
+    }
+
+    radarChartInstance.render({
+        labels,
+        datasets: [
+            { label: 'Unguided', data: unguided, backgroundColor: 'rgba(218, 54, 51, 0.2)', borderColor: '#da3633' },
+            { label: 'Guided', data: guided, backgroundColor: 'rgba(35, 134, 54, 0.2)', borderColor: '#238636' }
+        ]
+    });
+}
+
+function updateTooltipPosition(x, y) {
+    const offset = 20;
+    let finalX = x + offset;
+    let finalY = y + offset;
+
+    // Boundary check
+    const tooltipWidth = 330; // 300px chart + padding
+    const tooltipHeight = 330;
+    
+    if (finalX + tooltipWidth > window.innerWidth) {
+        finalX = x - tooltipWidth - offset;
+    }
+    if (finalY + tooltipHeight > window.innerHeight) {
+        finalY = y - tooltipHeight - offset;
+    }
+
+    tooltipContainer.style.left = `${finalX}px`;
+    tooltipContainer.style.top = `${finalY}px`;
+}
+
+function hideRadarTooltip() {
+    if (hideTimeout) clearTimeout(hideTimeout);
+    hideTimeout = setTimeout(() => {
+        currentRadarKey = null;
+        tooltipContainer.classList.add('hidden');
+        hideTimeout = null;
+    }, 50);
+}
+
 
 // ==========================================
 // HELPERS

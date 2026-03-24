@@ -7,10 +7,6 @@ test.describe('Eval View Dashboard', () => {
     // Check title
     await expect(page.locator('.landing-title')).toContainText('Guidance Evals');
 
-    // Check tabs exist
-    await expect(page.locator('.tab-button[data-tab="suites"]')).toBeVisible();
-    await expect(page.locator('.tab-button[data-tab="trends"]')).toBeVisible();
-
     // Check suites content
     await expect(page.locator('.suite-table-row').first()).toBeVisible();
   });
