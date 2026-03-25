@@ -1,7 +1,14 @@
 import * as ort from 'onnxruntime-web';
 (globalThis as any)[Symbol.for('onnxruntime')] = ort;
 
-import { pipeline } from '@huggingface/transformers';
+import { pipeline, env } from '@huggingface/transformers';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Tell ONNX to load the WASM files from our local bundled 'wasm' directory
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+env.backends.onnx.wasm.wasmPaths = path.join(__dirname, 'wasm/');
+env.backends.onnx.wasm.numThreads = 1; // Sometimes helps prevent worker import issues in Node
 
 async function main() {
   console.log("Initializing transformers.js with WASM backend (forced via global symbol)...");
