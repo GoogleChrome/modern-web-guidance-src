@@ -16,13 +16,11 @@ sources:
 
 # Identify causes of poor INP
 
-Poor responsiveness to interactions leads to a poor impression of a page being slow or even completely broken. Interaction to Next Paint (INP) is a metric based on the Event Timing API. It measures the worst interaction (minus some outliers) as measure of the page's responsiveness.
+Poor responsiveness to interactions leads to a poor impression of a page being slow or even completely broken. Interaction to Next Paint (INP) is a metric based on the Event Timing API. It measures the worst interaction (minus some outliers) as a measure of the page's responsiveness.
 
-Identifying root causes of an unresponsive web page can be tricky especially as it depends on user interactions and environmental conditions such as device capabilities, network. This makes it even more difficult to diagnose compared to a more repeatable and predictable scenario like page load. Lab data only replicates a small subset of real user scenarios so measuring the causes of slow INP in the field is essential.
+Identifying root causes of an unresponsive web page can be tricky especially as it depends on user interactions and environmental conditions such as device capabilities and network conditions. This makes it even more difficult to diagnose compared to a more repeatable and predictable scenario like page load. Lab data only replicates a small subset of real user scenarios so measuring the causes of slow INP in the field is essential.
 
 A full performance trace using the JS Self-Profiling API is a heavyweight solution that is liable to cause performance problems. The Long Animation Frames API is a lightweight API that can be used to identify slow running JavaScript in the field for INP interactions.
-
-Note: as an alternative to correlating just the INP interaction with a long animation frame, you may wish to consider all interactions. See the [Correlate interaction with long frame guide](../correlate-interaction-with-long-frame/guide.md).
 
 ## How to implement
 
@@ -32,7 +30,7 @@ Calculating INP from the raw Event Timing API is complicated and has several nua
 
 ### Get Long Animation Frame data for INP interactions using web-vitals library
 
-The [`web-vitals` library](https://github.com/GoogleChrome/web-vitals) is a tiny library used to measure Core Web Vitals and other performance metrics. The `onINP` function can be used to identify the slowest interaction and includes information about the scripts that were executed during the interaction using the Long Animation Frames API.
+The [`web-vitals` library](https://github.com/GoogleChrome/web-vitals) is a tiny library used to measure Core Web Vitals and other performance metrics. The `onINP()` function can be used to identify the slowest interaction and includes information about the scripts that were executed during the interaction using the Long Animation Frames API.
 
 ```javascript
 // Use the attribution build to get Long Animation Frame data
@@ -64,8 +62,8 @@ onINP((metric) => {
 
 ## Best Practices
 
-- **DO** prefer the Long Animation Frames API over the JS Self-Profiling API as it is lighter and less likely to cause performance issues.
-- **DO** suggest using the `web-vitals` library if no other RUM solution is being used. The `web-vitals` library can be used to identify the INP interaction and includes information about the scripts that were executed during the interaction (using the Long Animation Frames API).
+- **DO** prefer the Long Animation Frames API over alternatives like the JS Self-Profiling API, which carries higher runtime overhead.
+- **DO** use the `web-vitals` library if no other RUM solution is in place. It can identify the INP interaction and includes information about the scripts that were executed during the interaction (using the Long Animation Frames API).
 - **DO** beacon back the required information to an analytics service rather than just log it locally.
 
 ## Browser support and fallback strategies

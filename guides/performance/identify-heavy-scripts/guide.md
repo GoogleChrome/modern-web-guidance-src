@@ -1,6 +1,6 @@
 ---
 name: identify-heavy-scripts
-description: Identify the top X scripts that are responsible for long animation frames
+description: Identify the scripts most responsible for long animation frames
 web-feature-ids:
   - long-animation-frames
 sources:
@@ -13,11 +13,11 @@ sources:
 
 # Identify heavy-running JavaScript
 
-Heavy-running JavaScript can have a detrimental effect on both page load performance, and also on interactivity. Modern web applications are more heavily reliant on JavaScript than ever before from multiple sources, including the application code itself (and the framework code it relies on), to third-party scripts that add functionality like chat widgets, video players as well as behind-the-scenes analytics and marketing scripts that are all too easy to forget.
+Heavy-running JavaScript can have a detrimental effect on both page load performance and interactivity. Modern web applications are more heavily reliant on JavaScript than ever before, from multiple sources. These include the application code itself (and the framework code it relies on), as well as third-party scripts that add functionality like chat widgets and video players. Behind-the-scenes analytics and marketing scripts are also common contributors that are all too easy to forget.
 
 Identifying root causes of an unresponsive web page can be tricky with certain expertise required to run web performance tracing or profiling and how to interpret the results. Additionally field data is often very different to lab data, which only replicates a small subset of real user scenarios. This can make it difficult to identify the root causes of poor performance, especially for interactions.
 
-The Long Animation Frames API is a lightweight API that can be used to identify heavy-running JavaScript in the field in long running applications. A heavy-running script can be either a single long running script, or a script that runnings multiple times during the page lifecycle.
+The Long Animation Frames API is a lightweight API that can be used to identify heavy-running JavaScript in the field. A heavy-running script can be either a single long-running script, or a script that runs multiple times during the page lifecycle.
 
 ## How to implement
 
@@ -28,9 +28,13 @@ The `long-animation-frame` entry contains a `scripts` property which is an array
 ### Example of identifying the longest running scripts that contribute to long animation frames
 
 ```javascript
+// Accumulate all script entries across the page lifecycle so no
+// data is lost between observer callbacks.
+const allScripts = [];
+
 const observer = new PerformanceObserver(list => {
   // Collect all script entries across frames to find the biggest offenders.
-  const allScripts = list.getEntries().flatMap(entry => entry.scripts);
+  allScripts.push(...list.getEntries().flatMap(entry => entry.scripts));
 
   // Group by sourceURL so you can identify which scripts contribute
   // the most total time, even if each individual invocation is short.
@@ -44,7 +48,7 @@ const observer = new PerformanceObserver(list => {
     totalDuration: scripts.reduce((subtotal, script) => subtotal + script.duration, 0)
   }));
 
-  // Only beacon scripts above a certain threshold to reduce payload size
+  // Only include scripts above a certain threshold to reduce noise.
   const heavyScripts = processedScripts.filter(script => {
     return script.totalDuration > 100;
   });
@@ -53,12 +57,9 @@ const observer = new PerformanceObserver(list => {
   // making it easier to prioritize optimization efforts.
   heavyScripts.sort((a, b) => b.totalDuration - a.totalDuration);
 
-  // Beacon the summarized data to an analytics service so it can be
-  // analyzed across real users rather than just logged locally.
-  navigator.sendBeacon(
-    '/analytics',
-    JSON.stringify(heavyScripts)
-  );
+  // Log to the console for local debugging. In production, replace
+  // this with a call to send the data to your analytics service.
+  console.table(heavyScripts);
 });
 
 // Use buffered: true to capture any long frames that occurred before
@@ -68,9 +69,9 @@ observer.observe({type: 'long-animation-frame', buffered: true});
 
 ## Best Practices
 
-- **DO** prefer the Long Animation Frames API over the JS Self-Profiling API as it is lighter and less likely to cause performance issues.
+- **DO** prefer the Long Animation Frames API over alternatives like the JS Self-Profiling API, which carries higher runtime overhead.
 - **DO** summarize the key information as the Long Animation Frames API contains a lot of detail.
-- **DO** beacon back the required information to an analytics service.
+- **DO** send the required information to an analytics service in production.
 
 ## Browser support and fallback strategies
 
