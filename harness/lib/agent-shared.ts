@@ -169,7 +169,7 @@ export function updateMcpConfig(
  * @param agent The agent type
  * @returns True if successful, false otherwise
  */
-export function copySkills(homeDir: string, agent: string, cli: boolean = true): boolean {
+export function copySkills(homeDir: string, agent: string, cli: boolean): boolean {
   const harnessRoot = path.resolve(__dirname, '..');
   const guidesSource = path.join(harnessRoot, '..', 'guides');
 
@@ -186,11 +186,11 @@ export function copySkills(homeDir: string, agent: string, cli: boolean = true):
     fs.mkdirSync(destDir, { recursive: true });
 
     if (cli) { // Skills-cli mode
-      const distSource = path.join(harnessRoot, '..', 'dist/skills-cli/modern-web-use-cases');
+      const distSource = path.join(harnessRoot, '..', 'dist/skills-cli/skills/modern-web-use-cases');
       if (!fs.existsSync(distSource)) {
-        console.log(`Standalone skills-cli distribution not found at ${distSource}. Running gd dist-gen automatically...`);
+        console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter modern-web-mcp build-dist' automatically...`);
         try {
-          execSync('pnpm --filter modern-web-mcp dist-gen', {
+          execSync('pnpm --filter modern-web-mcp build-dist', {
             cwd: path.join(harnessRoot, '..'),
             stdio: 'inherit'
           });
@@ -208,8 +208,8 @@ export function copySkills(homeDir: string, agent: string, cli: boolean = true):
         if (fs.existsSync(distSource)) {
           // Clear dest first to ensure clean state
           if (fs.existsSync(destSkillDir)) {
-             fs.rmSync(destSkillDir, { recursive: true, force: true });
-             fs.mkdirSync(destSkillDir, { recursive: true });
+            fs.rmSync(destSkillDir, { recursive: true, force: true });
+            fs.mkdirSync(destSkillDir, { recursive: true });
           }
           fs.cpSync(distSource, destSkillDir, { recursive: true });
         } else {
