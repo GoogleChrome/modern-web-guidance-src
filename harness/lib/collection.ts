@@ -24,46 +24,48 @@ export function getGuideCategory(guideName: string): string | null {
 export function extractModelFromResults(resultsDir: string): string {
   // Use recursive glob to find session logs deep in the task results
   const sessionFiles = glob.sync('**/*/session-*.{json,jsonl}', { cwd: resultsDir, absolute: true });
-  const firstSession = sessionFiles[0];
-  if (!firstSession) return 'unknown';
+  if (sessionFiles.length === 0) return 'unknown';
 
   const counts: Record<string, number> = {};
-  try {
-    const isJsonl = firstSession.endsWith('.jsonl');
-    const content = fs.readFileSync(firstSession, 'utf8');
+  for (const sessionPath of sessionFiles) {
+    try {
+      const isJsonl = sessionPath.endsWith('.jsonl');
+      const content = fs.readFileSync(sessionPath, 'utf8');
 
-    if (isJsonl) {
-      const lines = content.split('\n');
-      for (const line of lines) {
-        // Optimization: skip lines that definitely don't have model info
-        if (!line.trim() || !line.includes('"model"')) continue;
-        try {
-          const obj = JSON.parse(line);
-          if (obj.message && obj.message.model) {
-            const m = obj.message.model;
-            counts[m] = (counts[m] || 0) + 1;
-          }
-        } catch (e) {
-          // Robust error handling: skip malformed JSONL lines
-          console.warn(`Malformed JSONL line in ${firstSession}:`, e);
-        }
-      }
-    } else {
-      const session = JSON.parse(content);
-      if (session.messages) {
-        for (const m of session.messages) {
-          if (m.type === 'gemini' && m.model) {
-            counts[m.model] = (counts[m.model] || 0) + 1;
+      if (isJsonl) {
+        const lines = content.split('\n');
+        for (const line of lines) {
+          // Optimization: skip lines that definitely don't have model info
+          if (!line.trim() || !line.includes('"model"')) continue;
+          try {
+            const obj = JSON.parse(line);
+            if (obj.message && obj.message.model) {
+              const m = obj.message.model;
+              counts[m] = (counts[m] || 0) + 1;
+            }
+          } catch (e) {
+            // Robust error handling: skip malformed JSONL lines
+            console.warn(`Malformed JSONL line in ${sessionPath}:`, e);
           }
         }
+      } else {
+        const session = JSON.parse(content);
+        if (session.messages) {
+          for (const m of session.messages) {
+            if (m.type === 'gemini' && m.model) {
+              counts[m.model] = (counts[m.model] || 0) + 1;
+            }
+          }
+        }
       }
+    } catch (e) {
+      console.warn(`Failed to extract model from ${sessionPath}:`, e);
     }
-
-    const topModel = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-    if (topModel) return topModel[0];
-  } catch (e) {
-    console.error(`Failed to extract model from ${firstSession}:`, e);
   }
+
+  const topModel = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  if (topModel) return topModel[0];
+
   return 'unknown';
 }
 
