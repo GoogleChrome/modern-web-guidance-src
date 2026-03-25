@@ -22,7 +22,7 @@ You can create a popover with the required behavior by adding the `popover="hint
 
 It also provides light dismiss behavior, so when a user clicks or otherwise focuses outside of the popover, the popover is dismissed.
 
-The tooltip element must have an `id` attribute, which is a unique idref.
+The tooltip element must have an `id` attribute with a unique value:
 
 ```html
 <div popover="hint" id="tooltip">Tooltip content</div>
@@ -30,7 +30,7 @@ The tooltip element must have an `id` attribute, which is a unique idref.
 
 ### Triggering the tooltip
 
-A user expresses interest in the additional information by hovering or focusing on an `<a>` or `<button>` element. The element must have an `interestfor` attribute with the value of the idref of the tooltip.
+A user expresses interest in the additional information by hovering or focusing on an `<a>` or `<button>` element. The element must have an `interestfor` attribute that matches the `id` attribute of the tooltip.
 
 ```html
 <button interestfor="tooltip">Tooltip trigger</button>
