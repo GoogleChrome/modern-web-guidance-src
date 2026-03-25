@@ -3,7 +3,6 @@ name: identify-inp-causes
 description: Identify slow running JavaScript that is impacting INP metric
 web-feature-ids:
   - long-animation-frames
-  - event-timing
 sources:
   - https://web.dev/articles/inp
   - https://web.dev/articles/find-slow-interactions-in-the-field
