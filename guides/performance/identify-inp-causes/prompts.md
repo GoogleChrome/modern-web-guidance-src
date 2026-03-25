@@ -1,5 +1,3 @@
-# Prompts: `identify-inp-causes`
-
 - I have a slow INP score
 - How to debug INP
 - Identify causes of poor INP

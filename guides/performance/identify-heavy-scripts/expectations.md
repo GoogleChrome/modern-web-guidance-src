@@ -1,4 +1,2 @@
-# Expectations: `identify-scripts-delaying-rendering`
-
 - A performance observer should be used with type `long-animation-frame` and `buffered: true` options passed.
 - No polyfill is included for long animation frames.
