@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
 import { config, Serving } from '../harness/config.ts';
 import { rootDir } from '../lib/root.ts';
@@ -80,11 +81,7 @@ const { positionals, values } = parseArgs({
     guided: { type: 'boolean' },
     verbose: { type: 'boolean' },
     usecases: { type: 'boolean' },
-    agent: { type: 'string' },
-    numRuns: { type: 'string' },
-    negative: { type: 'boolean' },
-    enableSkills: { type: 'boolean' },
-    mcpServers: { type: 'string' },
+    config: { type: 'string' },
   },
   allowPositionals: true,
   strict: false,
@@ -152,11 +149,7 @@ ${cBold('Options:')}
   ${cDim('-h, --help')}             Show this help
   ${cDim('--verbose')}              Show additional output
   ${cDim('--usecases')}             (Audit) Group by categories/usecases (default is features)
-  ${cDim('--agent <name>')}         (Eval) Set agent (e.g. claude_code, jetski, gemini_cli)
-  ${cDim('--numRuns <n>')}          (Eval) Number of runs per task
-  ${cDim('--negative')}             (Eval) Run negative suite tasks
-  ${cDim('--enableSkills')}         (Eval) Enable agent skills
-  ${cDim('--mcpServers <list>')}    (Eval) Comma-separated list of MCP servers
+  ${cDim('--config <path>')}         (Eval) Path to a custom TS suite config file (defaults to local_config_override.ts, or falls back to defaults in harness/config.ts)
     `);
     process.exit(0);
   }
@@ -238,15 +231,21 @@ ${cBold('Options:')}
       const { runSuite } = await import('../harness/run_suite.ts');
 
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
-      const overrides: any = {};
-      if (values.agent) overrides.agent = values.agent;
-      if (values.numRuns) overrides.numRuns = parseInt(values.numRuns as string, 10);
-      if (values.negative) overrides.negative = values.negative;
-      if (values.enableSkills) overrides.enableSkills = values.enableSkills;
-      if (values.mcpServers) overrides.mcpServersToEnable = (values.mcpServers as string).split(',');
-      if (process.env.SUITE_AGENT) overrides.agent = process.env.SUITE_AGENT;
-      if (process.env.SUITE_NUM_RUNS) overrides.numRuns = parseInt(process.env.SUITE_NUM_RUNS, 10);
-      if (process.env.SUITE_NEGATIVE) overrides.negative = process.env.SUITE_NEGATIVE === 'true';
+
+      const configPath = values.config as string | undefined;
+      const resolvedConfigPath = configPath
+        ? path.resolve(process.cwd(), configPath)
+        : path.resolve(rootDir, 'local_config_override.ts');
+
+      let overrides: any = {};
+      if (fs.existsSync(resolvedConfigPath)) {
+        const fileUrl = pathToFileURL(resolvedConfigPath).href;
+        const customConfig = await import(fileUrl);
+        overrides = customConfig.default || customConfig;
+      } else if (configPath) {
+        console.error(cRed('⚠️ Specified config file not found: ' + resolvedConfigPath));
+        process.exit(1);
+      }
 
       const runOptions: any = { overrides };
       if (tasks.length > 0) runOptions.tasks = tasks;

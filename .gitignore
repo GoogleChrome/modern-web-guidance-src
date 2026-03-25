@@ -37,7 +37,6 @@ local_config_override.ts
 
 # Git worktrees directory
 .worktrees
-
 # Local agent stuff
 .gemini/
 GEMINI.md
