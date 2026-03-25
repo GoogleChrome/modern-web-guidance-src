@@ -23,9 +23,10 @@ function shuffle<T>(array: T[]): T[] {
 }
 
 async function main() {
+  const modelsDir = path.join(ROOT, 'models');
   const models = [
-    'Xenova/all-MiniLM-L6-v2',
-    'nomic-embed-text-v1.5.f16.gguf'
+    'Xenova/all-MiniLM-L6-v2@fp16',
+    'all-MiniLM-L6-v2.gguf2.f16.gguf'
   ];
   const runs = 10;
   
@@ -68,7 +69,7 @@ async function main() {
     for (const model of models) {
       console.log(`\nEvaluating ${model} (Iter ${iter})...`);
       // Rebuild the vector database table for the specific model before querying
-      run(`node --experimental-strip-types scripts/build-guides.ts --model=${model}`);
+      run(`node --experimental-strip-types scripts/build-guides.ts --model=${model} --no-chunking`);
       run(`node --experimental-strip-types scripts/eval-search.ts --model=${model}`);
     }
   }

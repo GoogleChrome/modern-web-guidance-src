@@ -2,426 +2,426 @@
   {
     "guideId": "accessible-error-announcement",
     "category": "accessibility",
-    "query": "How to prevent screen readers from announcing form errors on focus"
+    "query": "update aria-invalid attribute based on user interaction"
   },
   {
     "guideId": "accessible-error-announcement",
     "category": "accessibility",
-    "query": "Synchronize aria-invalid with :user-invalid CSS pseudo-class using JavaScript"
+    "query": "synchronize user-invalid state with aria-invalid"
   },
   {
     "guideId": "accessible-error-announcement",
     "category": "accessibility",
-    "query": "JavaScript to update aria-invalid based on HTML5 form validation state"
+    "query": "update ARIA invalid status dynamically on forms"
   },
   {
     "guideId": "accessible-error-announcement",
     "category": "accessibility",
-    "query": "Best practices for accessible form validation with ARIA and :user-invalid"
+    "query": "manage form field accessibility for validation errors"
   },
   {
     "guideId": "accessible-error-announcement",
     "category": "accessibility",
-    "query": "When to apply aria-invalid to input fields for better accessibility"
+    "query": "create an accessible form validation bridge with JavaScript"
   },
   {
     "guideId": "batch-analytics-events",
     "category": "performance",
-    "query": "How to reliably send analytics events when user navigates away or closes tab?"
+    "query": "batching strategy for client-side events"
   },
   {
     "guideId": "batch-analytics-events",
     "category": "performance",
-    "query": "Best practice for debouncing and batching multiple analytics events in JavaScript."
+    "query": "group user interaction data for server"
   },
   {
     "guideId": "batch-analytics-events",
     "category": "performance",
-    "query": "Using fetchLater with activateAfter for deferred analytics beacons."
+    "query": "combine multiple small data sends"
   },
   {
     "guideId": "batch-analytics-events",
     "category": "performance",
-    "query": "How to implement an event queue that sends a single analytics payload after a timeout or on page exit?"
+    "query": "reliable data transmission on page dismissal"
   },
   {
     "guideId": "batch-analytics-events",
     "category": "performance",
-    "query": "Combining AbortController and fetchLater for efficient analytics event batching."
+    "query": "web platform feature for deferred fetches"
   },
   {
     "guideId": "deprioritize-background-fetches",
     "category": "performance",
-    "query": "How to deprioritize background network requests in JavaScript"
+    "query": "speed up critical path network operations"
   },
   {
     "guideId": "deprioritize-background-fetches",
     "category": "performance",
-    "query": "Using fetch API priority low for non-critical data"
+    "query": "optimize data fetching for better user perceived speed"
   },
   {
     "guideId": "deprioritize-background-fetches",
     "category": "performance",
-    "query": "Improve web performance by prioritizing fetch requests"
+    "query": "improve network efficiency for progressive content loading"
   },
   {
     "guideId": "deprioritize-background-fetches",
     "category": "performance",
-    "query": "Prevent analytics fetches from competing with critical data"
+    "query": "control network request impact on UI responsiveness"
   },
   {
     "guideId": "deprioritize-background-fetches",
     "category": "performance",
-    "query": "What is the browser support for fetch priority option"
+    "query": "manage network queues for background data transfers"
   },
   {
     "guideId": "full-session-analytics",
     "category": "performance",
-    "query": "How to send analytics data reliably even after the user leaves the page?"
+    "query": "collect data for long-term user behavior analysis"
   },
   {
     "guideId": "full-session-analytics",
     "category": "performance",
-    "query": "What is the fetchLater() API and how do I use it for user telemetry?"
+    "query": "send A/B test variant data reliably"
   },
   {
     "guideId": "full-session-analytics",
     "category": "performance",
-    "query": "Best practice for tracking full user session duration without blocking bfcache"
+    "query": "ensure analytics data delivery on tab close"
   },
   {
     "guideId": "full-session-analytics",
     "category": "performance",
-    "query": "Modern alternative to unload event for sending analytics beacons?"
+    "query": "manage fetchLater quota limits"
   },
   {
     "guideId": "full-session-analytics",
     "category": "performance",
-    "query": "How to update fetchLater data payload using AbortController?"
+    "query": "asynchronously send user interaction data"
   },
   {
     "guideId": "improve-next-page-load-performance",
     "category": "performance",
-    "query": "How can I improve next page load speed on my website using browser features?"
+    "query": "embed speculation rules in HTML"
   },
   {
     "guideId": "improve-next-page-load-performance",
     "category": "performance",
-    "query": "Implementing Speculation Rules API for prefetching and prerendering links in HTML"
+    "query": "enhance e-commerce product browsing experience"
   },
   {
     "guideId": "improve-next-page-load-performance",
     "category": "performance",
-    "query": "Examples of JSON format for Speculation Rules with list and document rules"
+    "query": "dynamically inject prerender rules"
   },
   {
     "guideId": "improve-next-page-load-performance",
     "category": "performance",
-    "query": "How to use `eagerness` property in Speculation Rules to control preloading behavior?"
+    "query": "specify target URLs for prefetch"
   },
   {
     "guideId": "improve-next-page-load-performance",
     "category": "performance",
-    "query": "Dynamically add or update Speculation Rules with JavaScript for improved navigation"
+    "query": "measure performance gains from prefetching"
   },
   {
     "guideId": "optimize-image-priority",
     "category": "performance",
-    "query": "how to improve largest contentful paint for hero image"
+    "query": "strategy for hidden above-the-fold image priority"
   },
   {
     "guideId": "optimize-image-priority",
     "category": "performance",
-    "query": "what is fetchpriority html attribute and how to use it"
+    "query": "web performance strategies for image loading"
   },
   {
     "guideId": "optimize-image-priority",
     "category": "performance",
-    "query": "should I use fetchpriority low with loading lazy"
+    "query": "ensure critical initial viewport image loads first"
   },
   {
     "guideId": "optimize-image-priority",
     "category": "performance",
-    "query": "how to make main banner image load faster with fetchpriority high"
+    "query": "boost main banner image rendering"
   },
   {
     "guideId": "optimize-image-priority",
     "category": "performance",
-    "query": "deprioritize hidden images in mega menu with fetchpriority low"
+    "query": "accelerate hero section image delivery"
   },
   {
     "guideId": "optimize-preload-priority",
     "category": "performance",
-    "query": "how to use fetchpriority with link rel preload for LCP images"
+    "query": "ensure critical assets load before non-critical ones"
   },
   {
     "guideId": "optimize-preload-priority",
     "category": "performance",
-    "query": "best practices for optimizing resource preload priority with fetchpriority"
+    "query": "accelerate display of LCP image"
   },
   {
     "guideId": "optimize-preload-priority",
     "category": "performance",
-    "query": "elevate critical image preload priority using fetchpriority high"
+    "query": "ensure high priority for critical stylesheet preloads"
   },
   {
     "guideId": "optimize-preload-priority",
     "category": "performance",
-    "query": "deprioritize secondary fonts with link preload fetchpriority low"
+    "query": "accelerate render of core page elements"
   },
   {
     "guideId": "optimize-preload-priority",
     "category": "performance",
-    "query": "what is fetchpriority attribute and how does it improve web performance"
+    "query": "streamline resource fetching with priority hints"
   },
   {
     "guideId": "optimize-script-priority",
     "category": "performance",
-    "query": "How to use fetchpriority attribute to improve script loading performance?"
+    "query": "improve First Contentful Paint with script priority"
   },
   {
     "guideId": "optimize-script-priority",
     "category": "performance",
-    "query": "Prioritize critical async javascript files with fetchpriority high"
+    "query": "fine-tune script resource priority"
   },
   {
     "guideId": "optimize-script-priority",
     "category": "performance",
-    "query": "Deprioritize analytics or ad scripts using fetchpriority low"
+    "query": "boost priority of essential async scripts"
   },
   {
     "guideId": "optimize-script-priority",
     "category": "performance",
-    "query": "When should I use fetchpriority on script tags for optimization?"
+    "query": "implement explicit script loading priority"
   },
   {
     "guideId": "optimize-script-priority",
     "category": "performance",
-    "query": "What is the best way to optimize script loading order for faster INP?"
+    "query": "elevate critical script resource loading"
   },
   {
     "guideId": "adapt-scrollbar-to-contrast-preferences",
     "category": "user-experience",
-    "query": "How to style scrollbars for high contrast mode in CSS?"
+    "query": "apply high contrast scrollbar styling with scrollbar-gutter"
   },
   {
     "guideId": "adapt-scrollbar-to-contrast-preferences",
     "category": "user-experience",
-    "query": "Using `@media (prefers-contrast: more)` for accessible scrollbars"
+    "query": "implement cross-browser high contrast scrollbar solution"
   },
   {
     "guideId": "adapt-scrollbar-to-contrast-preferences",
     "category": "user-experience",
-    "query": "Customizing scrollbar colors based on user contrast preferences"
+    "query": "implement WebKit scrollbar fallback for high contrast"
   },
   {
     "guideId": "adapt-scrollbar-to-contrast-preferences",
     "category": "user-experience",
-    "query": "Implementing high contrast scrollbar styling with `scrollbar-color`"
+    "query": "add high contrast scrollbar support to web application"
   },
   {
     "guideId": "adapt-scrollbar-to-contrast-preferences",
     "category": "user-experience",
-    "query": "Legacy WebKit scrollbar styling and `prefers-contrast` support"
+    "query": "improve scrollbar legibility for users with high contrast needs"
   },
   {
     "guideId": "adapt-scrollbar-to-light-dark-preferences",
     "category": "user-experience",
-    "query": "How to make website scrollbars adapt to user's system dark mode preference"
+    "query": "control scrollbar visibility and styling on macOS"
   },
   {
     "guideId": "adapt-scrollbar-to-light-dark-preferences",
     "category": "user-experience",
-    "query": "CSS color-scheme property for scrollbar light and dark mode"
+    "query": "prevent scrollbar-color being ignored on macOS"
   },
   {
     "guideId": "adapt-scrollbar-to-light-dark-preferences",
     "category": "user-experience",
-    "query": "Implementing custom scrollbar colors that change with prefers-color-scheme"
+    "query": "synchronize scrollbar appearance with OS theme"
   },
   {
     "guideId": "adapt-scrollbar-to-light-dark-preferences",
     "category": "user-experience",
-    "query": "Best way to style scrollbars for dark mode with cross-browser compatibility"
+    "query": "style scrollbar track and thumb dynamically"
   },
   {
     "guideId": "adapt-scrollbar-to-light-dark-preferences",
     "category": "user-experience",
-    "query": "Custom scrollbar colors not working on macOS dark mode, how to fix?"
+    "query": "match scrollbar theme to OS preferences"
   },
   {
     "guideId": "animate-scrollbar-color-on-scroll",
     "category": "user-experience",
-    "query": "How to animate scrollbar color smoothly with CSS?"
+    "query": "progressive enhancement scrollbar animation"
   },
   {
     "guideId": "animate-scrollbar-color-on-scroll",
     "category": "user-experience",
-    "query": "CSS scroll-driven animation for scrollbar thumb color change"
+    "query": "CSS scroll-driven animation scrollbar-color"
   },
   {
     "guideId": "animate-scrollbar-color-on-scroll",
     "category": "user-experience",
-    "query": "Dynamically change scrollbar color based on scroll position with CSS"
+    "query": "scroll-linked color change for scrollbar"
   },
   {
     "guideId": "animate-scrollbar-color-on-scroll",
     "category": "user-experience",
-    "query": "Using CSS @property to animate scrollbar-color property"
+    "query": "register custom property for scrollbar color"
   },
   {
     "guideId": "animate-scrollbar-color-on-scroll",
     "category": "user-experience",
-    "query": "Browser support for CSS scrollbar animation and @property rule"
+    "query": "create interactive scrollbar color effect"
   },
   {
     "guideId": "customize-scrollbar-color-and-thickness",
     "category": "user-experience",
-    "query": "how to customize scrollbar color and thickness with CSS"
+    "query": "style scrollbar track color"
   },
   {
     "guideId": "customize-scrollbar-color-and-thickness",
     "category": "user-experience",
-    "query": "CSS scrollbar-color and scrollbar-width properties usage and browser compatibility"
+    "query": "hide scrollbar but keep scrolling functionality"
   },
   {
     "guideId": "customize-scrollbar-color-and-thickness",
     "category": "user-experience",
-    "query": "implement custom scrollbars for WebKit browsers using ::-webkit-scrollbar fallback"
+    "query": "cross-browser custom scrollbar styling"
   },
   {
     "guideId": "customize-scrollbar-color-and-thickness",
     "category": "user-experience",
-    "query": "force custom scrollbar colors to show on macOS with CSS"
+    "query": "apply custom scrollbar to div"
   },
   {
     "guideId": "customize-scrollbar-color-and-thickness",
     "category": "user-experience",
-    "query": "CSS to hide scrollbar but maintain scrollability"
+    "query": "fallback for scrollbar-width and scrollbar-color"
   },
   {
     "guideId": "required-field-feedback",
     "category": "user-experience",
-    "query": "How to display required field errors only after a user interacts with the input?"
+    "query": "use checkValidity() to determine input state"
   },
   {
     "guideId": "required-field-feedback",
     "category": "user-experience",
-    "query": "Using :user-invalid CSS pseudo-class for form validation styling"
+    "query": "style form fields based on required attribute status"
   },
   {
     "guideId": "required-field-feedback",
     "category": "user-experience",
-    "query": "Preventing required form field errors from showing on initial page load"
+    "query": "add aria-errormessage to form inputs for accessibility"
   },
   {
     "guideId": "required-field-feedback",
     "category": "user-experience",
-    "query": "What's the best way to style required inputs after a user has touched them?"
+    "query": "user-friendly form validation experience"
   },
   {
     "guideId": "required-field-feedback",
     "category": "user-experience",
-    "query": "Modern CSS for dynamic form validation without showing errors immediately"
+    "query": "custom styling for :user-invalid inputs"
   },
   {
     "guideId": "search-hidden-content",
     "category": "user-experience",
-    "query": "how to make visually hidden content searchable by find in page"
+    "query": "handle the beforematch event to update UI elements"
   },
   {
     "guideId": "search-hidden-content",
     "category": "user-experience",
-    "query": "implement hidden until found attribute with javascript"
+    "query": "make a footer section content searchable when collapsed"
   },
   {
     "guideId": "search-hidden-content",
     "category": "user-experience",
-    "query": "synchronize ui state when hidden until found content is revealed"
+    "query": "ensure screen reader access to collapsed text"
   },
   {
     "guideId": "search-hidden-content",
     "category": "user-experience",
-    "query": "when to use details element versus hidden until found attribute"
+    "query": "keep content hidden but searchable without re-hiding"
   },
   {
     "guideId": "search-hidden-content",
     "category": "user-experience",
-    "query": "best way to hide content visually but allow scroll to text fragment"
+    "query": "group mutually exclusive content sections"
   },
   {
     "guideId": "select-menu-interaction",
     "category": "user-experience",
-    "query": "how to show validation error for select dropdown only after interaction"
+    "query": "Implement a modern required select validation flow"
   },
   {
     "guideId": "select-menu-interaction",
     "category": "user-experience",
-    "query": "using :user-invalid for select element validation"
+    "query": "Progressive enhancement for form validation feedback"
   },
   {
     "guideId": "select-menu-interaction",
     "category": "user-experience",
-    "query": "prevent required select field from showing error immediately on page load"
+    "query": "Implement user-aware form validation for dropdowns"
   },
   {
     "guideId": "select-menu-interaction",
     "category": "user-experience",
-    "query": "css for delayed validation feedback on dropdowns"
+    "query": "Use CSS pseudo-classes for interactive form validation"
   },
   {
     "guideId": "select-menu-interaction",
     "category": "user-experience",
-    "query": "html select required default empty option validation"
+    "query": "Style invalid select when user has interacted"
   },
   {
     "guideId": "style-parent-with-has",
     "category": "user-experience",
-    "query": "How to style a parent container based on a child input's invalid state in CSS"
+    "query": "style a card component when an embedded input is invalid"
   },
   {
     "guideId": "style-parent-with-has",
     "category": "user-experience",
-    "query": "Using CSS :has() to highlight a form section when an input inside is invalid"
+    "query": "css has for form validation parent styles"
   },
   {
     "guideId": "style-parent-with-has",
     "category": "user-experience",
-    "query": "Declarative form validation styling: change parent border if child input is :user-invalid"
+    "query": "add a class to parent when child input is invalid with css"
   },
   {
     "guideId": "style-parent-with-has",
     "category": "user-experience",
-    "query": "Best way to show form errors on parent elements using only CSS"
+    "query": "css technique for parent styling on child validation error"
   },
   {
     "guideId": "style-parent-with-has",
     "category": "user-experience",
-    "query": "JavaScript fallback for styling parent elements when :has() and :user-invalid aren't supported"
+    "query": "conditional css styling for parent based on child form state"
   },
   {
     "guideId": "validate-input-after-interaction",
     "category": "user-experience",
-    "query": "how to show form validation errors only after user interaction"
+    "query": "CSS techniques for conditional validation feedback"
   },
   {
     "guideId": "validate-input-after-interaction",
     "category": "user-experience",
-    "query": "css pseudo-class for form validation after blur"
+    "query": "Use pattern attribute for deferred validation styling"
   },
   {
     "guideId": "validate-input-after-interaction",
     "category": "user-experience",
-    "query": "prevent immediate invalid styling on input focus"
+    "query": "Create responsive validation feedback for forms"
   },
   {
     "guideId": "validate-input-after-interaction",
     "category": "user-experience",
-    "query": "implementing user-friendly form validation with :user-invalid"
+    "query": "Implement client-side validation without immediate errors"
   },
   {
     "guideId": "validate-input-after-interaction",
     "category": "user-experience",
-    "query": "deferring html5 validation messages until form submit or field blur"
+    "query": "Defer error styling until form field is dirty and blurred"
   }
 ]

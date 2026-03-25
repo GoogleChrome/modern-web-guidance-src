@@ -48,7 +48,17 @@ export class Embedder {
       this.gpt4allModel = await loadModel(this.modelName, { type: 'embedding' });
     } else {
       if (this.pipe) return;
-      this.pipe = (await pipeline("feature-extraction", this.modelName, { dtype: "q8" })) as any as FeatureExtractionPipeline;
+      
+      let repo = this.modelName;
+      let dtype = "q8";
+      
+      if (this.modelName.includes("@")) {
+          const parts = this.modelName.split("@");
+          repo = parts[0];
+          dtype = parts[1];
+      }
+      
+      this.pipe = (await pipeline("feature-extraction", repo, { dtype: dtype as any })) as any as FeatureExtractionPipeline;
     }
   }
 
