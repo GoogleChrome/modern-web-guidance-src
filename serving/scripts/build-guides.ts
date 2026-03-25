@@ -160,8 +160,10 @@ async function processSingleGuideFile(
     featuresUsed,
   });
 
-  const chunks = chunkMarkdown(processedMarkdown);
-  chunks.push(frontmatter);
+  const isNoChunking = process.argv.includes("--no-chunking");
+  const chunks = isNoChunking 
+    ? [`${frontmatter}\n\n${processedMarkdown}`] 
+    : [...chunkMarkdown(processedMarkdown), frontmatter];
 
   const embedder = Embedder.getInstance(); // Singleton, already init
 
