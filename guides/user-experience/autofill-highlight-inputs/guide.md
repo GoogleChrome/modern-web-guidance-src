@@ -35,7 +35,6 @@ input:-webkit-autofill:focus {
 
 As shown in this example, the `box-shadow` property can be used to customize the background if required, since `background-color` cannot be overridden directly.
 
-
 ## Use the correct CSS pseudo-class name
 
 **Do not** use `:auto-fill`: this is incorrect.

@@ -44,7 +44,6 @@ Always use `type="email"` for email addresses and `type="tel"` for phone numbers
 <input type="tel" id="phone" name="phone" autocomplete="tel">
 ```
 
-
 Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid re-entering data.
 
 ### Make buttons helpful
