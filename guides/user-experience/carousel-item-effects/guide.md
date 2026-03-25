@@ -144,7 +144,13 @@ When using the `view-timeline` property to create a scroll-driven animation:
 
 {{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
 
-For browsers that do not support scroll-driven animations, you can use a JavaScript-based fallback. This script uses the Web Animations API (`Element.animate()`) to create a paused animation for each item in the carousel. It then listens to the `scroll` event on the scroller and updates the `currentTime` of each animation based on the item's scroll progress within the scroller.
+For browsers that do not support scroll-driven animations, you can use a fallback to recreate the visual effects. The fallbacks are typically built with either a scroll listener (for ScrollTimeline effects) or the IntersectionObserver API (for ViewTimeline effects).
+
+In browsers with built-in support for scroll-driven animations, ALWAYS use the native CSS implementation as those are more performant.
+
+Note that not every effect can be recreated using the fallbacks approach.
+
+For this use-case specifically, the following script applies the fallback for browsers that do not support scroll-driven animations. It uses the Web Animations API (`Element.animate()`) to create a paused animation for each item in the carousel. It then listens to the `scroll` event on the scroller and updates the `currentTime` of each animation based on the item's scroll progress within the scroller.
 
 ```js
 // Fallback for browsers that don't support scroll-driven animations

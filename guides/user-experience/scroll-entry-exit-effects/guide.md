@@ -150,7 +150,13 @@ Prefer a named `view-timeline` when multiple elements or children of the tracked
 
 {{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
 
-While browser support for scroll-driven animations is constantly improving, it's still a good idea to provide a fallback for browsers that don't yet support them. Here's a JavaScript-based fallback that uses an `IntersectionObserver` to create a similar effect.
+For browsers that do not support scroll-driven animations, you can use a fallback to recreate the visual effects. The fallbacks are typically built with either a scroll listener (for ScrollTimeline effects) or the IntersectionObserver API (for ViewTimeline effects).
+
+In browsers with built-in support for scroll-driven animations, ALWAYS use the native CSS implementation as those are more performant.
+
+Note that not every effect can be recreated using the fallbacks approach.
+
+For this use-case specifically, the following script applies the fallback for browsers that do not support scroll-driven animations. It uses an `IntersectionObserver` to track the visibility of the `.wrapper` element and updates the `transform` property of the layers based on the scroll position.
 
 ```html
 <script>
@@ -174,5 +180,3 @@ While browser support for scroll-driven animations is constantly improving, it's
   }
 </script>
 ```
-
-This JavaScript fallback creates a similar effect to the CSS-based version, but it's important to note that it's not a perfect polyfill: it is not as performant and may not be as smooth as the native CSS version. Also note that not every effect can be recreated using this approach.

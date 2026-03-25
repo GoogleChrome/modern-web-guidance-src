@@ -115,9 +115,13 @@ When using the `scroll-timeline` property to create a scroll-driven animation:
 
 {{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
 
-While browser support for scroll-driven animations is improving, a fallback is still necessary. You can use JavaScript to create a similar effect.
+For browsers that do not support scroll-driven animations, you can use a fallback to recreate the visual effects. The fallbacks are typically built with either a scroll listener (for ScrollTimeline effects) or the IntersectionObserver API (for ViewTimeline effects).
 
-Here’s a JavaScript-based fallback that listens for the `scroll` event and updates the progress bar's `scaleX` transform accordingly. This code is wrapped in a check to see if the browser supports `animation-timeline`, so it only runs if the CSS-based animation isn't supported.
+In browsers with built-in support for scroll-driven animations, ALWAYS use the native CSS implementation as those are more performant.
+
+Note that not every effect can be recreated using the fallbacks approach.
+
+For this use-case specifically, the following script applies the fallback for browsers that do not support scroll-driven animations. It uses a scroll listener to track the scroll position of the root element and updates the `transform` property of the progress bar accordingly.
 
 ```html
 <script>
@@ -134,5 +138,3 @@ Here’s a JavaScript-based fallback that listens for the `scroll` event and upd
   }
 </script>
 ```
-
-This JavaScript fallback creates a similar effect to the CSS-based version, but it's important to note that it's not a perfect polyfill: it is not as performant and may not be as smooth as the native CSS version. Also note that not every effect can be recreated using this approach.

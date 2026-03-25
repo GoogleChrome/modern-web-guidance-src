@@ -174,7 +174,13 @@ As for setting the `animation-range`:
 
 {{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
 
-A JavaScript-based fallback can be used to create a similar parallax effect for browsers that don’t support CSS scroll-driven animations. This approach uses an `IntersectionObserver` to track the visibility of the `.wrapper` element and updates the `transform` property of the layers based on the scroll position.
+For browsers that do not support scroll-driven animations, you can use a fallback to recreate the visual effects. The fallbacks are typically built with either a scroll listener (for ScrollTimeline effects) or the IntersectionObserver API (for ViewTimeline effects).
+
+In browsers with built-in support for scroll-driven animations, ALWAYS use the native CSS implementation as those are more performant.
+
+Note that not every effect can be recreated using the fallbacks approach.
+
+For this use-case specifically, the following script applies the fallback for browsers that do not support scroll-driven animations. It uses an `IntersectionObserver` to track the visibility of the `.wrapper` element and updates the `transform` property of the layers based on the scroll position.
 
 ```js
 // Fallback for browsers that don't support scroll-driven animations

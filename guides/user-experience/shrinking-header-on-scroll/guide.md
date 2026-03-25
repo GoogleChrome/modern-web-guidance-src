@@ -107,7 +107,13 @@ As for this use case specifically:
 
 {{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
 
-For browsers that do not support scroll-driven animations, you can achieve a similar effect using JavaScript. This fallback script listens for the `scroll` event and manually calculates and updates the header's height based on the scroll position.
+For browsers that do not support scroll-driven animations, you can use a fallback to recreate the visual effects. The fallbacks are typically built with either a scroll listener (for ScrollTimeline effects) or the IntersectionObserver API (for ViewTimeline effects).
+
+In browsers with built-in support for scroll-driven animations, ALWAYS use the native CSS implementation as those are more performant.
+
+Note that not every effect can be recreated using the fallbacks approach.
+
+For this use-case specifically, the following script applies the fallback for browsers that do not support scroll-driven animations. It uses a scroll listener to track the scroll position of the document over a distance of `150px` and updates the header's height accordingly.
 
 ```js
 // Fallback for browsers that don't support scroll-driven animations
@@ -116,7 +122,7 @@ if (!CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)
 
   const initialHeight = 200;
   const finalHeight = 50;
-  const scrollDistance = 200;
+  const scrollDistance = 150;
 
   window.addEventListener('scroll', () => {
     const scrollY = window.scrollY;

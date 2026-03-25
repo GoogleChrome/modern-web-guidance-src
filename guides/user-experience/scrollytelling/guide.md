@@ -120,9 +120,13 @@ When using the `view-timeline` property to create a scroll-driven animation:
 
 {{ BASELINE_STATUS("scroll-driven-animations") }}. Therefore, a fallback strategy is typically required.
 
-For browsers that do not support scroll-driven animations, you can use the `IntersectionObserver` API to create a similar effect. This JavaScript-based approach tracks the visibility of elements and applies animations when they enter or leave the viewport.
+For browsers that do not support scroll-driven animations, you can use a fallback to recreate the visual effects. The fallbacks are typically built with either a scroll listener (for ScrollTimeline effects) or the IntersectionObserver API (for ViewTimeline effects).
 
-Here is an example of how you can implement a fallback for the scrollytelling effect:
+In browsers with built-in support for scroll-driven animations, ALWAYS use the native CSS implementation as those are more performant.
+
+Note that not every effect can be recreated using the fallbacks approach.
+
+For this use-case specifically, the following script applies the fallback for browsers that do not support scroll-driven animations. It uses an `IntersectionObserver` to track the visibility of each `#tracked section` element and updates the `transform` property of the corresponding `#animated section` accordingly.
 
 ```js
 const animatedSections = document.querySelectorAll('#animated section');
