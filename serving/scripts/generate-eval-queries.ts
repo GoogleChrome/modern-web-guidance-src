@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "..");
 const DATA_DIR = path.join(ROOT_DIR, "mcp-server/data");
-const OUTPUT_FILE = path.join(DATA_DIR, "eval-queries.json");
+const OUTPUT_FILE = path.join(DATA_DIR, "eval-queries-pool.json");
 
 // Define a type for our evaluation queries
 export interface EvalQuery {
@@ -25,14 +25,19 @@ async function generateQueriesWithGemini(markdownContent: string): Promise<strin
   }
 
   const prompt = `You are a web developer trying to implement a specific UI pattern or Web Platform feature. 
-Based on the following guide, generate exactly 5 realistic, conversational queries you might use to search for this best practice.
+Based on the following guide, generate exactly 50 realistic queries you might use to search for this best practice.
+
+CRITICAL CONSTRAINTS:
+- Action-oriented description of the desired use case (e.g., 'lazy load images' or 'show a tooltip on hover'). 
+- Avoid 'how to' questions and single-keyword queries (e.g. 'images'). 
+- Capture the abstract, high-level use case, while avoiding content-specific details (e.g. 'display a carousel of images' instead of 'swipe through historical portraits').
 
 Format the output as a strict JSON array of strings. Do not include markdown blocks or any other text.
 Example format:
-["how to add a dark mode toggle", "implementing prefers-color-scheme css", "dark mode button js implementation"]
+["lazy load images", "defer rendering offscreen elements", "show tooltip on hover", "animate entry transitions"]
 
 Guide Content:
-${markdownContent.substring(0, 3000)} // truncate to avoid massive prompts if needed
+${markdownContent.substring(0, 3000)}
 `;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;

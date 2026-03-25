@@ -12,6 +12,16 @@ function run(cmd: string) {
   }
 }
 
+// Randomly shuffles an array safely
+function shuffle<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 async function main() {
   const models = [
     'Xenova/all-MiniLM-L6-v2',
@@ -19,22 +29,48 @@ async function main() {
   ];
   const runs = 10;
   
-  // Clean history
+  const poolPath = path.join(ROOT, 'mcp-server/data/eval-queries-pool.json');
+  const targetEvalsPath = path.join(ROOT, 'mcp-server/data/eval-queries.json');
   const resultsPath = path.join(ROOT, '.modern-web-data', 'eval-results.json');
+
+  // Generate the pool once if it doesn't exist
+  if (!fs.existsSync(poolPath)) {
+     console.log('Generating master query pool (50 queries per guide)...');
+     run('node --experimental-strip-types scripts/generate-eval-queries.ts');
+  }
+
+  const pool = JSON.parse(fs.readFileSync(poolPath, 'utf-8'));
+
+  // Clean history
   if (fs.existsSync(resultsPath)) fs.unlinkSync(resultsPath);
+
+  // Group queries by guide ID up-front
+  const groupedQueries: Record<string, any[]> = {};
+  for (const q of pool) {
+     if (!groupedQueries[q.guideId]) groupedQueries[q.guideId] = [];
+     groupedQueries[q.guideId].push(q);
+  }
 
   for (let iter = 1; iter <= runs; iter++) {
     console.log(`\n\n=== VARIANCE ITERATION ${iter} of ${runs} ===`);
-    run('node --experimental-strip-types scripts/generate-eval-queries.ts');
+    
+    // Sample exactly 5 random queries per guide for this specific test run iteration
+    const subset = [];
+    for (const guideId in groupedQueries) {
+        const queries = groupedQueries[guideId];
+        const shuffled = shuffle(queries);
+        subset.push(...shuffled.slice(0, 5));
+    }
+
+    fs.writeFileSync(targetEvalsPath, JSON.stringify(subset, null, 2));
+    console.log(`Sampled ${subset.length} randomized queries to test against.`);
 
     for (const model of models) {
       console.log(`\nEvaluating ${model} (Iter ${iter})...`);
+      // Rebuild the vector database table for the specific model before querying
       run(`node --experimental-strip-types scripts/build-guides.ts --model=${model}`);
       run(`node --experimental-strip-types scripts/eval-search.ts --model=${model}`);
     }
-    
-    // Slight sleep to protect against ratelimits in sequential loops
-    run('sleep 5');
   }
 
   // Parse results
