@@ -1,8 +1,9 @@
 ---
 name: autofill-payment-form
-description: Build a payment form that follows best practice, and works correctly with browser autofill features.
+description: Build a payment form that collects card details with correct autocomplete values and autofill support.
 web-feature-ids:
   - autofill
+  - inputmode
 sources:
   - https://web.dev/articles/payment-and-address-form-best-practices
   - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/autocomplete
@@ -37,8 +38,7 @@ meaning to markup.
 
 ### Use the <label> element to label form fields for data entry
 
-To label an `<input>`, `<select>`, or `<textarea>`, use a `[<label>]
-(https://developer.mozilla.org/docs/Web/HTML/Element/label)`.\ Associate a
+To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a
 label with an input by giving the label's `for` attribute the same value as the
 input's `id`.
 
@@ -48,11 +48,16 @@ Make it easy for users to enter data, by using the appropriate `<input>` element
 `<type>` attribute to provide the right keyboard on mobile and enable basic
 built-in validation by the browser.
 
-Always use `type="email"` for email addresses and `type="tel"` for phone
-numbers.
+Always use `type="email"` for email addresses and `type="tel"` for phone numbers.
 
-Every `<input>`, `<select`, and `<textarea>` element should have an appropriate
-`autocomplete` attribute, to improve accessibility and help users avoid
+```html
+<!-- type="email"/"tel" gives mobile users the right keyboard and enables built-in validation -->
+<input type="email" id="email" name="email" autocomplete="email" required>
+<input type="tel" id="phone" name="phone" autocomplete="tel">
+```
+
+
+Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid
 re-entering data.
 
 ### Make buttons helpful
@@ -121,19 +126,27 @@ form, and `enterkeyhint="search"` for a search input.
 
 ### Help users avoid re-entering payment data
 
-Make sure to add appropriate `autocomplete` values in payment card forms,
-including the payment card number, name on the card, and the expiry month and
-year:
+Make sure to add appropriate `autocomplete` values in payment card forms. Without autocomplete, users may keep a physical record of payment card details or store them insecurely.
 
--   `cc-number`
--   `cc-name`
--   `cc-exp-month`
--   `cc-exp-year`
+```html
+<!-- cc-number tells autofill this is a card number, not a generic number field -->
+<!-- inputmode="numeric" gives a numeric keyboard without the increment/decrement spinner -->
+<!-- DO NOT use type="number" — it adds increment/decrement controls and strips leading zeros -->
+<input id="cc-number" name="cc-number" type="text" autocomplete="cc-number"
+       inputmode="numeric" maxlength="19" pattern="[\d ]{13,19}" required>
 
-This enables browsers to help users by securely storing payment card details
-and correctly entering form data. Without autocomplete, users may be more likely
-to keep a physical record of payment card details, or store payment card data
-insecurely on their device.
+<!-- cc-name autofills with the name exactly as it appears on the card; Unicode pattern allows international names -->
+<input id="cc-name" name="cc-name" type="text" autocomplete="cc-name"
+       maxlength="50" pattern="[\p{L} \-\.]+" required>
+
+<!-- cc-exp autofills the full expiry date as MM/YY -->
+<input id="cc-exp" name="cc-exp" type="text" autocomplete="cc-exp"
+       placeholder="MM/YY" maxlength="5" required>
+
+<!-- cc-csc autofills the security code; DO NOT use type="password" here -->
+<input id="cc-csc" name="cc-csc" type="text" autocomplete="cc-csc"
+       inputmode="numeric" maxlength="4" pattern="[0-9]{3,4}" required>
+```
 
 ### Use a single input for payment card and phone numbers
 
@@ -159,4 +172,10 @@ numbers before processing.
 
 ### Help save users from accidentally missing data fields
 
-Add the `required` attribute to both email and password fields. Modern browsers automatically prompt and set focus for missing data.
+Add the `required` attribute to mandatory fields. Modern browsers automatically prompt and set focus for missing data.
+
+### Fallback strategies
+
+{{ BASELINE_STATUS("autofill") }}
+
+Autofill is a progressive enhancement. In browsers that do not support autofill (such as Firefox for certain inputs), users will simply need to manually enter their payment details. The semantic HTML constraints (such as `type`, `inputmode`, `pattern`, and `required`) will still function appropriately to validate user input and provide the correct virtual keyboards.

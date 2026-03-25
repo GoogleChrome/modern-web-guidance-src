@@ -1,6 +1,6 @@
 ---
 name: autofill-address-form
-description: Build an address form that follows best practice, and works correctly with browser autofill features.
+description: Build an address form with correct autocomplete attributes and autofill support.
 web-feature-ids:
   - autofill
 sources:
@@ -9,7 +9,6 @@ sources:
   - https://developer.mozilla.org/docs/Web/HTML/Element/form
   - https://developer.mozilla.org/docs/Web/HTML/Element/input
   - https://developer.mozilla.org/docs/Web/HTML/Element/label
-  - https://www.columbia.edu/~fdc/postal/
 ---
 
 # Build an address form that follows best practice
@@ -33,8 +32,7 @@ These enable built-in browser functionality, improve accessibility, and add mean
 
 ### Use the <label> element to label form fields for data entry
 
-To label an `<input>`, `<select>`, or `<textarea>`, use a `[<label>]
-(https://developer.mozilla.org/docs/Web/HTML/Element/label)`.\ Associate a label with an input by
+To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a label with an input by
 giving the label's `for` attribute the same value as the input's `id`.
 
 ### Make the most of HTML attributes
@@ -44,8 +42,14 @@ to provide the right keyboard on mobile and enable basic built-in validation by 
 
 Always use `type="email"` for email addresses and `type="tel"` for phone numbers.
 
-Every `<input>`, `<select`, and `<textarea>` element should have an appropriate `autocomplete`
-attribute, to improve accessibility and help users avoid re-entering data.
+```html
+<!-- type="email"/"tel" gives mobile users the right keyboard and enables built-in validation -->
+<input type="email" id="email" name="email" autocomplete="email" required>
+<input type="tel" id="phone" name="phone" autocomplete="tel">
+```
+
+
+Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid re-entering data.
 
 ### Make buttons helpful
 
@@ -75,9 +79,27 @@ modern browsers.
 When building an address form, be aware of the variety of address formats, even within a single
 country. Do not make assumptions about "normal" addresses.
 
-If possible within your data requirements, consider using a single `<textarea>` element for address.
+Use a single `<textarea>` element for the street address if possible.
+
+```html
+<!-- textarea handles multi-line international address formats that split inputs can't accommodate -->
+<textarea id="address" name="address" autocomplete="street-address" required></textarea>
+```
+
 This is the most flexible option for a variety of local and international address formats.
 
 ### Help save users from accidentally missing data fields
 
-Add the `required` attribute to both email and password fields. Modern browsers automatically prompt and set focus for missing data.
+Add the `required` attribute to mandatory fields.
+
+```html
+<input type="text" id="city" name="city" autocomplete="address-level2" required>
+```
+
+
+
+### Fallback strategies
+
+{{ BASELINE_STATUS("autofill") }}
+
+Autofill is a progressive enhancement. In browsers that do not support autofill (such as Firefox for certain inputs), users will simply need to manually enter their address details. The semantic HTML constraints (such as `type`, `inputmode`, and `required`) will still function appropriately as standard form validation.

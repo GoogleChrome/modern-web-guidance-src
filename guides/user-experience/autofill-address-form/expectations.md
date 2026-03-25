@@ -45,8 +45,4 @@
 - The `type="email"` attribute **MUST** be included in an `<input>` element used for email entry, to ensure mobile users are provided with an appropriate keyboard.
 - For forms, use well-known and easily understood names such as "Sign In", "Create Account", "Register".
 - For form fields, use well-known and easily understood label values such as "Name", "Email", "Telephone", and "Password".
-- In browsers that support the `:autofill` CSS pseudo-class, the `:autofill` CSS pseudo-class can be used to style autofilled `<input>` elements as required. In browsers that support the `:autofill` CSS pseudo-class, JavaScript or other mechanisms to style autofilled `<input>` elements **SHOULD NOT** be used.
-- The `:autofill` CSS pseudo-class **MAY** be used in combination with the `:-webkit-autofill` pseudo-class, in order to maximize compatibility with older browsers. The vendor-prefixed `:-webkit-autofill` pseudo-class is an alias of `:autofill`.
-- The `:autofill` CSS pseudo-class **CAN ONLY** be used to style `<input>`, `<select>`, and `<textarea>` elements. The `:autofill` CSS pseudo-class **CANNOT** be used to style elements other than the `<input>`, `<select>`, and `<textarea>` elements.
-- `input:autofill` **MAY** be used in combination with other selectors, or with classes or IDs. For example, both of the following selectors are correct: `input.address:autofill` and `section#shipping input:autofill`.
 - The use of `:auto-fill` as a CSS pseudo-class (with a hyphen between "auto" and "fill") is **INCORRECT**. The correct CSS pseudo-class is `:autofill`, with no hyphen.

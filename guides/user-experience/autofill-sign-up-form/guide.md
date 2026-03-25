@@ -1,11 +1,11 @@
 ---
 name: autofill-sign-up-form
-description: Build a sign-up form that follows best practice, and works correctly with browser autofill features.
+description: Build a sign-up form with correct autocomplete values and autofill support.
 web-feature-ids:
   - autofill
+  - inputmode
 sources:
   - https://web.dev/articles/payment-and-address-form-best-practices
-  - https://web.dev/articles/sign-up-form-best-practices
   - https://web.dev/articles/sign-up-form-best-practices
   - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/autocomplete
   - https://developer.mozilla.org/docs/Web/HTML/Element/form
@@ -39,8 +39,7 @@ meaning to markup.
 
 ### Use the <label> element to label form fields for data entry
 
-To label an `<input>`, `<select>`, or `<textarea>`, use a `[<label>]
-(https://developer.mozilla.org/docs/Web/HTML/Element/label)`.\ Associate a
+To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a
 label with an input by giving the label's `for` attribute the same value as the
 input's `id`.
 
@@ -53,8 +52,7 @@ built-in validation by the browser.
 Always use `type="email"` for email addresses and `type="tel"` for phone
 numbers.
 
-Every `<input>`, `<select`, and `<textarea>` element should have an appropriate
-`autocomplete` attribute, to improve accessibility and help users avoid
+Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid
 re-entering data.
 
 ### Make buttons helpful
@@ -64,11 +62,9 @@ use a `div` or some other random element acting as a button. Button elements
 provide accessible behaviour, built-in form submission functionality, and can
 easily be styled.
 
-Give each form submit button a value that says what it does. For each step
-towards checkout, use a descriptive call-to-action that shows progress and
-makes the next step obvious. For example, label the submit button on your
-delivery address form **Proceed to Payment** rather than **Continue**
-or **Save**.
+Give each form submit button a value that says what it does. Use a clear,
+recognizable label. For example, use **Create account** or **Sign up** rather
+than **Continue** or **Submit**.
 
 ### Use a single name input where possible
 
@@ -84,9 +80,9 @@ matching instead—and ensure your backend supports Unicode securely as both
 input and output. Unicode in regular expressions is well supported by modern
 browsers.
 
-### Show checkout progress
+### Show sign-up progress
 
-For each step towards sign-up, use page headings and descriptive button values that make it clear what needs to be done now, and what checkout step is next.
+For each step towards sign-up, use page headings and descriptive button values that make it clear what needs to be done now, and what the next step is.
 
 Use the `enterkeyhint` attribute on form inputs to set the mobile keyboard enter
 key label. For example, use `enterkeyhint="previous"` and `enterkeyhint="next"`
@@ -102,20 +98,9 @@ and correctly entering form data. Without autocomplete, users may be more likely
 to keep a physical record of sign-up details, or store sign-up data
 insecurely on their device.
 
-### Use a single input for payment card and phone numbers
-
-For payment card and phone numbers use a single input: don't split the number into parts. That makes it easier for users to enter data, makes validation simpler, and enables browsers to autofill. Consider doing the same for other numeric data such as PIN and bank codes.
-
 ### Validate carefully
 
-You should validate data entry both in realtime and before form submission. One
-way to do this is by adding a pattern attribute to a payment card input. If the
-user attempts to submit the sign-up form with an invalid value, the browser
-displays a warning message and sets focus on the input.
-
-However, your pattern regular expression must be flexible enough to handle the
-range of payment card number lengths: from 14 digits (or possibly less) to 20
-(or more).
+Validate data entry both in realtime and before form submission. Use `type="email"` for email inputs — the browser will validate the format automatically. For passwords, use a `pattern` attribute to enforce strength requirements and provide clear error messages when validation fails. Add the `required` attribute to mandatory fields to prevent empty submissions.
 
 ### Put sign-up in its own <form> element
 
@@ -133,8 +118,7 @@ Passwords inputs should have `type="password"` to hide password text and help
 the browser understand that the input is for passwords. (Note that browsers use a variety of techniques to understand input roles and decide whether or not to offer to save passwords.)
 
 You should add a **Show password** toggle to enable users to check the text
-they've entered—and don't forget to add a **Forgot password** link. See
-[Enable password display](https://web.dev/articles/sign-up-form-best-practices#password-display).
+they've entered—and don't forget to add a **Forgot password** link.
 
 ### Give mobile users the right keyboard
 
@@ -147,11 +131,11 @@ type="tel">` enables a telephone keypad on mobile. You can also use the
 `inputmode` attribute where necessary: `inputmode="numeric"` is ideal for PIN
 numbers.
 
-### Prevent mobile keyboard from obstructing the Sign in button
+### Prevent mobile keyboard from obstructing the Sign up button
 
-If you're not careful, mobile keyboards may cover your form or, worse, partially obstruct the Sign in button. Users may give up before realizing what has happened.
+If you're not careful, mobile keyboards may cover your form or, worse, partially obstruct the Sign up button. Users may give up before realizing what has happened.
 
-Where possible, avoid this by displaying only the email (or phone) and password inputs and Sign in button at the top of your sign-up page. Put other content underneath.
+Where possible, avoid this by displaying only the email (or phone) and password inputs and Sign up button at the top of your sign-up page. Put other content underneath.
 
 ### Help users to avoid re-entering data
 
@@ -177,26 +161,11 @@ browsers differentiate between new and current passwords.
 
 ### Use autocomplete="new-password" and id="new-password" for a new password
 
--   Use `autocomplete="new-password"` and `id="new-password"` for the
-    password input in a sign-up form, or the new password in a change-password form.
+MANDATORY: For a sign-up form, use `autocomplete="new-password"`.
 
-### Use autocomplete="current-password" and id="current-password" for an existing password
-
--   Use `autocomplete="current-password"` and `id="current-password"` for
-    the password input in a sign-up form, or the input for the user's old
-    password in a change-password form. This tells the browser that you want it
-    to use the current password that it has stored for the site.
-
-For a sign-up form:
-
-```
-<input type="password" autocomplete="new-password" id="new-password" …>
-```
-
-For a sign-up form:
-
-```
-<input type="password" autocomplete="current-password" id="current-password" …>
+```html
+<!-- new-password prevents password managers from auto-filling an existing password into this field -->
+<input type="password" id="new-password" name="new-password" autocomplete="new-password" required>
 ```
 
 ### Enable the browser to suggest a strong password
@@ -230,3 +199,9 @@ Don't insist on a username unless (or until) you need one. Enable users to sign 
 If your site does require usernames, don't impose unreasonable rules on them, and don't stop users from updating their username. On your backend you should generate a unique ID for every user account, not an identifier based on personal data such as username.
 
 Also make sure to use `autocomplete="username"` for usernames.
+
+### Fallback strategies
+
+{{ BASELINE_STATUS("autofill") }}
+
+Autofill is a progressive enhancement. In browsers that do not support autofill, users will simply need to manually enter their sign-up credentials. The semantic HTML constraints (such as `type`, `inputmode`, and `required`) will still function appropriately to validate user input and provide the correct virtual keyboards.

@@ -1,4 +1,4 @@
-# Expectations: `autofill-address-form`
+# Expectations: `autofill-payment-form`
 
 - In a payment form use well-known and easily understood form field UI label values such as "Card number", "Name on card", "Expiry date", and "Security code".
 - For the button used for form submission in a payment form, use a well-known and easily understood button UI label such as "Complete payment".
@@ -23,10 +23,5 @@
 - For an `<input>` element used for a number that is not meant to be incremented, do not include a `type` attribute, or include the attribute `type="text"`, which is the default.
 - The attribute `inputmode="numeric"` **MUST** be included in an `<input>` element that is used for input of a number, such as a payment card number, numeric-forma date, numeric-only postal code, one-time code (OTP), telephone number, membership number, or quantity.
 - To help browsers autofill forms, every `<input>` element **MUST** have a `name` and `id` attribute that is stable and does not change between page loads or website deployments.
-- An `<input>` element used for password entry **MUST** have `aria-label` and `aria-describedby` attributes.
-- The `type="password"`attribute **MUST** only be included on `<input>` elements used for password entry. The `type="password"`attribute **MUST NOT** be used on other types of form fields, such as for an OTP or a credit card security code.
-- In browsers that support the `:autofill` CSS pseudo-class, the `:autofill` CSS pseudo-class can be used to style autofilled `<input>` elements as required. In browsers that support the `:autofill` CSS pseudo-class, JavaScript or other mechanisms to style autofilled `<input>` elements **SHOULD NOT** be used.
-- The `:autofill` CSS pseudo-class **MAY** be used in combination with the `:-webkit-autofill` pseudo-class, in order to maximize compatibility with older browsers. The vendor-prefixed `:-webkit-autofill` pseudo-class is an alias of `:autofill`.
-- The `:autofill` CSS pseudo-class **CAN ONLY** be used to style `<input>`, `<select>`, and `<textarea>` elements. The `:autofill` CSS pseudo-class **CANNOT** be used to style elements other than the `<input>`, `<select>`, and `<textarea>` elements.
-- `input:autofill` **MAY** be used in combination with other selectors, or with classes or IDs. For example, both of the following selectors are correct: `input.address:autofill` and `section#shipping input:autofill`.
+- The `type="password"` attribute **MUST NOT** be used on other types of form fields, such as for an OTP or a credit card security code.
 - The use of `:auto-fill` as a CSS pseudo-class (with a hyphen between "auto" and "fill") is **INCORRECT**. The correct CSS pseudo-class is `:autofill`, with no hyphen.

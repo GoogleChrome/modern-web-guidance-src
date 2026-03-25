@@ -1,14 +1,4 @@
-Create a payment form.
-
-Create an HTML payment form.
-
-Create a form for credit card details.
-
-Create a form for entry of the user's credit card information.
-
-Create a payment form that follows best practice.
-
-Create a payment form that follows best practice for autofill.
-
-Build a payment form.
-
+- build a credit card form for the checkout page
+- can you add an input for the payment card details?
+- update the payment form to use the correct html attributes
+- make a form that collects cc number, expiry, and cvc
