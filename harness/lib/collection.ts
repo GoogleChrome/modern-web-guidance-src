@@ -27,6 +27,7 @@ export function extractModelFromResults(resultsDir: string): string {
   const firstSession = sessionFiles[0];
   if (!firstSession) return 'unknown';
 
+  const counts: Record<string, number> = {};
   try {
     const isJsonl = firstSession.endsWith('.jsonl');
     const content = fs.readFileSync(firstSession, 'utf8');
@@ -34,20 +35,32 @@ export function extractModelFromResults(resultsDir: string): string {
     if (isJsonl) {
       const lines = content.split('\n');
       for (const line of lines) {
-        if (!line.trim()) continue;
-        const obj = JSON.parse(line);
-        if (obj.message && obj.message.model) {
-          return obj.message.model;
+        // Optimization: skip lines that definitely don't have model info
+        if (!line.trim() || !line.includes('"model"')) continue;
+        try {
+          const obj = JSON.parse(line);
+          if (obj.message && obj.message.model) {
+            const m = obj.message.model;
+            counts[m] = (counts[m] || 0) + 1;
+          }
+        } catch (e) {
+          // Robust error handling: skip malformed JSONL lines
+          console.warn(`Malformed JSONL line in ${firstSession}:`, e);
         }
       }
     } else {
       const session = JSON.parse(content);
       if (session.messages) {
         for (const m of session.messages) {
-          if (m.type === 'gemini' && m.model) return m.model;
+          if (m.type === 'gemini' && m.model) {
+            counts[m.model] = (counts[m.model] || 0) + 1;
+          }
         }
       }
     }
+
+    const topModel = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    if (topModel) return topModel[0];
   } catch (e) {
     console.error(`Failed to extract model from ${firstSession}:`, e);
   }
