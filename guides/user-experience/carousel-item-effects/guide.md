@@ -81,7 +81,9 @@ This code animates the carousel items of a horizontal scroller on scroll using a
 }
 
 .scroller > * {
+  /* Applies the animation using an `auto` duration */
   animation: animate auto linear both;
+  /* Sets the animation timeline to use an anonymous view progress timeline, tracking the element's progress through the scroller on the inline axis */
   animation-timeline: view(inline);
 }
 ```
@@ -105,8 +107,11 @@ This code animates the carousel items of a horizontal scroller on scroll using a
 
 /* This creates a named view-timeline on each carousel item. The timeline is used to drive the animation that is applied on the same element. */
 .scroller > * {
-  view-timeline: --item inline;
+  /* Applies the animation using an `auto` duration */
   animation: animate auto linear both;
+  /* Defines a named view progress timeline, tracking the element's progress through the scroller on the inline axis */
+  view-timeline: --item inline;
+  /* Sets the animation timeline to use the named view progress timeline defined above */
   animation-timeline: --item;
 }
 ```
