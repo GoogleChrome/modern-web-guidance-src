@@ -5,7 +5,12 @@ let allTestData = {}; // Cache all test data by testId
 let selectedTestIds = new Set(); // Set of test IDs to show
 let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
-let currentSkillsFilter = 'all';
+let currentServingFilter = 'all';
+let currentModelFilter = 'all';
+
+function isRemoteDashboard() {
+    return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -131,7 +136,8 @@ function setupTableFilters() {
     const filters = {
         'filter-source': (val) => currentSourceFilter = val,
         'filter-agent': (val) => currentAgentFilter = val,
-        'filter-skills': (val) => currentSkillsFilter = val
+        'filter-serving': (val) => currentServingFilter = val,
+        'filter-model': (val) => currentModelFilter = val
     };
 
     Object.entries(filters).forEach(([id, updateFn]) => {
@@ -305,9 +311,11 @@ async function loadRemoteTests() {
 }
 
 function registerTestData(testId, source, parsed, forcedTimestamp) {
-    let servingArch = 'unknown';
-    if (parsed.enableSkills !== undefined) {
-        servingArch = parsed.enableSkills ? 'skills' : 'mcp';
+    let serving = 'unknown';
+    if (parsed.serving !== undefined) {
+        serving = parsed.serving;
+    } else if (parsed.enableSkills !== undefined) {
+        serving = parsed.enableSkills ? 'skills' : 'mcp';
     }
 
     const compoundKey = `${testId}|||${source}`;
@@ -318,8 +326,33 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
         data: parsed,
         source: source,
         agent: parsed.agent || 'unknown',
-        servingArch: servingArch
+        serving: serving,
+        model: parsed.model || 'unknown',
+        toolActivationRate: parsed.summary?.toolActivationRate || 0,
+        guideUsageRate: parsed.summary?.guideUsageRate || 0
     };
+    
+    updateModelFilterOptions();
+}
+
+function updateModelFilterOptions() {
+    const modelGroup = document.getElementById('filter-model-group');
+    if (!modelGroup) return;
+
+    const models = new Set();
+    Object.values(allTestData).forEach(test => {
+        if (test.model) models.add(test.model);
+    });
+
+    const sortedModels = Array.from(models).sort();
+    
+    // Only update if changed to avoid unnecessary re-renders or losing selection
+    const currentOptions = Array.from(modelGroup.querySelectorAll('option')).map(o => o.value);
+    if (JSON.stringify(currentOptions) === JSON.stringify(sortedModels)) return;
+
+    modelGroup.innerHTML = sortedModels.map(model => 
+        `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`
+    ).join('');
 }
 
 // ==========================================
@@ -328,9 +361,18 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
 
 function renderSuites() {
     const testIds = getSortedTestIds();
-    if (testIds.length === 0) return;
-
     const container = document.getElementById('suites-list');
+    const headerSource = document.getElementById('header-source');
+    if (headerSource) {
+        headerSource.style.display = isRemoteDashboard() ? 'none' : '';
+    }
+
+    const servingDisplayNames = {
+        'skills': 'Skills',
+        'skills_cli': 'Skills (CLI)',
+        'mcp': 'MCP'
+    };
+    if (testIds.length === 0) return;
 
     let html = '';
 
@@ -341,7 +383,8 @@ function renderSuites() {
         // Apply filters
         if (currentSourceFilter !== 'all' && testInfo.source !== currentSourceFilter) return;
         if (currentAgentFilter !== 'all' && testInfo.agent !== currentAgentFilter) return;
-        if (currentSkillsFilter !== 'all' && testInfo.servingArch !== currentSkillsFilter) return;
+        if (currentServingFilter !== 'all' && testInfo.serving !== currentServingFilter) return;
+        if (currentModelFilter !== 'all' && testInfo.model !== currentModelFilter) return;
 
         const data = testInfo.data;
         const _date = new Date(testInfo.timestamp);
@@ -372,7 +415,8 @@ function renderSuites() {
                     <div style="color: var(--text-secondary); font-size: 0.8em;">${prettyTimestampStr}</div>
                 </td>
                 <td>${testInfo.agent}</td>
-                <td style="text-transform: capitalize;">${testInfo.servingArch.replace('mcp', 'MCP')}</td>
+                <td>${servingDisplayNames[testInfo.serving] || testInfo.serving}</td>
+                <td style="font-size: 0.85rem; color: var(--text-secondary);">${testInfo.model}</td>
                 <td class="rate-cell" data-compound-key="${compoundKey}">
                     <div class="rate-bar" style="width: ${gRate}%;"></div>
                     <div class="rate-value"><span style="font-weight: 700; color: ${getColor(gRate)};">${gRate}%</span></div>
@@ -381,7 +425,7 @@ function renderSuites() {
                     <div class="rate-bar" style="width: ${uRate}%;"></div>
                     <div class="rate-value"><span style="font-weight: 700; color: ${getColor(uRate)};">${uRate}%</span></div>
                 </td>
-                <td style="text-transform: capitalize;">${testInfo.source}</td>
+                ${isRemoteDashboard() ? '' : `<td style="text-transform: capitalize;">${testInfo.source}</td>`}
             </tr>
         `;
     });
@@ -429,7 +473,7 @@ function showRadarTooltip(testInfo, x, y, compoundKey) {
     if (headerDiv) {
         headerDiv.innerHTML = `
             <div class="radar-tooltip-title">${escapeHtml(testInfo.testId)}</div>
-            <div class="radar-tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(testInfo.servingArch.replace('mcp', 'MCP'))}</div>
+            <div class="radar-tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(testInfo.serving.replace('mcp', 'MCP'))}</div>
         `;
     }
 

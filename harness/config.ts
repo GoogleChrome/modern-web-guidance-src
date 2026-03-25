@@ -16,6 +16,14 @@ export const Agents = {
   CLAUDE_CODE: 'claude_code'
 } as const;
 
+export const Serving = {
+  SKILLS_CLI: 'skills_cli',
+  SKILLS: 'skills',
+  MCP: 'mcp'
+} as const;
+
+export type Serving = typeof Serving[keyof typeof Serving];
+
 // ******************************************
 // *** Set environment configuration      ***
 // *** Set env variables in guidance/.env ***
@@ -45,7 +53,7 @@ export const suiteConfig: SuiteConfig = {
   numRuns: 1,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
   mcpServersToEnable: [], // Available servers: 'modern-web', 'google-developer-knowledge'
-  enableSkills: true,
+  serving: Serving.SKILLS_CLI,
   agent: Agents.GEMINI_CLI,
   negative: false, // When `true`, runs the suite on all tasks in `tasks/negative/`
 };
@@ -68,7 +76,7 @@ export interface SuiteConfig {
   numRuns: number;
   tasks: string[];
   mcpServersToEnable: string[];
-  enableSkills: boolean;
+  serving: Serving;
   agent: string;
   negative: boolean;
 }

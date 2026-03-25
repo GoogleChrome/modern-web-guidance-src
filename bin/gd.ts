@@ -7,6 +7,7 @@ import { spawn } from 'child_process';
 import omelette from 'omelette';
 import { fileURLToPath } from 'url';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
+import { config, Serving } from '../harness/config.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -220,14 +221,13 @@ ${cBold('Options:')}
     }
 
     case 'eval': {
-      const action = positionals[1] || 'suite';
-      
-      if (action === 'dashboard') {
-        console.error(`${cRed(`'gd eval dashboard' has moved.`)} Run: ${cCyan(`gd dashboard`)}\n`);
-        process.exit(1);
+      let buildCode = 0;
+      if (config.suite.serving === Serving.MCP) {
+        buildCode = await runNpm(['build:mcp']);
+      } else if (config.suite.serving === Serving.SKILLS_CLI) {
+        buildCode = await runNpm(['--filter', 'modern-web-mcp', 'build-dist']);
       }
       
-      const buildCode = await runNpm(['build:mcp']);
       if (buildCode !== 0) process.exit(buildCode);
       const { runSuite } = await import('../harness/run_suite.ts');
 
@@ -248,11 +248,6 @@ ${cBold('Options:')}
 
     case 'deploy': {
       const code = await runNpm(['deploy:dashboard']);
-      process.exit(code);
-    }
-
-    case 'dist-gen': {
-      const code = await runNpm(['--filter', 'modern-web-mcp', 'dist-gen']);
       process.exit(code);
     }
 
