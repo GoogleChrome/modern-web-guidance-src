@@ -119,9 +119,9 @@ ANTHROPIC_MODEL='claude-opus-4-6'
 
 #### Codex CLI
 
-When using Codex CLI, set the `OPENAI_API_KEY` environment variable with your API key.
-You will also need to request an exception to use the Codex CLI.
+To use Codex CLI, you will need to request an exception, which appears when attempting to use it (`codex`).
 This request should file a bug similar to b/492300931, which includes a screenshot to the PCounsel approval.
+After approval, start `codex` locally and login to your account.
 
 ## Guides
 
