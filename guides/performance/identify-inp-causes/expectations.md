@@ -1,4 +1,4 @@
-# Expectations: `identify-causes-of-poor-inp`
+# Expectations: `identify-inp-causes`
 
 - The `longestScript.entry` object may be empty and this should be handled.
 - The `web-vital` library, or some other RUM library, is used rather than trying to re-implement INP.

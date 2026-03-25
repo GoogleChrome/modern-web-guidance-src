@@ -1,6 +1,6 @@
 ---
-name: identify-scripts-delaying-rendering
-description: Identify the specific JavaScript functions responsible for delaying a frame's rendering update to debug Interaction to Next Paint (INP).
+name: identify-heavy-scripts
+description: Identify the top X scripts that are responsible for long animation frames
 web-feature-ids:
   - long-animation-frames
 sources:
@@ -11,13 +11,13 @@ sources:
   - https://requestmetrics.com/web-performance/long-animation-frame-loaf/
 ---
 
-# Identify slow-running JavaScript delaying rendering
+# Identify heavy-running JavaScript
 
-Slow-running JavaScript can have a detrimental effect on both page load performance, and also on interactivity. Modern web applications are more heavily reliant on JavaScript than ever before from multiple sources, including the application code itself (and the framework code it relies on), to third-party scripts that add functionality like chat widgets, video players as well as behind-the-scenes analytics and marketing scripts that are all too easy to forget.
+Heavy-running JavaScript can have a detrimental effect on both page load performance, and also on interactivity. Modern web applications are more heavily reliant on JavaScript than ever before from multiple sources, including the application code itself (and the framework code it relies on), to third-party scripts that add functionality like chat widgets, video players as well as behind-the-scenes analytics and marketing scripts that are all too easy to forget.
 
 Identifying root causes of an unresponsive web page can be tricky with certain expertise required to run web performance tracing or profiling and how to interpret the results. Additionally field data is often very different to lab data, which only replicates a small subset of real user scenarios. This can make it difficult to identify the root causes of poor performance, especially for interactions.
 
-The Long Animation Frames API is a lightweight API that can be used to identify slow running JavaScript in the field in long running applications.
+The Long Animation Frames API is a lightweight API that can be used to identify heavy-running JavaScript in the field in long running applications. A heavy-running script can be either a single long running script, or a script that runnings multiple times during the page lifecycle.
 
 ## How to implement
 
@@ -44,15 +44,20 @@ const observer = new PerformanceObserver(list => {
     totalDuration: scripts.reduce((subtotal, script) => subtotal + script.duration, 0)
   }));
 
+  // Only beacon scripts above a certain threshold to reduce payload size
+  const heavyScripts = processedScripts.filter(script => {
+    return script.totalDuration > 100;
+  });
+
   // Sort by total duration so the worst offenders appear first,
   // making it easier to prioritize optimization efforts.
-  processedScripts.sort((a, b) => b.totalDuration - a.totalDuration);
+  heavyScripts.sort((a, b) => b.totalDuration - a.totalDuration);
 
   // Beacon the summarized data to an analytics service so it can be
   // analyzed across real users rather than just logged locally.
   navigator.sendBeacon(
     '/analytics',
-    JSON.stringify(processedScripts)
+    JSON.stringify(heavyScripts)
   );
 });
 

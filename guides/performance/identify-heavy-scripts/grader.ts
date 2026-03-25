@@ -49,7 +49,7 @@ test.describe(`identify-scripts-delaying-rendering Expectations: ${demoName}`, (
       const OriginalObserver = window.PerformanceObserver;
       if (OriginalObserver) {
         const originalObserve = OriginalObserver.prototype.observe;
-        OriginalObserver.prototype.observe = function(this: any, options: any) {
+        OriginalObserver.prototype.observe = function (this: any, options: any) {
           (window as any)._observeCalls.push(options);
           return originalObserve.call(this, options);
         };
@@ -62,7 +62,7 @@ test.describe(`identify-scripts-delaying-rendering Expectations: ${demoName}`, (
 
       if ('Profiler' in window) {
         const OriginalProfiler = (window as any).Profiler;
-        const MockProfiler = function(this: any, ...args: any[]) {
+        const MockProfiler = function (this: any, ...args: any[]) {
           trackProfiler();
           return new (OriginalProfiler as any)(...args);
         };

@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <title>Identify Scripts Delaying Rendering Demo</title>
+  <title>Identify Heavy Scripts Demo</title>
 </head>
+
 <body>
-  <h1>Identify Scripts Delaying Rendering</h1>
+  <h1>Identify Heavy Scripts</h1>
   <button id="slow-button">Trigger Slow Script</button>
 
   <script>
@@ -13,7 +15,7 @@
     const observer = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
         console.log('Long Animation Frame observed:', entry.duration, 'ms');
-        
+
         // Iterate through scripts to find the specific function responsible
         // Note script entries will be empty when loading this demo from a
         // local file, instead of from a server.
@@ -26,7 +28,7 @@
         }
       }
     });
-    
+
     // Start observing long-animation-frame entries
     observer.observe({ type: 'long-animation-frame', buffered: true });
 
@@ -43,4 +45,5 @@
     });
   </script>
 </body>
+
 </html>

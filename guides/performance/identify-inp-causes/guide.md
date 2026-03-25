@@ -1,5 +1,5 @@
 ---
-name: identify-causes-of-poor-inp
+name: identify-inp-causes
 description: Identify slow running JavaScript that is impacting INP metric
 web-feature-ids:
   - long-animation-frames
