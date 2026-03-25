@@ -3,13 +3,17 @@ import { pipeline, type FeatureExtractionPipeline } from "@huggingface/transform
 export class Embedder {
   private static instance: Embedder;
   private pipe: FeatureExtractionPipeline | null = null;
-  private modelName = "Xenova/all-MiniLM-L6-v2";
+  public modelName = "Xenova/all-MiniLM-L6-v2";
 
-  private constructor() { }
+  private constructor(modelName?: string) {
+    if (modelName) {
+      this.modelName = modelName;
+    }
+  }
 
-  public static getInstance(): Embedder {
-    if (!Embedder.instance) {
-      Embedder.instance = new Embedder();
+  public static getInstance(modelName?: string): Embedder {
+    if (!Embedder.instance || (modelName && Embedder.instance.modelName !== modelName)) {
+      Embedder.instance = new Embedder(modelName);
     }
     return Embedder.instance;
   }

@@ -36,7 +36,14 @@ async function processGuides() {
   const storeUseCases: StoreUseCase[] = [];
 
   console.log("Initializing Embedder...");
-  const embedder = Embedder.getInstance();
+  const modelArg = process.argv.find((arg) => arg.startsWith("--model="));
+  const modelName = modelArg ? modelArg.split("=")[1] : undefined;
+  
+  if (modelName) {
+    console.log(`Using custom embedding model: ${modelName}`);
+  }
+  
+  const embedder = Embedder.getInstance(modelName);
   await embedder.init();
 
   console.log("Initializing Store...");
