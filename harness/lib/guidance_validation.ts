@@ -6,6 +6,7 @@ import { Agents, Serving } from '../config.ts';
 import { collectGeminiCliGuides } from '../agents/gemini-cli-agent.ts';
 import { collectClaudeCodeGuides } from '../agents/claude-code-agent.ts';
 import { collectJetskiGuides } from '../agents/jetski-agent.ts';
+import { collectCodexCliGuides } from '../agents/codex-cli-agent.ts';
 
 export async function collectGuidesUsed(dirPath: string, serving: Serving, agent: string): Promise<string[]> {
   if (serving === Serving.SKILLS_CLI || serving === Serving.SKILLS) { // Skills path
@@ -15,6 +16,8 @@ export async function collectGuidesUsed(dirPath: string, serving: Serving, agent
       return collectJetskiGuides(dirPath, serving);
     } else if (agent === Agents.CLAUDE_CODE) {
       return collectClaudeCodeGuides(dirPath, serving);
+    } else if (agent === Agents.CODEX_CLI) {
+      return collectCodexCliGuides(dirPath, serving);
     } else {
       console.warn(`Unknown agent ${agent} for skills collection`);
       return [];
@@ -50,7 +53,7 @@ export async function collectGuidesUsed(dirPath: string, serving: Serving, agent
   }
 }
 
-export async function collectGuidanceToolsUsed(dir: string, serving: Serving): Promise<string[]> {
+export async function collectGuidanceToolsUsed(dir: string, serving: Serving, agent: string): Promise<string[]> {
   const toolsUsed: string[] = [];
   
   if (serving === Serving.MCP) {
@@ -72,16 +75,40 @@ export async function collectGuidanceToolsUsed(dir: string, serving: Serving): P
       const lines = content.split('\n');
       for (const line of lines) {
         if (!line.trim()) continue;
-        const obj = JSON.parse(line);
-        if (obj.message && Array.isArray(obj.message.content)) {
-          for (const item of obj.message.content) {
-            if (item.type === 'tool_use' && item.name === 'Skill' && item.input?.skill) {
-              toolsUsed.push(item.input.skill);
+        try {
+          const obj = JSON.parse(line);
+          if (agent === Agents.CLAUDE_CODE) {
+            if (obj.message && Array.isArray(obj.message.content)) {
+              for (const item of obj.message.content) {
+                if (item.type === 'tool_use' && item.name === 'Skill' && item.input?.skill) {
+                  toolsUsed.push(item.input.skill);
+                }
+              }
+            }
+          } else if (agent === Agents.CODEX_CLI) {
+            let functionCall = null;
+            if (obj.type === 'function_call') {
+              functionCall = obj;
+            } else if (obj.type === 'response_item' && obj.payload && obj.payload.type === 'function_call') {
+              functionCall = obj.payload;
+            }
+
+            if (functionCall && functionCall.name === 'exec_command' && functionCall.arguments) {
+              const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
+              const command = args.cmd || '';
+              if (command.includes('/skills/') && command.includes('SKILL.md')) {
+                const match = command.match(/\.agents\/skills\/([^/]+)\/SKILL\.md/);
+                if (match) {
+                  toolsUsed.push(match[1]);
+                }
+              }
             }
           }
+        } catch (e) {
+          console.error(`Failed to parse jsonl line in ${firstSession}:`, e);
         }
       }
-    } else {
+    } else { // Gemini CLI
       const session = JSON.parse(content);
       if (Array.isArray(session.messages)) {
         for (const msg of session.messages) {

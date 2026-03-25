@@ -4,7 +4,7 @@ import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { fileURLToPath } from 'url';
 import matter from 'gray-matter';
-import { config, Serving } from '../config.ts';
+import { config, Serving, Agents } from '../config.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,9 +21,9 @@ export function getGuideCategory(guideName: string): string | null {
   return null;
 }
 
-export function extractModelFromResults(resultsDir: string): string {
+export function extractModelFromResults(resultsDir: string, agent: string): string {
   // Use recursive glob to find session logs deep in the task results
-  const sessionFiles = glob.sync('**/*/session-*.{json,jsonl}', { cwd: resultsDir, absolute: true });
+  const sessionFiles = glob.sync('**/session-*.{json,jsonl}', { cwd: resultsDir, absolute: true });
   if (sessionFiles.length === 0) return 'unknown';
 
   const counts: Record<string, number> = {};
@@ -39,12 +39,18 @@ export function extractModelFromResults(resultsDir: string): string {
           if (!line.trim() || !line.includes('"model"')) continue;
           try {
             const obj = JSON.parse(line);
-            if (obj.message && obj.message.model) {
-              const m = obj.message.model;
-              counts[m] = (counts[m] || 0) + 1;
+            if (agent === Agents.CLAUDE_CODE) {
+              if (obj.message && obj.message.model) {
+                const m = obj.message.model;
+                counts[m] = (counts[m] || 0) + 1;
+              }
+            } else if (agent === Agents.CODEX_CLI) {
+              if (obj.payload && typeof obj.payload.model === 'string') {
+                const m = obj.payload.model;
+                counts[m] = (counts[m] || 0) + 1;
+              }
             }
           } catch (e) {
-            // Robust error handling: skip malformed JSONL lines
             console.warn(`Malformed JSONL line in ${sessionPath}:`, e);
           }
         }
@@ -199,7 +205,7 @@ run();
       if (runType === 'guided') {
         const serving = config.suite.serving;
         guidesUsedResult = await collectGuidesUsed(dir, serving, config.suite.agent);
-        guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir, serving);
+        guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir, serving, config.suite.agent);
       }
 
       const targetFile = path.join(dir, 'index.html');

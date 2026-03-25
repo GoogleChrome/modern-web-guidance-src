@@ -394,7 +394,7 @@ export function watchLogFile(logPath: string): () => void {
       if (currentData.length > prevData.length) {
         const newLogs = currentData.slice(prevData.length).trim();
         if (newLogs) {
-          const formattedLogs = newLogs.split('\n').map(line => `\x1b[33m[MCP Server Log]:\x1b[0m ${line}`).join('\n');
+          const formattedLogs = newLogs.split('\n').map(line => `\x1b[33m[Modern Web Log]:\x1b[0m ${line}`).join('\n');
           console.log(formattedLogs);
         }
         prevData = currentData;

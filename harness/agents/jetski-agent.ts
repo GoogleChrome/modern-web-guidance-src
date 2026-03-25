@@ -76,7 +76,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir: s
   // Set environment variables
   process.env.HOME = tempHome;
   process.env.JETSKI_DIR = jetskiDest;
-  process.env.MCP_LOG_DIR = targetDir;
+  process.env.MODERN_WEB_LOG_DIR = targetDir;
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {

@@ -3,13 +3,15 @@ import os from 'os';
 import path from 'path';
 import { spawn } from 'child_process';
 import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, updateMcpConfig, watchLogFile, copyFileIfExists } from '../lib/agent-shared.ts';
-import config, { Agents } from '../config.ts';
-import { MCP_LOG_FILE } from '../../constants.ts';
+import config, { Agents, Serving } from '../config.ts';
+import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
+
+import { fileURLToPath } from 'url';
 
 // Usage: node codex-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
-const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('codex-cli-agent.ts');
 
-function setupIsolatedWorkDir(): string {
+function setupIsolatedWorkDir(templateDir: string, runType: string): string {
   const tempHome = createIsolatedHome('ghh-codex');
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
@@ -22,24 +24,27 @@ function setupIsolatedWorkDir(): string {
   process.env.HOME = tempHome;
 
   if (runType === 'guided') {
-    if (config.suite.enableSkills) {
-      copySkills(tempHome, Agents.CODEX_CLI);
-    }
+    const approach = config.suite.serving;
 
-    updateMcpConfig(
-      path.join(tempHome, '.codex', 'config.toml'),
-      config.suite.mcpServersToEnable,
-      config.environment.modernWebServerPath,
-      config.environment.mcpApiKey,
-      Agents.CODEX_CLI
-    );
+    if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
+      copySkills(tempHome, Agents.CODEX_CLI, approach === Serving.SKILLS_CLI);
+    } else if (approach === Serving.MCP) {
+      updateMcpConfig(
+        path.join(tempHome, '.codex', 'config.toml'),
+        config.suite.mcpServersToEnable,
+        config.environment.modernWebServerPath,
+        config.environment.mcpApiKey,
+        Agents.CODEX_CLI
+      );
+    }
   }
 
   return workDir;
 }
 
 async function run() {
-  const workDir = setupIsolatedWorkDir();
+  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('codex-cli-agent.ts');
+  const workDir = setupIsolatedWorkDir(templateDir, runType);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -57,8 +62,8 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.MCP_LOG_DIR = targetDir;
-    const stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
+    process.env.MODERN_WEB_LOG_DIR = targetDir;
+    const stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
 
     const child = spawn(command, commandArgs, {
       cwd: workDir,
@@ -97,6 +102,44 @@ async function run() {
     fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
     console.log(`Saved output to: ${chatLogPath}`);
 
+    // Export Codex trajectory as an inline HTML viewer
+    const tempHome = path.dirname(workDir);
+    const codexLogDir = path.join(tempHome, '.codex', 'sessions');
+    if (fs.existsSync(codexLogDir)) {
+      // Find all jsonl files in the Codex sessions directory
+      const files = fs.globSync('**/*.jsonl', { cwd: codexLogDir });
+
+      for (const relativePath of files as string[]) {
+        const src = path.join(codexLogDir, relativePath);
+
+        // 1. Determine base name and copy original JSONL file to targetDir
+        const baseName = relativePath.replace(/[\\\\/]/g, '-').replace(/\.jsonl$/, '');
+        const rawDestName = `session-${baseName}.jsonl`;
+        fs.copyFileSync(src, path.join(targetDir, rawDestName));
+
+        // 2. Read and parse JSONL
+        const logContent = fs.readFileSync(src, 'utf8');
+        const jsonLines = logContent.split(/\r?\n/).filter(Boolean);
+
+        const logData = jsonLines.map(line => {
+          try {
+            return JSON.parse(line);
+          } catch (e) {
+            console.error("Failed to parse JSONL line:", e);
+            return { error: "Failed to parse line", raw: line };
+          }
+        });
+
+        // 3. Generate and save the HTML viewer
+        const htmlContent = generateCodexTrajectoryHtml(logData);
+
+        // 4. Save HTML viewer to target directory
+        const destName = `session-${baseName}.html`;
+        const dest = path.join(targetDir, destName);
+        fs.writeFileSync(dest, htmlContent, 'utf8');
+      }
+    }
+
     console.log("Codex agent finished successfully.");
 
   } catch (err) {
@@ -107,4 +150,60 @@ async function run() {
   }
 }
 
-run();
+export async function collectCodexCliGuides(dirPath: string, serving: string): Promise<string[]> {
+  const guidesFromSkills: string[] = [];
+  try {
+    const files = fs.readdirSync(dirPath);
+    const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
+
+    for (const file of sessionFiles) {
+      const sessionPath = path.join(dirPath, file);
+      const sessionContent = fs.readFileSync(sessionPath, 'utf8');
+      const lines = sessionContent.split('\n');
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const obj = JSON.parse(line);
+          let functionCall = null;
+
+          if (obj.type === 'function_call') {
+            functionCall = obj;
+          } else if (obj.type === 'response_item' && obj.payload && obj.payload.type === 'function_call') {
+            functionCall = obj.payload;
+          }
+
+          if (functionCall && functionCall.name === 'exec_command' && functionCall.arguments) {
+            const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
+            const command = args.cmd || '';
+
+            if (serving === Serving.SKILLS_CLI && command.includes('modern-web.cjs') && command.includes('--retrieve')) {
+              const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
+              if (match) {
+                const ids = match[1].split(',');
+                for (const id of ids) {
+                  guidesFromSkills.push(id.trim());
+                }
+              }
+            } else if (serving === Serving.SKILLS && command.includes('.agents/skills/') && command.includes('guide.md')) {
+              const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
+              if (match) {
+                guidesFromSkills.push(match[1]);
+              }
+            }
+          }
+        } catch (e) {
+          console.error(`Failed to parse jsonl line in ${sessionPath}:`, e);
+        }
+      }
+    }
+  } catch (e) {
+    console.error(`Error reading session files in ${dirPath}:`, e);
+  }
+  return [...new Set(guidesFromSkills)];
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  run();
+}
