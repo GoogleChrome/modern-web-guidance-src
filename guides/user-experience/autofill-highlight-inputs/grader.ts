@@ -13,16 +13,28 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-// Tests
 test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
-  // Static assertions
-  test(`Should not use JavaScript to style inputs`, async () => {
+
+  // CSS selector checks use the HTML source because browsers normalize :autofill
+  // to :-webkit-autofill in the CSSOM, making stylesheet inspection unreliable.
+
+  test('The :autofill pseudo-class must be applied to a form control', () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    // Using a regex to test for inline script styling as shown in negative-demo
-    expect(html).not.toMatch(/\.style\./);
+    expect(/\b(input|select|textarea):autofill\b/i.test(html)).toBe(true);
   });
 
-  // Setup browser testing
+  test('The incorrect spelling :auto-fill must not be used', () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(/:auto-fill\b/i.test(html)).toBe(false);
+  });
+
+  test('The :autofill pseudo-class must only be applied to <input>, <select>, or <textarea>', () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    const matches = [...html.matchAll(/([a-zA-Z][\w-]*):(?:-webkit-)?auto-?fill\b/gi)];
+    const invalidTags = matches.map(m => m[1].toLowerCase()).filter(t => !['input', 'select', 'textarea'].includes(t));
+    expect(invalidTags).toHaveLength(0);
+  });
+
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
@@ -38,85 +50,18 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  // Browser assertions
-  test(`Should use :autofill pseudo-class on input, select, or textarea elements`, async ({ page }) => {
-    const validSelectorsCount = await page.evaluate(() => {
-      let count = 0;
-      for (let i = 0; i < document.styleSheets.length; i++) {
-        const sheet = document.styleSheets[i];
-        try {
-          for (let j = 0; j < sheet.cssRules.length; j++) {
-            const rule = sheet.cssRules[j];
-            if (!(rule instanceof CSSStyleRule)) {
-              continue;
-            }
-            if (rule.selectorText && rule.selectorText.includes(':autofill')) {
-              const selectors = rule.selectorText.split(',');
-              for (let sel of selectors) {
-                sel = sel.trim();
-                if (sel.includes(':autofill')) {
-                  const parts = sel.split(/[\s>+~]+/);
-                  const targetPart = parts[parts.length - 1];
-                  const tagMatch = targetPart.match(/^([a-zA-Z0-9_-]+)/);
-                  if (tagMatch && ['input', 'select', 'textarea'].includes(tagMatch[1].toLowerCase())) {
-                    count++;
-                  }
-                }
-              }
-            }
-          }
-        } catch (e) {
-          if (e instanceof DOMException && e.name === 'SecurityError') {
-            continue;
-          }
-          throw e;
-        }
-      }
-      return count;
+  test('JavaScript must not apply inline styles to form controls', async ({ page }) => {
+    const controls = await page.locator('input:not([type="submit"]):not([type="button"]), select, textarea').all();
+    for (const control of controls) {
+      await control.fill('Test Value').catch(() => {});
+    }
+    await page.waitForTimeout(1000);
+
+    const hasInlineStyles = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('input, select, textarea'))
+        .some(el => (el as HTMLElement).style.length > 0);
     });
-    expect(validSelectorsCount).toBeGreaterThan(0);
+    expect(hasInlineStyles).toBe(false);
   });
 
-  test(`Should not use :auto-fill pseudo-class`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).not.toMatch(/:auto-fill/);
-  });
-
-  test(`Should not use :autofill on non-allowed elements`, async ({ page }) => {
-    const invalidSelectorsCount = await page.evaluate(() => {
-      let count = 0;
-      for (let i = 0; i < document.styleSheets.length; i++) {
-        const sheet = document.styleSheets[i];
-        try {
-          for (let j = 0; j < sheet.cssRules.length; j++) {
-            const rule = sheet.cssRules[j];
-            if (!(rule instanceof CSSStyleRule)) {
-              continue;
-            }
-            if (rule.selectorText && rule.selectorText.includes(':autofill')) {
-              const selectors = rule.selectorText.split(',');
-              for (let sel of selectors) {
-                sel = sel.trim();
-                if (sel.includes(':autofill')) {
-                  const parts = sel.split(/[\s>+~]+/);
-                  const targetPart = parts[parts.length - 1];
-                  const tagMatch = targetPart.match(/^([a-zA-Z0-9_-]+)/);
-                  if (!tagMatch || !['input', 'select', 'textarea'].includes(tagMatch[1].toLowerCase())) {
-                    count++;
-                  }
-                }
-              }
-            }
-          }
-        } catch (e) {
-          if (e instanceof DOMException && e.name === 'SecurityError') {
-            continue;
-          }
-          throw e;
-        }
-      }
-      return count;
-    });
-    expect(invalidSelectorsCount).toBe(0);
-  });
 });

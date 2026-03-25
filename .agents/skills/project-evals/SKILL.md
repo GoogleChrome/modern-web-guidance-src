@@ -82,7 +82,7 @@ The human can manually write or revise the grader or prompts if they wish.
 - Optimize the priority of my LCP image 'hero.jpg' and deprioritize the gallery images below the fold.
 ```
 
-**Critical:** The **first prompt** is the most important — it is what the harness uses for negative demo generation and as the default task. It must be specific enough to produce a grader-testable result.
+**Critical:** The **first prompt** is the most important — it is what the harness uses for negative demo generation and as the task body in `harness/tasks/<guide-name>-task.md`. The task file body **must always match the first prompt exactly**. If you update the first prompt, update the task file body to match. It must be specific enough to produce a grader-testable result.
 
 **Rules:**
 - DO write prompts as a developer talking to an AI coding assistant — casual, lowercase, sometimes vague.

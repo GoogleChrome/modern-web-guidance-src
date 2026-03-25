@@ -1,41 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<title>Login</title>
-<meta charset="utf-8">
-<style>
-body { font-family: sans-serif; margin: 20px; }
-.input-container { margin-bottom: 15px; }
-.fake-label { font-size: 14px; margin-bottom: 5px; display: block; }
-.text-box { width: 100%; padding: 10px; border: 1px solid #ccc; box-sizing: border-box; }
-.submit-btn { padding: 10px 20px; background: #007bff; color: white; cursor: pointer; display: inline-block; text-align: center; }
-</style>
+  <meta charset="utf-8">
+  <title>Sign In</title>
 </head>
 <body>
-<div id="login-container">
-<h1>Login</h1>
-<div class="input-container">
-<span class="fake-label">Email Address</span>
-<input class="text-box" type="text" autocomplete="off">
-</div>
-<div class="input-container">
-<span class="fake-label">Confirm Email Address</span>
-<input class="text-box" type="text" autocomplete="off">
-</div>
-<div class="input-container">
-<span class="fake-label">Password</span>
-<input class="text-box" type="text" autocomplete="off">
-</div>
-<div class="input-container">
-<span class="fake-label">Confirm Password</span>
-<input class="text-box" type="text" autocomplete="off">
-</div>
-<div class="submit-btn" onclick="submitData()">Continue</div>
-</div>
-<script>
-function submitData() {
-  alert('Signed in');
-}
-</script>
+  <h1>Sign In</h1>
+  <div id="sign-in-box">
+    <section>
+      <span>Email</span>
+      <input id="email_input_1" name="email_input_1" type="text" autocomplete="off">
+    </section>
+
+    <section>
+      <span>Confirm Email</span>
+      <input id="email_input_2" name="email_input_2" type="text" autocomplete="off">
+    </section>
+
+    <section>
+      <span>Password</span>
+      <input id="pwd_input_1" name="pwd_input_1" type="text" autocomplete="off">
+    </section>
+
+    <section>
+      <span>Confirm Password</span>
+      <input id="pwd_input_2" name="pwd_input_2" type="text" autocomplete="off">
+    </section>
+
+    <div class="submit">Continue</div>
+  </div>
 </body>
 </html>

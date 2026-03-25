@@ -13,20 +13,8 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-// Tests
 test.describe(`autofill-address-form Expectations: ${demoName}`, () => {
-  // Static assertions
-  test(`Must use correct CSS pseudo-class :autofill without hyphen`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).not.toMatch(/:auto-fill/);
-  });
 
-  test(`Must not enforce Latin-only characters using restrictive patterns`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).not.toMatch(/pattern="\[a-zA-Z\]\+"/);
-  });
-
-  // Setup browser testing
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
@@ -42,75 +30,75 @@ test.describe(`autofill-address-form Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  // Browser assertions
-  test(`Inputs, selects, and textareas must be inside a form element`, async ({ page }) => {
-    const inputsOutsideForm = await page.evaluate(() => {
-      const elements = Array.from(document.querySelectorAll('input:not([type="submit"]):not([type="button"]), select, textarea'));
-      return elements.filter(el => !el.closest('form')).length;
+  test('All form controls must be within a <form> element', async ({ page }) => {
+    const allInsideForm = await page.evaluate(() => {
+      const controls = Array.from(document.querySelectorAll('input, select, textarea'));
+      if (controls.length === 0) return false;
+      return controls.every(el => !!el.closest('form'));
     });
-    expect(inputsOutsideForm).toBe(0);
+    expect(allInsideForm).toBe(true);
   });
 
-  test(`Form controls must have valid autocomplete attributes`, async ({ page }) => {
-    const invalidAutocompleteCount = await page.evaluate(() => {
-      const elements = Array.from(document.querySelectorAll('input:not([type="submit"]):not([type="button"]), select, textarea'));
-      return elements.filter(el => {
-        const attr = el.getAttribute('autocomplete');
-        return !attr || ['off', 'false', 'nope'].includes(attr);
-      }).length;
+  test('Every form control must have an associated <label>', async ({ page }) => {
+    const allHaveLabels = await page.evaluate(() => {
+      const controls = Array.from(document.querySelectorAll('input:not([type="submit"]):not([type="button"]):not([type="hidden"]), select, textarea'));
+      if (controls.length === 0) return false;
+      return controls.every(control => {
+        const id = control.id;
+        return id && !!document.querySelector(`label[for="${id}"]`);
+      });
     });
-    expect(invalidAutocompleteCount).toBe(0);
+    expect(allHaveLabels).toBe(true);
   });
 
-  test(`Form controls must have matching id and name attributes`, async ({ page }) => {
-    const mismatchedCount = await page.evaluate(() => {
-      const elements = Array.from(document.querySelectorAll('input:not([type="submit"]):not([type="button"]), select, textarea'));
-      return elements.filter(el => !el.id || !(el as HTMLInputElement).name || el.id !== (el as HTMLInputElement).name).length;
+  test('Every <label> must have a "for" attribute matching a control "id"', async ({ page }) => {
+    const labelsValid = await page.evaluate(() => {
+      const labels = Array.from(document.querySelectorAll('label'));
+      if (labels.length === 0) return false;
+      return labels.every(label => {
+        const forAttr = label.getAttribute('for');
+        const target = forAttr ? document.getElementById(forAttr) : null;
+        return target && ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName);
+      });
     });
-    expect(mismatchedCount).toBe(0);
+    expect(labelsValid).toBe(true);
   });
 
-  test(`Form controls must be visually labeled using a label element`, async ({ page }) => {
-    const unlabeledCount = await page.evaluate(() => {
-      const elements = Array.from(document.querySelectorAll('input:not([type="submit"]):not([type="button"]), select, textarea'));
-      return elements.filter(el => {
-        const id = el.id;
-        if (!id) return true;
-        return !document.querySelector(`label[for="${id}"]`);
-      }).length;
+  test('A single <textarea> must be used for the street address', async ({ page }) => {
+    await expect(page.locator('textarea')).toHaveCount(1);
+  });
+
+  test('The street address textarea must have autocomplete="street-address"', async ({ page }) => {
+    await expect(page.locator('textarea').first()).toHaveAttribute('autocomplete', 'street-address');
+  });
+
+  test('The postal code input must have autocomplete="postal-code"', async ({ page }) => {
+    await expect(page.locator('input[autocomplete="postal-code"]').first()).toBeVisible();
+  });
+
+  test('The postal code input must not use type="number"', async ({ page }) => {
+    const type = await page.locator('input[autocomplete="postal-code"]').first().getAttribute('type');
+    expect(type).not.toBe('number');
+  });
+
+  test('Name and address inputs must not restrict to Latin-only characters', async ({ page }) => {
+    const patterns = await page.evaluate(() => {
+      const controls = Array.from(document.querySelectorAll('input[pattern], textarea[pattern]'));
+      return controls.map(el => el.getAttribute('pattern')).filter(Boolean) as string[];
     });
-    expect(unlabeledCount).toBe(0);
+    for (const pattern of patterns) {
+      expect(new RegExp(`^(?:${pattern})$`, 'u').test('Renée Müller')).toBe(true);
+    }
   });
 
-  test(`The type="number" attribute MUST NOT be used for non-incrementing numbers`, async ({ page }) => {
-    const numberInputsCount = await page.locator('input[type="number"]').count();
-    expect(numberInputsCount).toBe(0);
-  });
-
-  test(`Name attributes MUST be unique`, async ({ page }) => {
-    const duplicateNamesCount = await page.evaluate(() => {
-      const elements = Array.from(document.querySelectorAll('input:not([type="submit"]):not([type="button"]), select, textarea'));
-      const names = elements.map(el => (el as HTMLInputElement).name).filter(Boolean);
-      return names.length - new Set(names).size;
+  test('Required form fields must have the "required" attribute', async ({ page }) => {
+    const result = await page.evaluate(() => {
+      const nameInput = document.querySelector<HTMLInputElement>('input[autocomplete="name"]');
+      const addressTextarea = document.querySelector<HTMLTextAreaElement>('textarea[autocomplete="street-address"]');
+      if (!nameInput || !addressTextarea) return false;
+      return nameInput.required && addressTextarea.required;
     });
-    expect(duplicateNamesCount).toBe(0);
+    expect(result).toBe(true);
   });
 
-  test(`Address should use a single textarea, not multiple inputs`, async ({ page }) => {
-    const addressInputsCount = await page.locator('input[id*="addr"], input[name*="addr"]').count();
-    expect(addressInputsCount).toBe(0);
-  });
-
-  test(`Do not double-up form fields for email addresses`, async ({ page }) => {
-    const emailInputsCount = await page.locator('input[id*="email"], input[name*="email"]').count();
-    expect(emailInputsCount).toBeLessThanOrEqual(1);
-  });
-
-  test(`Email inputs must have correct type attribute`, async ({ page }) => {
-    const incorrectEmailInputs = await page.evaluate(() => {
-      const emailInputs = Array.from(document.querySelectorAll('input[name*="email"], input[id*="email"]'));
-      return emailInputs.filter(el => el.getAttribute('type') !== 'email').length;
-    });
-    expect(incorrectEmailInputs).toBe(0);
-  });
 });

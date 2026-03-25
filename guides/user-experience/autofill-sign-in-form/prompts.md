@@ -1,4 +1,4 @@
-- build a simple login screen for returning users
-- add a sign-in form to the app
-- make a form that collects email and password to log in
-- update the existing sign in form to use the correct html input attributes
+- add a sign-in form to index.html, don't create a new page
+- add a sign-in form to the app's index.html
+- make a form that collects email and password to log in, add it to index.html
+- update index.html to use the correct html input attributes for the sign in form
