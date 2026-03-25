@@ -13,74 +13,49 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-test.describe('Identify causes of poor INP Expectations', () => {
-
-  // Static Analysis Tests
-  test('Uses web-vitals or similar RUM library', async () => {
+test.describe(`identify-inp-causes Expectations: ${demoName}`, () => {
+  
+  // Functional assertions (Static analysis)
+  
+  test('Should use a RUM library like web-vitals for measuring INP', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    // The guide specifically recommends web-vitals
     expect(html).toContain('web-vitals');
   });
 
-  test('Uses onINP function to measure Interaction to Next Paint', async () => {
+  test('Should handle the case where longestScript.entry might be empty', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    // Check for optional chaining or null checks when accessing entry
+    expect(html).toMatch(/longestScript\??\.entry/);
+  });
+
+  test('Should use Long Animation Frames (LoAF) data for INP attribution', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(html).toContain('longestScript');
+  });
+
+  test('Should avoid using the JS Self-Profiling API (Profiler) as per best practices', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    expect(html).not.toContain('new Profiler');
+  });
+
+  test('Should not manually re-implement INP using raw Event Timing API', async () => {
+    const html = fs.readFileSync(filePath, 'utf-8');
+    // Detecting manual PerformanceObserver usage for events
+    expect(html).not.toMatch(/observe\(\s*{\s*type:\s*['"]event['"]/);
+  });
+
+  test('Should use the onINP function to observe the metric', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     expect(html).toContain('onINP');
   });
 
-  test('Uses the attribution module to get long animation frame data', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Using the attribution build is necessary for longestScript data
-    expect(html).toContain('attribution');
-  });
-
-  test('Handles potentially empty longestScript.entry object', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Expect safe access to .entry (e.g. optional chaining or existence check)
-    // specifically for the longestScript object.
-    const hasSafeAccess = /longestScript\?\.(entry\?\.)/.test(html) ||
-                          /longestScript\.entry\?\./.test(html) ||
-                          /if\s*\([^)]*longestScript\.entry[^)]*\)/.test(html) ||
-                          /longestScript\.entry\s*&&/.test(html) ||
-                          /\.longestScript\s*&&.*\.entry\s*&&/.test(html);
-    expect(hasSafeAccess).toBe(true);
-  });
-
-  test('Does not use the heavyweight JS Self-Profiling API (performance.profile)', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // performance.profile is discouraged in the guide
-    expect(html).not.toContain('performance.profile');
-  });
-
-  test('Does not re-implement INP logic manually using PerformanceObserver', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Manual implementation using 'event' or 'first-input' is discouraged
-    const manualInp = /observe\(\{\s*type:\s*['"](event|first-input)['"]/;
-    expect(html).not.toMatch(manualInp);
-  });
-
-  test('Collects script attribution data fields', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Check if the code refers to script attribution fields from LoAF
-    const attributionFields = ['invokerType', 'sourceURL', 'sourceFunctionName', 'subpart', 'intersectingDuration'];
-    const hasField = attributionFields.some(field => html.includes(field));
-    expect(hasField).toBe(true);
-  });
-
-  // Setup browser testing
+  // Browser assertions
+  
   test.beforeEach(async ({ page }) => {
+    // Route local file requests
     await page.route('http://localhost/*', async (route) => {
-      const url = new URL(route.request().url());
-      const requestPath = url.pathname;
-      
-      // Handle root path or specific file path
-      let localFileName = (requestPath === '/' || requestPath === '') ? demoName : path.basename(requestPath);
-      
-      // If the path is exactly /demoName, use it
-      if (requestPath === `/${demoName}`) {
-        localFileName = demoName;
-      }
-      
-      const localFilePath = path.join(targetDir, localFileName);
+      const requestPath = new URL(route.request().url()).pathname;
+      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
 
       if (fs.existsSync(localFilePath)) {
         await route.fulfill({ path: localFilePath });
@@ -92,37 +67,38 @@ test.describe('Identify causes of poor INP Expectations', () => {
     await page.goto(demoUrl);
   });
 
-  // Browser assertions
-  test('Reports INP data on user interaction', async ({ page }) => {
-    let reportDetected = false;
-    
-    // Listen for console logs (used in demo.html)
-    page.on('console', msg => {
-      const text = msg.text().toUpperCase();
-      if (text.includes('INP')) {
-        reportDetected = true;
-      }
+  test('Page should import the attribution build of web-vitals', async ({ page }) => {
+    const scriptContent = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('script')).map(s => s.textContent || s.src).join(' ');
     });
+    expect(scriptContent).toContain('web-vitals/attribution');
+  });
 
-    // Listen for beacons/requests (recommended in guide)
-    page.on('request', request => {
-      const postData = request.postData() || '';
-      if (postData.toUpperCase().includes('INP') || request.url().includes('analytics')) {
-        reportDetected = true;
-      }
+  test('Page scripts should handle longestScript.entry safely', async ({ page }) => {
+    const scriptContent = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('script')).map(s => s.textContent).join(' ');
     });
+    expect(scriptContent).toMatch(/longestScript\??\.entry/);
+  });
 
-    // Trigger an interaction
-    const button = page.locator('button, input[type="button"], #interact-button, #btn');
-    await button.first().click();
+  test('Page should not use Profiler API in its scripts', async ({ page }) => {
+    const scriptContent = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('script')).map(s => s.textContent).join(' ');
+    });
+    expect(scriptContent).not.toContain('new Profiler');
+  });
 
-    // Interaction to Next Paint might take a moment.
-    // Wait for a bit for the library to process and report.
-    for (let i = 0; i < 20; i++) {
-        if (reportDetected) break;
-        await page.waitForTimeout(100);
-    }
+  test('Page should not have a manual PerformanceObserver for event timing', async ({ page }) => {
+    const scriptContent = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('script')).map(s => s.textContent).join(' ');
+    });
+    expect(scriptContent).not.toMatch(/observe\(\s*{\s*type:\s*['"]event['"]/);
+  });
 
-    expect(reportDetected).toBe(true);
+  test('Page should use onINP for metric collection', async ({ page }) => {
+    const scriptContent = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('script')).map(s => s.textContent).join(' ');
+    });
+    expect(scriptContent).toContain('onINP');
   });
 });

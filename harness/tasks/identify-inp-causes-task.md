@@ -1,5 +1,5 @@
 ---
 base_app: daily-grind
-grader: identify-causes-of-poor-inp
+grader: identify-inp-causes
 ---
 I have a slow INP score

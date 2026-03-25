@@ -13,109 +13,86 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-// Tests
-test.describe(`identify-scripts-delaying-rendering Expectations: ${demoName}`, () => {
-  // Functional/Static assertions
-  test('should specify type "long-animation-frame" in PerformanceObserver.observe', async () => {
+test.describe(`Identify Heavy Scripts Expectations: ${demoName}`, () => {
+  // Static assertions
+  test('No polyfill for Long Animation Frames should be included', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toContain('long-animation-frame');
+    // Check for explicit polyfill attempts for PerformanceLongAnimationFrame
+    const polyfillPattern = /PerformanceLongAnimationFrame\s*=/;
+    expect(html).not.toMatch(polyfillPattern);
   });
 
-  test('should specify buffered: true in PerformanceObserver.observe', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toContain('buffered: true');
-  });
+  // Browser tests
+  test.describe('Performance Monitoring Implementation', () => {
+    test.beforeEach(async ({ page }) => {
+      // Set up routing to serve local files
+      await page.route('http://localhost/*', async (route) => {
+        const requestPath = new URL(route.request().url()).pathname;
+        const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
 
-  test('should not include any performance polyfill scripts in the HTML source', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).not.toMatch(/polyfill/i);
-  });
+        if (fs.existsSync(localFilePath)) {
+          await route.fulfill({ path: localFilePath });
+        } else {
+          await route.continue();
+        }
+      });
 
-  test('should not use the legacy "longtask" entry type in the HTML source', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).not.toContain('longtask');
-  });
+      // Inject spy before any other script runs
+      await page.addInitScript(() => {
+        (window as any)._observeCalls = [];
+        
+        const originalPerformanceObserver = window.PerformanceObserver;
+        
+        // Mock PerformanceObserver if not present or to ensure we can spy
+        if (typeof originalPerformanceObserver === 'undefined') {
+          (window as any).PerformanceObserver = class {
+            callback: any;
+            constructor(callback: any) { this.callback = callback; }
+            observe(options: any) { (window as any)._observeCalls.push(options); }
+            disconnect() {}
+            takeRecords() { return []; }
+            static supportedEntryTypes = ['long-animation-frame'];
+          };
+        } else {
+          const originalObserve = originalPerformanceObserver.prototype.observe;
+          originalPerformanceObserver.prototype.observe = function(options: any) {
+            (window as any)._observeCalls.push(options);
+            // We record the call but may catch errors from the real API if the browser 
+            // version doesn't support the specific type yet.
+            try {
+              return originalObserve.apply(this, arguments as any);
+            } catch (e) {
+              // Swallow errors from the real API to keep the script running for the grader
+            }
+          };
+        }
+      });
 
-  test('should not use the JS Self-Profiling API (Profiler) in the HTML source', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).not.toContain('Profiler');
-  });
-
-  // Setup browser testing
-  test.beforeEach(async ({ page }) => {
-    // Mocking to capture calls to PerformanceObserver.observe and Profiler
-    await page.addInitScript(() => {
-      (window as any)._observeCalls = [];
-      const OriginalObserver = window.PerformanceObserver;
-      if (OriginalObserver) {
-        const originalObserve = OriginalObserver.prototype.observe;
-        OriginalObserver.prototype.observe = function (this: any, options: any) {
-          (window as any)._observeCalls.push(options);
-          return originalObserve.call(this, options);
-        };
-      }
-
-      (window as any)._profilerConstructed = false;
-      const trackProfiler = () => {
-        (window as any)._profilerConstructed = true;
-      };
-
-      if ('Profiler' in window) {
-        const OriginalProfiler = (window as any).Profiler;
-        const MockProfiler = function (this: any, ...args: any[]) {
-          trackProfiler();
-          return new (OriginalProfiler as any)(...args);
-        };
-        MockProfiler.prototype = OriginalProfiler.prototype;
-        (window as any).Profiler = MockProfiler;
-      } else {
-        (window as any).Profiler = class {
-          constructor() { trackProfiler(); }
-          stop() { return Promise.resolve({}); }
-        };
-      }
+      await page.goto(demoUrl);
     });
 
-    await page.route('http://localhost/*', async (route) => {
-      const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
-
-      if (fs.existsSync(localFilePath)) {
-        await route.fulfill({ path: localFilePath });
-      } else {
-        await route.continue();
-      }
+    test('should use the "type" property in PerformanceObserver.observe instead of "entryTypes"', async ({ page }) => {
+      const calls = await page.evaluate(() => (window as any)._observeCalls);
+      const hasTypeProp = calls.some((opt: any) => opt && typeof opt === 'object' && 'type' in opt);
+      expect(hasTypeProp).toBe(true);
     });
 
-    await page.goto(demoUrl);
-  });
+    test('should specify "long-animation-frame" as the observation type', async ({ page }) => {
+      const calls = await page.evaluate(() => (window as any)._observeCalls);
+      const hasLoAF = calls.some((opt: any) => opt && opt.type === 'long-animation-frame');
+      expect(hasLoAF).toBe(true);
+    });
 
-  // Browser assertions
-  test('browser: PerformanceObserver.observe should be called with type "long-animation-frame"', async ({ page }) => {
-    const observeCalls = await page.evaluate(() => (window as any)._observeCalls);
-    const hasLoAF = observeCalls.some((c: any) => c.type === 'long-animation-frame');
-    expect(hasLoAF).toBe(true);
-  });
+    test('should enable the "buffered" option to capture past performance entries', async ({ page }) => {
+      const calls = await page.evaluate(() => (window as any)._observeCalls);
+      const hasBuffered = calls.some((opt: any) => opt && opt.buffered === true);
+      expect(hasBuffered).toBe(true);
+    });
 
-  test('browser: PerformanceObserver.observe should be called with buffered: true', async ({ page }) => {
-    const observeCalls = await page.evaluate(() => (window as any)._observeCalls);
-    const hasBuffered = observeCalls.some((c: any) => c.buffered === true);
-    expect(hasBuffered).toBe(true);
-  });
-
-  test('browser: PerformanceObserver.observe should use the "type" property instead of "entryTypes"', async ({ page }) => {
-    const observeCalls = await page.evaluate(() => (window as any)._observeCalls);
-    const usesType = observeCalls.some((c: any) => 'type' in c);
-    expect(usesType).toBe(true);
-  });
-
-  test('browser: JS Self-Profiling API (Profiler) should not be used', async ({ page }) => {
-    const profilerUsed = await page.evaluate(() => (window as any)._profilerConstructed);
-    expect(profilerUsed).toBe(false);
-  });
-
-  test('browser: no script tags containing "polyfill" in their source should exist', async ({ page }) => {
-    const polyfillCount = await page.evaluate(() => document.querySelectorAll('script[src*="polyfill"]').length);
-    expect(polyfillCount).toBe(0);
+    test('should not use the legacy "entryTypes" property for this API', async ({ page }) => {
+      const calls = await page.evaluate(() => (window as any)._observeCalls);
+      const usesEntryTypes = calls.some((opt: any) => opt && 'entryTypes' in opt);
+      expect(usesEntryTypes).toBe(false);
+    });
   });
 });

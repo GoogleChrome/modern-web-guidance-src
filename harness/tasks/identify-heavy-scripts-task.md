@@ -1,5 +1,5 @@
 ---
 base_app: daily-grind
-grader: identify-scripts-delaying-rendering
+grader: identify-heavy-scripts
 ---
 What is causing my website to feel sluggish?

@@ -1,29 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Negative Demo</title>
+    <title>Performance Monitor</title>
 </head>
 <body>
     <button id="btn">Click</button>
     <script>
         const observer = new PerformanceObserver((list) => {
-            for (const entry of list.getEntries()) {
-                if (entry.duration > 200) {
-                    performance.profile({ sampleInterval: 10 }).then(profiler => {
-                        setTimeout(() => {
-                            profiler.stop().then(trace => {
-                                console.log(trace.frames[0].name);
-                            });
-                        }, 500);
-                    });
+            const entries = list.getEntries();
+            entries.forEach(entry => {
+                if (entry.entryType === 'event') {
+                    const delay = entry.processingStart - entry.startTime;
+                    const duration = entry.duration;
+                    
+                    const profiler = new Profiler({ sampleInterval: 10, maxBufferSize: 10000 });
+                    
+                    setTimeout(async () => {
+                        const trace = await profiler.stop();
+                        console.log(trace.frames[0].name);
+                        console.log("Interaction detected: " + (delay + duration));
+                    }, 500);
                 }
-            }
+            });
         });
+
         observer.observe({ type: 'event', buffered: true });
 
         document.getElementById('btn').onclick = () => {
-            const start = Date.now();
-            while (Date.now() - start < 300) {}
+            const end = Date.now() + 200;
+            while (Date.now() < end) {}
         };
     </script>
 </body>
