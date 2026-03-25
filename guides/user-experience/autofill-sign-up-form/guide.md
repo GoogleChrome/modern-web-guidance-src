@@ -24,8 +24,7 @@ If users ever need to sign up to your site, then good sign-up form design is cri
 
 ## How to implement
 
-Outlined below are the most important guidelines for building successful sign-up
-forms.
+Outlined below are the most important guidelines for building successful sign-up forms.
 
 ### Use meaningful, valid HTML
 
@@ -34,69 +33,43 @@ Make the most of the elements and attributes built for creating forms:
 -   `<form>`, `<input>`, `<label>`, and `<button>`
 -   `type`, `autocomplete`, and `inputmode`
 
-These enable built-in browser functionality, improve accessibility, and add
-meaning to markup.
+These enable built-in browser functionality, improve accessibility, and add meaning to markup.
 
 ### Use the <label> element to label form fields for data entry
 
-To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a
-label with an input by giving the label's `for` attribute the same value as the
-input's `id`.
+To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a label with an input by giving the label's `for` attribute the same value as the input's `id`.
 
 ### Make the most of HTML attributes
 
-Make it easy for users to enter data, by using the appropriate `<input>` element
-`<type>` attribute to provide the right keyboard on mobile and enable basic
-built-in validation by the browser.
+Make it easy for users to enter data, by using the appropriate `<input>` element `<type>` attribute to provide the right keyboard on mobile and enable basic built-in validation by the browser.
 
-Always use `type="email"` for email addresses and `type="tel"` for phone
-numbers.
+Always use `type="email"` for email addresses and `type="tel"` for phone numbers.
 
-Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid
-re-entering data.
+Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid re-entering data.
 
 ### Make buttons helpful
 
-Use `<button>` for buttons. You can also use `<input type="submit">`, but don't
-use a `div` or some other random element acting as a button. Button elements
-provide accessible behaviour, built-in form submission functionality, and can
-easily be styled.
+Use `<button>` for buttons. You can also use `<input type="submit">`, but don't use a `div` or some other random element acting as a button. Button elements provide accessible behaviour, built-in form submission functionality, and can easily be styled.
 
-Give each form submit button a value that says what it does. Use a clear,
-recognizable label. For example, use **Create account** or **Sign up** rather
-than **Continue** or **Submit**.
+Give each form submit button a value that says what it does. Use a clear, recognizable label. For example, use **Create account** or **Sign up** rather than **Continue** or **Submit**.
 
 ### Use a single name input where possible
 
-Allow your users to enter their name using a single input, unless you have a
-good reason for separately storing given names, family names, honorifics, or
-other name parts. Using a single name input makes forms less complex, enables
-cut-and-paste, and makes autofill simpler.
+Allow your users to enter their name using a single input, unless you have a good reason for separately storing given names, family names, honorifics, or other name parts. Using a single name input makes forms less complex, enables cut-and-paste, and makes autofill simpler.
 
-Allow international names. For validation, avoid using regular expressions that
-only match Latin characters. Latin-only excludes users with names or addresses
-that include characters that aren't in the Latin alphabet. Allow Unicode letter
-matching instead—and ensure your backend supports Unicode securely as both
-input and output. Unicode in regular expressions is well supported by modern
-browsers.
+Allow international names. For validation, avoid using regular expressions that only match Latin characters. Latin-only excludes users with names or addresses that include characters that aren't in the Latin alphabet. Allow Unicode letter matching instead—and ensure your backend supports Unicode securely as both input and output. Unicode in regular expressions is well supported by modern browsers.
 
 ### Show sign-up progress
 
 For each step towards sign-up, use page headings and descriptive button values that make it clear what needs to be done now, and what the next step is.
 
-Use the `enterkeyhint` attribute on form inputs to set the mobile keyboard enter
-key label. For example, use `enterkeyhint="previous"` and `enterkeyhint="next"`
-within a multi-page form, `enterkeyhint="done"` for the final input in the
-form, and `enterkeyhint="search"` for a search input.
+Use the `enterkeyhint` attribute on form inputs to set the mobile keyboard enter key label. For example, use `enterkeyhint="previous"` and `enterkeyhint="next"` within a multi-page form, `enterkeyhint="done"` for the final input in the form, and `enterkeyhint="search"` for a search input.
 
 ### Help users avoid re-entering sign-up data
 
 Make sure to add appropriate `autocomplete` values in sign-up forms.
 
-This enables browsers to help users by securely storing sign-up details
-and correctly entering form data. Without autocomplete, users may be more likely
-to keep a physical record of sign-up details, or store sign-up data
-insecurely on their device.
+This enables browsers to help users by securely storing sign-up details and correctly entering form data. Without autocomplete, users may be more likely to keep a physical record of sign-up details, or store sign-up data insecurely on their device.
 
 ### Validate carefully
 
@@ -114,22 +87,15 @@ Some sites force users to enter emails or passwords twice. That might reduce err
 
 ### Keep passwords private—but enable users to see them if they want
 
-Passwords inputs should have `type="password"` to hide password text and help
-the browser understand that the input is for passwords. (Note that browsers use a variety of techniques to understand input roles and decide whether or not to offer to save passwords.)
+Passwords inputs should have `type="password"` to hide password text and help the browser understand that the input is for passwords. (Note that browsers use a variety of techniques to understand input roles and decide whether or not to offer to save passwords.)
 
-You should add a **Show password** toggle to enable users to check the text
-they've entered—and don't forget to add a **Forgot password** link.
+You should add a **Show password** toggle to enable users to check the text they've entered—and don't forget to add a **Forgot password** link.
 
 ### Give mobile users the right keyboard
 
-Use `<input type="email">` to give mobile users an appropriate keyboard and
-enable basic built-in email address validation by the browser… no JavaScript
-required!
+Use `<input type="email">` to give mobile users an appropriate keyboard and enable basic built-in email address validation by the browser… no JavaScript required!
 
-If you need to use a telephone number instead of an email address, `<input
-type="tel">` enables a telephone keypad on mobile. You can also use the
-`inputmode` attribute where necessary: `inputmode="numeric"` is ideal for PIN
-numbers.
+If you need to use a telephone number instead of an email address, `<input type="tel">` enables a telephone keypad on mobile. You can also use the `inputmode` attribute where necessary: `inputmode="numeric"` is ideal for PIN numbers.
 
 ### Prevent mobile keyboard from obstructing the Sign up button
 
@@ -139,25 +105,12 @@ Where possible, avoid this by displaying only the email (or phone) and password 
 
 ### Help users to avoid re-entering data
 
-You can help browsers store data correctly and autofill inputs, so users don't
-have to remember to enter email and password values. This is particularly
-important on mobile, and crucial for email inputs, which get high abandonment rates.
-There are two parts to this:
+You can help browsers store data correctly and autofill inputs, so users don't have to remember to enter email and password values. This is particularly important on mobile, and crucial for email inputs, which get high abandonment rates. There are two parts to this:
 
-1.  The `autocomplete`, `name`, `id`, and `type` attributes help browsers
-    understand the role of inputs in order to store data that can later be used
-    for autofill. To allow data to be stored for autofill, modern browsers also
-    require inputs to have a stable `name` or `id` value (not randomly
-    generated on each page load or site deployment), and to be in a `<form>` element with
-    a `submit` button.
-1.  The `autocomplete` attribute helps browsers correctly autofill inputs
-    using stored data.
+1.  The `autocomplete`, `name`, `id`, and `type` attributes help browsers understand the role of inputs in order to store data that can later be used for autofill. To allow data to be stored for autofill, modern browsers also require inputs to have a stable `name` or `id` value (not randomly generated on each page load or site deployment), and to be in a `<form>` element with a `submit` button.
+1.  The `autocomplete` attribute helps browsers correctly autofill inputs using stored data.
 
-For email inputs use `autocomplete="username"`, since `username` is recognized
-by password managers in modern browsers—even though you should use
-`type="email"` and you may want to use `id="email"` and `name="email"`.
-For password inputs, use the appropriate `autocomplete` and `id` values to help
-browsers differentiate between new and current passwords.
+For email inputs use `autocomplete="username"`, since `username` is recognized by password managers in modern browsers—even though you should use `type="email"` and you may want to use `id="email"` and `name="email"`. For password inputs, use the appropriate `autocomplete` and `id` values to help browsers differentiate between new and current passwords.
 
 ### Use autocomplete="new-password" and id="new-password" for a new password
 
