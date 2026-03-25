@@ -3,6 +3,7 @@ import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { fileURLToPath } from 'url';
 import { Agents } from '../config.ts';
+import { classifyGuide, scanAllGuides } from './utils.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -101,7 +102,7 @@ export function updateMcpConfig(
   apiKey: string,
   agent: string
 ): boolean {
-  const mcpConfig: { mcpServers: Record<string, any> } = { mcpServers: {} };
+   const mcpConfig: { mcpServers: Record<string, any> } = { mcpServers: {} };
 
   for (const serverName of serversToEnable) {
     if (serverName === 'modern-web') {
@@ -178,13 +179,15 @@ export function updateMcpConfig(
 }
 
 /**
- * Copies the skills directory to the isolated home directory.
+ * Copies the guides directory to the isolated home directory for the agent.
+ * Copies SKILL.md for categories and guide.md for "ready" guides.
  * @param homeDir Path to the isolated home directory
+ * @param agent The agent type
  * @returns True if successful, false otherwise
  */
-export function copySkills(homeDir: string, agent: string): boolean {
+export function copySkills(homeDir: string, agent: string, cli: boolean): boolean {
   const harnessRoot = path.resolve(__dirname, '..');
-  const skillsSource = path.join(harnessRoot, '..', 'skills');
+  const guidesSource = path.join(harnessRoot, '..', 'guides');
 
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {
@@ -197,18 +200,85 @@ export function copySkills(homeDir: string, agent: string): boolean {
     destDir = path.join(homeDir, '.gemini', 'skills');
   }
 
-  if (!fs.existsSync(skillsSource)) {
-    console.warn(`Warning: Skills directory not found at ${skillsSource}`);
-    return false;
-  }
-
   try {
     fs.mkdirSync(destDir, { recursive: true });
-    execSync(`cp -R "${skillsSource}/." "${destDir}/"`);
-    console.log(`Copied skills to ${destDir}`);
+
+    if (cli) { // Skills-cli mode
+      const distSource = path.join(harnessRoot, '..', 'dist/skills-cli/skills/modern-web-use-cases');
+      if (!fs.existsSync(distSource)) {
+        console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter modern-web-mcp build-dist' automatically...`);
+        try {
+          execSync('pnpm --filter modern-web-mcp build-dist', {
+            cwd: path.join(harnessRoot, '..'),
+            stdio: 'inherit'
+          });
+          console.log("Distribution generated successfully.");
+        } catch (e: any) {
+          console.error(`Failed to auto-generate skills-cli distribution: ${e.message}`);
+          return false;
+        }
+      }
+
+      try {
+        const destSkillDir = path.join(destDir, 'modern-web-use-cases');
+        fs.mkdirSync(destSkillDir, { recursive: true });
+
+        if (fs.existsSync(distSource)) {
+          // Clear dest first to ensure clean state
+          if (fs.existsSync(destSkillDir)) {
+            fs.rmSync(destSkillDir, { recursive: true, force: true });
+            fs.mkdirSync(destSkillDir, { recursive: true });
+          }
+          fs.cpSync(distSource, destSkillDir, { recursive: true });
+        } else {
+          console.error(`Standalone skills-cli distribution still not found after generation run!`);
+          return false;
+        }
+      } catch (e: any) {
+        console.error(`Failed to copy standalone skills-cli: ${e.message}`);
+        return false;
+      }
+    } else { // Skills-discipline mode
+      if (!fs.existsSync(guidesSource)) {
+        console.warn(`Warning: Guides directory not found at ${guidesSource}`);
+        return false;
+      }
+
+      // 1. Scan top-level directories for SKILL.md and copy them
+      const topLevelDirs = fs.readdirSync(guidesSource, { withFileTypes: true })
+        .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules');
+
+      for (const dir of topLevelDirs) {
+        const categorySrc = path.join(guidesSource, dir.name);
+        const categoryDest = path.join(destDir, dir.name);
+        const skillPath = path.join(categorySrc, 'SKILL.md');
+
+        if (fs.existsSync(skillPath)) {
+          fs.mkdirSync(categoryDest, { recursive: true });
+          fs.copyFileSync(skillPath, path.join(categoryDest, 'SKILL.md'));
+        }
+      }
+
+      // 2. Scan and copy guide.md for eval-ready guides
+      const allGuides = scanAllGuides();
+
+      for (const inv of allGuides) {
+        if (classifyGuide(inv) === 'eval-ready') {
+          const catDest = path.join(destDir, inv.category);
+          const guideDest = path.join(catDest, inv.name);
+          fs.mkdirSync(guideDest, { recursive: true });
+
+          const guideFileSrc = path.join(inv.dir, 'guide.md');
+          const guideFileDest = path.join(guideDest, 'guide.md');
+          fs.copyFileSync(guideFileSrc, guideFileDest);
+        }
+      }
+    }
+
+    console.log(`Copied Skills to ${destDir}`);
     return true;
   } catch (e: any) {
-    console.error(`Failed to copy skills: ${e.message}`);
+    console.error(`Failed to copy guides: ${e.message}`);
     return false;
   }
 }

@@ -41,7 +41,8 @@
       "esbuild",
       "onnxruntime-node",
       "protobufjs",
-      "sharp"
+      "sharp",
+      "tree-sitter-bash"
     ],
     "packageExtensions": {
       "@google/gemini-cli": {

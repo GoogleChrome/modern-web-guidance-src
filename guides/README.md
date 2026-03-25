@@ -1,4 +1,6 @@
-## Testing Guides
+# Authoring and Testing Guides
+
+This README details how to use the `gd` CLI to test and calibrate your guides as they progress through the 3-stage workflow.
 
 **Prerequisite Setup:**
 Before using the `gd` CLI, ensure it's linked globally:
@@ -9,9 +11,9 @@ pnpm link --global && gd setup-completion
 ```
 *Note: For the auto-completion to take effect, you must refresh your shell (e.g., open a new terminal or source your config).*
 
-### Automated (Recommended)
+### Stage 3 Pipeline: `gd dev`
 
-Use `gd dev` to automatically generate missing artifacts and calibrate the grader in one command:
+Once you reach **Stage 3 (Needs evals)**—meaning `guide.md`, `demo.html`, and `expectations.md` are completely written—you can use `gd dev` to automatically generate all missing evaluation artifacts and calibrate the grader in one command:
 
 ```bash
 gd dev <path/to/guide_dir>
@@ -19,60 +21,60 @@ gd dev <path/to/guide_dir>
 # e.g. gd dev guides/performance/content-vis
 ```
 
-This will:
-1. Inventory existing artifacts (`guide.md`, `demo.html`, `expectations.md`, `negative-demo.html`, `grader.ts`)
-2. Generate `negative-demo.html` if missing (via Gemini CLI)
-3. Generate `grader.ts` if missing (via Gemini CLI)
-4. Calibrate the grader (demo.html should pass 100%, negative-demo.html should fail 100%)
-5. If calibration fails, regenerate the grader with failure context and retry (up to 2 retries)
+This will automatically:
+1. Inventory existing artifacts and ensure prerequisites are met
+2. Generate `negative-demo.html` based on the guidance (via Gemini CLI)
+3. Generate `grader.ts` Playwright test based on your expectations
+4. Calibrate the grader (ensures `demo.html` passes 100% and `negative-demo.html` fails 100%)
+5. If calibration fails, it will read the build logs, regenerate the grader with the failure context, and retry (up to 2 retries)
 
-**Prerequisites:** The guide directory must contain `guide.md`, `demo.html`, and `expectations.md`.
-
-Agent tests run automatically after calibration by default. To skip them, add `--no-test`:
+Agent tests run automatically after successful calibration by default. To skip the agent E2E test, add `--no-test`:
 
 ```bash
 gd dev <path/to/guide_dir> --no-test
 ```
 
-To batch-process all incomplete guides:
+To batch-process all guides that have their prerequisites written but are lacking evals:
 
 ```bash
 gd dev-all
 ```
 
-### Manual Steps
+### Checking Status: `gd audit`
 
-1. Create a `guide.md`, `expectations.md`, and `demo.html` in the desired guide directory (e.g. `guidance/guides/performance/content-vis/`).
-2. Set `GEMINI_API_KEY` and `GEMINI_MODEL` environment variables in `guidance/.env`:
+You can use `gd audit` to see exactly where every guide sits in the Kanban board pipeline:
+
+```bash
+gd audit
+```
+
+This will output a categorized table sorted into the 4 workflow states (`Needs use cases`, `Needs guidance`, `Needs evals`, `Done`), along with recommended next steps.
+
+### Manual Piece-wise execution 
+
+Occasionally, you may want to generate or test specific pieces of the pipeline manually.
+Ensure `GEMINI_API_KEY` and `GEMINI_MODEL` environment variables are in `guidance/.env`:
 
 ```sh
 GEMINI_API_KEY=api-key
 GEMINI_MODEL=gemini-3.1-pro-preview
 ```
 
-Then, from `guidance/` root:
-
-3. Setup:
+Setup Playwright before testing:
 ```sh
 pnpm install
 pnpm setup:playwright
 ```
 
-4. Generate negative demo:
+Generate *only* the negative demo:
 ```bash
 gd dev <path/to/guide_dir> --gen-negative
-
-# e.g. gd dev guides/performance/content-vis --gen-negative
 ```
 
-This will create a `negative-demo.html` file in the guide directory.
-
-5. Generate grader:
+Generate *only* the grader:
 ```bash
 gd dev <path/to/guide_dir> --gen-grader
 ```
-
-This will create a `grader.ts` file in the guide directory.
 
 6. Once the grader is generated, run it on the `demo.html` and `negative-demo.html` with:
 ```bash
@@ -151,7 +153,7 @@ If you need more control, you can run each step individually:
 
 ```
 mcpServersToEnable: ['modern-web'],
-enableSkills: false,
+serving: Serving.MCP,
 agent: Agents.GEMINI_CLI
 ```
 

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll Snap State Sync Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      margin-bottom: 16px;
+    }
+
+    .carousel {
+      display: flex;
+      gap: 16px;
+      width: 100%;
+      max-width: 400px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .slide {
+      flex: 0 0 100%;
+      height: 250px;
+      scroll-snap-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .slide:nth-child(1) { background: #e74c3c; }
+    .slide:nth-child(2) { background: #3498db; }
+    .slide:nth-child(3) { background: #2ecc71; }
+    .slide:nth-child(4) { background: #f39c12; }
+
+    .dots {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ccc;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .dot.active {
+      background: #333;
+    }
+
+    .caption {
+      margin-top: 12px;
+      font-size: 0.95rem;
+      color: #555;
+      min-height: 1.4em;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Image Carousel with Synced Navigation</h1>
+
+  <div class="carousel" id="carousel">
+    <div class="slide" data-caption="Sunset over the mountains">Slide 1</div>
+    <div class="slide" data-caption="Ocean waves at dawn">Slide 2</div>
+    <div class="slide" data-caption="Forest trail in autumn">Slide 3</div>
+    <div class="slide" data-caption="City skyline at night">Slide 4</div>
+  </div>
+
+  <div class="dots" id="dots">
+    <button class="dot active" aria-label="Go to slide 1"></button>
+    <button class="dot" aria-label="Go to slide 2"></button>
+    <button class="dot" aria-label="Go to slide 3"></button>
+    <button class="dot" aria-label="Go to slide 4"></button>
+  </div>
+
+  <div class="caption" id="caption">Sunset over the mountains</div>
+
+  <script>
+    const carousel = document.getElementById('carousel');
+    const dots = document.querySelectorAll('.dot');
+    const caption = document.getElementById('caption');
+    const slides = document.querySelectorAll('.slide');
+
+    // Sync dots and caption when the snap target changes after scrolling completes.
+    carousel.addEventListener('scrollsnapchange', (event) => {
+      const snappedSlide = event.snapTargetInline;
+
+      // Update pagination dots.
+      dots.forEach((dot) => dot.classList.remove('active'));
+      const index = [...slides].indexOf(snappedSlide);
+      dots[index].classList.add('active');
+
+      // Update the linked caption panel.
+      caption.textContent = snappedSlide.dataset.caption;
+
+      // Track which slide the user viewed (analytics).
+      console.log('Slide viewed:', index + 1, snappedSlide.dataset.caption);
+    });
+
+    // Allow clicking dots to scroll to a slide.
+    dots.forEach((dot, i) => {
+      dot.addEventListener('click', () => {
+        slides[i].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      });
+    });
+  </script>
+</body>
+
+</html>

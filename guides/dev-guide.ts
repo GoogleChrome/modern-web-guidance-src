@@ -6,7 +6,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-import matter from 'gray-matter';
 import { generateNegative } from './negative-gen.ts';
 import { generateGrader, generateGraderWithContext } from './grader-gen.ts';
 import { testGrader, findGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
@@ -19,14 +18,23 @@ import {
 } from '../harness/lib/agent-shared.ts';
 import { environmentConfig } from '../harness/config.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
+import {
+  type GuideInventory,
+  type TaskInfo,
+  type GuideStatus,
+  GUIDE_FILE,
+  DEMO_FILE,
+  EXPECTATIONS_FILE,
+  NEGATIVE_DEMO_FILE,
+  GRADER_FILE,
+  PROMPTS_FILE,
+  getTaskMap,
+  inventoryGuide,
+  readFileSafe,
+  classifyGuide,
+  scanAllGuides
+} from '../harness/lib/utils.ts';
 
-// Constants
-const GUIDE_FILE = 'guide.md';
-const DEMO_FILE = 'demo.html';
-const EXPECTATIONS_FILE = 'expectations.md';
-const NEGATIVE_DEMO_FILE = 'negative-demo.html';
-const GRADER_FILE = 'grader.ts';
-const PROMPTS_FILE = 'prompts.md';
 const TASKS_DIR = path.join(rootDir, 'harness', 'tasks');
 
 export interface DevGuideOptions {
@@ -34,124 +42,6 @@ export interface DevGuideOptions {
   test?: boolean;        // default: true — run agent test after calibration
   guidedOnly?: boolean;  // skip calibration and only run the guided agent test
   verbose?: boolean;
-}
-
-interface GuideInventory {
-  dir: string;
-  name: string;
-  category: string;
-  hasGuide: boolean;
-  isStub: boolean;
-  hasDemo: boolean;
-  hasExpectations: boolean;
-  expectationsEmpty: boolean;
-  hasNegativeDemo: boolean;
-  hasGrader: boolean;
-  hasPrompts: boolean;
-  hasTask: boolean;
-  featureIds: string[];
-}
-
-interface TaskInfo {
-  taskName: string;
-  baseApp: string;
-  prompt: string;
-}
-
-/**
- * Reads a file and trims its content. Returns empty string if file doesn't exist.
- */
-function readFileSafe(filePath: string): string {
-  try {
-    return fs.readFileSync(filePath, 'utf-8').trim();
-  } catch {
-    return '';
-  }
-}
-
-/**
- * Builds a map of grader names to task information.
- */
-export function getTaskMap(): Map<string, TaskInfo> {
-  const taskMap = new Map<string, TaskInfo>();
-  if (!fs.existsSync(TASKS_DIR)) return taskMap;
-
-  const taskFiles = fs.readdirSync(TASKS_DIR).filter(f => f.endsWith('.md'));
-  for (const file of taskFiles) {
-    const rawContent = readFileSafe(path.join(TASKS_DIR, file));
-    if (!rawContent) continue;
-
-    const { data, content } = matter(rawContent);
-    if (data?.grader) {
-      taskMap.set(data.grader, {
-        taskName: file.replace(/\.md$/, ''),
-        baseApp: data.base_app || 'daily-grind',
-        prompt: content.trim()
-      });
-    }
-  }
-  return taskMap;
-}
-
-function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): GuideInventory {
-  const name = path.basename(dir);
-  const category = path.basename(path.dirname(dir));
-
-  const expectationsContent = readFileSafe(path.join(dir, EXPECTATIONS_FILE));
-  const hasExpectations = fs.existsSync(path.join(dir, EXPECTATIONS_FILE));
-
-  const guideContent = readFileSafe(path.join(dir, GUIDE_FILE));
-  let hasGuide = false;
-  let isStub = false;
-
-  if (guideContent) {
-    const parsed = matter(guideContent);
-    const hasFrontmatter = Object.keys(parsed.data).length > 0 || guideContent.startsWith('---');
-    const hasContent = parsed.content.trim().length > 0;
-
-    if (hasFrontmatter) {
-      isStub = true;
-      if (hasContent) {
-        hasGuide = true;
-      }
-    } else if (hasContent) {
-      hasGuide = true;
-    }
-  }
-
-  const featureIds = guideContent ? (matter(guideContent).data['web-feature-ids'] || []) : [];
-
-  return {
-    dir,
-    name,
-    category,
-    hasGuide,
-    isStub,
-    hasDemo: readFileSafe(path.join(dir, DEMO_FILE)).length > 0,
-    hasExpectations,
-    expectationsEmpty: hasExpectations && expectationsContent.length === 0,
-    hasNegativeDemo: fs.existsSync(path.join(dir, NEGATIVE_DEMO_FILE)),
-    hasGrader: fs.existsSync(path.join(dir, GRADER_FILE)),
-    hasPrompts: fs.existsSync(path.join(dir, PROMPTS_FILE)),
-    hasTask: taskMap.has(name),
-    featureIds,
-  };
-}
-
-export function scanAllGuides(taskMap = getTaskMap()): GuideInventory[] {
-  const guides: GuideInventory[] = [];
-  const categories = fs.readdirSync(__dirname, { withFileTypes: true })
-    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
-    .map(d => d.name);
-  for (const category of categories) {
-    const categoryDir = path.join(__dirname, category);
-    if (!fs.existsSync(categoryDir)) continue;
-    for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
-      guides.push(inventoryGuide(path.join(categoryDir, entry.name), taskMap));
-    }
-  }
-  return guides;
 }
 
 function printInventory(inv: GuideInventory): void {
@@ -360,16 +250,18 @@ async function generatePrompts(targetDir: string, baseApp: string): Promise<void
     const userPrompt = `Read ${GUIDE_FILE} to understand what web development guidance is being provided.
 Read base-app.html to understand the existing web app (the "${baseApp}" app) that the developer is working on.
 
-Generate one or two realistic test prompts... the kind of thing a web developer would say to a AI coding assistant
-to accomplish the goal described in this guide. Write these to a file called ${PROMPTS_FILE}.
+Generate 1–4 realistic test prompts that a web developer would send to an AI coding assistant to accomplish the goal described in this guide. Write these to a file called ${PROMPTS_FILE}.
 
-The prompts should:
-- Assume the project is the ${baseApp} app as seen in base-app.html.
-- Vary in specificity: include vague developer requests and specific technical asks
-- Be phrased as a developer asking an AI for help with their existing web app. lowercase text, occasional typos, etc.
-- Not reference the guide itself or indicate that guidance exists
-- Don't reference the name of the base app.. a real developer wouldn't do that.
-- Each be on its own line, prefixed with "- "
+Rules:
+- Write prompts as a developer talking to an AI coding assistant — casual, lowercase, sometimes vague.
+- Phrase prompts as ACTION REQUESTS or directives (e.g. "add X", "can you build Y", "implement Z"). NEVER phrase them as advisory questions (e.g. "how can I?", "what's the best way to?", "can you explain?") — the agent must implement, not just explain.
+- The first prompt is the most important: it must be specific enough that an agent implementing it would produce a grader-testable result.
+- Vary specificity: include at least one vague/intent-based prompt and one specific/technical ask.
+- Assume the developer is working on the existing app seen in base-app.html. Reference its real assets and content where relevant.
+- Do NOT mention the guide itself or indicate that guidance exists.
+- Do NOT name the base app (e.g. "${baseApp}") — a real developer wouldn't refer to it that way.
+- Do NOT tell the agent which web API or CSS property to use unless a real developer would naturally do so.
+- Each prompt must be on its own line, prefixed with "- ".
 
 Only create the ${PROMPTS_FILE} file. Do not modify any other files.`;
 
@@ -576,8 +468,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
 
 // Batch mode: process all incomplete guides
 export async function devAll(options: DevGuideOptions = {}): Promise<void> {
-  const taskMap = getTaskMap();
-  const incompleteGuides = scanAllGuides(taskMap).filter(inv =>
+  const incompleteGuides = scanAllGuides().filter(inv =>
     inv.hasGuide && inv.hasDemo && (!inv.hasNegativeDemo || !inv.hasGrader || !inv.hasPrompts || !inv.hasTask)
   );
 
@@ -626,30 +517,17 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
   console.log('');
 }
 
-type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
-
-export function classifyGuide(inv: GuideInventory): GuideStatus {
-  if (!inv.hasGuide && !inv.isStub) return 'incomplete';
-  if (inv.isStub && !inv.hasGuide) return 'stub';
-  if (!inv.hasDemo) return 'incomplete';
-  if (!inv.hasExpectations || inv.expectationsEmpty) return 'needs-expectations';
-  if (!inv.hasNegativeDemo || !inv.hasGrader) return 'needs-calibration';
-  if (!inv.hasPrompts || !inv.hasTask) return 'needs-test';
-  return 'eval-ready';
-}
-
 const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
-  'incomplete': { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
-  'stub': { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
+  'incomplete':         { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
+  'stub':               { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
   'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
-  'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
-  'needs-test': { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
-  'eval-ready': { label: 'Ready for eval', color: cGreen },
+  'needs-calibration':  { label: 'Needs calibration (run gd dev)', color: cYellow },
+  'needs-test':         { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
+  'eval-ready':         { label: 'Ready for eval', color: cGreen },
 };
 
 export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
-  const taskMap = getTaskMap();
-  const allGuides = scanAllGuides(taskMap);
+  const allGuides = scanAllGuides();
 
   if (allGuides.length === 0) {
     console.log('No guides found.');
@@ -662,8 +540,6 @@ export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
     if (!byStatus.has(status)) byStatus.set(status, []);
     byStatus.get(status)!.push(inv);
   }
-
-
 
   // Summary counts
   console.log(cBold(`\nGuide Audit: ${allGuides.length} guides\n`));
@@ -810,13 +686,13 @@ function renderFeatureMatrix(allGuides: GuideInventory[]): void {
     const expctDots = guides.map(inv => (inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations))).join('');
 
     const row = col(renderDots(guideDot)) +
-      col(renderDots(inv => dot(inv.hasDemo))) +
-      col(expctDots) +
-      cDim('│') + ' ' +
-      col(renderDots(inv => dot(inv.hasNegativeDemo))) +
-      col(renderDots(inv => dot(inv.hasGrader))) +
-      col(renderDots(inv => dot(inv.hasPrompts))) +
-      renderDots(inv => dot(inv.hasTask));
+                col(renderDots(inv => dot(inv.hasDemo))) +
+                col(expctDots) +
+                cDim('│') + ' ' +
+                col(renderDots(inv => dot(inv.hasNegativeDemo))) +
+                col(renderDots(inv => dot(inv.hasGrader))) +
+                col(renderDots(inv => dot(inv.hasPrompts))) +
+                renderDots(inv => dot(inv.hasTask));
 
     console.log(`  ${color(name.padEnd(32))} ${String(guides.length).padStart(5)}  ${row}`);
   }

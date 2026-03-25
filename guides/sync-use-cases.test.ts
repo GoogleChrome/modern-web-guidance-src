@@ -4,7 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
-import { findUseCaseDirs, validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
+import { validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, processGuideInventory, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
+import type { GuideInventory } from '../harness/lib/utils.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,97 +17,6 @@ function removeTempDir(dir: string) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
-describe('findUseCaseDirs', () => {
-  let tempDir: string;
-
-  beforeEach(() => {
-    tempDir = createTempDir();
-  });
-
-  afterEach(() => {
-    removeTempDir(tempDir);
-  });
-
-  test('returns empty array for empty directory', () => {
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), []);
-  });
-
-  test('finds directory with guide.md', () => {
-    const useCase = path.join(tempDir, 'my-use-case');
-    fs.mkdirSync(useCase);
-    fs.writeFileSync(path.join(useCase, 'guide.md'), 'content');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), [useCase]);
-  });
-
-  test('finds directory with demo.html', () => {
-    const useCase = path.join(tempDir, 'my-use-case');
-    fs.mkdirSync(useCase);
-    fs.writeFileSync(path.join(useCase, 'demo.html'), '<html></html>');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), [useCase]);
-  });
-
-  test('finds directory with grader.ts', () => {
-    const useCase = path.join(tempDir, 'my-use-case');
-    fs.mkdirSync(useCase);
-    fs.writeFileSync(path.join(useCase, 'grader.ts'), 'export {}');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), [useCase]);
-  });
-
-  test('finds directory with prompts.md', () => {
-    const useCase = path.join(tempDir, 'my-use-case');
-    fs.mkdirSync(useCase);
-    fs.writeFileSync(path.join(useCase, 'prompts.md'), 'prompts');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), [useCase]);
-  });
-
-  test('ignores directories without use case files', () => {
-    const notUseCase = path.join(tempDir, 'not-a-use-case');
-    fs.mkdirSync(notUseCase);
-    fs.writeFileSync(path.join(notUseCase, 'README.md'), 'readme');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), []);
-  });
-
-  test('skips node_modules directories', () => {
-    const pkg = path.join(tempDir, 'node_modules', 'some-package');
-    fs.mkdirSync(pkg, { recursive: true });
-    fs.writeFileSync(path.join(pkg, 'guide.md'), 'content');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), []);
-  });
-
-  test('skips .git directories', () => {
-    const hooks = path.join(tempDir, '.git', 'hooks');
-    fs.mkdirSync(hooks, { recursive: true });
-    fs.writeFileSync(path.join(hooks, 'guide.md'), 'content');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), []);
-  });
-
-  test('finds nested use case directories', () => {
-    const nested = path.join(tempDir, 'category', 'use-case');
-    fs.mkdirSync(nested, { recursive: true });
-    fs.writeFileSync(path.join(nested, 'guide.md'), 'content');
-    assert.deepStrictEqual(findUseCaseDirs(tempDir), [nested]);
-  });
-
-  test('finds multiple use case directories', () => {
-    const useCase1 = path.join(tempDir, 'use-case-1');
-    const useCase2 = path.join(tempDir, 'use-case-2');
-    fs.mkdirSync(useCase1);
-    fs.mkdirSync(useCase2);
-    fs.writeFileSync(path.join(useCase1, 'guide.md'), 'content');
-    fs.writeFileSync(path.join(useCase2, 'demo.html'), '<html></html>');
-    const dirs = findUseCaseDirs(tempDir);
-    assert.strictEqual(dirs.length, 2);
-    assert.ok(dirs.includes(useCase1));
-    assert.ok(dirs.includes(useCase2));
-  });
-
-  test('finds actual use case directories in the repo', () => {
-    const dirs = findUseCaseDirs(__dirname);
-    assert.ok(Array.isArray(dirs));
-    assert.ok(dirs.length > 0, 'Repo should have at least one use case directory');
-    assert.ok(dirs.every(d => typeof d === 'string'));
-  });
-});
 
 describe('validateGuide', () => {
   let tempDir: string;
@@ -414,7 +324,7 @@ describe('buildFeatureToIssueMap', () => {
   test('maps feature ID to issue number, state, and body', () => {
     const issues = [{ number: 42, body: 'Feature ID: my-feature', labels: [], state: 'open' }];
     const map = buildFeatureToIssueMap(issues);
-    assert.deepStrictEqual(map.get('my-feature'), { number: 42, priorityLabel: null, state: 'open', body: 'Feature ID: my-feature' });
+    assert.deepStrictEqual(map.get('my-feature'), { number: 42, priorityLabel: null, milestoneNumber: null, state: 'open', body: 'Feature ID: my-feature' });
   });
 
   test('captures closed state', () => {
@@ -434,6 +344,13 @@ describe('buildFeatureToIssueMap', () => {
     const map = buildFeatureToIssueMap(issues);
     assert.strictEqual(map.get('my-feature')?.priorityLabel, 'P1');
   });
+
+  test('extracts milestone from issue', () => {
+    const issues = [{ number: 42, body: 'Feature ID: my-feature', labels: [], state: 'open', milestone: { number: 3, title: 'MVP' } }];
+    const map = buildFeatureToIssueMap(issues);
+    assert.strictEqual(map.get('my-feature')?.milestoneNumber, 3);
+  });
+
 
   test('ignores issues without a feature ID in the body', () => {
     const issues = [{ number: 42, body: 'No feature ID here', labels: [], state: 'open' }];
@@ -508,25 +425,28 @@ describe('buildIssueContent', () => {
     assert.ok(issueBody.includes('[dialog-closedby](https://webstatus.dev/features/dialog-closedby)'));
   });
 
-  test('returns null priority label when no features have linked issues', () => {
-    const { priorityLabel } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap);
+  test('returns null priority label and milestone when no features have linked issues', () => {
+    const { priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap);
     assert.strictEqual(priorityLabel, null);
+    assert.strictEqual(milestoneNumber, null);
   });
 
   test('includes related feature issue links when available', () => {
-    const featureMap = new Map([['dialog-closedby', { number: 99, priorityLabel: 'P1', state: 'open', body: '' }]]);
-    const { issueBody, priorityLabel } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', featureMap);
+    const featureMap = new Map([['dialog-closedby', { number: 99, priorityLabel: 'P1', milestoneNumber: 2, state: 'open', body: '' }]]);
+    const { issueBody, priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', featureMap);
     assert.ok(issueBody.includes('Related features: #99'));
     assert.strictEqual(priorityLabel, 'P1');
+    assert.strictEqual(milestoneNumber, 2);
   });
 
   test('uses priority label from first matched feature only', () => {
     const featureMap = new Map([
-      ['feature-a', { number: 1, priorityLabel: 'P1', state: 'open', body: '' }],
-      ['feature-b', { number: 2, priorityLabel: 'P2', state: 'open', body: '' }],
+      ['feature-a', { number: 1, priorityLabel: 'P1', milestoneNumber: 1, state: 'open', body: '' }],
+      ['feature-b', { number: 2, priorityLabel: 'P2', milestoneNumber: 2, state: 'open', body: '' }],
     ]);
-    const { priorityLabel } = buildIssueContent('my-use-case', 'desc', ['feature-a', 'feature-b'], 'guides/ux/my-use-case', featureMap);
+    const { priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['feature-a', 'feature-b'], 'guides/ux/my-use-case', featureMap);
     assert.strictEqual(priorityLabel, 'P1');
+    assert.strictEqual(milestoneNumber, 1);
   });
 
   test('omits related features section when no features have linked issues', () => {
@@ -537,7 +457,7 @@ describe('buildIssueContent', () => {
 
 describe('getFeaturesNeedingSync', () => {
   function makeFeatureMap(entries: Array<[string, { number: number; state: string }]>) {
-    return new Map(entries.map(([id, { number, state }]) => [id, { number, priorityLabel: null, state, body: '' }]));
+    return new Map(entries.map(([id, { number, state }]) => [id, { number, priorityLabel: null, milestoneNumber: null, state, body: '' }]));
   }
 
   test('returns empty array when feature map is empty', () => {
@@ -572,10 +492,10 @@ describe('getFeaturesNeedingSync', () => {
     assert.deepStrictEqual(result[0], { featureId: 'autofill', issueNumber: 27, needsReopen: false, closeReason: 'completed', targetStatus: null });
   });
 
-  test('skips open feature with no use cases — it may just be waiting for use cases', () => {
+  test('sets "Needs use cases" for open feature with no use cases', () => {
     const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
     const result = getFeaturesNeedingSync(featureMap, new Set(), new Set());
-    assert.deepStrictEqual(result, []);
+    assert.deepStrictEqual(result, [{ featureId: 'autofill', issueNumber: 27, needsReopen: false, closeReason: null, targetStatus: 'Needs use cases' }]);
   });
 
   test('skips already-closed feature with all use cases implemented', () => {
@@ -602,15 +522,24 @@ describe('getFeaturesNeedingSync', () => {
     assert.ok(result.every(f => f.targetStatus === 'Needs evals'));
   });
 
-  test('closes feature with completed use cases but skips feature with no use cases', () => {
+  test('closes feature with completed use cases', () => {
     const featureMap = makeFeatureMap([
       ['autofill', { number: 27, state: 'open' }],
-      ['view-transitions', { number: 55, state: 'open' }],
     ]);
     const result = getFeaturesNeedingSync(featureMap, new Set(), new Set(['autofill']));
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0].featureId, 'autofill');
     assert.strictEqual(result[0].closeReason, 'completed');
+  });
+
+  test('sets "Needs use cases" for feature with no use cases', () => {
+    const featureMap = makeFeatureMap([
+      ['view-transitions', { number: 55, state: 'open' }],
+    ]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(), new Set());
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].featureId, 'view-transitions');
+    assert.strictEqual(result[0].targetStatus, 'Needs use cases');
   });
 });
 
@@ -675,5 +604,65 @@ describe('updateFeatureIssueBody', () => {
   test('returns unchanged body if checklist is already up to date', () => {
     const body = updateFeatureIssueBody('Feature ID: autofill', useCases);
     assert.strictEqual(updateFeatureIssueBody(body, useCases), body);
+  });
+});
+
+describe('processGuideInventory', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = createTempDir();
+  });
+
+  afterEach(() => {
+    removeTempDir(tempDir);
+  });
+
+  function makeInventory(overrides: Partial<GuideInventory> = {}): GuideInventory {
+    return {
+      dir: tempDir,
+      name: 'my-use-case',
+      category: 'test',
+      hasGuide: true,
+      isStub: false,
+      hasDemo: true,
+      hasExpectations: false,
+      expectationsEmpty: false,
+      hasNegativeDemo: false,
+      hasGrader: false,
+      hasPrompts: false,
+      hasTask: false,
+      featureIds: [],
+      ...overrides,
+    };
+  }
+
+  test('returns exactly one error for one invalid feature ID', () => {
+    fs.writeFileSync(path.join(tempDir, 'guide.md'), `---
+name: my-use-case
+description: A description
+web-feature-ids:
+  - invalid-feature-id-test
+---
+Body content.
+`);
+    const result = processGuideInventory([makeInventory()]);
+    assert.strictEqual(result.errors.length, 1);
+    assert.match(result.errors[0], /invalid-feature-id-test/);
+  });
+
+  test('returns no errors for a valid guide', () => {
+    fs.writeFileSync(path.join(tempDir, 'guide.md'), `---
+name: my-use-case
+description: A description
+web-feature-ids:
+  - dialog-closedby
+---
+Body content.
+`);
+    const result = processGuideInventory([makeInventory()]);
+    assert.strictEqual(result.errors.length, 0);
+    assert.strictEqual(result.hasError, false);
+    assert.strictEqual(result.preparedGuides.length, 1);
   });
 });

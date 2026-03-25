@@ -53,10 +53,6 @@ The [Developer Knowledge MCP server](https://developers.google.com/knowledge/mcp
 
 It requires the `MCP_API_KEY` to be set to a GCP API key with access enabled for the Developer Knowledge API.
 
-#### Skills
-
-Skills live in the `skills/` directory, and they are copied directly into the agent harness working directory when the `enableSkills` flag is set to true in the [`harness/config.ts`](./harness/config.ts) file.
-
 ### 2. Eval Harness & Dashboard
 
 The evaluation suite measures how effectively AI models use modern web APIs.

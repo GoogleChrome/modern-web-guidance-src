@@ -6,6 +6,7 @@ import matter from 'gray-matter';
 import { fileURLToPath } from 'url';
 import { validateMacros } from '../serving/mcp-server/lib/macros.ts';
 import { validateFeature } from '../serving/mcp-server/data/baseline.ts';
+import { scanAllGuides, type GuideInventory } from '../harness/lib/utils.ts';
 
 // --- Types ---
 
@@ -23,22 +24,17 @@ interface ValidationResult {
   filePath: string;
 }
 
-interface UseCaseFiles {
-  hasGuide: boolean;
-  hasDemo: boolean;
-  hasGrader: boolean;
-  hasPrompts: boolean;
-}
-
 export interface IssueContent {
   issueTitle: string;
   issueBody: string;
   priorityLabel: string | null;
+  milestoneNumber: number | null;
 }
 
 export interface FeatureIssueData {
   number: number;
   priorityLabel: string | null;
+  milestoneNumber: number | null;
   state: string;
   body: string;
 }
@@ -54,7 +50,7 @@ export interface FeatureToSync {
   issueNumber: number;
   needsReopen: boolean;
   closeReason: 'completed' | null;
-  targetStatus: 'Needs evals' | null;
+  targetStatus: 'Needs use cases' | 'Needs evals' | null;
 }
 
 interface ProjectDetails {
@@ -72,6 +68,23 @@ interface GitHubData {
   projectDetails: ProjectDetails | null;
 }
 
+export interface PreparedGuide {
+  name: string;
+  description: string;
+  featureIds: string[];
+  relativeSubdir: string;
+  statusName: string | null;
+}
+
+export interface GuideInventoryResult {
+  errors: string[];
+  hasError: boolean;
+  featuresWithActiveUseCases: Set<string>;
+  featuresWithAnyUseCases: Set<string>;
+  preparedGuides: PreparedGuide[];
+  incompleteSubdirs: string[];
+}
+
 // --- Constants ---
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -80,6 +93,7 @@ dotenv.config({ path: path.join(REPO_ROOT, '.env') });
 
 const PRIORITY_LABEL_REGEX = /^P\d+$/;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const PROJECT_GITHUB_TOKEN = process.env.PROJECT_GITHUB_TOKEN || GITHUB_TOKEN;
 const ORG = 'GoogleChrome';
 const REPO = 'guidance';
 const PROJECT_NUMBER = 30;
@@ -96,35 +110,10 @@ if (!GITHUB_TOKEN && !IS_DRY_RUN) {
 }
 
 const octokit: any = new Octokit({ auth: GITHUB_TOKEN });
+const projectOctokit: any = new Octokit({ auth: PROJECT_GITHUB_TOKEN });
 
 // --- Pure helpers ---
 
-/**
- * Recursively find all use case directories.
- */
-export function findUseCaseDirs(dir: string): string[] {
-  const useCaseDirs: string[] = [];
-
-  function find(currentDir: string) {
-    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
-    let isUseCase = false;
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        if (entry.name !== 'node_modules' && entry.name !== '.git') {
-          find(path.join(currentDir, entry.name));
-        }
-      } else if (['guide.md', 'demo.html', 'grader.ts', 'prompts.md'].includes(entry.name)) {
-        isUseCase = true;
-      }
-    }
-    if (isUseCase) {
-      useCaseDirs.push(currentDir);
-    }
-  }
-
-  find(dir);
-  return useCaseDirs;
-}
 
 /**
  * Determines the project status name for a use case based on its completeness.
@@ -176,6 +165,7 @@ export function buildIssueContent(
 ): IssueContent {
   const relatedLinks: string[] = [];
   let priorityLabel: string | null = null;
+  let milestoneNumber: number | null = null;
 
   for (const id of featureIds) {
     const featureData = featureToIssueMap.get(id);
@@ -183,6 +173,9 @@ export function buildIssueContent(
       relatedLinks.push(`#${featureData.number}`);
       if (!priorityLabel && featureData.priorityLabel) {
         priorityLabel = featureData.priorityLabel;
+      }
+      if (!milestoneNumber && featureData.milestoneNumber) {
+        milestoneNumber = featureData.milestoneNumber;
       }
     }
   }
@@ -195,6 +188,7 @@ export function buildIssueContent(
     issueTitle: `Create guide and evals for the ${name} use case`,
     issueBody: `${description}\n\nAffected web-feature IDs: ${linkedFeatures}\n\nUse case subdir: [${relativeSubdir}](${subdirUrl})${relatedFeaturesStr}`,
     priorityLabel,
+    milestoneNumber,
   };
 }
 
@@ -209,7 +203,8 @@ export function buildFeatureToIssueMap(issues: any[]): Map<string, FeatureIssueD
       const priorityLabel = issue.labels
         .map((l: any) => (typeof l === 'string' ? l : l.name))
         .find((l: string) => PRIORITY_LABEL_REGEX.test(l)) || null;
-      map.set(match[1], { number: issue.number, priorityLabel, state: issue.state, body: issue.body ?? '' });
+      const milestoneNumber = issue.milestone ? issue.milestone.number : null;
+      map.set(match[1], { number: issue.number, priorityLabel, milestoneNumber, state: issue.state, body: issue.body ?? '' });
     }
   }
   return map;
@@ -272,6 +267,14 @@ export function getFeaturesNeedingSync(
         needsReopen: false,
         closeReason: 'completed',
         targetStatus: null,
+      });
+    } else if (!featuresWithAnyUseCases.has(featureId) && featureData.state === 'open') {
+      result.push({
+        featureId,
+        issueNumber: featureData.number,
+        needsReopen: false,
+        closeReason: null,
+        targetStatus: 'Needs use cases',
       });
     }
   }
@@ -348,18 +351,6 @@ export function validateGuide(filePath: string): ValidationResult {
   return { errors, data, body, filePath };
 }
 
-// --- File system helpers ---
-
-function getUseCaseFiles(subdir: string): UseCaseFiles {
-  const exists = (file: string) => fs.existsSync(path.join(subdir, file));
-  const nonEmpty = (file: string) => exists(file) && fs.readFileSync(path.join(subdir, file), 'utf8').trim().length > 0;
-  return {
-    hasGuide: exists('guide.md'),
-    hasDemo: nonEmpty('demo.html'),
-    hasGrader: nonEmpty('grader.ts'),
-    hasPrompts: nonEmpty('prompts.md'),
-  };
-}
 
 // --- GitHub API ---
 
@@ -420,7 +411,7 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
     let statusOptions: any[] = [];
 
     do {
-      const response = await octokit.graphql(query, { org, number, cursor }) as any;
+      const response = await projectOctokit.graphql(query, { org, number, cursor }) as any;
       const project = response.organization.projectV2;
 
       if (!projectId) {
@@ -550,6 +541,7 @@ async function syncIssue(
   issueTitle: string,
   issueBody: string,
   priorityLabel: string | null,
+  milestoneNumber: number | null,
   statusName: string | null,
   activeIssueNumbers: Set<number>
 ): Promise<{ issueNumber: number; changed: boolean }> {
@@ -558,13 +550,16 @@ async function syncIssue(
     const currentLabels = (existingIssue.labels as any[]).map(l => typeof l === 'string' ? l : l.name);
     const desiredLabels = getDesiredLabels(currentLabels, priorityLabel);
     const labelsChanged = desiredLabels.length !== currentLabels.length || desiredLabels.some(l => !currentLabels.includes(l));
-    const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody || needsReopen || needsClose || labelsChanged;
+    const existingMilestoneNumber = existingIssue.milestone ? existingIssue.milestone.number : null;
+    const targetMilestoneNumber = existingMilestoneNumber || milestoneNumber;
+    const milestoneChanged = existingMilestoneNumber !== targetMilestoneNumber;
+    const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody || needsReopen || needsClose || labelsChanged || milestoneChanged;
 
     const issueNumber: number = existingIssue.number;
     activeIssueNumbers.add(issueNumber);
 
     if (needsUpdate) {
-      console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"${needsReopen ? ' (reopening)' : ''}${needsClose ? ' (closing as completed)' : ''}${labelsChanged ? ' (updating labels)' : ''}...`);
+      console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"${needsReopen ? ' (reopening)' : ''}${needsClose ? ' (closing as completed)' : ''}${labelsChanged ? ' (updating labels)' : ''}${milestoneChanged ? ' (updating milestone)' : ''}...`);
       if (!IS_DRY_RUN) {
         await octokit.rest.issues.update({
           owner: ORG,
@@ -573,12 +568,14 @@ async function syncIssue(
           title: issueTitle,
           body: issueBody,
           labels: desiredLabels,
+          milestone: targetMilestoneNumber,
           ...(needsReopen ? { state: 'open' } : {}),
           ...(needsClose ? { state: 'closed', state_reason: 'completed' } : {})
         });
       } else {
         if (existingIssue.title !== issueTitle) console.log(`[DRY RUN] Title: ${issueTitle}`);
         if (labelsChanged) console.log(`[DRY RUN] Labels: ${desiredLabels.join(', ')}`);
+        if (milestoneChanged) console.log(`[DRY RUN] Milestone: ${targetMilestoneNumber}`);
         if (needsReopen) console.log(`[DRY RUN] State: open`);
         if (needsClose) console.log(`[DRY RUN] State: closed (completed)`);
         if (existingIssue.body !== issueBody) console.log(`[DRY RUN] Body:\n${issueBody}\n`);
@@ -597,7 +594,8 @@ async function syncIssue(
         repo: REPO,
         title: issueTitle,
         body: issueBody,
-        labels
+        labels,
+        ...(milestoneNumber ? { milestone: milestoneNumber } : {})
       });
       const issueNumber: number = newIssue.data.number;
       activeIssueNumbers.add(issueNumber);
@@ -614,6 +612,7 @@ async function syncIssue(
     } else {
       console.log(`[DRY RUN] Title: ${issueTitle}`);
       console.log(`[DRY RUN] Labels: ${labels.join(', ')}`);
+      if (milestoneNumber) console.log(`[DRY RUN] Milestone: ${milestoneNumber}`);
       if (isComplete) console.log(`[DRY RUN] State: closed (completed)`);
       console.log(`[DRY RUN] Body:\n${issueBody}\n`);
       return { issueNumber: 0, changed: true };
@@ -621,29 +620,29 @@ async function syncIssue(
   }
 }
 
-async function processUseCases(
-  featureToIssueMap: Map<string, FeatureIssueData>,
-  nameToIssueMap: Map<string, any>,
-  subdirToIssueMap: Map<string, any>,
-  projectDetails: ProjectDetails | null
-): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean }> {
-  const activeIssueNumbers = new Set<number>();
+/**
+ * Processes guide inventory entries: validates frontmatter, checks for missing
+ * paired files, and collects feature ID sets. Returns structured data for the
+ * GitHub sync step without making any API calls.
+ */
+export function processGuideInventory(guides: GuideInventory[]): GuideInventoryResult {
+  const errors: string[] = [];
+  let hasError = false;
   const featuresWithActiveUseCases = new Set<string>();
   const featuresWithAnyUseCases = new Set<string>();
-  const featureUseCaseMap = new Map<string, UseCaseEntry[]>();
-  let hasError = false;
+  const preparedGuides: PreparedGuide[] = [];
+  const incompleteSubdirs: string[] = [];
 
-  const guidesDir = path.resolve(REPO_ROOT, 'guides');
-  const useCaseDirs = findUseCaseDirs(guidesDir);
-  console.log(`Found ${useCaseDirs.length} use cases.`);
-
-  for (const subdir of useCaseDirs) {
+  for (const inv of guides) {
+    const subdir = inv.dir;
+    const { hasGuide, hasDemo, hasGrader, hasPrompts } = inv;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
-    const { hasGuide, hasDemo, hasGrader, hasPrompts } = getUseCaseFiles(subdir);
-
-    if (hasGuide !== hasDemo) {
-      const missingFile = hasGuide ? 'demo.html' : 'guide.md';
-      console.error(`❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH guide.md and demo.html.`);
+    const guideExists = hasGuide || inv.isStub;
+    if (guideExists !== hasDemo) {
+      const missingFile = guideExists ? 'demo.html' : 'guide.md';
+      const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH guide.md and demo.html.`;
+      console.error(msg);
+      errors.push(msg);
       hasError = true;
     }
 
@@ -652,7 +651,9 @@ async function processUseCases(
       const guideHasContent = fs.existsSync(path.join(subdir, 'guide.md')) &&
         matter(fs.readFileSync(path.join(subdir, 'guide.md'), 'utf8')).content.trim().length > 0;
       if (guideHasContent) {
-        console.error(`❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH grader.ts and prompts.md.`);
+        const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH grader.ts and prompts.md.`;
+        console.error(msg);
+        errors.push(msg);
         hasError = true;
       }
     }
@@ -661,49 +662,77 @@ async function processUseCases(
     let guideData: GuideData = {};
     let guideBody = '';
 
-    if (hasGuide) {
-      const { errors, data, body } = validateGuide(path.join(subdir, 'guide.md'));
-      guideErrors = errors;
-      guideData = data;
-      guideBody = body;
+    if (hasGuide || inv.isStub) {
+      const validation = validateGuide(path.join(subdir, 'guide.md'));
+      guideErrors = validation.errors;
+      guideData = validation.data;
+      guideBody = validation.body;
 
       if (guideErrors.length > 0) {
         for (const error of guideErrors) {
-          console.error(`❌ Error: ${error}`);
+          const msg = `❌ Error: ${error}`;
+          console.error(msg);
+          errors.push(msg);
         }
         hasError = true;
       }
     }
 
-    if (!hasGuide || !hasDemo) {
-      // Prevent the cleanup step from treating any existing issue as an orphan —
-      // the use case directory exists, it's just missing some required files.
-      const partialIssue = subdirToIssueMap.get(relativeSubdir);
-      if (partialIssue) {
-        activeIssueNumbers.add(partialIssue.number);
-      }
-      continue;
-    }
-
-    if (guideErrors.length > 0) {
-      continue;
-    }
-
-    const name = guideData.name!;
-    const description = guideData.description || '';
-    const featureIds = (guideData['web-feature-ids'] || []) as string[];
-    const statusName = getStatusName(guideBody, hasGrader, hasPrompts);
+    const isIncomplete = (!hasGuide && !inv.isStub) || !hasDemo;
+    const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
+    const statusName = !isIncomplete && guideErrors.length === 0 ? getStatusName(guideBody, hasGrader, hasPrompts) : null;
+    const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
 
     for (const id of featureIds) {
       featuresWithAnyUseCases.add(id);
-      if (statusName !== null) {
-        featuresWithActiveUseCases.add(id);
-      }
+      if (isActive) featuresWithActiveUseCases.add(id);
     }
-    const { issueTitle, issueBody, priorityLabel } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap);
+
+    if (isIncomplete) {
+      incompleteSubdirs.push(relativeSubdir);
+      continue;
+    }
+
+    if (guideErrors.length > 0) continue;
+
+    preparedGuides.push({
+      name: guideData.name!,
+      description: guideData.description || '',
+      featureIds,
+      relativeSubdir,
+      statusName,
+    });
+  }
+
+  return { errors, hasError, featuresWithActiveUseCases, featuresWithAnyUseCases, preparedGuides, incompleteSubdirs };
+}
+
+async function processUseCases(
+  featureToIssueMap: Map<string, FeatureIssueData>,
+  nameToIssueMap: Map<string, any>,
+  subdirToIssueMap: Map<string, any>,
+  projectDetails: ProjectDetails | null
+): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean; errors: string[] }> {
+  const activeIssueNumbers = new Set<number>();
+  const featureUseCaseMap = new Map<string, UseCaseEntry[]>();
+
+  const guides = scanAllGuides();
+  console.log(`Found ${guides.length} use cases.`);
+
+  const { errors, hasError, featuresWithActiveUseCases, featuresWithAnyUseCases, preparedGuides, incompleteSubdirs } = processGuideInventory(guides);
+
+  for (const relativeSubdir of incompleteSubdirs) {
+    // Prevent the cleanup step from treating any existing issue as an orphan —
+    // the use case directory exists, it's just missing some required files.
+    const partialIssue = subdirToIssueMap.get(relativeSubdir);
+    if (partialIssue) activeIssueNumbers.add(partialIssue.number);
+  }
+
+  for (const { name, description, featureIds, relativeSubdir, statusName } of preparedGuides) {
+    const { issueTitle, issueBody, priorityLabel, milestoneNumber } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap);
     const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
 
-    const { issueNumber, changed } = await syncIssue(name, existingIssue, issueTitle, issueBody, priorityLabel, statusName, activeIssueNumbers);
+    const { issueNumber, changed } = await syncIssue(name, existingIssue, issueTitle, issueBody, priorityLabel, milestoneNumber, statusName, activeIssueNumbers);
 
     for (const id of featureIds) {
       if (!featureUseCaseMap.has(id)) featureUseCaseMap.set(id, []);
@@ -737,7 +766,7 @@ async function processUseCases(
     }
   }
 
-  return { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError };
+  return { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError, errors };
 }
 
 async function syncFeatureIssues(
@@ -866,12 +895,15 @@ async function run() {
   console.log('🚀 Starting use case sync...');
 
   const { featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails } = await fetchGitHubData();
-  const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError } = await processUseCases(featureToIssueMap, nameToIssueMap, subdirToIssueMap, projectDetails);
+  const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError, errors } = await processUseCases(featureToIssueMap, nameToIssueMap, subdirToIssueMap, projectDetails);
   await cleanupOrphanedIssues(allUseCases, activeIssueNumbers);
   await syncFeatureIssues(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, projectDetails);
 
   if (hasError) {
-    console.error('\n🛑 Sync failed due to validation errors.');
+    console.error('\n🛑 Sync failed due to validation errors:\n');
+    for (const error of errors) {
+      console.error(`  ${error}`);
+    }
     process.exit(1);
   }
 
