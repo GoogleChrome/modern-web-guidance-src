@@ -2,13 +2,11 @@
 name: autofill-payment-form
 description: Build a payment form that collects card details with correct autocomplete values and autofill support.
 web-feature-ids:
-  - autofill
+  - enterkeyhint
+  - input-email-tel-url
+  - inputmode
 sources:
   - https://web.dev/articles/payment-and-address-form-best-practices
-  - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/autocomplete
-  - https://developer.mozilla.org/docs/Web/HTML/Element/form
-  - https://developer.mozilla.org/docs/Web/HTML/Element/input
-  - https://developer.mozilla.org/docs/Web/HTML/Element/label
 ---
 
 # Build a payment form that follows best practice
@@ -126,6 +124,8 @@ Add the `required` attribute to mandatory fields. Modern browsers automatically 
 
 ### Fallback strategies
 
-{{ BASELINE_STATUS("autofill") }}
+{{ BASELINE_STATUS("enterkeyhint") }}
+{{ BASELINE_STATUS("input-email-tel-url") }}
+{{ BASELINE_STATUS("inputmode") }}
 
 Autofill is a progressive enhancement. In browsers that do not support autofill, users will simply need to manually enter their payment details. The semantic HTML constraints (such as `type`, `inputmode`, `pattern`, and `required`) will still function appropriately to validate user input and provide the correct virtual keyboards.

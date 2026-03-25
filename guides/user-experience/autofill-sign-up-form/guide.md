@@ -2,18 +2,10 @@
 name: autofill-sign-up-form
 description: Build a sign-up form with correct autocomplete values and autofill support.
 web-feature-ids:
-  - autofill
+  - input-email-tel-url
   - inputmode
 sources:
-  - https://web.dev/articles/payment-and-address-form-best-practices
   - https://web.dev/articles/sign-up-form-best-practices
-  - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/autocomplete
-  - https://developer.mozilla.org/docs/Web/HTML/Element/form
-  - https://developer.mozilla.org/docs/Web/HTML/Element/input
-  - https://developer.mozilla.org/docs/Web/HTML/Element/label
-  - https://css-tricks.com/everything-you-ever-wanted-to-know-about-inputmode
-  - https://developers.google.com/identity/gsi/web/guides/overview
-  - https://cloudfour.com/thinks/autofill-what-web-devs-should-know-but-dont/
 ---
 
 # Build a sign-up form that follows best practice
@@ -155,6 +147,7 @@ Also make sure to use `autocomplete="username"` for usernames.
 
 ### Fallback strategies
 
-{{ BASELINE_STATUS("autofill") }}
+{{ BASELINE_STATUS("input-email-tel-url") }}
+{{ BASELINE_STATUS("inputmode") }}
 
 Autofill is a progressive enhancement. In browsers that do not support autofill, users will simply need to manually enter their sign-up credentials. The semantic HTML constraints (such as `type`, `inputmode`, and `required`) will still function appropriately to validate user input and provide the correct virtual keyboards.
