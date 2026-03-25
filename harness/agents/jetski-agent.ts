@@ -5,7 +5,7 @@ import puppeteer from 'puppeteer-core';
 import { fileURLToPath } from 'url';
 import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
-import { config, Agents } from '../config.ts';
+import { config, Agents, Serving } from '../config.ts';
 
 import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, exportTrajectories, watchLogFile } from '../lib/agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
@@ -80,17 +80,19 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir: s
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
-    if (config.suite.enableSkills) {
-      copySkills(tempHome, Agents.JETSKI)
-    }
+    const approach = config.suite.serving;
 
-    updateMcpConfig(
-      path.join(jetskiDest, 'mcp_config.json'),
-      config.suite.mcpServersToEnable,
-      config.environment.modernWebServerPath,
-      config.environment.mcpApiKey,
-      Agents.JETSKI
-    );
+    if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
+      copySkills(tempHome, Agents.JETSKI, approach === Serving.SKILLS_CLI);
+    } else if (approach === Serving.MCP) {
+      updateMcpConfig(
+        path.join(jetskiDest, 'mcp_config.json'),
+        config.suite.mcpServersToEnable,
+        config.environment.modernWebServerPath,
+        config.environment.mcpApiKey,
+        Agents.JETSKI
+      );
+    }
   }
 
   return workDir;
@@ -468,9 +470,9 @@ async function run(): Promise<void> {
   }
 }
 
-export async function collectJetskiGuides(dirPath: string): Promise<string[]> {
+export async function collectJetskiGuides(dirPath: string, serving: string): Promise<string[]> {
   // TODO: Implement skills guide collection for Jetski (need gLinux-only binary, cannot land in GH)
-  console.log(`Jetski skills collection for ${dirPath} still needs to be populated.`);
+  console.log(`Jetski skills collection for ${dirPath} still needs to be populated using ${serving}.`);
   return [];
 }
 

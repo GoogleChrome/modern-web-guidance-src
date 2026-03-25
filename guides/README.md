@@ -153,7 +153,7 @@ If you need more control, you can run each step individually:
 
 ```
 mcpServersToEnable: ['modern-web'],
-enableSkills: false,
+serving: Serving.MCP,
 agent: Agents.GEMINI_CLI
 ```
 

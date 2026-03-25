@@ -3,7 +3,7 @@ import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, copyResultsToTarget, createWorkDir, copySkills, watchLogFile } from '../lib/agent-shared.ts';
-import config, { Agents } from '../config.ts';
+import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
 
@@ -26,17 +26,19 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
 
   // Add CLAUDE context and MCP servers for guided runs
   if (runType === 'guided') {
-    if (config.suite.enableSkills) {
-      copySkills(tempHome, Agents.CLAUDE_CODE);
-    }
+    const approach = config.suite.serving;
 
-    updateMcpConfig(
-      path.join(tempHome, '.claude.json'),
-      config.suite.mcpServersToEnable,
-      config.environment.modernWebServerPath,
-      config.environment.mcpApiKey,
-      Agents.CLAUDE_CODE
-    );
+    if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
+      copySkills(tempHome, Agents.CLAUDE_CODE, approach === Serving.SKILLS_CLI);
+    } else if (approach === Serving.MCP) {
+      updateMcpConfig(
+        path.join(tempHome, '.claude.json'),
+        config.suite.mcpServersToEnable,
+        config.environment.modernWebServerPath,
+        config.environment.mcpApiKey,
+        Agents.CLAUDE_CODE
+      );
+    }
   }
 
   return workDir;
@@ -154,7 +156,7 @@ async function run() {
   }
 }
 
-export async function collectClaudeCodeGuides(dirPath: string): Promise<string[]> {
+export async function collectClaudeCodeGuides(dirPath: string, serving: string): Promise<string[]> {
   const guidesFromSkills: string[] = [];
   try {
     const files = fs.readdirSync(dirPath);
@@ -171,7 +173,7 @@ export async function collectClaudeCodeGuides(dirPath: string): Promise<string[]
           const obj = JSON.parse(line);
           if (obj.message && obj.message.content) {
             for (const contentItem of obj.message.content) {
-              if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input && contentItem.input.command) {
+              if (serving === Serving.SKILLS_CLI && contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input && contentItem.input.command) {
                 const command = contentItem.input.command;
                 if (command.includes('modern-web.cjs') && command.includes('--retrieve')) {
                   const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
@@ -182,7 +184,7 @@ export async function collectClaudeCodeGuides(dirPath: string): Promise<string[]
                     }
                   }
                 }
-              } else if (contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input && contentItem.input.file_path) {
+              } else if (serving === Serving.SKILLS && contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input && contentItem.input.file_path) {
                 const filePath = contentItem.input.file_path;
                 if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
                   const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
