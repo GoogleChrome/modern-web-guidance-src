@@ -31,6 +31,9 @@
       ul li.active {
         anchor-name: --active;
         color: red;
+        @supports not (position-anchor: auto){
+          border-bottom: .25lh red solid;
+        }
       }
 
       ul li a {

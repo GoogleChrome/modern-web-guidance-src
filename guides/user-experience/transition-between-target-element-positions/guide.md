@@ -5,35 +5,41 @@ web-feature-ids:
   - anchor-positioning
 sources:
   - https://una.im/follow-the-anchor
+  - https://css-tricks.com/fancy-menu-navigation-using-anchor-positioning/
 ---
 
+In a tab menu, you should provide visual hints to users to about what page they are on. One option is by underlining the tab. With anchor positioning, you can create a smooth animation between the positions of the underline. This does not work when changing the active tab loads a new web page.
+
+You can also use this effect to add an animated dot to indicate the active tab in a vertical tab bar.
 
 DO create the underline using a `::before` pseudo-element on the `<ul>` that contains the `<li>` elements.
 
 ```css
 ul::before {
-    content: '';
-  }
+  content: '';
+}
 ```
 
-DO make the active list item an anchor by adding the `anchor-name` property, which has a value that starts with `--`.
+Make the active list item an anchor by adding the `anchor-name` property, which has a value that starts with `--`.
 
 ```css
 li.active{
+  /* Make a unique anchor-name for the active element. */
   anchor-name: --active;
 }
 ```
 
-Do tether the underline to the active item anchor with a `position-anchor` that matches the `anchor-name` on the anchor.
+Tether the underline to the active item anchor with a `position-anchor` that matches the `anchor-name` on the anchor, and making it `position: absolute`.
 
 ```css
 ul::before{
+  /* Tether the underline to the active element. */
   position: absolute;
   position-anchor: --active;
 }
 ```
 
-Position the underline relative to the anchor using the inset properties and `anchor()` functions. Do not use `position-area`, which can not be animated.
+Position the underline relative to the anchor using the inset properties and `anchor()` functions. Do not use `position-area`, which can not be transitioned.
 
 ```css
 ul::before{
@@ -56,6 +62,7 @@ ul::before{
 Finally, add a transition on the `inset` properties. MANDATORY: This must be wrapped in a `prefers-reduced-motion: no preference` media query.
 
 ```css
+/*  */
 ul::before{
   @media (prefers-reduced-motion: no-preference){
     transition: inset .2s;
@@ -69,4 +76,12 @@ This is only a visual indicator, and must not be a replacement for setting the a
 
 {{ BASELINE_STATUS("anchor-positioning")}}
 
-The underline must not be the only visual indicator for the active tab item. If anchor positioning is not supported in the browser, the element will not be shown.
+If anchor positioning is not supported in the browser, use a `border-bottom` to add an underline. It will not be animated.
+
+```css
+ul li.active{
+  @supports not (position-anchor: auto){
+    border-bottom: .25h red solid;
+  }
+}
+```
