@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Financial Interval Manager (Temporal)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0d1117;
+      --card-bg: #161b22;
+      --text-primary: #f0f6fc;
+      --text-secondary: #8b949e;
+      --accent-primary: #58a6ff;
+      --accent-secondary: #3fb950;
+      --border-color: #30363d;
+      --danger-bg: rgba(248, 81, 83, 0.1);
+      --danger-border: rgba(248, 81, 83, 0.4);
+      --danger-text: #f8514f;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #58a6ff 0%, #1f6feb 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.description {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      margin: 0 auto;
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    .banner {
+      background-color: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      color: var(--danger-text);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      display: none;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .controls-bar {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 1.5rem;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    label {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input,
+    select {
+      background: #21262d;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .output-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .card-title {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+    }
+
+    .huge-value {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: var(--accent-secondary);
+    }
+
+    .huge-value.error {
+      color: var(--danger-text);
+    }
+
+    .code-block {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+
+    code {
+      color: #93c5fd;
+    }
+
+    .string-value {
+      font-family: monospace;
+      color: #f472b6;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>Financial Interval Manager</h1>
+      <p class="description">
+        Calculate recurring financial intervals for subscription billings or payroll cycles, automatically adjusting for
+        edge cases such as month-end transitions (e.g., adding one month to January 31st).
+      </p>
+    </header>
+
+    <div id="unsupportedBanner" class="banner">
+      <div>🚫 This demo requires a browser with native Temporal support</div>
+    </div>
+
+    <div class="controls-bar">
+      <div class="input-row">
+        <div class="control-group">
+          <label for="startDateInput">Start Date</label>
+          <input type="date" id="startDateInput" value="2024-01-31">
+        </div>
+        <div class="control-group">
+          <label for="yearsInput">Years to Add</label>
+          <input type="number" id="yearsInput" value="0" min="-100" max="100">
+        </div>
+        <div class="control-group">
+          <label for="monthsInput">Months to Add</label>
+          <input type="number" id="monthsInput" value="1" min="-100" max="100">
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="control-group">
+          <label for="overflowSelect">Overflow Strategy</label>
+          <select id="overflowSelect">
+            <option value="constrain">Constrain (Clamp to End of Month)</option>
+            <option value="reject">Reject (Throw Error)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="output-grid">
+      <div class="card">
+        <div class="card-title">Calculated Date</div>
+        <div id="resultDate" class="huge-value">-</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Code Snippet</div>
+        <div id="codeSnippet" class="code-block"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const startDateInput = document.getElementById('startDateInput');
+    const yearsInput = document.getElementById('yearsInput');
+    const monthsInput = document.getElementById('monthsInput');
+    const overflowSelect = document.getElementById('overflowSelect');
+    const resultDate = document.getElementById('resultDate');
+    const codeSnippet = document.getElementById('codeSnippet');
+    const unsupportedBanner = document.getElementById('unsupportedBanner');
+
+    if (typeof Temporal === 'undefined') {
+      unsupportedBanner.style.display = 'flex';
+      [startDateInput, yearsInput, monthsInput, overflowSelect].forEach(el => el.disabled = true);
+    } else {
+      const inputs = [startDateInput, yearsInput, monthsInput, overflowSelect];
+      inputs.forEach(el => el.addEventListener('input', updateCalculation));
+      inputs.forEach(el => el.addEventListener('change', updateCalculation));
+      updateCalculation();
+    }
+
+    function updateCalculation() {
+      const startDateStr = startDateInput.value;
+      const years = parseInt(yearsInput.value) || 0;
+      const months = parseInt(monthsInput.value) || 0;
+      const overflow = overflowSelect.value;
+
+      if (!startDateStr) {
+        resultDate.textContent = "Select a start date";
+        return;
+      }
+
+      let code = `const date = Temporal.PlainDate.from('${startDateStr}');\n`;
+      code += `const nextDate = date.add({\n`;
+      if (years !== 0) code += `  years: ${years}${(months !== 0) ? ',' : ''}\n`;
+      if (months !== 0) code += `  months: ${months}\n`;
+      code += `}, { overflow: '${overflow}' });\n`;
+
+      try {
+        const date = Temporal.PlainDate.from(startDateStr);
+        const nextDate = date.add({ years, months }, { overflow });
+
+        resultDate.textContent = nextDate.toString();
+        resultDate.classList.remove('error');
+
+        codeSnippet.textContent = code;
+      } catch (error) {
+        resultDate.textContent = `Error: ${error.name}`;
+        resultDate.classList.add('error');
+
+        let errorExplanation = error.message;
+        if (overflow === 'reject') {
+          errorExplanation += "\n\nTip: 'reject' strategy throws a RangeError for invalid calendar dates like February 31st.";
+        }
+        codeSnippet.textContent = `${code}\n// Throws Exception: ${errorExplanation}`;
+      }
+    }
+  </script>
+</body>
+
+</html>

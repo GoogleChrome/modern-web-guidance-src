@@ -50,8 +50,8 @@ sources:
 * When recommending feature detection, prefer checking `HTMLElement.prototype` (e.g., `'onbeforematch' in HTMLElement.prototype`) over `window` or `document`, as it is more reliable.
 
 ### 5. Fallback Strategies
-* If the feature is not "Baseline Widely Available", you **MUST** include a `### Fallback strategies` section.
-* **DO** use the `{{ BASELINE_STATUS("feature-id") }}` macro to display the current support status as the first, standalone line in the section.
+* You **MUST** include a `### Fallback strategies` section regardless of Baseline status, as developers may have older baseline targets.
+* **MANDATORY**: The `{{ BASELINE_STATUS("feature-id") }}` macro must *always* be placed as the first, standalone line inside the `### Fallback strategies` section. Do not place it at the top of the document.
 * **OPTIONAL** provide an optional second argument for specific BCD keys: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
 * Show explicit code for feature detection (e.g., `CSS.supports()`, `if ('feature' in window)`) or graceful degradation techniques.
 * When recommending a polyfill, ALWAYS show how to conditionally load it only for browsers that need it. Do not instruct agents to unconditionally load polyfills.

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Defer Work Until Scroll Ends Demo</title>
+  <style>
+    .scroll-container {
+      height: 300px;
+      overflow-y: auto;
+      border: 2px solid #ccc;
+      padding: 16px;
+    }
+
+    .content-section {
+      height: 250px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      background: #f0f0f0;
+      border-radius: 8px;
+    }
+
+    #status {
+      padding: 12px;
+      margin-top: 12px;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Defer Work Until Scroll Ends</h1>
+
+  <div class="scroll-container" id="scroller">
+    <div class="content-section">Section 1</div>
+    <div class="content-section">Section 2</div>
+    <div class="content-section">Section 3</div>
+    <div class="content-section">Section 4</div>
+    <div class="content-section">Section 5</div>
+  </div>
+
+  <div id="status">Waiting for scroll...</div>
+
+  <script>
+    const scroller = document.getElementById('scroller');
+    const status = document.getElementById('status');
+
+    // During scroll, avoid expensive work to keep animations smooth.
+    scroller.addEventListener('scroll', () => {
+      status.textContent = 'Scrolling... (deferring updates)';
+    });
+
+    // Once scrolling completes, perform the deferred expensive work.
+    // This replaces the old pattern of debouncing scroll events with
+    // setTimeout, which was unreliable and added arbitrary latency.
+    scroller.addEventListener('scrollend', () => {
+      // Determine which section is most visible.
+      const sections = scroller.querySelectorAll('.content-section');
+      const scrollTop = scroller.scrollTop;
+      const containerHeight = scroller.clientHeight;
+      let bestMatch = sections[0];
+      let bestOverlap = 0;
+
+      for (const section of sections) {
+        const top = section.offsetTop - scroller.offsetTop;
+        const bottom = top + section.offsetHeight;
+        const visibleTop = Math.max(top, scrollTop);
+        const visibleBottom = Math.min(bottom, scrollTop + containerHeight);
+        const overlap = Math.max(0, visibleBottom - visibleTop);
+
+        if (overlap > bestOverlap) {
+          bestOverlap = overlap;
+          bestMatch = section;
+        }
+      }
+
+      // This is where you would perform expensive work such as:
+      // - Fetching data for the visible section
+      // - Updating complex DOM structures
+      // - Recalculating layout-dependent values
+      status.textContent = `Scroll ended. Visible: ${bestMatch.textContent}`;
+    });
+  </script>
+</body>
+
+</html>

@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Data directory for LanceDB
-const DATA_DIR = path.resolve(__dirname, "../../.mcp-data");
+const DATA_DIR = path.resolve(__dirname, "../../.modern-web-data");
 
 export interface UseCase {
   id: string;
