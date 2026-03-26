@@ -2,62 +2,67 @@
   {
     "guideId": "accessible-error-announcement",
     "category": "accessibility",
-    "query": "update aria-invalid attribute based on user interaction"
+    "query": "avoid disruptive error announcements in form validation"
   },
   {
     "guideId": "accessible-error-announcement",
     "category": "accessibility",
-    "query": "synchronize user-invalid state with aria-invalid"
+    "query": "synchronize HTML5 validation with ARIA accessibility attributes"
   },
   {
     "guideId": "accessible-error-announcement",
     "category": "accessibility",
-    "query": "update ARIA invalid status dynamically on forms"
+    "query": "ensure consistent error reporting for all users"
   },
   {
     "guideId": "accessible-error-announcement",
     "category": "accessibility",
-    "query": "manage form field accessibility for validation errors"
+    "query": "implement accessible form validation feedback"
   },
   {
     "guideId": "accessible-error-announcement",
     "category": "accessibility",
-    "query": "create an accessible form validation bridge with JavaScript"
+    "query": "create a JavaScript utility for aria-invalid management"
   },
   {
     "guideId": "batch-analytics-events",
     "category": "performance",
-    "query": "batching strategy for client-side events"
+    "query": "improve analytics data collection efficiency"
   },
   {
     "guideId": "batch-analytics-events",
     "category": "performance",
-    "query": "group user interaction data for server"
+    "query": "ensuring background data delivery"
   },
   {
     "guideId": "batch-analytics-events",
     "category": "performance",
-    "query": "combine multiple small data sends"
+    "query": "aggregate client-side events before upload"
   },
   {
     "guideId": "batch-analytics-events",
     "category": "performance",
-    "query": "reliable data transmission on page dismissal"
+    "query": "send analytics data after a time window"
   },
   {
     "guideId": "batch-analytics-events",
     "category": "performance",
-    "query": "web platform feature for deferred fetches"
+    "query": "optimize analytics beacon sending"
   },
   {
     "guideId": "deprioritize-background-fetches",
     "category": "performance",
-    "query": "speed up critical path network operations"
+    "query": "manage network queues for background data transfers"
   },
   {
     "guideId": "deprioritize-background-fetches",
     "category": "performance",
-    "query": "optimize data fetching for better user perceived speed"
+    "query": "reduce impact of background processes on network performance"
+  },
+  {
+    "guideId": "deprioritize-background-fetches",
+    "category": "performance",
+    "query": "lower priority for telemetry data collection"
   },
   {
     "guideId": "deprioritize-background-fetches",
@@ -67,12 +72,12 @@
   {
     "guideId": "deprioritize-background-fetches",
     "category": "performance",
-    "query": "control network request impact on UI responsiveness"
+    "query": "make sure critical assets load without delay"
   },
   {
-    "guideId": "deprioritize-background-fetches",
+    "guideId": "full-session-analytics",
     "category": "performance",
-    "query": "manage network queues for background data transfers"
+    "query": "record user consent state on page close"
   },
   {
     "guideId": "full-session-analytics",
@@ -82,192 +87,167 @@
   {
     "guideId": "full-session-analytics",
     "category": "performance",
-    "query": "send A/B test variant data reliably"
+    "query": "aggregate session data for single server transmission"
   },
   {
     "guideId": "full-session-analytics",
     "category": "performance",
-    "query": "ensure analytics data delivery on tab close"
+    "query": "send critical user metrics without blocking UI"
   },
   {
     "guideId": "full-session-analytics",
     "category": "performance",
-    "query": "manage fetchLater quota limits"
-  },
-  {
-    "guideId": "full-session-analytics",
-    "category": "performance",
-    "query": "asynchronously send user interaction data"
+    "query": "handle user activity tracking across page lifecycle"
   },
   {
     "guideId": "improve-next-page-load-performance",
     "category": "performance",
-    "query": "embed speculation rules in HTML"
+    "query": "implement efficient resource preloading"
   },
   {
     "guideId": "improve-next-page-load-performance",
     "category": "performance",
-    "query": "enhance e-commerce product browsing experience"
+    "query": "manage stale content with prerender strategy"
   },
   {
     "guideId": "improve-next-page-load-performance",
     "category": "performance",
-    "query": "dynamically inject prerender rules"
+    "query": "monitor speculative loading API usage"
   },
   {
     "guideId": "improve-next-page-load-performance",
     "category": "performance",
-    "query": "specify target URLs for prefetch"
+    "query": "enhance user experience through predicted navigation"
   },
   {
     "guideId": "improve-next-page-load-performance",
     "category": "performance",
-    "query": "measure performance gains from prefetching"
+    "query": "integrate speculative loading with user analytics"
   },
   {
     "guideId": "optimize-image-priority",
     "category": "performance",
-    "query": "strategy for hidden above-the-fold image priority"
+    "query": "configure browser image fetching behavior"
   },
   {
     "guideId": "optimize-image-priority",
     "category": "performance",
-    "query": "web performance strategies for image loading"
+    "query": "ensure normal priority for lazy loaded images once in view"
   },
   {
     "guideId": "optimize-image-priority",
     "category": "performance",
-    "query": "ensure critical initial viewport image loads first"
+    "query": "set highest loading priority for LCP element"
   },
   {
     "guideId": "optimize-image-priority",
     "category": "performance",
-    "query": "boost main banner image rendering"
+    "query": "reduce priority for images in offscreen carousels"
   },
   {
     "guideId": "optimize-image-priority",
     "category": "performance",
-    "query": "accelerate hero section image delivery"
+    "query": "fine-tune image loading order"
   },
   {
     "guideId": "optimize-preload-priority",
     "category": "performance",
-    "query": "ensure critical assets load before non-critical ones"
+    "query": "use fetchpriority to improve core web vitals"
   },
   {
     "guideId": "optimize-preload-priority",
     "category": "performance",
-    "query": "accelerate display of LCP image"
+    "query": "set high fetchpriority for key background images"
   },
   {
     "guideId": "optimize-preload-priority",
     "category": "performance",
-    "query": "ensure high priority for critical stylesheet preloads"
+    "query": "allocate more bandwidth to critical image preloads"
   },
   {
     "guideId": "optimize-preload-priority",
     "category": "performance",
-    "query": "accelerate render of core page elements"
+    "query": "prioritize image preloading based on viewport"
   },
   {
     "guideId": "optimize-preload-priority",
     "category": "performance",
-    "query": "streamline resource fetching with priority hints"
+    "query": "optimize image preloading for responsiveness"
   },
   {
     "guideId": "optimize-script-priority",
     "category": "performance",
-    "query": "improve First Contentful Paint with script priority"
+    "query": "speed up script parsing with fetchpriority"
   },
   {
     "guideId": "optimize-script-priority",
     "category": "performance",
-    "query": "fine-tune script resource priority"
+    "query": "decrease priority of analytics script tags"
   },
   {
     "guideId": "optimize-script-priority",
     "category": "performance",
-    "query": "boost priority of essential async scripts"
+    "query": "specify high priority for main application script"
   },
   {
     "guideId": "optimize-script-priority",
     "category": "performance",
-    "query": "implement explicit script loading priority"
+    "query": "configure script loading for faster initial render"
   },
   {
     "guideId": "optimize-script-priority",
     "category": "performance",
-    "query": "elevate critical script resource loading"
+    "query": "optimize script delivery with fetchpriority attribute"
   },
   {
     "guideId": "adapt-scrollbar-to-contrast-preferences",
     "category": "user-experience",
-    "query": "apply high contrast scrollbar styling with scrollbar-gutter"
+    "query": "ensure scrollbar usability for high contrast users"
   },
   {
     "guideId": "adapt-scrollbar-to-contrast-preferences",
     "category": "user-experience",
-    "query": "implement cross-browser high contrast scrollbar solution"
+    "query": "customize scrollbar appearance based on contrast preference"
   },
   {
     "guideId": "adapt-scrollbar-to-contrast-preferences",
     "category": "user-experience",
-    "query": "implement WebKit scrollbar fallback for high contrast"
+    "query": "update scrollbar styling for high contrast accessibility"
   },
   {
     "guideId": "adapt-scrollbar-to-contrast-preferences",
     "category": "user-experience",
-    "query": "add high contrast scrollbar support to web application"
+    "query": "create high contrast scrollbar using scrollbar-color"
   },
   {
     "guideId": "adapt-scrollbar-to-contrast-preferences",
     "category": "user-experience",
-    "query": "improve scrollbar legibility for users with high contrast needs"
+    "query": "implement high contrast scrollbar styling best practices"
   },
   {
     "guideId": "adapt-scrollbar-to-light-dark-preferences",
     "category": "user-experience",
-    "query": "control scrollbar visibility and styling on macOS"
+    "query": "force visible scrollbar track on macOS with custom colors"
   },
   {
     "guideId": "adapt-scrollbar-to-light-dark-preferences",
     "category": "user-experience",
-    "query": "prevent scrollbar-color being ignored on macOS"
+    "query": "implement custom scrollbar theme switching logic"
   },
   {
     "guideId": "adapt-scrollbar-to-light-dark-preferences",
     "category": "user-experience",
-    "query": "synchronize scrollbar appearance with OS theme"
+    "query": "display scrollbar track background on macOS"
   },
   {
     "guideId": "adapt-scrollbar-to-light-dark-preferences",
     "category": "user-experience",
-    "query": "style scrollbar track and thumb dynamically"
+    "query": "define scrollbar colors using CSS custom properties"
   },
   {
     "guideId": "adapt-scrollbar-to-light-dark-preferences",
     "category": "user-experience",
-    "query": "match scrollbar theme to OS preferences"
-  },
-  {
-    "guideId": "animate-scrollbar-color-on-scroll",
-    "category": "user-experience",
-    "query": "progressive enhancement scrollbar animation"
-  },
-  {
-    "guideId": "animate-scrollbar-color-on-scroll",
-    "category": "user-experience",
-    "query": "CSS scroll-driven animation scrollbar-color"
-  },
-  {
-    "guideId": "animate-scrollbar-color-on-scroll",
-    "category": "user-experience",
-    "query": "scroll-linked color change for scrollbar"
-  },
-  {
-    "guideId": "animate-scrollbar-color-on-scroll",
-    "category": "user-experience",
-    "query": "register custom property for scrollbar color"
+    "query": "implement scrollbar customization across all OS"
   },
   {
     "guideId": "animate-scrollbar-color-on-scroll",
@@ -275,69 +255,74 @@
     "query": "create interactive scrollbar color effect"
   },
   {
-    "guideId": "customize-scrollbar-color-and-thickness",
+    "guideId": "animate-scrollbar-color-on-scroll",
     "category": "user-experience",
-    "query": "style scrollbar track color"
+    "query": "declarative scrollbar color animation"
+  },
+  {
+    "guideId": "animate-scrollbar-color-on-scroll",
+    "category": "user-experience",
+    "query": "animating scrollbar-thumb color CSS"
+  },
+  {
+    "guideId": "animate-scrollbar-color-on-scroll",
+    "category": "user-experience",
+    "query": "CSS scroll effects on scrollbar styling"
+  },
+  {
+    "guideId": "animate-scrollbar-color-on-scroll",
+    "category": "user-experience",
+    "query": "CSS scroll-driven animation scrollbar"
   },
   {
     "guideId": "customize-scrollbar-color-and-thickness",
     "category": "user-experience",
-    "query": "hide scrollbar but keep scrolling functionality"
+    "query": "ensure custom scrollbar visibility macOS"
   },
   {
     "guideId": "customize-scrollbar-color-and-thickness",
     "category": "user-experience",
-    "query": "cross-browser custom scrollbar styling"
+    "query": "apply custom scrollbar to specific element"
   },
   {
     "guideId": "customize-scrollbar-color-and-thickness",
     "category": "user-experience",
-    "query": "apply custom scrollbar to div"
+    "query": "override default browser scrollbar styles"
   },
   {
     "guideId": "customize-scrollbar-color-and-thickness",
     "category": "user-experience",
-    "query": "fallback for scrollbar-width and scrollbar-color"
+    "query": "hide scrollbar with scrollbar-width: none"
+  },
+  {
+    "guideId": "customize-scrollbar-color-and-thickness",
+    "category": "user-experience",
+    "query": "apply scrollbar-gutter to prevent layout shift"
   },
   {
     "guideId": "required-field-feedback",
     "category": "user-experience",
-    "query": "use checkValidity() to determine input state"
+    "query": "enhance form accessibility for required fields"
   },
   {
     "guideId": "required-field-feedback",
     "category": "user-experience",
-    "query": "style form fields based on required attribute status"
+    "query": "prevent premature error messages for required fields"
   },
   {
     "guideId": "required-field-feedback",
     "category": "user-experience",
-    "query": "add aria-errormessage to form inputs for accessibility"
+    "query": "css styling for :user-invalid pseudo-class"
   },
   {
     "guideId": "required-field-feedback",
     "category": "user-experience",
-    "query": "user-friendly form validation experience"
+    "query": "use weakmap to store form field interaction state"
   },
   {
     "guideId": "required-field-feedback",
     "category": "user-experience",
-    "query": "custom styling for :user-invalid inputs"
-  },
-  {
-    "guideId": "search-hidden-content",
-    "category": "user-experience",
-    "query": "handle the beforematch event to update UI elements"
-  },
-  {
-    "guideId": "search-hidden-content",
-    "category": "user-experience",
-    "query": "make a footer section content searchable when collapsed"
-  },
-  {
-    "guideId": "search-hidden-content",
-    "category": "user-experience",
-    "query": "ensure screen reader access to collapsed text"
+    "query": "provide clear feedback for invalid required inputs"
   },
   {
     "guideId": "search-hidden-content",
@@ -347,7 +332,27 @@
   {
     "guideId": "search-hidden-content",
     "category": "user-experience",
-    "query": "group mutually exclusive content sections"
+    "query": "create a tabbed interface using HTML details"
+  },
+  {
+    "guideId": "search-hidden-content",
+    "category": "user-experience",
+    "query": "ensure screen reader access to collapsed text"
+  },
+  {
+    "guideId": "search-hidden-content",
+    "category": "user-experience",
+    "query": "improve accessibility for hidden text"
+  },
+  {
+    "guideId": "search-hidden-content",
+    "category": "user-experience",
+    "query": "enable \"Find in page\" for collapsed content"
+  },
+  {
+    "guideId": "select-menu-interaction",
+    "category": "user-experience",
+    "query": "Prevent immediate validation error on page load"
   },
   {
     "guideId": "select-menu-interaction",
@@ -357,12 +362,7 @@
   {
     "guideId": "select-menu-interaction",
     "category": "user-experience",
-    "query": "Progressive enhancement for form validation feedback"
-  },
-  {
-    "guideId": "select-menu-interaction",
-    "category": "user-experience",
-    "query": "Implement user-aware form validation for dropdowns"
+    "query": "Show form error only after user input attempt"
   },
   {
     "guideId": "select-menu-interaction",
@@ -372,56 +372,56 @@
   {
     "guideId": "select-menu-interaction",
     "category": "user-experience",
-    "query": "Style invalid select when user has interacted"
+    "query": "Handle required select validation without immediate error"
   },
   {
     "guideId": "style-parent-with-has",
     "category": "user-experience",
-    "query": "style a card component when an embedded input is invalid"
+    "query": "show error indicator on card section if inner input is invalid"
   },
   {
     "guideId": "style-parent-with-has",
     "category": "user-experience",
-    "query": "css has for form validation parent styles"
+    "query": "style a div containing an invalid form input"
   },
   {
     "guideId": "style-parent-with-has",
     "category": "user-experience",
-    "query": "add a class to parent when child input is invalid with css"
+    "query": "update form group styling when child field is invalid"
   },
   {
     "guideId": "style-parent-with-has",
     "category": "user-experience",
-    "query": "css technique for parent styling on child validation error"
+    "query": "update form container appearance on invalid child input"
   },
   {
     "guideId": "style-parent-with-has",
     "category": "user-experience",
-    "query": "conditional css styling for parent based on child form state"
+    "query": "css parent selector for form input validation"
   },
   {
     "guideId": "validate-input-after-interaction",
     "category": "user-experience",
-    "query": "CSS techniques for conditional validation feedback"
+    "query": "Display error messages only when field is invalid after interaction"
   },
   {
     "guideId": "validate-input-after-interaction",
     "category": "user-experience",
-    "query": "Use pattern attribute for deferred validation styling"
+    "query": "Prevent initial invalid state styling on page load"
   },
   {
     "guideId": "validate-input-after-interaction",
     "category": "user-experience",
-    "query": "Create responsive validation feedback for forms"
+    "query": "Provide positive feedback for correct input"
   },
   {
     "guideId": "validate-input-after-interaction",
     "category": "user-experience",
-    "query": "Implement client-side validation without immediate errors"
+    "query": "Create a better user experience for form errors"
   },
   {
     "guideId": "validate-input-after-interaction",
     "category": "user-experience",
-    "query": "Defer error styling until form field is dirty and blurred"
+    "query": "Style email input validation after user completes"
   }
 ]

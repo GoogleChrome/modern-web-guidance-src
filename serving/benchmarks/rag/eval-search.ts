@@ -8,8 +8,8 @@ import type { EvalQuery } from "./generate-eval-queries.ts";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "..");
-const EVAL_FILE = path.join(ROOT_DIR, "mcp-server/data/eval-queries.json");
-const RESULTS_FILE = path.join(ROOT_DIR, ".modern-web-data/eval-results.json");
+const EVAL_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-queries.json");
+const RESULTS_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-results.json");
 
 interface EvalRun {
   timestamp: string;
@@ -30,7 +30,7 @@ function getModelArg(): string | undefined {
 async function main() {
   if (!fs.existsSync(EVAL_FILE)) {
     console.error(`Evaluation file not found: ${EVAL_FILE}`);
-    console.error(`Please run 'node ./scripts/generate-eval-queries.ts' first.`);
+    console.error(`Please run 'node ./benchmarks/rag/generate-eval-queries.ts' first.`);
     process.exit(1);
   }
 

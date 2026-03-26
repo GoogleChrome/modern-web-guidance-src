@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chunking vs No-Chunking (850 Query Pool)</title>
+    <script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>
+    <style>
+        body { font-family: -apple-system, system-ui, sans-serif; padding: 40px; background: #f8f9fa; color: #212529; }
+        .chart-container { max-width: 1000px; margin: 0 auto 40px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        h1 { text-align: center; margin-bottom: 40px; }
+    </style>
+</head>
+<body>
+    <h1>Model Performance Distribution (Chunked vs No-Chunked over 850 Pool)</h1>
+    
+    <div id='top1Plot' class='chart-container'></div>
+    <div id='mrrPlot' class='chart-container'></div>
+
+    <script>
+        const data = [{"model":"MiniLM q8 (Chunked / 850 Pool)","top1HitRate":0.7287153880710983,"top3HitRate":0.9494517550095543,"meanReciprocalRank":0.8397251781818997,"totalQueries":85},{"model":"MiniLM q8 (Chunked / 850 Pool)","top1HitRate":0.7228753069544884,"top3HitRate":0.965193643022308,"meanReciprocalRank":0.833461910704531,"totalQueries":85},{"model":"MiniLM q8 (Chunked / 850 Pool)","top1HitRate":0.7606392592389865,"top3HitRate":0.9566573019539772,"meanReciprocalRank":0.8528436863507028,"totalQueries":85},{"model":"MiniLM q8 (Chunked / 850 Pool)","top1HitRate":0.7378961844441491,"top3HitRate":0.9484336973321281,"meanReciprocalRank":0.8530781211375329,"totalQueries":85},{"model":"MiniLM q8 (Chunked / 850 Pool)","top1HitRate":0.739803643249503,"top3HitRate":0.9659437689310171,"meanReciprocalRank":0.8468235138253942,"totalQueries":85},{"model":"MiniLM q8 (Chunked / 850 Pool)","top1HitRate":0.7556289361722349,"top3HitRate":0.9531378271180705,"meanReciprocalRank":0.8549758823349658,"totalQueries":85},{"model":"MiniLM q8 (Chunked / 850 Pool)","top1HitRate":0.7265078585175502,"top3HitRate":0.9526908399022148,"meanReciprocalRank":0.8345022615408307,"totalQueries":85},{"model":"MiniLM q8 (Chunked / 850 Pool)","top1HitRate":0.7376589511149975,"top3HitRate":0.9605250002703098,"meanReciprocalRank":0.8329765699869688,"totalQueries":85},{"model":"MiniLM q8 (Chunked / 850 Pool)","top1HitRate":0.7587133338404657,"top3HitRate":0.949921083644252,"meanReciprocalRank":0.8325393419039742,"totalQueries":85},{"model":"MiniLM q8 (Chunked / 850 Pool)","top1HitRate":0.7423254527088898,"top3HitRate":0.9584635859379403,"meanReciprocalRank":0.8432323879771999,"totalQueries":85},{"timestamp":"2026-03-26T16:53:07.337Z","model":"MiniLM q8 (No-Chunk / 850 Pool)","totalQueries":85,"top1HitRate":0.7294,"top3HitRate":0.8706,"top5HitRate":1,"meanReciprocalRank":0.8214},{"timestamp":"2026-03-26T16:53:53.829Z","model":"MiniLM q8 (No-Chunk / 850 Pool)","totalQueries":85,"top1HitRate":0.7294,"top3HitRate":0.9176,"top5HitRate":0.9882,"meanReciprocalRank":0.8288},{"timestamp":"2026-03-26T16:54:30.852Z","model":"MiniLM q8 (No-Chunk / 850 Pool)","totalQueries":85,"top1HitRate":0.7176,"top3HitRate":0.9765,"top5HitRate":1,"meanReciprocalRank":0.8314},{"timestamp":"2026-03-26T16:55:07.831Z","model":"MiniLM q8 (No-Chunk / 850 Pool)","totalQueries":85,"top1HitRate":0.7294,"top3HitRate":0.9176,"top5HitRate":1,"meanReciprocalRank":0.8363},{"timestamp":"2026-03-26T16:55:45.190Z","model":"MiniLM q8 (No-Chunk / 850 Pool)","totalQueries":85,"top1HitRate":0.7412,"top3HitRate":0.9412,"top5HitRate":1,"meanReciprocalRank":0.8455},{"timestamp":"2026-03-26T16:56:22.433Z","model":"MiniLM q8 (No-Chunk / 850 Pool)","totalQueries":85,"top1HitRate":0.7412,"top3HitRate":0.9294,"top5HitRate":1,"meanReciprocalRank":0.8406},{"timestamp":"2026-03-26T16:56:59.805Z","model":"MiniLM q8 (No-Chunk / 850 Pool)","totalQueries":85,"top1HitRate":0.7529,"top3HitRate":0.9529,"top5HitRate":1,"meanReciprocalRank":0.8602},{"timestamp":"2026-03-26T16:57:37.798Z","model":"MiniLM q8 (No-Chunk / 850 Pool)","totalQueries":85,"top1HitRate":0.6941,"top3HitRate":0.9412,"top5HitRate":1,"meanReciprocalRank":0.818},{"timestamp":"2026-03-26T16:58:17.132Z","model":"MiniLM q8 (No-Chunk / 850 Pool)","totalQueries":85,"top1HitRate":0.6353,"top3HitRate":0.9529,"top5HitRate":1,"meanReciprocalRank":0.7837},{"timestamp":"2026-03-26T16:58:56.769Z","model":"MiniLM q8 (No-Chunk / 850 Pool)","totalQueries":85,"top1HitRate":0.7059,"top3HitRate":0.9412,"top5HitRate":1,"meanReciprocalRank":0.8233}];
+        const models = ["MiniLM q8 (Chunked / 850 Pool)","MiniLM q8 (No-Chunk / 850 Pool)"];
+        
+        function createBoxPlot(metric, elementId, title) {
+            const traces = models.map(model => {
+                const values = data.filter(d => d.model === model).map(d => d[metric]);
+                return {
+                    y: values,
+                    name: model,
+                    type: 'box',
+                    boxpoints: 'all',
+                    jitter: 0.3,
+                    pointpos: -1.8,
+                    marker: { size: 4 },
+                    line: { width: 2 }
+                };
+            });
+
+            const layout = {
+                title: title,
+                yaxis: { title: 'Score', range: [Math.min(...data.map(d => d[metric])) * 0.95, 1.01] },
+                showlegend: false,
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { t: 50, b: 200, l: 60, r: 30 }
+            };
+
+            Plotly.newPlot(elementId, traces, layout);
+        }
+
+        createBoxPlot('top1HitRate', 'top1Plot', 'Top-1 Hit Rate Distribution');
+        createBoxPlot('meanReciprocalRank', 'mrrPlot', 'MRR Distribution');
+    </script>
+</body>
+</html>

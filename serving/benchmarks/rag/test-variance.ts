@@ -25,19 +25,20 @@ function shuffle<T>(array: T[]): T[] {
 async function main() {
   const modelsDir = path.join(ROOT, 'models');
   const models = [
-    'Xenova/all-MiniLM-L6-v2@fp16',
-    'all-MiniLM-L6-v2.gguf2.f16.gguf'
+    'Xenova/all-MiniLM-L6-v2@q8',
+    'onnx-community/embeddinggemma-300m-ONNX@q8',
+    'onnx-community/embeddinggemma-300m-ONNX@q4'
   ];
   const runs = 10;
   
-  const poolPath = path.join(ROOT, 'mcp-server/data/eval-queries-pool.json');
-  const targetEvalsPath = path.join(ROOT, 'mcp-server/data/eval-queries.json');
-  const resultsPath = path.join(ROOT, '.modern-web-data', 'eval-results.json');
+  const poolPath = path.join(ROOT, 'benchmarks/data/eval-queries-pool.json');
+  const targetEvalsPath = path.join(ROOT, 'benchmarks/data/eval-queries.json');
+  const resultsPath = path.join(ROOT, 'benchmarks/data', 'eval-results.json');
 
   // Generate the pool once if it doesn't exist
   if (!fs.existsSync(poolPath)) {
      console.log('Generating master query pool (50 queries per guide)...');
-     run('node --experimental-strip-types scripts/generate-eval-queries.ts');
+     run('node --experimental-strip-types benchmarks/rag/generate-eval-queries.ts');
   }
 
   const pool = JSON.parse(fs.readFileSync(poolPath, 'utf-8'));
@@ -70,7 +71,7 @@ async function main() {
       console.log(`\nEvaluating ${model} (Iter ${iter})...`);
       // Rebuild the vector database table for the specific model before querying
       run(`node --experimental-strip-types scripts/build-guides.ts --model=${model} --no-chunking`);
-      run(`node --experimental-strip-types scripts/eval-search.ts --model=${model}`);
+      run(`node --experimental-strip-types benchmarks/rag/eval-search.ts --model=${model}`);
     }
   }
 

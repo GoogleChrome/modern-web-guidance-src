@@ -5,8 +5,8 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const resultsPath = path.resolve(__dirname, '../.modern-web-data/eval-results.json');
-const outputPath = path.resolve(__dirname, '../.modern-web-data/eval-plot.html');
+const resultsPath = path.resolve(__dirname, '../data/eval-results.json');
+const outputPath = path.resolve(__dirname, '../data/eval-plot.html');
 
 if (!fs.existsSync(resultsPath)) {
   console.error(`Results file not found at ${resultsPath}`);
@@ -84,7 +84,7 @@ const htmlContent = `
                 showlegend: false,
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
-                margin: { t: 50, b: 50, l: 60, r: 30 }
+                margin: { t: 50, b: 150, l: 60, r: 30 }
             };
 
             Plotly.newPlot(elementId, traces, layout);
