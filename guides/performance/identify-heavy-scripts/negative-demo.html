@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Performance Logger</title>
+</head>
+<body>
+    <h1>System Status</h1>
+    <button id="task-button">Process Data</button>
+    <script>
+        if (!window.PerformanceLongAnimationFrame) {
+            window.PerformanceLongAnimationFrame = function() {
+                this.duration = 0;
+                this.scripts = [];
+            };
+        }
+
+        var obs = new PerformanceObserver(function(list) {
+            var entries = list.getEntries();
+            for (var i = 0; i < entries.length; i++) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/analytics/report', false);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.send(JSON.stringify(entries[i]));
+            }
+        });
+
+        obs.observe({ entryTypes: ['long-animation-frame'] });
+
+        function executeLongRunningTask() {
+            var start = Date.now();
+            while (Date.now() - start < 250) {
+            }
+        }
+
+        document.getElementById('task-button').onclick = executeLongRunningTask;
+
+        setInterval(function() {
+            var start = performance.now();
+            setTimeout(function() {
+                var end = performance.now();
+                if (end - start > 100) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/analytics/lag', false);
+                    xhr.send(JSON.stringify({ lag: end - start }));
+                }
+            }, 0);
+        }, 500);
+    </script>
+</body>
+</html>

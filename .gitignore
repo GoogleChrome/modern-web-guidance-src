@@ -31,3 +31,6 @@ skills/modern-web/
 
 # team context repo
 project-gleam/
+
+# Git worktrees directory
+.worktrees

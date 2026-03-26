@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 import 'colors';
-import { collectResults } from './lib/collection.ts';
+import { collectResults, extractModelFromResults } from './lib/collection.ts';
 import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
 
@@ -28,7 +28,8 @@ export async function evaluateSuite(resultsDir: string, suiteName: string) {
     const metrics = calculateMetrics(allResults, numRuns);
     const mdReport = generateMarkdownReport(metrics, allResults);
     const timestamp = new Date().toISOString();
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, config.suite.agent, config.suite.serving);
+    const model = extractModelFromResults(resultsDir);
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, config.suite.agent, config.suite.serving, model);
 
     saveReports(resultsDir, mdReport, jsonReport);
 

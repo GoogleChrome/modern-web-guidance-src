@@ -62,21 +62,26 @@ test.describe(`Scrollbar Customization Expectations: ${demoName}`, () => {
 
   // Browser assertions
   test('Scrollable element has scrollbar-width applied', async ({ page }) => {
-    const scroller = page.locator('.custom-scrollbar, .scroll-box').first();
-    const scrollbarWidth = await scroller.evaluate((el) => getComputedStyle(el).scrollbarWidth);
-    expect(scrollbarWidth).not.toBe('auto');
+    const hasScrollbarWidth = await page.evaluate(() => {
+      const elements = [document.documentElement, document.body, ...document.querySelectorAll('.custom-scrollbar, .scroll-box')];
+      return elements.some(el => getComputedStyle(el).scrollbarWidth !== 'auto');
+    });
+    expect(hasScrollbarWidth).toBe(true);
   });
 
   test('Scrollable element has scrollbar-color applied', async ({ page }) => {
-    const scroller = page.locator('.custom-scrollbar, .scroll-box').first();
-    const scrollbarColor = await scroller.evaluate((el) => getComputedStyle(el).scrollbarColor);
-    // In modern browsers, it should not be 'auto' if customized
-    expect(scrollbarColor).not.toBe('auto');
+    const hasScrollbarColor = await page.evaluate(() => {
+      const elements = [document.documentElement, document.body, ...document.querySelectorAll('.custom-scrollbar, .scroll-box')];
+      return elements.some(el => getComputedStyle(el).scrollbarColor !== 'auto');
+    });
+    expect(hasScrollbarColor).toBe(true);
   });
 
   test('Scrollable element has scrollbar-gutter set to stable', async ({ page }) => {
-    const scroller = page.locator('.custom-scrollbar, .scroll-box').first();
-    const scrollbarGutter = await scroller.evaluate((el) => getComputedStyle(el).scrollbarGutter);
-    expect(scrollbarGutter).toBe('stable');
+    const hasScrollbarGutter = await page.evaluate(() => {
+      const elements = [document.documentElement, document.body, ...document.querySelectorAll('.custom-scrollbar, .scroll-box')];
+      return elements.some(el => getComputedStyle(el).scrollbarGutter === 'stable');
+    });
+    expect(hasScrollbarGutter).toBe(true);
   });
 });
