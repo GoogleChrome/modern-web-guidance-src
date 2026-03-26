@@ -33,7 +33,7 @@ skills/modern-web/
 project-gleam/
 
 # Local configs
-local_config_override.ts
+config.ts
 
 # Git worktrees directory
 .worktrees

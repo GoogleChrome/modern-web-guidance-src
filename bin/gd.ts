@@ -5,9 +5,9 @@ import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { pathToFileURL } from 'url';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
-import { config, Serving } from '../harness/config.ts';
+import { Serving, mergeSuiteConfig } from '../harness/config.ts';
 import { rootDir } from '../lib/root.ts';
 
 // Load environment variables (Node 20.12+)
@@ -149,7 +149,7 @@ ${cBold('Options:')}
   ${cDim('-h, --help')}             Show this help
   ${cDim('--verbose')}              Show additional output
   ${cDim('--usecases')}             (Audit) Group by categories/usecases (default is features)
-  ${cDim('--config <path>')}         (Eval) Path to a custom TS suite config file (defaults to local_config_override.ts, or falls back to defaults in harness/config.ts)
+  ${cDim('--config <path>')}        (Eval) Path to a custom TS suite config file (defaults to config.ts, or falls back to defaults in harness/config.ts)
     `);
     process.exit(0);
   }
@@ -208,34 +208,11 @@ ${cBold('Options:')}
     case 'run': {
       const tmpl = requireArg(positionals[1], 'gd run <template> <prompt>');
       const prompt = requireArg(positionals[2], 'gd run <template> <prompt>');
-      const { runAgent } = await import('../harness/run_suite.ts');
-      await runAgent(tmpl, prompt);
-      break;
-    }
-
-    case 'dashboard': {
-      process.chdir(path.join(rootDir, 'eval-view'));
-      await import('../eval-view/server.js');
-      break;
-    }
-
-    case 'eval': {
-      let buildCode = 0;
-      if (config.suite.serving === Serving.MCP) {
-        buildCode = await runNpm(['build:mcp']);
-      } else if (config.suite.serving === Serving.SKILLS_CLI) {
-        buildCode = await runNpm(['--filter', 'modern-web-mcp', 'build-dist']);
-      }
-      
-      if (buildCode !== 0) process.exit(buildCode);
-      const { runSuite } = await import('../harness/run_suite.ts');
-
-      const tasks = positionals.slice(1).filter(a => a !== 'suite');
 
       const configPath = values.config as string | undefined;
       const resolvedConfigPath = configPath
         ? path.resolve(process.cwd(), configPath)
-        : path.resolve(rootDir, 'local_config_override.ts');
+        : path.resolve(rootDir, 'config.ts');
 
       let overrides: any = {};
       if (fs.existsSync(resolvedConfigPath)) {
@@ -247,7 +224,51 @@ ${cBold('Options:')}
         process.exit(1);
       }
 
-      const runOptions: any = { overrides };
+      const mergedSuiteConfig = mergeSuiteConfig(overrides);
+
+      const { runAgent } = await import('../harness/run_suite.ts');
+      await runAgent(tmpl, prompt, mergedSuiteConfig);
+      break;
+    }
+
+    case 'dashboard': {
+      process.chdir(path.join(rootDir, 'eval-view'));
+      await import('../eval-view/server.js');
+      break;
+    }
+
+    case 'eval': {
+      const tasks = positionals.slice(1).filter(a => a !== 'suite');
+
+      const configPath = values.config as string | undefined;
+      const resolvedConfigPath = configPath
+        ? path.resolve(process.cwd(), configPath)
+        : path.resolve(rootDir, 'config.ts');
+
+      let overrides: any = {};
+      if (fs.existsSync(resolvedConfigPath)) {
+        const fileUrl = pathToFileURL(resolvedConfigPath).href;
+        const customConfig = await import(fileUrl);
+        overrides = customConfig.default || customConfig;
+      } else if (configPath) {
+        console.error(cRed('⚠️ Specified config file not found: ' + resolvedConfigPath));
+        process.exit(1);
+      }
+
+      const mergedSuiteConfig = mergeSuiteConfig(overrides);
+
+      let buildCode = 0;
+      if (mergedSuiteConfig.serving === Serving.MCP) {
+        buildCode = await runNpm(['build:mcp']);
+      } else if (mergedSuiteConfig.serving === Serving.SKILLS_CLI) {
+        buildCode = await runNpm(['--filter', 'modern-web-mcp', 'build-dist']);
+      }
+
+      if (buildCode !== 0) process.exit(buildCode);
+
+      const { runSuite } = await import('../harness/run_suite.ts');
+
+      const runOptions: any = { suiteConfig: mergedSuiteConfig }; // Pass the merged config
       if (tasks.length > 0) runOptions.tasks = tasks;
 
       await runSuite(runOptions);

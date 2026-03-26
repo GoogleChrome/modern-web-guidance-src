@@ -7,7 +7,7 @@ import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
 import { rootDir } from '../lib/root.ts';
 
-import { config } from './config.ts';
+import type { SuiteConfig } from './config.ts';
 
 export async function evaluateSuite(resultsDir: string, suiteName: string) {
   console.log(`Evaluating suite: ${suiteName}`.cyan);
@@ -18,16 +18,19 @@ export async function evaluateSuite(resultsDir: string, suiteName: string) {
     return;
   }
 
-  let suiteConfig = config.suite;
   const configPath = path.join(resultsDir, 'suite_config.json');
+  let suiteConfig: SuiteConfig | null = null;
   if (fs.existsSync(configPath)) {
     try {
       suiteConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     } catch {
-      console.warn(`⚠️ Failed to parse suite_config.json in ${resultsDir}, using global fallback`.yellow);
+      console.warn(`⚠️ Failed to parse suite_config.json in ${resultsDir}`.yellow);
     }
-  } else {
-    console.warn(`⚠️ No suite_config.json found in ${resultsDir}, using global fallback`.yellow);
+  }
+
+  if (!suiteConfig) {
+    console.error(`⚠️ No suite_config.json found or failed to parse in ${resultsDir}. Aborting evaluation.`.red);
+    return;
   }
 
   try {
@@ -55,10 +58,10 @@ export async function evaluate() {
   console.log('Starting Evaluation...'.cyan.bold);
 
   const resultsDirBase = path.join(rootDir, 'harness', 'results');
-  let suiteName = process.argv[2] || config.suite?.name;
+  let suiteName = process.argv[2];
 
   if (!suiteName) {
-    console.error('❌ No suite name provided and no previous tests found!'.red);
+    console.error('❌ No suite name provided!'.red);
     process.exit(1);
   }
 

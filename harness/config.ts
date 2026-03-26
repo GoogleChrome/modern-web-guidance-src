@@ -55,18 +55,14 @@ export const defaultSuiteConfig: SuiteConfig = {
   name: `full-${new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-')}`,
   numRuns: 1,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
-  mcpServersToEnable: [],
+  mcpServersToEnable: ['modern-web'],
   serving: Serving.SKILLS_CLI,
   agent: Agents.GEMINI_CLI,
   negative: false, // When `true`, runs the suite on all tasks in `tasks/negative/`
 };
 
-export let suiteConfig: SuiteConfig = { ...defaultSuiteConfig };
-
 export function mergeSuiteConfig(overrides: Partial<SuiteConfig>): SuiteConfig {
-  suiteConfig = { ...suiteConfig, ...overrides };
-  config.suite = suiteConfig;
-  return suiteConfig;
+  return { ...defaultSuiteConfig, ...overrides };
 }
 
 export interface EnvironmentConfig {
@@ -95,7 +91,7 @@ export interface SuiteConfig {
 
 export const config = {
   environment: environmentConfig,
-  suite: suiteConfig,
+  suite: defaultSuiteConfig,
 };
 
 // Validate critical paths exist during configuration

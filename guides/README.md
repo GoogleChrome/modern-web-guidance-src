@@ -140,7 +140,7 @@ To verify that guides improve agent performance starting from a "bad" implementa
    - A task in `harness/tasks/negative/<guideName>-task-negative.md` pointing to that base app.
 
 2. **Run the negative suite**:
-   Ensure your local configuration (`local_config_override.ts`) has `negative: true`, then run:
+   Ensure your local configuration (`config.ts`) has `negative: true`, then run:
    ```bash
    gd eval
    ```

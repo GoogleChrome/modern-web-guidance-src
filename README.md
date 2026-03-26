@@ -71,7 +71,7 @@ gd dev [dir] [options]        # auto-generate/calibrate
 # Evaluation
 gd eval                       # run the full evaluation suite
 gd eval [task1] [task2]       # run specific tasks
-gd eval [config]              # run with config overrides (e.g. --config my_custom_config.ts, defaults to local_config_override.ts, or falls back to defaults in harness/config.ts)
+gd eval [config]              # run with config overrides (e.g. --config my_custom_config.ts, defaults to config.ts, or falls back to defaults in harness/config.ts)
 gd dashboard                  # start the evaluation dashboard
 
 # To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
@@ -88,11 +88,11 @@ All configuration is centralized in [`harness/config.ts`](./harness/config.ts). 
 
 ### Runtime Configuration Overrides
 
-You can override suite configurations without modifying `harness/config.ts` directly. The `gd eval` command automatically looks for a `local_config_override.ts` file in the project root. If this file doesn't exist and no `--config` flag is provided, it safely falls back to the defaults in `harness/config.ts`.
+You can override suite configurations without modifying `harness/config.ts` directly. The `gd eval` command automatically looks for a `config.ts` file in the project root. If this file doesn't exist and no `--config` flag is provided, it safely falls back to the defaults in `harness/config.ts`.
 
 To get started, copy the template:
 ```bash
-cp example_config_override.ts local_config_override.ts
+cp config.ts.example config.ts
 ```
 
 If you want to maintain multiple configuration profiles, you can specify a custom file using the `--config` flag:

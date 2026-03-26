@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import matter from 'gray-matter';
-import { config, Serving, Agents } from '../config.ts';
+import { Serving, Agents, type SuiteConfig } from '../config.ts';
 import { rootDir } from '../../lib/root.ts';
 
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
@@ -34,7 +34,7 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   return 'unknown';
 }
 
-export async function collectResults(resultsDir: string, suiteConfig: any) {
+export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
   const runDirs = fs.readdirSync(resultsDir)
     .filter(name => {
       const fullPath = path.join(resultsDir, name);
@@ -256,17 +256,6 @@ run();
         runNumber: parseInt(runDir),
         results: scenarioResults,
         guidesUsed: guidesUsedResult,
-        guidanceToolsUsed: guidanceToolsUsedResult,
-        expectedGuidanceTool: expectedGuidanceTool,
-        expectedGuide: guide,
-        baseApp: actualBaseApp,
-        taskName: taskName
-      });
-    }
-  }
-
-  return { allResults, numRuns: runDirs.length };
-}UsedResult,
         guidanceToolsUsed: guidanceToolsUsedResult,
         expectedGuidanceTool: expectedGuidanceTool,
         expectedGuide: guide,
