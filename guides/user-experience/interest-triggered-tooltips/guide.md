@@ -30,14 +30,13 @@ The tooltip element must have an `id` attribute with a unique value:
 <div popover="hint" id="tooltip">Tooltip content</div>
 ```
 
-A user expresses interest in the additional information by hovering or focusing on an `<a>` or `<button>` element. **MANDATORY:** The element must have an `interestfor` attribute that matches the `id` attribute of the tooltip.
+A user expresses interest in the additional information by hovering or focusing on an `<a>` or `<button>` element. The element must have an `interestfor` attribute that matches the `id` attribute of the tooltip.
 
 ```html
 <!-- The `interestfor` attribute can be applied to a `<button>` element: -->
 <button interestfor="tooltip">Tooltip trigger</button>
 
 <!-- The `interestfor` attribute can also be applied to an `<a>` element: -->
-<a interestfor="tooltip" href="">Tooltip trigger</a>
 <a interestfor="tooltip" href="">Tooltip trigger</a>
 ```
 
@@ -72,9 +71,25 @@ Interest invokers must be conditionally polyfilled with the `interestfor` polyfi
 
 Popover and popover hint must conditionally be polyfilled with the `@oddbird/popover-polyfill` polyfill. The hint behavior will not be polyfilled in browsers that support `popover` but not `popover="hint"`. For those browsers, a tooltip opened via focus may stay open when a second tooltip opened via hover.
 
+```html
+<script type="module">
+  if(!HTMLElement.prototype.hasOwnProperty("popover")){
+    await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
+  }
+</script>
+```
+
 {{ BASELINE_STATUS("anchor-positioning") }}
 
 To support browsers without anchor positioning, provide a fallback by putting the popover in the center of the user's screen. Add a `@supports (anchor-name: auto){}` supports block around the anchor positioning rules on the tooltip so browsers with anchor positioning show the tooltip in the desired location.
+
+```html
+<script type="module">
+  if (!("anchorName" in document.documentElement.style)) {
+    await import("https://unpkg.com/@oddbird/css-anchor-positioning");
+  }
+</script>
+```
 
 ```css
 [popover]{
