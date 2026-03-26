@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import { marked } from "marked";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
+import { Gpt4AllEmbedder } from "../benchmarks/rag/gpt4all-embedder.ts";
 import { replaceMacros } from "../mcp-server/lib/macros.ts";
 import { classifyGuide, scanAllGuides } from "../../harness/lib/utils.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
@@ -43,7 +44,12 @@ async function processGuides() {
     console.log(`Using custom embedding model: ${modelName}`);
   }
   
-  const embedder = Embedder.getInstance(modelName);
+  let embedder: any;
+  if (modelName && (modelName.includes(".gguf") || modelName.includes("nomic"))) {
+    embedder = Gpt4AllEmbedder.getInstance(modelName);
+  } else {
+    embedder = Embedder.getInstance(modelName);
+  }
   await embedder.init();
 
   console.log("Initializing Store...");

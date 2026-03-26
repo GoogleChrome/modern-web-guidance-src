@@ -1,13 +1,14 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { Embedder } from "../mcp-server/lib/embedder.ts";
-import { Store } from "../mcp-server/lib/store.ts";
+import { Embedder } from "../../mcp-server/lib/embedder.ts";
+import { Store } from "../../mcp-server/lib/store.ts";
+import { Gpt4AllEmbedder } from "./gpt4all-embedder.ts";
 import type { EvalQuery } from "./generate-eval-queries.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const ROOT_DIR = path.resolve(__dirname, "..");
+const ROOT_DIR = path.resolve(__dirname, "../..");
 const EVAL_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-queries.json");
 const RESULTS_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-results.json");
 
@@ -43,7 +44,14 @@ async function main() {
 
   const modelArg = getModelArg();
   console.log(`Initializing Embedder with model: ${modelArg || "default"}`);
-  const embedder = Embedder.getInstance(modelArg);
+  
+  let embedder: any;
+  if (modelArg && (modelArg.includes(".gguf") || modelArg.includes("nomic"))) {
+    embedder = Gpt4AllEmbedder.getInstance(modelArg);
+  } else {
+    embedder = Embedder.getInstance(modelArg);
+  }
+  
   await embedder.init();
 
   const store = new Store();

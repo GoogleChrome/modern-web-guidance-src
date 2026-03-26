@@ -403,10 +403,19 @@
     "totalQueries": 85
   },
   {
-    "model": "all-MiniLM-L6-v2@q8 (Historical-NoChunk)",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
     "top1HitRate": 0.925813646276144,
     "top3HitRate": 0.9708380710339997,
     "meanReciprocalRank": 0.9456463789350827,
     "totalQueries": 85
+  },
+  {
+    "timestamp": "2026-03-26T19:32:57.418Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "totalQueries": 85,
+    "top1HitRate": 0.6941,
+    "top3HitRate": 0.9176,
+    "top5HitRate": 0.9765,
+    "meanReciprocalRank": 0.8088
   }
 ]

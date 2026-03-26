@@ -26,7 +26,8 @@
     "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
     "test": "node scripts/build-guides.ts && vitest run && node --test skills-cli/test-dist.ts",
     "typecheck": "npm run build && tsc --noEmit",
-    "benchmark:rag": "node --experimental-strip-types benchmarks/rag/test-variance.ts"
+    "benchmark:rag": "node --experimental-strip-types benchmarks/rag/test-variance.ts",
+    "plot:serve": "npx serve benchmarks/data"
   },
   "keywords": [],
   "author": "",

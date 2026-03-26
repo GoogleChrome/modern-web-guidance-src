@@ -23,13 +23,20 @@ function shuffle<T>(array: T[]): T[] {
 }
 
 async function main() {
-  const modelsDir = path.join(ROOT, 'models');
-  const models = [
-    'Xenova/all-MiniLM-L6-v2@q8',
-    'onnx-community/embeddinggemma-300m-ONNX@q8',
-    'onnx-community/embeddinggemma-300m-ONNX@q4'
-  ];
-  const runs = 10;
+  const args = process.argv.slice(2);
+  const isNoChunking = args.includes('--no-chunking');
+
+  const modelsArg = args.find(a => a.startsWith('--models='));
+  const models = modelsArg 
+    ? modelsArg.split('=')[1].split(',') 
+    : [
+        'Xenova/all-MiniLM-L6-v2@q8',
+        'onnx-community/embeddinggemma-300m-ONNX@q8',
+        'onnx-community/embeddinggemma-300m-ONNX@q4'
+      ];
+      
+  const runsArg = args.find(a => a.startsWith('--runs='));
+  const runs = runsArg ? parseInt(runsArg.split('=')[1], 10) : 10;
   
   const poolPath = path.join(ROOT, 'benchmarks/data/eval-queries-pool.json');
   const targetEvalsPath = path.join(ROOT, 'benchmarks/data/eval-queries.json');
@@ -42,9 +49,6 @@ async function main() {
   }
 
   const pool = JSON.parse(fs.readFileSync(poolPath, 'utf-8'));
-
-  // Clean history
-  if (fs.existsSync(resultsPath)) fs.unlinkSync(resultsPath);
 
   // Group queries by guide ID up-front
   const groupedQueries: Record<string, any[]> = {};
@@ -70,8 +74,19 @@ async function main() {
     for (const model of models) {
       console.log(`\nEvaluating ${model} (Iter ${iter})...`);
       // Rebuild the vector database table for the specific model before querying
-      run(`node --experimental-strip-types scripts/build-guides.ts --model=${model} --no-chunking`);
+      const buildCmd = `node --experimental-strip-types scripts/build-guides.ts --model=${model}${isNoChunking ? ' --no-chunking' : ''}`;
+      run(buildCmd);
       run(`node --experimental-strip-types benchmarks/rag/eval-search.ts --model=${model}`);
+      
+      if (fs.existsSync(resultsPath)) {
+        const results = JSON.parse(fs.readFileSync(resultsPath, 'utf-8'));
+        const suffix = isNoChunking ? ' (No-Chunk)' : ' (Chunked)';
+        // Only append suffix if it's not already aggressively bound
+        if (!results[results.length - 1].model.includes(suffix)) {
+            results[results.length - 1].model = `${model}${suffix}`;
+            fs.writeFileSync(resultsPath, JSON.stringify(results, null, 2));
+        }
+      }
     }
   }
 
@@ -80,7 +95,16 @@ async function main() {
   
   console.log('\n\n=== FINAL VARIANCE ANALYSIS ===');
   for (const model of models) {
-    const modelRuns = results.filter((r: any) => r.model === model);
+    const suffix = isNoChunking ? ' (No-Chunk)' : ' (Chunked)';
+    const targetModel = `${model}${suffix}`;
+    
+    const modelRuns = results.filter((r: any) => r.model === targetModel);
+    
+    if (modelRuns.length === 0) {
+      console.log(`\nModel: ${targetModel}\nNo data found.`);
+      continue;
+    }
+
     const mrrValues = modelRuns.map((r: any) => r.meanReciprocalRank);
     const top1Values = modelRuns.map((r: any) => r.top1HitRate);
 
@@ -90,7 +114,7 @@ async function main() {
     const mrrVar = mrrValues.reduce((a:number, b:number) => a + Math.pow(b - mrrAvg, 2), 0) / mrrValues.length;
     const top1Var = top1Values.reduce((a:number, b:number) => a + Math.pow(b - top1Avg, 2), 0) / top1Values.length;
 
-    console.log(`\nModel: ${model}`);
+    console.log(`\nModel: ${targetModel}`);
     console.log(`Sample size: ${modelRuns.length} runs`);
     console.log(`Top-1 Hit Rate:  ${(top1Avg * 100).toFixed(2)}% (StdDev: ±${(Math.sqrt(top1Var) * 100).toFixed(2)}%)`);
     console.log(`MRR:             ${mrrAvg.toFixed(4)} (StdDev: ±${Math.sqrt(mrrVar).toFixed(4)})`);

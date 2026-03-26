@@ -1,8 +1,0 @@
-node_modules/
-dist*
-runtimes/
-.cache/
-onnxruntime-web/
-*.wasm
-*.tflite
-*.gguf
