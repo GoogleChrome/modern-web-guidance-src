@@ -117,6 +117,12 @@ ANTHROPIC_VERTEX_PROJECT_ID=<YOUR-GCP-PROJECT-ID>
 ANTHROPIC_MODEL='claude-opus-4-6'
 ```
 
+#### Codex CLI
+
+To use Codex CLI, you will need to request an exception, which appears when attempting to use it (`codex`).
+This request should file a bug similar to b/492300931, which includes a screenshot to the PCounsel approval.
+After approval, start `codex` locally and login to your account.
+
 ## Guides
 
 For adding and testing guides, see the [guides README](./guides/README.md).

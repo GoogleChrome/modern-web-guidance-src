@@ -76,7 +76,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir: s
   // Set environment variables
   process.env.HOME = tempHome;
   process.env.JETSKI_DIR = jetskiDest;
-  process.env.MCP_LOG_DIR = targetDir;
+  process.env.MODERN_WEB_LOG_DIR = targetDir;
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
@@ -468,12 +468,6 @@ async function run(): Promise<void> {
     killProcessOnPort(config.environment.jetskiDebugPort);
     cleanupIsolatedHome(path.dirname(workDir));
   }
-}
-
-export async function collectJetskiGuides(dirPath: string, serving: string): Promise<string[]> {
-  // TODO: Implement skills guide collection for Jetski (need gLinux-only binary, cannot land in GH)
-  console.log(`Jetski skills collection for ${dirPath} still needs to be populated using ${serving}.`);
-  return [];
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
