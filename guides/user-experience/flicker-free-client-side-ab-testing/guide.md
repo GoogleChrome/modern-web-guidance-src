@@ -21,8 +21,8 @@ The `blocking=render` attribute allows a `<script>` or `<link>` element placed i
 
 ### Implementation Strategy
 
-1. **MANDATORY:** Place the experimentation script in the document `<head>`.
-2. **MANDATORY:** Add the `blocking="render"` attribute alongside `async` on the script tag.
+1. **MANDATORY:** Place the experimentation script in the document `<head>` and add `blocking="render"`.
+2. **MANDATORY:** Ensure the script either has `type="module"` (preferred for inline scripts) or `async` (preferred for external scripts with a `src` value).
 3. **DO** keep the experimentation script small and fast. Because rendering is blocked until the script executes, a large or slow script directly delays first paint.
 4. **DO NOT** use `blocking="render"` on scripts that do not need to run before first paint. It is intended only for scripts whose output must be visible in the initial render.
 5. **DO NOT** apply `blocking="render"` to scripts outside the `<head>`. Only scripts in the `<head>` can block rendering.
