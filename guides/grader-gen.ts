@@ -3,9 +3,9 @@ import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 
-import { rootDir } from '../lib/root.ts';
+import { rootDir, guidesDir } from '../lib/paths.ts';
 
-const guidesDir = path.join(rootDir, 'guides');
+
 
 import config from '../harness/config.ts';
 import { createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders } from '../harness/lib/agent-shared.ts';

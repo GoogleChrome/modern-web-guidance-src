@@ -5,7 +5,7 @@ import { spawn } from 'child_process';
 import { config, Agents } from './config.ts';
 import matter from 'gray-matter';
 import { evaluateSuite } from './evaluate.ts';
-import { rootDir, harnessDir, baseAppsDir, tasksDir, resultsDir } from '../lib/root.ts';
+import { rootDir, harnessDir, baseAppsDir, tasksDir, resultsDir } from '../lib/paths.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 

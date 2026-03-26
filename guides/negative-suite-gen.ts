@@ -1,12 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 
-import { rootDir } from '../lib/root.ts';
+import { rootDir, baseAppsDir, tasksDir } from '../lib/paths.ts';
 
 import { scanAllGuides, classifyGuide } from '../harness/lib/utils.ts';
 
-const BASE_APPS_DIR = path.join(rootDir, 'harness', 'base_apps');
-const TASKS_DIR = path.join(rootDir, 'harness', 'tasks', 'negative');
+const TASKS_DIR = path.join(tasksDir, 'negative');
 
 function readFileSafe(filePath: string): string {
   try {
@@ -44,7 +43,7 @@ export async function generateNegativeSuite() {
     }
 
     // 1. Create base apps (with symlink to negative-demo.html)
-    const baseAppDir = path.join(BASE_APPS_DIR, 'negative', `${inv.name}`);
+    const baseAppDir = path.join(baseAppsDir, 'negative', `${inv.name}`);
     if (!fs.existsSync(baseAppDir)) {
       fs.mkdirSync(baseAppDir, { recursive: true });
     }

@@ -5,7 +5,7 @@ import 'colors';
 import { collectResults, extractModelFromResults } from './lib/collection.ts';
 import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
-import { rootDir } from '../lib/root.ts';
+import { rootDir, resultsDir as resultsDirBase } from '../lib/paths.ts';
 
 import { config } from './config.ts';
 
@@ -42,7 +42,7 @@ export async function evaluateSuite(resultsDir: string, suiteName: string) {
 export async function evaluate() {
   console.log('Starting Evaluation...'.cyan.bold);
 
-  const resultsDirBase = path.join(rootDir, 'harness', 'results');
+
   let suiteName = process.argv[2] || config.suite?.name;
 
   if (!suiteName) {

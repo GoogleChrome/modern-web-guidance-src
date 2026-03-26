@@ -3,7 +3,7 @@ import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents } from '../config.ts';
 import { classifyGuide, scanAllGuides } from './utils.ts';
-import { rootDir } from '../../lib/root.ts';
+import { rootDir, guidesDir } from '../../lib/paths.ts';
 
 /**
  * Promisified version of child_process.spawn.
@@ -184,7 +184,7 @@ export function updateMcpConfig(
  * @returns True if successful, false otherwise
  */
 export function copySkills(homeDir: string, agent: string, cli: boolean): boolean {
-  const guidesSource = path.join(rootDir, 'guides');
+  const guidesSource = guidesDir;
 
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {

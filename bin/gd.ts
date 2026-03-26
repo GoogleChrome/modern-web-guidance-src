@@ -7,7 +7,7 @@ import { spawn } from 'child_process';
 import omelette from 'omelette';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
 import { config, Serving } from '../harness/config.ts';
-import { rootDir, guidesDir, tasksDir, baseAppsDir, evalViewDir } from '../lib/root.ts';
+import { rootDir, guidesDir, tasksDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
 
 // Load environment variables (Node 20.12+)
 try {
