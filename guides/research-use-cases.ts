@@ -465,7 +465,11 @@ function parseUseCases(raw: string, availableCategories: string[]): UseCaseRespo
 
 function collectExistingDescriptions(): string[] {
   return scanAllGuides(path.join(rootDir, 'guides'))
-    .map((g) => matter(fs.readFileSync(path.join(g.dir, 'guide.md'), 'utf8')).data.description as string | undefined)
+    .map((g) => {
+      const guidePath = path.join(g.dir, 'guide.md');
+      if (!fs.existsSync(guidePath)) return undefined;
+      return matter(fs.readFileSync(guidePath, 'utf8')).data.description as string | undefined;
+    })
     .filter((d): d is string => !!d);
 }
 
