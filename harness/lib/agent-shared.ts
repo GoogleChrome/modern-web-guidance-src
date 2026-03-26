@@ -149,7 +149,23 @@ export function updateMcpConfig(
 
   try {
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
-    fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
+    if (agent === Agents.CODEX_CLI) {
+      let tomlContent = '';
+      for (const [serverName, serverConfig] of Object.entries(mcpConfig.mcpServers)) {
+        tomlContent += `[mcp_servers.${serverName}]\n`;
+        for (const [key, value] of Object.entries(serverConfig as Record<string, any>)) {
+          if (Array.isArray(value)) {
+            tomlContent += `${key} = [${value.map((v: any) => `"${v}"`).join(', ')}]\n`;
+          } else {
+            tomlContent += `${key} = "${value}"\n`;
+          }
+        }
+        tomlContent += '\n';
+      }
+      fs.writeFileSync(configPath, tomlContent);
+    } else {
+      fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
+    }
     if (serversToEnable.length > 0) {
       console.log(`Added MCP server config(s) to ${configPath}: ${Object.keys(mcpConfig.mcpServers).join(', ')}`);
     } else {
@@ -176,6 +192,8 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {
     destDir = path.join(homeDir, '.claude', 'skills');
+  } else if (agent === Agents.CODEX_CLI) {
+    destDir = path.join(homeDir, '.agents', 'skills');
   } else if (agent === Agents.JETSKI) {
     destDir = path.join(homeDir, '.gemini', 'jetski', 'skills');
   } else {
@@ -376,7 +394,7 @@ export function watchLogFile(logPath: string): () => void {
       if (currentData.length > prevData.length) {
         const newLogs = currentData.slice(prevData.length).trim();
         if (newLogs) {
-          const formattedLogs = newLogs.split('\n').map(line => `\x1b[33m[MCP Server Log]:\x1b[0m ${line}`).join('\n');
+          const formattedLogs = newLogs.split('\n').map(line => `\x1b[33m[Modern Web Log]:\x1b[0m ${line}`).join('\n');
           console.log(formattedLogs);
         }
         prevData = currentData;
@@ -421,6 +439,67 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
     } catch (e) {
       console.error(`Failed to export trajectory ${fileName}:`, e);
     }
+  }
+}
+
+/**
+ * Runs a CLI agent command, capturing output to the terminal and to log files.
+ * @param command The binary to run
+ * @param commandArgs The arguments
+ * @param workDir The working directory
+ * @param targetDir The target directory for logs and results
+ * @param agentName Name of the agent (for error messages)
+ */
+export async function runCliAgentCommand(
+  command: string,
+  commandArgs: string[],
+  workDir: string,
+  targetDir: string,
+  agentName: string
+): Promise<void> {
+  const child = spawn(command, commandArgs, {
+    cwd: workDir,
+    env: { ...process.env }, // Pass through environment variables (including new HOME)
+    stdio: ['ignore', 'pipe', 'pipe'] // 'pipe' captures output for log files but does NOT print to terminal natively
+  });
+
+  let stdoutData = '';
+  let stderrData = '';
+
+  child.stdout?.on('data', (data) => {
+    const chunk = data.toString();
+    stdoutData += chunk;
+    // Manually mirror to console so we can see progress while capturing
+    process.stdout.write(chunk);
+  });
+
+  child.stderr?.on('data', (data) => {
+    const chunk = data.toString();
+    stderrData += chunk;
+    // Manually mirror to console so we can see progress while capturing
+    process.stderr.write(chunk);
+  });
+
+  const exitCode = await new Promise((resolve) => {
+    child.on('close', resolve);
+  });
+
+  if (exitCode !== 0) {
+    throw new Error(`${agentName} exited with code ${exitCode}`);
+  }
+
+  copyResultsToTarget(workDir, targetDir);
+
+  // Save output to chat_log.txt
+  const chatLogPath = path.join(targetDir, 'chat_log.txt');
+  fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
+  console.log(`Saved output to: ${chatLogPath}`);
+
+  // Save stderr to agent_stderr.log to surface unexpected problems
+  if (stderrData.length > 0) {
+    const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
+    fs.writeFileSync(stderrLogPath, stderrData, 'utf8');
+    console.log(`Saved stderr to: ${stderrLogPath}`);
   }
 }
 

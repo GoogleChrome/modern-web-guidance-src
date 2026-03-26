@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Identify slow running JavaScript that is impacting INP metric Demo</title>
+</head>
+
+<body>
+  <h1>Identify slow running JavaScript that is impacting INP metric Demo</h1>
+  <button id="interact-button">Click me</button>
+  <div id="output"></div>
+
+  <script type="module">
+    // Load web-vitals from unpkg, but in a real application this would likely
+    // be bundled in the application analytics code
+    import { onINP } from 'https://unpkg.com/web-vitals/attribution?module';
+    // Observe INP with debug information
+    function sendToAnalytics(metric) {
+      const longestScript = metric.attribution.longestScript;
+
+      const inpDebugInfo = {
+        name: 'INP',
+        value: metric.value,
+        rating: metric.rating,
+        interactionType: metric.attribution.interactionType,
+        interactionTarget: metric.attribution.interactionTarget,
+        // Note script entries will be empty when loading this demo from a
+        // local file, instead of from a server.
+        longestScriptInvokerType: longestScript?.entry?.invokerType,
+        longestScriptSourceURL: longestScript?.entry?.sourceURL,
+        longestScriptSourceFunctionName: longestScript?.entry?.sourceFunctionName,
+        longestScriptSourceCharPosition: longestScript?.entry?.sourceCharPosition,
+        longestScriptSubpart: longestScript?.subpart,
+        longestScriptIntersectingDuration: longestScript?.intersectingDuration
+      }
+
+      // Console log for now, but in a real application would want to beacon
+      // back to an anlytics endpoint
+      console.log(inpDebugInfo);
+    }
+
+    onINP(sendToAnalytics, { reportAllChanges: true });
+
+    function handleClickSlowly() {
+      // Simulate work that delays the frame rendering
+      const start = performance.now();
+      while (performance.now() - start < 150) {
+        // block main thread for 150ms
+      }
+    }
+
+    document.getElementById('interact-button').addEventListener('click', handleClickSlowly);
+  </script>
+</body>
+
+</html>

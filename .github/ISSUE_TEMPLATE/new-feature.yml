@@ -7,7 +7,7 @@ body:
     id: web-feature-id
     attributes:
       label: web-feature-id
-      description: Provide the web-feature ID from https://webstatus.dev/
+      description: Provide the web-feature ID from https://webstatus.dev/, or provide a link to the pending feature request in the https://github.com/web-platform-dx/web-features repository.
       placeholder: e.g. scroll-driven-animations
     validations:
       required: true
@@ -17,8 +17,22 @@ body:
     attributes:
       label: Feature description
       description: Provide the web-feature description from https://webstatus.dev/
+      placeholder: The animation-timeline, scroll-timeline, and view-timeline CSS properties advance animations based on the user's scroll position.
     validations:
       required: true
+
+  - type: input
+    id: release-date
+    attributes:
+      label: Expected release date
+      description: To help us prioritize this feature, tell us when it is expected to ship or if it's tied to any major events.
+      placeholder: e.g. "I/O 2026" or "Chrome 200"
+
+  - type: textarea
+    id: agent-assessment
+    attributes:
+      label: Coding agent assessment
+      description: To help us prioritize this feature, describe how poorly a coding agent performs when asked to implement this feature.
 
   - type: textarea
     id: sources

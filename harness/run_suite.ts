@@ -50,7 +50,8 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string)
     const agentScript = path.join(__dirname, 'agents',
       agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
         agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-          'jetski-agent.ts'
+          agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
+            'jetski-agent.ts'
     );
 
     await runCommand('node', [
@@ -169,8 +170,10 @@ export async function runSuite(options: RunSuiteOptions = {}) {
             fs.mkdirSync(targetDir, { recursive: true });
           }
 
-          const agentScript = path.join(__dirname, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
+          const agentScript = path.join(__dirname, 'agents', 
+            agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
             agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
+            agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
               'jetski-agent.ts');
 
           // Generate runner script
@@ -238,7 +241,6 @@ process.exit(result.status ?? 0);
           }
         }
       }
-
     }
 
     if (hasErrors) {
