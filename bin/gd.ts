@@ -270,7 +270,7 @@ ${cBold('Options:')}
     }
 
     case 'research': {
-      const { main: research } = await import('../guides/research-use-cases.ts');
+      const { main: research } = await import('../guides/research.ts');
       await research(process.argv.slice(3));
       break;
     }

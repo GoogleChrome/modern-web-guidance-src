@@ -1,13 +1,11 @@
 /**
- * Research use cases for a web feature using the Gemini API with Google Search grounding.
+ * Research use cases for a web feature OR research full discipline skills using the Gemini API with Google Search grounding.
  *
  * This script automates Stage 1 of the guide creation pipeline described in
- * .agents/skills/project-use-cases/SKILL.md. It sends two grounded prompts to
- * Gemini (research, then use-case extraction), collects authoritative sources
- * discovered by the model, and scaffolds a guide.md stub for each proposed use
- * case so the author can move straight to Stage 2.
+ * .agents/skills/project-use-cases/SKILL.md (for use cases) OR generates structured
+ * action-oriented skill files for entire web platform disciplines (e.g., accessibility).
  *
- * Usage:
+ * Usage for Use Cases Research:
  *   # From a GitHub issue (feature ID and sources extracted automatically):
  *   gd research --issue 359
  *
@@ -16,14 +14,16 @@
  *     --sources https://developer.mozilla.org/en-US/docs/Web/API/Window/fetchLater \
  *               https://developer.chrome.com/blog/fetch-later-api-origin-trial
  *
- *   # Optional flags (work with both modes):
- *   gd research --issue 359 --category performance --dry-run
+ * Usage for Skills Research:
+ *   # Research a discipline from a seed URL (or fallback to web search structure if not found):
+ *   gd research --skills accessibility
  *
- *   # Use the deep research model for a more thorough turn 1 (takes 10-60 minutes):
- *   gd research --issue 359 --deep-research
+ *   # Provide explicit sources for structured discovery:
+ *   gd research --skills accessibility --sources https://web.dev/learn/accessibility/
  *
- *   # Resume a timed-out deep research interaction:
- *   gd research --issue 359 --resume <interaction-id>
+ * Optional flags (work with all modes):
+ *   --dry-run           Print proposed stubs or output without writing files
+ *   --category          Guide category override (performance, user-experience, accessibility, security)
  *
  * Required environment variable (add to .env):
  *   GEMINI_API_KEY
@@ -530,6 +530,100 @@ function createGuideStub(featureId: string, uc: UseCase, category: string, allSe
   }
 }
 
+async function runSkillsResearch(discipline: string, sources: string[], dryRun: boolean) {
+  const apiKey = loadApiKey();
+  const seedUrl = sources[0] || `https://web.dev/learn/${discipline}/`;
+  console.log(`\nSkills Research for: ${discipline}`);
+  console.log(`Seed URL: ${seedUrl}`);
+
+  // Fetch the page content
+  console.log(`[1] Fetching content from ${seedUrl}…`);
+  let pageText = '';
+  try {
+    const res = await fetch(seedUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    pageText = await res.text();
+  } catch (err) {
+    console.warn(`  Warning: failed to fetch ${seedUrl}. Proceeding with standard web research...`);
+    pageText = `No direct content fetched from seed URL. Start from scratch.`;
+  }
+
+  // Find TOC
+  console.log(`[2] Identifying TOC/Chapters…`);
+  const findTocPrompt = [
+    `Identify the table of contents or chapters for the discipline \`${discipline}\` from the following text.`,
+    `If you cannot find clear chapters or a TOC, propose a logical set of subdisciplines or chapters instead.`,
+    `- Omit any boilerplate, introductory, or concluding chapters (e.g., "Welcome", "Conclusion", "Next steps", "Glossary") that do not contain actionable web development guidelines for coding agents.`,
+    ``,
+    `Source text:`,
+    pageText.substring(0, 50000), // truncation to avoid massive token usage
+    ``,
+    `Respond with ONLY a JSON array of strings representing the chapter titles. No other markdown or prose.`,
+    `[ "Chapter 1 Title", "Chapter 2 Title", ... ]`
+  ].join('\n');
+
+  const { text: tocJson } = await generate(apiKey, [], findTocPrompt);
+  let chapters: string[] = [];
+  try {
+    const cleaned = tocJson.replace(/^```(?:json)?\s*/im, '').replace(/\s*```\s*$/m, '').trim();
+    chapters = JSON.parse(cleaned) as string[];
+  } catch {
+    console.warn(`  Failed to parse JSON from AI. Using fallback.`);
+    chapters = ["Overview", "Best Practices", "Key Features", "Common Mistakes"];
+  }
+
+  console.log(`  Found ${chapters.length} chapters/sections.`);
+  for (const c of chapters) console.log(`    - ${c}`);
+
+  // Research each chapter
+  const skillSections: string[] = [];
+  for (let i = 0; i < chapters.length; i++) {
+    const chapter = chapters[i];
+    console.log(`\n[${i + 3}] Researching chapter: ${chapter}…`);
+
+    const researchPrompt = [
+      `Research the topic \`${chapter}\` within the discipline \`${discipline}\`.`,
+      `Focus on providing **instructive guidelines for AI coding agents**.`,
+      `The output should NOT be an encyclopedic definition. It must be tangibly actionable.`,
+      `Provide a mix of:`,
+      `- Relevant text and context`,
+      `- Code examples (HTML, CSS, JS)`,
+      `- Concrete bulleted list of DOs and DON'Ts`,
+      ``,
+      `Use Google Search to find modern web standards, best practices (MDN, web.dev, developer.chrome.com).`,
+      `Respond with high quality markdown.`
+    ].join('\n');
+
+    const { text: chapterText } = await generate(apiKey, [], researchPrompt);
+    skillSections.push(`## ${chapter}\n\n${chapterText}`);
+  }
+
+  // Synthesis
+  console.log(`\n[Final] Synthesizing SKILL.md…`);
+  const finalPrompt = [
+    `Synthesize the following researched sections into a comprehensive \`${discipline}\` skill file for an AI coding assistant.`,
+    `The file MUST start with standard YAML frontmatter with \`name\` and \`description\`. Use standard triple-dash delimiters (\`---\`).`,
+    `The content should be a well-organized reference that provides clear instructions for coding agents.`,
+    `Review the sections and ensure they are instructive and actionable, not just a summary. Use clear headings, bullet points, do's/don'ts, and code examples.`,
+    ``,
+    ...skillSections.map(s => `---\n${s}`),
+  ].join('\n');
+
+  const { text: skillContent } = await generate(apiKey, [], finalPrompt);
+
+  const skillDir = path.join(rootDir, 'skills-drafts', discipline);
+  const skillFile = path.join(skillDir, 'SKILL.md');
+
+  if (dryRun) {
+    console.log(`\n[dry-run] Would create skills-drafts/${discipline}/SKILL.md:`);
+    console.log(skillContent);
+  } else {
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(skillFile, skillContent, 'utf8');
+    console.log(`\n✅ Generated: skills-drafts/${discipline}/SKILL.md`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -547,20 +641,23 @@ export async function main(args: string[] = process.argv.slice(2)) {
       resume: { type: 'string' },
       verbose: { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h' },
+      skills: { type: 'string' },
     },
     strict: true,
   });
 
-  if (values.help || (!values.issue && !values['feature-id'])) {
+  if (values.help || (!values.issue && !values['feature-id'] && !values.skills)) {
     console.log(`
 Usage:
   gd research --issue <number>                          # pull feature ID + sources from GitHub
   gd research --feature-id <id> --sources <url> [...]  # explicit inputs
+  gd research --skills <discipline> [--sources <url>]   # research an entire discipline and create a skill file
 
 Options:
   --issue          GitHub issue number (feature ID and sources extracted from the issue body)
   --feature-id     Web feature ID from the web-features package (e.g. fetchlater)
   --sources        One or more seed source URLs
+  --skills         Discipline to research for a skill file (e.g. accessibility)
   --category       Guide category: performance, user-experience, accessibility, security
                    (auto-detected from existing guides if omitted)
   --dry-run           Print proposed stubs without writing any files
@@ -581,6 +678,11 @@ Environment variables (set in .env):
   const resumeId = values.resume;
   const verbose = values['verbose']!;
   const categoryArg = values.category;
+
+  if (values.skills) {
+    await runSkillsResearch(values.skills, values.sources ?? [], dryRun);
+    return;
+  }
 
   // ── Resolve inputs (from --issue or explicit flags) ──────────────────────
   let featureId: string;
@@ -620,6 +722,7 @@ Environment variables (set in .env):
   }
 
   const apiKey = loadApiKey();
+
 
   console.log(`\nResearching use cases for: ${issueContext ? issueContext.title : featureId}`);
   if (seedSources.length) {
