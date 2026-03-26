@@ -539,7 +539,7 @@ export async function main(args: string[] = process.argv.slice(2)) {
       sources: { type: 'string', multiple: true },
       category: { type: 'string' },
       'dry-run': { type: 'boolean', default: false },
-      'deep-research': { type: 'boolean', default: false },
+      'no-deep-research': { type: 'boolean', default: false },
       resume: { type: 'string' },
       verbose: { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h' },
@@ -559,9 +559,9 @@ Options:
   --sources        One or more seed source URLs
   --category       Guide category: performance, user-experience, accessibility, security
                    (auto-detected from existing guides if omitted)
-  --dry-run        Print proposed stubs without writing any files
-  --deep-research  Use the deep research model for turn 1 (slower, more thorough)
-  --resume <id>    Resume a previous deep research interaction by ID (skips turn 1)
+  --dry-run           Print proposed stubs without writing any files
+  --no-deep-research  Use the standard model for turn 1 (faster, less thorough)
+  --resume <id>       Resume a previous deep research interaction by ID (skips turn 1)
   --verbose        Print the full research summary from turn 1
   --help           Show this help
 
@@ -573,7 +573,7 @@ Environment variables (set in .env):
   }
 
   const dryRun = values['dry-run']!;
-  const deepResearch = values['deep-research']! || !!values.resume;
+  const deepResearch = !values['no-deep-research'] || !!values.resume;
   const resumeId = values.resume;
   const verbose = values['verbose']!;
   const categoryArg = values.category;
@@ -627,7 +627,7 @@ Environment variables (set in .env):
   let history: Content[] = [];
 
   // ── Turn 1: Research ──────────────────────────────────────────────────────
-  console.log(`\n[1] Researching with Google Search grounding${deepResearch ? ' (deep research)' : ''}…`);
+  console.log(`\n[1] Researching with Google Search grounding${deepResearch ? ' (deep research)' : ' (standard)'}…`);
   const researchPrompt = buildResearchPrompt(featureId, featureInfo, seedSources, issueContext ?? undefined);
 
   const { text: researchText, sources: researchSources, updatedHistory: h1 } = deepResearch
