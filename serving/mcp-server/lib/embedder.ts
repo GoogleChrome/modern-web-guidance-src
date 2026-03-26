@@ -1,9 +1,4 @@
 import { pipeline, type FeatureExtractionPipeline } from "@huggingface/transformers";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export class Embedder {
   private static instance: Embedder;
