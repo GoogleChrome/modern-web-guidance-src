@@ -50,7 +50,8 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string)
     const agentScript = path.join(__dirname, 'agents',
       agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
         agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-          'jetski-agent.ts'
+          agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
+            'jetski-agent.ts'
     );
 
     await runCommand('node', [
@@ -169,8 +170,10 @@ export async function runSuite(options: RunSuiteOptions = {}) {
             fs.mkdirSync(targetDir, { recursive: true });
           }
 
-          const agentScript = path.join(__dirname, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
+          const agentScript = path.join(__dirname, 'agents', 
+            agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
             agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
+            agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
               'jetski-agent.ts');
 
           // Generate runner script
@@ -212,10 +215,14 @@ process.exit(result.status ?? 0);
       if (pnpmWorkspacePackages.length > 0) {
         console.log(`\n>>> Running all tests for Run ${runNumber} with pnpm -r run-agent ...`);
         // Drop a transient pnpm-workspace.yaml at the root of the run directory.
-        // The '**' pattern tells pnpm to recursively discover all the targetDirs
-        // we just seeded with package.json files.
+        // We explicitly list the packages to avoid running leftover tasks from previous runs
+        // (e.g. when switching from unguided to --guided).
         const pnpmWorkspacePath = path.join(runDir, 'pnpm-workspace.yaml');
-        fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
+        const yamlContent = [
+          'packages:',
+          ...pnpmWorkspacePackages.map(pkg => `  - '${pkg}'`)
+        ].join('\n') + '\n';
+        fs.writeFileSync(pnpmWorkspacePath, yamlContent);
         
         try {
           const pnpmArgs = ['-r'];
@@ -234,7 +241,6 @@ process.exit(result.status ?? 0);
           }
         }
       }
-
     }
 
     if (hasErrors) {

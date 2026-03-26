@@ -13,8 +13,17 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 export const Agents = {
   JETSKI: 'jetski',
   GEMINI_CLI: 'gemini_cli',
-  CLAUDE_CODE: 'claude_code'
+  CLAUDE_CODE: 'claude_code',
+  CODEX_CLI: 'codex_cli'
 } as const;
+
+export const Serving = {
+  SKILLS_CLI: 'skills_cli',
+  SKILLS: 'skills',
+  MCP: 'mcp'
+} as const;
+
+export type Serving = typeof Serving[keyof typeof Serving];
 
 // ******************************************
 // *** Set environment configuration      ***
@@ -35,6 +44,9 @@ export const environmentConfig: EnvironmentConfig = {
   claudeCodeCliBin: process.env.CLAUDE_CODE_CLI_BIN || path.join(__dirname, 'node_modules/.bin/claude'),
   gcpCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(os.homedir(), '.config/gcloud/application_default_credentials.json'),
 
+  // Codex Configuration
+  codexCliBin: process.env.CODEX_CLI_BIN || path.join(__dirname, 'node_modules/.bin/codex'),
+
   // MCP Server Configuration
   modernWebServerPath: path.join(__dirname, '../serving/mcp-server/index.ts'), // For modern-web MCP server
   mcpApiKey: process.env.MCP_API_KEY || '', // For google-developer-knowledge MCP server
@@ -42,10 +54,10 @@ export const environmentConfig: EnvironmentConfig = {
 
 export const suiteConfig: SuiteConfig = {
   name: `full-${new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-')}`,
-  numRuns: 2,
+  numRuns: 1,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
-  mcpServersToEnable: ['modern-web'], // Available servers: 'modern-web', 'google-developer-knowledge'
-  enableSkills: false,
+  mcpServersToEnable: [], // Available servers: 'modern-web', 'google-developer-knowledge'
+  serving: Serving.SKILLS_CLI,
   agent: Agents.GEMINI_CLI,
   negative: false, // When `true`, runs the suite on all tasks in `tasks/negative/`
 };
@@ -58,6 +70,7 @@ export interface EnvironmentConfig {
   geminiCliBin: string;
   geminiDir: string;
   claudeCodeCliBin: string;
+  codexCliBin: string;
   gcpCredentials: string;
   modernWebServerPath: string;
   mcpApiKey: string;
@@ -68,7 +81,7 @@ export interface SuiteConfig {
   numRuns: number;
   tasks: string[];
   mcpServersToEnable: string[];
-  enableSkills: boolean;
+  serving: Serving;
   agent: string;
   negative: boolean;
 }

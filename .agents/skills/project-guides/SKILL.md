@@ -11,6 +11,23 @@ This is the second of three stages in creating guidance:
 2. Stage 2: Authoring guidance for a use case (you are here)
 3. Stage 3: Evaluating guidance for a use case
 
+## What a real-world coding agent sees
+
+When a developer asks an AI coding assistant to implement something, the assistant retrieves the relevant `guide.md` via a RAG (vector search) system. **`guide.md` is the only project file a real-world coding agent ever sees.** Everything else in a use case directory is eval infrastructure:
+
+| File | Purpose | Seen by real-world agents? |
+|---|---|---|
+| `guide.md` | Guidance for implementing the use case | ✅ Yes — this is the only file |
+| `demo.html` | Reference implementation used to calibrate the grader | ❌ No |
+| `negative-demo.html` | Incorrect implementation used to verify the grader catches failures | ❌ No |
+| `expectations.md` | Source used to generate `grader.ts` | ❌ No |
+| `grader.ts` | Playwright tests run against the eval agent's output | ❌ No |
+| `prompts.md` | Simulated developer prompts used only by the eval harness | ❌ No |
+
+**Implication for `demo.html`:** Because real agents never see `demo.html`, it does not need to be a polished, production-ready example. It just needs to be a correct, minimal implementation that the grader can pass against. Do not over-engineer it.
+
+**Implication for `guide.md`:** Because `guide.md` is the agent's only source of truth, it must be entirely self-contained. Do not rely on agents reading `demo.html`, `expectations.md`, or any external link to understand how to implement the use case.
+
 **MANDATORY RULES FOR WRITING `guide.md`:**
 
 ### 1. YAML Frontmatter Schema
@@ -30,26 +47,25 @@ sources:
 * **sources**: Must be a list of ALL reference URLs used to synthesize the document. Add any URL referenced in the guide's research or inline links here.
 
 ### 2. Tone and Formatting
-* **MANDATORY:** Use strict imperative directives. Start instructions with `MANDATORY:`, `DO`, and `DO NOT`. Coding agents respond best to rigid constraints.
+* **Formatting Directives:** Use strict imperative directives (`MANDATORY:`, `DO`, `DO NOT`) only when emphasis is strictly needed (e.g., for critical constraints, security, or common pitfalls). Do not overuse them for every single instruction. Coding agents respond best to rigid constraints when they are selectively applied.
 * **Focus:** Keep it abstract but short. No fluff. No conversational text. Include a brief overview of the use case and explanation of why the solution outlined in the guide is the recommended approach.
-* **Self-Contained:** DO NOT require the reading agent to click external links to understand the code. All required knowledge to use the feature MUST be fully synthesized into the markdown body.
+* **Self-Contained:** DO NOT include any external links in the markdown body (`[link text](url)`). All required knowledge to use the feature MUST be fully synthesized into the markdown body. Agents must not be slowed down or require additional resources to implement the guidance.
 
 ### 3. Code Snippets
 * Include short, heavily commented code snippets.
 * Put directives directly in code comments so they are impossible to miss (e.g., `<!-- Always use the required attribute -->`).
-* Code comments MUST explain **WHY** a value or approach is chosen, not just what the code does. An agent that copies magic values without understanding them will apply them incorrectly. If a value is context-dependent (e.g., a threshold that should vary by use case), say so explicitly.
+* Code comments MUST explain why a value or approach is chosen, not just what the code does. An agent that copies magic values without understanding them will apply them incorrectly. If a value is context-dependent (e.g., a threshold that should vary by use case), say so explicitly.
 
 ### 4. Implementation Steps
 * Only mark steps as `MANDATORY` if they are truly required for the feature to function. Optional steps (e.g., adding scroll snap, adding an event listener for progressive enhancement) must be labeled as optional. Incorrect use of `MANDATORY` causes agents to implement unnecessary complexity.
 * The guide is the agent's **only** source of truth. DO NOT reference `demo.html` or any other file — agents won't have access to them. Everything the agent needs to implement the use case must be in `guide.md`.
-* Use **Baseline** terminology to describe browser support (e.g., "Baseline Widely Available", "Baseline Limited Availability"). DO NOT say "only supported in Chrome" or reference a specific browser version.
-* When recommending feature detection, prefer checking `HTMLElement.prototype` (e.g., `'onbeforematch' in HTMLElement.prototype`) over `window` or `document`, as it is more reliable.
 
 ### 5. Fallback Strategies
-* If the feature is not "Baseline Widely Available", you **MUST** include a `### Fallback strategies` section.
-* **DO** use the `{{ BASELINE_STATUS("feature-id") }}` macro to display the current support status as the first, standalone line in the section.
+* You **MUST** include a `### Fallback strategies` section regardless of Baseline status, as developers may have older baseline targets.
+* **MANDATORY**: The `{{ BASELINE_STATUS("feature-id") }}` macro must *always* be placed as the first, standalone line inside the `### Fallback strategies` section. Do not place it at the top of the document.
 * **OPTIONAL** provide an optional second argument for specific BCD keys: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
-* Show explicit code for feature detection (e.g., `CSS.supports()`, `if ('feature' in window)`) or graceful degradation techniques.
+* **MANDATORY**: You MUST explicitly describe the fallback experience for unsupported browsers. Explain if the feature is a progressive enhancement (and what the base experience looks like), or show explicit code for feature detection (e.g., `CSS.supports()`, `if ('feature' in window)`) and graceful degradation techniques.
+* When recommending feature detection, prefer checking `HTMLElement.prototype` (e.g., `'onbeforematch' in HTMLElement.prototype`) over `window` or `document`, as it is more reliable.
 * When recommending a polyfill, ALWAYS show how to conditionally load it only for browsers that need it. Do not instruct agents to unconditionally load polyfills.
 * **DO NOT** recommend polyfills from polyfill.io.
 

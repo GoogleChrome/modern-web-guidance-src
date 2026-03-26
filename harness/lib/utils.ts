@@ -81,6 +81,7 @@ export function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): Gui
   const hasExpectations = fs.existsSync(path.join(dir, EXPECTATIONS_FILE));
 
   const guideContent = readFileSafe(path.join(dir, GUIDE_FILE));
+  console.log(dir);
   let hasGuide = false;
   let isStub = false;
 

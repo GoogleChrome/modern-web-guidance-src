@@ -75,15 +75,17 @@ setInterval(queueBeacon, 10000);
 
 ## Browser support and fallback strategies
 
-{{ BASELINE_STATUS("fetchlater") }}. Therefore, a fallback strategy is typically required.
+{{ BASELINE_STATUS("fetchlater") }}
 
-However, given the improved reliability and performance benefits of this API, `fetchLater()` should be used if the browser supports it.
+A fallback strategy is required if `fetchLater()` doesn't meet your Baseline target. However, given the improved reliability and performance benefits of this API, `fetchLater()` should be used if the browser supports it.
+
+The recommended fallback strategy is to use the polyfill below, which internally handles unsupporting browsers using `fetch()` with `keepalive` or `navigator.sendBeacon()`. Your own code MUST call `fetchLater()` directly — never call `fetch()`, `sendBeacon()`, or other beacon APIs yourself.
 
 ### `fetchLater()` polyfill
 
 Use the following minimal `fetchLater()` polyfill, which implements the API as closely as possible in unsupporting browsers.
 
-The only notable behavior difference with this polyfill is instead of sending the payload when the user leaves the page, it sends it whenever the page's `visibilityState` changes to "hidden", since this is the most reliable end-of-session signal that's widely available today.
+The only notable behavior difference with this polyfill is that it uses `visibilitychange` to detect when the user leaves, rather than relying on the browser's native unload handling. This is an internal implementation detail — your code does not need to listen for `visibilitychange` or any other page lifecycle events. Just call `fetchLater()` and the polyfill handles delivery.
 
 ```js
 globalThis.fetchLater ??= function fetchLater(url, init = {}) {

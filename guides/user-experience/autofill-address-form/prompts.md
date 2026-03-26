@@ -1,16 +1,4 @@
-Create an address form.
-
-Create a name and address form.
-
-Create an HTML address form.
-
-Create a form that includes fields for name and address.
-
-Create a form for address entry.
-
-Create an address form that follows best practice.
-
-Create an address form that follows best practice for autofill.
-
-Build an address form.
-
+- can you build me a shipping address form for the checkout page?
+- add a form to collect the user's name and full address
+- update the address form to use all the right html attributes for better data entry
+- create a simple address form for the checkout delivery step

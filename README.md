@@ -53,10 +53,6 @@ The [Developer Knowledge MCP server](https://developers.google.com/knowledge/mcp
 
 It requires the `MCP_API_KEY` to be set to a GCP API key with access enabled for the Developer Knowledge API.
 
-#### Skills
-
-Skills live in the `skills/` directory, and they are copied directly into the agent harness working directory when the `enableSkills` flag is set to true in the [`harness/config.ts`](./harness/config.ts) file.
-
 ### 2. Eval Harness & Dashboard
 
 The evaluation suite measures how effectively AI models use modern web APIs.
@@ -120,6 +116,12 @@ CLOUD_ML_REGION=global
 ANTHROPIC_VERTEX_PROJECT_ID=<YOUR-GCP-PROJECT-ID>
 ANTHROPIC_MODEL='claude-opus-4-6'
 ```
+
+#### Codex CLI
+
+To use Codex CLI, you will need to request an exception, which appears when attempting to use it (`codex`).
+This request should file a bug similar to b/492300931, which includes a screenshot to the PCounsel approval.
+After approval, start `codex` locally and login to your account.
 
 ## Guides
 
