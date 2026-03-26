@@ -102,7 +102,7 @@ async function main() {
   if (fs.existsSync(RESULTS_FILE)) {
     try {
       history = JSON.parse(fs.readFileSync(RESULTS_FILE, "utf-8"));
-    } catch (e) {}
+    } catch {}
   }
 
   history.push(metrics);

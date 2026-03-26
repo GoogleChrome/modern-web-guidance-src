@@ -70,8 +70,9 @@ ${markdownContent.substring(0, 3000)}
 
   try {
     const list: string[] = JSON.parse(rawText);
+    if (!Array.isArray(list)) throw new Error("Parsed JSON is not an array");
     return list;
-  } catch (e) {
+  } catch {
     throw new Error(`Failed to parse JSON array from Gemini output: ${rawText}`);
   }
 }

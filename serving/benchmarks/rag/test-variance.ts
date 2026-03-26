@@ -7,7 +7,7 @@ const ROOT = path.join(process.cwd());
 function run(cmd: string) {
   try {
     execSync(cmd, { stdio: 'inherit', cwd: ROOT });
-  } catch (e: any) {
+  } catch {
     console.warn(`Command failed but continuing: ${cmd}`);
   }
 }
