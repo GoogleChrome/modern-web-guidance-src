@@ -82,7 +82,7 @@ export interface PreparedGuide {
   description: string;
   featureIds: string[];
   relativeSubdir: string;
-  statusName: string | null;
+  statusName: ProjectStatus | null;
 }
 
 export interface GuideInventoryResult {
@@ -551,7 +551,7 @@ async function syncIssue(
   issueBody: string,
   priorityLabel: string | null,
   milestoneNumber: number | null,
-  statusName: string | null,
+  statusName: ProjectStatus | null,
   activeIssueNumbers: Set<number>,
   currentProjectStatus?: string
 ): Promise<{ issueNumber: number; changed: boolean }> {
