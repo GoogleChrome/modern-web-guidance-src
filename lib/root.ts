@@ -21,3 +21,10 @@ export function getRootDir(): string {
 }
 
 export const rootDir = getRootDir();
+
+export const guidesDir = path.join(rootDir, 'guides');
+export const harnessDir = path.join(rootDir, 'harness');
+export const tasksDir = path.join(harnessDir, 'tasks');
+export const baseAppsDir = path.join(harnessDir, 'base_apps');
+export const resultsDir = path.join(harnessDir, 'results');
+export const evalViewDir = path.join(rootDir, 'eval-view');
