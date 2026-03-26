@@ -113,9 +113,6 @@ importers:
       apache-arrow:
         specifier: 21.1.0
         version: 21.1.0
-      gpt4all:
-        specifier: ^4.0.0
-        version: 4.0.0
       marked:
         specifier: ^17.0.4
         version: 17.0.4
@@ -138,6 +135,9 @@ importers:
       gh-pages:
         specifier: ^6.3.0
         version: 6.3.0
+      gpt4all:
+        specifier: ^4.0.0
+        version: 4.0.0
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
