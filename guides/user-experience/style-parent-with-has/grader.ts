@@ -1,6 +1,8 @@
 import { test, expect, type Locator } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { parseHTML } from 'linkedom';
+import { parseSync } from 'oxc-parser';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -10,6 +12,10 @@ const filePath = path.resolve(targetFile);
 const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
+const htmlStr = fs.readFileSync(filePath, 'utf-8');
+
+// Initialize static DOM
+const { document } = parseHTML(htmlStr);
 
 // Helper: robust ancestor check leveraging Playwright's auto-retrying locators
 async function waitForErrorState(page: any, formField: Locator, expectRed: boolean) {
@@ -36,9 +42,54 @@ async function waitForErrorState(page: any, formField: Locator, expectRed: boole
 
 test.describe(`Style parent with :has() Expectations: ${demoName}`, () => {
   // Static checks
-  test('Static: Implementation must use JS class toggling for fallback', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/classList\.(toggle|add|remove)/);
+  test('Static: Implementation must use JS class toggling for fallback', () => {
+    const scripts = Array.from(document.querySelectorAll('script')).map(s => s.textContent || '').join('\n');
+    let foundClassListToggle = false;
+
+    if (scripts.trim()) {
+      const { program } = parseSync('test.js', scripts);
+      
+      // Simple recursive AST visitor
+      function visit(node: any) {
+        if (!node || typeof node !== 'object') return;
+        
+        if (node.type === 'MemberExpression') {
+          // Check for classList.(toggle|add|remove)
+          if (node.object && node.object.property && node.object.property.name === 'classList') {
+            const propName = node.property?.name;
+            if (propName === 'toggle' || propName === 'add' || propName === 'remove') {
+              foundClassListToggle = true;
+            }
+          }
+        }
+        
+        for (const key in node) {
+          if (Array.isArray(node[key])) {
+            node[key].forEach(visit);
+          } else {
+            visit(node[key]);
+          }
+        }
+      }
+      
+      visit(program);
+    }
+    
+    // In case there is inline JS in html attributes (like oninput=""), check those too using DOM
+    if (!foundClassListToggle) {
+        const allElements = Array.from(document.querySelectorAll('*'));
+        for(const el of allElements) {
+            for(const attr of Array.from(el.attributes)) {
+                if(attr.name.startsWith('on') && attr.value.includes('classList')) {
+                   if(/classList\.(toggle|add|remove)/.test(attr.value)) {
+                       foundClassListToggle = true;
+                   }
+                }
+            }
+        }
+    }
+    
+    expect(foundClassListToggle).toBe(true);
   });
 
   // Browser tests

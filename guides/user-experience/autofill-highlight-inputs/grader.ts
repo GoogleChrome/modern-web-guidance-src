@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { parseHTML } from 'linkedom';
+import * as csstree from 'css-tree';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -14,54 +16,86 @@ const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
 test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
-
-  // CSS selector checks use the HTML source because browsers normalize :autofill
-  // to :-webkit-autofill in the CSSOM, making stylesheet inspection unreliable.
+  const html = fs.readFileSync(filePath, 'utf-8');
+  const { document } = parseHTML(html);
+  
+  // Extract CSS
+  const styles = Array.from(document.querySelectorAll('style')).map(s => s.textContent).join('\n');
+  const ast = csstree.parse(styles);
 
   test('The :autofill pseudo-class must be applied to a form control', () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/\b(input|select|textarea):autofill\b/i.test(html)).toBe(true);
+    let hasAutofill = false;
+    csstree.walk(ast, {
+      visit: 'PseudoClassSelector',
+      enter(node) {
+        if (node.name.toLowerCase() === 'autofill') hasAutofill = true;
+      }
+    });
+    expect(hasAutofill).toBe(true);
   });
 
   test('The incorrect spelling :auto-fill must not be used', () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/:auto-fill\b/i.test(html)).toBe(false);
+    let hasInvalid = false;
+    csstree.walk(ast, {
+      visit: 'PseudoClassSelector',
+      enter(node) {
+        if (node.name.toLowerCase() === 'auto-fill') {
+          hasInvalid = true;
+        }
+      }
+    });
+    expect(hasInvalid).toBe(false);
   });
 
   test('The :autofill pseudo-class must only be applied to <input>, <select>, or <textarea>', () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const matches = [...html.matchAll(/([a-zA-Z][\w-]*):(?:-webkit-)?auto-?fill\b/gi)];
-    const invalidTags = matches.map(m => m[1].toLowerCase()).filter(t => !['input', 'select', 'textarea'].includes(t));
+    let invalidTags: string[] = [];
+    
+    csstree.walk(ast, {
+      visit: 'Selector',
+      enter(node) {
+        const selectorText = csstree.generate(node);
+        if (selectorText.toLowerCase().includes(':autofill')) {
+          // Verify it starts with input, select, or textarea
+          const isValid = selectorText.startsWith('input') || 
+                          selectorText.startsWith('select') || 
+                          selectorText.startsWith('textarea');
+          if (!isValid) invalidTags.push(selectorText);
+        }
+      }
+    });
+    
     expect(invalidTags).toHaveLength(0);
   });
 
-  test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
-      const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+  test.describe('Browser tests', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.route('http://localhost/*', async (route) => {
+        const requestPath = new URL(route.request().url()).pathname;
+        const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
 
-      if (fs.existsSync(localFilePath)) {
-        await route.fulfill({ path: localFilePath });
-      } else {
-        await route.continue();
+        if (fs.existsSync(localFilePath)) {
+          await route.fulfill({ path: localFilePath });
+        } else {
+          await route.continue();
+        }
+      });
+
+      await page.goto(demoUrl);
+    });
+
+    test('JavaScript must not apply inline styles to form controls', async ({ page }) => {
+      const controls = await page.locator('input:not([type="submit"]):not([type="button"]), select, textarea').all();
+      for (const control of controls) {
+        await control.fill('Test Value').catch(() => {});
       }
+      await page.waitForTimeout(1000);
+
+      const hasInlineStyles = await page.evaluate(() => {
+        return Array.from(document.querySelectorAll('input, select, textarea'))
+          .some(el => (el as HTMLElement).style.length > 0);
+      });
+      expect(hasInlineStyles).toBe(false);
     });
-
-    await page.goto(demoUrl);
-  });
-
-  test('JavaScript must not apply inline styles to form controls', async ({ page }) => {
-    const controls = await page.locator('input:not([type="submit"]):not([type="button"]), select, textarea').all();
-    for (const control of controls) {
-      await control.fill('Test Value').catch(() => {});
-    }
-    await page.waitForTimeout(1000);
-
-    const hasInlineStyles = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('input, select, textarea'))
-        .some(el => (el as HTMLElement).style.length > 0);
-    });
-    expect(hasInlineStyles).toBe(false);
   });
 
 });

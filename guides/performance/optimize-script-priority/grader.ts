@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { parseHTML } from 'linkedom';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -9,47 +10,37 @@ if (!targetFile) {
 }
 
 const filePath = path.resolve(targetFile);
-const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
-const demoUrl = `http://localhost/${demoName}`;
+const htmlStr = fs.readFileSync(filePath, 'utf-8');
+
+// Initialize a static parser
+const { document } = parseHTML(htmlStr);
 
 // Tests
 test.describe(`optimize-script-priority Expectations: ${demoName}`, () => {
-  // Setup browser testing
-  test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
-      const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
-
-      if (fs.existsSync(localFilePath)) {
-        await route.fulfill({ path: localFilePath });
-      } else {
-        await route.continue();
-      }
-    });
-
-    await page.goto(demoUrl);
+  // --- STATIC ASSERTIONS ---
+  test(`The script at /js/app.js has both the async and fetchpriority="high" attributes`, () => {
+    const scripts = document.querySelectorAll('script[src="/js/app.js"][async][fetchpriority="high"]');
+    expect(scripts.length).toBe(1);
   });
 
-  // Browser assertions
-  test(`The script at /js/app.js has both the async and fetchpriority="high" attributes`, async ({ page }) => {
-    await expect(page.locator('script[src="/js/app.js"][async][fetchpriority="high"]')).toHaveCount(1);
+  test(`The script at /js/legacy-widgets.js has the fetchpriority="low" attribute`, () => {
+    const script = document.querySelector('script[src="/js/legacy-widgets.js"]');
+    expect(script?.getAttribute('fetchpriority')).toBe('low');
   });
 
-  test(`The script at /js/legacy-widgets.js has the fetchpriority="low" attribute`, async ({ page }) => {
-    await expect(page.locator('script[src="/js/legacy-widgets.js"]')).toHaveAttribute('fetchpriority', 'low');
+  test(`The script at /js/tracker.js does NOT have the fetchpriority="high" attribute`, () => {
+    const script = document.querySelector('script[src="/js/tracker.js"]');
+    expect(script?.getAttribute('fetchpriority')).not.toBe('high');
   });
 
-  test(`The script at /js/tracker.js does NOT have the fetchpriority="high" attribute`, async ({ page }) => {
-    await expect(page.locator('script[src="/js/tracker.js"]')).not.toHaveAttribute('fetchpriority', 'high');
+  test(`No more than two <script> elements total on the page have the fetchpriority="high" attribute`, () => {
+    const scripts = document.querySelectorAll('script[fetchpriority="high"]');
+    expect(scripts.length).toBeLessThanOrEqual(2);
   });
 
-  test(`No more than two <script> elements total on the page have the fetchpriority="high" attribute`, async ({ page }) => {
-    const count = await page.locator('script[fetchpriority="high"]').count();
-    expect(count).toBeLessThanOrEqual(2);
-  });
-
-  test(`No <script> elements have the deprecated importance attribute`, async ({ page }) => {
-    await expect(page.locator('script[importance]')).toHaveCount(0);
+  test(`No <script> elements have the deprecated importance attribute`, () => {
+    const scripts = document.querySelectorAll('script[importance]');
+    expect(scripts.length).toBe(0);
   });
 });

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { parseHTML } from 'linkedom';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -9,106 +10,100 @@ if (!targetFile) {
 }
 
 const filePath = path.resolve(targetFile);
-const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
-const demoUrl = `http://localhost/${demoName}`;
+const htmlStr = fs.readFileSync(filePath, 'utf8');
+
+// Use linkedom static analysis instead of headless browser
+const { document } = parseHTML(htmlStr);
 
 test.describe(`autofill-sign-in-form Expectations: ${demoName}`, () => {
 
-  test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
-      const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
-
-      if (fs.existsSync(localFilePath)) {
-        await route.fulfill({ path: localFilePath });
-      } else {
-        await route.continue();
-      }
-    });
-
-    await page.goto(demoUrl);
+  test('All inputs must be within a <form> element', () => {
+    const inputCount = document.querySelectorAll('input').length;
+    const inputsInFormCount = document.querySelectorAll('form input').length;
+    expect(inputCount).toBeGreaterThan(0);
+    expect(inputCount).toBe(inputsInFormCount);
   });
 
-  test('All inputs must be within a <form> element', async ({ page }) => {
-    const inputCount = await page.locator('input').count();
-    const inputsInFormCount = await page.locator('form input').count();
-    expect(inputCount > 0 && inputCount === inputsInFormCount).toBe(true);
+  test('The form must have a submit button', () => {
+    const submitButton = document.querySelector('form button:not([type]), form button[type="submit"], form input[type="submit"]');
+    expect(submitButton).not.toBeNull();
   });
 
-  test('The form must have a submit button', async ({ page }) => {
-    const submitButtons = page.locator('form button:not([type]), form button[type="submit"], form input[type="submit"]');
-    await expect(submitButtons.first()).toBeVisible();
+  test('Every input in the form must have an associated label', () => {
+    const inputs = Array.from(document.querySelectorAll('form input'));
+    expect(inputs.length).toBeGreaterThan(0);
+    
+    for (const input of inputs) {
+      const id = input.id;
+      expect(id).not.toBeFalsy(); // Must have an id to link to a label
+      const label = document.querySelector(`label[for="${id}"]`);
+      expect(label).not.toBeNull();
+      expect((label as HTMLElement).textContent?.trim()).not.toBe('');
+    }
   });
 
-  test('Every input in the form must have an associated label', async ({ page }) => {
-    const result = await page.evaluate(() => {
-      const inputs = Array.from(document.querySelectorAll('form input'));
-      if (inputs.length === 0) return { count: -1 };
-      const unlabeled = inputs.filter(input => {
-        const id = input.id;
-        if (!id) return true;
-        const label = document.querySelector(`label[for="${id}"]`);
-        return !label || (label as HTMLElement).innerText.trim() === '';
-      });
-      return { count: unlabeled.length };
-    });
-    expect(result?.count).toBe(0);
+  test('Labels must have a "for" attribute matching an input "id"', () => {
+    const labels = Array.from(document.querySelectorAll('label'));
+    expect(labels.length).toBeGreaterThan(0);
+    
+    for (const label of labels) {
+      const forAttr = label.getAttribute('for');
+      expect(forAttr).not.toBeFalsy();
+      const input = document.getElementById(forAttr!);
+      expect(input).not.toBeNull();
+      expect(input?.tagName).toBe('INPUT');
+    }
   });
 
-  test('Labels must have a "for" attribute matching an input "id"', async ({ page }) => {
-    const result = await page.evaluate(() => {
-      const labels = Array.from(document.querySelectorAll('label'));
-      if (labels.length === 0) return { count: -1 };
-      const invalid = labels.filter(label => {
-        const forAttr = label.getAttribute('for');
-        if (!forAttr) return true;
-        const input = document.getElementById(forAttr);
-        return !input || input.tagName !== 'INPUT';
-      });
-      return { count: invalid.length };
-    });
-    expect(result?.count).toBe(0);
+  test('No element must use autocomplete="off"', () => {
+    const badElements = document.querySelectorAll('[autocomplete="off"]');
+    expect(badElements.length).toBe(0);
   });
 
-  test('No element must use autocomplete="off"', async ({ page }) => {
-    await expect(page.locator('[autocomplete="off"]')).toHaveCount(0);
+  test('Email input must have type="email"', () => {
+    const emailInput = document.querySelector('input[type="email"]');
+    expect(emailInput).not.toBeNull();
   });
 
-  test('Email input must have type="email"', async ({ page }) => {
-    await expect(page.locator('input[type="email"]').first()).toBeVisible();
+  test('Email input must have autocomplete="username"', () => {
+    const emailInput = document.querySelector('input[type="email"]');
+    expect(emailInput?.getAttribute('autocomplete')).toBe('username');
   });
 
-  test('Email input must have autocomplete="username"', async ({ page }) => {
-    await expect(page.locator('input[type="email"]').first()).toHaveAttribute('autocomplete', 'username');
+  test('Password input must have type="password"', () => {
+    const passwordInput = document.querySelector('input[type="password"]');
+    expect(passwordInput).not.toBeNull();
   });
 
-  test('Password input must have type="password"', async ({ page }) => {
-    await expect(page.locator('input[type="password"]').first()).toBeVisible();
+  test('Password input must have autocomplete="current-password"', () => {
+    const passwordInput = document.querySelector('input[type="password"]');
+    expect(passwordInput?.getAttribute('autocomplete')).toBe('current-password');
   });
 
-  test('Password input must have autocomplete="current-password"', async ({ page }) => {
-    await expect(page.locator('input[type="password"]').first()).toHaveAttribute('autocomplete', 'current-password');
+  test('Password input must have id="current-password"', () => {
+    const passwordInput = document.querySelector('input[type="password"]');
+    expect(passwordInput?.id).toBe('current-password');
   });
 
-  test('Password input must have id="current-password"', async ({ page }) => {
-    await expect(page.locator('input[type="password"]').first()).toHaveId('current-password');
+  test('Email input must be required', () => {
+    const emailInput = document.querySelector('input[type="email"]');
+    expect(emailInput?.hasAttribute('required')).toBe(true);
   });
 
-  test('Email input must be required', async ({ page }) => {
-    await expect(page.locator('input[type="email"]').first()).toHaveJSProperty('required', true);
+  test('Password input must be required', () => {
+    const passwordInput = document.querySelector('input[type="password"]');
+    expect(passwordInput?.hasAttribute('required')).toBe(true);
   });
 
-  test('Password input must be required', async ({ page }) => {
-    await expect(page.locator('input[type="password"]').first()).toHaveJSProperty('required', true);
+  test('There must be exactly one email input', () => {
+    const emailInputs = document.querySelectorAll('input[type="email"]');
+    expect(emailInputs.length).toBe(1);
   });
 
-  test('There must be exactly one email input', async ({ page }) => {
-    await expect(page.locator('input[type="email"]')).toHaveCount(1);
-  });
-
-  test('There must be exactly one password input', async ({ page }) => {
-    await expect(page.locator('input[type="password"]')).toHaveCount(1);
+  test('There must be exactly one password input', () => {
+    const passwordInputs = document.querySelectorAll('input[type="password"]');
+    expect(passwordInputs.length).toBe(1);
   });
 
 });
