@@ -1,41 +1,42 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, createWorkDir, copySkills, watchLogFile, runCliAgentCommand } from '../lib/agent-shared.ts';
+import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, updateMcpConfig, watchLogFile, copyFileIfExists, runCliAgentCommand } from '../lib/agent-shared.ts';
 import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
-import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
+import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
 
-// Usage: node claude-code-agent.ts <prompt> <runType> <targetDir> <templateDir>
+import { fileURLToPath } from 'url';
+
+// Usage: node codex-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
 /**
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
 function setupIsolatedWorkDir(templateDir: string, runType: string): string {
-  const tempHome = createIsolatedHome('ghh-claude');
+  const tempHome = createIsolatedHome('ghh-codex');
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
-  // Copy GCP credentials (for Vertex auth)
-  const gcloudConfigDest = path.join(tempHome, '.config/gcloud');
-  fs.mkdirSync(gcloudConfigDest, { recursive: true });
-  copyFileIfExists(config.environment.gcpCredentials, path.join(gcloudConfigDest, 'application_default_credentials.json'));
+  // Copy Codex auth file
+  const codexGlobalDir = path.join(os.homedir(), '.codex');
+  const codexDestDir = path.join(tempHome, '.codex');
+  fs.mkdirSync(codexDestDir, { recursive: true });
+  copyFileIfExists(path.join(codexGlobalDir, 'auth.json'), path.join(codexDestDir, 'auth.json'));
 
-  // Set environment variables
   process.env.HOME = tempHome;
 
-  // Add CLAUDE context and MCP servers for guided runs
   if (runType === 'guided') {
     const approach = config.suite.serving;
 
     if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
-      copySkills(tempHome, Agents.CLAUDE_CODE, approach === Serving.SKILLS_CLI);
+      copySkills(tempHome, Agents.CODEX_CLI, approach === Serving.SKILLS_CLI);
     } else if (approach === Serving.MCP) {
       updateMcpConfig(
-        path.join(tempHome, '.claude.json'),
+        path.join(tempHome, '.codex', 'config.toml'),
         config.suite.mcpServersToEnable,
         config.environment.modernWebServerPath,
         config.environment.mcpApiKey,
-        Agents.CLAUDE_CODE
+        Agents.CODEX_CLI
       );
     }
   }
@@ -43,20 +44,20 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
   return workDir;
 }
 
-function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void {
+function exportCodexTrajectories(workDir: string, targetDir: string): void {
   const tempHome = path.dirname(workDir);
-  const claudeLogDir = path.join(tempHome, '.claude', 'projects');
+  const codexLogDir = path.join(tempHome, '.codex', 'sessions');
   
-  if (!fs.existsSync(claudeLogDir)) {
+  if (!fs.existsSync(codexLogDir)) {
     return;
   }
 
-  // Find all jsonl files in the Claude projects directory
-  const files = fs.globSync('**/*.jsonl', { cwd: claudeLogDir });
-  
+  // Find all jsonl files in the Codex sessions directory
+  const files = fs.globSync('**/*.jsonl', { cwd: codexLogDir });
+
   for (const relativePath of files as string[]) {
-    const src = path.join(claudeLogDir, relativePath);
-    
+    const src = path.join(codexLogDir, relativePath);
+
     // 1. Determine base name and copy original JSONL file to targetDir
     const baseName = relativePath.replace(/[\\/]/g, '-').replace(/\.jsonl$/, '');
     const rawDestName = `session-${baseName}.jsonl`;
@@ -65,7 +66,7 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
     // 2. Read and parse JSONL
     const logContent = fs.readFileSync(src, 'utf8');
     const jsonLines = logContent.split(/\r?\n/).filter(Boolean);
-    
+
     const logData = jsonLines.map(line => {
       try {
         return JSON.parse(line);
@@ -76,7 +77,7 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
     });
 
     // 3. Generate and save the HTML viewer
-    const htmlContent = generateClaudeTrajectoryHtml(logData);
+    const htmlContent = generateCodexTrajectoryHtml(logData);
 
     // 4. Save HTML viewer to target directory
     const destName = `session-${baseName}.html`;
@@ -85,11 +86,8 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
   }
 }
 
-/**
- * Executes the Claude CLI command and captures output.
- */
 async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
+  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('codex-cli-agent.ts');
   const workDir = setupIsolatedWorkDir(templateDir, runType);
 
   if (!workDir || !fs.existsSync(workDir)) {
@@ -97,13 +95,13 @@ async function run() {
   }
 
   try {
-    console.log(`Starting Claude Code agent in: ${workDir}`);
+    console.log(`Starting Codex agent in: ${workDir}`);
 
-    const command = config.environment.claudeCodeCliBin;
+    const command = config.environment.codexCliBin;
     const commandArgs = [
-      '-p', userPrompt,
-      '--dangerously-skip-permissions',
-      '--verbose'
+      'exec', 
+      userPrompt,
+      '--yolo'
     ];
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
@@ -119,25 +117,24 @@ async function run() {
         commandArgs,
         workDir,
         targetDir,
-        'Claude Code'
+        'Codex CLI'
       );
     } finally {
       stopWatchingMcpLog();
     }
 
-    exportClaudeCodeTrajectories(workDir, targetDir);
+    exportCodexTrajectories(workDir, targetDir);
 
-    console.log("Claude Code agent finished successfully.");
-
+    console.log("Codex agent finished successfully.");
   } catch (err) {
-    console.error("Error during Claude Code execution:", err);
+    console.error("Error during Codex execution:", err);
     process.exit(1);
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));
   }
 }
 
-export async function collectClaudeGuidesFromTrajectory(dirPath: string, serving: string): Promise<string[]> {
+export async function collectCodexGuidesFromTrajectory(dirPath: string, serving: string): Promise<string[]> {
   const guidesFromSkills: string[] = [];
   try {
     const files = fs.readdirSync(dirPath);
@@ -152,27 +149,30 @@ export async function collectClaudeGuidesFromTrajectory(dirPath: string, serving
         if (!line.trim()) continue;
         try {
           const obj = JSON.parse(line);
-          if (obj.message && obj.message.content) {
-            for (const contentItem of obj.message.content) {
-              if (serving === Serving.SKILLS_CLI && contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input && contentItem.input.command) {
-                const command = contentItem.input.command;
-                if (command.includes('modern-web.cjs') && command.includes('--retrieve')) {
-                  const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
-                  if (match) {
-                    const ids = match[1].split(',');
-                    for (const id of ids) {
-                      guidesFromSkills.push(id.trim());
-                    }
-                  }
+          let functionCall = null;
+
+          if (obj.type === 'function_call') {
+            functionCall = obj;
+          } else if (obj.type === 'response_item' && obj.payload && obj.payload.type === 'function_call') {
+            functionCall = obj.payload;
+          }
+
+          if (functionCall && functionCall.name === 'exec_command' && functionCall.arguments) {
+            const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
+            const command = args.cmd || '';
+
+            if (serving === Serving.SKILLS_CLI && command.includes('modern-web.cjs') && command.includes('--retrieve')) {
+              const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
+              if (match) {
+                const ids = match[1].split(',');
+                for (const id of ids) {
+                  guidesFromSkills.push(id.trim());
                 }
-              } else if (serving === Serving.SKILLS && contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input && contentItem.input.file_path) {
-                const filePath = contentItem.input.file_path;
-                if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
-                  const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
-                  if (match) {
-                    guidesFromSkills.push(match[1]);
-                  }
-                }
+              }
+            } else if (serving === Serving.SKILLS && command.includes('.agents/skills/') && command.includes('guide.md')) {
+              const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
+              if (match) {
+                guidesFromSkills.push(match[1]);
               }
             }
           }
@@ -187,7 +187,7 @@ export async function collectClaudeGuidesFromTrajectory(dirPath: string, serving
   return [...new Set(guidesFromSkills)];
 }
 
-export function extractClaudeCodeModel(resultsDir: string): string {
+export function extractCodexCliModel(resultsDir: string): string {
   const sessionFiles = fs.globSync('**/session-*.jsonl', { cwd: resultsDir });
   if (sessionFiles.length === 0) return 'unknown';
 
@@ -201,8 +201,8 @@ export function extractClaudeCodeModel(resultsDir: string): string {
         if (!line.trim() || !line.includes('"model"')) continue;
         try {
           const obj = JSON.parse(line);
-          if (obj.message && obj.message.model) {
-            const m = obj.message.model;
+          if (obj.payload && typeof obj.payload.model === 'string') {
+            const m = obj.payload.model;
             counts[m] = (counts[m] || 0) + 1;
           }
         } catch (e) {
@@ -220,7 +220,7 @@ export function extractClaudeCodeModel(resultsDir: string): string {
   return 'unknown';
 }
 
-export function collectClaudeToolsFromTrajectory(dir: string): string[] {
+export function collectCodexToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
   const sessionFiles = fs.globSync('session-*.jsonl', { cwd: dir });
   const firstSession = sessionFiles[0];
@@ -234,10 +234,20 @@ export function collectClaudeToolsFromTrajectory(dir: string): string[] {
       if (!line.trim()) continue;
       try {
         const obj = JSON.parse(line);
-        if (obj.message && Array.isArray(obj.message.content)) {
-          for (const item of obj.message.content) {
-            if (item.type === 'tool_use' && item.name === 'Skill' && item.input?.skill) {
-              toolsUsed.push(item.input.skill);
+        let functionCall = null;
+        if (obj.type === 'function_call') {
+          functionCall = obj;
+        } else if (obj.type === 'response_item' && obj.payload && obj.payload.type === 'function_call') {
+          functionCall = obj.payload;
+        }
+
+        if (functionCall && functionCall.name === 'exec_command' && functionCall.arguments) {
+          const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
+          const command = args.cmd || '';
+          if (command.includes('/skills/') && command.includes('SKILL.md')) {
+            const match = command.match(/\.agents\/skills\/([^/]+)\/SKILL\.md/);
+            if (match) {
+              toolsUsed.push(match[1]);
             }
           }
         }
@@ -246,7 +256,7 @@ export function collectClaudeToolsFromTrajectory(dir: string): string[] {
       }
     }
   } catch (e) {
-    console.error(`Failed to collect guidance tools used for Claude Code:`, e);
+    console.error(`Failed to collect guidance tools used for Codex:`, e);
   }
 
   return Array.from(new Set(toolsUsed));
