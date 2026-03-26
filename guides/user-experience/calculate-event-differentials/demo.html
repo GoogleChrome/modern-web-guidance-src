@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Temporal API: Trial Expiration Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #10b981;
+      --warning-bg: #7f1d1d;
+      --warning-border: #dc2626;
+      --warning-text: #fecaca;
+      --border-color: #334155;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.description {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .banner {
+      background-color: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      display: none;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .banner-icon {
+      font-size: 1.5rem;
+    }
+
+    .calculator-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 600px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    input[type="datetime-local"] {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="datetime-local"]:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .results-section {
+      border-top: 1px solid var(--border-color);
+      padding-top: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+    }
+
+    .result-label {
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .result-value {
+      font-family: monospace;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent-secondary);
+    }
+
+    .code-section {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-top: 2rem;
+      overflow-x: auto;
+    }
+
+    .code-header {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    pre {
+      margin: 0;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.9rem;
+      color: #e2e8f0;
+    }
+
+    .keyword {
+      color: #f43f5e;
+    }
+
+    .method {
+      color: #38bdf8;
+    }
+
+    .string {
+      color: #10b981;
+    }
+
+    .comment {
+      color: #64748b;
+      font-style: italic;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Trial Expiration Calculator</h1>
+      <p class="description">
+        Calculate subscription trial metrics mathematically using <code>Temporal.ZonedDateTime</code>.
+        Use <code>.since()</code> to find elapsed active time and <code>.until()</code> for remaining time,
+        demonstrating accurate, balanced duration objects that handle month boundaries correctly.
+      </p>
+    </header>
+
+    <div id="unsupportedBanner" class="banner">
+      <div class="banner-icon">🚫</div>
+      <div>This demo requires a browser with native Temporal support</div>
+    </div>
+
+    <div class="calculator-card">
+      <div class="controls">
+        <div class="control-group">
+          <label>Start (Trial Activation)</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="date" id="startDate" style="width: 130px;">
+            <input type="time" id="startTime">
+          </div>
+        </div>
+        <div class="control-group">
+          <label>End (Expiration)</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="date" id="endDate" style="width: 130px;">
+            <input type="time" id="endTime">
+          </div>
+        </div>
+      </div>
+
+      <div class="results-section">
+        <div class="result-item">
+          <span class="result-label">Status</span>
+          <span id="statusValue" class="result-value">-</span>
+        </div>
+
+        <!-- .since() Demonstration -->
+        <div class="result-item">
+          <span class="result-label">Time Active (Since Activation)</span>
+          <span id="activeValue" class="result-value">0y 0m 0d 0h 0m</span>
+        </div>
+
+        <!-- .until() Demonstration -->
+        <div class="result-item">
+          <span class="result-label">Time Remaining (Until Expiration)</span>
+          <span id="durationValue" class="result-value">0y 0m 0d 0h 0m</span>
+        </div>
+
+        <!-- Raw Strings -->
+        <div class="result-item">
+          <span class="result-label">Raw Active String (Since)</span>
+          <span id="rawActiveValue" class="result-value">-</span>
+        </div>
+        <div class="result-item">
+          <span class="result-label">Raw Remaining String (Until)</span>
+          <span id="rawDurationValue" class="result-value">-</span>
+        </div>
+      </div>
+
+      <div class="code-section">
+        <div class="code-header">Code Running</div>
+        <pre><span class="comment">// 1. Get current time point and zone</span>
+<span class="keyword">const</span> now = Temporal.Now.zonedDateTimeISO();
+<span class="keyword">const</span> tz = now.timeZoneId;
+
+<span class="comment">// 2. Parse inputs</span>
+<span class="keyword">const</span> start = Temporal.PlainDateTime.from(<span class="string">"..."</span>).toZonedDateTime(tz);
+<span class="keyword">const</span> end = Temporal.PlainDateTime.from(<span class="string">"..."</span>).toZonedDateTime(tz);
+
+<span class="comment">// 3. Calculate with .since() and .until()</span>
+<span class="keyword">const</span> timeActive = now.<span class="method">since</span>(start, { largestUnit: <span class="string">'year'</span> });
+<span class="keyword">const</span> timeRemaining = now.<span class="method">until</span>(end, { largestUnit: <span class="string">'year'</span> });</pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const startDateInput = document.getElementById('startDate');
+    const startTimeInput = document.getElementById('startTime');
+    const endDateInput = document.getElementById('endDate');
+    const endTimeInput = document.getElementById('endTime');
+    const activeValue = document.getElementById('activeValue');
+    const rawActiveValue = document.getElementById('rawActiveValue');
+    const durationValue = document.getElementById('durationValue');
+    const rawDurationValue = document.getElementById('rawDurationValue');
+    const statusValue = document.getElementById('statusValue');
+    const unsupportedBanner = document.getElementById('unsupportedBanner');
+
+    // Check Support
+    if (typeof Temporal === 'undefined') {
+      unsupportedBanner.style.display = 'flex';
+      startDateInput.disabled = true;
+      startTimeInput.disabled = true;
+      endDateInput.disabled = true;
+      endTimeInput.disabled = true;
+    } else {
+      initializeDemo();
+    }
+
+    function initializeDemo() {
+      const now = Temporal.Now.zonedDateTimeISO();
+
+      // Randomize start in past
+      const daysInPast = Math.floor(Math.random() * 14) + 1;
+      const start = now.subtract({ days: daysInPast });
+
+      const startDateStr = start.toPlainDate().toString();
+      const startTimeStr = start.toPlainTime().toString().slice(0, 5); // HH:MM
+
+      const end = start.add({ days: 30 });
+      const endDateStr = end.toPlainDate().toString();
+      const endTimeStr = end.toPlainTime().toString().slice(0, 5);
+
+      startDateInput.value = startDateStr;
+      startTimeInput.value = startTimeStr;
+      endDateInput.value = endDateStr;
+      endTimeInput.value = endTimeStr;
+
+      // Event Listeners
+      startDateInput.addEventListener('input', calculate);
+      startTimeInput.addEventListener('input', calculate);
+      endDateInput.addEventListener('input', calculate);
+      endTimeInput.addEventListener('input', calculate);
+
+      calculate();
+    }
+
+    function calculate() {
+      try {
+        const startD = startDateInput.value;
+        const startT = startTimeInput.value;
+        const endD = endDateInput.value;
+        const endT = endTimeInput.value;
+
+        if (!startD || !startT || !endD || !endT) return;
+
+        const now = Temporal.Now.zonedDateTimeISO();
+        const tz = now.timeZoneId;
+
+        // Combine Date and Time with Temporal
+        const startDate = Temporal.PlainDate.from(startD);
+        const startTime = Temporal.PlainTime.from(startT);
+        const start = startDate.toPlainDateTime(startTime).toZonedDateTime(tz);
+
+        const endDate = Temporal.PlainDate.from(endD);
+        const endTime = Temporal.PlainTime.from(endT);
+        const end = endDate.toPlainDateTime(endTime).toZonedDateTime(tz);
+
+        // Calculate Since (Active Time)
+        const active = now.since(start, { largestUnit: 'year' });
+
+        // Calculate Until (Remaining Time)
+        const remaining = now.until(end, { largestUnit: 'year' });
+
+        // Update Status
+        const isPast = Temporal.ZonedDateTime.compare(now, end) > 0;
+        const isFutureStart = Temporal.ZonedDateTime.compare(now, start) < 0;
+
+        if (isPast) {
+          statusValue.textContent = "EXPIRED";
+          statusValue.style.color = "#f43f5e";
+          durationValue.textContent = "0y 0m 0d 0h 0m";
+          rawDurationValue.textContent = remaining.toString();
+        } else if (isFutureStart) {
+          statusValue.textContent = "PENDING";
+          statusValue.style.color = "#f59e0b";
+          durationValue.textContent = `${remaining.years}y ${remaining.months}m ${remaining.days}d ${remaining.hours}h ${remaining.minutes}m`;
+          rawDurationValue.textContent = remaining.toString();
+        } else {
+          statusValue.textContent = "ACTIVE";
+          statusValue.style.color = "var(--accent-secondary)";
+          durationValue.textContent = `${remaining.years}y ${remaining.months}m ${remaining.days}d ${remaining.hours}h ${remaining.minutes}m`;
+          rawDurationValue.textContent = remaining.toString();
+        }
+
+        // Format Active Duration (Since)
+        if (isFutureStart) {
+          activeValue.textContent = "Not Started";
+          rawActiveValue.textContent = "-";
+        } else {
+          activeValue.textContent = `${active.years}y ${active.months}m ${active.days}d ${active.hours}h ${active.minutes}m`;
+          rawActiveValue.textContent = active.toString();
+        }
+
+      } catch (error) {
+        console.error(error);
+        durationValue.textContent = "Invalid Dates";
+        rawDurationValue.textContent = "-";
+        statusValue.textContent = "ERROR";
+      }
+    }
+  </script>
+
+</body>
+
+</html>

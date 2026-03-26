@@ -11,9 +11,22 @@ export function getRunStats(checks) {
 }
 
 export function getColor(percentage) {
-    if (percentage >= 90) return 'var(--accent-success)';
-    if (percentage >= 50) return '#dbab09';
-    return 'var(--accent-failure)';
+    const p = Math.max(0, Math.min(100, percentage));
+    
+    const RED = 'oklch(53% 0.18 26)';
+    const YELLOW = 'oklch(72% 0.15 74)';
+    const GREEN = 'oklch(52% 0.13 145)';
+
+    if (p <= 30) return RED;
+    if (p >= 90) return GREEN;
+    
+    if (p < 60) {
+        const mix = Math.round((p - 30) / 30 * 100);
+        return `color-mix(in oklch, ${RED}, ${YELLOW} ${mix}%)`;
+    }
+    
+    const mix = Math.round((p - 60) / 30 * 100);
+    return `color-mix(in oklch, ${YELLOW}, ${GREEN} ${mix}%)`;
 }
 
 export function escapeHtml(text) {
@@ -29,6 +42,38 @@ export function escapeHtml(text) {
 export function capitalize(s) {
     if (typeof s !== 'string' || s.length === 0) return s;
     return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+export function timeAgo(date) {
+    const diff = Math.floor((new Date() - new Date(date)) / 1000);
+    const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+    const units = [
+        { name: 'year', s: 31536000 }, { name: 'month', s: 2592000 },
+        { name: 'day', s: 86400 }, { name: 'hour', s: 3600 },
+        { name: 'minute', s: 60 }, { name: 'second', s: 1 }
+    ];
+    const u = units.find(u => Math.abs(diff) >= u.s) || units[units.length - 1];
+    return rtf.format(-Math.floor(diff / u.s), u.name);
+}
+
+export function calculateRadarData(results) {
+    const apps = {};
+    Object.keys(results).forEach(key => {
+        const [appName, guide, runType] = key.split(' - ');
+        if (!runType) return;
+        const scenario = `${appName} (${guide})`;
+        if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [] };
+        const runs = results[key];
+        const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
+        const total = runs.reduce((acc, r) => acc + r.results.length, 0);
+        apps[scenario][runType].push(total > 0 ? (passed / total) * 100 : 0);
+    });
+    const labels = Object.keys(apps).sort();
+    const getAvg = (l, type) => {
+        const s = apps[l][type];
+        return s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;
+    };
+    return { labels, guided: labels.map(l => getAvg(l, 'guided')), unguided: labels.map(l => getAvg(l, 'unguided')) };
 }
 
 export function formatTestName(name) {
@@ -87,10 +132,7 @@ export function initGoogleAuth(onAuthSuccess) {
         });
 
         if (authBtn) {
-            authBtn.addEventListener('click', () => {
-                // Request an access token
-                tokenClient.requestAccessToken();
-            });
+            authBtn.addEventListener('click', () => tokenClient.requestAccessToken());
         }
     };
     init();

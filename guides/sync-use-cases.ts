@@ -6,7 +6,7 @@ import matter from 'gray-matter';
 import { fileURLToPath } from 'url';
 import { validateMacros } from '../serving/mcp-server/lib/macros.ts';
 import { validateFeature } from '../serving/mcp-server/data/baseline.ts';
-import { scanAllGuides } from '../harness/lib/utils.ts';
+import { scanAllGuides, type GuideInventory } from '../harness/lib/utils.ts';
 
 // --- Types ---
 
@@ -28,11 +28,13 @@ export interface IssueContent {
   issueTitle: string;
   issueBody: string;
   priorityLabel: string | null;
+  milestoneNumber: number | null;
 }
 
 export interface FeatureIssueData {
   number: number;
   priorityLabel: string | null;
+  milestoneNumber: number | null;
   state: string;
   body: string;
 }
@@ -64,6 +66,23 @@ interface GitHubData {
   nameToIssueMap: Map<string, any>;
   subdirToIssueMap: Map<string, any>;
   projectDetails: ProjectDetails | null;
+}
+
+export interface PreparedGuide {
+  name: string;
+  description: string;
+  featureIds: string[];
+  relativeSubdir: string;
+  statusName: string | null;
+}
+
+export interface GuideInventoryResult {
+  errors: string[];
+  hasError: boolean;
+  featuresWithActiveUseCases: Set<string>;
+  featuresWithAnyUseCases: Set<string>;
+  preparedGuides: PreparedGuide[];
+  incompleteSubdirs: string[];
 }
 
 // --- Constants ---
@@ -146,6 +165,7 @@ export function buildIssueContent(
 ): IssueContent {
   const relatedLinks: string[] = [];
   let priorityLabel: string | null = null;
+  let milestoneNumber: number | null = null;
 
   for (const id of featureIds) {
     const featureData = featureToIssueMap.get(id);
@@ -153,6 +173,9 @@ export function buildIssueContent(
       relatedLinks.push(`#${featureData.number}`);
       if (!priorityLabel && featureData.priorityLabel) {
         priorityLabel = featureData.priorityLabel;
+      }
+      if (!milestoneNumber && featureData.milestoneNumber) {
+        milestoneNumber = featureData.milestoneNumber;
       }
     }
   }
@@ -165,6 +188,7 @@ export function buildIssueContent(
     issueTitle: `Create guide and evals for the ${name} use case`,
     issueBody: `${description}\n\nAffected web-feature IDs: ${linkedFeatures}\n\nUse case subdir: [${relativeSubdir}](${subdirUrl})${relatedFeaturesStr}`,
     priorityLabel,
+    milestoneNumber,
   };
 }
 
@@ -179,7 +203,8 @@ export function buildFeatureToIssueMap(issues: any[]): Map<string, FeatureIssueD
       const priorityLabel = issue.labels
         .map((l: any) => (typeof l === 'string' ? l : l.name))
         .find((l: string) => PRIORITY_LABEL_REGEX.test(l)) || null;
-      map.set(match[1], { number: issue.number, priorityLabel, state: issue.state, body: issue.body ?? '' });
+      const milestoneNumber = issue.milestone ? issue.milestone.number : null;
+      map.set(match[1], { number: issue.number, priorityLabel, milestoneNumber, state: issue.state, body: issue.body ?? '' });
     }
   }
   return map;
@@ -516,6 +541,7 @@ async function syncIssue(
   issueTitle: string,
   issueBody: string,
   priorityLabel: string | null,
+  milestoneNumber: number | null,
   statusName: string | null,
   activeIssueNumbers: Set<number>
 ): Promise<{ issueNumber: number; changed: boolean }> {
@@ -524,13 +550,16 @@ async function syncIssue(
     const currentLabels = (existingIssue.labels as any[]).map(l => typeof l === 'string' ? l : l.name);
     const desiredLabels = getDesiredLabels(currentLabels, priorityLabel);
     const labelsChanged = desiredLabels.length !== currentLabels.length || desiredLabels.some(l => !currentLabels.includes(l));
-    const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody || needsReopen || needsClose || labelsChanged;
+    const existingMilestoneNumber = existingIssue.milestone ? existingIssue.milestone.number : null;
+    const targetMilestoneNumber = existingMilestoneNumber || milestoneNumber;
+    const milestoneChanged = existingMilestoneNumber !== targetMilestoneNumber;
+    const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody || needsReopen || needsClose || labelsChanged || milestoneChanged;
 
     const issueNumber: number = existingIssue.number;
     activeIssueNumbers.add(issueNumber);
 
     if (needsUpdate) {
-      console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"${needsReopen ? ' (reopening)' : ''}${needsClose ? ' (closing as completed)' : ''}${labelsChanged ? ' (updating labels)' : ''}...`);
+      console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"${needsReopen ? ' (reopening)' : ''}${needsClose ? ' (closing as completed)' : ''}${labelsChanged ? ' (updating labels)' : ''}${milestoneChanged ? ' (updating milestone)' : ''}...`);
       if (!IS_DRY_RUN) {
         await octokit.rest.issues.update({
           owner: ORG,
@@ -539,12 +568,14 @@ async function syncIssue(
           title: issueTitle,
           body: issueBody,
           labels: desiredLabels,
+          milestone: targetMilestoneNumber,
           ...(needsReopen ? { state: 'open' } : {}),
           ...(needsClose ? { state: 'closed', state_reason: 'completed' } : {})
         });
       } else {
         if (existingIssue.title !== issueTitle) console.log(`[DRY RUN] Title: ${issueTitle}`);
         if (labelsChanged) console.log(`[DRY RUN] Labels: ${desiredLabels.join(', ')}`);
+        if (milestoneChanged) console.log(`[DRY RUN] Milestone: ${targetMilestoneNumber}`);
         if (needsReopen) console.log(`[DRY RUN] State: open`);
         if (needsClose) console.log(`[DRY RUN] State: closed (completed)`);
         if (existingIssue.body !== issueBody) console.log(`[DRY RUN] Body:\n${issueBody}\n`);
@@ -563,7 +594,8 @@ async function syncIssue(
         repo: REPO,
         title: issueTitle,
         body: issueBody,
-        labels
+        labels,
+        ...(milestoneNumber ? { milestone: milestoneNumber } : {})
       });
       const issueNumber: number = newIssue.data.number;
       activeIssueNumbers.add(issueNumber);
@@ -580,6 +612,7 @@ async function syncIssue(
     } else {
       console.log(`[DRY RUN] Title: ${issueTitle}`);
       console.log(`[DRY RUN] Labels: ${labels.join(', ')}`);
+      if (milestoneNumber) console.log(`[DRY RUN] Milestone: ${milestoneNumber}`);
       if (isComplete) console.log(`[DRY RUN] State: closed (completed)`);
       console.log(`[DRY RUN] Body:\n${issueBody}\n`);
       return { issueNumber: 0, changed: true };
@@ -587,21 +620,18 @@ async function syncIssue(
   }
 }
 
-async function processUseCases(
-  featureToIssueMap: Map<string, FeatureIssueData>,
-  nameToIssueMap: Map<string, any>,
-  subdirToIssueMap: Map<string, any>,
-  projectDetails: ProjectDetails | null
-): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean; errors: string[] }> {
-  const activeIssueNumbers = new Set<number>();
+/**
+ * Processes guide inventory entries: validates frontmatter, checks for missing
+ * paired files, and collects feature ID sets. Returns structured data for the
+ * GitHub sync step without making any API calls.
+ */
+export function processGuideInventory(guides: GuideInventory[]): GuideInventoryResult {
+  const errors: string[] = [];
+  let hasError = false;
   const featuresWithActiveUseCases = new Set<string>();
   const featuresWithAnyUseCases = new Set<string>();
-  const featureUseCaseMap = new Map<string, UseCaseEntry[]>();
-  let hasError = false;
-  const errors: string[] = [];
-
-  const guides = scanAllGuides();
-  console.log(`Found ${guides.length} use cases.`);
+  const preparedGuides: PreparedGuide[] = [];
+  const incompleteSubdirs: string[] = [];
 
   for (const inv of guides) {
     const subdir = inv.dir;
@@ -633,10 +663,10 @@ async function processUseCases(
     let guideBody = '';
 
     if (hasGuide || inv.isStub) {
-      const { errors, data, body } = validateGuide(path.join(subdir, 'guide.md'));
-      guideErrors = errors;
-      guideData = data;
-      guideBody = body;
+      const validation = validateGuide(path.join(subdir, 'guide.md'));
+      guideErrors = validation.errors;
+      guideData = validation.data;
+      guideBody = validation.body;
 
       if (guideErrors.length > 0) {
         for (const error of guideErrors) {
@@ -659,21 +689,50 @@ async function processUseCases(
     }
 
     if (isIncomplete) {
-      // Prevent the cleanup step from treating any existing issue as an orphan —
-      // the use case directory exists, it's just missing some required files.
-      const partialIssue = subdirToIssueMap.get(relativeSubdir);
-      if (partialIssue) activeIssueNumbers.add(partialIssue.number);
+      incompleteSubdirs.push(relativeSubdir);
       continue;
     }
 
     if (guideErrors.length > 0) continue;
 
-    const name = guideData.name!;
-    const description = guideData.description || '';
-    const { issueTitle, issueBody, priorityLabel } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap);
+    preparedGuides.push({
+      name: guideData.name!,
+      description: guideData.description || '',
+      featureIds,
+      relativeSubdir,
+      statusName,
+    });
+  }
+
+  return { errors, hasError, featuresWithActiveUseCases, featuresWithAnyUseCases, preparedGuides, incompleteSubdirs };
+}
+
+async function processUseCases(
+  featureToIssueMap: Map<string, FeatureIssueData>,
+  nameToIssueMap: Map<string, any>,
+  subdirToIssueMap: Map<string, any>,
+  projectDetails: ProjectDetails | null
+): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean; errors: string[] }> {
+  const activeIssueNumbers = new Set<number>();
+  const featureUseCaseMap = new Map<string, UseCaseEntry[]>();
+
+  const guides = scanAllGuides();
+  console.log(`Found ${guides.length} use cases.`);
+
+  const { errors, hasError, featuresWithActiveUseCases, featuresWithAnyUseCases, preparedGuides, incompleteSubdirs } = processGuideInventory(guides);
+
+  for (const relativeSubdir of incompleteSubdirs) {
+    // Prevent the cleanup step from treating any existing issue as an orphan —
+    // the use case directory exists, it's just missing some required files.
+    const partialIssue = subdirToIssueMap.get(relativeSubdir);
+    if (partialIssue) activeIssueNumbers.add(partialIssue.number);
+  }
+
+  for (const { name, description, featureIds, relativeSubdir, statusName } of preparedGuides) {
+    const { issueTitle, issueBody, priorityLabel, milestoneNumber } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap);
     const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
 
-    const { issueNumber, changed } = await syncIssue(name, existingIssue, issueTitle, issueBody, priorityLabel, statusName, activeIssueNumbers);
+    const { issueNumber, changed } = await syncIssue(name, existingIssue, issueTitle, issueBody, priorityLabel, milestoneNumber, statusName, activeIssueNumbers);
 
     for (const id of featureIds) {
       if (!featureUseCaseMap.has(id)) featureUseCaseMap.set(id, []);

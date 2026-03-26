@@ -2,67 +2,69 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Legacy Accordion</title>
+  <title>Legacy Hidden Content Demo</title>
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-    }
-    .accordion-section {
-      border: 1px solid #ccc;
-      margin-bottom: 10px;
-    }
-    .header {
+    body { font-family: sans-serif; padding: 20px; }
+    
+    .tab-header {
       background: #eee;
       padding: 10px;
       cursor: pointer;
       width: 100%;
       text-align: left;
-      border: none;
+      border: 1px solid #ccc;
     }
-    .content {
+    .wholesale-tab {
       padding: 10px;
       display: none;
+      border: 1px solid #ccc;
+      border-top: none;
     }
-    .content.active {
-      display: block;
-    }
-    .searchable-fail {
-      display: none;
-    }
+    .wholesale-tab.active { display: block; }
+
+    /* The old way of hiding a panel */
+    #coupon-panel { display: none; margin-top: 10px; padding: 10px; border: 1px solid green; }
+    #coupon-panel.active { display: block; }
   </style>
 </head>
 <body>
-  <h1>Product Documentation</h1>
-  <div class="accordion-section">
-    <button class="header">General Information</button>
-    <div class="content">
-      <p>This is the general information about our product.</p>
+  <h1>Product Page (Legacy)</h1>
+
+  <!-- Legacy Tabs (Fails Test 1: not a <details> element) -->
+  <h2>Wholesale & Catering</h2>
+  <div>
+    <button class="tab-header">Wholesale Pricing</button>
+    <div class="wholesale-tab active"><p>Buy in bulk to save.</p></div>
+  </div>
+  <div>
+    <button class="tab-header">Catering Menu</button>
+    <div class="wholesale-tab"><p>We cater events of all sizes.</p></div>
+  </div>
+
+  <!-- Legacy Separated UI (Fails Test 3: no hidden="until-found" and Fails Test 4: uses display none) -->
+  <div style="margin-top: 30px;">
+    <button id="reveal-btn">Reveal Coupon</button>
+    <div id="coupon-panel">
+      <p>Your code is: <strong>SAVE20</strong></p>
+      
+      <!-- Hidden sensitive info (Fails Test 5) -->
+      <span style="display:none" hidden="until-found">ADMIN_TOKEN_9921_SECRET</span>
     </div>
   </div>
-  <div class="accordion-section">
-    <button class="header">Technical Details</button>
-    <div class="content">
-      <p>The system uses a custom architecture for processing data.</p>
-    </div>
-  </div>
-  <div class="accordion-section">
-    <button class="header">User Management</button>
-    <div class="content">
-      <p>Manage your users here.</p>
-      <div id="sensitive-token" hidden="until-found" style="display: none;">
-        ADMIN_TOKEN_9921_SECRET
-      </div>
-    </div>
-  </div>
+
   <script>
-    const headers = document.querySelectorAll('.header');
+    // Legacy Tab Toggling
+    const headers = document.querySelectorAll('.tab-header');
     headers.forEach(header => {
       header.addEventListener('click', () => {
-        const content = header.nextElementSibling;
-        content.classList.toggle('active');
+        document.querySelectorAll('.wholesale-tab').forEach(tab => tab.classList.remove('active'));
+        header.nextElementSibling.classList.add('active');
       });
+    });
+
+    // Legacy Reveal Toggling
+    document.getElementById('reveal-btn').addEventListener('click', () => {
+      document.getElementById('coupon-panel').classList.add('active');
     });
   </script>
 </body>
