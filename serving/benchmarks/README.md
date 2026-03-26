@@ -10,8 +10,8 @@ Because embedding models and chunking strategies can be notoriously difficult to
 
 *   **`rag/`**: Contains the active test instrumentation.
     *   **`generate-eval-queries.ts`**: Uses the Gemini API to rapidly synthesize 50 highly-realistic edge-case search queries per guide, automatically updating the master pool.
-    *   **`test-variance.ts`**: The core statistical runner. Automatically shuffles random queries per guide out of the master pool, loops the evaluation cycle across different models, and measures accuracy variance. 
-    *   **`eval-search.ts`**: The operational script that executes queries natively against the database and measures vector retrieval accuracy against the ground-truth target.
+    *   **`eval-rag-suite.ts`**: The core statistical runner. Automatically shuffles random queries per guide out of the master pool, loops the evaluation cycle across different models, and measures accuracy variance. 
+    *   **`eval-rag-search.ts`**: The operational script that executes queries natively against the database and measures vector retrieval accuracy against the ground-truth target.
     *   **`gpt4all-embedder.ts`**: An isolated wrapper used specifically by the benchmarking suite to test historical C++ natively-bound `.gguf` quantizations completely separate from the production Transformers.js workflow.
     *   **`plot-evals.ts`**: Dynamically compiles the historic `NaN/JSON` metrics logged out of the test suite into an interactive Plotly HTML scatter-box diagram.
 *   **`data/`**: The strictly segregated data mapping.

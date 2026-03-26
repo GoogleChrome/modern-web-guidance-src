@@ -76,7 +76,7 @@ async function main() {
       // Rebuild the vector database table for the specific model before querying
       const buildCmd = `node --experimental-strip-types scripts/build-guides.ts --model=${model}${isNoChunking ? ' --no-chunking' : ''}`;
       run(buildCmd);
-      run(`node --experimental-strip-types benchmarks/rag/eval-search.ts --model=${model}`);
+      run(`node --experimental-strip-types benchmarks/rag/eval-rag-search.ts --model=${model}`);
       
       if (fs.existsSync(resultsPath)) {
         const results = JSON.parse(fs.readFileSync(resultsPath, 'utf-8'));
