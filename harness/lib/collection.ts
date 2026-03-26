@@ -33,7 +33,7 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   } else if (agent === Agents.CODEX_CLI) {
     return extractCodexCliModel(resultsDir);
   }
-  // Jetski impl does not support trajectory pb parsing
+  // JETSKI impl does not support trajectory pb parsing, leave model as unknown
   return 'unknown';
 }
 

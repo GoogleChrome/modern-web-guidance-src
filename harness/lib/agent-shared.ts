@@ -460,8 +460,7 @@ export async function runCliAgentCommand(
   const child = spawn(command, commandArgs, {
     cwd: workDir,
     env: { ...process.env }, // Pass through environment variables (including new HOME)
-    // 'pipe' captures output for log files but does NOT print to terminal natively
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: ['ignore', 'pipe', 'pipe'] // 'pipe' captures output for log files but does NOT print to terminal natively
   });
 
   let stdoutData = '';

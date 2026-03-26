@@ -96,7 +96,6 @@ async function run() {
       stopWatchingMcpLog();
     }
 
-    // Extract trajectory JSON from isolated home
     const tmpDir = path.join(path.dirname(workDir), '.gemini', 'tmp');
     exportTrajectories(tmpDir, '*/chats/*.json', targetDir);
 
@@ -106,12 +105,11 @@ async function run() {
     console.error("Error during Gemini CLI execution:", err);
     process.exit(1);
   } finally {
-    // Comment out if you need to inspect trajectories.
     cleanupIsolatedHome(path.dirname(workDir));
   }
 }
 
-export async function collectGeminiCliGuides(dirPath: string, serving: string): Promise<string[]> {
+export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving: string): Promise<string[]> {
   const guidesFromSkills: string[] = [];
   try {
     const files = fs.readdirSync(dirPath);
@@ -185,7 +183,7 @@ export function extractGeminiCliModel(resultsDir: string): string {
   return 'unknown';
 }
 
-export function collectGeminiCliGuidanceToolsUsed(dir: string): string[] {
+export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
   const sessionFiles = fs.globSync('session-*.json', { cwd: dir });
   const firstSession = sessionFiles[0];

@@ -58,13 +58,13 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
     const src = path.join(claudeLogDir, relativePath);
     
     // 1. Determine base name and copy original JSONL file to targetDir
-    const baseName = relativePath.replace(/[\\\\/]/g, '-').replace(/\\.jsonl$/, '');
+    const baseName = relativePath.replace(/[\\/]/g, '-').replace(/\.jsonl$/, '');
     const rawDestName = `session-${baseName}.jsonl`;
     fs.copyFileSync(src, path.join(targetDir, rawDestName));
 
     // 2. Read and parse JSONL
     const logContent = fs.readFileSync(src, 'utf8');
-    const jsonLines = logContent.split(/\\r?\\n/).filter(Boolean);
+    const jsonLines = logContent.split(/\r?\n/).filter(Boolean);
     
     const logData = jsonLines.map(line => {
       try {
@@ -137,7 +137,7 @@ async function run() {
   }
 }
 
-export async function collectClaudeCodeGuides(dirPath: string, serving: string): Promise<string[]> {
+export async function collectClaudeGuidesFromTrajectory(dirPath: string, serving: string): Promise<string[]> {
   const guidesFromSkills: string[] = [];
   try {
     const files = fs.readdirSync(dirPath);
@@ -196,7 +196,7 @@ export function extractClaudeCodeModel(resultsDir: string): string {
     const sessionPath = path.join(resultsDir, relativePath);
     try {
       const content = fs.readFileSync(sessionPath, 'utf8');
-      const lines = content.split('\\n');
+      const lines = content.split('\n');
       for (const line of lines) {
         if (!line.trim() || !line.includes('"model"')) continue;
         try {
@@ -220,7 +220,7 @@ export function extractClaudeCodeModel(resultsDir: string): string {
   return 'unknown';
 }
 
-export function collectClaudeCodeGuidanceToolsUsed(dir: string): string[] {
+export function collectClaudeToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
   const sessionFiles = fs.globSync('session-*.jsonl', { cwd: dir });
   const firstSession = sessionFiles[0];
