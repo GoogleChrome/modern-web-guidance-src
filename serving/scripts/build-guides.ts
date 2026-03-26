@@ -130,7 +130,7 @@ async function processSingleGuideFile(
   storeUseCases: StoreUseCase[]
 ) {
   const content = fs.readFileSync(filePath, "utf-8");
-  const { data, content: markdownBody, matter: frontmatter } = matter(content);
+  const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
 
   if (!data.description || !frontmatter) {
     throw new Error(`Missing frontmatter or description in ${filePath}`);
