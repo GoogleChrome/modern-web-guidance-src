@@ -22,19 +22,31 @@ To optimize rendering, you can utilize the CSS `content-visibility` property and
 
 ## How to implement `content-visibility: auto`
 
-1. **Identify heavy sections:** Locate large, self-contained layout blocks that are initially off-screen (e.g., card items in an infinite feed).
-2. **Apply CSS:** Add `content-visibility: auto` to each off-screen element.
-3. **Provide an estimated height or width:** Add `contain-intrinsic-size` to each off-screen element.
+### Choosing off-screen content
+
+**MANDATORY**: You MUST carefully identify which elements receive `content-visibility: auto`.
+- **DO** target large, self-contained layout blocks that are strictly **below the initial fold** (e.g., card items in an infinite feed, trailing comments, or bottom-heavy layout sections).
+- **DO NOT** apply this property to elements within the initial, above-the-fold viewport. Doing so forces the browser to evaluate visibility boundaries before rendering, which paradoxically delays critical page load performance.
+- **DO** target elements with deep or complex internal DOM structures to maximize rendering cost savings.
+
+### Implementation steps
+
+1. **MANDATORY**: Identify heavy sections that are confirmed to be off-screen on initial load.
+2. **MANDATORY**: Apply `content-visibility: auto` to each of these off-screen elements.
+3. **MANDATORY**: Provide an estimated layout structure size using `contain-intrinsic-size` on each element.
 
 ### How to use `contain-intrinsic-size`
 
-The `contain-intrinsic-size` CSS shorthand property allows you to provide an estimated height and/or width for an element. This can be used to prevent layout shifts and visual glitches when the user scrolls to the element. The `auto` keyword can be paired with a length value for the browser to remember the size of the element when it is rendered and use the "remembered" size on the next render.
+**MANDATORY**: You MUST pair `content-visibility: auto` with `contain-intrinsic-size`. Failure to do so forces the browser to collapse the element to a 0px height when off-screen, causing severe layout shifting and scrollbar jumping as the user scrolls.
+
+The `contain-intrinsic-size` CSS shorthand property acts as a placeholder dimension. Using the `auto` keyword enables the browser to "remember" the exact size once the element is finally rendered, using that calculated size over the placeholder if the element goes off-screen again.
 
 ### Example code
 
 ```css
-.heavy-section {
-  /* Skips rendering calculations when off-screen */
+/* DO ONLY apply this class to items OUTSIDE the initial layout viewport */
+.heavy-section-deferred {
+  /* MANDATORY: Skips rendering calculations when off-screen */
   content-visibility: auto;
   
   /* Mandatory: Provide an estimated size to prevent layouts shifts.
@@ -125,7 +137,7 @@ heavySection.addEventListener('beforematch', (event) => {
 ```
 
 ### `hidden="until-found"` fallback
-{{ BASELINE_STATUS("hidden-until-found") }} When `hidden="until-found"` is not supported elements will remain hidden. Use feature detection targeting `onbeforematch` and extract or reveal content accordingly.
+{{ BASELINE_STATUS("hidden-until-found") }} When `hidden="until-found"` is not supported elements will remain hidden. Use feature detection targeting `onbeforematch` and extract or reveal content accordingly. Feature detection MUST check for the existence of `onbeforematch` in `HTMLElement.prototype`.
 
 ```javascript
 if (!('onbeforematch' in HTMLElement.prototype)) {
