@@ -44,7 +44,7 @@ export const environmentConfig: EnvironmentConfig = {
   gcpCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(os.homedir(), '.config/gcloud/application_default_credentials.json'),
 
   // Codex Configuration
-  codexCliBin: process.env.CODEX_CLI_BIN || path.join(__dirname, 'node_modules/.bin/codex'),
+  codexCliBin: process.env.CODEX_CLI_BIN || path.join(rootDir, 'harness/node_modules/.bin/codex'),
 
   // MCP Server Configuration
   modernWebServerPath: path.join(rootDir, 'serving/mcp-server/index.ts'), // For modern-web MCP server
