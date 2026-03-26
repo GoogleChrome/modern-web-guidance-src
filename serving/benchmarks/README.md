@@ -4,6 +4,8 @@ This directory contains the offline evaluation framework used to rigorously benc
 
 Because embedding models and chunking strategies can be notoriously difficult to validate anecdotally, we actively maintain this isolated test suite to measure `Top-1 Hit Rate` and `Mean Reciprocal Rank` (MRR) dynamically over an 850-query dataset.
 
+> **Read the published engineering report with the historical benchmarking results here:** [go/rxolz](http://go/rxolz)
+
 ## Directory Structure
 
 *   **`rag/`**: Contains the active test instrumentation.
