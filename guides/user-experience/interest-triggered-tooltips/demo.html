@@ -19,7 +19,7 @@
       }
     </script>
     <style>
-      
+
       body {
         font:
           1rem/1.5 system-ui,
@@ -49,28 +49,24 @@
         color: #fff;
         font-size: 0.875rem;
         max-width: 20rem;
-        position: fixed;
-        margin: auto;
+        /* Use `anchor()` functions rather than `position-area`, as the anchor positioning polyfill doesn't support `position-area` on popovers. */
+        inset-block-start: anchor(end);
+        inset-inline-start: anchor(end);
+        position-try: flip-inline;
+        margin: unset;
       }
-      @supports (position-anchor: auto) {
-        [popover] {
-          margin: unset;
-          position-anchor: auto;
-          position-area: block-start;
-          position-try-fallbacks: flip-block;
-          margin-bottom: 0.5rem;
-        }
+      /* These tooltips adds an explicit anchor-name, as the anchor positioning polyfill does not support implicit anchors. */
+      button[interestfor="tooltip-dom"] {
+        anchor-name: --tooltip-dom;
       }
-      /* This tooltip works with the anchor positioning polyfill's limitations. It
-      does not use position-area on a popover, or an implicit anchor. */
+      #tooltip-dom {
+        position-anchor: --tooltip-dom;
+      }
       button[interestfor="tooltip-attrs"] {
         anchor-name: --tooltip-attrs;
       }
       #tooltip-attrs {
         position-anchor: --tooltip-attrs;
-        top: anchor(bottom);
-        left: anchor(right);
-        margin: unset;
       }
     </style>
   </head>

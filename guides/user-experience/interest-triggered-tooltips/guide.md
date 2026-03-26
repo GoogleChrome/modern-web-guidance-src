@@ -44,14 +44,31 @@ The trigger must have a visual indicator to indicate that there is additional in
 
 ### Positioning the tooltip
 
-The tooltip can be positioned using anchor positioning. When the tooltip is opened using `interestfor`, the trigger becomes an implicit anchor for the tooltip, meaning you don't have to add `anchor-name` or `position-anchor` CSS properties. DO use `position-area: block-start` with `position-try: flip-block`, or `position-area: inline-end` with `position-try: flip-inline`.
+The tooltip can be positioned using anchor positioning. When the tooltip is opened using `interestfor`, the trigger becomes an implicit anchor for the tooltip, meaning you don't have to add `anchor-name` or `position-anchor` CSS properties. However, to support browsers without anchor positioning you must use the anchor positioning polyfill, which has several limitations for popovers. Implicit anchors are not supported by the polyfill, so DO explicitly set an `anchor-name` and `position-anchor`.
+
+
+```css
+/* DO use explicit anchor names for compatibility with the polyfill */
+button[interestfor="tooltip-dom"] {
+  anchor-name: --tooltip-dom;
+}
+#tooltip-dom {
+  position-anchor: --tooltip-dom;
+}
+```
+
+Also, the polyfill does not support `position-area` on popovers, so DO position using `anchor()` functions.
 
 ```css
 [popover]{
-  position-area: block-start;
-  position-try: flip-block;
+  /* DO use anchor functions and a position-try fallback */
+  inset-block-start: anchor(end);
+  inset-inline-start: anchor(end);
+  position-try: flip-inline;
 }
 ```
+
+
 ### Fallback strategies
 
 {{ BASELINE_STATUS("interest-invokers") }}
@@ -81,33 +98,7 @@ Popover and popover hint must conditionally be polyfilled with the `@oddbird/pop
 
 {{ BASELINE_STATUS("anchor-positioning") }}
 
-To support browsers without anchor positioning, provide a fallback by putting the popover in the center of the user's screen. Add a `@supports (anchor-name: auto){}` supports block around the anchor positioning rules on the tooltip so browsers with anchor positioning show the tooltip in the desired location.
-
-```html
-<script type="module">
-  if (!("anchorName" in document.documentElement.style)) {
-    await import("https://unpkg.com/@oddbird/css-anchor-positioning");
-  }
-</script>
-```
-
-```css
-[popover]{
-  position: fixed;
-  margin: auto;
-}
-@supports (position-anchor: auto) {
-  [popover] {
-    margin: unset;
-    position-anchor: auto;
-    position-area: block-start;
-    position-try-fallbacks: flip-block;
-    margin-bottom: 0.5rem;
-  }
-}
-```
-
-Alternatively, you may use the `@oddbird/css-anchor-positioning` polyfill. It does not support implicit anchors, so you must add anchor names to the trigger. Additionally, `position-area` is not supported on popovers, so you must use `anchor()` on the desired insets. 
+To support browsers without anchor positioning, use the `@oddbird/css-anchor-positioning` polyfill. It does not support implicit anchors, so you must add anchor names to the trigger. Additionally, `position-area` is not supported on popovers by the polyfill, so you must use `anchor()` on the desired insets. 
 
 ```css
 button[interestfor="tooltip-attrs"] {
