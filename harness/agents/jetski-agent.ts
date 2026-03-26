@@ -470,12 +470,6 @@ async function run(): Promise<void> {
   }
 }
 
-export async function collectJetskiGuides(dirPath: string, serving: string): Promise<string[]> {
-  // TODO: Implement skills guide collection for Jetski (need gLinux-only binary, cannot land in GH)
-  console.log(`Jetski skills collection for ${dirPath} still needs to be populated using ${serving}.`);
-  return [];
-}
-
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMain) {
   run();

@@ -6,6 +6,10 @@ import { fileURLToPath } from 'url';
 import matter from 'gray-matter';
 import { config, Serving, Agents } from '../config.ts';
 
+import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
+import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
+import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -22,56 +26,14 @@ export function getGuideCategory(guideName: string): string | null {
 }
 
 export function extractModelFromResults(resultsDir: string, agent: string): string {
-  // Use recursive glob to find session logs deep in the task results
-  const sessionFiles = glob.sync('**/session-*.{json,jsonl}', { cwd: resultsDir, absolute: true });
-  if (sessionFiles.length === 0) return 'unknown';
-
-  const counts: Record<string, number> = {};
-  for (const sessionPath of sessionFiles) {
-    try {
-      const isJsonl = sessionPath.endsWith('.jsonl');
-      const content = fs.readFileSync(sessionPath, 'utf8');
-
-      if (isJsonl) {
-        const lines = content.split('\n');
-        for (const line of lines) {
-          // Optimization: skip lines that definitely don't have model info
-          if (!line.trim() || !line.includes('"model"')) continue;
-          try {
-            const obj = JSON.parse(line);
-            if (agent === Agents.CLAUDE_CODE) {
-              if (obj.message && obj.message.model) {
-                const m = obj.message.model;
-                counts[m] = (counts[m] || 0) + 1;
-              }
-            } else if (agent === Agents.CODEX_CLI) {
-              if (obj.payload && typeof obj.payload.model === 'string') {
-                const m = obj.payload.model;
-                counts[m] = (counts[m] || 0) + 1;
-              }
-            }
-          } catch (e) {
-            console.warn(`Malformed JSONL line in ${sessionPath}:`, e);
-          }
-        }
-      } else {
-        const session = JSON.parse(content);
-        if (session.messages) {
-          for (const m of session.messages) {
-            if (m.type === 'gemini' && m.model) {
-              counts[m.model] = (counts[m.model] || 0) + 1;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn(`Failed to extract model from ${sessionPath}:`, e);
-    }
+  if (agent === Agents.GEMINI_CLI) {
+    return extractGeminiCliModel(resultsDir);
+  } else if (agent === Agents.CLAUDE_CODE) {
+    return extractClaudeCodeModel(resultsDir);
+  } else if (agent === Agents.CODEX_CLI) {
+    return extractCodexCliModel(resultsDir);
   }
-
-  const topModel = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  if (topModel) return topModel[0];
-
+  // Jetski impl does not support trajectory pb parsing
   return 'unknown';
 }
 

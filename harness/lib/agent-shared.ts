@@ -443,6 +443,68 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
 }
 
 /**
+ * Runs a CLI agent command, capturing output to the terminal and to log files.
+ * @param command The binary to run
+ * @param commandArgs The arguments
+ * @param workDir The working directory
+ * @param targetDir The target directory for logs and results
+ * @param agentName Name of the agent (for error messages)
+ */
+export async function runCliAgentCommand(
+  command: string,
+  commandArgs: string[],
+  workDir: string,
+  targetDir: string,
+  agentName: string
+): Promise<void> {
+  const child = spawn(command, commandArgs, {
+    cwd: workDir,
+    env: { ...process.env }, // Pass through environment variables (including new HOME)
+    // 'pipe' captures output for log files but does NOT print to terminal natively
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  let stdoutData = '';
+  let stderrData = '';
+
+  child.stdout?.on('data', (data) => {
+    const chunk = data.toString();
+    stdoutData += chunk;
+    // Manually mirror to console so we can see progress while capturing
+    process.stdout.write(chunk);
+  });
+
+  child.stderr?.on('data', (data) => {
+    const chunk = data.toString();
+    stderrData += chunk;
+    // Manually mirror to console so we can see progress while capturing
+    process.stderr.write(chunk);
+  });
+
+  const exitCode = await new Promise((resolve) => {
+    child.on('close', resolve);
+  });
+
+  if (exitCode !== 0) {
+    throw new Error(`${agentName} exited with code ${exitCode}`);
+  }
+
+  copyResultsToTarget(workDir, targetDir);
+
+  // Save output to chat_log.txt
+  const chatLogPath = path.join(targetDir, 'chat_log.txt');
+  fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
+  console.log(`Saved output to: ${chatLogPath}`);
+
+  // Save stderr to agent_stderr.log to surface unexpected problems
+  if (stderrData.length > 0) {
+    const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
+    fs.writeFileSync(stderrLogPath, stderrData, 'utf8');
+    console.log(`Saved stderr to: ${stderrLogPath}`);
+  }
+}
+
+/**
  * Generates an HTML file that can load and display a trajectory file (JSON/PB) 
  * by embedding it as base64 and posting it to the trajectory viewer iframe.
  * @param fileBuffer Binary content of the trajectory file

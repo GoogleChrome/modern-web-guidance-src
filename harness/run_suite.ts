@@ -241,7 +241,6 @@ process.exit(result.status ?? 0);
           }
         }
       }
-
     }
 
     if (hasErrors) {
