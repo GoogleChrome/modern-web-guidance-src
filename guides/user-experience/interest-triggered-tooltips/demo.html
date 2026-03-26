@@ -4,19 +4,22 @@
     <meta charset="utf-8" />
     <title>Interest-Triggered Tooltips</title>
     <script type="module">
-      import("https://unpkg.com/interestfor");
+      if(!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")){
+        await import("https://unpkg.com/interestfor@latest");
+      }
     </script>
-    <script
-      src="https://unpkg.com/@oddbird/popover-polyfill@latest"
-      crossorigin="anonymous"
-      defer
-    ></script>
+    <script type="module">
+      if(!HTMLElement.prototype.hasOwnProperty("popover")){
+        await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
+      }
+    </script>
     <script type="module">
       if (!("anchorName" in document.documentElement.style)) {
-        import("https://unpkg.com/@oddbird/css-anchor-positioning");
+        await import("https://unpkg.com/@oddbird/css-anchor-positioning");
       }
     </script>
     <style>
+      
       body {
         font:
           1rem/1.5 system-ui,

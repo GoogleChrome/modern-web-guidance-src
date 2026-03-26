@@ -5,6 +5,6 @@
 * The tooltip is a `<div>`.
 * The tooltip is positioned with anchor positioning, with `position-area` and `position-try`.
 * Anchor positioning rules are inside a `@supports` block.
-* Polyfills for interestfor and popover must be installed.
+* Polyfills for interestfor and popover must be conditionally installed.
 * Do not display tooltip content using `::before` and `::after` pseudo-elements.
 * Do not put tooltip content into attributes on the trigger.
