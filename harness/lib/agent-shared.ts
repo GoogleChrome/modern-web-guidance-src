@@ -1,11 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
-import { fileURLToPath } from 'url';
 import { Agents } from '../config.ts';
 import { classifyGuide, scanAllGuides } from './utils.ts';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { rootDir } from '../../lib/root.ts';
 
 /**
  * Promisified version of child_process.spawn.
@@ -170,8 +168,7 @@ export function updateMcpConfig(
  * @returns True if successful, false otherwise
  */
 export function copySkills(homeDir: string, agent: string, cli: boolean): boolean {
-  const harnessRoot = path.resolve(__dirname, '..');
-  const guidesSource = path.join(harnessRoot, '..', 'guides');
+  const guidesSource = path.join(rootDir, 'guides');
 
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {

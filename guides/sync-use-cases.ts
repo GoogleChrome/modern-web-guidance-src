@@ -87,8 +87,9 @@ export interface GuideInventoryResult {
 
 // --- Constants ---
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = path.resolve(__dirname, '..');
+import { rootDir } from '../lib/root.ts';
+
+const REPO_ROOT = rootDir;
 dotenv.config({ path: path.join(REPO_ROOT, '.env') });
 
 const PRIORITY_LABEL_REGEX = /^P\d+$/;

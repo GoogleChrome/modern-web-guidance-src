@@ -2,15 +2,12 @@ import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
-import { fileURLToPath } from 'url';
 import matter from 'gray-matter';
 import { config, Serving } from '../config.ts';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { rootDir } from '../../lib/root.ts';
 
 export function getGuideCategory(guideName: string): string | null {
-  const guidesDir = path.resolve(__dirname, '../../guides');
+  const guidesDir = path.join(rootDir, 'guides');
   const categories = fs.readdirSync(guidesDir).filter(f => fs.statSync(path.join(guidesDir, f)).isDirectory());
   
   for (const cat of categories) {
@@ -97,7 +94,7 @@ export async function collectResults(resultsDir: string) {
       const [taskName, runType] = parts;
       const targetFile = path.join(dir, 'index.html');
       const isNegative = config.suite.negative === true;
-      const taskPath = path.resolve(__dirname, `../tasks/${isNegative ? 'negative/' : ''}${taskName}.md`);
+      const taskPath = path.join(rootDir, 'harness', 'tasks', isNegative ? 'negative' : '', `${taskName}.md`);
 
       if (!fs.existsSync(taskPath)) continue;
 
@@ -106,7 +103,7 @@ export async function collectResults(resultsDir: string) {
       if (!data || !data.grader) continue;
 
       const guide = data.grader.trim();
-      const guidesDir = path.resolve(__dirname, '../../guides');
+      const guidesDir = path.join(rootDir, 'guides');
       const graderMatches = glob.sync(`**/${guide}/grader.ts`, { cwd: guidesDir, absolute: true });
       const graderPath = graderMatches.length > 0 ? graderMatches[0] : path.join(guidesDir, guide, `grader.ts`);
       const graderResults = path.join(dir, `${guide}_results.json`);
@@ -118,7 +115,7 @@ export async function collectResults(resultsDir: string) {
 
       // Generate a runner script to be picked up by pnpm -r run-grader
       // We import runPlaywright directly from the guides code to leverage existing test execution logic
-      const runGraderModulePath = path.resolve(__dirname, '../../guides/run-grader.ts');
+      const runGraderModulePath = path.join(rootDir, 'guides', 'run-grader.ts');
       const gradeScript = `
 import fs from 'fs';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
@@ -204,7 +201,7 @@ run();
 
       const targetFile = path.join(dir, 'index.html');
       const isNegative = config.suite.negative === true;
-      const taskPath = path.resolve(__dirname, `../tasks/${isNegative ? 'negative/' : ''}${taskName}.md`);
+      const taskPath = path.join(rootDir, 'harness', 'tasks', isNegative ? 'negative' : '', `${taskName}.md`);
 
       if (!fs.existsSync(taskPath)) {
         console.warn(`Skipping grading: Task ${taskName} not found at ${taskPath}`);
@@ -233,7 +230,7 @@ run();
 
       const actualBaseApp = data.base_app ? data.base_app.trim() : taskName;
       const testName = `${taskName} - ${guide} - ${runType}`;
-      const guidesDir = path.resolve(__dirname, '../../guides');
+      const guidesDir = path.join(rootDir, 'guides');
       const graderMatches = glob.sync(`**/${guide}/grader.ts`, {
         cwd: guidesDir,
         absolute: true

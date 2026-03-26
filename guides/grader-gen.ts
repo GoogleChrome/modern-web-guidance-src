@@ -3,7 +3,9 @@ import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { rootDir } from '../lib/root.ts';
+
+const guidesDir = path.join(rootDir, 'guides');
 
 import config from '../harness/config.ts';
 import { createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders } from '../harness/lib/agent-shared.ts';
@@ -37,10 +39,10 @@ function setupIsolatedWorkDir(targetDir: string): string {
   fs.cpSync(targetDir, workDir, { recursive: true });
 
   // Copy template.grader.ts from the guides directory
-  copyFileIfExists(path.join(__dirname, 'template.grader.ts'), path.join(workDir, 'template.grader.ts'));
+  copyFileIfExists(path.join(guidesDir, 'template.grader.ts'), path.join(workDir, 'template.grader.ts'));
 
   // Provide testing config to the agent
-  copyFileIfExists(path.join(__dirname, 'playwright.config.ts'), path.join(workDir, 'playwright.config.ts'));
+  copyFileIfExists(path.join(guidesDir, 'playwright.config.ts'), path.join(workDir, 'playwright.config.ts'));
 
   const geminiSource = path.join(path.resolve(process.env.HOME || process.cwd()), '.gemini');
   const geminiDest = path.join(tempHome, '.gemini');
@@ -140,7 +142,7 @@ async function runGraderGeneration(targetDir: string, prompt: string): Promise<v
     }
 
     try {
-      execSync('npm run typecheck', { cwd: __dirname, stdio: 'inherit' });
+      execSync('npm run typecheck', { cwd: guidesDir, stdio: 'inherit' });
     } catch {
       throw new Error(`Typecheck failed on generated grader.ts. Review the file for type errors.`);
     }
@@ -167,7 +169,7 @@ export async function generateGrader(targetDirRaw: string): Promise<void> {
   const demoPath = path.join(targetDir, 'demo.html');
   const negativeDemoPath = path.join(targetDir, 'negative-demo.html');
   const expectationsPath = path.join(targetDir, 'expectations.md');
-  const templatePath = path.join(__dirname, 'template.grader.ts');
+  const templatePath = path.join(guidesDir, 'template.grader.ts');
 
   if (!fs.existsSync(guidePath) || !fs.existsSync(demoPath) || !fs.existsSync(expectationsPath) || !fs.existsSync(negativeDemoPath) || !fs.existsSync(templatePath)) {
     console.error(`Error: Missing required files. Need guide.md, demo.html, negative-demo.html, expectations.md, and template.grader.ts in the respective directories.`);

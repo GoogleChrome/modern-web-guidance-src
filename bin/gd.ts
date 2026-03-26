@@ -5,13 +5,9 @@ import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
-import { fileURLToPath } from 'url';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
 import { config, Serving } from '../harness/config.ts';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const rootDir = path.resolve(__dirname, '..');
+import { rootDir } from '../lib/root.ts';
 
 // Load environment variables (Node 20.12+)
 try {
