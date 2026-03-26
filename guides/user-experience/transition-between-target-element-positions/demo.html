@@ -14,19 +14,23 @@
         gap: 0.5rem;
         font-size: 2.2rem;
       }
-      ul:before {
+      ul::before {
         content: '';
         position: absolute;
-        position-anchor: --li;
-        bottom: anchor(bottom);
-        left: anchor(left);
-        right: anchor(right);
-        height: 0.2em;
+        position-anchor: --active;
+        inset-block-start: calc(anchor(end) + .1lh);
+        inset-inline-start: anchor(start);
+        inset-inline-end: anchor(end);
+        height: 0.25lh;
         background: red;
-        transition: 0.2s;
+        @media (prefers-reduced-motion: no-preference){
+          transition: inset ease-in-out .2s;
+        }
       }
+
       ul li.active {
-        anchor-name: --li;
+        anchor-name: --active;
+        color: red;
       }
 
       ul li a {
