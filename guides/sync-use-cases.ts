@@ -10,6 +10,15 @@ import { scanAllGuides, type GuideInventory } from '../harness/lib/utils.ts';
 
 // --- Types ---
 
+export const ProjectStatus = {
+  NeedsGuidance: 'Needs guidance',
+  NeedsEvals: 'Needs evals',
+  NeedsUseCases: 'Needs use cases',
+  NeedsInvestigation: 'Needs investigation',
+} as const;
+
+export type ProjectStatus = typeof ProjectStatus[keyof typeof ProjectStatus];
+
 interface GuideData {
   name?: string;
   description?: string;
@@ -50,7 +59,7 @@ export interface FeatureToSync {
   issueNumber: number;
   needsReopen: boolean;
   closeReason: 'completed' | null;
-  targetStatus: 'Needs use cases' | 'Needs evals' | null;
+  targetStatus: ProjectStatus | null;
 }
 
 interface ProjectDetails {
@@ -119,12 +128,12 @@ const projectOctokit: any = new Octokit({ auth: PROJECT_GITHUB_TOKEN });
  * Determines the project status name for a use case based on its completeness.
  * Returns null when the use case is complete.
  */
-export function getStatusName(guideBody: string, hasGrader: boolean, hasPrompts: boolean): string | null {
+export function getStatusName(guideBody: string, hasGrader: boolean, hasPrompts: boolean): ProjectStatus | null {
   if (guideBody.trim().length === 0) {
-    return 'Needs guidance';
+    return ProjectStatus.NeedsGuidance;
   }
   if (!hasGrader || !hasPrompts) {
-    return 'Needs evals';
+    return ProjectStatus.NeedsEvals;
   }
   return null;
 }
@@ -132,8 +141,8 @@ export function getStatusName(guideBody: string, hasGrader: boolean, hasPrompts:
 /**
  * Determines whether an existing issue needs to be closed or reopened.
  */
-export function getIssueStateChanges(currentState: 'open' | 'closed', statusName: string | null, currentProjectStatus?: string): { needsClose: boolean; needsReopen: boolean } {
-  const shouldBeOpen = statusName !== null || currentProjectStatus === 'Needs investigation';
+export function getIssueStateChanges(currentState: 'open' | 'closed', statusName: ProjectStatus | null, currentProjectStatus?: string): { needsClose: boolean; needsReopen: boolean } {
+  const shouldBeOpen = statusName !== null || currentProjectStatus === ProjectStatus.NeedsInvestigation;
   return {
     needsClose: !shouldBeOpen && currentState === 'open',
     needsReopen: shouldBeOpen && currentState === 'closed',
@@ -258,7 +267,7 @@ export function getFeaturesNeedingSync(
         issueNumber: featureData.number,
         needsReopen: featureData.state === 'closed',
         closeReason: null,
-        targetStatus: 'Needs evals',
+        targetStatus: ProjectStatus.NeedsEvals,
       });
     } else if (hasCompletedUseCases && featureData.state === 'open') {
       result.push({
@@ -274,7 +283,7 @@ export function getFeaturesNeedingSync(
         issueNumber: featureData.number,
         needsReopen: false,
         closeReason: null,
-        targetStatus: 'Needs use cases',
+        targetStatus: ProjectStatus.NeedsUseCases,
       });
     }
   }
@@ -736,6 +745,12 @@ async function processUseCases(
     const currentProjectStatus = existingIssueNumber ? projectDetails?.issueStatusMap.get(existingIssueNumber) : undefined;
 
     const { issueNumber, changed } = await syncIssue(name, existingIssue, issueTitle, issueBody, priorityLabel, milestoneNumber, statusName, activeIssueNumbers, currentProjectStatus);
+
+    if (currentProjectStatus === ProjectStatus.NeedsInvestigation) {
+      for (const id of featureIds) {
+        featuresWithActiveUseCases.add(id);
+      }
+    }
 
     for (const id of featureIds) {
       if (!featureUseCaseMap.has(id)) featureUseCaseMap.set(id, []);
