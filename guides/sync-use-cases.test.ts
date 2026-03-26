@@ -280,6 +280,18 @@ describe('getIssueStateChanges', () => {
     assert.strictEqual(result.needsClose, false);
     assert.strictEqual(result.needsReopen, false);
   });
+
+  test('open issue stays open when complete but status is Needs investigation', () => {
+    const result = getIssueStateChanges('open', null, 'Needs investigation');
+    assert.strictEqual(result.needsClose, false);
+    assert.strictEqual(result.needsReopen, false);
+  });
+
+  test('closed issue reopens when complete but status is Needs investigation', () => {
+    const result = getIssueStateChanges('closed', null, 'Needs investigation');
+    assert.strictEqual(result.needsClose, false);
+    assert.strictEqual(result.needsReopen, true);
+  });
 });
 
 describe('getDesiredLabels', () => {

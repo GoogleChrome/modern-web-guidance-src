@@ -132,8 +132,8 @@ export function getStatusName(guideBody: string, hasGrader: boolean, hasPrompts:
 /**
  * Determines whether an existing issue needs to be closed or reopened.
  */
-export function getIssueStateChanges(currentState: 'open' | 'closed', statusName: string | null): { needsClose: boolean; needsReopen: boolean } {
-  const shouldBeOpen = statusName !== null;
+export function getIssueStateChanges(currentState: 'open' | 'closed', statusName: string | null, currentProjectStatus?: string): { needsClose: boolean; needsReopen: boolean } {
+  const shouldBeOpen = statusName !== null || currentProjectStatus === 'Needs investigation';
   return {
     needsClose: !shouldBeOpen && currentState === 'open',
     needsReopen: shouldBeOpen && currentState === 'closed',
@@ -543,10 +543,11 @@ async function syncIssue(
   priorityLabel: string | null,
   milestoneNumber: number | null,
   statusName: string | null,
-  activeIssueNumbers: Set<number>
+  activeIssueNumbers: Set<number>,
+  currentProjectStatus?: string
 ): Promise<{ issueNumber: number; changed: boolean }> {
   if (existingIssue) {
-    const { needsClose, needsReopen } = getIssueStateChanges(existingIssue.state, statusName);
+    const { needsClose, needsReopen } = getIssueStateChanges(existingIssue.state, statusName, currentProjectStatus);
     const currentLabels = (existingIssue.labels as any[]).map(l => typeof l === 'string' ? l : l.name);
     const desiredLabels = getDesiredLabels(currentLabels, priorityLabel);
     const labelsChanged = desiredLabels.length !== currentLabels.length || desiredLabels.some(l => !currentLabels.includes(l));
@@ -731,8 +732,10 @@ async function processUseCases(
   for (const { name, description, featureIds, relativeSubdir, statusName } of preparedGuides) {
     const { issueTitle, issueBody, priorityLabel, milestoneNumber } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap);
     const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
+    const existingIssueNumber = existingIssue?.number;
+    const currentProjectStatus = existingIssueNumber ? projectDetails?.issueStatusMap.get(existingIssueNumber) : undefined;
 
-    const { issueNumber, changed } = await syncIssue(name, existingIssue, issueTitle, issueBody, priorityLabel, milestoneNumber, statusName, activeIssueNumbers);
+    const { issueNumber, changed } = await syncIssue(name, existingIssue, issueTitle, issueBody, priorityLabel, milestoneNumber, statusName, activeIssueNumbers, currentProjectStatus);
 
     for (const id of featureIds) {
       if (!featureUseCaseMap.has(id)) featureUseCaseMap.set(id, []);
