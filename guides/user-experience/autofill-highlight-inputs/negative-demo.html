@@ -1,59 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Highlight :autofill inputs</title>
   <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Highlight Autofill Inputs</title>
   <style>
-  * {
-    font-family: sans-serif;
-  }
-  input {
-    border: 2px solid;
-    border-color: #cccccc;
-    border-radius: 2px;
-    margin: 0 0 2rem 0;
-    padding: 0.5rem;
-  }
-  input#submit {
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 800;
-  }
-  label {
-    display: block;
-    font-weight: 500;
-    margin: 0 0 0.5rem 0;
-  }
-  input:auto-fill {
-    border-color: green;
-    outline: none;
-  }
-  section:autofill {
-    background-color: yellow;
-  }
+    div:auto-fill,
+    form:auto-fill,
+    input:auto-fill,
+    input:-webkit-auto-fill,
+    input:-webkit-auto-fill:hover,
+    input:-webkit-auto-fill:focus {
+      border-color: green;
+      outline: none;
+    }
   </style>
 </head>
 <body>
-  <main>
+  <div>
+    <h1>Name Form</h1>
     <form id="form" name="form">
-      <h1>Name form</h1>
       <section>
         <label for="name">Name</label>
-        <input id="name" name="name" autocomplete="name" maxlength="100" pattern="[\p{L} \-\.]+" required>
+        <input id="name" name="name" type="text" autocomplete="name" maxlength="100" pattern="[\p{L} \-\.]+" required>
       </section>
-      <input type="submit" value="Submit" id="submit">
+      <button type="submit">Submit</button>
     </form>
-  </main>
+  </div>
   <script>
-    setTimeout(function() {
-      var nameInput = document.getElementById('name');
-      if (nameInput && nameInput.value) {
-        nameInput.style.borderColor = 'green';
-        nameInput.style.outline = 'none';
+    const inputElement = document.getElementById('name');
+    setInterval(function() {
+      if (inputElement && inputElement.value.length > 0) {
+        inputElement.style.borderColor = 'green';
+        inputElement.style.outline = 'none';
       }
-    }, 500);
+    }, 250);
   </script>
 </body>
 </html>

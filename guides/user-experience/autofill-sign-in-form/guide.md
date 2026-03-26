@@ -1,17 +1,11 @@
 ---
 name: autofill-sign-in-form
-description: Build a sign-in form that follows best practice, and works correctly with browser autofill features.
+description: Build a sign-in form with correct autocomplete values and autofill support.
 web-feature-ids:
-  - autofill
+  - input-email-tel-url
+  - inputmode
 sources:
-  - https://web.dev/articles/payment-and-address-form-best-practices
   - https://web.dev/articles/sign-in-form-best-practices
-  - https://web.dev/articles/sign-up-form-best-practices
-  - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/autocomplete
-  - https://developer.mozilla.org/docs/Web/HTML/Element/form
-  - https://developer.mozilla.org/docs/Web/HTML/Element/input
-  - https://developer.mozilla.org/docs/Web/HTML/Element/label
-  - https://css-tricks.com/everything-you-ever-wanted-to-know-about-inputmode
 ---
 
 # Build a sign-in form that follows best practice
@@ -22,98 +16,56 @@ If users ever need to sign in to your site, then good sign-in form design is cri
 
 ## How to implement
 
-Outlined below are the most important guidelines for building successful sign-in
-forms.
+Outlined below are the most important guidelines for building successful sign-in forms.
 
 ### Use meaningful, valid HTML
 
 Make the most of the elements and attributes built for creating forms:
 
--   `<form>`, `<input>`, `<label>`, and `<button>`
--   `type`, `autocomplete`, and `inputmode`
+- `<form>`, `<input>`, `<label>`, and `<button>`
+- `type`, `autocomplete`, and `inputmode`
 
-These enable built-in browser functionality, improve accessibility, and add
-meaning to markup.
+These enable built-in browser functionality, improve accessibility, and add meaning to markup.
 
 ### Use the <label> element to label form fields for data entry
 
-To label an `<input>`, `<select>`, or `<textarea>`, use a `[<label>]
-(https://developer.mozilla.org/docs/Web/HTML/Element/label)`.\ Associate a
-label with an input by giving the label's `for` attribute the same value as the
-input's `id`.
+To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a label with an input by giving the label's `for` attribute the same value as the input's `id`.
 
 ### Make the most of HTML attributes
 
-Make it easy for users to enter data, by using the appropriate `<input>` element
-`<type>` attribute to provide the right keyboard on mobile and enable basic
-built-in validation by the browser.
+Make it easy for users to enter data, by using the appropriate `<input>` element `<type>` attribute to provide the right keyboard on mobile and enable basic built-in validation by the browser.
 
-Always use `type="email"` for email addresses and `type="tel"` for phone
-numbers.
+Always use `type="email"` for email addresses and `type="tel"` for phone numbers.
 
-Every `<input>`, `<select`, and `<textarea>` element should have an appropriate
-`autocomplete` attribute, to improve accessibility and help users avoid
-re-entering data.
+Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid re-entering data.
 
 ### Make buttons helpful
 
-Use `<button>` for buttons. You can also use `<input type="submit">`, but don't
-use a `div` or some other random element acting as a button. Button elements
-provide accessible behaviour, built-in form submission functionality, and can
-easily be styled.
+Use `<button>` for buttons. You can also use `<input type="submit">`, but don't use a `div` or some other random element acting as a button. Button elements provide accessible behaviour, built-in form submission functionality, and can easily be styled.
 
-Give each form submit button a value that says what it does. For each step
-towards checkout, use a descriptive call-to-action that shows progress and
-makes the next step obvious. For example, label the submit button on your
-delivery address form **Proceed to Payment** rather than **Continue**
-or **Save**.
+Give each form submit button a value that says what it does. Use a clear, recognizable label. For example, use **Sign In** rather than **Continue** or **Submit**.
 
 ### Use a single name input where possible
 
-Allow your users to enter their name using a single input, unless you have a
-good reason for separately storing given names, family names, honorifics, or
-other name parts. Using a single name input makes forms less complex, enables
-cut-and-paste, and makes autofill simpler.
+Allow your users to enter their name using a single input, unless you have a good reason for separately storing given names, family names, honorifics, or other name parts. Using a single name input makes forms less complex, enables cut-and-paste, and makes autofill simpler.
 
-Allow international names. For validation, avoid using regular expressions that
-only match Latin characters. Latin-only excludes users with names or addresses
-that include characters that aren't in the Latin alphabet. Allow Unicode letter
-matching instead—and ensure your backend supports Unicode securely as both
-input and output. Unicode in regular expressions is well supported by modern
-browsers.
+Allow international names. For validation, avoid using regular expressions that only match Latin characters. Latin-only excludes users with names or addresses that include characters that aren't in the Latin alphabet. Allow Unicode letter matching instead—and ensure your backend supports Unicode securely as both input and output. Unicode in regular expressions is well supported by modern browsers.
 
-### Show checkout progress
+### Show sign-in progress
 
-For each step towards sign-in, use page headings and descriptive button values that make it clear what needs to be done now, and what checkout step is next.
+For each step towards sign-in, use page headings and descriptive button values that make it clear what needs to be done now, and what the next step is.
 
-Use the `enterkeyhint` attribute on form inputs to set the mobile keyboard enter
-key label. For example, use `enterkeyhint="previous"` and `enterkeyhint="next"`
-within a multi-page form, `enterkeyhint="done"` for the final input in the
-form, and `enterkeyhint="search"` for a search input.
+Use the `enterkeyhint` attribute on form inputs to set the mobile keyboard enter key label. For example, use `enterkeyhint="previous"` and `enterkeyhint="next"` within a multi-page form, `enterkeyhint="done"` for the final input in the form, and `enterkeyhint="search"` for a search input.
 
 ### Help users avoid re-entering sign-in data
 
 Make sure to add appropriate `autocomplete` values in sign-in forms.
 
-This enables browsers to help users by securely storing sign-in details
-and correctly entering form data. Without autocomplete, users may be more likely
-to keep a physical record of sign-in details, or store sign-in data
-insecurely on their device.
-
-### Use a single input for payment card and phone numbers
-
-For payment card and phone numbers use a single input: don't split the number into parts. That makes it easier for users to enter data, makes validation simpler, and enables browsers to autofill. Consider doing the same for other numeric data such as PIN and bank codes.
+This enables browsers to help users by securely storing sign-in details and correctly entering form data. Without autocomplete, users may be more likely to keep a physical record of sign-in details, or store sign-in data insecurely on their device.
 
 ### Validate carefully
 
-You should validate data entry both in realtime and before form submission. One
-way to do this is by adding a pattern attribute to a payment card input. If the
-user attempts to submit the sign-in form with an invalid value, the browser
-displays a warning message and sets focus on the input.
-
-However, your pattern regular expression must be flexible enough to handle the
-range of payment card number lengths: from 14 digits (or possibly less) to 20
-(or more).
+Validate data entry both in realtime and before form submission. Use `type="email"` for email inputs — the browser will validate the format automatically. Add the `required` attribute to mandatory fields to prevent empty submissions.
 
 ### Put sign-in in its own <form> element
 
@@ -127,23 +79,15 @@ Some sites force users to enter emails or passwords twice. That might reduce err
 
 ### Keep passwords private—but enable users to see them if they want
 
-Passwords inputs should have `type="password"` to hide password text and help
-the browser understand that the input is for passwords. (Note that browsers use a variety of techniques to understand input roles and decide whether or not to offer to save passwords.)
+Passwords inputs should have `type="password"` to hide password text and help the browser understand that the input is for passwords. (Note that browsers use a variety of techniques to understand input roles and decide whether or not to offer to save passwords.)
 
-You should add a **Show password** toggle to enable users to check the text
-they've entered—and don't forget to add a **Forgot password** link. See
-[Enable password display](https://web.dev/articles/sign-in-form-best-practices#password-display).
+You should add a **Show password** toggle to enable users to check the text they've entered—and don't forget to add a **Forgot password** link.
 
 ### Give mobile users the right keyboard
 
-Use `<input type="email">` to give mobile users an appropriate keyboard and
-enable basic built-in email address validation by the browser… no JavaScript
-required!
+Use `<input type="email">` to give mobile users an appropriate keyboard and enable basic built-in email address validation by the browser… no JavaScript required!
 
-If you need to use a telephone number instead of an email address, `<input
-type="tel">` enables a telephone keypad on mobile. You can also use the
-`inputmode` attribute where necessary: `inputmode="numeric"` is ideal for PIN
-numbers.
+If you need to use a telephone number instead of an email address, `<input type="tel">` enables a telephone keypad on mobile. You can also use the `inputmode` attribute where necessary: `inputmode="numeric"` is ideal for PIN numbers.
 
 ### Prevent mobile keyboard from obstructing the Sign in button
 
@@ -153,43 +97,16 @@ Where possible, avoid this by displaying only the email (or phone) and password 
 
 ### Help users to avoid re-entering data
 
-You can help browsers store data correctly and autofill inputs, so users don't
-have to remember to enter email and password values. This is particularly
-important on mobile, and crucial for email inputs, which get high abandonment rates.
-There are two parts to this:
+You can help browsers store data correctly and autofill inputs, so users don't have to remember to enter email and password values. This is particularly important on mobile, and crucial for email inputs, which get high abandonment rates. There are two parts to this:
 
-1.  The `autocomplete`, `name`, `id`, and `type` attributes help browsers
-    understand the role of inputs in order to store data that can later be used
-    for autofill. To allow data to be stored for autofill, modern browsers also
-    require inputs to have a stable `name` or `id` value (not randomly
-    generated on each page load or site deployment), and to be in a `<form>` element with
-    a `submit` button.
-1.  The `autocomplete` attribute helps browsers correctly autofill inputs
-    using stored data.
+1.  The `autocomplete`, `name`, `id`, and `type` attributes help browsers understand the role of inputs in order to store data that can later be used for autofill. To allow data to be stored for autofill, modern browsers also require inputs to have a stable `name` or `id` value (not randomly generated on each page load or site deployment), and to be in a `<form>` element with a `submit` button.
+1.  The `autocomplete` attribute helps browsers correctly autofill inputs using stored data.
 
-For email inputs use `autocomplete="username"`, since `username` is recognized
-by password managers in modern browsers—even though you should use
-`type="email"` and you may want to use `id="email"` and `name="email"`.
-For password inputs, use the appropriate `autocomplete` and `id` values to help
-browsers differentiate between new and current passwords.
-
-### Use autocomplete="new-password" and id="new-password" for a new password
-
--   Use `autocomplete="new-password"` and `id="new-password"` for the
-    password input in a sign-up form, or the new password in a change-password form.
+For email inputs use `autocomplete="username"`, since `username` is recognized by password managers in modern browsers—even though you should use `type="email"` and you may want to use `id="email"` and `name="email"`. For password inputs, use the appropriate `autocomplete` and `id` values to help browsers differentiate between new and current passwords.
 
 ### Use autocomplete="current-password" and id="current-password" for an existing password
 
--   Use `autocomplete="current-password"` and `id="current-password"` for
-    the password input in a sign-in form, or the input for the user's old
-    password in a change-password form. This tells the browser that you want it
-    to use the current password that it has stored for the site.
-
-For a sign-up form:
-
-```
-<input type="password" autocomplete="new-password" id="new-password" …>
-```
+MANDATORY: Use `autocomplete="current-password"` and `id="current-password"` for the password input in a sign-in form. This tells the browser that you want it to use the current password that it has stored for the site.
 
 For a sign-in form:
 
@@ -205,10 +122,22 @@ Built-in browser password generators mean users and developers don't need to wor
 
 ### Help save users from accidentally missing inputs
 
-Add the `required` attribute to both email and password fields. Modern browsers automatically prompt and set focus for missing data.
+MANDATORY: Add the `required` attribute to both email and password fields. Modern browsers automatically prompt and set focus for missing data.
+
+```html
+<input type="email" id="email" name="email" autocomplete="username" required>
+<input type="password" id="password" name="password" autocomplete="current-password" required>
+```
 
 ### Allow password pasting
 
 Some sites don't allow text to be pasted into password inputs.
 
 Disallowing password pasting annoys users, encourages passwords that are memorable (and therefore may be easier to compromise) and, according to organizations such as the UK National Cyber Security Centre, may actually reduce security. Users only become aware that pasting is disallowed after they try to paste their password, so disallowing password pasting doesn't avoid clipboard vulnerabilities.
+
+### Fallback strategies
+
+{{ BASELINE_STATUS("input-email-tel-url") }}
+{{ BASELINE_STATUS("inputmode") }}
+
+Autofill is a progressive enhancement. In browsers that do not support autofill, users will simply need to manually enter their sign-in credentials. The semantic HTML constraints (such as `type`, `inputmode`, and `required`) will still function appropriately to validate user input and provide the correct virtual keyboards.

@@ -5,10 +5,6 @@ web-feature-ids:
   - autofill
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:autofill
-  - https://developer.mozilla.org/docs/Web/HTML/Element/input
-  - https://developer.mozilla.org/docs/Web/HTML/Element/select
-  - https://developer.mozilla.org/docs/Web/HTML/Element/textarea
-  - https://css-tricks.com/almanac/pseudo-selectors/a/autofill
 ---
 
 # Use the CSS :autofill pseudo-class to highlight form fields that have been autofilled by the browser and not edited by the user
@@ -21,15 +17,13 @@ To highlight a form field that has been autofilled by the browser (and not edite
 
 The following example uses `:autofill` to set border color:
 
-```
+```css
 input:autofill,
-input:-webkit-autofill,
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
-/* box-shadow can be used to customize the background if required,
-since background-color cannot be overridden directly */
-/* box-shadow: 0 0 0 100vmax #efe inset; */
+  /* box-shadow overrides the autofill background color, which cannot be changed via background-color */
+  /* box-shadow: 0 0 0 100vmax #efe inset; */
   border-color: green;
   outline: none;
 }
@@ -37,9 +31,14 @@ since background-color cannot be overridden directly */
 
 As shown in this example, the `box-shadow` property can be used to customize the background if required, since `background-color` cannot be overridden directly.
 
-
 ## Use the correct CSS pseudo-class name
 
 **Do not** use `:auto-fill`: this is incorrect.
 
-Use `:autofill:` this is the correct pseudo-class name.
+MANDATORY: Use `:autofill` as this is the correct pseudo-class name.
+
+### Fallback strategies
+
+{{ BASELINE_STATUS("autofill") }}
+
+The `:autofill` pseudo-class is a progressive enhancement. In browsers that do not support it, the form will still function normally, but the inputs will simply not receive the custom autofill highlighting. Users will still be able to successfully complete the form. No additional JavaScript fallback should be used.

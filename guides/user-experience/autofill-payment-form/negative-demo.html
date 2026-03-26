@@ -1,78 +1,54 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Payment Form</title>
-  <style>
-    input:-webkit-autofill {
-      background-color: yellow !important;
-    }
-    input:auto-fill {
-      border: 1px solid red;
-    }
-    .btn {
-      cursor: pointer;
-      background: #000;
-      color: #fff;
-      padding: 10px;
-      text-align: center;
-      width: 100px;
-      margin-top: 10px;
-    }
-  </style>
+  <meta charset="utf-8">
+  <title>Payment Setup</title>
 </head>
 <body>
-  <div id="payment-container">
-    <h2>Enter Details</h2>
+  <h1>Payment Info</h1>
+  <div id="payment-details">
+    <section>
+      <span>Email Address</span>
+      <input type="text" id="email_input" name="email_input">
+    </section>
 
-    <div>
+    <section>
+      <span>Phone Number</span>
+      <input type="text" id="phone_area" name="phone_area" maxlength="3">
+      <input type="text" id="phone_prefix" name="phone_prefix" maxlength="3">
+      <input type="text" id="phone_line" name="phone_line" maxlength="4">
+    </section>
+
+    <section>
       <span>First Name</span>
-      <input type="text" id="fname" pattern="[A-Za-z]+">
-    </div>
-    <div>
+      <input type="text" id="fname" name="fname" pattern="[a-zA-Z]+" autocomplete="off">
+    </section>
+
+    <section>
       <span>Last Name</span>
-      <input type="text" id="lname" pattern="[A-Za-z]+">
-    </div>
+      <input type="text" id="lname" name="lname" pattern="[a-zA-Z]+" autocomplete="off">
+    </section>
 
-    <div>
-      <span>Address Line 1</span>
-      <input type="text" id="addr1">
-    </div>
-    <div>
-      <span>State</span>
-      <input type="text" id="state">
-    </div>
-    <div>
-      <span>Zip Code</span>
-      <input type="text" id="zip">
-    </div>
+    <section>
+      <span>Card number</span>
+      <input type="number" id="cc_part1" name="cc_part1">
+      <input type="number" id="cc_part2" name="cc_part2">
+      <input type="number" id="cc_part3" name="cc_part3">
+      <input type="number" id="cc_part4" name="cc_part4">
+    </section>
 
-    <div>
-      <span>CC Number</span>
-      <input type="number" id="cc1" maxlength="4" style="width: 50px;"> -
-      <input type="number" id="cc2" maxlength="4" style="width: 50px;"> -
-      <input type="number" id="cc3" maxlength="4" style="width: 50px;"> -
-      <input type="number" id="cc4" maxlength="4" style="width: 50px;">
-    </div>
+    <section>
+      <span>Expiry date</span>
+      <input type="number" id="exp_month" name="exp_month" placeholder="MM">
+      <input type="number" id="exp_year" name="exp_year" placeholder="YY">
+    </section>
 
-    <div>
-      <span>Owner</span>
-      <input type="text" id="ccname" autocomplete="off" pattern="[A-Za-z]+">
-    </div>
+    <section>
+      <span>Security code</span>
+      <input type="password" id="cvv" name="cvv">
+    </section>
 
-    <div>
-      <span>Expiration</span>
-      <input type="number" id="exp-month" placeholder="MM"> /
-      <input type="number" id="exp-year" placeholder="YYYY">
-    </div>
-
-    <div>
-      <span>Sec</span>
-      <input type="password" id="cvv" pattern="\d{3}" maxlength="3">
-    </div>
-
-    <div class="btn" onclick="alert('Saved')">
-      Save
-    </div>
+    <div onclick="submit()">Continue</div>
   </div>
 </body>
 </html>
