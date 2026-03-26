@@ -39,6 +39,8 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
+      "keytar",
+      "node-pty",
       "onnxruntime-node",
       "protobufjs",
       "sharp",

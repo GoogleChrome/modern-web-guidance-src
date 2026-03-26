@@ -12,7 +12,8 @@ dotenv.config({ path: path.join(rootDir, '.env') });
 export const Agents = {
   JETSKI: 'jetski',
   GEMINI_CLI: 'gemini_cli',
-  CLAUDE_CODE: 'claude_code'
+  CLAUDE_CODE: 'claude_code',
+  CODEX_CLI: 'codex_cli'
 } as const;
 
 export const Serving = {
@@ -42,6 +43,9 @@ export const environmentConfig: EnvironmentConfig = {
   claudeCodeCliBin: process.env.CLAUDE_CODE_CLI_BIN || path.join(rootDir, 'harness/node_modules/.bin/claude'),
   gcpCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(os.homedir(), '.config/gcloud/application_default_credentials.json'),
 
+  // Codex Configuration
+  codexCliBin: process.env.CODEX_CLI_BIN || path.join(__dirname, 'node_modules/.bin/codex'),
+
   // MCP Server Configuration
   modernWebServerPath: path.join(rootDir, 'serving/mcp-server/index.ts'), // For modern-web MCP server
   mcpApiKey: process.env.MCP_API_KEY || '', // For google-developer-knowledge MCP server
@@ -65,6 +69,7 @@ export interface EnvironmentConfig {
   geminiCliBin: string;
   geminiDir: string;
   claudeCodeCliBin: string;
+  codexCliBin: string;
   gcpCredentials: string;
   modernWebServerPath: string;
   mcpApiKey: string;
