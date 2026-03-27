@@ -1,6 +1,6 @@
 ---
 name: interaction-latency-attribution
-description: Decompose interaction latency into input, processing, and presentation phases to diagnose responsiveness bottlenecks.
+description: Identify slow user interactions, and attribute them for diagnostic purposes (e.g. determining the target element of an interaction or decomposing its phases into input delay, processing duration, and presentation delay).
 web-feature-ids:
   - event-timing
 sources:

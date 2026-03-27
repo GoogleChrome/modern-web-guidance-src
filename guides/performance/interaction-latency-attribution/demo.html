@@ -34,7 +34,7 @@
                 <div id="presentation-delay-val" class="metric-val">0ms</div>
             </div>
         </div>
-        <p><small>Total Duration: <span id="total-duration-val">0</span>ms</small></p>
+        <p><small>Total Duration: <span id="total-duration-val">0</span>ms. Target element: <code id="target-element-val">none</code></small></p>
     </div>
 
     <script>
@@ -55,7 +55,7 @@
         });
 
         const observer = new PerformanceObserver((list) => {
-            const entry = list.getEntries()[0];
+            const entry = list.getEntries()[list.getEntries().length - 1]; // Use the most recent entry
             const inputDelay = entry.processingStart - entry.startTime;
             const processingTime = entry.processingEnd - entry.processingStart;
             const presentationDelay = entry.duration - (entry.processingEnd - entry.startTime);
@@ -63,7 +63,11 @@
             document.getElementById('input-delay-val').textContent = `${inputDelay.toFixed(0)}ms`;
             document.getElementById('processing-time-val').textContent = `${processingTime.toFixed(0)}ms`;
             document.getElementById('presentation-delay-val').textContent = `${presentationDelay.toFixed(0)}ms`;
-            document.getElementById('total-duration-val').textContent = entry.duration;
+            document.getElementById('total-duration-val').textContent = entry.duration.toFixed(0);
+            
+            if (entry.target) {
+                document.getElementById('target-element-val').textContent = entry.target.tagName.toLowerCase() + (entry.target.id ? '#' + entry.target.id : '');
+            }
         });
 
         observer.observe({ type: 'event', buffered: true, durationThreshold: 16 });
