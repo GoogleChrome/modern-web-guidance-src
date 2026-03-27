@@ -119,9 +119,3 @@ if (!CSS.supports('selector(:has(*))')) {
   }
 }
 ```
-gle.addEventListener('change', (e) => {
-      card.classList.toggle('is-active', e.target.checked);
-    });
-  }
-}
-```
