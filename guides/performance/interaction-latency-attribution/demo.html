@@ -19,7 +19,7 @@
         <p>Trigger a slow interaction. The metrics below show the breakdown of why the interaction was slow.</p>
         <button id="slow-handler">Slow Event Handler (200ms)</button>
         <button id="input-delay">Delayed Handler (Wait 500ms first)</button>
-        
+
         <div class="metrics-grid">
             <div class="metric-card">
                 <div>Input Delay</div>
@@ -64,7 +64,7 @@
             document.getElementById('processing-time-val').textContent = `${processingTime.toFixed(0)}ms`;
             document.getElementById('presentation-delay-val').textContent = `${presentationDelay.toFixed(0)}ms`;
             document.getElementById('total-duration-val').textContent = entry.duration.toFixed(0);
-            
+
             if (entry.target) {
                 document.getElementById('target-element-val').textContent = entry.target.tagName.toLowerCase() + (entry.target.id ? '#' + entry.target.id : '');
             }
