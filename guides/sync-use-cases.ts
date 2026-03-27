@@ -10,6 +10,15 @@ import { scanAllGuides, type GuideInventory } from '../harness/lib/utils.ts';
 
 // --- Types ---
 
+export const ProjectStatus = {
+  NeedsGuidance: 'Needs guidance',
+  NeedsEvals: 'Needs evals',
+  NeedsUseCases: 'Needs use cases',
+  NeedsInvestigation: 'Needs investigation',
+} as const;
+
+export type ProjectStatus = typeof ProjectStatus[keyof typeof ProjectStatus];
+
 interface GuideData {
   name?: string;
   description?: string;
@@ -50,7 +59,7 @@ export interface FeatureToSync {
   issueNumber: number;
   needsReopen: boolean;
   closeReason: 'completed' | null;
-  targetStatus: 'Needs use cases' | 'Needs evals' | null;
+  targetStatus: ProjectStatus | null;
 }
 
 interface ProjectDetails {
@@ -73,7 +82,7 @@ export interface PreparedGuide {
   description: string;
   featureIds: string[];
   relativeSubdir: string;
-  statusName: string | null;
+  statusName: ProjectStatus | null;
 }
 
 export interface GuideInventoryResult {
@@ -120,12 +129,12 @@ const projectOctokit: any = new Octokit({ auth: PROJECT_GITHUB_TOKEN });
  * Determines the project status name for a use case based on its completeness.
  * Returns null when the use case is complete.
  */
-export function getStatusName(guideBody: string, hasGrader: boolean, hasPrompts: boolean): string | null {
+export function getStatusName(guideBody: string, hasGrader: boolean, hasPrompts: boolean): ProjectStatus | null {
   if (guideBody.trim().length === 0) {
-    return 'Needs guidance';
+    return ProjectStatus.NeedsGuidance;
   }
   if (!hasGrader || !hasPrompts) {
-    return 'Needs evals';
+    return ProjectStatus.NeedsEvals;
   }
   return null;
 }
@@ -133,8 +142,8 @@ export function getStatusName(guideBody: string, hasGrader: boolean, hasPrompts:
 /**
  * Determines whether an existing issue needs to be closed or reopened.
  */
-export function getIssueStateChanges(currentState: 'open' | 'closed', statusName: string | null): { needsClose: boolean; needsReopen: boolean } {
-  const shouldBeOpen = statusName !== null;
+export function getIssueStateChanges(currentState: 'open' | 'closed', statusName: ProjectStatus | null, currentProjectStatus?: string): { needsClose: boolean; needsReopen: boolean } {
+  const shouldBeOpen = statusName !== null || currentProjectStatus === ProjectStatus.NeedsInvestigation;
   return {
     needsClose: !shouldBeOpen && currentState === 'open',
     needsReopen: shouldBeOpen && currentState === 'closed',
@@ -259,7 +268,7 @@ export function getFeaturesNeedingSync(
         issueNumber: featureData.number,
         needsReopen: featureData.state === 'closed',
         closeReason: null,
-        targetStatus: 'Needs evals',
+        targetStatus: ProjectStatus.NeedsEvals,
       });
     } else if (hasCompletedUseCases && featureData.state === 'open') {
       result.push({
@@ -275,7 +284,7 @@ export function getFeaturesNeedingSync(
         issueNumber: featureData.number,
         needsReopen: false,
         closeReason: null,
-        targetStatus: 'Needs use cases',
+        targetStatus: ProjectStatus.NeedsUseCases,
       });
     }
   }
@@ -543,11 +552,12 @@ async function syncIssue(
   issueBody: string,
   priorityLabel: string | null,
   milestoneNumber: number | null,
-  statusName: string | null,
-  activeIssueNumbers: Set<number>
+  statusName: ProjectStatus | null,
+  activeIssueNumbers: Set<number>,
+  currentProjectStatus?: string
 ): Promise<{ issueNumber: number; changed: boolean }> {
   if (existingIssue) {
-    const { needsClose, needsReopen } = getIssueStateChanges(existingIssue.state, statusName);
+    const { needsClose, needsReopen } = getIssueStateChanges(existingIssue.state, statusName, currentProjectStatus);
     const currentLabels = (existingIssue.labels as any[]).map(l => typeof l === 'string' ? l : l.name);
     const desiredLabels = getDesiredLabels(currentLabels, priorityLabel);
     const labelsChanged = desiredLabels.length !== currentLabels.length || desiredLabels.some(l => !currentLabels.includes(l));
@@ -732,8 +742,16 @@ async function processUseCases(
   for (const { name, description, featureIds, relativeSubdir, statusName } of preparedGuides) {
     const { issueTitle, issueBody, priorityLabel, milestoneNumber } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap);
     const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
+    const existingIssueNumber = existingIssue?.number;
+    const currentProjectStatus = existingIssueNumber ? projectDetails?.issueStatusMap.get(existingIssueNumber) : undefined;
 
-    const { issueNumber, changed } = await syncIssue(name, existingIssue, issueTitle, issueBody, priorityLabel, milestoneNumber, statusName, activeIssueNumbers);
+    const { issueNumber, changed } = await syncIssue(name, existingIssue, issueTitle, issueBody, priorityLabel, milestoneNumber, statusName, activeIssueNumbers, currentProjectStatus);
+
+    if (currentProjectStatus === ProjectStatus.NeedsInvestigation) {
+      for (const id of featureIds) {
+        featuresWithActiveUseCases.add(id);
+      }
+    }
 
     for (const id of featureIds) {
       if (!featureUseCaseMap.has(id)) featureUseCaseMap.set(id, []);
