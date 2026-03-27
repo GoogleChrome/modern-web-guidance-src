@@ -156,9 +156,13 @@ export class DivergingBarChart {
       const barHeight = this.options.rowHeight * 0.6;
       const barY = y - barHeight / 2;
 
+      const uVal = unguidedSet.data[i] || 0;
+      const gVal = guidedSet.data[i] || 0;
+      const uWidth = scale(uVal);
+
       // Label text
       const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      text.setAttribute("x", this.options.margin.left - 10);
+      text.setAttribute("x", center - uWidth - 10);
       text.setAttribute("y", y);
       text.setAttribute("fill", "#c9d1d9");
       text.setAttribute("font-size", "12");
@@ -176,11 +180,7 @@ export class DivergingBarChart {
 
       this.svg.appendChild(text);
 
-      const uVal = unguidedSet.data[i] || 0;
-      const gVal = guidedSet.data[i] || 0;
-
-      // Unguided bar (Left)
-      const uWidth = scale(uVal);
+      // uVal, gVal, uWidth already defined above
       const uBar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
       uBar.setAttribute("x", center - uWidth);
       uBar.setAttribute("y", barY);
