@@ -48,7 +48,7 @@ describe('baseline data', () => {
       expect(validateFeature('non-existent-feature')).toEqual({
         isValid: false,
         error: 'not_found',
-        errorMessage: 'Web feature ID "non-existent-feature" not found in web-features package'
+        errorMessage: 'Web feature ID "non-existent-feature" not found in web-features package. Use "gd baselinestatus <keyword>" to find the correct ID.'
       });
     });
 
