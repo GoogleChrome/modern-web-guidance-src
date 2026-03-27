@@ -1,6 +1,6 @@
 import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateRadarData } from './utils.js';
 import { ApiClient } from './api.js';
-import { RadarChart } from './radar.js';
+import { DivergingBarChart } from './diverging-bar-chart.js';
 
 // Keep track of current details state for navigation
 let currentDetails = null;
@@ -890,10 +890,9 @@ function renderRadarChart(data, testId) {
 
     document.getElementById('chart-section').classList.remove('hidden');
 
-    const chart = new RadarChart('radar-chart', {
-        size: 600,
-        levels: 5,
-        padding: 80
+    const chart = new DivergingBarChart('radar-chart', {
+        size: 700,
+        margin: { top: 30, right: 30, bottom: 30, left: 200 }
     });
 
     const handlePointClick = (index, type) => {
