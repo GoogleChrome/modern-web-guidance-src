@@ -25,7 +25,9 @@
     "start": "node mcp-server/index.ts",
     "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
     "test": "node scripts/build-guides.ts && vitest run && node --test skills-cli/test-dist.ts",
-    "typecheck": "npm run build && tsc --noEmit"
+    "typecheck": "npm run build && tsc --noEmit",
+    "benchmark:rag": "node --experimental-strip-types benchmarks/rag/eval-rag-suite.ts",
+    "plot:serve": "npx serve benchmarks/data"
   },
   "keywords": [],
   "author": "",
@@ -44,6 +46,7 @@
     "@types/node": "^25.5.0",
     "esbuild": "^0.25.0",
     "gh-pages": "^6.3.0",
+    "gpt4all": "^4.0.0",
     "gray-matter": "^4.0.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"

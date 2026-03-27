@@ -61,7 +61,7 @@ test.describe(`Identify Heavy Scripts Expectations: ${demoName}`, () => {
             // version doesn't support the specific type yet.
             try {
               return originalObserve.apply(this, arguments as any);
-            } catch (e) {
+            } catch {
               // Swallow errors from the real API to keep the script running for the grader
             }
           };

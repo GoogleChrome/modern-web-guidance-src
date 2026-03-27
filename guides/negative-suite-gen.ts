@@ -1,13 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 
-import { rootDir } from '../lib/root.ts';
+import { baseAppsDir, tasksDir } from '../lib/paths.ts';
 
 import { scanAllGuides, classifyGuide } from '../harness/lib/utils.ts';
 
-const BASE_APPS_DIR = path.join(rootDir, 'harness', 'base_apps');
-const TASKS_DIR = path.join(rootDir, 'harness', 'tasks', 'negative');
-
+const negativeTasksDir = path.join(tasksDir, 'negative');
 function readFileSafe(filePath: string): string {
   try {
     return fs.readFileSync(filePath, 'utf-8').trim();
@@ -30,8 +28,8 @@ export async function generateNegativeSuite() {
   console.log(`Found ${evalReadyGuides.length} eval-ready guides.`);
 
   // Create tasks/negative directory if it doesn't exist
-  if (!fs.existsSync(TASKS_DIR)) {
-    fs.mkdirSync(TASKS_DIR, { recursive: true });
+  if (!fs.existsSync(negativeTasksDir)) {
+    fs.mkdirSync(negativeTasksDir, { recursive: true });
   }
 
   for (const inv of evalReadyGuides) {
@@ -44,7 +42,7 @@ export async function generateNegativeSuite() {
     }
 
     // 1. Create base apps (with symlink to negative-demo.html)
-    const baseAppDir = path.join(BASE_APPS_DIR, 'negative', `${inv.name}`);
+    const baseAppDir = path.join(baseAppsDir, 'negative', `${inv.name}`);
     if (!fs.existsSync(baseAppDir)) {
       fs.mkdirSync(baseAppDir, { recursive: true });
     }
@@ -87,7 +85,7 @@ grader: ${inv.name}
 ${prompt}
 `;
 
-    const taskFilePath = path.join(TASKS_DIR, `${taskName}.md`);
+    const taskFilePath = path.join(negativeTasksDir, `${taskName}.md`);
     fs.writeFileSync(taskFilePath, taskContent);
     console.log(`  ✅ Created task: harness/tasks/negative/${taskName}.md`);
   }
