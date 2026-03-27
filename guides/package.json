@@ -16,7 +16,7 @@
     "dotenv": "^17.3.1",
     "gray-matter": "^4.0.3",
     "linkedom": "^0.18.12",
-    "oxc-parser": "^0.121.0",
+    "ts-morph": "^27.0.2",
     "web-features": "latest"
   }
 }

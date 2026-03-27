@@ -19,13 +19,13 @@ Using template.grader.ts as a framework, write a Playwright test script that dir
 You should generate both static tests and browser tests, with each test containing only one assertion.
 CRITICAL DIRECTIVE: ALWAYS prefer static analysis over browser assertions!
 - Use \`linkedom\` (\`document.querySelector\`) to statically verify HTML structure, attributes, tags, and label associations parsed directly from the HTML source.
-- Use \`oxc-parser\` to statically verify JavaScript source code (e.g. validating function calls, declarations, variables in \`<script>\` blocks using AST parsing).
+- Use \`ts-morph\` to statically verify JavaScript source code (e.g. validating function calls, declarations, variables in \`<script>\` blocks using AST parsing).
 - Use \`css-tree\` to statically verify CSS source code (e.g. validating \`@supports\`, \`@property\`, or keyframes in \`<style>\` blocks using AST parsing).
 - ONLY fallback to Playwright browser automation (\`await expect(page...)\`) if the expectation strictly requires browser rendering, interactivity (clicks/typing), or computed layouts (styles).
 
 If you are unfamiliar with the APIs for these parsers, you can refer to their TypeScript definitions located at these absolute paths in the workspace:
 - CSS Tree: ${path.join(guidesDir, 'node_modules/@types/css-tree/index.d.ts')}
-- OXC Parser: ${path.join(guidesDir, 'node_modules/oxc-parser/src-js/index.d.ts')}
+- TS Morph: ${path.join(guidesDir, 'node_modules/ts-morph/lib/ts-morph.d.ts')}
 - Linkedom: ${path.join(guidesDir, 'node_modules/linkedom/types/index.d.ts')}
 
 Design it so that the demo.html passes all tests (100% success rate), and the negative-demo.html fails all tests (0% success rate).

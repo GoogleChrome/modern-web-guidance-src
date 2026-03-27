@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
-import { parseSync } from 'oxc-parser';
+import { Project, SyntaxKind } from 'ts-morph';
 import * as csstree from 'css-tree';
 
 // Setup
@@ -33,8 +33,10 @@ test.describe(`<guide-name> Expectations: ${demoName}`, () => {
   // Example for Javascript parsing
   // test(`JS <test-case-name>`, () => {
   //   const scriptContent = document.querySelector('script')?.textContent || '';
-  //   const program = parseSync('test.js', scriptContent).program;
-  //   expect(program.body.length).toBeGreaterThan(0);
+  //   const project = new Project({ useInMemoryFileSystem: true });
+  //   const sourceFile = project.createSourceFile('test.js', scriptContent);
+  //   const functionDecls = sourceFile.getDescendantsOfKind(SyntaxKind.FunctionDeclaration);
+  //   expect(functionDecls.length).toBeGreaterThan(0);
   // });
 
   // Example for CSS parsing

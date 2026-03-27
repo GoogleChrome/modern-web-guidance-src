@@ -36,30 +36,23 @@ test('linkedom can parse HTML and use classic DOM APIs', () => {
   assert.ok(scriptTags[0].textContent?.includes('inlineVar'), 'Script tag content extracted successfully');
 });
 
-// 2. Oxc Parser (Javascript/Typescript Parsing)
-import { parseSync } from 'oxc-parser';
+// 2. ts-morph (Javascript/Typescript Parsing)
+import { Project, SyntaxKind } from 'ts-morph';
 
-test('oxc-parser can parse Javascript and yield ESTree nodes', () => {
+test('ts-morph can parse Javascript and yield AST nodes via fluent API', () => {
   const code = `
     function greet() {
       console.log('hi');
     }
   `;
 
-  // Use oxc to parse the javascript snippet (extremely fast, Rust-based engine)
-  // The API requires (filename, sourceText) or (sourceText, options)
-  const result = parseSync('test.js', code);
+  const project = new Project({ useInMemoryFileSystem: true });
+  const sourceFile = project.createSourceFile('test.js', code);
 
-  const program = result.program;
+  const functionDecls = sourceFile.getDescendantsOfKind(SyntaxKind.FunctionDeclaration);
 
-  assert.ok(program !== undefined, 'Program must be defined');
-  
-  // The program body should contain our single function declaration
-  assert.strictEqual(program.body.length, 1, 'Program should have exactly 1 statement');
-  
-  const firstStmt = program.body[0] as any;
-  assert.strictEqual(firstStmt.type, 'FunctionDeclaration', 'Statement is a function declaration');
-  assert.strictEqual(firstStmt.id.name, 'greet', 'Function name extracted as greet');
+  assert.strictEqual(functionDecls.length, 1, 'Program should have exactly 1 function declaration');
+  assert.strictEqual(functionDecls[0].getName(), 'greet', 'Function name extracted as greet');
 });
 
 // 3. CSS Tree

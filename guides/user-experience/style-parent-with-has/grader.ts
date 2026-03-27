@@ -2,7 +2,7 @@ import { test, expect, type Locator } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
-import { parseSync } from 'oxc-parser';
+import { Project, SyntaxKind } from 'ts-morph';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -47,32 +47,14 @@ test.describe(`Style parent with :has() Expectations: ${demoName}`, () => {
     let foundClassListToggle = false;
 
     if (scripts.trim()) {
-      const { program } = parseSync('test.js', scripts);
+      const project = new Project({ useInMemoryFileSystem: true });
+      const sourceFile = project.createSourceFile('test.js', scripts);
       
-      // Simple recursive AST visitor
-      function visit(node: any) {
-        if (!node || typeof node !== 'object') return;
-        
-        if (node.type === 'MemberExpression') {
-          // Check for classList.(toggle|add|remove)
-          if (node.object && node.object.property && node.object.property.name === 'classList') {
-            const propName = node.property?.name;
-            if (propName === 'toggle' || propName === 'add' || propName === 'remove') {
-              foundClassListToggle = true;
-            }
-          }
-        }
-        
-        for (const key in node) {
-          if (Array.isArray(node[key])) {
-            node[key].forEach(visit);
-          } else {
-            visit(node[key]);
-          }
-        }
-      }
-      
-      visit(program);
+      const propertyAccesses = sourceFile.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression);
+      foundClassListToggle = propertyAccesses.some(propAccess => 
+        propAccess.getExpression().getText().endsWith('classList') &&
+        ['toggle', 'add', 'remove'].includes(propAccess.getName())
+      );
     }
     
     // In case there is inline JS in html attributes (like oninput=""), check those too using DOM
