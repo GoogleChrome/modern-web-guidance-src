@@ -3,10 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import 'colors';
 
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-const __filename = fileURLToPath(import.meta.url);
-const import.meta.dirname = dirname(__filename);
+
 
 const PROJECT_ID = 'chrome-kiwi-air-force-dev';
 const BUCKET_NAME = 'guidance-evals';

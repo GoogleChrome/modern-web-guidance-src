@@ -1,10 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import {fileURLToPath} from 'node:url';
 import matter from 'gray-matter';
-
-const __filename = fileURLToPath(import.meta.url);
-const import.meta.dirname = path.dirname(__filename);
 
 function toTitleCase(kebabString: string): string {
   return kebabString

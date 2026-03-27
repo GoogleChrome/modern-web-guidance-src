@@ -1,13 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 
 // Get current directory in ESM
-const __filename = fileURLToPath(import.meta.url);
-const import.meta.dirname = path.dirname(__filename);
-
-
-
 import { USE_CASES } from "./use-cases.gen.ts";
 
 

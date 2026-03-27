@@ -1,10 +1,6 @@
 import lancedb from "@lancedb/lancedb";
 import path from "path";
 import fs from "fs";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const import.meta.dirname = path.dirname(__filename);
 
 // Data directory for LanceDB
 const DATA_DIR = path.resolve(import.meta.dirname, "../../.modern-web-data");

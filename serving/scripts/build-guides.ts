@@ -1,16 +1,12 @@
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
-import { fileURLToPath } from "url";
 import { marked } from "marked";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
 import { replaceMacros } from "../mcp-server/lib/macros.ts";
 import { classifyGuide, scanAllGuides } from "../../harness/lib/utils.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
-
-const __filename = fileURLToPath(import.meta.url);
-const import.meta.dirname = path.dirname(__filename);
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
 const GUIDES_DIR = path.resolve(ROOT_DIR, "../guides");
@@ -184,6 +180,6 @@ async function processSingleGuideFile(
 }
 
 // Only run automatically if executed directly
-if (process.argv[1] === __filename) {
+if (process.argv[1] === import.meta.filename) {
   processGuides().catch(console.error);
 }

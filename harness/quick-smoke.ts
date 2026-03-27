@@ -4,9 +4,6 @@ import os from 'os';
 import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const import.meta.dirname = path.dirname(__filename);
-
 export async function runSmokeTest() {
   const tempProjectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jetski-smoke-test-'));
   const prompt = "Please create a file named 'hello.txt' containing exactly 'hello world'. No other text or files are needed.";
