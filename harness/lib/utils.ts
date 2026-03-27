@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
-import { rootDir } from '../../lib/root.ts';
+import { tasksDir, guidesDir } from '../../lib/paths.ts';
 
 // Constants
 export const GUIDE_FILE = 'guide.md';
@@ -10,8 +10,6 @@ export const EXPECTATIONS_FILE = 'expectations.md';
 export const NEGATIVE_DEMO_FILE = 'negative-demo.html';
 export const GRADER_FILE = 'grader.ts';
 export const PROMPTS_FILE = 'prompts.md';
-
-const TASKS_DIR = path.join(rootDir, 'harness', 'tasks');
 
 export interface GuideInventory {
   dir: string;
@@ -51,11 +49,11 @@ export function readFileSafe(filePath: string): string {
  */
 export function getTaskMap(): Map<string, TaskInfo> {
   const taskMap = new Map<string, TaskInfo>();
-  if (!fs.existsSync(TASKS_DIR)) return taskMap;
+  if (!fs.existsSync(tasksDir)) return taskMap;
 
-  const taskFiles = fs.readdirSync(TASKS_DIR).filter(f => f.endsWith('.md'));
+  const taskFiles = fs.readdirSync(tasksDir).filter(f => f.endsWith('.md'));
   for (const file of taskFiles) {
-    const rawContent = readFileSafe(path.join(TASKS_DIR, file));
+    const rawContent = readFileSafe(path.join(tasksDir, file));
     if (!rawContent) continue;
 
     const { data, content } = matter(rawContent);
@@ -128,17 +126,17 @@ export function classifyGuide(inv: GuideInventory): GuideStatus {
   return 'eval-ready';
 }
 
-export function scanAllGuides(guidesDir = path.join(rootDir, 'guides'), taskMap = getTaskMap()): GuideInventory[] {
+export function scanAllGuides(scanDir = guidesDir, taskMap = getTaskMap()): GuideInventory[] {
   const guides: GuideInventory[] = [];
 
   if (!fs.existsSync(guidesDir)) return guides;
 
-  const categories = fs.readdirSync(guidesDir, { withFileTypes: true })
+  const categories = fs.readdirSync(scanDir, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
     .map(d => d.name);
 
   for (const category of categories) {
-    const categoryDir = path.join(guidesDir, category);
+    const categoryDir = path.join(scanDir, category);
     if (!fs.existsSync(categoryDir)) continue;
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;

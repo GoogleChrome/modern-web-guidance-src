@@ -2,11 +2,7 @@ import { Storage } from '@google-cloud/storage';
 import path from 'path';
 import fs from 'fs';
 import 'colors';
-
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { resultsDir as baseResultsDir } from '../lib/paths.ts';
 
 const PROJECT_ID = 'chrome-kiwi-air-force-dev';
 const BUCKET_NAME = 'guidance-evals';
@@ -42,7 +38,7 @@ async function main() {
   // Strip trailing slashes and normalize to just the suite ID
   suiteName = path.basename(suiteName);
 
-  const resultsDir = path.join(__dirname, 'results', suiteName);
+  const resultsDir = path.join(baseResultsDir, suiteName);
   const evalsJsonPath = path.join(resultsDir, 'evals.json');
 
   if (!fs.existsSync(resultsDir)) {
