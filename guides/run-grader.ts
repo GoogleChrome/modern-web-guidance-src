@@ -8,8 +8,7 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-import { colors } from '../bin/gd.ts';
-const { cRed, cGreen, cYellow, cCyan, cBold } = colors;
+import { cRed, cGreen, cYellow, cCyan, cBold } from '../lib/colors.ts';
 
 export function findGrader(startDir: string): string | null {
   let currentDir = startDir;
