@@ -1,0 +1,3 @@
+- Automatically size my text inputs, textareas, and select elements based on their content so they don't have unnecessary whitespace.
+- I want my text areas and inputs to automatically grow as users type in them without needing Javascript.
+- Update my select dropdowns so they shrink to fit only the currently selected option.
