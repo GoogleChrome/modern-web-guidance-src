@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
-import { fileURLToPath } from "url";
 import { marked } from "marked";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
@@ -9,10 +8,7 @@ import { replaceMacros } from "../mcp-server/lib/macros.ts";
 import { classifyGuide, scanAllGuides } from "../../harness/lib/utils.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const ROOT_DIR = path.resolve(__dirname, "..");
+const ROOT_DIR = path.resolve(import.meta.dirname, "..");
 const GUIDES_DIR = path.resolve(ROOT_DIR, "../guides");
 const BUILD_GUIDES_DIR = path.join(ROOT_DIR, "build/guides");
 const DATA_DIR = path.join(ROOT_DIR, "mcp-server/data");
@@ -130,7 +126,7 @@ async function processSingleGuideFile(
   storeUseCases: StoreUseCase[]
 ) {
   const content = fs.readFileSync(filePath, "utf-8");
-  const { data, content: markdownBody, matter: frontmatter } = matter(content);
+  const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
 
   if (!data.description || !frontmatter) {
     throw new Error(`Missing frontmatter or description in ${filePath}`);
@@ -184,6 +180,6 @@ async function processSingleGuideFile(
 }
 
 // Only run automatically if executed directly
-if (process.argv[1] === __filename) {
+if (process.argv[1] === import.meta.filename) {
   processGuides().catch(console.error);
 }
