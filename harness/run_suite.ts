@@ -190,7 +190,7 @@ const args = [
     templateDir
   ])}
 ];
-const result = spawnSync('node', args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
+const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
 process.exit(result.status ?? 0);
           `.trim();
           

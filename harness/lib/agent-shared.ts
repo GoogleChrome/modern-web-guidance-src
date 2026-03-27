@@ -26,6 +26,11 @@ export function createIsolatedHome(prefix: string): string {
   // too long for valid Unix socket paths, which causes issues for some JetSki/VS Code components.
   const tempHome = `/tmp/${prefix}-${Math.random().toString(36).substring(7)}`;
   fs.mkdirSync(tempHome, { recursive: true });
+
+  // Provide authentication to the isolated environment so npm tasks work
+  const originalHome = process.env.HOME || process.cwd();
+  copyFileIfExists(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
+
   console.log(`Setting up isolated HOME at ${tempHome}...`);
   return tempHome;
 }
