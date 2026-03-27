@@ -1,11 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
-import { fileURLToPath } from 'url';
 import { Agents } from '../config.ts';
 import { classifyGuide, scanAllGuides } from './utils.ts';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { rootDir } from '../../lib/root.ts';
 
 /**
  * Promisified version of child_process.spawn.
@@ -186,8 +184,7 @@ export function updateMcpConfig(
  * @returns True if successful, false otherwise
  */
 export function copySkills(homeDir: string, agent: string, cli: boolean): boolean {
-  const harnessRoot = path.resolve(__dirname, '..');
-  const guidesSource = path.join(harnessRoot, '..', 'guides');
+  const guidesSource = path.join(rootDir, 'guides');
 
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {
@@ -204,12 +201,12 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
     fs.mkdirSync(destDir, { recursive: true });
 
     if (cli) { // Skills-cli mode
-      const distSource = path.join(harnessRoot, '..', 'dist/skills-cli/skills/modern-web-use-cases');
+      const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web-use-cases');
       if (!fs.existsSync(distSource)) {
         console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter modern-web-mcp build-dist' automatically...`);
         try {
           execSync('pnpm --filter modern-web-mcp build-dist', {
-            cwd: path.join(harnessRoot, '..'),
+            cwd: rootDir,
             stdio: 'inherit'
           });
           console.log("Distribution generated successfully.");

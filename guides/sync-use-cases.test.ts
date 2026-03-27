@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
-import { validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, processGuideInventory, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
+import { ProjectStatus, validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, processGuideInventory, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
 import type { GuideInventory } from '../harness/lib/utils.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -228,23 +228,23 @@ Body content.
 
 describe('getStatusName', () => {
   test('returns "Needs guidance" when guide body is empty', () => {
-    assert.strictEqual(getStatusName('', true, true), 'Needs guidance');
+    assert.strictEqual(getStatusName('', true, true), ProjectStatus.NeedsGuidance);
   });
 
   test('returns "Needs guidance" when guide body is only whitespace', () => {
-    assert.strictEqual(getStatusName('   \n\t  ', true, true), 'Needs guidance');
+    assert.strictEqual(getStatusName('   \n\t  ', true, true), ProjectStatus.NeedsGuidance);
   });
 
   test('returns "Needs evals" when grader is missing', () => {
-    assert.strictEqual(getStatusName('Some content.', false, true), 'Needs evals');
+    assert.strictEqual(getStatusName('Some content.', false, true), ProjectStatus.NeedsEvals);
   });
 
   test('returns "Needs evals" when prompts are missing', () => {
-    assert.strictEqual(getStatusName('Some content.', true, false), 'Needs evals');
+    assert.strictEqual(getStatusName('Some content.', true, false), ProjectStatus.NeedsEvals);
   });
 
   test('returns "Needs evals" when both grader and prompts are missing', () => {
-    assert.strictEqual(getStatusName('Some content.', false, false), 'Needs evals');
+    assert.strictEqual(getStatusName('Some content.', false, false), ProjectStatus.NeedsEvals);
   });
 
   test('returns null when guide is complete', () => {
@@ -252,13 +252,13 @@ describe('getStatusName', () => {
   });
 
   test('returns "Needs guidance" before "Needs evals" since guidance must come first', () => {
-    assert.strictEqual(getStatusName('', false, false), 'Needs guidance');
+    assert.strictEqual(getStatusName('', false, false), ProjectStatus.NeedsGuidance);
   });
 });
 
 describe('getIssueStateChanges', () => {
   test('open issue stays open when incomplete', () => {
-    const result = getIssueStateChanges('open', 'Needs guidance');
+    const result = getIssueStateChanges('open', ProjectStatus.NeedsGuidance);
     assert.strictEqual(result.needsClose, false);
     assert.strictEqual(result.needsReopen, false);
   });
@@ -270,7 +270,7 @@ describe('getIssueStateChanges', () => {
   });
 
   test('closed issue is reopened when incomplete', () => {
-    const result = getIssueStateChanges('closed', 'Needs evals');
+    const result = getIssueStateChanges('closed', ProjectStatus.NeedsEvals);
     assert.strictEqual(result.needsClose, false);
     assert.strictEqual(result.needsReopen, true);
   });
@@ -279,6 +279,18 @@ describe('getIssueStateChanges', () => {
     const result = getIssueStateChanges('closed', null);
     assert.strictEqual(result.needsClose, false);
     assert.strictEqual(result.needsReopen, false);
+  });
+
+  test('open issue stays open when complete but status is Needs investigation', () => {
+    const result = getIssueStateChanges('open', null, ProjectStatus.NeedsInvestigation);
+    assert.strictEqual(result.needsClose, false);
+    assert.strictEqual(result.needsReopen, false);
+  });
+
+  test('closed issue reopens when complete but status is Needs investigation', () => {
+    const result = getIssueStateChanges('closed', null, ProjectStatus.NeedsInvestigation);
+    assert.strictEqual(result.needsClose, false);
+    assert.strictEqual(result.needsReopen, true);
   });
 });
 

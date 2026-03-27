@@ -65,6 +65,9 @@ async function main() {
   console.log(`\nRebuilding distribution and running tests with version ${newVersion}...`);
   execSync('node --test skills-cli/test-dist.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
   
+  console.log(`\nGenerating npm shrinkwrap...`);
+  execSync('npm shrinkwrap', { cwd: path.join(DIST_DIR, "skills-cli"), stdio: 'inherit' });
+
   if (isDryRun) {
     const files = await fs.readdir(path.join(DIST_DIR, "skills-cli"), {recursive: true});
     console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${files.join('\n - ')}`);
