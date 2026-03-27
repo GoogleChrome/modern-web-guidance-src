@@ -18,7 +18,7 @@
       border-radius: 4px;
       animation: fade-in 0.4s both;
       animation-delay: calc(var(--sibling-index) * var(--stagger-time));
-      animation-delay: calc(var(sibling-index()) * var(--stagger-time));
+      animation-delay: calc(sibling-index() * var(--stagger-time));
       @media (prefers-reduced-motion: reduce){
         animation: none;
       }
