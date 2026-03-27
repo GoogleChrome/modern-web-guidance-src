@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Dynamic Sibling Animations Demo</title>
+  <style>
+    .stagger-list {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .stagger-list > .item {
+      width: 60px;
+      height: 60px;
+      background: steelblue;
+      border-radius: 4px;
+      animation: fade-in 0.4s ease both;
+      animation-delay: calc(sibling-index() * 0.1s);
+    }
+
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Dynamic Sibling Animations</h1>
+  <p>Each item's <code>animation-delay</code> is computed from its
+    <code>sibling-index()</code>, creating a sequential stagger.</p>
+
+  <div class="stagger-list">
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+    <div class="item"></div>
+  </div>
+</body>
+
+</html>

@@ -1,10 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import matter from 'gray-matter';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { rootDir } from '../../lib/root.ts';
 
 // Constants
 export const GUIDE_FILE = 'guide.md';
@@ -14,7 +11,7 @@ export const NEGATIVE_DEMO_FILE = 'negative-demo.html';
 export const GRADER_FILE = 'grader.ts';
 export const PROMPTS_FILE = 'prompts.md';
 
-const TASKS_DIR = path.resolve(__dirname, '../tasks');
+const TASKS_DIR = path.join(rootDir, 'harness', 'tasks');
 
 export interface GuideInventory {
   dir: string;
@@ -81,6 +78,7 @@ export function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): Gui
   const hasExpectations = fs.existsSync(path.join(dir, EXPECTATIONS_FILE));
 
   const guideContent = readFileSafe(path.join(dir, GUIDE_FILE));
+  console.log(dir);
   let hasGuide = false;
   let isStub = false;
 
@@ -130,7 +128,7 @@ export function classifyGuide(inv: GuideInventory): GuideStatus {
   return 'eval-ready';
 }
 
-export function scanAllGuides(guidesDir = path.resolve(__dirname, '../../guides'), taskMap = getTaskMap()): GuideInventory[] {
+export function scanAllGuides(guidesDir = path.join(rootDir, 'guides'), taskMap = getTaskMap()): GuideInventory[] {
   const guides: GuideInventory[] = [];
 
   if (!fs.existsSync(guidesDir)) return guides;

@@ -1,14 +1,11 @@
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import 'colors';
-import { collectResults } from './lib/collection.ts';
+import { collectResults, extractModelFromResults } from './lib/collection.ts';
 import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
-
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { rootDir } from '../lib/root.ts';
 
 import { config } from './config.ts';
 
@@ -28,7 +25,8 @@ export async function evaluateSuite(resultsDir: string, suiteName: string) {
     const metrics = calculateMetrics(allResults, numRuns);
     const mdReport = generateMarkdownReport(metrics, allResults);
     const timestamp = new Date().toISOString();
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, config.suite.agent, config.suite.enableSkills);
+    const model = extractModelFromResults(resultsDir, config.suite.agent);
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, config.suite.agent, config.suite.serving, model);
 
     saveReports(resultsDir, mdReport, jsonReport);
 
@@ -44,7 +42,7 @@ export async function evaluateSuite(resultsDir: string, suiteName: string) {
 export async function evaluate() {
   console.log('Starting Evaluation...'.cyan.bold);
 
-  const resultsDirBase = path.join(__dirname, 'results');
+  const resultsDirBase = path.join(rootDir, 'harness', 'results');
   let suiteName = process.argv[2] || config.suite?.name;
 
   if (!suiteName) {

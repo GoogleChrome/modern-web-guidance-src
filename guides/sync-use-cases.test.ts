@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
-import { validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, processGuideInventory, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
+import { ProjectStatus, validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, processGuideInventory, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
 import type { GuideInventory } from '../harness/lib/utils.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -228,23 +228,23 @@ Body content.
 
 describe('getStatusName', () => {
   test('returns "Needs guidance" when guide body is empty', () => {
-    assert.strictEqual(getStatusName('', true, true), 'Needs guidance');
+    assert.strictEqual(getStatusName('', true, true), ProjectStatus.NeedsGuidance);
   });
 
   test('returns "Needs guidance" when guide body is only whitespace', () => {
-    assert.strictEqual(getStatusName('   \n\t  ', true, true), 'Needs guidance');
+    assert.strictEqual(getStatusName('   \n\t  ', true, true), ProjectStatus.NeedsGuidance);
   });
 
   test('returns "Needs evals" when grader is missing', () => {
-    assert.strictEqual(getStatusName('Some content.', false, true), 'Needs evals');
+    assert.strictEqual(getStatusName('Some content.', false, true), ProjectStatus.NeedsEvals);
   });
 
   test('returns "Needs evals" when prompts are missing', () => {
-    assert.strictEqual(getStatusName('Some content.', true, false), 'Needs evals');
+    assert.strictEqual(getStatusName('Some content.', true, false), ProjectStatus.NeedsEvals);
   });
 
   test('returns "Needs evals" when both grader and prompts are missing', () => {
-    assert.strictEqual(getStatusName('Some content.', false, false), 'Needs evals');
+    assert.strictEqual(getStatusName('Some content.', false, false), ProjectStatus.NeedsEvals);
   });
 
   test('returns null when guide is complete', () => {
@@ -252,13 +252,13 @@ describe('getStatusName', () => {
   });
 
   test('returns "Needs guidance" before "Needs evals" since guidance must come first', () => {
-    assert.strictEqual(getStatusName('', false, false), 'Needs guidance');
+    assert.strictEqual(getStatusName('', false, false), ProjectStatus.NeedsGuidance);
   });
 });
 
 describe('getIssueStateChanges', () => {
   test('open issue stays open when incomplete', () => {
-    const result = getIssueStateChanges('open', 'Needs guidance');
+    const result = getIssueStateChanges('open', ProjectStatus.NeedsGuidance);
     assert.strictEqual(result.needsClose, false);
     assert.strictEqual(result.needsReopen, false);
   });
@@ -270,7 +270,7 @@ describe('getIssueStateChanges', () => {
   });
 
   test('closed issue is reopened when incomplete', () => {
-    const result = getIssueStateChanges('closed', 'Needs evals');
+    const result = getIssueStateChanges('closed', ProjectStatus.NeedsEvals);
     assert.strictEqual(result.needsClose, false);
     assert.strictEqual(result.needsReopen, true);
   });
@@ -279,6 +279,18 @@ describe('getIssueStateChanges', () => {
     const result = getIssueStateChanges('closed', null);
     assert.strictEqual(result.needsClose, false);
     assert.strictEqual(result.needsReopen, false);
+  });
+
+  test('open issue stays open when complete but status is Needs investigation', () => {
+    const result = getIssueStateChanges('open', null, ProjectStatus.NeedsInvestigation);
+    assert.strictEqual(result.needsClose, false);
+    assert.strictEqual(result.needsReopen, false);
+  });
+
+  test('closed issue reopens when complete but status is Needs investigation', () => {
+    const result = getIssueStateChanges('closed', null, ProjectStatus.NeedsInvestigation);
+    assert.strictEqual(result.needsClose, false);
+    assert.strictEqual(result.needsReopen, true);
   });
 });
 
@@ -324,7 +336,7 @@ describe('buildFeatureToIssueMap', () => {
   test('maps feature ID to issue number, state, and body', () => {
     const issues = [{ number: 42, body: 'Feature ID: my-feature', labels: [], state: 'open' }];
     const map = buildFeatureToIssueMap(issues);
-    assert.deepStrictEqual(map.get('my-feature'), { number: 42, priorityLabel: null, state: 'open', body: 'Feature ID: my-feature' });
+    assert.deepStrictEqual(map.get('my-feature'), { number: 42, priorityLabel: null, milestoneNumber: null, state: 'open', body: 'Feature ID: my-feature' });
   });
 
   test('captures closed state', () => {
@@ -344,6 +356,13 @@ describe('buildFeatureToIssueMap', () => {
     const map = buildFeatureToIssueMap(issues);
     assert.strictEqual(map.get('my-feature')?.priorityLabel, 'P1');
   });
+
+  test('extracts milestone from issue', () => {
+    const issues = [{ number: 42, body: 'Feature ID: my-feature', labels: [], state: 'open', milestone: { number: 3, title: 'MVP' } }];
+    const map = buildFeatureToIssueMap(issues);
+    assert.strictEqual(map.get('my-feature')?.milestoneNumber, 3);
+  });
+
 
   test('ignores issues without a feature ID in the body', () => {
     const issues = [{ number: 42, body: 'No feature ID here', labels: [], state: 'open' }];
@@ -418,25 +437,28 @@ describe('buildIssueContent', () => {
     assert.ok(issueBody.includes('[dialog-closedby](https://webstatus.dev/features/dialog-closedby)'));
   });
 
-  test('returns null priority label when no features have linked issues', () => {
-    const { priorityLabel } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap);
+  test('returns null priority label and milestone when no features have linked issues', () => {
+    const { priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap);
     assert.strictEqual(priorityLabel, null);
+    assert.strictEqual(milestoneNumber, null);
   });
 
   test('includes related feature issue links when available', () => {
-    const featureMap = new Map([['dialog-closedby', { number: 99, priorityLabel: 'P1', state: 'open', body: '' }]]);
-    const { issueBody, priorityLabel } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', featureMap);
+    const featureMap = new Map([['dialog-closedby', { number: 99, priorityLabel: 'P1', milestoneNumber: 2, state: 'open', body: '' }]]);
+    const { issueBody, priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', featureMap);
     assert.ok(issueBody.includes('Related features: #99'));
     assert.strictEqual(priorityLabel, 'P1');
+    assert.strictEqual(milestoneNumber, 2);
   });
 
   test('uses priority label from first matched feature only', () => {
     const featureMap = new Map([
-      ['feature-a', { number: 1, priorityLabel: 'P1', state: 'open', body: '' }],
-      ['feature-b', { number: 2, priorityLabel: 'P2', state: 'open', body: '' }],
+      ['feature-a', { number: 1, priorityLabel: 'P1', milestoneNumber: 1, state: 'open', body: '' }],
+      ['feature-b', { number: 2, priorityLabel: 'P2', milestoneNumber: 2, state: 'open', body: '' }],
     ]);
-    const { priorityLabel } = buildIssueContent('my-use-case', 'desc', ['feature-a', 'feature-b'], 'guides/ux/my-use-case', featureMap);
+    const { priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['feature-a', 'feature-b'], 'guides/ux/my-use-case', featureMap);
     assert.strictEqual(priorityLabel, 'P1');
+    assert.strictEqual(milestoneNumber, 1);
   });
 
   test('omits related features section when no features have linked issues', () => {
@@ -447,7 +469,7 @@ describe('buildIssueContent', () => {
 
 describe('getFeaturesNeedingSync', () => {
   function makeFeatureMap(entries: Array<[string, { number: number; state: string }]>) {
-    return new Map(entries.map(([id, { number, state }]) => [id, { number, priorityLabel: null, state, body: '' }]));
+    return new Map(entries.map(([id, { number, state }]) => [id, { number, priorityLabel: null, milestoneNumber: null, state, body: '' }]));
   }
 
   test('returns empty array when feature map is empty', () => {

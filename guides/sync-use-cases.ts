@@ -10,6 +10,15 @@ import { scanAllGuides, type GuideInventory } from '../harness/lib/utils.ts';
 
 // --- Types ---
 
+export const ProjectStatus = {
+  NeedsGuidance: 'Needs guidance',
+  NeedsEvals: 'Needs evals',
+  NeedsUseCases: 'Needs use cases',
+  NeedsInvestigation: 'Needs investigation',
+} as const;
+
+export type ProjectStatus = typeof ProjectStatus[keyof typeof ProjectStatus];
+
 interface GuideData {
   name?: string;
   description?: string;
@@ -28,11 +37,13 @@ export interface IssueContent {
   issueTitle: string;
   issueBody: string;
   priorityLabel: string | null;
+  milestoneNumber: number | null;
 }
 
 export interface FeatureIssueData {
   number: number;
   priorityLabel: string | null;
+  milestoneNumber: number | null;
   state: string;
   body: string;
 }
@@ -48,7 +59,7 @@ export interface FeatureToSync {
   issueNumber: number;
   needsReopen: boolean;
   closeReason: 'completed' | null;
-  targetStatus: 'Needs use cases' | 'Needs evals' | null;
+  targetStatus: ProjectStatus | null;
 }
 
 interface ProjectDetails {
@@ -71,7 +82,7 @@ export interface PreparedGuide {
   description: string;
   featureIds: string[];
   relativeSubdir: string;
-  statusName: string | null;
+  statusName: ProjectStatus | null;
 }
 
 export interface GuideInventoryResult {
@@ -85,8 +96,9 @@ export interface GuideInventoryResult {
 
 // --- Constants ---
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = path.resolve(__dirname, '..');
+import { rootDir } from '../lib/root.ts';
+
+const REPO_ROOT = rootDir;
 dotenv.config({ path: path.join(REPO_ROOT, '.env') });
 
 const PRIORITY_LABEL_REGEX = /^P\d+$/;
@@ -117,12 +129,12 @@ const projectOctokit: any = new Octokit({ auth: PROJECT_GITHUB_TOKEN });
  * Determines the project status name for a use case based on its completeness.
  * Returns null when the use case is complete.
  */
-export function getStatusName(guideBody: string, hasGrader: boolean, hasPrompts: boolean): string | null {
+export function getStatusName(guideBody: string, hasGrader: boolean, hasPrompts: boolean): ProjectStatus | null {
   if (guideBody.trim().length === 0) {
-    return 'Needs guidance';
+    return ProjectStatus.NeedsGuidance;
   }
   if (!hasGrader || !hasPrompts) {
-    return 'Needs evals';
+    return ProjectStatus.NeedsEvals;
   }
   return null;
 }
@@ -130,8 +142,8 @@ export function getStatusName(guideBody: string, hasGrader: boolean, hasPrompts:
 /**
  * Determines whether an existing issue needs to be closed or reopened.
  */
-export function getIssueStateChanges(currentState: 'open' | 'closed', statusName: string | null): { needsClose: boolean; needsReopen: boolean } {
-  const shouldBeOpen = statusName !== null;
+export function getIssueStateChanges(currentState: 'open' | 'closed', statusName: ProjectStatus | null, currentProjectStatus?: string): { needsClose: boolean; needsReopen: boolean } {
+  const shouldBeOpen = statusName !== null || currentProjectStatus === ProjectStatus.NeedsInvestigation;
   return {
     needsClose: !shouldBeOpen && currentState === 'open',
     needsReopen: shouldBeOpen && currentState === 'closed',
@@ -163,6 +175,7 @@ export function buildIssueContent(
 ): IssueContent {
   const relatedLinks: string[] = [];
   let priorityLabel: string | null = null;
+  let milestoneNumber: number | null = null;
 
   for (const id of featureIds) {
     const featureData = featureToIssueMap.get(id);
@@ -170,6 +183,9 @@ export function buildIssueContent(
       relatedLinks.push(`#${featureData.number}`);
       if (!priorityLabel && featureData.priorityLabel) {
         priorityLabel = featureData.priorityLabel;
+      }
+      if (!milestoneNumber && featureData.milestoneNumber) {
+        milestoneNumber = featureData.milestoneNumber;
       }
     }
   }
@@ -182,6 +198,7 @@ export function buildIssueContent(
     issueTitle: `Create guide and evals for the ${name} use case`,
     issueBody: `${description}\n\nAffected web-feature IDs: ${linkedFeatures}\n\nUse case subdir: [${relativeSubdir}](${subdirUrl})${relatedFeaturesStr}`,
     priorityLabel,
+    milestoneNumber,
   };
 }
 
@@ -196,7 +213,8 @@ export function buildFeatureToIssueMap(issues: any[]): Map<string, FeatureIssueD
       const priorityLabel = issue.labels
         .map((l: any) => (typeof l === 'string' ? l : l.name))
         .find((l: string) => PRIORITY_LABEL_REGEX.test(l)) || null;
-      map.set(match[1], { number: issue.number, priorityLabel, state: issue.state, body: issue.body ?? '' });
+      const milestoneNumber = issue.milestone ? issue.milestone.number : null;
+      map.set(match[1], { number: issue.number, priorityLabel, milestoneNumber, state: issue.state, body: issue.body ?? '' });
     }
   }
   return map;
@@ -250,7 +268,7 @@ export function getFeaturesNeedingSync(
         issueNumber: featureData.number,
         needsReopen: featureData.state === 'closed',
         closeReason: null,
-        targetStatus: 'Needs evals',
+        targetStatus: ProjectStatus.NeedsEvals,
       });
     } else if (hasCompletedUseCases && featureData.state === 'open') {
       result.push({
@@ -266,7 +284,7 @@ export function getFeaturesNeedingSync(
         issueNumber: featureData.number,
         needsReopen: false,
         closeReason: null,
-        targetStatus: 'Needs use cases',
+        targetStatus: ProjectStatus.NeedsUseCases,
       });
     }
   }
@@ -533,21 +551,26 @@ async function syncIssue(
   issueTitle: string,
   issueBody: string,
   priorityLabel: string | null,
-  statusName: string | null,
-  activeIssueNumbers: Set<number>
+  milestoneNumber: number | null,
+  statusName: ProjectStatus | null,
+  activeIssueNumbers: Set<number>,
+  currentProjectStatus?: string
 ): Promise<{ issueNumber: number; changed: boolean }> {
   if (existingIssue) {
-    const { needsClose, needsReopen } = getIssueStateChanges(existingIssue.state, statusName);
+    const { needsClose, needsReopen } = getIssueStateChanges(existingIssue.state, statusName, currentProjectStatus);
     const currentLabels = (existingIssue.labels as any[]).map(l => typeof l === 'string' ? l : l.name);
     const desiredLabels = getDesiredLabels(currentLabels, priorityLabel);
     const labelsChanged = desiredLabels.length !== currentLabels.length || desiredLabels.some(l => !currentLabels.includes(l));
-    const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody || needsReopen || needsClose || labelsChanged;
+    const existingMilestoneNumber = existingIssue.milestone ? existingIssue.milestone.number : null;
+    const targetMilestoneNumber = existingMilestoneNumber || milestoneNumber;
+    const milestoneChanged = existingMilestoneNumber !== targetMilestoneNumber;
+    const needsUpdate = existingIssue.title !== issueTitle || existingIssue.body !== issueBody || needsReopen || needsClose || labelsChanged || milestoneChanged;
 
     const issueNumber: number = existingIssue.number;
     activeIssueNumbers.add(issueNumber);
 
     if (needsUpdate) {
-      console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"${needsReopen ? ' (reopening)' : ''}${needsClose ? ' (closing as completed)' : ''}${labelsChanged ? ' (updating labels)' : ''}...`);
+      console.log(`${IS_DRY_RUN ? '[DRY RUN] Would update' : 'Updating'} issue #${issueNumber} for "${name}"${needsReopen ? ' (reopening)' : ''}${needsClose ? ' (closing as completed)' : ''}${labelsChanged ? ' (updating labels)' : ''}${milestoneChanged ? ' (updating milestone)' : ''}...`);
       if (!IS_DRY_RUN) {
         await octokit.rest.issues.update({
           owner: ORG,
@@ -556,12 +579,14 @@ async function syncIssue(
           title: issueTitle,
           body: issueBody,
           labels: desiredLabels,
+          milestone: targetMilestoneNumber,
           ...(needsReopen ? { state: 'open' } : {}),
           ...(needsClose ? { state: 'closed', state_reason: 'completed' } : {})
         });
       } else {
         if (existingIssue.title !== issueTitle) console.log(`[DRY RUN] Title: ${issueTitle}`);
         if (labelsChanged) console.log(`[DRY RUN] Labels: ${desiredLabels.join(', ')}`);
+        if (milestoneChanged) console.log(`[DRY RUN] Milestone: ${targetMilestoneNumber}`);
         if (needsReopen) console.log(`[DRY RUN] State: open`);
         if (needsClose) console.log(`[DRY RUN] State: closed (completed)`);
         if (existingIssue.body !== issueBody) console.log(`[DRY RUN] Body:\n${issueBody}\n`);
@@ -580,7 +605,8 @@ async function syncIssue(
         repo: REPO,
         title: issueTitle,
         body: issueBody,
-        labels
+        labels,
+        ...(milestoneNumber ? { milestone: milestoneNumber } : {})
       });
       const issueNumber: number = newIssue.data.number;
       activeIssueNumbers.add(issueNumber);
@@ -597,6 +623,7 @@ async function syncIssue(
     } else {
       console.log(`[DRY RUN] Title: ${issueTitle}`);
       console.log(`[DRY RUN] Labels: ${labels.join(', ')}`);
+      if (milestoneNumber) console.log(`[DRY RUN] Milestone: ${milestoneNumber}`);
       if (isComplete) console.log(`[DRY RUN] State: closed (completed)`);
       console.log(`[DRY RUN] Body:\n${issueBody}\n`);
       return { issueNumber: 0, changed: true };
@@ -713,10 +740,18 @@ async function processUseCases(
   }
 
   for (const { name, description, featureIds, relativeSubdir, statusName } of preparedGuides) {
-    const { issueTitle, issueBody, priorityLabel } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap);
+    const { issueTitle, issueBody, priorityLabel, milestoneNumber } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap);
     const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
+    const existingIssueNumber = existingIssue?.number;
+    const currentProjectStatus = existingIssueNumber ? projectDetails?.issueStatusMap.get(existingIssueNumber) : undefined;
 
-    const { issueNumber, changed } = await syncIssue(name, existingIssue, issueTitle, issueBody, priorityLabel, statusName, activeIssueNumbers);
+    const { issueNumber, changed } = await syncIssue(name, existingIssue, issueTitle, issueBody, priorityLabel, milestoneNumber, statusName, activeIssueNumbers, currentProjectStatus);
+
+    if (currentProjectStatus === ProjectStatus.NeedsInvestigation) {
+      for (const id of featureIds) {
+        featuresWithActiveUseCases.add(id);
+      }
+    }
 
     for (const id of featureIds) {
       if (!featureUseCaseMap.has(id)) featureUseCaseMap.set(id, []);

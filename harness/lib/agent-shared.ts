@@ -1,11 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
-import { fileURLToPath } from 'url';
 import { Agents } from '../config.ts';
 import { classifyGuide, scanAllGuides } from './utils.ts';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { rootDir } from '../../lib/root.ts';
 
 /**
  * Promisified version of child_process.spawn.
@@ -102,7 +100,7 @@ export function updateMcpConfig(
   apiKey: string,
   agent: string
 ): boolean {
-  const mcpConfig: { mcpServers: Record<string, any> } = { mcpServers: {} };
+   const mcpConfig: { mcpServers: Record<string, any> } = { mcpServers: {} };
 
   for (const serverName of serversToEnable) {
     if (serverName === 'modern-web') {
@@ -149,7 +147,23 @@ export function updateMcpConfig(
 
   try {
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
-    fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
+    if (agent === Agents.CODEX_CLI) {
+      let tomlContent = '';
+      for (const [serverName, serverConfig] of Object.entries(mcpConfig.mcpServers)) {
+        tomlContent += `[mcp_servers.${serverName}]\n`;
+        for (const [key, value] of Object.entries(serverConfig as Record<string, any>)) {
+          if (Array.isArray(value)) {
+            tomlContent += `${key} = [${value.map((v: any) => `"${v}"`).join(', ')}]\n`;
+          } else {
+            tomlContent += `${key} = "${value}"\n`;
+          }
+        }
+        tomlContent += '\n';
+      }
+      fs.writeFileSync(configPath, tomlContent);
+    } else {
+      fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
+    }
     if (serversToEnable.length > 0) {
       console.log(`Added MCP server config(s) to ${configPath}: ${Object.keys(mcpConfig.mcpServers).join(', ')}`);
     } else {
@@ -169,55 +183,96 @@ export function updateMcpConfig(
  * @param agent The agent type
  * @returns True if successful, false otherwise
  */
-export function copySkills(homeDir: string, agent: string): boolean {
-  const harnessRoot = path.resolve(__dirname, '..');
-  const guidesSource = path.join(harnessRoot, '..', 'guides');
+export function copySkills(homeDir: string, agent: string, cli: boolean): boolean {
+  const guidesSource = path.join(rootDir, 'guides');
 
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {
     destDir = path.join(homeDir, '.claude', 'skills');
+  } else if (agent === Agents.CODEX_CLI) {
+    destDir = path.join(homeDir, '.agents', 'skills');
   } else if (agent === Agents.JETSKI) {
     destDir = path.join(homeDir, '.gemini', 'jetski', 'skills');
   } else {
     destDir = path.join(homeDir, '.gemini', 'skills');
   }
 
-  if (!fs.existsSync(guidesSource)) {
-    console.warn(`Warning: Guides directory not found at ${guidesSource}`);
-    return false;
-  }
-
   try {
     fs.mkdirSync(destDir, { recursive: true });
 
-    const allGuides = scanAllGuides();
-    const categories = new Set(allGuides.map(inv => inv.category));
+    if (cli) { // Skills-cli mode
+      const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web-use-cases');
+      if (!fs.existsSync(distSource)) {
+        console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter modern-web-mcp build-dist' automatically...`);
+        try {
+          execSync('pnpm --filter modern-web-mcp build-dist', {
+            cwd: rootDir,
+            stdio: 'inherit'
+          });
+          console.log("Distribution generated successfully.");
+        } catch (e: any) {
+          console.error(`Failed to auto-generate skills-cli distribution: ${e.message}`);
+          return false;
+        }
+      }
 
-    for (const cat of categories) {
-      const catSrc = path.join(guidesSource, cat);
-      const catDest = path.join(destDir, cat);
+      try {
+        const destSkillDir = path.join(destDir, 'modern-web-use-cases');
+        fs.mkdirSync(destSkillDir, { recursive: true });
 
-      // Copy SKILL.md if present
-      const skillPath = path.join(catSrc, 'SKILL.md');
-      if (fs.existsSync(skillPath)) {
-        fs.mkdirSync(catDest, { recursive: true });
-        fs.copyFileSync(skillPath, path.join(catDest, 'SKILL.md'));
+        if (fs.existsSync(distSource)) {
+          // Clear dest first to ensure clean state
+          if (fs.existsSync(destSkillDir)) {
+            fs.rmSync(destSkillDir, { recursive: true, force: true });
+            fs.mkdirSync(destSkillDir, { recursive: true });
+          }
+          fs.cpSync(distSource, destSkillDir, { recursive: true });
+        } else {
+          console.error(`Standalone skills-cli distribution still not found after generation run!`);
+          return false;
+        }
+      } catch (e: any) {
+        console.error(`Failed to copy standalone skills-cli: ${e.message}`);
+        return false;
+      }
+    } else { // Skills-discipline mode
+      if (!fs.existsSync(guidesSource)) {
+        console.warn(`Warning: Guides directory not found at ${guidesSource}`);
+        return false;
+      }
+
+      // 1. Scan top-level directories for SKILL.md and copy them
+      const topLevelDirs = fs.readdirSync(guidesSource, { withFileTypes: true })
+        .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules');
+
+      for (const dir of topLevelDirs) {
+        const categorySrc = path.join(guidesSource, dir.name);
+        const categoryDest = path.join(destDir, dir.name);
+        const skillPath = path.join(categorySrc, 'SKILL.md');
+
+        if (fs.existsSync(skillPath)) {
+          fs.mkdirSync(categoryDest, { recursive: true });
+          fs.copyFileSync(skillPath, path.join(categoryDest, 'SKILL.md'));
+        }
+      }
+
+      // 2. Scan and copy guide.md for eval-ready guides
+      const allGuides = scanAllGuides();
+
+      for (const inv of allGuides) {
+        if (classifyGuide(inv) === 'eval-ready') {
+          const catDest = path.join(destDir, inv.category);
+          const guideDest = path.join(catDest, inv.name);
+          fs.mkdirSync(guideDest, { recursive: true });
+
+          const guideFileSrc = path.join(inv.dir, 'guide.md');
+          const guideFileDest = path.join(guideDest, 'guide.md');
+          fs.copyFileSync(guideFileSrc, guideFileDest);
+        }
       }
     }
 
-    for (const inv of allGuides) {
-      if (classifyGuide(inv) === 'eval-ready') {
-        const catDest = path.join(destDir, inv.category);
-        const guideDest = path.join(catDest, inv.name);
-        fs.mkdirSync(guideDest, { recursive: true });
-
-        const guideFileSrc = path.join(inv.dir, 'guide.md');
-        const guideFileDest = path.join(guideDest, 'guide.md');
-        fs.copyFileSync(guideFileSrc, guideFileDest);
-      }
-    }
-
-    console.log(`Copied guides to ${destDir}`);
+    console.log(`Copied Skills to ${destDir}`);
     return true;
   } catch (e: any) {
     console.error(`Failed to copy guides: ${e.message}`);
@@ -336,7 +391,7 @@ export function watchLogFile(logPath: string): () => void {
       if (currentData.length > prevData.length) {
         const newLogs = currentData.slice(prevData.length).trim();
         if (newLogs) {
-          const formattedLogs = newLogs.split('\n').map(line => `\x1b[33m[MCP Server Log]:\x1b[0m ${line}`).join('\n');
+          const formattedLogs = newLogs.split('\n').map(line => `\x1b[33m[Modern Web Log]:\x1b[0m ${line}`).join('\n');
           console.log(formattedLogs);
         }
         prevData = currentData;
@@ -381,6 +436,67 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
     } catch (e) {
       console.error(`Failed to export trajectory ${fileName}:`, e);
     }
+  }
+}
+
+/**
+ * Runs a CLI agent command, capturing output to the terminal and to log files.
+ * @param command The binary to run
+ * @param commandArgs The arguments
+ * @param workDir The working directory
+ * @param targetDir The target directory for logs and results
+ * @param agentName Name of the agent (for error messages)
+ */
+export async function runCliAgentCommand(
+  command: string,
+  commandArgs: string[],
+  workDir: string,
+  targetDir: string,
+  agentName: string
+): Promise<void> {
+  const child = spawn(command, commandArgs, {
+    cwd: workDir,
+    env: { ...process.env }, // Pass through environment variables (including new HOME)
+    stdio: ['ignore', 'pipe', 'pipe'] // 'pipe' captures output for log files but does NOT print to terminal natively
+  });
+
+  let stdoutData = '';
+  let stderrData = '';
+
+  child.stdout?.on('data', (data) => {
+    const chunk = data.toString();
+    stdoutData += chunk;
+    // Manually mirror to console so we can see progress while capturing
+    process.stdout.write(chunk);
+  });
+
+  child.stderr?.on('data', (data) => {
+    const chunk = data.toString();
+    stderrData += chunk;
+    // Manually mirror to console so we can see progress while capturing
+    process.stderr.write(chunk);
+  });
+
+  const exitCode = await new Promise((resolve) => {
+    child.on('close', resolve);
+  });
+
+  if (exitCode !== 0) {
+    throw new Error(`${agentName} exited with code ${exitCode}`);
+  }
+
+  copyResultsToTarget(workDir, targetDir);
+
+  // Save output to chat_log.txt
+  const chatLogPath = path.join(targetDir, 'chat_log.txt');
+  fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
+  console.log(`Saved output to: ${chatLogPath}`);
+
+  // Save stderr to agent_stderr.log to surface unexpected problems
+  if (stderrData.length > 0) {
+    const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
+    fs.writeFileSync(stderrLogPath, stderrData, 'utf8');
+    console.log(`Saved stderr to: ${stderrLogPath}`);
   }
 }
 

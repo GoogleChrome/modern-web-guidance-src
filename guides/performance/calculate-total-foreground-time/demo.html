@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Calculate Total Foreground Time Demo</title>
+</head>
+
+<body>
+  <h1>Calculate Total Foreground Time</h1>
+
+  <p>Switch to another tab and back to see the foreground time update.
+    Time spent on other tabs is excluded.</p>
+  <p>Foreground time: <span id="result">0</span>s</p>
+
+  <script>
+    function getTotalForegroundTime() {
+      const entries = performance.getEntriesByType('visibility-state');
+      if (entries.length === 0) {
+        // Fallback: no VisibilityStateEntry support.
+        return performance.now();
+      }
+
+      let totalForegroundTime = 0;
+      for (let i = 0; i < entries.length; i++) {
+        if (entries[i].name === 'visible') {
+          const start = entries[i].startTime;
+          const end = i + 1 < entries.length
+              ? entries[i + 1].startTime
+              : performance.now();
+          totalForegroundTime += end - start;
+        }
+      }
+      return totalForegroundTime;
+    }
+
+    function updateDisplay() {
+      const ms = getTotalForegroundTime();
+      document.getElementById('result').textContent =
+          (ms / 1000).toFixed(1);
+    }
+
+    setInterval(updateDisplay, 500);
+    updateDisplay();
+  </script>
+</body>
+
+</html>

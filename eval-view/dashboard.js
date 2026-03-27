@@ -1,8 +1,6 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateRadarData } from './utils.js';
 import { ApiClient } from './api.js';
 import { RadarChart } from './radar.js';
-
-const MCP_LOG_FILE = 'mcp-server.log';
 
 // Keep track of current details state for navigation
 let currentDetails = null;
@@ -73,7 +71,7 @@ async function loadDashboardData(testId) {
             timestamp = manifestTimestamp;
         }
 
-        renderTestHeader(testId, jetskiVersion, timestamp);
+        renderTestHeader(testId, jetskiVersion, timestamp, data);
         renderSummary(data);
         renderGrid(data, testId);
         renderRadarChart(data, testId);
@@ -165,11 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeBtn) closeBtn.onclick = closeModal;
 
     // Close on backdrop click
-    modal.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            closeModal();
-        }
-    });
+    modal.addEventListener('click', (event) => event.target === modal && closeModal());
 
     // Handle Esc key or dialog close API
     modal.addEventListener('close', () => {
@@ -186,9 +180,6 @@ document.addEventListener('DOMContentLoaded', () => {
             window.history.replaceState({}, '', url);
         }
     });
-
-    // We no longer need popstate for modal state because we use replaceState exclusively.
-    // Full page deep links are handled via DOMContentLoaded.
 
     // View GCS Artifacts
     const gcsBtn = document.getElementById('view-gcs-artifacts-btn');
@@ -296,10 +287,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-function renderTestHeader(testId, jetskiVersion, timestamp) {
+function renderTestHeader(testId, jetskiVersion, timestamp, data) {
     const container = document.getElementById('test-header');
     if (container) {
-        let html = `Test ID: <strong>${testId}</strong>`;
+        let html = `Test ID: <strong>${escapeHtml(testId)}</strong>`;
 
         if (timestamp) {
             let timeStr = timestamp;
@@ -317,8 +308,32 @@ function renderTestHeader(testId, jetskiVersion, timestamp) {
         }
 
         if (jetskiVersion) {
-            html += ` — Jetski Version: <strong>${jetskiVersion}</strong>`;
+            html += ` — Jetski Version: <strong>${escapeHtml(jetskiVersion)}</strong>`;
         }
+
+        if (data) {
+            let agent = data.agent || 'unknown';
+            let serving = 'unknown';
+            if (data.serving !== undefined) {
+                serving = data.serving;
+            } else if (data.enableSkills !== undefined) {
+                serving = data.enableSkills ? 'skills' : 'mcp';
+            }
+            const servingDisplayNames = {
+                'skills': 'Skills',
+                'skills_cli': 'Skills (CLI)',
+                'mcp': 'MCP'
+            };
+            serving = servingDisplayNames[serving] || serving;
+            let model = data.model || 'unknown';
+
+            html += `<div style="margin-top: 6px; display: flex; flex-direction: column; gap: 2px;">
+                <span>Agent: <strong>${escapeHtml(agent)}</strong></span>
+                <span>Model: <strong style="color: var(--text-secondary);">${escapeHtml(model)}</strong></span>
+                <span>Serving: <strong>${escapeHtml(serving)}</strong></span>
+            </div>`;
+        }
+
         container.innerHTML = html;
     }
 }
@@ -348,6 +363,12 @@ function renderSummary(data) {
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
                 ${summary.guidedPassed}/${summary.guidedTotal} checks passed
             </div>
+            ${summary.toolActivationRate !== undefined ? `
+            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
+                Tool Activation: <span style="font-weight: bold; color: ${getColor(summary.toolActivationRate)}">${summary.toolActivationRate}%</span>
+                <span style="opacity: 0.8; color: ${getColor(summary.toolActivationRate)}">(${summary.toolActivationCount}/${summary.totalGuidedRuns} runs)</span>
+            </div>
+            ` : ''}
             ${summary.guideUsageRate !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Guide Usage: <span style="font-weight: bold; color: ${getColor(summary.guideUsageRate)}">${summary.guideUsageRate}%</span>
@@ -402,6 +423,19 @@ function renderGrid(data, testId) {
                 const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
                 const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
 
+                let toolActivationHtml = '';
+                if (runType === 'guided' && testStats && testStats.runsWithToolActivation !== undefined) {
+                    const count = testStats.runsWithToolActivation;
+                    const total = testStats.runCount;
+                    const toolActivationRate = total > 0 ? Math.round((count / total) * 100) : 0;
+                    const color = getColor(toolActivationRate);
+                    toolActivationHtml = `
+                        <div style="font-size: 0.85em; margin-top: 4px; color: ${color}; font-weight: 500;">
+                            Tool Activated (${count}/${total} runs)
+                        </div>
+                    `;
+                }
+
                 let guideUsageHtml = '';
                 if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined) {
                     const count = testStats.runsUsingGuide;
@@ -410,7 +444,7 @@ function renderGrid(data, testId) {
                     const color = getColor(usageRate);
                     guideUsageHtml = `
                         <div style="font-size: 0.85em; margin-top: 6px; color: ${color}; font-weight: 500;">
-                            ${guide} used (${count}/${total} runs)
+                            Guide Used (${count}/${total} runs)
                         </div>
                     `;
                 }
@@ -425,6 +459,7 @@ function renderGrid(data, testId) {
                         <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
                         <span>Runs: ${runData.length}</span>
                     </div>
+                    ${toolActivationHtml}
                     ${guideUsageHtml}
                 `;
 
@@ -527,25 +562,49 @@ async function showDetails(testName, runs, stats, testId) {
             }
         }
 
-        let guideSection = '';
-        const guidesUsed = run.guidesUsed || (run.guideUsed !== undefined ? (typeof run.guideUsed === 'object' && run.guideUsed !== null ? run.guideUsed.guidesUsed : []) : []);
+        let usageSection = '';
+        const toolsUsed = run.guidanceToolsUsed || [];
+        const expectedTool = run.expectedGuidanceTool;
+        const hasToolData = run.guidanceToolsUsed !== undefined;
+
+        const guidesUsed = run.guidesUsed || 
+               (run.guideUsed !== undefined ? 
+               (typeof run.guideUsed === 'object' && run.guideUsed !== null ? run.guideUsed.guidesUsed : []) 
+               : []);
+        const expectedGuide = run.expectedGuide || guide;
         const hasGuideData = run.guidesUsed !== undefined || run.guideUsed !== undefined;
 
-        if (hasGuideData && runType !== 'unguided') {
-            guideSection = `
-                <div class="guide-section" style="margin-top: 15px; padding: 12px 15px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--border-color);">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+        const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : 'modern-web.log';
+        const shouldUseTrajectory = (allTestData.serving ? (allTestData.serving === 'skills' || allTestData.serving === 'skills_cli') : allTestData.enableSkills) && sessionFile;
+
+        if (runType !== 'unguided' && (hasToolData || hasGuideData)) {
+            usageSection = `
+                <div class="usage-section" style="margin-top: 15px; padding: 12px 15px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        ${hasToolData ? `
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary);">Guides Used:</strong>
+                            <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 90px;">Tools Used:</strong>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                ${toolsUsed.length > 0 ? toolsUsed.map(t => {
+                                    const isExpected = t === expectedTool;
+                                    return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(t)}</code>`;
+                                }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
+                            </div>
+                        </div>` : ''}
+
+                        ${hasGuideData ? `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 90px;">Guides Used:</strong>
                             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                                 ${guidesUsed.length > 0 ? guidesUsed.map(g => {
-                                    const isExpected = g === guide;
+                                    const isExpected = g === expectedGuide;
                                     return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
                                 }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
                             </div>
-                        </div>
-                        <div>
-                            <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${allTestData.enableSkills && sessionFile ? 'Agent Trajectory' : MCP_LOG_FILE}</a>
+                        </div>` : ''}
+
+                        <div style="margin-top: 5px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: flex-end;">
+                            <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${shouldUseTrajectory ? 'Agent Trajectory' : logFile}</a>
                         </div>
                     </div>
                 </div>
@@ -557,7 +616,7 @@ async function showDetails(testName, runs, stats, testId) {
         runDetail.innerHTML = `
             <div class="run-header">
                 <strong>Run ${run.runNumber}</strong>
-                <span style="color: ${getColor(s.rate)}">${s.rate}% Pass (${s.passed}/${s.total})</span>
+                <span style="color: ${getColor(s.rate)}; margin-left: auto; margin-right: 15px;">${s.rate}% Pass (${s.passed}/${s.total})</span>
                 <div class="run-actions">
                 </div>
             </div>
@@ -569,17 +628,17 @@ async function showDetails(testName, runs, stats, testId) {
                     </li>
                 `).join('')}
             </ul>
-            ${guideSection}
+            ${usageSection}
         `;
 
         const viewResourcesLink = runDetail.querySelector('.view-resources-link');
         if (viewResourcesLink) {
             viewResourcesLink.onclick = (e) => {
                 e.preventDefault();
-                if (allTestData.enableSkills && sessionFile) {
+                if (shouldUseTrajectory) {
                     openTrajectory(usedBasePath, sessionFile);
                 } else {
-                    const resourcesPath = `${usedBasePath}/${MCP_LOG_FILE}`;
+                    const resourcesPath = `${usedBasePath}/${logFile}`;
                     viewContent(resourcesPath, resourcesPath);
                 }
             };
@@ -822,48 +881,14 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 }
 
 function renderRadarChart(data, testId) {
-    const results = data.results;
-    const apps = {};
-
-    Object.keys(results).forEach(key => {
-        const parts = key.split(' - ');
-        if (parts.length !== 3) return;
-
-        const [appName, guide, runType] = parts;
-        const scenarioName = `${appName} (${guide})`;
-
-        if (!apps[scenarioName]) {
-            apps[scenarioName] = { guided: [], unguided: [] };
-        }
-
-        const runData = results[key];
-        const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
-        const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
-        const avgRate = totalChecks > 0 ? (totalPassed / totalChecks) * 100 : 0;
-
-        if (runType === 'guided') {
-            apps[scenarioName].guided.push(avgRate);
-        } else if (runType === 'unguided') {
-            apps[scenarioName].unguided.push(avgRate);
-        }
-    });
-
-    const labels = Object.keys(apps).sort();
+    const { labels, guided, unguided } = calculateRadarData(data.results);
+    
     if (labels.length < 3) {
         document.getElementById('chart-section').classList.add('hidden');
         return;
     }
 
     document.getElementById('chart-section').classList.remove('hidden');
-
-    const guidedData = labels.map(label => {
-        const scores = apps[label].guided;
-        return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-    });
-    const unguidedData = labels.map(label => {
-        const scores = apps[label].unguided;
-        return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-    });
 
     const chart = new RadarChart('radar-chart', {
         size: 600,
@@ -876,14 +901,14 @@ function renderRadarChart(data, testId) {
         const runType = type.toLowerCase(); // "guided" or "unguided"
 
         // Find the original key in the results
-        const originalKey = Object.keys(results).find(key => {
+        const originalKey = Object.keys(data.results).find(key => {
             const parts = key.split(' - ');
             return `${parts[0]} (${parts[1]})` === scenarioName && parts[2] === runType;
         });
 
         if (originalKey) {
             const testName = originalKey;
-            const runData = results[testName];
+            const runData = data.results[testName];
             const testStats = data.stats[testName];
             showDetails(testName, runData, testStats, testId);
         }
@@ -894,14 +919,14 @@ function renderRadarChart(data, testId) {
         datasets: [
             {
                 label: 'Unguided',
-                data: unguidedData,
+                data: unguided,
                 backgroundColor: 'rgba(218, 54, 51, 0.2)',
                 borderColor: '#da3633',
                 onClick: handlePointClick
             },
             {
                 label: 'Guided',
-                data: guidedData,
+                data: guided,
                 backgroundColor: 'rgba(35, 134, 54, 0.2)',
                 borderColor: '#238636',
                 onClick: handlePointClick

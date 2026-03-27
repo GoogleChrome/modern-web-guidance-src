@@ -1,20 +1,18 @@
-import { fileURLToPath } from "url";
-import { dirname } from "path";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { config, Agents } from './config.ts';
 import matter from 'gray-matter';
 import { evaluateSuite } from './evaluate.ts';
+import { rootDir } from '../lib/root.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
 // Global log file stream
 let logStream: fs.WriteStream | null = null;
 
-const baseDir = __dirname;
+const baseDir = path.join(rootDir, 'harness');
 const baseAppsDir = path.join(baseDir, 'base_apps');
 const tasksDir = path.join(baseDir, 'tasks');
 const resultsDir = path.join(baseDir, 'results');
@@ -47,10 +45,11 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string)
   }
 
   try {
-    const agentScript = path.join(__dirname, 'agents',
+    const agentScript = path.join(baseDir, 'agents',
       agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
         agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-          'jetski-agent.ts'
+          agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
+            'jetski-agent.ts'
     );
 
     await runCommand('node', [
@@ -169,8 +168,9 @@ export async function runSuite(options: RunSuiteOptions = {}) {
             fs.mkdirSync(targetDir, { recursive: true });
           }
 
-          const agentScript = path.join(__dirname, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
+          const agentScript = path.join(baseDir, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
             agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
+            agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
               'jetski-agent.ts');
 
           // Generate runner script
@@ -212,10 +212,14 @@ process.exit(result.status ?? 0);
       if (pnpmWorkspacePackages.length > 0) {
         console.log(`\n>>> Running all tests for Run ${runNumber} with pnpm -r run-agent ...`);
         // Drop a transient pnpm-workspace.yaml at the root of the run directory.
-        // The '**' pattern tells pnpm to recursively discover all the targetDirs
-        // we just seeded with package.json files.
+        // We explicitly list the packages to avoid running leftover tasks from previous runs
+        // (e.g. when switching from unguided to --guided).
         const pnpmWorkspacePath = path.join(runDir, 'pnpm-workspace.yaml');
-        fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
+        const yamlContent = [
+          'packages:',
+          ...pnpmWorkspacePackages.map(pkg => `  - '${pkg}'`)
+        ].join('\n') + '\n';
+        fs.writeFileSync(pnpmWorkspacePath, yamlContent);
         
         try {
           const pnpmArgs = ['-r'];
@@ -234,7 +238,6 @@ process.exit(result.status ?? 0);
           }
         }
       }
-
     }
 
     if (hasErrors) {
