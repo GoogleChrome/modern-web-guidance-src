@@ -49,7 +49,7 @@ function setupIsolatedWorkDir(targetDir: string): string {
   copyFileIfExists(path.join(guidesDir, 'playwright.config.ts'), path.join(workDir, 'playwright.config.ts'));
 
   // Provide tsconfig for typechecking
-  copyFileIfExists(path.join(__dirname, 'tsconfig.json'), path.join(workDir, 'tsconfig.json'));
+  copyFileIfExists(path.join(guidesDir, 'tsconfig.json'), path.join(workDir, 'tsconfig.json'));
 
   const geminiSource = path.join(path.resolve(process.env.HOME || process.cwd()), '.gemini');
   const geminiDest = path.join(tempHome, '.gemini');
@@ -81,7 +81,7 @@ async function runGraderGeneration(targetDir: string, prompt: string): Promise<v
     const { execSync } = await import('child_process');
     execSync('npm init -y', { cwd: workDir, stdio: 'ignore' });
     execSync('npm pkg set type="module"', { cwd: workDir, stdio: 'ignore' });
-    execSync('npm install -D @playwright/test typescript @types/node', { cwd: workDir, stdio: 'ignore' });
+    execSync('npm install -D @playwright/test typescript @types/node', { cwd: workDir, stdio: 'inherit' });
     execSync('npx playwright install chromium', { cwd: workDir, stdio: 'ignore', env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: path.join(workDir, '.cache', 'ms-playwright') } });
 
     const command = config.environment.geminiCliBin;
