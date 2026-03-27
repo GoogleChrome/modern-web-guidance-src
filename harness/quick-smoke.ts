@@ -5,7 +5,7 @@ import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const import.meta.dirname = path.dirname(__filename);
 
 export async function runSmokeTest() {
   const tempProjectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jetski-smoke-test-'));
@@ -16,7 +16,7 @@ export async function runSmokeTest() {
   try {
     const result = spawnSync('node', [
       '--experimental-strip-types',
-      path.join(__dirname, 'agents/jetski-agent.ts'),
+      path.join(import.meta.dirname, 'agents/jetski-agent.ts'),
       prompt,
       'guided', // runType expects guided or unguided
       tempProjectDir, // targetDir

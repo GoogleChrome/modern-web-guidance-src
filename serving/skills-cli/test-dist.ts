@@ -6,13 +6,13 @@ import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const ROOT_DIR = path.resolve(__dirname, "../.."); // guidance/
+const import.meta.dirname = path.dirname(__filename);
+const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
 console.log("Running build-dist to ensure fresh build...");
 execSync('npm run build-dist', { 
-  cwd: path.resolve(__dirname, '..'), 
+  cwd: path.resolve(import.meta.dirname, '..'), 
   stdio: 'inherit' 
 });
 

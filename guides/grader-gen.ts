@@ -46,7 +46,7 @@ function setupIsolatedWorkDir(targetDir: string): string {
   copyFileIfExists(path.join(guidesDir, 'playwright.config.ts'), path.join(workDir, 'playwright.config.ts'));
 
   // Provide tsconfig for typechecking
-  copyFileIfExists(path.join(__dirname, 'tsconfig.json'), path.join(workDir, 'tsconfig.json'));
+  copyFileIfExists(path.join(import.meta.dirname, 'tsconfig.json'), path.join(workDir, 'tsconfig.json'));
 
   const geminiSource = path.join(path.resolve(process.env.HOME || process.cwd()), '.gemini');
   const geminiDest = path.join(tempHome, '.gemini');

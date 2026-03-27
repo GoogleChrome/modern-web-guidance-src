@@ -7,10 +7,10 @@ import { classifyGuide, scanAllGuides } from "../../harness/lib/utils.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const import.meta.dirname = path.dirname(__filename);
 
-const ROOT_DIR = path.resolve(__dirname, "../.."); // guidance/
-const SERVING_DIR = path.resolve(__dirname, ".."); // guidance/serving/
+const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
+const SERVING_DIR = path.resolve(import.meta.dirname, ".."); // guidance/serving/
 const ROOT_DIST_DIR = path.join(ROOT_DIR, "dist");
 const PUBLISH_ROOT = path.join(ROOT_DIST_DIR, "skills-cli");
 const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases");

@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 import matter from 'gray-matter';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const import.meta.dirname = path.dirname(__filename);
 
 function toTitleCase(kebabString: string): string {
   return kebabString
@@ -99,7 +99,7 @@ function createLocalSymlink(repoRoot: string, distDir: string): void {
 }
 
 function buildMegaskill(): void {
-  const repoRoot = path.resolve(__dirname, '../..');
+  const repoRoot = path.resolve(import.meta.dirname, '../..');
 
   // Validate we are actually rooted in the guidance project
   if (!fs.existsSync(path.join(repoRoot, 'package.json'))) {
