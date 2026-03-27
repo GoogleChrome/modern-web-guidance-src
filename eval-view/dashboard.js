@@ -1,6 +1,6 @@
 import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateRadarData } from './utils.js';
 import { ApiClient } from './api.js';
-import { DivergingBarChart } from './diverging-bar-chart.js';
+import { DumbbellChart } from './dumbbell-chart.js';
 
 // Keep track of current details state for navigation
 let currentDetails = null;
@@ -887,13 +887,7 @@ function renderRadarChart(data, testId) {
         document.getElementById('chart-section').classList.add('hidden');
         return;
     }
-
     document.getElementById('chart-section').classList.remove('hidden');
-
-    const chart = new DivergingBarChart('radar-chart', {
-        size: 700,
-        margin: { top: 30, right: 30, bottom: 30, left: 200 }
-    });
 
     const handlePointClick = (index, type) => {
         const scenarioName = labels[index]; // e.g. "redfield (vague)"
@@ -913,27 +907,28 @@ function renderRadarChart(data, testId) {
         }
     };
 
-    chart.render({
-        labels: labels,
-        datasets: [
-            {
-                label: 'Unguided',
-                data: unguided,
-                backgroundColor: 'rgba(218, 54, 51, 0.2)',
-                borderColor: '#da3633',
-                onClick: handlePointClick
-            },
-            {
-                label: 'Guided',
-                data: guided,
-                backgroundColor: 'rgba(35, 134, 54, 0.2)',
-                borderColor: '#238636',
-                onClick: handlePointClick
-            }
-        ]
-    });
-}
+    const datasets = [
+        {
+            label: 'Unguided',
+            data: unguided,
+            onClick: handlePointClick
+        },
+        {
+            label: 'Guided',
+            data: guided,
+            onClick: handlePointClick
+        }
+    ];
 
+    // Render the Dumbbell Chart
+    if (window.dumbbellChart) window.dumbbellChart.container.innerHTML = '';
+    window.dumbbellChart = new DumbbellChart('dumbbell-chart', {
+        size: 700,
+        rowHeight: 30,
+        margin: { top: 40, right: 30, bottom: 40, left: 200 }
+    });
+    window.dumbbellChart.render({ labels, datasets });
+}
 
 async function getResultPaths(testId, run, testName) {
     return await api.getResultInfo(testId, run, testName);

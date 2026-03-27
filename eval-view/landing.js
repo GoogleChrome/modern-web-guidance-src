@@ -1,5 +1,5 @@
 import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateRadarData } from './utils.js';
-import { DivergingBarChart } from './diverging-bar-chart.js';
+import { DumbbellChart } from './dumbbell-chart.js';
 
 let allTestData = {}; // Cache all test data by testId
 let selectedTestIds = new Set(); // Set of test IDs to show
@@ -484,7 +484,7 @@ function showRadarTooltip(testInfo, x, y, compoundKey) {
     updateTooltipPosition(x, y);
 
     if (!radarChartInstance) {
-        radarChartInstance = new DivergingBarChart('radar-tooltip-chart', {
+        radarChartInstance = new DumbbellChart('radar-tooltip-chart', {
             size: 400, rowHeight: 20, margin: { top: 10, right: 10, bottom: 20, left: 120 }, hideLegend: true
         });
     }
