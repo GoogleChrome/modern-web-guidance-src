@@ -8,8 +8,6 @@ import { fileURLToPath } from 'node:url';
 import { rootDir, guidesDir } from '../lib/paths.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold } from '../lib/colors.ts';
 
-
-
 export function findGrader(startDir: string): string | null {
   let currentDir = startDir;
   while (currentDir !== path.dirname(currentDir)) {

@@ -11,7 +11,6 @@ import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
 
 export function getGuideCategory(guideName: string): string | null {
-
   const categories = fs.readdirSync(guidesDir).filter(f => fs.statSync(path.join(guidesDir, f)).isDirectory());
   
   for (const cat of categories) {
@@ -71,7 +70,6 @@ export async function collectResults(resultsDir: string) {
       if (!data || !data.grader) continue;
 
       const guide = data.grader.trim();
-
       const graderMatches = glob.sync(`**/${guide}/grader.ts`, { cwd: guidesDir, absolute: true });
       const graderPath = graderMatches.length > 0 ? graderMatches[0] : path.join(guidesDir, guide, `grader.ts`);
       const graderResults = path.join(dir, `${guide}_results.json`);
@@ -198,7 +196,6 @@ run();
 
       const actualBaseApp = data.base_app ? data.base_app.trim() : taskName;
       const testName = `${taskName} - ${guide} - ${runType}`;
-
       const graderMatches = glob.sync(`**/${guide}/grader.ts`, {
         cwd: guidesDir,
         absolute: true

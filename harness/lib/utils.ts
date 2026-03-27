@@ -11,8 +11,6 @@ export const NEGATIVE_DEMO_FILE = 'negative-demo.html';
 export const GRADER_FILE = 'grader.ts';
 export const PROMPTS_FILE = 'prompts.md';
 
-
-
 export interface GuideInventory {
   dir: string;
   name: string;

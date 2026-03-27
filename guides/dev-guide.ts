@@ -33,8 +33,6 @@ import {
   scanAllGuides
 } from '../harness/lib/utils.ts';
 
-
-
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
   test?: boolean;        // default: true — run agent test after calibration
@@ -302,8 +300,8 @@ grader: ${guideName}
 ${prompt}
 `;
 
-  fs.mkdirSync(TASKS_DIR, { recursive: true });
-  fs.writeFileSync(path.join(TASKS_DIR, `${taskName}.md`), taskContent);
+  fs.mkdirSync(tasksDir, { recursive: true });
+  fs.writeFileSync(path.join(tasksDir, `${taskName}.md`), taskContent);
   console.log(cGreen(`✅ Created task: harness/tasks/${taskName}.md`));
 
   return { taskName, baseApp: 'daily-grind', prompt };

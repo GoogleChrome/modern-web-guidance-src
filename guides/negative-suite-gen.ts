@@ -5,8 +5,7 @@ import { rootDir, baseAppsDir, tasksDir } from '../lib/paths.ts';
 
 import { scanAllGuides, classifyGuide } from '../harness/lib/utils.ts';
 
-const TASKS_DIR = path.join(tasksDir, 'negative');
-
+const negativeTasksDir = path.join(tasksDir, 'negative');
 function readFileSafe(filePath: string): string {
   try {
     return fs.readFileSync(filePath, 'utf-8').trim();
@@ -29,8 +28,8 @@ export async function generateNegativeSuite() {
   console.log(`Found ${evalReadyGuides.length} eval-ready guides.`);
 
   // Create tasks/negative directory if it doesn't exist
-  if (!fs.existsSync(TASKS_DIR)) {
-    fs.mkdirSync(TASKS_DIR, { recursive: true });
+  if (!fs.existsSync(negativeTasksDir)) {
+    fs.mkdirSync(negativeTasksDir, { recursive: true });
   }
 
   for (const inv of evalReadyGuides) {
@@ -86,7 +85,7 @@ grader: ${inv.name}
 ${prompt}
 `;
 
-    const taskFilePath = path.join(TASKS_DIR, `${taskName}.md`);
+    const taskFilePath = path.join(negativeTasksDir, `${taskName}.md`);
     fs.writeFileSync(taskFilePath, taskContent);
     console.log(`  ✅ Created task: harness/tasks/negative/${taskName}.md`);
   }
