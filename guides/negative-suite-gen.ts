@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import { rootDir, baseAppsDir, tasksDir } from '../lib/paths.ts';
+import { baseAppsDir, tasksDir } from '../lib/paths.ts';
 
 import { scanAllGuides, classifyGuide } from '../harness/lib/utils.ts';
 

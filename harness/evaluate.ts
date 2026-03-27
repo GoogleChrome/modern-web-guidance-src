@@ -5,7 +5,7 @@ import 'colors';
 import { collectResults, extractModelFromResults } from './lib/collection.ts';
 import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
-import { rootDir, resultsDir } from '../lib/paths.ts';
+import { resultsDir } from '../lib/paths.ts';
 
 import { config } from './config.ts';
 

@@ -3,7 +3,7 @@ import path from 'path';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 
-import { rootDir, guidesDir } from '../lib/paths.ts';
+import { guidesDir } from '../lib/paths.ts';
 import config from '../harness/config.ts';
 import { createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders } from '../harness/lib/agent-shared.ts';
 import type { CalibrationResult } from './run-grader.ts';

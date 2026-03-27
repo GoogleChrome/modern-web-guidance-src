@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
-import { rootDir, tasksDir, guidesDir } from '../../lib/paths.ts';
+import { tasksDir, guidesDir } from '../../lib/paths.ts';
 
 // Constants
 export const GUIDE_FILE = 'guide.md';

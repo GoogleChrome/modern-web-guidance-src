@@ -4,7 +4,7 @@ import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import matter from 'gray-matter';
 import { config, Serving, Agents } from '../config.ts';
-import { rootDir, guidesDir, tasksDir } from '../../lib/paths.ts';
+import { guidesDir, tasksDir } from '../../lib/paths.ts';
 
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
