@@ -23,9 +23,7 @@ TARGET_FILE=$(pwd)/negative-demo.html npx playwright test grader.ts
 
 Important rules for generating the grader:
 - Do not use generic try/catch blocks that aggressively swallow exceptions (e.g. \`catch (e) { /* ignore */ }\`). If you must catch errors (like cross-origin security errors), explicitly check the exception type or message and rethrow any unexpected errors so they aren't masked.
-- CRITICAL BASH SYNTAX WARNING: You must NEVER use naked heredoc redirections like \`<< 'EOF' > filename\`. This is invalid Bash syntax and will crash the agent harness parser. Whenever you write to ANY file (e.g., grader.ts, test.js, etc.), you MUST prefix it with the \`cat\` command:
-  VALID:    cat << 'EOF' > filename
-  INVALID: << 'EOF' > filename
+- IMPORTANT: Do NOT use bash or shell commands (like cat, echo, or heredocs) to write files. You MUST use your built-in structured file editing tools (e.g. write_to_file or replace_file_content) to create the file. Heredoc strings will cause bash parsing errors.
 - Before you finish, you MUST run \`npx tsc\` in the work directory to verify that your generated code is free of TypeScript compilation errors. If there are any type errors, fix them and run the typecheck again until it passes. Do not leave the typecheck failing.
 
 The final output must be exactly one file named \`grader.ts\`. You may create intermediate scratch files for testing during your process, but do not override the existing HTML, guide, or expectation files.
