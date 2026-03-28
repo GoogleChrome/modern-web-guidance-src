@@ -318,8 +318,6 @@ article {
 }
 ```
 
-
-
 ## 8. Testing Validations
 
 ### Actionable Guidelines
