@@ -2,9 +2,12 @@
  * Research use cases for a web feature using the Gemini API with Google Search grounding.
  *
  * This script automates Stage 1 of the guide creation pipeline described in
- * .agents/skills/project-use-cases/SKILL.md.
+ * .agents/skills/project-use-cases/SKILL.md. It sends two grounded prompts to
+ * Gemini (research, then use-case extraction), collects authoritative sources
+ * discovered by the model, and scaffolds a guide.md stub for each proposed use
+ * case so the author can move straight to Stage 2.
  *
- * Usage for Use Cases Research:
+ * Usage:
  *   # From a GitHub issue (feature ID and sources extracted automatically):
  *   gd research --issue 359
  *
@@ -13,9 +16,14 @@
  *     --sources https://developer.mozilla.org/en-US/docs/Web/API/Window/fetchLater \
  *               https://developer.chrome.com/blog/fetch-later-api-origin-trial
  *
- * Optional flags:
- *   --dry-run           Print proposed stubs or output without writing files
- *   --category          Guide category override (performance, user-experience, accessibility, security)
+ *   # Optional flags (work with both modes):
+ *   gd research --issue 359 --category performance --dry-run
+ *
+ *   # Use the deep research model for a more thorough turn 1 (takes 10-60 minutes):
+ *   gd research --issue 359 --deep-research
+ *
+ *   # Resume a timed-out deep research interaction:
+ *   gd research --issue 359 --resume <interaction-id>
  *
  * Required environment variable (add to .env):
  *   GEMINI_API_KEY
@@ -522,7 +530,6 @@ function createGuideStub(featureId: string, uc: UseCase, category: string, allSe
   }
 }
 
-
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -613,7 +620,6 @@ Environment variables (set in .env):
   }
 
   const apiKey = loadApiKey();
-
 
   console.log(`\nResearching use cases for: ${issueContext ? issueContext.title : featureId}`);
   if (seedSources.length) {
