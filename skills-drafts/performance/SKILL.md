@@ -209,7 +209,7 @@ Images typically represent the largest payload on a given web page. Optimization
 
 ### DON'Ts
 *   **DON'T lazy load above-the-fold images**: This directly harms LCP. Visible images must use `loading="eager"` (the default).
-*   **DON'T delete necessary dimensions dimensions**: Failing to specify width/height on lazy loaded images causes layout shifts.
+*   **DON'T delete necessary dimensions**: Failing to specify width/height on lazy loaded images causes layout shifts.
 *   **DON'T omit the `sizes` attribute when using `srcset`**: Without `sizes`, the browser assumes `100vw` and downloads the largest available image.
 
 ### Code Examples
@@ -372,7 +372,7 @@ Video payloads are among the heaviest assets. Optimization focuses on reducing b
 
 ## Chapter 10: JavaScript Code-Splitting
 
-Heavy monolithic bundles block prime thread parse times on low-end devices. Splitting ensures we only download bytes required for the immediate viewport.
+Heavy monolithic bundles block main thread parse times on low-end devices. Splitting ensures we only download bytes required for the immediate viewport.
 
 ### DOs
 *   **DO use dynamic imports**: Split routes or heavy UI libraries using standard `import()` specifications.

@@ -3,10 +3,6 @@ name: forms
 description: Best practices for building accessible, secure, and user-friendly web forms. Use this skill when creating or modifying forms, inputs, and submission flows.
 ---
 
-# Web Forms: Authoring Accessible and Secure Forms
-
-This guide provides actionable guidelines for building modern web forms based on the web.dev Learn Forms curriculum. It focuses on semantic HTML, accessibility, security, and usability.
-
 ## 1. Semantic Structure and Form Element
 
 ### Guidelines
