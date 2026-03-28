@@ -15,6 +15,9 @@ When tasked with researching a discipline to generate a `SKILL.md` file, you mus
 
 **Parallel Execution Strategy**: To optimize time, launch the Automated Deep Research (Step 1) in a background subagent (or background task) *first*, and then proceed with the manual `web.dev` chapter reading (Step 2) in parallel.
 
+**Wait for Completion**: You MUST wait for both Automated Deep Research AND standard curriculum reading to be 100% complete before moving on to the **Synthesis** phase. Synthesizing before both streams are ready leads to incomplete or skewed guidelines.
+
+
 
 **MANDATORY: Communicative Agent**
 You MUST keep the user informed of your progress at each step (e.g., "Checking if research exists...", "Fetching TOC from web.dev..."). Do not execute multiple tool calls silently without updating the user on your current activity and intent.
@@ -67,8 +70,21 @@ When finalizing the synthesized output (whether reviewing or authoring), you **M
 
 #### File Size and Context Constraints
 Skill files are read by agents frequently. To ensure they do not overload an agent's context window:
-* **Recommended Length**: Aim to keep `SKILL.md` under **500 lines** or ~2000-3000 tokens. 
-* **Zero-Loss Compression**: Do not pad the file with fluff; focus on high-density information. If a topic is too large, consider breaking it into sub-skills (e.g. `images-performance`, `js-performance`).
+* **Zero-Loss Compression**: Do not pad the file with fluff; focus on high-density information. There is **no trade-off** between file size and content coverage. If a discipline is too large to fit in one file without losing critical edge cases, you **MUST** split it into sub-skills rather than dropping content. Use sub-skills to preserve zero-loss compression!
+* **Handling Large Disciplines (e.g., CSS, JS)**: If synthesis results in a file exceeding size limits, follow this approach:
+
+  - **Preserve the Core**: Keep the foundational architecture and primary mechanics in the main skill file.
+  - **Create Sub-Skills**: Create sub-skills for distinct, large-scale domains within the discipline (e.g., for CSS: `css-layout`, `css-typography`, `css-accessibility`).
+
+#### Mental Model of Sub-Skills
+A sub-skill is **supplemental to the core skill**. It should not create a tiny fragment of a discipline. It should represent a cohesive, large-scale domain (like Layouts, Forms, or Rich Media) that an agent can invoke *specifically* for that task. 
+
+Key principles:
+- **Supplemental**: It relies on the core skill for fundamentals (e.g., it assumes the agent knows about specificity and variables) but focuses on specific APIs and advanced usage.
+- **Relies on Core**: It does not repeat core architectural concepts.
+- **Avoid Fragmentation**: CRITICAL: Keep directories clean. Prefer a few large, cohesive files (e.g., `css-layout/SKILL.md`) over many tiny files (e.g., `css-flexbox/SKILL.md`).
+
+
 
 #### Action-Oriented AI Guidelines
 A skill file is **not** an encyclopedic article for human readers. It is an instruction manual for an AI coding agent.
@@ -98,8 +114,8 @@ description: <Brief description of what the skill covers and when an agent shoul
 Before finalizing the draft, conduct a final quality pass to ensure accuracy, completeness, and clarity.
 
 - **Cross-Checking Subagent**: Invoke a subagent to compare the synthesized `SKILL.md` against the raw research data (e.g., `web_dev.md`, `deep_research.md`, or source course TOC).
-  - Ask it to compare both documents side by side and list any actionable `DOs`, `DON'Ts`, or code examples that were unintentionally dropped or degraded.
-  - If discrepancies are found, integrate them back into the draft to ensure zero-loss compression.
+  - Ask it to compare both documents side by side and list any actionable `DOs`, `DON'Ts`, edge cases, or parameters that were unintentionally dropped or degraded.
+  - **Zero-Loss Auditing**: Verify that you didn't discard useful parameters or use-case nuances just to hit an arbitrary line limit if the file is well under 500 lines.
 
 - **Use Case Conflict Check**: Check for potential conflicts with existing guidance under the `/guides/` directory. Discipline-level skills are generic web platform guidelines and must **defer** to specific use-case guidance. Use-case guidance takes precedence in specific scenarios!
 
