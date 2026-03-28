@@ -51,6 +51,7 @@ description: Best practices for building accessible, secure, and user-friendly w
 - **DO** always associate `<label>` with its input using `for` and `id`.
 - **DO** place labels above form controls to enable faster scanning.
 - **DO** use visible labels; do not rely on `placeholder` alone.
+- **DO** ensure the vertical margin between a label and its input is less than the margin between form groups (**Gestalt Proximity Rule**).
 - **DO** use `aria-describedby` to link inputs with help text or error messages.
 - **DO** define the `lang` attribute on `<html>` for proper device translation.
 - **DO** use non-color visual cues (icons, text) to communicate state (don't rely on color alone).
@@ -104,7 +105,7 @@ description: Best practices for building accessible, secure, and user-friendly w
 - **DO** use CSS pseudo-classes `:invalid:user-invalid` for non-intrusive styling.
 - **DO** use the ValidityState API (`setCustomValidity`) for custom messaging.
 
-- **DON'T** disable submit buttons; let users submit and highlight errors.
+- **DON'T** disable submit buttons to block validation; let users submit and highlight errors. However, **DO** disable the button *after* a valid submission is clicked to prevent double-posts.
 
 ### Code Example
 
@@ -180,6 +181,7 @@ input {
 
 - **DO** use `accent-color` for quick branding of native radios/checkboxes.
 - **DO** use `appearance: none` for custom dropdown arrows without breaking semantics.
+- **DO** ensure inputs are clearly visible with adequate border contrast (e.g., `#ccc` or darker on white backgrounds).
 - **DO** hide inputs visually using `position: absolute; opacity: 0` (NOT `display: none`) to keep them accessible.
 
 ### Code Example
@@ -261,8 +263,6 @@ form.addEventListener('submit', (e) => {
 </form>
 ```
 
-> [!TIP]
-> **Password Visibility**: Do not hide passwords unconditionally; provide a visibility toggle to reduce entry errors rather than forcing double-entry verification.
 
 ## 9. Address Collection
 
@@ -270,9 +270,11 @@ form.addEventListener('submit', (e) => {
 
 - **DO** use a single field for names.
 - **DO** use `autocomplete="street-address"`.
+- **DO** use free-form textareas for addresses to accommodate global diversity.
 - **DO** make postal codes optional.
 
 - **DON'T** split name inputs into rigid variables ("First", "Last") for global audiences.
+- **DON'T** enforce Latin-only characters for names and usernames.
 
 ### Code Example
 
@@ -293,8 +295,6 @@ form.addEventListener('submit', (e) => {
 </form>
 ```
 
-> [!TIP]
-> **Global Schema Flexibility**: Use single-field inputs for names and free-form textareas for addresses to accommodate global diversity, rather than imposing rigid, culture-specific schemas.
 
 ## 10. Usability Testing and Analytics
 
@@ -326,4 +326,28 @@ form.addEventListener('submit', (e) => {
     console.log('Analytics Event: Submit clicked');
   });
 </script>
+```
+
+## 11. Multi-Page Forms
+
+### Guidelines
+
+- **DO** clearly display progress through a multi-page form with clear labels and progress indicators.
+- **DO** allow users to navigate backwards and forwards between pages.
+- **DO** use context-specific `enterkeyhint` values (e.g., `"previous"`, `"next"`) to guide navigation via on-screen keyboards.
+- **DO** design layouts so that the mobile keyboard does not obscure inputs or buttons (e.g., by placing them in the upper half of the viewport when focused or using CSS scroll-padding).
+
+### Code Example
+
+```html
+<nav aria-label="Progress">
+  <ol class="progress-tracker">
+    <li class="step-done">Step 1: Account</li>
+    <li class="step-active" aria-current="step">Step 2: Shipping</li>
+    <li class="step-todo">Step 3: Payment</li>
+  </ol>
+</nav>
+
+<button type="button" onclick="history.back()">Previous</button>
+<button type="submit">Next</button>
 ```
