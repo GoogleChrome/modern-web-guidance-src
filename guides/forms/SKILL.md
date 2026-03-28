@@ -253,13 +253,29 @@ form.addEventListener('submit', (e) => {
 ### Code Example
 
 ```html
-<form action="/checkout" method="POST">
+<form method="post">
   <input type="hidden" name="csrf_token" value="secure_token_abc123">
-  
-  <label for="password">New Password</label>
-  <input type="password" id="password" name="password" autocomplete="new-password" required>
-  
-  <button type="submit">Complete Registration</button>
+
+  <h1>Sign up</h1>
+
+  <section>        
+    <label for="name">Full name</label>
+    <input id="name" name="name" autocomplete="name" required pattern="[\p{L}\.\- ]+">
+  </section>
+
+  <section>        
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="username" required>
+  </section>
+
+  <section>
+    <label for="password">Password</label>
+    <button id="toggle-password" type="button" aria-label="Show password as plain text. Warning: this will display your password on the screen.">Show password</button>
+    <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" aria-describedby="password-constraints" required>
+    <div id="password-constraints">Eight or more characters.</div>
+  </section>
+
+  <button id="sign-up">Sign up</button>
 </form>
 ```
 
@@ -270,7 +286,7 @@ form.addEventListener('submit', (e) => {
 
 - **DO** use a single field for names.
 - **DO** use `autocomplete="street-address"`.
-- **DO** use free-form textareas for addresses to accommodate global diversity.
+- If the site has users in different countries, **DO** use the `<textarea>` element for addresses, to accommodate different address formats in different geographical regions. If the form uses separate inputs for address parts (e.g. Street, City), **DO** use `autocomplete` values `address-line1`, `address-line2`, etc.
 - **DO** make postal codes optional.
 
 - **DON'T** split name inputs into rigid variables ("First", "Last") for global audiences.
