@@ -186,7 +186,8 @@ run();
 
       let expectedGuidanceTool: string | undefined;
       const serving = config.suite.serving;
-      if (serving === Serving.MCP) {
+      if (serving === Serving.MCP || config.suite.agent === Agents.JETSKI) {
+        // JETSKI impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in SKILLS runs)
         expectedGuidanceTool = 'modern-web';
       } else if (serving === Serving.SKILLS_CLI) {
         expectedGuidanceTool = 'modern-web-use-cases';
