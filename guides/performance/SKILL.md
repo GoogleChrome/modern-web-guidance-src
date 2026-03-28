@@ -3,7 +3,7 @@ name: performance
 description: Actionable guidelines for optimizing modern web applications. Use this skill when auditing performance, optimizing page load metrics (LCP, INP, CLS), or fixing slow interactions.
 ---
 
-## Chapter 1: Critical Rendering Path (CRP) Optimization
+## Critical Rendering Path (CRP) Optimization
 
 The Critical Rendering Path dictates how quickly the browser converts HTML, CSS, and JavaScript into painted pixels. 
 
@@ -50,7 +50,7 @@ The Critical Rendering Path dictates how quickly the browser converts HTML, CSS,
 
 **Single-Sentence Mental Model**: "Preconnect for domains, Preload for viewport, Prefetch for futures."
 
-## Chapter 2: Largest Contentful Paint (LCP) & Resource Fetching
+## Largest Contentful Paint (LCP) & Resource Fetching
 
 LCP measures the time required to render the largest visible text or image block within the viewport. Optimize LCP by prioritizing visible elements and prepolishing.
 
@@ -86,7 +86,7 @@ LCP measures the time required to render the largest visible text or image block
 <img src="/images/carousel-2.webp" fetchpriority="low" alt="Slide 2">
 ```
 
-## Chapter 3: Interaction to Next Paint (INP) & Main Thread Unblocking
+## Interaction to Next Paint (INP) & Main Thread Unblocking
 
 INP measures the latency of all interactive events across the page's lifecycle. Poor INP is caused by long-running JavaScript tasks blocking the main thread. 
 
@@ -133,7 +133,7 @@ async function processLargeList(items) {
 - **50ms - 250ms**: Slice tasks and yield with `scheduler.yield()`.
 - **> 250ms**: Offload to a Web Worker.
 
-## Chapter 4: Third-Party Script Management & Partytown
+## Third-Party Script Management & Partytown
 
 Third-party scripts (analytics, ads, chat widgets) are the primary source of main thread congestion. Because these scripts are opaque and resource-intensive, they must be sandboxed.
 
@@ -168,7 +168,7 @@ Third-party scripts (analytics, ads, chat widgets) are the primary source of mai
 </script>
 ```
 
-## Chapter 5: CSS Rendering & Containment Optimization
+## CSS Rendering & Containment Optimization
 
 Rendering involves Layout, Style, Paint, and Compositing calculations. CSS Containment limits the scope of these calculations.
 
@@ -205,7 +205,7 @@ Rendering involves Layout, Style, Paint, and Compositing calculations. CSS Conta
 }
 ```
 
-## Chapter 6: Modern Image & Media Optimization
+## Modern Image & Media Optimization
 
 Images typically represent the largest payload on a given web page. Optimization requires format negotiation, responsive sizing, and layout stabilization.
 
@@ -255,7 +255,7 @@ Images typically represent the largest payload on a given web page. Optimization
 <iframe src="https://example.com/map" width="800" height="600" loading="lazy" title="Example Map"></iframe>
 ```
 
-## Chapter 7: Service Workers & Caching Strategies
+## Service Workers & Caching Strategies
 
 Client-side caching via Service Workers allows applications to bypass the network entirely, serving resources from disk/memory.
 
@@ -309,7 +309,7 @@ registerRoute(
 );
 ```
 
-## Chapter 8: Web Fonts Optimization
+## Web Fonts Optimization
 
 Web fonts are a common source of render blocking. Optimizing them reduces the Flash of Invisible Text (FOIT) and speeds up initial rendering.
 
@@ -339,7 +339,7 @@ Web fonts are a common source of render blocking. Optimizing them reduces the Fl
 <link rel="preload" href="/fonts/modern-sans.woff2" as="font" type="font/woff2" crossorigin>
 ```
 
-## Chapter 9: Video Performance & Metrics
+## Video Performance & Metrics
 
 Video payloads are among the heaviest assets. Optimization focuses on reducing bandwidth stall and preserving Cumulative Layout Shift (CLS) stability.
 
@@ -370,7 +370,7 @@ Video payloads are among the heaviest assets. Optimization focuses on reducing b
 </video>
 ```
 
-## Chapter 10: JavaScript Code-Splitting
+## JavaScript Code-Splitting
 
 Heavy monolithic bundles block main thread parse times on low-end devices. Splitting ensures we only download bytes required for the immediate viewport.
 
