@@ -76,16 +76,17 @@ A skill file is **not** an encyclopedic article for human readers. It is an inst
 #### Structuring the Content
 * **Omit Boilerplate**: Do not include introductory or concluding sections (e.g., "Next steps", "Glossary") unless they contain specific, actionable coding directives.
 * **Logical Subdisciplines**: Break the discipline down into logical, focused chapters with descriptive names that hint at the contents or methodology (e.g., for Accessibility: "Semantic HTML and Landmarks" instead of just "Content Structure", "Focus Management" instead of just "Keyboard Focus", "Alternative Text for Images" instead of just "Images").
+* **Avoid Horizontal Rules**: Do not use horizontal rules (`---`) to separate sections or subdisciplines. Rely on standard markdown headings (`##`, `###`) for structure.
 
 #### File Format and Schema
 * **Naming**: Every skill file must be named `SKILL.md`.
 * **Slug Match**: The directory name of the skill (the slug) **MUST** exactly match the `name` field in your frontmatter (or be a direct kebab-case equivalent thereof if specified by the system).
-* **Metadata**: The file MUST start with standard YAML frontmatter containing a `name` and `description`:
+* **Metadata**: The file MUST start with standard YAML frontmatter containing a `name` and `description`. The description MUST describe what the skill covers *and* include clear trigger criteria (e.g., "Action-oriented guidelines for privacy by design and browser privacy APIs. Use this skill when dealing with user data, cookies, tracking, or browser privacy APIs").
 
 ```yaml
 ---
 name: <discipline-slug-or-name>
-description: <Brief description of what the skill covers and when an agent should use it>
+description: <Brief description of what the skill covers and when an agent should use it (trigger criteria)>
 ---
 ```
 
