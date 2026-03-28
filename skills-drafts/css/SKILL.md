@@ -131,6 +131,16 @@ Modern browser-native selectors reduce the need for preprocessors and complex st
 :where(a) { color: blue; }
 ```
 
+### Functional Selectors Specificity Matrix
+
+| Selector | Specificity Weight | Primary Use Case |
+| :--- | :--- | :--- |
+| **`:where()`** | Exactly **0** | Baseline resets and design system defaults. |
+| **`:is()`** | Max specificity of its arguments | Reducing code duplication for shared styles. |
+| **`:has()`** | Max specificity of its arguments | Parent/relational styling based on child states or siblings. |
+
+**Single-Sentence Mental Model**: "`:where()` = Spec-neutral resets, `:is()` = Spec-heavy grouping, `:has()` = Relational state."
+
 ## 4. Design Systems and Theming
 CSS Custom Properties (Variables) and modern color functions are the foundation of dynamic theming.
 
@@ -152,6 +162,16 @@ CSS Custom Properties (Variables) and modern color functions are the foundation 
   color-scheme: dark; /* Forces child light-dark() values to use dark options */
 }
 ```
+
+### Theme Management Matrix
+
+| Feature | `light-dark()` | `@media (prefers-color-scheme)` |
+| :--- | :--- | :--- |
+| **Scope** | Local or Global | Strictly Global |
+| **Trigger Mechanism** | `color-scheme` property | OS/Browser preference |
+| **Component Overrides** | ✅ Easy | ❌ Difficult |
+
+**Single-Sentence Mental Model**: "`light-dark()` = Contextual theme (supports local overrides), `@media` = Global preference (OS-level)."
 
 ## 5. Transitions, Animations, and Performance
 Rendering performance is critical for smooth user experiences, especially in heavy DOM trees.

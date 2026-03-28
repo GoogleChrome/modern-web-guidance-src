@@ -155,6 +155,16 @@ Querying the size of a parent container rather than the viewport for component-l
 }
 ```
 
+### Responsive Triggers Decision Matrix
+
+| Feature | Container Queries (`@container`) | Media Queries (`@media`) |
+|---|---|---|
+| **Reference** | Nearest containment parent | Global Viewport |
+| **Reusability** | ✅ High | ❌ Low |
+| **Typical Use Case** | Adaptive cards, sidebar widgets | Page layout grids, Navigation breakpoints |
+
+**Single-Sentence Mental Model**: "Container Queries = Component context, Media Queries = Global page layout."
+
 ## 5. Native Overlays and Stacking Contexts
 Manage overlays and layering predictably using native primitives instead of complex JavaScript.
 
@@ -180,6 +190,16 @@ Manage overlays and layering predictably using native primitives instead of comp
   position-try-fallbacks: flip-block; /* Native overflow handling */
 }
 ```
+
+### Overlay Mechanics Decision Matrix
+
+| Feature | Popover API (`popover`) | `<dialog>` |
+|---|---|---|
+| **Modality** | Non-modal (Doesn't block background) | Modal (Blocks background via `.showModal()`) |
+| **Focus Trapping** | ❌ Natural tab flow | ✅ Locks focus inside dialog |
+| **Light-Dismiss** | ✅ Auto-closes on click-outside / ESC | ❌ Requires JS / Form submit |
+
+**Single-Sentence Mental Model**: "Popover = Transient/Non-modal (Flyouts, Toasts), `<dialog>` = Blocking/Modal (Requires action)."
 
 
 ## 6. Overflow Tracking and Layout Stability

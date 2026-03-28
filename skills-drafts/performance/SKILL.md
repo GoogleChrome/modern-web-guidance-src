@@ -39,6 +39,17 @@ The Critical Rendering Path dictates how quickly the browser converts HTML, CSS,
 <script defer src="app-bundle.js"></script>
 ```
 
+### The Resource Hint Navigator
+
+| Hint | Tool Use Case | Example |
+| :--- | :--- | :--- |
+| `preconnect` | Resolve TLS/DNS for known third-party APIs | API endpoints, font services |
+| `dns-prefetch` | Lean fallback for non-critical third-party origins | Ad servers, analytics fallbacks |
+| `preload` | Same-origin asset needed *now* for rendering | Hero images, render-blocking fonts |
+| `prefetch` | Assets needed for next-page navigation | Next-page bundle, detail views |
+
+**Single-Sentence Mental Model**: "Preconnect for domains, Preload for viewport, Prefetch for futures."
+
 ## Chapter 2: Largest Contentful Paint (LCP) & Resource Fetching
 
 LCP measures the time required to render the largest visible text or image block within the viewport. Optimize LCP by prioritizing visible elements and prepolishing.
@@ -114,6 +125,13 @@ async function processLargeList(items) {
   }
 }
 ```
+
+### Main Thread Task Slicing Heuristic
+
+**The 50ms Rule for INP**:
+- **< 50ms**: Execute synchronously.
+- **50ms - 250ms**: Slice tasks and yield with `scheduler.yield()`.
+- **> 250ms**: Offload to a Web Worker.
 
 ## Chapter 4: Third-Party Script Management & Partytown
 

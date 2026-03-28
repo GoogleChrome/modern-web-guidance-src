@@ -100,6 +100,16 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 });
 ```
 
+### Third-Party State Matrix
+
+| Mechanism | Scope | Requires Interaction | Use Case |
+| :--- | :--- | :--- | :--- |
+| **CHIPS** | 1:1 Partitioned | No | Embeds (Maps, Widgets) |
+| **Storage Access API (SAA)** | Cross-site | Yes | SSO Portals, Analytics |
+| **FedCM** | Identity Federation | Yes | "Sign In with..." |
+
+**Heuristic Rule**: Use CHIPS for isolated widgets (un-shared state), and SAA for shared identity state requiring explicit user consent.
+
 ## 4. Privacy-Preserving Identity (FedCM)
 
 Moving from opaque navigational redirects to explicit native UI-mediated federation.

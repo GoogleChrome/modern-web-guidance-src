@@ -33,6 +33,17 @@ description: Best practices for building accessible, secure, and user-friendly w
 </form>
 ```
 
+### Selection Control Decision Matrix
+
+| Options Count | Choice Type | Recommended Element | Usability & Accessibility Logic |
+| :--- | :--- | :--- | :--- |
+| **1–5** | Single (Exclusive) | `<input type="radio">` | **Zero-click scanning**: All choices are immediately visible. Faster scan time. |
+| **6+** | Single (Exclusive) | `<select>` | **Space conservation**: Use only when vertical space is premium or the list is long. |
+| **10+ / Dynamic** | Single (Exclusive) | `<input list="id">` (`<datalist>`) | **Fuzzy Search**: Prevents scrolling fatigue in massive sets (e.g., countries). |
+| **Any** | Multi-select | `<input type="checkbox">` | **Standard semantics**: Native non-exclusive toggles. |
+
+**Single-Sentence Mental Model**: "Expose mutually exclusive options as visible radio buttons when choices are fewer than six; use `<select>` only when space is constrained or the list is long."
+
 ## 2. Accessible Labeling and State
 
 ### Guidelines
@@ -111,6 +122,18 @@ description: Best practices for building accessible, secure, and user-friendly w
   });
 </script>
 ```
+
+### Validation Event Timing Matrix
+
+| Event Trigger | Phase | Action Allowed | UX / Accessibility Logic |
+| :--- | :--- | :--- | :--- |
+| **`input`** | Active Typing | **Clear** existing errors only. | **Non-intrusive**: Do not yell at the user before they finish typing. |
+| **`blur` / `focusout`** | Exiting Field | **Run** check and show error. | **Contextual validation**: Validate once the user indicates they are "done" with a field. |
+| **`submit`** | Final Attempt | **Block** and route focus. | **Final gatekeeper**: Intercepts bad payloads and forces screen reader focus to the summary. |
+
+**Single-Sentence Mental Model**: "Validate on `blur` to avoid premature warnings while typing, and reset error states on `input` as soon as the user attempts a correction."
+
+**Security vs UX Scale**: Client-side validation is for User Experience; Server-side validation is for Security. Never treat browser constraints as a data integrity defense.
 
 ## 5. Responsive Design and Typography
 
@@ -238,6 +261,9 @@ form.addEventListener('submit', (e) => {
 </form>
 ```
 
+> [!TIP]
+> **Password Visibility**: Do not hide passwords unconditionally; provide a visibility toggle to reduce entry errors rather than forcing double-entry verification.
+
 ## 9. Address Collection
 
 ### Guidelines
@@ -266,6 +292,9 @@ form.addEventListener('submit', (e) => {
   <button type="submit">Save Address</button>
 </form>
 ```
+
+> [!TIP]
+> **Global Schema Flexibility**: Use single-field inputs for names and free-form textareas for addresses to accommodate global diversity, rather than imposing rigid, culture-specific schemas.
 
 ## 10. Usability Testing and Analytics
 

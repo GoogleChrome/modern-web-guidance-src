@@ -86,6 +86,17 @@ class UserService {
 - **Maps for Complex Keys**: Use `Map` when keys are complex objects or when insertion order is critical.
 - **Weak Collections for Memory Management**: Use `WeakMap` or `WeakSet` to associate temporary data with objects without preventing garbage collection.
 
+### JS Collection Decision Matrix
+
+| Requirement | Data Structure | Key Type | Order Preserved |
+| :--- | :--- | :--- | :--- |
+| **Unique values** | `Set` | Value itself | ✅ Yes |
+| **Object-keyed pairs** | `Map` | Any (Objects/Primitives) | ✅ Yes |
+| **Standard JSON pairs** | Object `{}` | String / Symbol | ❌ No |
+| **Ordered lists** | Array `[]` | Integer Index | ✅ Yes |
+
+**Heuristic Rule**: Use `Map` for dynamic dictionaries with non-string keys, and `Set` for deduplication.
+
 ## DOM Manipulation and Performance
 
 - **Reduce Layout Thrashing (Reflows)**: Accessing geometric properties (`offsetHeight`, `clientWidth`) after a DOM write forces synchronous layout. Batch all DOM reads first, then all DOM writes.

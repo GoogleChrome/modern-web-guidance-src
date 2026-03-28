@@ -92,6 +92,7 @@ A skill file is **not** an encyclopedic article for human readers. It is an inst
 * **DOs and DON'Ts**: Use concrete, bulleted lists of strict DOs and DON'Ts to establish rigid boundaries for the agent.
 * **Code Examples**: Provide concise, heavily commented code examples (HTML, CSS, JS) that demonstrate the correct implementation of the guidelines.
 * **Decision Matrices & Architectural Heuristics**: Use tables to compare tools and single-sentence rules to establish mental models (e.g., *"Flexbox = Content-first, Grid = Layout-first"*). These are functional, high-density decision heuristics, not passive background context. They clarify the **logic** behind the DOs and DON'Ts.
+* **Avoid GitHub Alerts**: Do not use GitHub-style alerts (e.g., `> [!TIP]`, `> [!IMPORTANT]`) in skills files. These files are consumed by AI agents, not humans. Keep the formatting minimal and dense.
 
 
 #### Structuring the Content

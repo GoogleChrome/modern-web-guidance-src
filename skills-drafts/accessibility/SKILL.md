@@ -184,6 +184,17 @@ element.addEventListener('keydown', (e) => {
 </details>
 ```
 
+### Content Visibility Decision Matrix
+
+| Intent | Visual | Screen Reader | Focusable | Structural Pattern |
+| :--- | :--- | :--- | :--- | :--- |
+| **Visible to all** | Yes | Yes | Yes | Standard rendering |
+| **Screen Reader only** | No | Yes | Yes (if interactive) | `.visually-hidden` (`clip-path`) |
+| **Visual only** | Yes | No | No | `aria-hidden="true"` / `role="presentation"` |
+| **Hidden for all** | No | No | No | `hidden` attribute / `display: none` |
+
+**Heuristic Rule**: If an element can receive keyboard focus, it must not be hidden via `aria-hidden="true"`.
+
 ## 5. Forms and Inputs Controls
 
 ### Actionable Guidelines
@@ -209,6 +220,16 @@ element.addEventListener('keydown', (e) => {
   <span id="pwd-hint">Must contain at least 8 characters.</span>
 </form>
 ```
+
+### Live Region Urgency Table
+
+| Urgency | Visual Analogue | `aria-live` Value | Behavioral Impact | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| **Critical** | Modal / Alert | `assertive` (or `role="alert"`) | Interrupts immediately, clears speech queue | Session timeout, API failure |
+| **Standard**| Toast / Banner | `polite` | Announces at next graceful break | Search results, "Saved" status |
+| **Passive**  | Silent text | `off` | Only if user navigates to it | Live character count |
+
+**Heuristic Rule**: Only interrupt the user with `assertive` if ignoring the notice would result in immediate data loss.
 
 ## 6. Color, Contrast, and Typography
 
