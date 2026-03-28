@@ -15,7 +15,7 @@ This guide provides actionable DOs and DON'Ts for AI coding agents to ensure web
 - **Prioritize Native HTML Elements**: Use native tags like `<button>`, `<input>`, and `<nav>` instead of custom `<div>` constructions with ARIA.
 - **Use Section Landmarks**: Divide pages into regions using `<header>`, `<nav>`, `<main>`, `<aside>`, and `<footer>`.
 - **Maintain Heading Hierarchy**: Use headings sequentially (`<h1>` followed by `<h2>`, not jumping to `<h4>`).
-- **Semantic Tables**: Use `<caption>` and `<th scope="col/row">` for data tables.
+- **Semantic Tables**: Use `<caption>` and `<th scope="col">` (or `<th scope="row">`) for data tables.
 
 #### DON'Ts
 - **Don't use ARIA when native HTML exists**: Avoid `<a role="button">` if a `<button>` can be used.
@@ -117,13 +117,17 @@ a:focus, button:focus {
 ```
 
 ```javascript
-// Good: Enter/Space keyboard handlers for custom buttons
-element.addEventListener('keydown', (e) => {
+// Good: Keyboard handlers for complex custom widgets (e.g., Tree items).
+// NOTE: This pattern applies ONLY to non-standard UI where no native HTML tag exists.
+// Always prioritize native <button> or <input> elements for standard interactions.
+// Elements MUST have the appropriate ARIA role (e.g., role="treeitem" or role="button").
+customWidget.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault(); // Prevent page scrolling on Spacebar
     // Toggle state for screen readers
-    const pressed = element.getAttribute('aria-pressed') === 'true';
-    element.setAttribute('aria-pressed', !pressed);
-    performAction();
+    const pressed = customWidget.getAttribute('aria-pressed') === 'true';
+    customWidget.setAttribute('aria-pressed', !pressed);
+    performCustomAction();
   }
 });
 ```
@@ -138,7 +142,7 @@ element.addEventListener('keydown', (e) => {
 - **Synchronous Captions for videos**: Supply WebVTT captions for video tracks.
 - **Transcripts for audio**: Provide text transcripts for purely audio podcasts.
 - **Informative View Descriptions for inline SVGs**: Apply `role="img"` and a nested `<title>` tag for informative visuals.
-- **Decorative SVGs removal**: Apply `tabindex="-1"` and `aria-hidden="true"` to remove decorative SVGs from focus and reading flows.
+- **Decorative SVGs removal**: Apply `aria-hidden="true"` to remove decorative SVGs from reading flows.
 - **Long descriptions for complex images**: Use `<figure>`/`<figcaption>` or `aria-describedby` for charts and infographics.
 
 #### DON'Ts
@@ -152,7 +156,7 @@ element.addEventListener('keydown', (e) => {
 <img src="divider.png" alt="" role="presentation">
 
 <!-- Inline Decorative SVG (remove from tab flow) -->
-<svg aria-hidden="true" tabindex="-1" viewBox="0 0 24 24">
+<svg aria-hidden="true" viewBox="0 0 24 24">
   <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
 </svg>
 
@@ -167,7 +171,6 @@ element.addEventListener('keydown', (e) => {
   <track src="caps.vtt" kind="captions" srclang="en" label="English">
 </video>
 
-```html
 <!-- Complex graph with figcaption -->
 <figure>
   <img src="chart.png" alt="Sales growth graph 2024.">
@@ -201,7 +204,7 @@ element.addEventListener('keydown', (e) => {
 
 #### DOs
 - **Connect Labels Programmatically**: Use `<label for="id">` linked to `<input id="id">`.
-- **Use Autocomplete**: Set `autocomplete="email/name"` for user profiles.
+- **Use Autocomplete**: Set valid standard `autocomplete` options (e.g., `"email"` or `"given-name"`) for user profiles.
 - **Link hints to inputs via aria-describedby**: Associate help text with inputs.
 - **Announce dynamic errors via live regions**: Use `aria-live` or shift focus to error lists.
 - **Provide form validation constraints**: Use `required` or `aria-required="true"` to signal mandatory inputs.
@@ -229,7 +232,15 @@ element.addEventListener('keydown', (e) => {
 | **Standard**| Toast / Banner | `polite` | Announces at next graceful break | Search results, "Saved" status |
 | **Passive**  | Silent text | `off` | Only if user navigates to it | Live character count |
 
-**Heuristic Rule**: Only interrupt the user with `assertive` if ignoring the notice would result in immediate data loss.
+**Heuristic Rule**: Use `assertive` only for critical, time-sensitive updates that require immediate attention or prevent safe continuation (e.g., data loss, session timeouts, or network drops).
+
+```html
+<!-- Session Timeout Warning with controls -->
+<div role="alert" aria-live="assertive" class="timeout-warning">
+  Your session will expire in 2 minutes. 
+  <button onclick="extendSession()">Extend Session</button>
+</div>
+```
 
 ## 6. Color, Contrast, and Typography
 
@@ -239,7 +250,7 @@ element.addEventListener('keydown', (e) => {
 - **Minimum contrast standards**: Maintain 4.5:1 for normal text and 3:1 for large text or icons.
 - **Use multiple state indicators**: Do not denote success/errors ONLY with color. Use icons or text.
 - **Relative font size units**: Use `rem` or `em` for font sizes instead of `px`.
-- **Left text alignment**: Cap paragraph blocks to a maximum of 80 characters width.
+- **Consistent or Start alignment (avoid justify)**: Cap paragraph blocks to a maximum of 80 characters width.
 - **Support user preference media queries**: Implement `@media (prefers-color-scheme: dark)` and `@media (prefers-contrast: high)`.
 
 #### DON'Ts
@@ -254,7 +265,7 @@ element.addEventListener('keydown', (e) => {
 body {
   font-size: 1rem;
   line-height: 1.5;
-  text-align: left;
+  text-align: start; /* Supports LTR and RTL */
 }
 article {
   max-width: 65ch; /* Caps character lengths */
@@ -307,20 +318,14 @@ article {
 }
 ```
 
-```html
-<!-- Session Timeout Warning with controls -->
-<div role="alert" aria-live="assertive" class="timeout-warning">
-  Your session will expire in 2 minutes. 
-  <button onclick="extendSession()">Extend Session</button>
-</div>
-```
+
 
 ## 8. Testing Validations
 
 ### Actionable Guidelines
 
 #### DOs
-- **Run Automated checks via axe-core audits**: Catch missing alt texts or low contrasts.
+- **Run Automated checks via axe-core or Lighthouse audits**: Catch missing alt texts or low contrasts (e.g., via Lighthouse in Chrome DevTools MCP).
 - **Validate Sequential Navigations using keyboards alone**: Disconnect mouse traps to verify logic.
 - **Use Screen Readers with calibrated browsers**: Rely on standard bindings (e.g., VoiceOver with Safari).
 
@@ -378,7 +383,9 @@ Modern browsers provide native mechanisms for focus trapping and modal overlays 
 /* Reverse visually hidden on focus for interactive elements */
 .visually-hidden-focusable:focus,
 .visually-hidden-focusable:active {
-  position: static !important;
+  position: absolute !important; /* Keep absolute to avoid layout shifts */
+  top: 0 !important;
+  left: 0 !important;
   width: auto !important;
   height: auto !important;
   overflow: visible !important;
