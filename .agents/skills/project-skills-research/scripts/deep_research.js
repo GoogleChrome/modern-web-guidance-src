@@ -14,6 +14,7 @@ const url = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 const { values, positionals } = parseArgs({
   options: {
     discipline: { type: 'string' },
+    'interaction-id': { type: 'string' },
     help: { type: 'boolean', short: 'h' },
   },
   strict: true,
@@ -22,11 +23,12 @@ const { values, positionals } = parseArgs({
 if (values.help || !values.discipline) {
   console.log(`
 Usage:
-  node deep_research.js --discipline <name>
+  node deep_research.js --discipline <name> [options]
 
 Options:
-  --discipline     Name of the discipline to research (e.g. performance, accessibility)
-  -h, --help       Show this help
+  --discipline       Name of the discipline to research (e.g. performance, accessibility)
+  --interaction-id   Interaction ID to resume polling for (if a run was interrupted)
+  -h, --help         Show this help
 `);
   process.exit(0);
 }
@@ -37,10 +39,17 @@ const outputPath = path.join(outputDir, 'research.md');
 
 const prompt = `Thoroughly research best practices for '${discipline}' in modern web applications. 
 
-Your goal is to provide a comprehensive set of actionable coding guidelines for AI agents. 
-- DOs and DON'Ts
-- Short, concise code examples (HTML, CSS, JS)
-- Omit boilerplate / definitions.
+Your goal is to provide a comprehensive, nuanced research report. Capture edge cases, modern browser APIs, and architectural trade-offs. 
+- Provide clear code examples where applicable.
+- Don't omit definitions or explanatory details if they add necessary context.
+- Aim for rich data collection over tight editing; your output will be synthesized by another agent later.
+
+**Source Prioritization Rules**:
+Prioritize sources in the following sequence:
+1. Chrome Authoritative Guidance: web.dev, developer.chrome.com.
+2. Standard-Setting Technical Documentation: MDN Web Docs.
+3. Trusted Authoritative Industry Resources: W3C Specs, reputable community standards, or publications from known industry experts.
+4. Stay away from ad-hoc personal blogs, outdated forum posts, or unverified secondary sources.
 
 Break the discipline down into standard logical chapters. 
 For each chapter, list sources.`;
@@ -50,26 +59,34 @@ async function main() {
     console.log(`Creating directory: ${outputDir}`);
     fs.mkdirSync(outputDir, { recursive: true });
 
-    console.log(`Starting Deep Research interaction using ${GEMINI_MODEL_DEEP_RESEARCH} for discipline: ${discipline}...`);
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': GEMINI_API_KEY
-      },
-      body: JSON.stringify({
-        agent: GEMINI_MODEL_DEEP_RESEARCH,
-        input: prompt,
-        background: true,
-      }),
-    });
+    let id = values['interaction-id'];
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      throw new Error(`Gemini Interactions API error: ${res.status} ${res.statusText}\n${errText}`);
+    if (id) {
+      console.log(`Resuming existing interaction ID: ${id}`);
+    } else {
+      console.log(`Starting Deep Research interaction using ${GEMINI_MODEL_DEEP_RESEARCH} for discipline: ${discipline}...`);
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': GEMINI_API_KEY
+        },
+        body: JSON.stringify({
+          agent: GEMINI_MODEL_DEEP_RESEARCH,
+          input: prompt,
+          background: true,
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`Gemini Interactions API error: ${res.status} ${res.statusText}\n${errText}`);
+      }
+
+      const { id: newId } = await res.json();
+      id = newId;
     }
 
-    const { id } = await res.json();
     console.log(`Interaction ID: ${id} — polling for completion...`);
 
     const POLL_INTERVAL_MS = 15_000;
