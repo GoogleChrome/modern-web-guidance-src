@@ -34,3 +34,6 @@ project-gleam/
 
 # Git worktrees directory
 .worktrees
+
+# Research drafts
+skills-drafts/.research/

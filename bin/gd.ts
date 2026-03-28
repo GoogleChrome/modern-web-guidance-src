@@ -5,13 +5,9 @@ import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
-import { fileURLToPath } from 'url';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
 import { config, Serving } from '../harness/config.ts';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const rootDir = path.resolve(__dirname, '..');
+import { rootDir, guidesDir, tasksDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
 
 // Load environment variables (Node 20.12+)
 try {
@@ -23,7 +19,6 @@ try {
 // --- Shell Auto-Completion ---
 
 function listGuideDirs(): string[] {
-  const guidesDir = path.join(rootDir, 'guides');
   if (!fs.existsSync(guidesDir)) return [];
   const categories = fs.readdirSync(guidesDir, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.'))
@@ -47,7 +42,6 @@ completion.on('command', ({ reply }) => {
 
 completion.on('arg1', ({ before, reply }) => {
   if (before === 'eval') {
-    const tasksDir = path.join(rootDir, 'harness', 'tasks');
     const tasks = fs.existsSync(tasksDir) ? fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).map(f => f.replace('.md', '')) : [];
     reply(['suite', ...tasks]);
   } else if (before === 'gen') {
@@ -59,7 +53,6 @@ completion.on('arg1', ({ before, reply }) => {
 
 completion.on('arg2', ({ before, line, reply }) => {
   if (before === 'run') {
-    const baseAppsDir = path.join(rootDir, 'harness', 'base_apps');
     if (fs.existsSync(baseAppsDir)) {
       reply(fs.readdirSync(baseAppsDir).filter(d => fs.statSync(path.join(baseAppsDir, d)).isDirectory()));
     }
@@ -215,7 +208,7 @@ ${cBold('Options:')}
     }
 
     case 'dashboard': {
-      process.chdir(path.join(rootDir, 'eval-view'));
+      process.chdir(evalViewDir);
       await import('../eval-view/server.js');
       break;
     }

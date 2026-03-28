@@ -1,12 +1,11 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 
 import config, { Agents, Serving } from '../config.ts';
 
-import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copyResultsToTarget, copySkills, watchLogFile, exportTrajectories } from '../lib/agent-shared.ts';
+import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
@@ -80,55 +79,23 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.MCP_LOG_DIR = targetDir;
-    const stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
+    process.env.MODERN_WEB_LOG_DIR = targetDir;
+    let stopWatchingMcpLog = () => { };
 
-    const child = spawn(command, commandArgs, {
-      cwd: workDir,
-      env: { ...process.env }, // Pass through environment variables (including new HOME)
-      stdio: ['ignore', 'pipe', 'pipe'] // Capture stdout/stderr
-    });
+    try {
+      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
 
-    let stdoutData = '';
-    let stderrData = '';
-
-    child.stdout.on('data', (data) => {
-      const chunk = data.toString();
-      stdoutData += chunk;
-      process.stdout.write(chunk); // Mirror to console
-    });
-
-    child.stderr.on('data', (data) => {
-      const chunk = data.toString();
-      stderrData += chunk;
-      process.stderr.write(chunk); // Mirror to console
-    });
-
-    const exitCode = await new Promise((resolve) => {
-      child.on('close', resolve);
-    });
-
-    stopWatchingMcpLog();
-
-    if (exitCode !== 0) {
-      throw new Error(`Gemini CLI exited with code ${exitCode}`);
+      await runCliAgentCommand(
+        command,
+        commandArgs,
+        workDir,
+        targetDir,
+        'Gemini CLI'
+      );
+    } finally {
+      stopWatchingMcpLog();
     }
 
-    copyResultsToTarget(workDir, targetDir);
-
-    // Save output to chat_log.txt
-    const chatLogPath = path.join(targetDir, 'chat_log.txt');
-    fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
-    console.log(`Saved output to: ${chatLogPath}`);
-
-    // Save stderr to agent_stderr.log to surface unexpected problems
-    if (stderrData.length > 0) {
-      const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
-      fs.writeFileSync(stderrLogPath, stderrData, 'utf8');
-      console.log(`Saved stderr to: ${stderrLogPath}`);
-    }
-
-    // Extract trajectory JSON from isolated home
     const tmpDir = path.join(path.dirname(workDir), '.gemini', 'tmp');
     exportTrajectories(tmpDir, '*/chats/*.json', targetDir);
 
@@ -138,12 +105,11 @@ async function run() {
     console.error("Error during Gemini CLI execution:", err);
     process.exit(1);
   } finally {
-    // Comment out if you need to inspect trajectories.
     cleanupIsolatedHome(path.dirname(workDir));
   }
 }
 
-export async function collectGeminiCliGuides(dirPath: string, serving: string): Promise<string[]> {
+export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving: string): Promise<string[]> {
   const guidesFromSkills: string[] = [];
   try {
     const files = fs.readdirSync(dirPath);
@@ -187,6 +153,62 @@ export async function collectGeminiCliGuides(dirPath: string, serving: string): 
     console.error(`Error reading session files in ${dirPath}:`, e);
   }
   return [...new Set(guidesFromSkills)];
+}
+
+export function extractGeminiCliModel(resultsDir: string): string {
+  const sessionFiles = fs.globSync('**/session-*.json', { cwd: resultsDir });
+  if (sessionFiles.length === 0) return 'unknown';
+
+  const counts: Record<string, number> = {};
+  for (const relativePath of sessionFiles as string[]) {
+    const sessionPath = path.join(resultsDir, relativePath);
+    try {
+      const content = fs.readFileSync(sessionPath, 'utf8');
+      const session = JSON.parse(content);
+      if (session.messages) {
+        for (const m of session.messages) {
+          if (m.type === 'gemini' && m.model) {
+            counts[m.model] = (counts[m.model] || 0) + 1;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(`Failed to extract model from ${sessionPath}:`, e);
+    }
+  }
+
+  const topModel = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  if (topModel) return topModel[0];
+
+  return 'unknown';
+}
+
+export function collectGeminiToolsFromTrajectory(dir: string): string[] {
+  const toolsUsed: string[] = [];
+  const sessionFiles = fs.globSync('session-*.json', { cwd: dir });
+  const firstSession = sessionFiles[0];
+  if (!firstSession) return toolsUsed;
+
+  try {
+    const sessionPath = path.join(dir, firstSession);
+    const content = fs.readFileSync(sessionPath, 'utf8');
+    const session = JSON.parse(content);
+    if (Array.isArray(session.messages)) {
+      for (const msg of session.messages) {
+        if (Array.isArray(msg.toolCalls)) {
+          for (const tc of msg.toolCalls) {
+            if (tc.name === 'activate_skill' && tc.args?.name) {
+              toolsUsed.push(tc.args.name);
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error(`Failed to collect guidance tools used for Gemini CLI:`, e);
+  }
+
+  return Array.from(new Set(toolsUsed));
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);

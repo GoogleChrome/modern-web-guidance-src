@@ -76,7 +76,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir: s
   // Set environment variables
   process.env.HOME = tempHome;
   process.env.JETSKI_DIR = jetskiDest;
-  process.env.MCP_LOG_DIR = targetDir;
+  process.env.MODERN_WEB_LOG_DIR = targetDir;
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
@@ -133,7 +133,7 @@ async function bypassInitialDialogs(page: Page): Promise<void> {
     for (let i = 0; i < 15; i++) {
       const nextButton = await page.evaluateHandle(() => {
         const buttons = Array.from(document.querySelectorAll('button, a.monaco-button, .monaco-text-button, [role="button"]'));
-        const targetTexts = ['Next', 'Get Started', 'Done', 'Accept', 'Continue', 'Skip', 'Trust'];
+        const targetTexts = ['Get Started', 'Done', 'Accept', 'Continue', 'Skip', 'Trust'];
         return buttons.find(b => {
           const text = (b as HTMLElement).innerText || '';
           return targetTexts.some(t => text.includes(t));
@@ -468,12 +468,6 @@ async function run(): Promise<void> {
     killProcessOnPort(config.environment.jetskiDebugPort);
     cleanupIsolatedHome(path.dirname(workDir));
   }
-}
-
-export async function collectJetskiGuides(dirPath: string, serving: string): Promise<string[]> {
-  // TODO: Implement skills guide collection for Jetski (need gLinux-only binary, cannot land in GH)
-  console.log(`Jetski skills collection for ${dirPath} still needs to be populated using ${serving}.`);
-  return [];
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
