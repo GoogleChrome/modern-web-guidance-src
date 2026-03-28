@@ -102,7 +102,7 @@ Before finalizing the draft, conduct a final quality pass to ensure accuracy, co
 
 - **Proofread for Clarity and Consistency**: Scan for spelling errors, awkward phrasing, or clunky copy-paste leftovers. Standardize on **Sentence case** or Title Case for DOs/DON'Ts summaries. Ensure `DON'Ts` are clear prohibitions, and `DOs` are clear, positive instructions.
 
-
+- **Code Fence Hygiene**: Verify all code blocks are properly closed. Missing or duplicate closing backticks break rendering for the rest of the document.
 
 ## Finalization
 
