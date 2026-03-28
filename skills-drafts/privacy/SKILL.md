@@ -7,8 +7,6 @@ description: Action-oriented guidelines for privacy by design, data minimization
 
 Web application architects and developers must treat privacy not as an compliance afterthought, but as a foundational architectural design requirement. Modern web platforms are shifting away from implicit tracking toward explicit, user-consented, browser-mediated identity and permission exchanges.
 
----
-
 ## 1. Privacy by Design and Data Minimization
 
 Reducing the digital footprint to limit breach exposure and foster user trust.
@@ -45,8 +43,6 @@ Clear-Site-Data: "cache", "cookies", "storage"
 </div>
 ```
 
----
-
 ## 2. Third-Party Audits and Mitigations
 
 Limiting leakage introduced by external scripts, embeds, and tracking pixels.
@@ -69,8 +65,6 @@ Limiting leakage introduced by external scripts, embeds, and tracking pixels.
 Referrer-Policy: strict-origin-when-cross-origin
 Permissions-Policy: accelerometer=(), camera=(), fullscreen=*
 ```
-
----
 
 ## 3. Cookie Deprecation and Partitioned Storage
 
@@ -106,8 +100,6 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 });
 ```
 
----
-
 ## 4. Privacy-Preserving Identity (FedCM)
 
 Moving from opaque navigational redirects to explicit native UI-mediated federation.
@@ -138,8 +130,6 @@ try {
 }
 ```
 
----
-
 ## 5. Fingerprinting & User-Agent Reduction
 
 Shifting from passive device broadcasting to explicit feature inspection.
@@ -163,8 +153,6 @@ if ('createImageBitmap' in window) {
   // Use modern API
 }
 ```
-
----
 
 ## 6. Contextual Request Defenses with Fetch Metadata
 
@@ -197,8 +185,6 @@ app.use((req, res, next) => {
   res.status(403).json({ error: 'Cross-origin request forbidden' });
 });
 ```
-
----
 
 ## 7. Fine-Grained Capability Control (Permissions API)
 

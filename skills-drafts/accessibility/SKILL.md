@@ -1,6 +1,6 @@
 ---
 name: accessibility
-description: Actionable coding guidelines for building accessible web applications, covering semantic HTML, focus management, forms, media, and testing.
+description: Actionable coding guidelines for building accessible web applications, covering semantic HTML, focus management, forms, media, and testing. Use this skill when auditing or implementing accessibility features, keyboard navigation, or ARIA.
 ---
 
 # Accessibility Coding Guidelines

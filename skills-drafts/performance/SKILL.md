@@ -1,6 +1,6 @@
 ---
 name: performance
-description: Actionable guidelines for optimizing modern web applications.
+description: Actionable guidelines for optimizing modern web applications. Use this skill when auditing performance, optimizing page load metrics (LCP, INP, CLS), or fixing slow interactions.
 ---
 
 ## Chapter 1: Critical Rendering Path (CRP) Optimization
@@ -39,8 +39,6 @@ The Critical Rendering Path dictates how quickly the browser converts HTML, CSS,
 <script defer src="app-bundle.js"></script>
 ```
 
----
-
 ## Chapter 2: Largest Contentful Paint (LCP) & Resource Fetching
 
 LCP measures the time required to render the largest visible text or image block within the viewport. Optimize LCP by prioritizing visible elements and prepolishing.
@@ -76,8 +74,6 @@ LCP measures the time required to render the largest visible text or image block
 <!-- Demoting an above-the-fold non-LCP carousel image -->
 <img src="/images/carousel-2.webp" fetchpriority="low" alt="Slide 2">
 ```
-
----
 
 ## Chapter 3: Interaction to Next Paint (INP) & Main Thread Unblocking
 
@@ -119,8 +115,6 @@ async function processLargeList(items) {
 }
 ```
 
----
-
 ## Chapter 4: Third-Party Script Management & Partytown
 
 Third-party scripts (analytics, ads, chat widgets) are the primary source of main thread congestion. Because these scripts are opaque and resource-intensive, they must be sandboxed.
@@ -155,8 +149,6 @@ Third-party scripts (analytics, ads, chat widgets) are the primary source of mai
   src="https://www.googletagmanager.com/gtm.js?id=GTM-XXXXXX">
 </script>
 ```
-
----
 
 ## Chapter 5: CSS Rendering & Containment Optimization
 
@@ -194,8 +186,6 @@ Rendering involves Layout, Style, Paint, and Compositing calculations. CSS Conta
   transform: scale(1.05);
 }
 ```
-
----
 
 ## Chapter 6: Modern Image & Media Optimization
 
@@ -246,8 +236,6 @@ Images typically represent the largest payload on a given web page. Optimization
 <!-- DO: Use native lazy loading for iframes -->
 <iframe src="https://example.com/map" width="800" height="600" loading="lazy" title="Example Map"></iframe>
 ```
-
----
 
 ## Chapter 7: Service Workers & Caching Strategies
 
@@ -303,8 +291,6 @@ registerRoute(
 );
 ```
 
----
-
 ## Chapter 8: Web Fonts Optimization
 
 Web fonts are a common source of render blocking. Optimizing them reduces the Flash of Invisible Text (FOIT) and speeds up initial rendering.
@@ -334,8 +320,6 @@ Web fonts are a common source of render blocking. Optimizing them reduces the Fl
 <!-- Always use crossorigin for fonts even if on the same origin -->
 <link rel="preload" href="/fonts/modern-sans.woff2" as="font" type="font/woff2" crossorigin>
 ```
-
----
 
 ## Chapter 9: Video Performance & Metrics
 
@@ -367,8 +351,6 @@ Video payloads are among the heaviest assets. Optimization focuses on reducing b
   <track src="/video-caps.vtt" kind="captions" srclang="en" label="English">
 </video>
 ```
-
----
 
 ## Chapter 10: JavaScript Code-Splitting
 
