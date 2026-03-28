@@ -42,7 +42,7 @@ function listGuideDirs(): string[] {
 const completion = omelette('gd <command> <arg1> <arg2>');
 
 completion.on('command', ({ reply }) => {
-  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'baselinestatus', 'setup-completion', 'gen-negative-suite', 'research']);
+  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'baselinestatus', 'setup-completion', 'gen-negative-suite']);
 });
 
 completion.on('arg1', ({ before, reply }) => {
@@ -142,12 +142,6 @@ ${cBold('Evaluation:')}
   ${cCyan('deploy')}                 Deploy the dashboard to GitHub Pages
   ${cCyan('upload')} <suite>         Upload generated evaluation suite to GCS
   ${cCyan('gen-negative-suite')}     Generate resources for negative suite
-
-${cBold('Use Case Research (Stage 1):')}
-  ${cCyan('research')} --feature-id <id> --sources <url> [<url> ...]
-                        Research a feature with NotebookLM and scaffold guide stubs
-    ${cDim('--category')}          Guide category (default: auto-detected)
-    ${cDim('--dry-run')}           Print proposed stubs without writing files
 
 ${cBold('Other:')}
   ${cCyan('baselinestatus')} <query>      Check browser support and Baseline status
@@ -266,12 +260,6 @@ ${cBold('Options:')}
     case 'gen-negative-suite': {
       const { generateNegativeSuite } = await import('../guides/negative-suite-gen.ts');
       await generateNegativeSuite();
-      break;
-    }
-
-    case 'research': {
-      const { main: research } = await import('../guides/research-use-cases.ts');
-      await research(process.argv.slice(3));
       break;
     }
 

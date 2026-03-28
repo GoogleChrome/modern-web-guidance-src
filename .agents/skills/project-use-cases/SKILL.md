@@ -13,58 +13,41 @@ The primary goal of this stage is to translate a technical web platform feature 
 
 ## Research and discovery
 
-Instead of relying on your (the agent's) general knowledge to come up with a proposed list of use cases yourself, use the `gd research` command to perform Google Search-grounded research. This uses the Gemini API to surface authoritative sources and real-world implementations that may not be in your training data, including complex edge cases, performance implications, and emerging best practices.
+Instead of relying on your (the agent's) general knowledge to come up with a proposed list of use cases yourself, use the `project-use-cases-research` skill to perform grounded research. This skill guides you through using your own tools and optional automated deep research to surface authoritative sources and real-world implementations.
 
-### Using `gd research`
+### Using `project-use-cases-research`
 
-New features are tracked as GitHub issues. Each issue includes the feature ID and seed sources in a structured template. You can pass the issue number directly to the command and it will extract everything automatically:
+Refer to the `project-use-cases-research` skill file for detailed instructions on how to:
+1.  **Gather inputs** from GitHub issues or arguments.
+2.  **Conduct standard research** using `search_web` and `read_url_content`.
+3.  **Run optional automated deep research** using the `deep_research.js` script.
 
-```bash
-gd research --issue 359
-```
-
-This is equivalent to passing the feature ID and sources explicitly:
-
-```bash
-gd research \
-  --feature-id bfcache-blocking-reasons \
-  --sources https://web.dev/articles/bfcache \
-            https://github.com/rakina/bfcache-explainer
-```
-
-The command will:
-1. Search the web using Google Search grounding to find additional authoritative sources (W3C specs, MDN, developer blogs, WICG proposals, GitHub discussions)
-2. Propose 2–5 use cases in the correct format
-3. Scaffold `guide.md` stubs under `guides/<category>/<slug>/`
-
-Use `--category` to override the auto-detected guide category. Use `--deep-research` for more complex features to run a more thorough research pass using the deep research model (takes 10–60 minutes).
-
-**Prerequisite:** Set `GEMINI_API_KEY` in your `.env` file.
+The process will result in:
+1.  A research report saved to `guides/.research/<feature-id>.md`.
+2.  Proposed use cases that follow the constraints described in this skill.
+3.  Scaffolded `guide.md` and `demo.html` stubs.
 
 ### Reviewing the output
 
 The user should manually review the proposed use cases for accuracy and completeness before proceeding. Your job is to confirm that their selected use cases follow the constraints described in this skill.
 
-After `gd research` completes, perform the following validation steps:
+After research is complete, perform the following validation steps:
 
-1. **Check each use case description** against the rules in [Identifying action-oriented tasks](#identifying-action-oriented-tasks):
-   - Starts with a verb
-   - Describes WHAT the developer is trying to do, not HOW the feature works
-   - General enough to match a wide range of real developer prompts
-   - Not too similar to an existing guide (check the list of existing descriptions surfaced during research)
+1.  **Check each use case description** against the rules in [Identifying action-oriented tasks](#identifying-action-oriented-tasks):
+    -   Starts with a verb.
+    -   Describes WHAT the developer is trying to do, not HOW the feature works.
+    -   General enough to match a wide range of real developer prompts.
+    -   Not too similar to an existing guide.
 
-2. **Check the scaffolded files** for each use case under `guides/<category>/<slug>/`:
-   - `guide.md` frontmatter has all required fields: `name`, `description`, `web-feature-ids`, `sources`
-   - `web-feature-ids` contains the correct feature ID(s) — verify using `pnpm baselinestatus <id>` (see `web-baseline` skill); an unrecognized ID will return no results
-   - `sources` lists real, relevant URLs (not placeholder or redirect URLs); at least one should be a Chrome-authored implementation article (developer.chrome.com, web.dev) — if only MDN is listed, search for a better source before proceeding
-   - `demo.html` exists and correctly demonstrates the use case using the feature
+2.  **Check the scaffolded files** for each use case under `guides/<category>/<slug>/`:
+    -   `guide.md` frontmatter has all required fields: `name`, `description`, `web-feature-ids`, `sources`.
+    -   `web-feature-ids` contains the correct feature ID(s).
+    -   `sources` lists real, relevant URLs (at least one implementation-focused).
+    -   `demo.html` exists and correctly demonstrates the use case.
 
-3. **Run the test suite** to catch any structural issues:
-   ```bash
-   pnpm --filter guides test
-   ```
+3.  **Run the test suite** to catch any structural issues.
 
-4. **Flag any issues** to the user before proceeding to Step 7 (PR submission). If a use case description doesn't meet the quality bar, suggest a corrected version.
+4.  **Flag any issues** to the user. If a use case description doesn't meet the quality bar, suggest a corrected version.
 
 ## Identifying action-oriented tasks
 
