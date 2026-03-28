@@ -11,9 +11,26 @@ This skill defines standard practices for modern CSS layouts, focusing on Flexbo
 ## 1. Modern Layout Fundamentals
 Leverage the browser's layout engine by using intrinsic sizing before resorting to hardcoded dimensions.
 
+### Layout Decision Matrix
+
+| Approach | Dimensions | Main Strength | Logic Type |
+| --- | --- | --- | --- |
+| **Flexbox** | 1D | Content distribution | Content-first |
+| **Grid** | 2D | Structural integrity | Layout-first |
+| **Subgrid** | 2D (Inherited) | Grandchild alignment | Relationship-first |
+| **Masonry** | 1.5D / 2D | Eliminating dead space | Flow-first |
+
+### Summary: Quick Selection Guide
+1. **Is it a simple row or column?** Use **Flexbox**.
+2. **Is it a complex page structure with rows AND columns?** Use **Grid**.
+3. **Does a nested element need to line up with the outer grid?** Use **Subgrid**.
+4. **Are items different heights but need to be packed tightly?** Use **Masonry**.
+
+
 ### DOs and DON'Ts
 - **DO** use Logical Properties based on **Inline Axis** (main text direction) and **Block Axis** (stacking direction) for automatic RTL support.
 - **DO** choose the right display type: `flex` for one-dimensional layouts, `grid` for two-dimensional layouts.
+- **DO** use the **Content-first vs Layout-first** mental model: Use Flexbox when items determine the layout (content dictates flow), and Grid when you want to define the skeleton first (layout dictates placement).
 - **DO** prefer **Flexbox** for linear components (navbars, item lists) and small components.
 - **DO** prefer **Grid** for two-dimensional page structures or complex component grids.
 - **DO** value **Intrinsic Sizing** (`min-content`, `max-content`, `fit-content`) to allow content to naturally drive layout.
@@ -83,6 +100,7 @@ Two-dimensional layout control.
 - **DO** use `minmax(min, max)` to ensure tracks are flexible but bounded (e.g., `repeat(auto-fill, minmax(200px, 1fr))`).
 - **DO** use `grid-template-areas` for complex, readable layout definitions.
 - **DO** use **Subgrid (`grid-template-rows: subgrid`)** to align nested children to the parent grid definition.
+- **DO** use **Subgrid** to solve the "ragged edge" problem in components like card lists where internal elements (like titles) must line up perfectly across columns.
 
 ### DON'Ts
 - **DON'T** use `grid-auto-flow: dense` blindly; it can reorder items visually and break accessibility DOM order.
