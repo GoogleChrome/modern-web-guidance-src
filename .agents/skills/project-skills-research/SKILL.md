@@ -13,24 +13,13 @@ When tasked with researching a discipline to generate a `SKILL.md` file, you mus
 
 **Check Existing Research First**: Before beginning any new data collection, verify if raw research reports already exist in `skills-drafts/.research/<discipline>/` (e.g., `web_dev.md`, `deep_research.md`). If these files exist, skip the automated steps below and proceed directly to **Synthesis** using these files as your source material.
 
+**Parallel Execution Strategy**: To optimize time, launch the Automated Deep Research (Step 1) in a background subagent (or background task) *first*, and then proceed with the manual `web.dev` chapter reading (Step 2) in parallel.
+
+
 **MANDATORY: Communicative Agent**
 You MUST keep the user informed of your progress at each step (e.g., "Checking if research exists...", "Fetching TOC from web.dev..."). Do not execute multiple tool calls silently without updating the user on your current activity and intent.
 
-### Step 1: Establish `web.dev` Scaffolding (Course Reading)
-Identify a seed URL for the discipline (e.g., `https://web.dev/learn/accessibility/`).
-
-1. **Content Fetching & TOC Generation**
-   - Fetch the Table of Contents natively (using `read_url_content`).
-   - **Fallback Mechanism**: If no specific course is found on `web.dev`, skip the rest of Step 1 and proceed directly to **Step 2 (Overlay Deep Research Enrichment)**. Do not attempt to synthesize a generic Table of Contents or read third-party courses for Step 1.
-   - **Save TOC**: Save the Table of Contents to `skills-drafts/.research/<discipline>/toc.md`. Use this file to track which chapters you have processed.
-2. **User Check-in & TOC Approval**
-   - **MANDATORY**: Present the proposed TOC to the user for feedback before proceeding. **Point the user to the saved `toc.md` file and/or print the Table of Contents in your response. Do not ask for approval of a TOC that the user cannot view.** Wait for explicit user confirmation.
-3. **Chapter-by-Chapter Research**
-   - For each chapter in the approved TOC, read the content to extract actionable guidelines.
-   - Save output incrementally to `skills-drafts/.research/<discipline>/web_dev.md`.
-   - Use Google Search grounding to ensure standard compliance.
-
-### Step 2: Overlay Deep Research Enrichment
+### Step 1: Overlay Deep Research Enrichment
 Run the automated deep research tool to identify edge cases beyond the standard curriculum.
 
 1. **Tools**
@@ -49,6 +38,20 @@ Run the automated deep research tool to identify edge cases beyond the standard 
      ```
 2. **Save Research Artifact**
    - Save the Tool output to `skills-drafts/.research/<discipline>/deep_research.md`.
+
+### Step 2: Establish `web.dev` Scaffolding (Course Reading)
+Identify a seed URL for the discipline (e.g., `https://web.dev/learn/accessibility/`).
+
+1. **Content Fetching & TOC Generation**
+   - Fetch the Table of Contents natively (using `read_url_content`).
+   - **Fallback Mechanism**: If no specific course is found on `web.dev`, skip the rest of Step 2 and proceed directly to **Synthesis** (relying on Step 1 research). Do not attempt to synthesize a generic Table of Contents or read third-party courses for Step 2.
+   - **Save TOC**: Save the Table of Contents to `skills-drafts/.research/<discipline>/toc.md`. Use this file to track which chapters you have processed.
+2. **User Check-in & TOC Approval**
+   - **MANDATORY**: Present the proposed TOC to the user for feedback before proceeding. **Point the user to the saved `toc.md` file and/or print the Table of Contents in your response. Do not ask for approval of a TOC that the user cannot view.** Wait for explicit user confirmation.
+3. **Chapter-by-Chapter Research**
+   - For each chapter in the approved TOC, read the content to extract actionable guidelines.
+   - Save output incrementally to `skills-drafts/.research/<discipline>/web_dev.md`.
+   - Use Google Search grounding to ensure standard compliance.
 
 
 ## 2. Synthesis
