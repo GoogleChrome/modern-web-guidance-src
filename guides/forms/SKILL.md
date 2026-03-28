@@ -256,8 +256,8 @@ form.addEventListener('submit', (e) => {
 <form action="/checkout" method="POST">
   <input type="hidden" name="csrf_token" value="secure_token_abc123">
   
-  <label for="pwd">New Password:</label>
-  <input type="password" id="pwd" name="pwd" autocomplete="new-password" required>
+  <label for="password">New Password</label>
+  <input type="password" id="password" name="password" autocomplete="new-password" required>
   
   <button type="submit">Complete Registration</button>
 </form>
@@ -282,13 +282,13 @@ form.addEventListener('submit', (e) => {
 <!-- Accessible Address Form with Autofill -->
 <form action="/save-address" method="POST">
   <div class="form-group">
-    <label for="full-name">Full name:</label>
-    <input type="text" id="full-name" name="full_name" required autocomplete="name">
+    <label for="full-name">Full name</label>
+    <input type="text" id="full-name" name="full_name" maxlength="100" required autocomplete="name">
   </div>
 
   <div class="form-group">
-    <label for="address">Address:</label>
-    <textarea id="address" name="address" required autocomplete="street-address" rows="3"></textarea>
+    <label for="address">Address</label>
+    <textarea id="address" name="address" required autocomplete="street-address" maxlength="300"></textarea>
   </div>
 
   <button type="submit">Save Address</button>
@@ -313,8 +313,8 @@ form.addEventListener('submit', (e) => {
 
 ```html
 <form action="/submit" method="POST" id="track-form">
-  <label for="zip-track">ZIP Code:</label>
-  <input type="text" id="zip-track" name="zip" required>
+  <label for="postal-code">ZIP or postal code</label>
+  <input type="text" id="postal-code" name="postal-code" autocomplete="postal-code" maxlength="20" required>
   <button type="submit" id="submit-btn">Submit</button>
 </form>
 
@@ -348,6 +348,6 @@ form.addEventListener('submit', (e) => {
   </ol>
 </nav>
 
-<button type="button" onclick="history.back()">Previous</button>
-<button type="submit">Next</button>
+<button type="button" onclick="history.back()" enterkeyhint="previous">Previous</button>
+<button type="submit" enterkeyhint="next">Next</button>
 ```
