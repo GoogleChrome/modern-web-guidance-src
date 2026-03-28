@@ -53,8 +53,6 @@ This guide provides actionable DOs and DON'Ts for AI coding agents to ensure web
 </main>
 ```
 
----
-
 ## 2. Document Metadata and Language
 
 ### Actionable Guidelines
@@ -84,8 +82,6 @@ This guide provides actionable DOs and DON'Ts for AI coding agents to ensure web
 </html>
 ```
 
----
-
 ## 3. Keyboard and Focus Management
 
 ### Actionable Guidelines
@@ -102,7 +98,7 @@ This guide provides actionable DOs and DON'Ts for AI coding agents to ensure web
 #### DON'Ts
 - **Don't disable outlines without replacements**: Avoid `outline: none` without styling alternatives.
 - **Don't use Positive Tabindex values**: Never use `tabindex="1"` or greater.
-- **Don't use aria hidden true on focusable elements containers toggles instances**: Avoid `aria-hidden="true"` or `role="presentation"` on focusables.
+- **Don't hide interactive elements from screen readers**: Avoid `aria-hidden="true"` or `role="presentation"` on elements that can receive focus.
 
 ### Code Examples
 
@@ -132,8 +128,6 @@ element.addEventListener('keydown', (e) => {
 });
 ```
 
----
-
 ## 4. Alternate Text and Media
 
 ### Actionable Guidelines
@@ -145,10 +139,10 @@ element.addEventListener('keydown', (e) => {
 - **Transcripts for audio**: Provide text transcripts for purely audio podcasts.
 - **Informative View Descriptions for inline SVGs**: Apply `role="img"` and a nested `<title>` tag for informative visuals.
 - **Decorative SVGs removal**: Apply `tabindex="-1"` and `aria-hidden="true"` to remove decorative SVGs from focus and reading flows.
-- **Complex images long descriptions with aria-describedby or figures**: Use `<figure>`/`<figcaption>` structures for charts and infographics.
+- **Long descriptions for complex images**: Use `<figure>`/`<figcaption>` or `aria-describedby` for charts and infographics.
 
 #### DON'Ts
-- **Don't use clichés prefixes**: Avoid "Image of..." or "Picture of...".
+- **Don't use clichéd prefixes**: Avoid "Image of..." or "Picture of...".
 - **Don't use underscores in filenames**: Use dashes if the filename might be announced as fallback.
 
 ### Code Examples
@@ -189,9 +183,6 @@ element.addEventListener('keydown', (e) => {
   </div>
 </details>
 ```
-```
-
----
 
 ## 5. Forms and Inputs Controls
 
@@ -200,9 +191,9 @@ element.addEventListener('keydown', (e) => {
 #### DOs
 - **Connect Labels Programmatically**: Use `<label for="id">` linked to `<input id="id">`.
 - **Use Autocomplete**: Set `autocomplete="email/name"` for user profiles.
-- **Describe hints via aria-describedby**: Link rule texts to inputs.
-- **Announce Dynamic Errors via Live Regions**: Use `aria-live` or shift focus to errors lists.
-- **Provide Form Validation constraints**: Use `required` or `aria-required="true"` to signal mandatory inputs.
+- **Link hints to inputs via aria-describedby**: Associate help text with inputs.
+- **Announce dynamic errors via live regions**: Use `aria-live` or shift focus to error lists.
+- **Provide form validation constraints**: Use `required` or `aria-required="true"` to signal mandatory inputs.
 
 #### DON'Ts
 - **Don't rely on placeholders alone**: Placeholders are not persistent labels.
@@ -219,23 +210,21 @@ element.addEventListener('keydown', (e) => {
 </form>
 ```
 
----
-
 ## 6. Color, Contrast, and Typography
 
 ### Actionable Guidelines
 
 #### DOs
-- **Minimum Contrasts standards**: Maintain 4.5:1 for normal text and 3:1 for large texts or icons.
-- **Use Multiple State Indicators**: Do not denote success/errors ONLY with color. Use icons or text.
-- **Relative Font Sizes units**: Use `rem` or `em` for font sizes instead of `px`.
-- **Left Text Alignment**: Cap paragraphs blocks to max 80 characters widths.
-- **Support Preferences Media Queries**: Implement `@media (prefers-color-scheme: dark)` and `@media (prefers-contrast: high)`.
+- **Minimum contrast standards**: Maintain 4.5:1 for normal text and 3:1 for large text or icons.
+- **Use multiple state indicators**: Do not denote success/errors ONLY with color. Use icons or text.
+- **Relative font size units**: Use `rem` or `em` for font sizes instead of `px`.
+- **Left text alignment**: Cap paragraph blocks to a maximum of 80 characters width.
+- **Support user preference media queries**: Implement `@media (prefers-color-scheme: dark)` and `@media (prefers-contrast: high)`.
 
 #### DON'Ts
 - **Don't use Justified Text Alignment**: Avoid `text-align: justify`.
 - **Don't use Ornate fonts**: Omit cursive typefaces for main reading content.
-- **Rely on Bolding sparingly**: Use bolding for emphasis over italics or all-caps.
+- **Don't rely on italics or all-caps for emphasis**: Use bolding sparingly as it is generally more readable for dense text.
 
 ### Code Examples
 
@@ -273,8 +262,6 @@ article {
 }
 ```
 
----
-
 ## 7. Motions and Preferences
 
 ### Actionable Guidelines
@@ -285,7 +272,7 @@ article {
 - **Default to static views**: Consider defaulting to static states and allowing users to opt-in to motion.
 
 #### DON'Ts
-- **Don't exceed three flash rates per second limits**: Avoid rapid light-to-dark flashes toggles triggers seizures.
+- **Don't exceed flash limits (three per second)**: Avoid rapid light-to-dark flashing to prevent seizures.
 
 ### Code Examples
 
@@ -307,8 +294,6 @@ article {
 </div>
 ```
 
----
-
 ## 8. Testing Validations
 
 ### Actionable Guidelines
@@ -319,9 +304,7 @@ article {
 - **Use Screen Readers with calibrated browsers**: Rely on standard bindings (e.g., VoiceOver with Safari).
 
 #### DON'Ts
-- **Don't rely purely on scores**: 100% scores does not guarantee real usability.
-
----
+- **Don't rely purely on scores**: A 100% score does not guarantee real usability.
 
 ## 9. Modals and Native Dialogs
 
