@@ -289,7 +289,7 @@ export class DumbbellChart {
           const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
           line.setAttribute("x1", uX);
           line.setAttribute("y1", y);
-          line.setAttribute("x2", lineEndX);
+          line.setAttribute("x2", canDrawArrow ? (lineEndX + (7 * dir)) : lineEndX);
           line.setAttribute("y2", y);
           line.setAttribute("stroke", lineColor);
           line.setAttribute("stroke-width", "3"); // slightly thinner to fit multiple
