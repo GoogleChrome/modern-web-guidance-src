@@ -59,8 +59,7 @@ function setupIsolatedWorkDir(targetDir: string): string {
   const filesToCopy = [
     'oauth_creds.json',
     'google_accounts.json',
-    'installation_id',
-    'settings.json'
+    'installation_id'
   ];
 
   for (const file of filesToCopy) {
