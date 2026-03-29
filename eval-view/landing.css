@@ -552,6 +552,7 @@
 .radar-tooltip-container {
   position: fixed;
   z-index: 2000;
+  max-width: 300px;
   background: rgba(13, 17, 23, 0.95);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border-color);
