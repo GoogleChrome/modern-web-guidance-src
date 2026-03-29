@@ -74,8 +74,6 @@ async function processGuides() {
   const store = new Store();
 
   // Check for target guide argument, ignoring flags
-  const targetGuidePath = process.argv.slice(2).find(arg => !arg.startsWith("--"));
-
   if (targetGuidePath) {
     // Single guide mode
     let absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
