@@ -478,7 +478,7 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
     }
 
     const { labels, guided, unguided } = calculateRadarData(testInfo.data.results);
-    if (labels.length < 3) return;
+    if (labels.length < 1) return;
 
     tooltipContainer.classList.remove('hidden');
     updateTooltipPosition(x, y);
