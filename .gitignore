@@ -5,6 +5,7 @@ node_modules/
 serving/.modern-web-data/
 serving/build/
 serving/mcp-server/data/use-cases.gen.ts
+eval-view/features_mapping.gen.js.js
 serving/mcp-server/.mcp-data/
 dist/
 
@@ -34,4 +35,6 @@ project-gleam/
 
 # Git worktrees directory
 .worktrees
-eval-view/features_mapping.gen.js.js
+
+# Research drafts
+skills-drafts/.research/
