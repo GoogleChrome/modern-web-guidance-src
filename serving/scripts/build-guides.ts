@@ -31,7 +31,7 @@ async function processGuides() {
 
   const LANCE_DB_DIR = path.join(ROOT_DIR, ".modern-web-data");
 
-  if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(LANCE_DB_DIR)) {
+  if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(LANCE_DB_DIR) && fs.readdirSync(LANCE_DB_DIR).length > 0) {
     const outputFileMTime = fs.statSync(OUTPUT_FILE).mtimeMs;
     let anyGuideNewer = false;
     for (const inv of readyGuides) {
