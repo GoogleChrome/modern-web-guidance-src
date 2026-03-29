@@ -278,13 +278,18 @@ export class DumbbellChart {
           if (!defs.parentNode) this.svg.prepend(defs);
           defs.appendChild(linearGrad);
 
+          const dir = gX > uX ? -1 : 1;
+          const canDrawArrow = Math.abs(gX - uX) > 15; // increased threshold a bit
+          const arrowOffset =canDrawArrow ? 5 : 0;
+          const lineEndX = gX + (arrowOffset * dir);
+
           const lineColor = isPositive ? `url(#${gradId})` : "#da3633"; // Fall back to red if regressed
 
           // Connecting Line (The Delta)
           const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
           line.setAttribute("x1", uX);
           line.setAttribute("y1", y);
-          line.setAttribute("x2", gX);
+          line.setAttribute("x2", lineEndX);
           line.setAttribute("y2", y);
           line.setAttribute("stroke", lineColor);
           line.setAttribute("stroke-width", "3"); // slightly thinner to fit multiple
@@ -292,10 +297,9 @@ export class DumbbellChart {
           this.svg.appendChild(line);
 
           // To make it an "arrow", draw a triangle at the end - offset to sit clean of the dot
-          if (Math.abs(gX - uX) > 10) {
+          if (canDrawArrow) {
             const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-            const dir = gX > uX ? -1 : 1;
-            const arrowEndX = gX + (5 * dir); // Stop 5px short of the dot center (touches edge of the radius r=3)
+            const arrowEndX = lineEndX; // Line stops where arrow head begins!
             poly.setAttribute("points", `${arrowEndX},${y} ${arrowEndX + (7 * dir)},${y - 3.5} ${arrowEndX + (7 * dir)},${y + 3.5}`);
             poly.setAttribute("fill", colorPalette.end); 
             this.svg.appendChild(poly);
