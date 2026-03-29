@@ -93,9 +93,10 @@ export class DumbbellChart {
 
     this.svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     this.svg.setAttribute("width", "100%");
-    this.svg.setAttribute("height", height);
+    this.svg.setAttribute("height", this.options.height || height);
     this.svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    this.svg.setAttribute("preserveAspectRatio", "xMidYMin meet");
+    // If fixed height is forced, we want it to stretch to fill it!
+    this.svg.setAttribute("preserveAspectRatio", this.options.height ? "none" : "xMidYMin meet");
     
     // Add Gradients in defs
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
@@ -252,7 +253,7 @@ export class DumbbellChart {
         text.setAttribute("x", scale(100) + 15);
         text.setAttribute("y", rowY);
         text.setAttribute("fill", "#c9d1d9");
-        text.setAttribute("font-size", "12");
+        text.setAttribute("font-size", "13");
         text.setAttribute("text-anchor", "start");
         text.setAttribute("alignment-baseline", "middle");
         text.textContent = featureName;
