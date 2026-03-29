@@ -20,14 +20,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const params = new URLSearchParams(window.location.search);
         
-        // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
-        initGoogleAuth(async () => {
-             await loadRemoteTests();
-        });
-
-        await loadLocalTests();
-        if (getAccessToken()) {
-             await loadRemoteTests();
+        if (isRemoteDashboard()) {
+            await loadStaticTests();
+        } else {
+            await loadLocalTests();
         }
 
         // Initialize with default states relative to compoundKeys instead of simple testIDs
@@ -231,6 +227,33 @@ function updateUrlParams() {
 
 function renderAll() {
     renderSuites();
+}
+
+async function loadStaticTests() {
+    try {
+        const response = await fetch('./suites.json');
+        if (!response.ok) return;
+        const manifest = await response.json();
+
+        if (manifest && manifest.length > 0) {
+            document.getElementById('empty-state').style.display = 'none';
+        }
+
+        // Load static test data
+        for (const testId of manifest) {
+            try {
+                const response = await fetch(`./results/${testId}/evals.json?t=${Date.now()}`);
+                if (response.ok) {
+                    const parsed = await response.json();
+                    registerTestData(testId, 'gh', parsed); // Using 'gh' to indicate it's GitHub Pages hosted
+                }
+            } catch (e) {
+                console.warn(`Failed to load static test ${testId}:`, e);
+            }
+        }
+    } catch {
+        console.warn('Suites manifest not found or failed to load');
+    }
 }
 
 async function loadLocalTests() {
