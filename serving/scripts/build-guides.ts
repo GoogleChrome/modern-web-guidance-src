@@ -34,15 +34,22 @@ async function processGuides() {
   if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(LANCE_DB_DIR) && fs.readdirSync(LANCE_DB_DIR).length > 0) {
     const outputFileMTime = fs.statSync(OUTPUT_FILE).mtimeMs;
     let anyGuideNewer = false;
-    for (const inv of readyGuides) {
-      const guidePath = path.join(inv.dir, "guide.md");
-      if (fs.existsSync(guidePath) && fs.statSync(guidePath).mtimeMs > outputFileMTime) {
-        anyGuideNewer = true;
-        break;
+
+    // Also check if the build script itself was modified
+    if (fs.statSync(import.meta.filename).mtimeMs > outputFileMTime) {
+      anyGuideNewer = true;
+    } else {
+      for (const inv of readyGuides) {
+        const guidePath = path.join(inv.dir, "guide.md");
+        if (fs.existsSync(guidePath) && fs.statSync(guidePath).mtimeMs > outputFileMTime) {
+          anyGuideNewer = true;
+          break;
+        }
       }
     }
+
     if (!anyGuideNewer) {
-      console.log("No guides modified since last build. Skipping guide build.");
+      console.log("No guides or script modified since last build. Skipping guide build.");
       return;
     }
   }
