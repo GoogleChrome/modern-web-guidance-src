@@ -168,12 +168,12 @@ export class DumbbellChart {
       });
     }
 
-    // Use case colors/shades to distinguish them
+    // Use case colors/shades to distinguish them using modern OKLCH palettes for rich aesthetics
     const useCaseColors = [
-        { guided: "#238636", unguided: "#8b949e", text: "#fff" }, // Standard Green
-        { guided: "#1f6feb", unguided: "#8b949e", text: "#fff" }, // Blue
-        { guided: "#d29922", unguided: "#8b949e", text: "#fff" }, // Yellow
-        { guided: "#8957e5", unguided: "#8b949e", text: "#fff" }, // Purple
+        { guided: "oklch(75% 0.16 142)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }, // Vibrant Mint Green
+        { guided: "oklch(70% 0.18 250)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }, // Cyan / Electric Blue
+        { guided: "oklch(75% 0.14 360)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }, // Soft Coral / Magenta
+        { guided: "oklch(82% 0.16 85)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }    // Warm Amber / Gold
     ];
 
     // Data Rows
@@ -278,7 +278,7 @@ export class DumbbellChart {
             this.tooltip.innerHTML = `
                 <div style="color: #fff; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">${featureName}</div>
                 <div style="margin-bottom: 4px; font-size: 13px; color: ${lineColor}; font-weight: 500;">Variant: ${item.useCaseId || "Default"}</div>
-                <div style="margin-bottom: 6px; font-size: 14px;"><strong>Delta: </strong><span style="color: ${deltaColor}; font-weight: bold;">${deltaSign}${delta}%</span></div>
+                <div style="margin-bottom: 6px; font-size: 14px;"><strong>Uplift: </strong><span style="color: ${deltaColor}; font-weight: bold;">${deltaSign}${delta}%</span></div>
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: 12px; color: #8b949e;">
                     <span>Unguided: ${Math.round(uVal)}%</span>
                     <span>Guided: ${Math.round(gVal)}%</span>
