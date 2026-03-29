@@ -81,6 +81,38 @@ export class DumbbellChart {
     this.svg.setAttribute("width", "100%");
     this.svg.setAttribute("height", height);
     this.svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    
+    // Add Gradients in defs
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    
+    const gradients = [
+        { id: "purple-neon", start: "oklch(65% 0.25 290)", end: "oklch(75% 0.15 210)" }, // Violet to Cyan
+        { id: "purple-magik", start: "oklch(60% 0.28 320)", end: "oklch(70% 0.20 280)" }, // Magenta to Lavender
+        { id: "purple-deep", start: "oklch(55% 0.25 295)", end: "oklch(65% 0.20 305)" }, // Vivid Grape to Orchid
+        { id: "purple-gold", start: "oklch(60% 0.25 310)", end: "oklch(80% 0.15 85)" }   // Purp-Pink to Warm Amber 
+    ];
+
+    gradients.forEach(grad => {
+        const linearGrad = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+        linearGrad.setAttribute("id", grad.id);
+        linearGrad.setAttribute("x1", "0%");
+        linearGrad.setAttribute("y1", "0%");
+        linearGrad.setAttribute("x2", "100%");
+        linearGrad.setAttribute("y2", "0%");
+
+        const stop1 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+        stop1.setAttribute("offset", "0%");
+        stop1.setAttribute("stop-color", grad.start);
+
+        const stop2 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+        stop2.setAttribute("offset", "100%");
+        stop2.setAttribute("stop-color", grad.end);
+
+        linearGrad.appendChild(stop1);
+        linearGrad.appendChild(stop2);
+        defs.appendChild(linearGrad);
+    });
+    this.svg.appendChild(defs);
     this.svg.style.display = "block";
     this.svg.style.fontFamily = "inherit";
     this.container.appendChild(this.svg);
@@ -168,12 +200,12 @@ export class DumbbellChart {
       });
     }
 
-    // Use case colors/shades to distinguish them using modern OKLCH palettes for rich aesthetics
+    // Use case colors/shades with gradients
     const useCaseColors = [
-        { guided: "oklch(75% 0.16 142)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }, // Vibrant Mint Green
-        { guided: "oklch(70% 0.18 250)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }, // Cyan / Electric Blue
-        { guided: "oklch(75% 0.14 360)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }, // Soft Coral / Magenta
-        { guided: "oklch(82% 0.16 85)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }    // Warm Amber / Gold
+        { guided: "url(#purple-neon)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }, 
+        { guided: "url(#purple-magik)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }, 
+        { guided: "url(#purple-deep)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }, 
+        { guided: "url(#purple-gold)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }  
     ];
 
     // Data Rows
