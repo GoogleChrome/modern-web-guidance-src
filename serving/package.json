@@ -24,7 +24,7 @@
     "publish-skills": "node --experimental-strip-types skills-cli/publish-skills.ts",
     "start": "node mcp-server/index.ts",
     "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
-    "test": "node scripts/build-guides.ts && node --test --test-reporter ${TEST_REPORTER:-dot} scripts/build-guides.test.ts && node --test --test-reporter ${TEST_REPORTER:-dot} skills-cli/test-dist.ts",
+    "test": "node scripts/build-guides.ts && node --test --test-reporter ${TEST_REPORTER:-dot} scripts/build-guides.test.ts && node --test --test-reporter ${TEST_REPORTER:-dot} skills-cli/test-dist.ts && node --test --test-reporter ${TEST_REPORTER:-dot} \"mcp-server/**/*.test.ts\"",
     "typecheck": "npm run build && tsc --noEmit",
     "benchmark:rag": "node --experimental-strip-types benchmarks/rag/eval-rag-suite.ts",
     "plot:serve": "npx serve benchmarks/data"
