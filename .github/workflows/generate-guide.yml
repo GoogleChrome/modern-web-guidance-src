@@ -98,7 +98,7 @@ jobs:
         run: |
           FEATURE_ID="${{ inputs.feature_id || 'intl-locale-info' }}"
           SLUG="${{ inputs.slug }}"
-          GUIDE_SLUG="${SLUG || FEATURE_ID}"
+          GUIDE_SLUG="${SLUG:-$FEATURE_ID}"
           CATEGORY="${{ inputs.category || 'user-experience' }}"
           node ./bin/gd.ts dev guides/${CATEGORY}/${GUIDE_SLUG} --no-test
 
@@ -113,7 +113,7 @@ jobs:
         run: |
           FEATURE_ID="${{ inputs.feature_id || 'intl-locale-info' }}"
           SLUG="${{ inputs.slug }}"
-          GUIDE_SLUG="${SLUG || FEATURE_ID}"
+          GUIDE_SLUG="${SLUG:-$FEATURE_ID}"
           REVIEWER="${{ inputs.reviewer || 'paulirish' }}"
           BRANCH="guidance-bot/${FEATURE_ID}"
 
