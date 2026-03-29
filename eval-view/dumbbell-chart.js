@@ -35,8 +35,8 @@ export class DumbbellChart {
     
     if (labels.length === 0) return;
 
-    let unguidedSet = datasets.find(d => d.label.toLowerCase() === 'unguided') || { data: new Array(labels.length).fill(0) };
-    let guidedSet = datasets.find(d => d.label.toLowerCase() === 'guided') || { data: new Array(labels.length).fill(0) };
+    let unguidedSet = datasets.find(d => d.label.toLowerCase() === 'unguided') || { data: Array.from({ length: labels.length }).fill(0) };
+    let guidedSet = datasets.find(d => d.label.toLowerCase() === 'guided') || { data: Array.from({ length: labels.length }).fill(0) };
 
     const width = this.options.size;
 
