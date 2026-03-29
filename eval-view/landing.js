@@ -434,10 +434,10 @@ function renderSuites() {
     setupRateCellHovers();
 }
 
-let radarChartInstance = null;
-let currentRadarKey = null;
+let tooltipChartInstance = null;
+let currentDumbbellKey = null;
 let hideTimeout = null;
-const tooltipContainer = document.getElementById('radar-tooltip-container');
+const tooltipContainer = document.getElementById('tooltip-container');
 
 function setupRateCellHovers() {
     const rateCells = document.querySelectorAll('.rate-cell');
@@ -452,28 +452,28 @@ function setupRateCellHovers() {
                 hideTimeout = null;
             }
 
-            showRadarTooltip(testInfo, e.clientX, e.clientY, compoundKey);
+            showTooltipChart(testInfo, e.clientX, e.clientY, compoundKey);
         });
 
         cell.addEventListener('mousemove', (e) => updateTooltipPosition(e.clientX, e.clientY));
 
-        cell.addEventListener('mouseleave', () => hideRadarTooltip());
+        cell.addEventListener('mouseleave', () => hideTooltipChart());
     });
 }
 
-function showRadarTooltip(testInfo, x, y, compoundKey) {
-    if (currentRadarKey === compoundKey && !tooltipContainer.classList.contains('hidden')) {
+function showTooltipChart(testInfo, x, y, compoundKey) {
+    if (currentDumbbellKey === compoundKey && !tooltipContainer.classList.contains('hidden')) {
         updateTooltipPosition(x, y);
         return;
     }
 
-    currentRadarKey = compoundKey;
+    currentDumbbellKey = compoundKey;
 
-    const headerDiv = document.getElementById('radar-tooltip-header');
+    const headerDiv = document.getElementById('tooltip-header');
     if (headerDiv) {
         headerDiv.innerHTML = `
-            <div class="radar-tooltip-title">${escapeHtml(testInfo.testId)}</div>
-            <div class="radar-tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(testInfo.serving.replace('mcp', 'MCP'))}</div>
+            <div class="tooltip-title">${escapeHtml(testInfo.testId)}</div>
+            <div class="tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(testInfo.serving.replace('mcp', 'MCP'))}</div>
         `;
     }
 
@@ -483,13 +483,13 @@ function showRadarTooltip(testInfo, x, y, compoundKey) {
     tooltipContainer.classList.remove('hidden');
     updateTooltipPosition(x, y);
 
-    if (!radarChartInstance) {
-        radarChartInstance = new DumbbellChart('radar-tooltip-chart', {
+    if (!tooltipChartInstance) {
+        tooltipChartInstance = new DumbbellChart('tooltip-chart', {
             size: 400, height: 300, rowHeight: 20, margin: { top: 15, right: 15, bottom: 15, left: 15 }, hideLegend: true, hideLabels: true, hideSeparators: true, hideZeros: true, hideAxes: true
         });
     }
 
-    radarChartInstance.render({
+    tooltipChartInstance.render({
         labels,
         datasets: [
             { label: 'Unguided', data: unguided, backgroundColor: 'rgba(218, 54, 51, 0.2)', borderColor: '#da3633' },
@@ -519,10 +519,10 @@ function updateTooltipPosition(x, y) {
     tooltipContainer.style.top = `${finalY}px`;
 }
 
-function hideRadarTooltip() {
+function hideTooltipChart() {
     if (hideTimeout) clearTimeout(hideTimeout);
     hideTimeout = setTimeout(() => {
-        currentRadarKey = null;
+        currentDumbbellKey = null;
         tooltipContainer.classList.add('hidden');
         hideTimeout = null;
     }, 50);
