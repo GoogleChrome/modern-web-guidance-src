@@ -147,7 +147,8 @@ export class DumbbellChart {
     // Legend
     if (!this.options.hideLegend) {
       const legendG = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      legendG.setAttribute("transform", `translate(${leftAxis}, 20)`);
+      // Move legend under the chart in the bottom margin
+      legendG.setAttribute("transform", `translate(${leftAxis}, ${height - 25})`);
       
       const unguidedCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       unguidedCircle.setAttribute("cx", "5");
@@ -167,7 +168,7 @@ export class DumbbellChart {
       guidedCircle.setAttribute("cx", "80");
       guidedCircle.setAttribute("cy", "-5");
       guidedCircle.setAttribute("r", "5");
-      guidedCircle.setAttribute("fill", "#238636");
+      guidedCircle.setAttribute("fill", "oklch(65% 0.25 290)");
 
       const gText = document.createElementNS("http://www.w3.org/2000/svg", "text");
       gText.setAttribute("x", "90");
