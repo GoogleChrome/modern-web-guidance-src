@@ -109,7 +109,8 @@ jobs:
 
       - name: Commit, push branch, and open PR
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           FEATURE_ID="${{ inputs.feature_id || 'intl-locale-info' }}"
           SLUG="${{ inputs.slug }}"
@@ -120,8 +121,11 @@ jobs:
           git checkout -b "${BRANCH}"
           git add guides/ harness/tasks/
           git commit -m "Generate guide package for ${FEATURE_ID} [skip ci]"
-          git push -u origin "${BRANCH}"
+          
+          # Use App token for push so it triggers subsequent workflows
+          git push "https://x-access-token:${APP_TOKEN}@github.com/${{ github.repository }}.git" "${BRANCH}" --force
 
+          # Use default GITHUB_TOKEN for PR creation
           gh pr create \
             --title "Guide: ${FEATURE_ID}" \
             --body "$(cat <<'EOF'
