@@ -181,13 +181,26 @@ export class DumbbellChart {
       const items = groups[featureName];
       const rowY = this.options.margin.top + (rowIndex * this.options.rowHeight) + (this.options.rowHeight / 2);
 
-      // Label text for Feature (Feature Name only)
+      // Faint horizontal separator
+      if (rowIndex > 0) {
+        const lineY = this.options.margin.top + (rowIndex * this.options.rowHeight);
+        const sep = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        sep.setAttribute("x1", leftAxis);
+        sep.setAttribute("y1", lineY);
+        sep.setAttribute("x2", scale(100));
+        sep.setAttribute("y2", lineY);
+        sep.setAttribute("stroke", "rgba(255, 255, 255, 0.1)");
+        sep.setAttribute("stroke-width", "1");
+        this.svg.appendChild(sep);
+      }
+
+      // Label text for Feature (Feature Name only) - Moved to the right
       const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      text.setAttribute("x", leftAxis - 10);
+      text.setAttribute("x", scale(100) + 15);
       text.setAttribute("y", rowY);
       text.setAttribute("fill", "#c9d1d9");
       text.setAttribute("font-size", "12");
-      text.setAttribute("text-anchor", "end");
+      text.setAttribute("text-anchor", "start");
       text.setAttribute("alignment-baseline", "middle");
       text.textContent = featureName;
       this.svg.appendChild(text);
