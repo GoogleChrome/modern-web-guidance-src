@@ -202,11 +202,12 @@ export class DumbbellChart {
     }
 
     // Use case colors/shades with gradients
+    // We specify start and end colors so we can create a unique gradient per dumbbell that stretches perfectly!
     const useCaseColors = [
-        { guided: "url(#purple-neon)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }, 
-        { guided: "url(#purple-magik)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }, 
-        { guided: "url(#purple-deep)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }, 
-        { guided: "url(#purple-gold)", unguided: "rgba(255, 255, 255, 0.4)", text: "#fff" }  
+        { start: "oklch(65% 0.25 290)", end: "oklch(75% 0.15 210)", unguided: "rgba(255, 255, 255, 0.4)" }, // Violet to Cyan
+        { start: "oklch(60% 0.28 320)", end: "oklch(70% 0.20 280)", unguided: "rgba(255, 255, 255, 0.4)" }, // Magenta to Lavender
+        { start: "oklch(55% 0.25 295)", end: "oklch(65% 0.20 310)", unguided: "rgba(255, 255, 255, 0.4)" }, // Vivid Grape to Orchid
+        { start: "oklch(70% 0.20 280)", end: "oklch(75% 0.15 270)", unguided: "rgba(255, 255, 255, 0.4)" }  // Lavender to Periwinkle
     ];
 
     // Data Rows
@@ -250,7 +251,34 @@ export class DumbbellChart {
 
           const colorPalette = useCaseColors[itemIndex % useCaseColors.length];
           const isPositive = gVal >= uVal;
-          const lineColor = isPositive ? colorPalette.guided : "#da3633"; // Use palette for guide, fall back to red if regressed
+          
+          // Create a dynamic linear gradient for EACH dumbbell so it stretches across its specific length!
+          const gradId = `dumbbell-grad-${rowIndex}-${itemIndex}`;
+          const linearGrad = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+          linearGrad.setAttribute("id", gradId);
+          linearGrad.setAttribute("gradientUnits", "userSpaceOnUse");
+          // Set endpoints to the actual dumbbell coordinates so the gradient stretches!
+          linearGrad.setAttribute("x1", uX);
+          linearGrad.setAttribute("y1", y);
+          linearGrad.setAttribute("x2", gX);
+          linearGrad.setAttribute("y2", y);
+
+          const stop1 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+          stop1.setAttribute("offset", "0%");
+          stop1.setAttribute("stop-color", colorPalette.start);
+
+          const stop2 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+          stop2.setAttribute("offset", "100%");
+          stop2.setAttribute("stop-color", colorPalette.end);
+
+          linearGrad.appendChild(stop1);
+          linearGrad.appendChild(stop2);
+          
+          const defs = this.svg.querySelector('defs') || document.createElementNS("http://www.w3.org/2000/svg", "defs");
+          if (!defs.parentNode) this.svg.prepend(defs);
+          defs.appendChild(linearGrad);
+
+          const lineColor = isPositive ? `url(#${gradId})` : "#da3633"; // Fall back to red if regressed
 
           // Connecting Line (The Delta)
           const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -263,12 +291,13 @@ export class DumbbellChart {
           line.setAttribute("stroke-linecap", "round");
           this.svg.appendChild(line);
 
-          // To make it an "arrow", draw a triangle at the end
-          if (Math.abs(gX - uX) > 4) {
+          // To make it an "arrow", draw a triangle at the end - offset to edge of dot
+          if (Math.abs(gX - uX) > 6) {
             const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
             const dir = gX > uX ? -1 : 1;
-            poly.setAttribute("points", `${gX},${y} ${gX + (4 * dir)},${y - 3} ${gX + (4 * dir)},${y + 3}`);
-            poly.setAttribute("fill", lineColor);
+            const arrowEndX = gX + (3 * dir); // Stop 3px short of the dot center (edge of radius)
+            poly.setAttribute("points", `${arrowEndX},${y} ${arrowEndX + (4 * dir)},${y - 2.5} ${arrowEndX + (4 * dir)},${y + 2.5}`);
+            poly.setAttribute("fill", colorPalette.end); // used arrow point color
             this.svg.appendChild(poly);
           }
 
