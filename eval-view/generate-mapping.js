@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import matter from 'gray-matter';
 
 const guidesDir = path.resolve('../guides');
 const outputFilePath = path.resolve('./features_mapping.js');
@@ -14,17 +15,11 @@ function scanDir(dir) {
        const guidePath = path.join(subDir, 'guide.md');
        if (fs.existsSync(guidePath)) {
           const text = fs.readFileSync(guidePath, 'utf8');
-          const yamlMatch = text.match(/---\n([\s\S]*?)\n---/);
-          if (yamlMatch) {
-              const yaml = yamlMatch[1];
-              const featureMatch = yaml.match(/web-feature-ids:\s*\n((?:\s*- [^\n]+\n?)+)/);
-              if (featureMatch) {
-                  const features = featureMatch[1].split('\n')
-                      .map(line => line.replace(/^\s*- /, '').trim())
-                      .filter(Boolean);
-                  if (features.length > 0) {
-                      mapping[item.name] = features;
-                  }
+          const parsed = matter(text);
+          if (parsed.data && parsed.data['web-feature-ids']) {
+              const features = parsed.data['web-feature-ids'];
+              if (Array.isArray(features) && features.length > 0) {
+                  mapping[item.name] = features;
               }
           }
        }
