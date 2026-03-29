@@ -387,5 +387,7 @@ export class DumbbellChart {
 
       currentY += rowHeight; // Shift Y down for the next feature row
     });
+    
+    return height; // Return height so parent can use it to avoid cutting things off!
   }
 }

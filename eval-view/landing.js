@@ -504,8 +504,9 @@ function updateTooltipPosition(x, y) {
     let finalY = y + offset;
 
     // Boundary check
-    const tooltipWidth = 330; // 300px chart + padding
-    const tooltipHeight = 330;
+    // Boundary check using dynamic dimensions to avoid results being cut off
+    const tooltipWidth = tooltipContainer.clientWidth || 330; 
+    const tooltipHeight = tooltipContainer.clientHeight || 330;
     
     if (finalX + tooltipWidth > window.innerWidth) {
         finalX = x - tooltipWidth - offset;
