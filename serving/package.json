@@ -11,7 +11,7 @@
   "files": [
     "mcp-server",
     "build",
-    ".mcp-data",
+    ".modern-web-data",
     "AGENTS.md",
     "README.md"
   ],
@@ -20,10 +20,14 @@
     "prepublishOnly": "npm run build",
     "build": "node scripts/build-guides.ts",
     "build:megaskill": "node scripts/build-megaskill.ts",
+    "build-dist": "node --experimental-strip-types */build-dist.ts",
+    "publish-skills": "node --experimental-strip-types skills-cli/publish-skills.ts",
     "start": "node mcp-server/index.ts",
     "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
-    "test": "node scripts/build-guides.ts && vitest run",
-    "typecheck": "npm run build && tsc --noEmit"
+    "test": "node scripts/build-guides.ts && vitest run && node --test skills-cli/test-dist.ts",
+    "typecheck": "npm run build && tsc --noEmit",
+    "benchmark:rag": "node --experimental-strip-types benchmarks/rag/eval-rag-suite.ts",
+    "plot:serve": "npx serve benchmarks/data"
   },
   "keywords": [],
   "author": "",
@@ -38,7 +42,11 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/gh-pages": "^6.1.0",
     "@types/node": "^25.5.0",
+    "esbuild": "^0.25.0",
+    "gh-pages": "^6.3.0",
+    "gpt4all": "^4.0.0",
     "gray-matter": "^4.0.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"

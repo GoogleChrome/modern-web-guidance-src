@@ -2,9 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const rootDir = path.resolve(__dirname, '..');
+import { rootDir, baseAppsDir, tasksDir } from '../lib/paths.ts';
 
 import { generateNegative } from './negative-gen.ts';
 import { generateGrader, generateGraderWithContext } from './grader-gen.ts';
@@ -34,8 +32,6 @@ import {
   classifyGuide,
   scanAllGuides
 } from '../harness/lib/utils.ts';
-
-const TASKS_DIR = path.join(rootDir, 'harness', 'tasks');
 
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
@@ -229,7 +225,7 @@ async function generatePrompts(targetDir: string, baseApp: string): Promise<void
     fs.cpSync(targetDir, workDir, { recursive: true });
 
     // Copy the base app so Gemini can see what app the prompts target
-    const baseAppHtml = path.join(rootDir, 'harness', 'base_apps', baseApp, 'index.html');
+    const baseAppHtml = path.join(baseAppsDir, baseApp, 'index.html');
     if (fs.existsSync(baseAppHtml)) {
       fs.copyFileSync(baseAppHtml, path.join(workDir, 'base-app.html'));
     }
@@ -250,16 +246,20 @@ async function generatePrompts(targetDir: string, baseApp: string): Promise<void
     const userPrompt = `Read ${GUIDE_FILE} to understand what web development guidance is being provided.
 Read base-app.html to understand the existing web app (the "${baseApp}" app) that the developer is working on.
 
-Generate one or two realistic test prompts... the kind of thing a web developer would say to a AI coding assistant
-to accomplish the goal described in this guide. Write these to a file called ${PROMPTS_FILE}.
+Generate 1–4 realistic test prompts that a web developer would send to an AI coding assistant to accomplish the goal described in this guide. Write these to a file called ${PROMPTS_FILE}.
 
-The prompts should:
-- Assume the project is the ${baseApp} app as seen in base-app.html.
-- Vary in specificity: include vague developer requests and specific technical asks
-- Be phrased as a developer asking an AI for help with their existing web app. lowercase text, occasional typos, etc.
-- Not reference the guide itself or indicate that guidance exists
-- Don't reference the name of the base app.. a real developer wouldn't do that.
-- Each be on its own line, prefixed with "- "
+Rules:
+- Write prompts as a developer talking to an AI coding assistant — casual, lowercase, sometimes vague.
+- Phrase prompts as ACTION REQUESTS or directives (e.g. "add X", "can you build Y", "implement Z"). NEVER phrase them as advisory questions (e.g. "how can I?", "what's the best way to?", "can you explain?") — the agent must implement, not just explain.
+- The first prompt is the most important: it must be specific enough that an agent implementing it would produce a grader-testable result.
+- Vary specificity: include at least one vague/intent-based prompt and one specific/technical ask.
+- Assume the developer is working on the existing app seen in base-app.html. Reference its real assets and content where relevant.
+- Do NOT mention the guide itself or indicate that guidance exists.
+- Do NOT name the base app (e.g. "${baseApp}") — a real developer wouldn't refer to it that way.
+- Do NOT tell the agent which web API or CSS property to use unless a real developer would naturally do so.
+- Each prompt must be on its own line, prefixed with "- ".
+
+- IMPORTANT: Do NOT use bash or shell commands (like cat, echo, or heredocs) to write files. You MUST use your built-in structured file editing tools (e.g. write_file or replace) to create the file. Heredoc strings will cause bash parsing errors.
 
 Only create the ${PROMPTS_FILE} file. Do not modify any other files.`;
 
@@ -302,8 +302,8 @@ grader: ${guideName}
 ${prompt}
 `;
 
-  fs.mkdirSync(TASKS_DIR, { recursive: true });
-  fs.writeFileSync(path.join(TASKS_DIR, `${taskName}.md`), taskContent);
+  fs.mkdirSync(tasksDir, { recursive: true });
+  fs.writeFileSync(path.join(tasksDir, `${taskName}.md`), taskContent);
   console.log(cGreen(`✅ Created task: harness/tasks/${taskName}.md`));
 
   return { taskName, baseApp: 'daily-grind', prompt };
@@ -339,7 +339,7 @@ async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<s
   const results: Record<string, { passed: number; total: number }> = {};
 
   // 1. Grade base app
-  const baseAppHtml = path.join(rootDir, 'harness', 'base_apps', taskInfo.baseApp, 'index.html');
+  const baseAppHtml = path.join(baseAppsDir, taskInfo.baseApp, 'index.html');
   if (fs.existsSync(baseAppHtml)) {
     const preResults = await gradeOutput(baseAppHtml, graderPath, path.join(targetDir, 'test-app-results', 'pre-grade-report'));
     if (preResults) results['pre'] = preResults;

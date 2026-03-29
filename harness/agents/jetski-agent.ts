@@ -2,21 +2,20 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import puppeteer from 'puppeteer-core';
+import { fileURLToPath } from 'url';
 import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
-import { config, Agents } from '../config.ts';
+import { config, Agents, Serving } from '../config.ts';
 
 import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, exportTrajectories, watchLogFile } from '../lib/agent-shared.ts';
-import { MCP_LOG_FILE } from '../../constants.ts';
+import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 // Usage: node jetski-agent.ts <prompt> <runType> <targetDir> <templateDir>
-const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-agent.ts');
-
 /**
  * Sets up an isolated HOME and work directory to ensure test isolation.
  * @returns {string} The path to the temporary work directory.
  */
-function setupIsolatedWorkDir(): string {
+function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir: string): string {
   const tempHome = createIsolatedHome('ghh-jetski');
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
@@ -77,21 +76,23 @@ function setupIsolatedWorkDir(): string {
   // Set environment variables
   process.env.HOME = tempHome;
   process.env.JETSKI_DIR = jetskiDest;
-  process.env.MCP_LOG_DIR = targetDir;
+  process.env.MODERN_WEB_LOG_DIR = targetDir;
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
-    if (config.suite.enableSkills) {
-      copySkills(tempHome, Agents.JETSKI)
-    }
+    const approach = config.suite.serving;
 
-    updateMcpConfig(
-      path.join(jetskiDest, 'mcp_config.json'),
-      config.suite.mcpServersToEnable,
-      config.environment.modernWebServerPath,
-      config.environment.mcpApiKey,
-      Agents.JETSKI
-    );
+    if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
+      copySkills(tempHome, Agents.JETSKI, approach === Serving.SKILLS_CLI);
+    } else if (approach === Serving.MCP) {
+      updateMcpConfig(
+        path.join(jetskiDest, 'mcp_config.json'),
+        config.suite.mcpServersToEnable,
+        config.environment.modernWebServerPath,
+        config.environment.mcpApiKey,
+        Agents.JETSKI
+      );
+    }
   }
 
   return workDir;
@@ -132,7 +133,7 @@ async function bypassInitialDialogs(page: Page): Promise<void> {
     for (let i = 0; i < 15; i++) {
       const nextButton = await page.evaluateHandle(() => {
         const buttons = Array.from(document.querySelectorAll('button, a.monaco-button, .monaco-text-button, [role="button"]'));
-        const targetTexts = ['Next', 'Get Started', 'Done', 'Accept', 'Continue', 'Skip', 'Trust'];
+        const targetTexts = ['Get Started', 'Done', 'Accept', 'Continue', 'Skip', 'Trust'];
         return buttons.find(b => {
           const text = (b as HTMLElement).innerText || '';
           return targetTexts.some(t => text.includes(t));
@@ -266,7 +267,8 @@ async function startJetski(directory: string, profileDir: string): Promise<void>
 }
 
 async function run(): Promise<void> {
-  const workDir = setupIsolatedWorkDir();
+  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-agent.ts');
+  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
   let stopWatchingMcpLog = () => { };
 
   if (!workDir || !fs.existsSync(workDir)) {
@@ -327,7 +329,7 @@ async function run(): Promise<void> {
       console.log(`Jetski info already exists at: ${jetskiInfoPath}`);
     }
 
-    stopWatchingMcpLog = watchLogFile(path.join(targetDir, MCP_LOG_FILE));
+    stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
 
     const inputSelector = '[contenteditable="true"][role="textbox"]';
     const sendButtonSelector = '[data-tooltip-id="input-send-button-send-tooltip"]';
@@ -468,4 +470,7 @@ async function run(): Promise<void> {
   }
 }
 
-run();
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  run();
+}

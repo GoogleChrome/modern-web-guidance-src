@@ -8,6 +8,9 @@ export interface RunResult {
   runNumber: number;
   results: ScenarioCheck[];
   guidesUsed?: string[];
+  guidanceToolsUsed?: string[];
+  expectedGuidanceTool?: string;
+  expectedGuide?: string;
 }
 
 export interface Metrics {
@@ -24,11 +27,14 @@ export interface Metrics {
     guideUsageRate?: number;
     guideUsageCount?: number;
     totalGuidedRuns?: number;
+    toolActivationRate?: number;
+    toolActivationCount?: number;
   };
   testStats: Record<string, {
     medianPassRate: number;
     runPassRates: number[];
     runsUsingGuide?: number;
+    runsWithToolActivation?: number;
     runCount?: number;
     passedChecks: number;
     totalChecks: number;
@@ -65,6 +71,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     medianPassRate: number;
     runPassRates: number[];
     runsUsingGuide?: number;
+    runsWithToolActivation?: number;
     runCount?: number;
     passedChecks: number;
     totalChecks: number;
@@ -90,13 +97,21 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       : passRates[mid];
 
     let guideUsageCount = 0;
-    const [, guide, runType] = name.split(' - ');
+    let toolActivationCount = 0;
+    const [, , runType] = name.split(' - ');
 
     if (runType === 'guided') {
       runs.forEach(run => {
         const guidesUsed = run.guidesUsed || [];
-        if (guidesUsed.includes(guide)) {
+        const expectedGuide = run.expectedGuide;
+        if (expectedGuide && guidesUsed.includes(expectedGuide)) {
           guideUsageCount++;
+        }
+
+        const toolsUsed = run.guidanceToolsUsed || [];
+        const expectedTool = run.expectedGuidanceTool;
+        if (expectedTool && toolsUsed.includes(expectedTool)) {
+          toolActivationCount++;
         }
       });
     }
@@ -105,6 +120,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       medianPassRate: Math.round(median),
       runPassRates: passRates.map(r => Math.round(r)),
       runsUsingGuide: runType === 'guided' ? guideUsageCount : undefined,
+      runsWithToolActivation: runType === 'guided' ? toolActivationCount : undefined,
       runCount: runs.length,
       passedChecks,
       totalChecks
@@ -124,6 +140,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let passed = 0;
     let total = 0;
     let guideUsageCount = 0;
+    let toolActivationCount = 0;
     let totalGuidedRuns = 0;
 
     keys.forEach(k => {
@@ -136,6 +153,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
 
         if (runType === 'guided') {
           guideUsageCount += stats.runsUsingGuide || 0;
+          toolActivationCount += stats.runsWithToolActivation || 0;
           totalGuidedRuns += stats.runCount || 0;
         }
       }
@@ -148,6 +166,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       rate: total ? Math.round((passed / total) * 100) : 0,
       guideUsageCount,
       totalGuidedRuns,
+      toolActivationCount,
+      toolActivationRate: totalGuidedRuns ? Math.round((toolActivationCount / totalGuidedRuns) * 100) : 0,
       guideUsageRate: totalGuidedRuns ? Math.round((guideUsageCount / totalGuidedRuns) * 100) : 0
     };
   };
@@ -168,7 +188,9 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       runsPerTest,
       guideUsageRate: gStats.guideUsageRate,
       guideUsageCount: gStats.guideUsageCount,
-      totalGuidedRuns: gStats.totalGuidedRuns
+      totalGuidedRuns: gStats.totalGuidedRuns,
+      toolActivationRate: gStats.toolActivationRate,
+      toolActivationCount: gStats.toolActivationCount
     },
     testStats,
     sortedKeys
