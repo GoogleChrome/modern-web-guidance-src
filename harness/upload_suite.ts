@@ -1,4 +1,8 @@
 import { execSync } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+import { cRed, cGreen, cCyan, cBold } from '../lib/colors.ts';
+import { resultsDir as baseResultsDir } from '../lib/paths.ts';
 
 const WORKTREE_DIR = path.resolve('../.worktrees/suite-upload');
 
