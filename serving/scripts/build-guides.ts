@@ -23,6 +23,28 @@ interface UseCase {
 }
 
 async function processGuides() {
+  const targetGuidePath = process.argv.slice(2).find(arg => !arg.startsWith("--"));
+  const force = process.argv.includes("--force");
+
+  // Scan guides first to see if we even need to run
+  const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
+
+  if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE)) {
+    const outputFileMTime = fs.statSync(OUTPUT_FILE).mtimeMs;
+    let anyGuideNewer = false;
+    for (const inv of readyGuides) {
+      const guidePath = path.join(inv.dir, "guide.md");
+      if (fs.existsSync(guidePath) && fs.statSync(guidePath).mtimeMs > outputFileMTime) {
+        anyGuideNewer = true;
+        break;
+      }
+    }
+    if (!anyGuideNewer) {
+      console.log("No guides modified since last build. Skipping guide build.");
+      return;
+    }
+  }
+
   // Ensure clean build/guides exists
   if (fs.existsSync(BUILD_GUIDES_DIR)) {
     fs.rmSync(BUILD_GUIDES_DIR, { recursive: true, force: true });
@@ -69,9 +91,6 @@ async function processGuides() {
     await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
   } else {
     // Batch process all guides
-    console.log(`Scanning for guides in: ${GUIDES_DIR}`);
-    const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
-
     if (readyGuides.length === 0) {
       console.log("No guides found.");
     }
