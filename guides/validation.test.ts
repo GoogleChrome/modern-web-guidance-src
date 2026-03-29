@@ -13,10 +13,6 @@ const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 
 describe('Guides Validation', () => {
   const guides = scanAllGuides();
-
-  it('Intentional Failure', () => {
-    assert.fail('Intentional failure for reporter testing');
-  });
   
   if (guides.length === 0) {
     test('No guides found', () => {
