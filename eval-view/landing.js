@@ -485,7 +485,7 @@ function showRadarTooltip(testInfo, x, y, compoundKey) {
 
     if (!radarChartInstance) {
         radarChartInstance = new DumbbellChart('radar-tooltip-chart', {
-            size: 400, rowHeight: 20, margin: { top: 10, right: 10, bottom: 20, left: 120 }, hideLegend: true
+            size: 400, rowHeight: 20, margin: { top: 15, right: 15, bottom: 15, left: 15 }, hideLegend: true, hideLabels: true
         });
     }
 

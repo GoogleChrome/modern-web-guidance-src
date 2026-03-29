@@ -241,15 +241,17 @@ export class DumbbellChart {
       }
 
       // Label text for Feature (Feature Name only) - Moved to the right
-      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      text.setAttribute("x", scale(100) + 15);
-      text.setAttribute("y", rowY);
-      text.setAttribute("fill", "#c9d1d9");
-      text.setAttribute("font-size", "12");
-      text.setAttribute("text-anchor", "start");
-      text.setAttribute("alignment-baseline", "middle");
-      text.textContent = featureName;
-      this.svg.appendChild(text);
+      if (!this.options.hideLabels) {
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("x", scale(100) + 15);
+        text.setAttribute("y", rowY);
+        text.setAttribute("fill", "#c9d1d9");
+        text.setAttribute("font-size", "12");
+        text.setAttribute("text-anchor", "start");
+        text.setAttribute("alignment-baseline", "middle");
+        text.textContent = featureName;
+        this.svg.appendChild(text);
+      }
 
       const offsetStep = 10;
       const startOffset = -((items.length - 1) / 2) * offsetStep;
