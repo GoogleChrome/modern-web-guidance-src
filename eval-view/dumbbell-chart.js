@@ -65,11 +65,16 @@ export class DumbbellChart {
             featureName = featuresMap[usecaseFolder][0]; // take primary feature
         }
 
+        const uVal = unguidedSet.data[i] || 0;
+        const gVal = guidedSet.data[i] || 0;
+        
+        if (this.options.hideZeros && uVal === 0 && gVal === 0) return;
+
         if (!groups[featureName]) groups[featureName] = [];
         groups[featureName].push({
             useCaseId,
-            uVal: unguidedSet.data[i] || 0,
-            gVal: guidedSet.data[i] || 0,
+            uVal,
+            gVal,
             originalIndex: i
         });
     });
