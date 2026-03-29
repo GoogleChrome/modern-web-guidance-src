@@ -19,11 +19,11 @@ To allow these controls to automatically shrink or grow to fit their content (in
 
 Setting `field-sizing: content` on inputs, selects, or textareas allows them to resize dynamically as the user types or selects options. However, you must account for inherited styling, layout defaults, and minimum/maximum constraints to ensure a robust user experience.
 
-MANDATORY: You must set both `min-inline-size` (or `min-width`) and `max-inline-size` (or `max-width`) alongside `field-sizing: content` on text inputs. A minimum size prevents the input from collapsing to a width of zero when empty (making it unclickable), and a maximum size ensures it doesn't expand indefinitely and break the page layout.
+To prevent layout issues, it is recommended to set both `min-inline-size` (or `min-width`) and `max-inline-size` (or `max-width`) alongside `field-sizing: content` on text inputs. A minimum size prevents the input from collapsing to a width of zero when empty (making it unclickable), and a maximum size ensures it doesn't expand indefinitely and break the page layout.
 
-MANDATORY: For textareas, allowing horizontal auto-sizing can cause a jarring UX (e.g., a textarea with a long placeholder will abruptly shrink horizontally when the user types a single character). To prevent this, apply an explicit width (like `width: 100%`) to the textarea. This forces the textarea to maintain a stable horizontal width while still auto-sizing vertically as content wraps.
+For textareas, allowing horizontal auto-sizing can cause a jarring UX (e.g., a textarea with a long placeholder will abruptly shrink horizontally when the user types a single character). To prevent this, apply an explicit width (like `width: 100%`) to the textarea. This forces the textarea to maintain a stable horizontal width while still auto-sizing vertically as content wraps.
 
-MANDATORY: You must set a `max-inline-size` (or `max-width`) on `<select>` elements using `field-sizing: content` to ensure that extremely long selected options do not break the page layout.
+It is recommended to set a `max-inline-size` (or `max-width`) on `<select>` elements using `field-sizing: content` to ensure that extremely long selected options do not break the page layout.
 
 ```css
 /* Applies horizontal auto-sizing to inputs */
