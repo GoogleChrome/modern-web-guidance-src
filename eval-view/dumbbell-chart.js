@@ -22,7 +22,7 @@ export class DumbbellChart {
     if (!this.tooltip && document.body) {
       this.tooltip = document.createElement('div');
       this.tooltip.id = 'dumbbell-tooltip';
-      this.tooltip.className = 'radar-tooltip';
+      this.tooltip.className = 'chart-tooltip';
       document.body.appendChild(this.tooltip);
     }
   }

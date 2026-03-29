@@ -1,4 +1,4 @@
-import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateRadarData } from './utils.js';
+import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
 let allTestData = {}; // Cache all test data by testId
@@ -477,7 +477,7 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
         `;
     }
 
-    const { labels, guided, unguided } = calculateRadarData(testInfo.data.results);
+    const { labels, guided, unguided } = calculateChartData(testInfo.data.results);
     if (labels.length < 1) return;
 
     tooltipContainer.classList.remove('hidden');

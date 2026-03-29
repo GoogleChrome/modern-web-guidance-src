@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateRadarData } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
@@ -74,7 +74,7 @@ async function loadDashboardData(testId) {
         renderTestHeader(testId, jetskiVersion, timestamp, data);
         renderSummary(data);
         renderGrid(data, testId);
-        renderRadarChart(data, testId);
+        renderDashboardDumbbellChart(data, testId);
 
         // Check for deep link to modal
         const params = new URLSearchParams(window.location.search);
@@ -880,10 +880,10 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     }
 }
 
-function renderRadarChart(data, testId) {
-    const { labels, guided, unguided } = calculateRadarData(data.results);
+function renderDashboardDumbbellChart(data, testId) {
+    const { labels, guided, unguided } = calculateChartData(data.results);
     
-    if (labels.length < 3) {
+    if (labels.length < 1) {
         document.getElementById('chart-section').classList.add('hidden');
         return;
     }

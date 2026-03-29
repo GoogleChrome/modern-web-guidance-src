@@ -56,7 +56,7 @@ export function timeAgo(date) {
     return rtf.format(-Math.floor(diff / u.s), u.name);
 }
 
-export function calculateRadarData(results) {
+export function calculateChartData(results) {
     const apps = {};
     const taskNames = {};
     
