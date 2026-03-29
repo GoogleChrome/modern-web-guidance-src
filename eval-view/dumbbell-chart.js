@@ -95,6 +95,7 @@ export class DumbbellChart {
     gradients.forEach(grad => {
         const linearGrad = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
         linearGrad.setAttribute("id", grad.id);
+        linearGrad.setAttribute("gradientUnits", "userSpaceOnUse");
         linearGrad.setAttribute("x1", "0%");
         linearGrad.setAttribute("y1", "0%");
         linearGrad.setAttribute("x2", "100%");
