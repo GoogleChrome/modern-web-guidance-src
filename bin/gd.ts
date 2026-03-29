@@ -37,7 +37,7 @@ function listGuideDirs(): string[] {
 const completion = omelette('gd <command> <arg1> <arg2>');
 
 completion.on('command', ({ reply }) => {
-  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'baselinestatus', 'setup-completion', 'gen-negative-suite']);
+  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'gen-guide', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'baselinestatus', 'setup-completion', 'gen-negative-suite']);
 });
 
 completion.on('arg1', ({ before, reply }) => {
@@ -77,6 +77,8 @@ const { positionals, values } = parseArgs({
     guided: { type: 'boolean' },
     verbose: { type: 'boolean' },
     usecases: { type: 'boolean' },
+    category: { type: 'string' },
+    slug: { type: 'string' },
   },
   allowPositionals: true,
   strict: false,
@@ -116,6 +118,7 @@ ${cBold('Guidance CLI')}
 ${cCyan('Usage:')} gd <command> [options]
 
 ${cBold('Guide Development:')}
+  ${cCyan('gen-guide')} <id>         Generate guide.md, demo.html, expectations.md from a web-feature-id
   ${cCyan('audit')}                  Show status of all guides
   ${cCyan('dev')} <dir> [options]    Auto-generate and calibrate guide artifacts
 
@@ -184,6 +187,16 @@ ${cBold('Options:')}
         verbose: !!values.verbose,
       });
       process.exit(success ? 0 : 1);
+    }
+
+    case 'gen-guide': {
+      const featureId = requireArg(positionals[1], 'gd gen-guide <web-feature-id> [--category <cat>] [--slug <slug>]');
+      const { generateGuide } = await import('../guides/guide-gen.ts');
+      await generateGuide(featureId, {
+        category: values.category as string | undefined,
+        slug: values.slug as string | undefined,
+      });
+      break;
     }
 
     // not documented because it's UBER-powerful.
