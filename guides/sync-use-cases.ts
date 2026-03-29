@@ -263,10 +263,6 @@ export function buildUseCaseMaps(issues: any[]): { nameToIssueMap: Map<string, a
   return { nameToIssueMap, subdirToIssueMap };
 }
 
-/**
- * Validate a guide file's frontmatter and content.
- */
-
 
 // --- GitHub API ---
 
@@ -536,12 +532,6 @@ async function syncIssue(
     }
   }
 }
-
-/**
- * Processes guide inventory entries: validates frontmatter, checks for missing
- * paired files, and collects feature ID sets. Returns structured data for the
- * GitHub sync step without making any API calls.
- */
 
 async function processUseCases(
   featureToIssueMap: Map<string, FeatureIssueData>,
