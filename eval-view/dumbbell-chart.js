@@ -39,7 +39,35 @@ export class DumbbellChart {
     let guidedSet = datasets.find(d => d.label.toLowerCase() === 'guided') || { data: new Array(labels.length).fill(0) };
 
     const width = this.options.size;
-    const height = Math.max(250, this.options.margin.top + (labels.length * this.options.rowHeight) + this.options.margin.bottom);
+
+    // Group items by Feature Name
+    const groups = {};
+    labels.forEach((label, i) => {
+        let appName = label;
+        let useCaseId = "";
+        const match = label.match(/^(.*) \(([^)]+)\)$/);
+        if (match) {
+            appName = match[1];
+            useCaseId = match[2];
+        } else {
+            // Fallback for key split by ' - ' which might turn into "appName - guide" somewhere
+            const parts = label.split(' - ');
+            if (parts.length >= 2) {
+                appName = parts[0];
+                useCaseId = parts.slice(1).join(' - ');
+            }
+        }
+        if (!groups[appName]) groups[appName] = [];
+        groups[appName].push({
+            useCaseId,
+            uVal: unguidedSet.data[i] || 0,
+            gVal: guidedSet.data[i] || 0,
+            originalIndex: i
+        });
+    });
+
+    const featureNames = Object.keys(groups).sort();
+    const height = Math.max(250, this.options.margin.top + (featureNames.length * this.options.rowHeight) + this.options.margin.bottom);
 
     this.svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     this.svg.setAttribute("width", "100%");
@@ -132,105 +160,117 @@ export class DumbbellChart {
       });
     }
 
+    // Use case colors/shades to distinguish them
+    const useCaseColors = [
+        { guided: "#238636", unguided: "#8b949e", text: "#fff" }, // Standard Green
+        { guided: "#1f6feb", unguided: "#8b949e", text: "#fff" }, // Blue
+        { guided: "#d29922", unguided: "#8b949e", text: "#fff" }, // Yellow
+        { guided: "#8957e5", unguided: "#8b949e", text: "#fff" }, // Purple
+    ];
+
     // Data Rows
-    labels.forEach((label, i) => {
-      let useCaseId = label;
-      const match = label.match(/\(([^)]+)\)$/);
-      if (match) useCaseId = match[1];
+    featureNames.forEach((featureName, rowIndex) => {
+      const items = groups[featureName];
+      const rowY = this.options.margin.top + (rowIndex * this.options.rowHeight) + (this.options.rowHeight / 2);
 
-      const y = this.options.margin.top + (i * this.options.rowHeight) + (this.options.rowHeight / 2);
-
-      const uVal = unguidedSet.data[i] || 0;
-      const gVal = guidedSet.data[i] || 0;
-      const uX = scale(uVal);
-      const gX = scale(gVal);
-
-      // Label text
+      // Label text for Feature (Feature Name only)
       const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
       text.setAttribute("x", leftAxis - 10);
-      text.setAttribute("y", y);
+      text.setAttribute("y", rowY);
       text.setAttribute("fill", "#c9d1d9");
       text.setAttribute("font-size", "12");
       text.setAttribute("text-anchor", "end");
       text.setAttribute("alignment-baseline", "middle");
-      text.textContent = useCaseId;
+      text.textContent = featureName;
       this.svg.appendChild(text);
 
-      // Connecting Line (The Delta)
-      const isPositive = gVal >= uVal;
-      const lineColor = isPositive ? "#238636" : "#da3633"; // Green if positive, Red if negative
-      
-      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      line.setAttribute("x1", uX);
-      line.setAttribute("y1", y);
-      line.setAttribute("x2", gX);
-      line.setAttribute("y2", y);
-      line.setAttribute("stroke", lineColor);
-      line.setAttribute("stroke-width", "4");
-      line.setAttribute("stroke-linecap", "round");
-      this.svg.appendChild(line);
+      const offsetStep = 6;
+      const startOffset = -((items.length - 1) / 2) * offsetStep;
 
-      // To make it an "arrow", draw a triangle at the end
-      if (Math.abs(gX - uX) > 5) {
-        const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-        // simple arrowhead
-        const dir = gX > uX ? -1 : 1;
-        poly.setAttribute("points", `${gX},${y} ${gX + (5 * dir)},${y - 4} ${gX + (5 * dir)},${y + 4}`);
-        poly.setAttribute("fill", lineColor);
-        this.svg.appendChild(poly);
-      }
+      items.forEach((item, itemIndex) => {
+          const y = rowY + startOffset + (itemIndex * offsetStep);
+          const uVal = item.uVal;
+          const gVal = item.gVal;
+          const uX = scale(uVal);
+          const gX = scale(gVal);
 
-      // Unguided Dot (Baseline)
-      const uDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      uDot.setAttribute("cx", uX);
-      uDot.setAttribute("cy", y);
-      uDot.setAttribute("r", "5");
-      uDot.setAttribute("fill", "#161b22"); // match bg so it's hollow
-      uDot.setAttribute("stroke", "#8b949e"); // grey baseline
-      uDot.setAttribute("stroke-width", "2");
-      this.svg.appendChild(uDot);
+          const colorPalette = useCaseColors[itemIndex % useCaseColors.length];
+          const isPositive = gVal >= uVal;
+          const lineColor = isPositive ? colorPalette.guided : "#da3633"; // Use palette for guide, fall back to red if regressed
 
-      // Guided Dot (Outcome)
-      const gDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      gDot.setAttribute("cx", gX);
-      gDot.setAttribute("cy", y);
-      gDot.setAttribute("r", "5");
-      gDot.setAttribute("fill", lineColor);
-      this.svg.appendChild(gDot);
+          // Connecting Line (The Delta)
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          line.setAttribute("x1", uX);
+          line.setAttribute("y1", y);
+          line.setAttribute("x2", gX);
+          line.setAttribute("y2", y);
+          line.setAttribute("stroke", lineColor);
+          line.setAttribute("stroke-width", "3"); // slightly thinner to fit multiple
+          line.setAttribute("stroke-linecap", "round");
+          this.svg.appendChild(line);
 
-      // Hit area for tooltip
-      const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      hitArea.setAttribute("x", 0);
-      hitArea.setAttribute("y", y - this.options.rowHeight / 2);
-      hitArea.setAttribute("width", width);
-      hitArea.setAttribute("height", this.options.rowHeight);
-      hitArea.setAttribute("fill", "transparent");
-      
-      hitArea.onmousemove = (e) => {
-        if (!this.tooltip) return;
-        const delta = Math.round(gVal - uVal);
-        const deltaColor = delta >= 0 ? "#7ee787" : "#ffa198";
-        const deltaSign = delta > 0 ? "+" : "";
-        
-        this.tooltip.style.display = 'block';
-        this.tooltip.style.left = (e.clientX + 15) + 'px';
-        this.tooltip.style.top = (e.clientY + 15) + 'px';
-        this.tooltip.innerHTML = `
-            <div style="color: #fff; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">${useCaseId}</div>
-            <div style="margin-bottom: 6px; font-size: 14px;"><strong>Delta: </strong><span style="color: ${deltaColor}; font-weight: bold;">${deltaSign}${delta}%</span></div>
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: 12px; color: #8b949e;">
-                <span>Unguided: ${Math.round(uVal)}%</span>
-                <span>Guided: ${Math.round(gVal)}%</span>
-            </div>
-        `;
-      };
-      
-      hitArea.onmouseleave = () => { if (this.tooltip) this.tooltip.style.display = 'none'; };
-      if (guidedSet.onClick) {
+          // To make it an "arrow", draw a triangle at the end
+          if (Math.abs(gX - uX) > 4) {
+            const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+            const dir = gX > uX ? -1 : 1;
+            poly.setAttribute("points", `${gX},${y} ${gX + (4 * dir)},${y - 3} ${gX + (4 * dir)},${y + 3}`);
+            poly.setAttribute("fill", lineColor);
+            this.svg.appendChild(poly);
+          }
+
+          // Unguided Dot (Baseline)
+          const uDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          uDot.setAttribute("cx", uX);
+          uDot.setAttribute("cy", y);
+          uDot.setAttribute("r", "3");
+          uDot.setAttribute("fill", "#161b22");
+          uDot.setAttribute("stroke", colorPalette.unguided);
+          uDot.setAttribute("stroke-width", "1.5");
+          this.svg.appendChild(uDot);
+
+          // Guided Dot (Outcome)
+          const gDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          gDot.setAttribute("cx", gX);
+          gDot.setAttribute("cy", y);
+          gDot.setAttribute("r", "3");
+          gDot.setAttribute("fill", lineColor);
+          this.svg.appendChild(gDot);
+
+          // Hit area for tooltip (covers the specific sub-line)
+          const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          hitArea.setAttribute("x", leftAxis); // only over the chart area
+          hitArea.setAttribute("y", y - (offsetStep / 2));
+          hitArea.setAttribute("width", width - this.options.margin.left - this.options.margin.right);
+          hitArea.setAttribute("height", offsetStep);
+          hitArea.setAttribute("fill", "transparent");
           hitArea.style.cursor = "pointer";
-          hitArea.onclick = () => guidedSet.onClick(i, 'Guided');
-      }
-      this.svg.appendChild(hitArea);
+          
+          hitArea.onmousemove = (e) => {
+            if (!this.tooltip) return;
+            const delta = Math.round(gVal - uVal);
+            const deltaColor = delta >= 0 ? "#7ee787" : "#ffa198";
+            const deltaSign = delta > 0 ? "+" : "";
+            
+            this.tooltip.style.display = 'block';
+            this.tooltip.style.left = (e.clientX + 15) + 'px';
+            this.tooltip.style.top = (e.clientY + 15) + 'px';
+            this.tooltip.innerHTML = `
+                <div style="color: #fff; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">${featureName}</div>
+                <div style="margin-bottom: 4px; font-size: 13px; color: ${lineColor}; font-weight: 500;">Variant: ${item.useCaseId || "Default"}</div>
+                <div style="margin-bottom: 6px; font-size: 14px;"><strong>Delta: </strong><span style="color: ${deltaColor}; font-weight: bold;">${deltaSign}${delta}%</span></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: 12px; color: #8b949e;">
+                    <span>Unguided: ${Math.round(uVal)}%</span>
+                    <span>Guided: ${Math.round(gVal)}%</span>
+                </div>
+            `;
+          };
+          
+          hitArea.onmouseleave = () => { if (this.tooltip) this.tooltip.style.display = 'none'; };
+          if (guidedSet.onClick) {
+              hitArea.onclick = () => guidedSet.onClick(item.originalIndex, 'Guided');
+          }
+          this.svg.appendChild(hitArea);
+      });
     });
   }
 }
