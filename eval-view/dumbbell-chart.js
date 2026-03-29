@@ -148,7 +148,7 @@ export class DumbbellChart {
     if (!this.options.hideLegend) {
       const legendG = document.createElementNS("http://www.w3.org/2000/svg", "g");
       // Move legend under the chart on the right side of the x-axis to prevent overlap
-      legendG.setAttribute("transform", `translate(${scale(100) - 160}, ${height - 25})`);
+      legendG.setAttribute("transform", `translate(${scale(100) + 20}, ${20})`);
       
       const unguidedCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       unguidedCircle.setAttribute("cx", "5");
