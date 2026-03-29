@@ -1,34 +1,35 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
 
 import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatusMessage, validateFeature } from './baseline.js';
 describe('baseline data', () => {
   describe('getBaselineStatus', () => {
     it('returns Baseline since YYYY-MM-DD for known widely available features', () => {
-      expect(getBaselineStatus('grid')).toBe('Baseline since 2017-10-17');
+      assert.strictEqual(getBaselineStatus('grid'), 'Baseline since 2017-10-17');
     });
 
     it('returns aggregate status for split feature', () => {
       const status = getBaselineStatus('single-color-gradients');
-      expect(status).toMatch(/^Baseline since \d{4}-\d{2}-\d{2}$/);
-      expect(status).not.toBe('Limited');
+      assert.match(status!, /^Baseline since \d{4}-\d{2}-\d{2}$/);
+      assert.notStrictEqual(status, 'Limited');
     });
 
     it('returns undefined for unknown features', () => {
-      expect(getBaselineStatus('non-existent-feature')).toBeUndefined();
+      assert.strictEqual(getBaselineStatus('non-existent-feature'), undefined);
     });
   });
 
   describe('getStatusMessage', () => {
     it('returns status message for a feature', () => {
-      expect(getStatusMessage('grid')).toBe('Grid is Widely. It\'s been Baseline since 2017-10-17.');
+      assert.strictEqual(getStatusMessage('grid'), 'Grid is Widely. It\'s been Baseline since 2017-10-17.');
     });
 
     it('returns status message for a BCD key', () => {
-      expect(getStatusMessage('grid', 'css.properties.grid-template-columns')).toBe('The css.properties.grid-template-columns capability is Widely. It\'s been Baseline since 2017-10-17.');
+      assert.strictEqual(getStatusMessage('grid', 'css.properties.grid-template-columns'), 'The css.properties.grid-template-columns capability is Widely. It\'s been Baseline since 2017-10-17.');
     });
 
     it('returns status message for a non-Baseline feature', () => {
-      expect(getStatusMessage('accelerometer')).toBe('Accelerometer is Limited.');
+      assert.strictEqual(getStatusMessage('accelerometer'), 'Accelerometer is Limited.');
     });
 
     it('returns undefined for unknown features or keys', () => {
@@ -41,11 +42,11 @@ describe('baseline data', () => {
 
   describe('validateFeature', () => {
     it('returns valid for a standard feature', () => {
-      expect(validateFeature('grid')).toEqual({ isValid: true });
+      assert.deepStrictEqual(validateFeature('grid'), { isValid: true });
     });
 
     it('returns error for a non-existent feature', () => {
-      expect(validateFeature('non-existent-feature')).toEqual({
+      assert.deepStrictEqual(validateFeature('non-existent-feature'), {
         isValid: false,
         error: 'not_found',
         errorMessage: 'Web feature ID "non-existent-feature" not found in web-features package'
@@ -54,7 +55,7 @@ describe('baseline data', () => {
 
     it('returns error and suggestion for a moved feature', () => {
       const result = validateFeature('numeric-seperators');
-      expect(result).toEqual({
+      assert.deepStrictEqual(result, {
         isValid: false,
         error: 'invalid_kind',
         kind: 'moved',
@@ -65,11 +66,11 @@ describe('baseline data', () => {
 
     it('returns error and suggestion for a split feature', () => {
       const result = validateFeature('single-color-gradients');
-      expect(result.isValid).toBe(false);
-      expect(result.error).toBe('invalid_kind');
-      expect(result.kind).toBe('split');
-      expect(result.suggestion).toContain('gradients'); // It might contain multiple targets
-      expect(result.errorMessage).toContain('is a split record, not a primary feature');
+      assert.strictEqual(result.isValid, false);
+      assert.strictEqual(result.error, 'invalid_kind');
+      assert.strictEqual(result.kind, 'split');
+      assert.ok(result.suggestion!.includes('gradients')); // It might contain multiple targets
+      assert.ok(result.errorMessage!.includes('is a split record, not a primary feature'));
     });
   });
 
