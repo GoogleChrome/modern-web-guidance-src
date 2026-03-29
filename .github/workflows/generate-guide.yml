@@ -127,6 +127,7 @@ jobs:
 
           # Use default GITHUB_TOKEN for PR creation
           gh pr create \
+            --head "${BRANCH}" \
             --title "Guide: ${FEATURE_ID}" \
             --body "$(cat <<'EOF'
           ## Auto-generated guide package
