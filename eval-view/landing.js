@@ -239,8 +239,8 @@ async function loadStaticTests() {
             document.getElementById('empty-state').style.display = 'none';
         }
 
-        // Load static test data
-        for (const testId of manifest) {
+        // Load static test data in parallel
+        await Promise.all(manifest.map(async (testId) => {
             try {
                 const response = await fetch(`./results/${testId}/evals.json?t=${Date.now()}`);
                 if (response.ok) {
@@ -250,7 +250,7 @@ async function loadStaticTests() {
             } catch (e) {
                 console.warn(`Failed to load static test ${testId}:`, e);
             }
-        }
+        }));
     } catch {
         console.warn('Suites manifest not found or failed to load');
     }
