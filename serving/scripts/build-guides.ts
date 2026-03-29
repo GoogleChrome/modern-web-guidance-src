@@ -29,7 +29,7 @@ async function processGuides() {
   // Scan guides first to see if we even need to run
   const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
 
-  if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE)) {
+  if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR)) {
     const outputFileMTime = fs.statSync(OUTPUT_FILE).mtimeMs;
     let anyGuideNewer = false;
     for (const inv of readyGuides) {
