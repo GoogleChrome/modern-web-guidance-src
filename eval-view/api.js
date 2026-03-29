@@ -13,22 +13,15 @@ export class ApiClient {
             }
         }
         this.source = sourceParam;
-        this.gcsPrefix = 'https://storage.googleapis.com/storage/v1/b/guidance-evals/o/';
+        this.dataPrefix = './results/'; // Base path for hosted data on GitHub Pages
     }
 
     _formatUrl(path, isMetadataOnly = false) {
         if (this.source === 'remote') {
             if (path.startsWith('http')) return path;
 
-            // Clean local prefixes from logical GCS path
             let fixedPath = path.split('?')[0];
-
-            // Build the GCS JSON API endpoint
-            let url = `${this.gcsPrefix}${encodeURIComponent(fixedPath)}`;
-            if (!isMetadataOnly) {
-                url += '?alt=media';
-            }
-            return url;
+            return `${this.dataPrefix}${encodeURIComponent(fixedPath)}`;
         } else {
             return `${path}?source=${this.source}`;
         }
@@ -44,19 +37,16 @@ export class ApiClient {
     }
 
     /** 
-     * Silently checks if a file exists on GCS using a prefix search.
-     * This avoids native browser fetch() 404 console logs.
+     * Checks if a file exists on GitHub Pages via a simple fetch test.
      */
     async _checkRemoteFileExists(path) {
-        const listUrl = `${this.gcsPrefix}?prefix=${encodeURIComponent(path)}`;
-        const res = await authenticatedFetch(listUrl);
-        if (res.ok) {
-            const data = await res.json();
-            if (data.items && data.items.some(item => item.name === path)) {
-                return true;
-            }
+        const url = this._formatUrl(path);
+        try {
+            const res = await fetch(url, { method: 'HEAD' });
+            return res.ok;
+        } catch {
+            return false;
         }
-        return false;
     }
 
     /** 
@@ -78,17 +68,12 @@ export class ApiClient {
     /** Fetches the overall array of test suites/runs listed for the dashboard. */
     async getSuites() {
         if (this.source === 'remote') {
-            // Check Google Cloud Storage via JSON API
-            const gcsUrl = `${this.gcsPrefix}?delimiter=/`;
-            const res = await authenticatedFetch(gcsUrl);
-            if (!res.ok) throw new Error('Failed to load remote suites');
+            // Load from a static suites.json manifest
+            const res = await fetch('./suites.json');
+            if (!res.ok) throw new Error('Failed to load remote suites (suites.json not found)');
 
-            const data = await res.json();
-            const suites = (data.prefixes || [])
-                .map(prefix => prefix.replace(/\/$/, ''))
-                .filter(name => name !== 'single_task')
-                .map(id => ({ id, source: 'remote' }));
-            return { suites };
+            const suites = await res.json();
+            return { suites: suites.map(id => ({ id, source: 'remote' })) };
         } else {
             // Fetch directly from server.js /api/suites endpoint
             const res = await fetch('/api/suites');
@@ -219,15 +204,10 @@ export class ApiClient {
                     files = data.files || [];
                 }
             } else {
-                const gcsPrefix = basePath.endsWith('/') ? basePath : basePath + '/';
-                const listUrl = `${this.gcsPrefix}?prefix=${encodeURIComponent(gcsPrefix)}`;
-                const res = await authenticatedFetch(listUrl);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.items) {
-                        files = data.items.map(item => item.name.split('/').pop());
-                    }
-                }
+                // We cannot list run files on static GitHub Pages without a manifest.
+                // Fallback to checking potential candidates or assuming a default list if needed.
+                // For now, we'll try to find any standard files or assume it's just index.html.
+                files = [];
             }
         } catch (e) {
             console.log('Error checking run files:', e);
@@ -261,8 +241,7 @@ export class ApiClient {
     /** Returns absolute URL wrapper for opening links directly in new tabs (like trajectories). */
     getAbsoluteUrl(path) {
         if (this.source === 'remote') {
-            let fixedPath = path.split('?')[0];
-            return `${this.gcsPrefix}${encodeURIComponent(fixedPath)}?alt=media`;
+            return this._formatUrl(path);
         }
         return this._formatUrl(path);
     }
