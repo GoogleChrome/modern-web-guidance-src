@@ -258,7 +258,8 @@ run();
         expectedGuidanceTool: expectedGuidanceTool,
         expectedGuide: guide,
         baseApp: actualBaseApp,
-        taskName: taskName
+        taskName: taskName,
+        evalType: data.eval_type === 'regression' ? 'regression' : 'capability',
       });
     }
   }

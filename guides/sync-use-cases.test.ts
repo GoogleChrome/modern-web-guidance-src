@@ -637,6 +637,7 @@ describe('processGuideInventory', () => {
       hasDemo: true,
       hasExpectations: false,
       expectationsEmpty: false,
+      expectationsStructured: false,
       hasNegativeDemo: false,
       hasGrader: false,
       hasPrompts: false,

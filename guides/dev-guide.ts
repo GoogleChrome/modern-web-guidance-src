@@ -306,7 +306,7 @@ ${prompt}
   fs.writeFileSync(path.join(tasksDir, `${taskName}.md`), taskContent);
   console.log(cGreen(`✅ Created task: harness/tasks/${taskName}.md`));
 
-  return { taskName, baseApp: 'daily-grind', prompt };
+  return { taskName, baseApp: 'daily-grind', prompt, evalType: 'capability', graduationThreshold: 0.95 };
 }
 
 async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<string, TaskInfo>, guidedOnly = false): Promise<void> {

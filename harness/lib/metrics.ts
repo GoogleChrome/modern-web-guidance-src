@@ -11,6 +11,16 @@ export interface RunResult {
   guidanceToolsUsed?: string[];
   expectedGuidanceTool?: string;
   expectedGuide?: string;
+  evalType?: 'capability' | 'regression';
+}
+
+export interface EvalTypeSummary {
+  guidedPassRate: number;
+  guidedPassed: number;
+  guidedTotal: number;
+  unguidedPassRate: number;
+  unguidedPassed: number;
+  unguidedTotal: number;
 }
 
 export interface Metrics {
@@ -29,6 +39,8 @@ export interface Metrics {
     totalGuidedRuns?: number;
     toolActivationRate?: number;
     toolActivationCount?: number;
+    capability?: EvalTypeSummary;
+    regression?: EvalTypeSummary;
   };
   testStats: Record<string, {
     medianPassRate: number;
@@ -38,6 +50,7 @@ export interface Metrics {
     runCount?: number;
     passedChecks: number;
     totalChecks: number;
+    evalType?: 'capability' | 'regression';
   }>;
   sortedKeys: string[];
 }
@@ -67,15 +80,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     return runTypeA.localeCompare(runTypeB);
   });
 
-  const testStats: Record<string, {
-    medianPassRate: number;
-    runPassRates: number[];
-    runsUsingGuide?: number;
-    runsWithToolActivation?: number;
-    runCount?: number;
-    passedChecks: number;
-    totalChecks: number;
-  }> = {};
+  const testStats: Metrics['testStats'] = {};
 
   for (const name of sortedKeys) {
     const runs = allResults[name];
@@ -116,6 +121,9 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       });
     }
 
+    // Derive evalType from the first run that has it set (all runs for a key share the same task)
+    const evalType = runs.find(r => r.evalType)?.evalType;
+
     testStats[name] = {
       medianPassRate: Math.round(median),
       runPassRates: passRates.map(r => Math.round(r)),
@@ -123,7 +131,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       runsWithToolActivation: runType === 'guided' ? toolActivationCount : undefined,
       runCount: runs.length,
       passedChecks,
-      totalChecks
+      totalChecks,
+      evalType,
     };
   }
 
@@ -175,6 +184,21 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
   const uStats = calcSummary(sortedKeys.filter(k => k.includes(' - unguided')));
   const gStats = calcSummary(sortedKeys.filter(k => k.includes(' - guided')));
 
+  const buildEvalTypeSummary = (evalType: 'capability' | 'regression'): EvalTypeSummary | undefined => {
+    const matchingKeys = sortedKeys.filter(k => testStats[k]?.evalType === evalType);
+    if (matchingKeys.length === 0) return undefined;
+    const guided = calcSummary(matchingKeys.filter(k => k.includes(' - guided')));
+    const unguided = calcSummary(matchingKeys.filter(k => k.includes(' - unguided')));
+    return {
+      guidedPassRate: guided.rate,
+      guidedPassed: guided.passed,
+      guidedTotal: guided.total,
+      unguidedPassRate: unguided.rate,
+      unguidedPassed: unguided.passed,
+      unguidedTotal: unguided.total,
+    };
+  };
+
   return {
     summary: {
       unguidedMedian: uStats.median,
@@ -190,7 +214,9 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       guideUsageCount: gStats.guideUsageCount,
       totalGuidedRuns: gStats.totalGuidedRuns,
       toolActivationRate: gStats.toolActivationRate,
-      toolActivationCount: gStats.toolActivationCount
+      toolActivationCount: gStats.toolActivationCount,
+      capability: buildEvalTypeSummary('capability'),
+      regression: buildEvalTypeSummary('regression'),
     },
     testStats,
     sortedKeys

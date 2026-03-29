@@ -68,4 +68,56 @@ describe('calculateMetrics', () => {
     assert.strictEqual(metrics.summary.unguidedTotal, 0);
     assert.deepStrictEqual(metrics.sortedKeys, []);
   });
+
+  test('should split capability and regression tasks in summary', () => {
+    const allResults: Record<string, RunResult[]> = {
+      'task-a - guide-a - guided': [
+        { runNumber: 1, results: [{ id: 'c1', passed: true, message: 'ok' }], evalType: 'capability' }
+      ],
+      'task-a - guide-a - unguided': [
+        { runNumber: 1, results: [{ id: 'c1', passed: false, message: 'fail' }], evalType: 'capability' }
+      ],
+      'task-b - guide-b - guided': [
+        { runNumber: 1, results: [{ id: 'c1', passed: true, message: 'ok' }], evalType: 'regression' }
+      ],
+      'task-b - guide-b - unguided': [
+        { runNumber: 1, results: [{ id: 'c1', passed: true, message: 'ok' }], evalType: 'regression' }
+      ],
+    };
+
+    const metrics = calculateMetrics(allResults, 1);
+
+    // Overall totals still work
+    assert.strictEqual(metrics.summary.guidedTotal, 2);
+    assert.strictEqual(metrics.summary.unguidedTotal, 2);
+
+    // Capability split
+    assert.ok(metrics.summary.capability, 'capability summary should exist');
+    assert.strictEqual(metrics.summary.capability!.guidedPassed, 1);
+    assert.strictEqual(metrics.summary.capability!.guidedTotal, 1);
+    assert.strictEqual(metrics.summary.capability!.unguidedPassed, 0);
+    assert.strictEqual(metrics.summary.capability!.unguidedTotal, 1);
+
+    // Regression split
+    assert.ok(metrics.summary.regression, 'regression summary should exist');
+    assert.strictEqual(metrics.summary.regression!.guidedPassed, 1);
+    assert.strictEqual(metrics.summary.regression!.guidedTotal, 1);
+    assert.strictEqual(metrics.summary.regression!.unguidedPassed, 1);
+    assert.strictEqual(metrics.summary.regression!.unguidedTotal, 1);
+
+    // testStats have evalType
+    assert.strictEqual(metrics.testStats['task-a - guide-a - guided'].evalType, 'capability');
+    assert.strictEqual(metrics.testStats['task-b - guide-b - guided'].evalType, 'regression');
+  });
+
+  test('should return no capability/regression split when all tasks are same type', () => {
+    const allResults: Record<string, RunResult[]> = {
+      'task-a - guide-a - guided': [
+        { runNumber: 1, results: [{ id: 'c1', passed: true, message: 'ok' }], evalType: 'capability' }
+      ],
+    };
+    const metrics = calculateMetrics(allResults, 1);
+    assert.ok(metrics.summary.capability, 'capability summary should exist');
+    assert.strictEqual(metrics.summary.regression, undefined);
+  });
 });

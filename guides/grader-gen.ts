@@ -21,6 +21,12 @@ The grader can be run with the following commands:
 TARGET_FILE=$(pwd)/demo.html npx playwright test grader.ts
 TARGET_FILE=$(pwd)/negative-demo.html npx playwright test grader.ts
 
+Reading expectations.md:
+- If expectations.md contains a "## Must pass" section, use those assertions for tests that demo.html must pass.
+- If expectations.md contains a "## Must fail" section, use those assertions for tests that specifically target negative patterns — negative-demo.html should trigger these failures.
+- If expectations.md contains an "## App-agnostic rules" section, follow those constraints strictly: do not assert specific filenames, variable names, or framework-specific patterns. Assert API usage outcomes, not code structure.
+- If expectations.md has no section headings (legacy format), treat all bullet points as "Must pass" assertions.
+
 Important rules for generating the grader:
 - Do not use generic try/catch blocks that aggressively swallow exceptions (e.g. \`catch (e) { /* ignore */ }\`). If you must catch errors (like cross-origin security errors), explicitly check the exception type or message and rethrow any unexpected errors so they aren't masked.
 - IMPORTANT: Do NOT use bash or shell commands (like cat, echo, or heredocs) to write files. You MUST use your built-in structured file editing tools (e.g. write_file or replace) to create the file. Heredoc strings will cause bash parsing errors.

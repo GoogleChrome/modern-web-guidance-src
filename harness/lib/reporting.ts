@@ -14,6 +14,17 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
 
 `;
 
+  if (summary.capability && summary.regression) {
+    md += `### By Eval Type\n\n`;
+    md += `| Type | Guided Pass Rate | Unguided Pass Rate |\n|---|---|---|\n`;
+    md += `| Capability | ${summary.capability.guidedPassRate}% (${summary.capability.guidedPassed}/${summary.capability.guidedTotal}) | ${summary.capability.unguidedPassRate}% (${summary.capability.unguidedPassed}/${summary.capability.unguidedTotal}) |\n`;
+    md += `| Regression | ${summary.regression.guidedPassRate}% (${summary.regression.guidedPassed}/${summary.regression.guidedTotal}) | ${summary.regression.unguidedPassRate}% (${summary.regression.unguidedPassed}/${summary.regression.unguidedTotal}) |\n\n`;
+  } else if (summary.capability || summary.regression) {
+    const type = summary.capability ? 'capability' : 'regression';
+    const s = (summary.capability ?? summary.regression)!;
+    md += `_All tasks are **${type}** tasks. Guided: ${s.guidedPassRate}% (${s.guidedPassed}/${s.guidedTotal}), Unguided: ${s.unguidedPassRate}% (${s.unguidedPassed}/${s.unguidedTotal})_\n\n`;
+  }
+
   // Generate detailed sections for each test
   for (const name of sortedKeys) {
     const runs = allResults[name];

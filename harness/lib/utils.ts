@@ -20,6 +20,7 @@ export interface GuideInventory {
   hasDemo: boolean;
   hasExpectations: boolean;
   expectationsEmpty: boolean;
+  expectationsStructured: boolean;
   hasNegativeDemo: boolean;
   hasGrader: boolean;
   hasPrompts: boolean;
@@ -27,10 +28,56 @@ export interface GuideInventory {
   featureIds: string[];
 }
 
+/**
+ * Parses expectations.md content into structured sections.
+ * Supports both the legacy flat bullet format (all items treated as mustPass)
+ * and the new structured format with ## Must pass / ## Must fail / ## App-agnostic rules sections.
+ */
+export function parseExpectations(content: string): {
+  mustPass: string[];
+  mustFail: string[];
+  appAgnostic: string[];
+} {
+  const hasStructuredHeadings = /^##\s+(Must pass|Must fail|App-agnostic rules)/im.test(content);
+
+  if (!hasStructuredHeadings) {
+    // Legacy format: treat all bullet items as mustPass
+    const bullets = content
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.startsWith('- '))
+      .map(l => l.slice(2).trim());
+    return { mustPass: bullets, mustFail: [], appAgnostic: [] };
+  }
+
+  const extract = (heading: string): string[] => {
+    const pattern = new RegExp(`^##\\s+${heading}\\s*$`, 'im');
+    const match = pattern.exec(content);
+    if (!match) return [];
+    const start = match.index + match[0].length;
+    const rest = content.slice(start);
+    const nextHeading = /^##\s/m.exec(rest);
+    const section = nextHeading ? rest.slice(0, nextHeading.index) : rest;
+    return section
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.startsWith('- '))
+      .map(l => l.slice(2).trim());
+  };
+
+  return {
+    mustPass: extract('Must pass'),
+    mustFail: extract('Must fail'),
+    appAgnostic: extract('App-agnostic rules'),
+  };
+}
+
 export interface TaskInfo {
   taskName: string;
   baseApp: string;
   prompt: string;
+  evalType: 'capability' | 'regression';
+  graduationThreshold: number;
 }
 
 /**
@@ -61,7 +108,9 @@ export function getTaskMap(): Map<string, TaskInfo> {
       taskMap.set(data.grader, {
         taskName: file.replace(/\.md$/, ''),
         baseApp: data.base_app || 'daily-grind',
-        prompt: content.trim()
+        prompt: content.trim(),
+        evalType: data.eval_type === 'regression' ? 'regression' : 'capability',
+        graduationThreshold: data.graduation_threshold ?? 0.95,
       });
     }
   }
@@ -106,6 +155,7 @@ export function inventoryGuide(dir: string, taskMap: Map<string, TaskInfo>): Gui
     hasDemo: readFileSafe(path.join(dir, DEMO_FILE)).length > 0,
     hasExpectations,
     expectationsEmpty: hasExpectations && expectationsContent.length === 0,
+    expectationsStructured: hasExpectations && /^##\s+(Must pass|Must fail|App-agnostic rules)/im.test(expectationsContent),
     hasNegativeDemo: fs.existsSync(path.join(dir, NEGATIVE_DEMO_FILE)),
     hasGrader: fs.existsSync(path.join(dir, GRADER_FILE)),
     hasPrompts: fs.existsSync(path.join(dir, PROMPTS_FILE)),
