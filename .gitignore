@@ -37,3 +37,6 @@ project-gleam/
 
 # Research drafts
 skills-drafts/.research/
+.claude/
+.gemini/
+/docs/
