@@ -4,6 +4,9 @@ description: Reduce rendering times in content-heavy web pages (e.g. pages with 
 web-feature-ids:
   - hidden-until-found
   - content-visibility
+sources:
+  - https://developer.chrome.com/docs/css-ui/hidden-until-found
+  - https://web.dev/articles/content-visibility
 ---
 
 # Defer rendering heavy content
@@ -115,11 +118,13 @@ heavySection.addEventListener('beforematch', (event) => {
 - **DO NOT** apply standard `display: none` or `visibility: hidden` to elements designed to use `hidden="until-found"`, as this permanently excludes them from search discovery.
 - **DO** verify that `hidden="until-found"` handles interactive states gracefully on trigger.
 
-## Browser support and fallback strategies
+## Fallback strategies
 
 ### `content-visibility` fallback
 
-{{ BASELINE_STATUS("content-visibility") }} When `content-visibility` is not supported it will be ignored by the browser. In most cases `content-visibility: auto` will not need a fallback, though without it performance gains will be lost. An unsupported browser will leave `content-visibility: hidden` elements completely visible. Use feature detection to implement a fallback.
+{{ BASELINE_STATUS("content-visibility") }}
+
+When `content-visibility` is not supported it will be ignored by the browser. In most cases `content-visibility: auto` will not need a fallback, though without it performance gains will be lost. An unsupported browser will leave `content-visibility: hidden` elements completely visible. Use feature detection to implement a fallback.
 
 ```css
 /* Default for everyone */
@@ -137,7 +142,10 @@ heavySection.addEventListener('beforematch', (event) => {
 ```
 
 ### `hidden="until-found"` fallback
-{{ BASELINE_STATUS("hidden-until-found") }} When `hidden="until-found"` is not supported elements will remain hidden. Use feature detection targeting `onbeforematch` and extract or reveal content accordingly. Feature detection MUST check for the existence of `onbeforematch` in `HTMLElement.prototype`.
+
+{{ BASELINE_STATUS("hidden-until-found") }}
+
+When `hidden="until-found"` is not supported elements will remain hidden. Use feature detection targeting `onbeforematch` and extract or reveal content accordingly. Feature detection MUST check for the existence of `onbeforematch` in `HTMLElement.prototype`.
 
 ```javascript
 if (!('onbeforematch' in HTMLElement.prototype)) {
