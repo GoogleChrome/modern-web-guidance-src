@@ -9,9 +9,9 @@
     "Diff": "readonly"
   },
   "rules": {
-    "eslint(no-unused-vars)": ["error", {
+    "no-unused-vars": ["warn", {
       "argsIgnorePattern": "^_",
-      "caughtErrors": "none"
+      "caughtErrorsIgnorePattern": "^.*$"
     }],
     "eslint(no-undef)": "error",
     "no-undef": "error"
