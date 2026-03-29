@@ -229,7 +229,7 @@ export class DumbbellChart {
       const rowY = currentY + (rowHeight / 2);
 
       // Faint horizontal separator
-      if (rowIndex > 0) {
+      if (rowIndex > 0 && !this.options.hideSeparators) {
         const sep = document.createElementNS("http://www.w3.org/2000/svg", "line");
         sep.setAttribute("x1", leftAxis);
         sep.setAttribute("y1", currentY);
