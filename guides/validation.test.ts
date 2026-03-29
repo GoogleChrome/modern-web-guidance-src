@@ -4,7 +4,7 @@ import path from 'node:path';
 
 // Import shared utilities
 import { scanAllGuides } from '../harness/lib/utils.ts';
-import { processGuideInventory } from './lib/validation.ts';
+import { processGuideInventory } from '../lib/guide-validation.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 

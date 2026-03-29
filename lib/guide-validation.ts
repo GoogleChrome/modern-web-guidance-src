@@ -3,10 +3,10 @@ import path from 'node:path';
 import matter from 'gray-matter';
 
 // Import shared utilities (using relative paths from guides/)
-import { validateMacros } from '../../serving/mcp-server/lib/macros.ts';
-import { validateFeature } from '../../serving/mcp-server/data/baseline.ts';
-import { scanAllGuides, type GuideInventory } from '../../harness/lib/utils.ts';
-import { rootDir } from '../../lib/paths.ts';
+import { validateMacros } from '../serving/mcp-server/lib/macros.ts';
+import { validateFeature } from '../serving/mcp-server/data/baseline.ts';
+import { scanAllGuides, type GuideInventory } from '../harness/lib/utils.ts';
+import { rootDir } from './paths.ts';
 
 const REPO_ROOT = rootDir;
 

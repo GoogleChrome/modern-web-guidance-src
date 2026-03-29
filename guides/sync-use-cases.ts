@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import { validateMacros } from '../serving/mcp-server/lib/macros.ts';
 import { validateFeature } from '../serving/mcp-server/data/baseline.ts';
 import { scanAllGuides, type GuideInventory } from '../harness/lib/utils.ts';
-import { ProjectStatus, type PreparedGuide, type GuideInventoryResult, validateGuide, processGuideInventory, getStatusName } from './lib/validation.ts';
+import { ProjectStatus, type PreparedGuide, type GuideInventoryResult, validateGuide, processGuideInventory, getStatusName } from '../lib/guide-validation.ts';
 
 // --- Types ---
 
