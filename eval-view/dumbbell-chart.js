@@ -40,8 +40,10 @@ export class DumbbellChart {
 
     const width = this.options.size;
 
-    // Group items by Feature Name
+    // Group items by Feature Name (lookup from features_mapping.js if available)
     const groups = {};
+    const featuresMap = window.__featuresMapping || {};
+
     labels.forEach((label, i) => {
         let appName = label;
         let useCaseId = "";
@@ -50,15 +52,21 @@ export class DumbbellChart {
             appName = match[1];
             useCaseId = match[2];
         } else {
-            // Fallback for key split by ' - ' which might turn into "appName - guide" somewhere
             const parts = label.split(' - ');
             if (parts.length >= 2) {
                 appName = parts[0];
                 useCaseId = parts.slice(1).join(' - ');
             }
         }
-        if (!groups[appName]) groups[appName] = [];
-        groups[appName].push({
+
+        const usecaseFolder = appName.replace(/-task$/, '');
+        let featureName = appName; // fallback to task name if not found
+        if (featuresMap[usecaseFolder] && featuresMap[usecaseFolder].length > 0) {
+            featureName = featuresMap[usecaseFolder][0]; // take primary feature
+        }
+
+        if (!groups[featureName]) groups[featureName] = [];
+        groups[featureName].push({
             useCaseId,
             uVal: unguidedSet.data[i] || 0,
             gVal: guidedSet.data[i] || 0,
