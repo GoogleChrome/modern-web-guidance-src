@@ -560,6 +560,8 @@ function calculateGroupTotalStats(results, groupType) {
     let passed = 0;
     let total = 0;
 
+    if (!results) return { passed, total }; // Guard against missing results
+
     Object.keys(results).forEach(key => {
         // key format: "scenario - prompt - agent"
         if (key.endsWith(` - ${groupType}`)) {
