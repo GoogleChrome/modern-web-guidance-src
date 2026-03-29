@@ -1,1 +1,141 @@
-<!-- TODO -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto-Sizing Form Fields</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      max-width: 600px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-weight: 500;
+      align-items: flex-start;
+    }
+
+    input[type="text"],
+    textarea,
+    select {
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0.5rem;
+      border: 1px solid #999;
+      border-radius: 4px;
+
+      /* Apply auto-sizing to all fields */
+      field-sizing: content;
+    }
+
+    input[type="text"] {
+      /* Reset explicit width if inherited from global styles */
+      width: auto;
+      
+      /* Override flex/grid stretching */
+      align-self: start;
+
+      /* Prevent fields from collapsing completely when empty */
+      min-inline-size: 15ch;
+
+      /* Prevent fields from growing too large */
+      max-inline-size: 50ch;
+    }
+
+    select {
+      /* Reset explicit width if inherited from global styles */
+      width: auto;
+      
+      /* Override flex/grid stretching */
+      align-self: start;
+
+      /* Prevent fields from growing too large */
+      max-inline-size: 50ch;
+    }
+
+    textarea {
+      /* Reset explicit height if inherited from global styles */
+      height: auto;
+
+      /* Prevent horizontal jumping when replacing a long placeholder */
+      width: 50ch; /* Using a fixed char width instead of 100% for the demo */
+      box-sizing: border-box; /* Ensure padding doesn't cause overflow */
+
+      /* Control vertical auto-sizing */
+      min-block-size: 3lh;
+      max-block-size: 10lh;
+    }
+    /* Fallback for older browsers that don't support field-sizing */
+    @supports not (field-sizing: content) {
+      .growable-textarea {
+        display: grid;
+      }
+
+      .growable-textarea::after,
+      .growable-textarea > textarea {
+        grid-area: 1 / 1 / 2 / 2;
+        font: inherit;
+        padding: 0.5rem;
+        border: 1px solid #999;
+      }
+
+      .growable-textarea::after {
+        content: attr(data-replicated-value) " ";
+        white-space: pre-wrap;
+        visibility: hidden;
+      }
+
+      .growable-textarea > textarea {
+        resize: none;
+        overflow: hidden;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Auto-Sizing Form Fields</h1>
+  <form>
+    <label>
+      Name (Input):
+      <input type="text" placeholder="Your full name">
+    </label>
+
+    <label>
+      Message (Textarea):
+      <div class="growable-textarea" data-replicated-value="">
+        <textarea placeholder="Write a long message here. It will wrap and grow vertically once it hits the max width."></textarea>
+      </div>
+    </label>
+
+    <label>
+      Favorite Color (Select):
+      <select>
+        <option value="red">Red</option>
+        <option value="blue">Blue</option>
+        <option value="super-long-color">A ridiculously long color name just to test sizing</option>
+      </select>
+    </label>
+  </form>
+
+  <script>
+    // Only attach the fallback event listeners if field-sizing is unsupported
+    if (!CSS.supports('field-sizing', 'content')) {
+      document.querySelectorAll('.growable-textarea > textarea').forEach(textarea => {
+        textarea.addEventListener('input', () => {
+          textarea.parentNode.dataset.replicatedValue = textarea.value;
+        });
+      });
+    }
+  </script>
+</body>
+</html>
