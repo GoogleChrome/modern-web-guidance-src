@@ -1,18 +1,17 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { tasksDir, baseAppsDir, resultsDir, evalViewDir } from '../lib/paths.ts';
 
-// Resolve paths relative to eval-view folder
-const tasksSrc = path.resolve('../harness/tasks');
-const tasksDest = path.resolve('./tasks');
+function cCyan(text: string) { return `\x1b[36m${text}\x1b[0m`; }
+function cRed(text: string) { return `\x1b[31m${text}\x1b[0m`; }
+function cGreen(text: string) { return `\x1b[32m${text}\x1b[0m`; }
 
-const appsSrc = path.resolve('../harness/base_apps');
-const appsDest = path.resolve('./base_apps');
+const tasksDest = path.join(evalViewDir, 'tasks');
+const appsDest = path.join(evalViewDir, 'base_apps');
+const resultsDest = path.join(evalViewDir, 'results');
 
-const resultsSrc = path.resolve('../harness/results');
-const resultsDest = path.resolve('./results');
-
-function runCommand(cmd) {
+function runCommand(cmd: string) {
   try {
     console.log(`\n🚀 Running: ${cmd}`);
     execSync(cmd, { stdio: 'inherit' });
@@ -34,18 +33,18 @@ try {
 
   // 3. Staging tasks and base apps
   console.log(`Copying tasks to ${tasksDest}...`);
-  fs.cpSync(tasksSrc, tasksDest, { recursive: true });
+  fs.cpSync(tasksDir, tasksDest, { recursive: true });
 
   console.log(`Copying base apps to ${appsDest}...`);
   // dereference: true resolves symlinks (mimicking cp -RL)
-  fs.cpSync(appsSrc, appsDest, { recursive: true, dereference: true });
+  fs.cpSync(baseAppsDir, appsDest, { recursive: true, dereference: true });
 
   // 4. Staging evaluations results
-  if (fs.existsSync(resultsSrc)) {
+  if (fs.existsSync(resultsDir)) {
     console.log(`Copying evaluations results to ${resultsDest}...`);
-    fs.cpSync(resultsSrc, resultsDest, { recursive: true });
+    fs.cpSync(resultsDir, resultsDest, { recursive: true });
   } else {
-    console.log(`No results directory found in ${resultsSrc}. Skipping copy.`);
+    console.log(`No results directory found in ${resultsDir}. Skipping copy.`);
   }
 
   // 5. Publish with gh-pages
