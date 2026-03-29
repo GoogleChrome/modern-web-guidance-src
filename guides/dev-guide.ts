@@ -31,7 +31,7 @@ import {
   readFileSafe,
   classifyGuide,
   scanAllGuides
-} from '../harness/lib/utils.ts';
+} from '../lib/guide-validation.ts';
 
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
