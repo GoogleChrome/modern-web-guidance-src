@@ -84,7 +84,7 @@ export class DumbbellChart {
     });
     totalHeight += this.options.margin.bottom;
 
-    const height = Math.max(250, totalHeight);
+    const height = totalHeight;
 
     this.svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     this.svg.setAttribute("width", "100%");
