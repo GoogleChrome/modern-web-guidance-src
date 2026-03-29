@@ -75,7 +75,16 @@ export class DumbbellChart {
     });
 
     const featureNames = Object.keys(groups).sort();
-    const height = Math.max(250, this.options.margin.top + (featureNames.length * this.options.rowHeight) + this.options.margin.bottom);
+    
+    // Calculate total height dynamically based on the number of stacked dumbbells per feature
+    let totalHeight = this.options.margin.top;
+    featureNames.forEach(f => {
+        const count = groups[f].length;
+        totalHeight += this.options.rowHeight + (count - 1) * 6; // Base row height + offset per extra item
+    });
+    totalHeight += this.options.margin.bottom;
+
+    const height = Math.max(250, totalHeight);
 
     this.svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     this.svg.setAttribute("width", "100%");
@@ -211,18 +220,20 @@ export class DumbbellChart {
     ];
 
     // Data Rows
+    let currentY = this.options.margin.top;
+
     featureNames.forEach((featureName, rowIndex) => {
       const items = groups[featureName];
-      const rowY = this.options.margin.top + (rowIndex * this.options.rowHeight) + (this.options.rowHeight / 2);
+      const rowHeight = this.options.rowHeight + (items.length - 1) * 6;
+      const rowY = currentY + (rowHeight / 2);
 
       // Faint horizontal separator
       if (rowIndex > 0) {
-        const lineY = this.options.margin.top + (rowIndex * this.options.rowHeight);
         const sep = document.createElementNS("http://www.w3.org/2000/svg", "line");
         sep.setAttribute("x1", leftAxis);
-        sep.setAttribute("y1", lineY);
+        sep.setAttribute("y1", currentY);
         sep.setAttribute("x2", scale(100));
-        sep.setAttribute("y2", lineY);
+        sep.setAttribute("y2", currentY);
         sep.setAttribute("stroke", "rgba(255, 255, 255, 0.1)");
         sep.setAttribute("stroke-width", "1");
         this.svg.appendChild(sep);
@@ -239,7 +250,7 @@ export class DumbbellChart {
       text.textContent = featureName;
       this.svg.appendChild(text);
 
-      const offsetStep = 10;
+      const offsetStep = 6;
       const startOffset = -((items.length - 1) / 2) * offsetStep;
 
       items.forEach((item, itemIndex) => {
@@ -358,6 +369,8 @@ export class DumbbellChart {
           }
           this.svg.appendChild(hitArea);
       });
+
+      currentY += rowHeight; // Shift Y down for the next feature row
     });
   }
 }
