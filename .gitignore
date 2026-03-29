@@ -34,3 +34,4 @@ project-gleam/
 
 # Git worktrees directory
 .worktrees
+eval-view/features_mapping.gen.js.js
