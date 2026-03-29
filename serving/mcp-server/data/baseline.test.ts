@@ -33,8 +33,8 @@ describe('baseline data', () => {
     });
 
     it('returns undefined for unknown features or keys', () => {
-      expect(getStatusMessage('non-existent')).toBeUndefined();
-      expect(getStatusMessage('grid', 'unknown.key')).toBeUndefined();
+      assert.strictEqual(getStatusMessage('non-existent'), undefined);
+      assert.strictEqual(getStatusMessage('grid', 'unknown.key'), undefined);
     });
   });
 
@@ -76,72 +76,72 @@ describe('baseline data', () => {
 
   describe('resolveFeatureId', () => {
     it('resolves simple feature ID', () => {
-      expect(resolveFeatureId('grid')).toEqual(['grid']);
+      assert.deepStrictEqual(resolveFeatureId('grid'), ['grid']);
     });
 
     it('returns empty array for unknown feature', () => {
-      expect(resolveFeatureId('unknown-feature-xyz')).toEqual([]);
+      assert.deepStrictEqual(resolveFeatureId('unknown-feature-xyz'), []);
     });
 
     it('resolves moved feature ID', () => {
-      expect(resolveFeatureId('numeric-seperators')).toEqual(['numeric-separators']);
+      assert.deepStrictEqual(resolveFeatureId('numeric-seperators'), ['numeric-separators']);
     });
 
     it('resolves split feature ID', () => {
       const resolved = resolveFeatureId('single-color-gradients');
-      expect(resolved).toContain('gradients');
-      expect(resolved).toContain('conic-gradients');
-      expect(resolved.length).toBeGreaterThanOrEqual(2);
+      assert.ok(resolved.includes('gradients'));
+      assert.ok(resolved.includes('conic-gradients'));
+      assert.ok(resolved.length >= 2);
     });
   });
 
   describe('getStatus', () => {
     it('gets status for known bcd key', () => {
       const status = getStatus('grid', 'css.properties.grid-template-columns');
-      expect(status).toBeDefined();
-      expect(status?.baseline).toBeDefined();
+      assert.ok(status !== undefined);
+      assert.ok(status?.baseline !== undefined);
     });
 
     it('gets status without feature ID (slow path)', () => {
       const status = getStatus(undefined, 'css.properties.grid-template-columns');
-      expect(status).toBeDefined();
+      assert.ok(status !== undefined);
     });
 
     it('returns undefined for unknown key', () => {
       const status = getStatus('grid', 'unknown.key.xyz');
-      expect(status).toBeUndefined();
+      assert.strictEqual(status, undefined);
     });
   });
 
   describe('checkBaseline', () => {
     it('supports standard statuses', () => {
-      expect(checkBaseline('Widely', 'grid')).toBe(true);
-      expect(checkBaseline('Newly', 'grid')).toBe(true);
-      expect(checkBaseline('Limited', 'grid')).toBe(true);
+      assert.strictEqual(checkBaseline('Widely', 'grid'), true);
+      assert.strictEqual(checkBaseline('Newly', 'grid'), true);
+      assert.strictEqual(checkBaseline('Limited', 'grid'), true);
 
-      expect(checkBaseline('Widely', 'non-existent-feature')).toBe(false);
-      expect(checkBaseline('Limited', 'non-existent-feature')).toBe(true);
+      assert.strictEqual(checkBaseline('Widely', 'non-existent-feature'), false);
+      assert.strictEqual(checkBaseline('Limited', 'non-existent-feature'), true);
     });
 
     it('supports case-insensitive standard statuses', () => {
-      expect(checkBaseline('widely', 'grid')).toBe(true);
-      expect(checkBaseline('baseline newly', 'grid')).toBe(true);
+      assert.strictEqual(checkBaseline('widely', 'grid'), true);
+      assert.strictEqual(checkBaseline('baseline newly', 'grid'), true);
     });
 
     it('supports Baseline YYYY format', () => {
-      expect(checkBaseline('Baseline 2017', 'grid')).toBe(true);
-      expect(checkBaseline('Baseline 2016', 'grid')).toBe(false);
+      assert.strictEqual(checkBaseline('Baseline 2017', 'grid'), true);
+      assert.strictEqual(checkBaseline('Baseline 2016', 'grid'), false);
     });
 
     it('supports Baseline Widely available on YYYY-MM-DD format', () => {
-      expect(checkBaseline('Baseline Widely available on 2020-04-17', 'grid')).toBe(true);
-      expect(checkBaseline('Baseline Widely available on 2020-04-16', 'grid')).toBe(false);
-      expect(checkBaseline('Baseline Widely available on 2024-01-01', 'grid')).toBe(true);
+      assert.strictEqual(checkBaseline('Baseline Widely available on 2020-04-17', 'grid'), true);
+      assert.strictEqual(checkBaseline('Baseline Widely available on 2020-04-16', 'grid'), false);
+      assert.strictEqual(checkBaseline('Baseline Widely available on 2024-01-01', 'grid'), true);
     });
 
     it('returns false for features without necessary dates', () => {
-      expect(checkBaseline('Baseline 2025', 'non-existent-feature')).toBe(false);
-      expect(checkBaseline('Baseline Widely available on 2025-01-01', 'non-existent-feature')).toBe(false);
+      assert.strictEqual(checkBaseline('Baseline 2025', 'non-existent-feature'), false);
+      assert.strictEqual(checkBaseline('Baseline Widely available on 2025-01-01', 'non-existent-feature'), false);
     });
 
   });

@@ -26,7 +26,7 @@ describe('modern-web tools (Unit Tests with Mocks)', () => {
       const origSearch = Store.prototype.search;
 
       const mockVector = [0.1, 0.2, 0.3];
-      const mockResults = [{ id: 'test', description: 'test desc', category: 'test cat' }];
+      const mockResults = [{ id: 'test', description: 'test desc', category: 'test cat' }] as any;
 
       Embedder.getInstance = () => ({
         embed: async () => mockVector,

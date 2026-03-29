@@ -5,7 +5,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import path from "path";
 
 describe("MCP Server Integration (Functional)", () => {
-  it("should respond to search_use_cases tool call in a real node process", async (t) => {
+  it("should respond to search_use_cases tool call in a real node process", { timeout: 30000 }, async (t) => {
     // We cannot easily set individual test timeout inside `it` args for node:test like Vitest did (it took (name, fn, timeout)), but we can use `timeout` option in `it` or use a timer if needed. 
     // In Node:test, `it('name', { timeout: 30000 }, async () => { ... })` is supported!
     
@@ -49,5 +49,5 @@ describe("MCP Server Integration (Functional)", () => {
         // Ignore close errors
       }
     }
-  }, { timeout: 30000 }); // 30s timeout for cold start and embedding
+  }); // 30s timeout for cold start and embedding
 });
