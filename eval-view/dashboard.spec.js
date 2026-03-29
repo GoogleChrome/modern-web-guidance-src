@@ -25,10 +25,10 @@ test.describe('Eval View Dashboard', () => {
     
     await page.locator('.rate-cell').first().hover();
     
-    const tooltip = page.locator('.radar-tooltip-container');
+    const tooltip = page.locator('.tooltip-container');
     await expect(tooltip).toBeVisible();
     
-    const svg = page.locator('#radar-tooltip-chart svg');
+    const svg = page.locator('#tooltip-chart svg');
     await expect(svg).toBeVisible();
   });
 
