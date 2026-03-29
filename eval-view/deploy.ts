@@ -48,8 +48,8 @@ try {
   }
 
   // 5. Publish with gh-pages
-  console.log(`\n📡 Publishing to gh-pages branch...`);
-  runCommand('npx gh-pages --nojekyll --dist . --add');
+  console.log(`\n📡 Publishing to external repository (GoogleChrome/guidance-dash) gh-pages branch...`);
+  runCommand('npx gh-pages --nojekyll --dist . --add --repo https://github.com/GoogleChrome/guidance-dash.git');
 
 } catch (e) {
   console.error('Error during deployment:', e);
