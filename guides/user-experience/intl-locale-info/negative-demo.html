@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Intl.Locale info demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 2rem; }
+    .locale-block { border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; }
+    dt { font-weight: bold; margin-top: 0.5rem; }
+    dd { margin-left: 0; margin-bottom: 0.5rem; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.43/moment-timezone-with-data.js"></script>
+</head>
+<body>
+  <h1>Intl.Locale Info</h1>
+  
+  <div class="locale-block" id="ar-EG-info">
+    <h2>Locale: ar-EG</h2>
+    <dl>
+      <dt>Direction</dt>
+      <dd id="ar-EG-dir">Loading...</dd>
+      <dt>Calendars</dt>
+      <dd id="ar-EG-cal">Loading...</dd>
+      <dt>First Day of Week</dt>
+      <dd id="ar-EG-week">Loading...</dd>
+    </dl>
+  </div>
+
+  <div class="locale-block" id="en-US-info">
+    <h2>Locale: en-US</h2>
+    <dl>
+      <dt>Direction</dt>
+      <dd id="en-US-dir">Loading...</dd>
+      <dt>Calendars</dt>
+      <dd id="en-US-cal">Loading...</dd>
+      <dt>First Day of Week</dt>
+      <dd id="en-US-week">Loading...</dd>
+    </dl>
+  </div>
+
+  <script>
+    function displayLocaleInfo(localeStr, idPrefix) {
+      const dirEl = document.getElementById(`${idPrefix}-dir`);
+      const calEl = document.getElementById(`${idPrefix}-cal`);
+      const weekEl = document.getElementById(`${idPrefix}-week`);
+
+      const staticWeekInfo = Intl.Locale.getWeekInfo(localeStr);
+      weekEl.textContent = staticWeekInfo ? staticWeekInfo.firstDay : 'Unknown';
+
+      const locale = new Intl.Locale(localeStr);
+      
+      const calendars = locale.calendars;
+      calEl.textContent = calendars ? calendars.join(', ') : 'Unknown';
+
+      const textInfo = locale.textInfo;
+      dirEl.textContent = textInfo ? textInfo.direction : 'Unknown';
+    }
+
+    displayLocaleInfo('ar-EG', 'ar-EG');
+    displayLocaleInfo('en-US', 'en-US');
+  </script>
+</body>
+</html>
