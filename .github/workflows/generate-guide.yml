@@ -50,13 +50,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: 'pnpm'
@@ -77,10 +77,12 @@ jobs:
 
       - name: Generate guide package (guide.md, demo.html, expectations.md)
         run: |
+          SLUG_ARG=""
+          if [ -n "${{ inputs.slug }}" ]; then SLUG_ARG="--slug ${{ inputs.slug }}"; fi
           node --experimental-strip-types guides/guide-gen.ts \
-            ${{ inputs.feature_id }} \
-            --category ${{ inputs.category }} \
-            ${{ inputs.slug && format('--slug {0}', inputs.slug) || '' }}
+            "${{ inputs.feature_id }}" \
+            --category "${{ inputs.category }}" \
+            ${SLUG_ARG}
 
       - name: Run gd dev (negative, grader, calibration, prompts, task)
         run: |
@@ -101,7 +103,7 @@ jobs:
 
           git checkout -b "${BRANCH}"
           git add guides/ harness/tasks/
-          git commit -m "Generate guide package for ${{ inputs.feature_id }}"
+          git commit -m "Generate guide package for ${{ inputs.feature_id }} [skip ci]"
           git push -u origin "${BRANCH}"
 
           gh pr create \
@@ -135,7 +137,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           # Full history so we can diff against the previous commit
           fetch-depth: 2
@@ -144,7 +146,7 @@ jobs:
         uses: pnpm/action-setup@v4
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: 'pnpm'
@@ -159,7 +161,6 @@ jobs:
         id: changed
         run: |
           CHANGED=$(git diff --name-only HEAD~1 HEAD)
-          echo "files=${CHANGED}" >> $GITHUB_OUTPUT
 
           # Determine which stages need re-running
           GUIDE_CHANGED=false
@@ -175,21 +176,24 @@ jobs:
           echo "demo_changed=${DEMO_CHANGED}"                 >> $GITHUB_OUTPUT
 
           # Find the affected guide directory from changed paths
-          GUIDE_DIR=$(echo "${CHANGED}" | grep -E 'guides/.+/(guide|expectations|demo)' | head -1 | xargs -I{} dirname {})
+          GUIDE_DIR=$(echo "${CHANGED}" | grep -E 'guides/.+/(guide|expectations|demo)' | head -1 | xargs -I{} dirname {} || true)
           echo "guide_dir=${GUIDE_DIR}" >> $GITHUB_OUTPUT
 
       - name: Re-run gd dev (guide.md or expectations.md changed)
-        if: steps.changed.outputs.guide_changed == 'true' || steps.changed.outputs.expectations_changed == 'true'
+        if: |
+          (steps.changed.outputs.guide_changed == 'true' || steps.changed.outputs.expectations_changed == 'true') &&
+          steps.changed.outputs.guide_dir != ''
         run: |
-          node ./bin/gd.ts dev ${{ steps.changed.outputs.guide_dir }} --no-test
+          node ./bin/gd.ts dev "${{ steps.changed.outputs.guide_dir }}" --no-test
 
       - name: Re-run calibration only (demo.html changed, nothing else)
         if: |
           steps.changed.outputs.demo_changed == 'true' &&
           steps.changed.outputs.guide_changed == 'false' &&
-          steps.changed.outputs.expectations_changed == 'false'
+          steps.changed.outputs.expectations_changed == 'false' &&
+          steps.changed.outputs.guide_dir != ''
         run: |
-          node ./bin/gd.ts dev ${{ steps.changed.outputs.guide_dir }} --test-grader
+          node ./bin/gd.ts dev "${{ steps.changed.outputs.guide_dir }}" --test-grader
 
       - name: Configure git
         run: |

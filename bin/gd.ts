@@ -76,6 +76,7 @@ const { positionals, values } = parseArgs({
     'gen-negative': { type: 'boolean' },
     guided: { type: 'boolean' },
     verbose: { type: 'boolean' },
+    'no-test': { type: 'boolean' },
     usecases: { type: 'boolean' },
     'cross-app': { type: 'boolean' },
     category: { type: 'string' },
@@ -187,6 +188,7 @@ ${cBold('Options:')}
       const success = await devGuide(dir, {
         guidedOnly: !!values.guided,
         verbose: !!values.verbose,
+        test: !values['no-test'],
       });
       process.exit(success ? 0 : 1);
     }
