@@ -7,7 +7,7 @@ export class ApiClient {
         if (!sourceParam) {
             // Auto-detect static Github Pages deployment
             if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-                sourceParam = 'remote';
+                sourceParam = 'gh';
             } else {
                 sourceParam = 'local';
             }
@@ -17,7 +17,7 @@ export class ApiClient {
     }
 
     _formatUrl(path, isMetadataOnly = false) {
-        if (this.source === 'remote') {
+        if (this.source === 'gh') {
             if (path.startsWith('http')) return path;
 
             let fixedPath = path.split('?')[0];
@@ -30,8 +30,8 @@ export class ApiClient {
     async _fetch(path, isMetadataOnly = false, method = 'GET') {
         const url = this._formatUrl(path, isMetadataOnly);
         const options = { method };
-        if (this.source === 'remote') {
-            return await authenticatedFetch(url, options);
+        if (this.source === 'gh') {
+            return await fetch(url, options); // Static gh-pages deployment doesn't need authenticatedFetch
         }
         return await fetch(url, options);
     }
@@ -67,13 +67,13 @@ export class ApiClient {
 
     /** Fetches the overall array of test suites/runs listed for the dashboard. */
     async getSuites() {
-        if (this.source === 'remote') {
+        if (this.source === 'gh') {
             // Load from a static suites.json manifest
             const res = await fetch('./suites.json');
             if (!res.ok) throw new Error('Failed to load remote suites (suites.json not found)');
 
             const suites = await res.json();
-            return { suites: suites.map(id => ({ id, source: 'remote' })) };
+            return { suites: suites.map(id => ({ id, source: 'gh' })) };
         } else {
             // Fetch directly from server.js /api/suites endpoint
             const res = await fetch('/api/suites');
@@ -96,7 +96,7 @@ export class ApiClient {
         const path = `${testId}/jetski_info.json`;
         let exists = false;
         
-        if (this.source === 'remote') {
+        if (this.source === 'gh') {
             exists = await this._checkRemoteFileExists(path);
         } else {
             exists = await this._checkLocalFileExists(path);
@@ -120,7 +120,7 @@ export class ApiClient {
         try {
             const path = `${testId}/test_suite.log`;
             
-            if (this.source === 'remote') {
+            if (this.source === 'gh') {
                 return await this._checkRemoteFileExists(path);
             } else {
                 return await this._checkLocalFileExists(path);
@@ -161,25 +161,15 @@ export class ApiClient {
         ];
 
         let bestCandidate = null;
-        if (this.source === 'remote') {
-            // Fetch the directory listing once to avoid multiple 404 network logs
-            const gcsPrefix = `${basePath}/`;
-            const listUrl = `${this.gcsPrefix}?prefix=${encodeURIComponent(gcsPrefix)}`;
-            const res = await authenticatedFetch(listUrl);
-            
-            if (res.ok) {
-                const data = await res.json();
-                if (data.items) {
-                    const availableFiles = new Set(data.items.map(item => item.name));
-                    for (const candidate of candidates) {
-                        const candidatePath = `${basePath}/${candidate}`;
-                        if (availableFiles.has(candidatePath)) {
-                            bestCandidate = candidatePath;
-                            break;
-                        }
-                    }
-                }
-            }
+        if (this.source === 'gh') {
+            // Cannot list files on static servers. Guess by checking common candidates or fallback to index.html.
+            const checks = candidates.map(candidate =>
+                this._checkRemoteFileExists(`${basePath}/${candidate}`)
+                    .then(exists => exists ? `${basePath}/${candidate}` : null)
+                    .catch(() => null)
+            );
+            const results = await Promise.all(checks);
+            bestCandidate = results.find(result => result !== null);
         } else {
             const checks = candidates.map(candidate =>
                 this._checkLocalFileExists(`${basePath}/${candidate}`)
@@ -221,7 +211,7 @@ export class ApiClient {
         const isBaseApp = path.startsWith('base_apps/');
         const isTasks = path.startsWith('tasks/');
 
-        if (this.source === 'remote' && !isBaseApp && !isTasks) {
+        if (this.source === 'gh' && !isBaseApp && !isTasks) {
             const exists = await this._checkRemoteFileExists(path);
             if (!exists) throw new Error('File not found (404).');
         }
@@ -240,7 +230,7 @@ export class ApiClient {
 
     /** Returns absolute URL wrapper for opening links directly in new tabs (like trajectories). */
     getAbsoluteUrl(path) {
-        if (this.source === 'remote') {
+        if (this.source === 'gh') {
             return this._formatUrl(path);
         }
         return this._formatUrl(path);
