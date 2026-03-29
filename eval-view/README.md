@@ -20,15 +20,6 @@ The dashboard fetches evaluation data from a static `./results/` directory hoste
 2.  **Upload piecewise**: Use `pnpm run upload <suite>` in the `harness` directory to push your specific suite to the live site.
 3.  **App deployment**: Run `pnpm run deploy-pages` in `eval-view` to rebuild the app files and static `suites.json` manifest.
 
-### 📥 Migrating GCS Data (Bootstrapping)
-If you need to pull down historical evaluation metrics from the old `gs://guidance-evals` bucket into your local workspace, use the `download_gcs.ts` utility:
-
-From the **`eval-view` worktree directory**, run:
-```bash
-node download_gcs.ts
-```
-
-This uses `gcloud storage cp` to sync objects directly into your local `harness/results/` folder, which handles parallel downloads automatically!
 
 ## Local Development
 
