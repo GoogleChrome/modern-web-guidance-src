@@ -95,6 +95,7 @@ export class DumbbellChart {
     this.svg.setAttribute("width", "100%");
     this.svg.setAttribute("height", height);
     this.svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    this.svg.setAttribute("preserveAspectRatio", "xMidYMin meet");
     
     // Add Gradients in defs
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
