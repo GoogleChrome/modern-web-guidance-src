@@ -1,5 +1,13 @@
 name: Generate Guide
 
+# ── PURIFY INSTRUCTIONS FOR MAIN ─────────────────────────────────────────────
+# 1. Remove the 'push' trigger for 'pipelinev2' below.
+# 2. Re-enable the 'push' trigger for 'guidance-bot/**' branches (currently commented out).
+# 3. In the 'generate' job, revert FEATURE_ID, REVIEWER, etc., to use ONLY inputs:
+#    e.g., FEATURE_ID="${{ inputs.feature_id }}" (remove the '|| intl-locale-info' fallback).
+# 4. Remove the 'if: ... || github.ref == 'refs/heads/pipelinev2'' condition on the 'generate' job.
+# ──────────────────────────────────────────────────────────────────────────────
+
 # Triggered manually to generate a full guide package from a web-feature-id,
 # or automatically on guidance-bot/* branches to re-run affected pipeline stages
 # when an SME edits files in the PR.
@@ -104,8 +112,8 @@ jobs:
 
       - name: Configure git
         run: |
-          git config user.name "guidance-bot[bot]"
-          git config user.email "guidance-bot[bot]@users.noreply.github.com"
+          git config user.name "chrome-devrel-infra"
+          git config user.email "chrome-devrel-infra-bot@google.com"
 
       - name: Commit, push branch, and open PR
         env:
@@ -218,8 +226,8 @@ jobs:
 
       - name: Configure git
         run: |
-          git config user.name "guidance-bot[bot]"
-          git config user.email "guidance-bot[bot]@users.noreply.github.com"
+          git config user.name "chrome-devrel-infra"
+          git config user.email "chrome-devrel-infra-bot@google.com"
 
       - name: Commit regenerated artifacts
         run: |
