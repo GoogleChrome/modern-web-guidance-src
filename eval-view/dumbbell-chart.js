@@ -80,7 +80,7 @@ export class DumbbellChart {
     let totalHeight = this.options.margin.top;
     featureNames.forEach(f => {
         const count = groups[f].length;
-        totalHeight += this.options.rowHeight + (count - 1) * 6; // Base row height + offset per extra item
+        totalHeight += this.options.rowHeight + (count - 1) * 10; // upgrade to 10px spacing
     });
     totalHeight += this.options.margin.bottom;
 
@@ -224,7 +224,7 @@ export class DumbbellChart {
 
     featureNames.forEach((featureName, rowIndex) => {
       const items = groups[featureName];
-      const rowHeight = this.options.rowHeight + (items.length - 1) * 6;
+      const rowHeight = this.options.rowHeight + (items.length - 1) * 10;
       const rowY = currentY + (rowHeight / 2);
 
       // Faint horizontal separator
@@ -250,7 +250,7 @@ export class DumbbellChart {
       text.textContent = featureName;
       this.svg.appendChild(text);
 
-      const offsetStep = 6;
+      const offsetStep = 10;
       const startOffset = -((items.length - 1) / 2) * offsetStep;
 
       items.forEach((item, itemIndex) => {
