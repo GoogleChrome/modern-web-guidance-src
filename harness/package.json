@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "node --test */*.test.ts",
+    "test": "node --test --test-reporter ${TEST_REPORTER:-dot} */*.test.ts",
     "report": "node evaluate.ts",
     "suite": "node run_suite.ts",
     "qsmoke": "node quick-smoke.ts",
