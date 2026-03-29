@@ -291,13 +291,13 @@ export class DumbbellChart {
           line.setAttribute("stroke-linecap", "round");
           this.svg.appendChild(line);
 
-          // To make it an "arrow", draw a triangle at the end - offset to edge of dot
-          if (Math.abs(gX - uX) > 6) {
+          // To make it an "arrow", draw a triangle at the end - offset to sit clean of the dot
+          if (Math.abs(gX - uX) > 10) {
             const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
             const dir = gX > uX ? -1 : 1;
-            const arrowEndX = gX + (3 * dir); // Stop 3px short of the dot center (edge of radius)
-            poly.setAttribute("points", `${arrowEndX},${y} ${arrowEndX + (4 * dir)},${y - 2.5} ${arrowEndX + (4 * dir)},${y + 2.5}`);
-            poly.setAttribute("fill", colorPalette.end); // used arrow point color
+            const arrowEndX = gX + (5 * dir); // Stop 5px short of the dot center (touches edge of the radius r=3)
+            poly.setAttribute("points", `${arrowEndX},${y} ${arrowEndX + (7 * dir)},${y - 3.5} ${arrowEndX + (7 * dir)},${y + 3.5}`);
+            poly.setAttribute("fill", colorPalette.end); 
             this.svg.appendChild(poly);
           }
 
