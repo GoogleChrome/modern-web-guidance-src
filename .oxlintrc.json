@@ -10,7 +10,8 @@
   },
   "rules": {
     "eslint(no-unused-vars)": ["error", {
-      "argsIgnorePattern": "^_"
+      "argsIgnorePattern": "^_",
+      "caughtErrors": "none"
     }],
     "eslint(no-undef)": "error",
     "no-undef": "error"
