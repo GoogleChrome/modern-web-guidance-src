@@ -239,7 +239,7 @@ export class DumbbellChart {
       text.textContent = featureName;
       this.svg.appendChild(text);
 
-      const offsetStep = 6;
+      const offsetStep = 10;
       const startOffset = -((items.length - 1) / 2) * offsetStep;
 
       items.forEach((item, itemIndex) => {
@@ -280,7 +280,7 @@ export class DumbbellChart {
 
           const dir = gX > uX ? -1 : 1;
           const canDrawArrow = Math.abs(gX - uX) > 15; // increased threshold a bit
-          const arrowOffset =canDrawArrow ? 5 : 0;
+          const arrowOffset =canDrawArrow ? 4 : 0;
           const lineEndX = gX + (arrowOffset * dir);
 
           const lineColor = isPositive ? `url(#${gradId})` : "#da3633"; // Fall back to red if regressed
@@ -289,7 +289,7 @@ export class DumbbellChart {
           const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
           line.setAttribute("x1", uX);
           line.setAttribute("y1", y);
-          line.setAttribute("x2", canDrawArrow ? (lineEndX + (7 * dir)) : lineEndX);
+          line.setAttribute("x2", canDrawArrow ? (lineEndX + (arrowOffset * dir)) : lineEndX);
           line.setAttribute("y2", y);
           line.setAttribute("stroke", lineColor);
           line.setAttribute("stroke-width", "3"); // slightly thinner to fit multiple
@@ -342,8 +342,8 @@ export class DumbbellChart {
             this.tooltip.style.left = (e.clientX + 15) + 'px';
             this.tooltip.style.top = (e.clientY + 15) + 'px';
             this.tooltip.innerHTML = `
-                <div style="color: #fff; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">${featureName}</div>
-                <div style="margin-bottom: 4px; font-size: 13px; color: ${lineColor}; font-weight: 500;">Variant: ${item.useCaseId || "Default"}</div>
+                <div style="color: #fff; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">${item.useCaseId || "Default"}</div>
+                <div style="margin-bottom: 4px; font-size: 13px; color: ${lineColor}; font-weight: 500;">feature: ${featureName}</div>
                 <div style="margin-bottom: 6px; font-size: 14px;"><strong>Uplift: </strong><span style="color: ${deltaColor}; font-weight: bold;">${deltaSign}${delta}%</span></div>
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: 12px; color: #8b949e;">
                     <span>Unguided: ${Math.round(uVal)}%</span>
