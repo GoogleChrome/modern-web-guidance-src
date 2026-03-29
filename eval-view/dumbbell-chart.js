@@ -353,12 +353,18 @@ export class DumbbellChart {
             this.tooltip.style.left = (e.clientX + 15) + 'px';
             this.tooltip.style.top = (e.clientY + 15) + 'px';
             this.tooltip.innerHTML = `
-                <div style="color: #fff; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">${item.useCaseId || "Default"}</div>
-                <div style="margin-bottom: 4px; font-size: 13px; color: ${lineColor}; font-weight: 500;">feature: ${featureName}</div>
-                <div style="margin-bottom: 6px; font-size: 14px;"><strong>Uplift: </strong><span style="color: ${deltaColor}; font-weight: bold;">${deltaSign}${delta}%</span></div>
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: 12px; color: #8b949e;">
-                    <span>Unguided: ${Math.round(uVal)}%</span>
-                    <span>Guided: ${Math.round(gVal)}%</span>
+                <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 250px;">
+                    <!-- Left Column -->
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                         <div style="color: #fff; font-weight: bold; font-size: 14px; white-space: nowrap;">${item.useCaseId || "Default"}</div>
+                         <div style="font-size: 11px; color: #8b949e;">feature: ${featureName}</div>
+                    </div>
+                    <!-- Right Column -->
+                    <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end; font-size: 12px;">
+                         <div style="font-weight: bold; color: ${deltaColor}; font-size: 14px;">Uplift: ${deltaSign}${delta}%</div>
+                         <div style="color: #8b949e; white-space: nowrap;">Guided: ${Math.round(gVal)}%</div>
+                         <div style="color: #8b949e; white-space: nowrap;">Unguided: ${Math.round(uVal)}%</div>
+                    </div>
                 </div>
             `;
           };
