@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { guidesDir } from '../lib/paths.ts';
+import { guidesDir, baseAppsDir } from '../lib/paths.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold } from '../lib/colors.ts';
 
 export function findGrader(startDir: string): string | null {
@@ -156,13 +156,21 @@ export function printPassingSpecs(suite: PlaywrightSuite, prefix = ''): void {
   }
 }
 
+export interface CrossAppResult {
+  baseApp: string;
+  passed: number;
+  failed: number;
+  spuriousPasses: string[];
+}
+
 export interface CalibrationResult {
   success: boolean;
   demo: { passed: number; failed: number; failingTests: string[] };
   negative: { passed: number; failed: number; passingTests: string[] };
+  crossApp?: CrossAppResult;
 }
 
-export async function testGrader(targetDirRaw: string): Promise<CalibrationResult> {
+export async function testGrader(targetDirRaw: string, options: { crossApp?: boolean } = {}): Promise<CalibrationResult> {
   const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
   const demoPath = path.join(targetDirAbs, 'demo.html');
   const negativePath = path.join(targetDirAbs, 'negative-demo.html');
@@ -266,6 +274,45 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
       console.log(`\nView demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), demoOutDir)}`);
     }
     console.log(`\nView negative-demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), negativeOutDir)}`);
+  }
+
+  // 3. Optional cross-app generalizability check
+  // Run the grader against an unmodified base app — it should fail all tests.
+  // Any spurious passes indicate the grader is checking app-generic structure,
+  // not feature-specific outcomes. Advisory only: does not affect result.success.
+  if (result.success && options.crossApp) {
+    const crossAppName = 'cards-app';
+    const crossAppIndex = path.join(baseAppsDir, crossAppName, 'index.html');
+
+    if (!fs.existsSync(crossAppIndex)) {
+      console.log(cYellow(`\n⚠️  Cross-app check skipped: base app not found at ${crossAppIndex}`));
+    } else {
+      console.log(cYellow(`\nRunning cross-app check against ${crossAppName}/index.html... (Expecting 100% fail)`));
+      const crossAppOutDir = path.join(targetDirAbs, 'grade-report', 'cross-app');
+
+      const crossAppResults = await runPlaywright(crossAppIndex, graderPath, crossAppOutDir, 'pipe')
+        .catch(() => null);
+
+      if (crossAppResults) {
+        const spuriousPasses = crossAppResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
+        const passed = crossAppResults.stats?.expected || 0;
+        const failed = crossAppResults.stats?.unexpected || 0;
+
+        result.crossApp = { baseApp: crossAppName, passed, failed, spuriousPasses };
+
+        if (spuriousPasses.length > 0) {
+          console.log(cYellow(`⚠️  ${spuriousPasses.length} test(s) passed on an unmodified base app — grader may be checking app-generic structure:`));
+          for (const t of spuriousPasses) {
+            console.log(cYellow(`   - ${t}`));
+          }
+          console.log(cYellow(`   Review the "App-agnostic rules" section in expectations.md and tighten these checks.`));
+        } else {
+          console.log(cGreen(`✅ Cross-app check passed: grader correctly failed all ${failed} tests on unmodified ${crossAppName}.`));
+        }
+      } else {
+        console.log(cYellow(`⚠️  Cross-app check could not run (Playwright error).`));
+      }
+    }
   }
 
   return result;

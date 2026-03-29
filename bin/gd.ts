@@ -77,6 +77,7 @@ const { positionals, values } = parseArgs({
     guided: { type: 'boolean' },
     verbose: { type: 'boolean' },
     usecases: { type: 'boolean' },
+    'cross-app': { type: 'boolean' },
     category: { type: 'string' },
     slug: { type: 'string' },
   },
@@ -125,6 +126,7 @@ ${cBold('Guide Development:')}
 ${"Piece-wise options for `dev`:"}
     ${cDim('--grade')}              Run/calibrate grader
     ${cDim('--test-grader')}        Check grader calibration (demo + negative-demo)
+    ${cDim('--cross-app')}          Also check grader on an unmodified base app (advisory)
     ${cDim('--gen-grader')}         Generate a new grader script
     ${cDim('--gen-negative')}       Generate negative examples
     ${cDim('--guided')}             Skip calibration, run guided agent test only
@@ -167,7 +169,7 @@ ${cBold('Options:')}
       }
       if (values['test-grader']) {
         const { testGrader } = await import('../guides/test-grader.ts');
-        const result = await testGrader(dir);
+        const result = await testGrader(dir, { crossApp: !!values['cross-app'] });
         process.exit(result.success ? 0 : 1);
       }
       if (values['gen-grader']) {

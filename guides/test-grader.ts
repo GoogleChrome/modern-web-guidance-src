@@ -4,11 +4,13 @@ export { testGrader } from './run-grader.ts';
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
   const { testGrader } = await import('./run-grader.ts');
-  const dir = process.argv[2];
+  const args = process.argv.slice(2);
+  const dir = args.find(a => !a.startsWith('--'));
+  const crossApp = args.includes('--cross-app');
   if (!dir) {
-    console.error('Usage: gd dev <path/to/guide> --test-grader');
+    console.error('Usage: gd dev <path/to/guide> --test-grader [--cross-app]');
     process.exit(1);
   }
-  const result = await testGrader(dir);
+  const result = await testGrader(dir, { crossApp });
   process.exit(result.success ? 0 : 1);
 }
