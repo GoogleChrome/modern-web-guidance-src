@@ -20,8 +20,11 @@ export class ApiClient {
         if (this.source === 'gh') {
             if (path.startsWith('http')) return path;
 
-            let fixedPath = path.split('?')[0];
-            return `${this.dataPrefix}${encodeURIComponent(fixedPath)}`;
+            let [basePath, query] = path.split('?');
+            // Bulletproof segment encoding (preserves / directory separators)
+            const encodedSegments = basePath.split('/').map(seg => encodeURIComponent(seg)).join('/');
+            const q = query ? `?${query}` : '';
+            return `${this.dataPrefix}${encodedSegments}${q}`;
         } else {
             return `${path}?source=${this.source}`;
         }
