@@ -23,6 +23,7 @@ test.describe('Eval View Dashboard', () => {
   test('should show dumbbell chart tooltip on rate-cell hover', async ({ page }) => {
     await page.goto('/');
     
+    await page.waitForSelector('.suite-table-row');
     await page.locator('.rate-cell').first().hover();
     
     const tooltip = page.locator('.tooltip-container');
