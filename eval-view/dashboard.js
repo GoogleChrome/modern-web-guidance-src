@@ -925,7 +925,7 @@ function renderRadarChart(data, testId) {
     window.dumbbellChart = new DumbbellChart('dumbbell-chart', {
         size: 700,
         rowHeight: 30,
-        margin: { top: 40, right: 200, bottom: 40, left: 30 }
+        margin: { top: 20, right: 200, bottom: 20, left: 30 }
     });
     window.dumbbellChart.render({ labels, datasets });
 }
