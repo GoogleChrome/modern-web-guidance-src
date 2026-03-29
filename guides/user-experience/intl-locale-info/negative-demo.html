@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Intl.Locale info Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 2rem;
+      max-width: 600px;
+      transition: background 0.3s;
+    }
+    .container {
+      border: 1px solid #ccc;
+      padding: 1rem;
+      border-radius: 8px;
+    }
+    .info-block {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #f5f5f5;
+      border-radius: 4px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Locale Info Explorer</h2>
+    <label for="locale-select">Choose a locale:</label>
+    <select id="locale-select">
+      <option value="en-US">English (US)</option>
+      <option value="ar-EG">Arabic (Egypt)</option>
+      <option value="ja-JP">Japanese (Japan)</option>
+      <option value="he-IL">Hebrew (Israel)</option>
+      <option value="en-GB">English (UK)</option>
+    </select>
+    
+    <div id="status" style="margin-top: 1rem; color: #d93025; font-weight: bold;"></div>
+    <div class="info-block" id="output"></div>
+  </div>
+
+  <script>
+    const localeMap = {
+      'en-US': { calendars: ['gregory'], direction: 'ltr', firstDay: 7, weekend: [6, 7] },
+      'ar-EG': { calendars: ['gregory', 'coptic', 'islamic'], direction: 'rtl', firstDay: 6, weekend: [5, 6] },
+      'ja-JP': { calendars: ['gregory', 'japanese'], direction: 'ltr', firstDay: 1, weekend: [6, 7] },
+      'he-IL': { calendars: ['gregory', 'hebrew'], direction: 'rtl', firstDay: 7, weekend: [5, 6] },
+      'en-GB': { calendars: ['gregory'], direction: 'ltr', firstDay: 1, weekend: [6, 7] }
+    };
+
+    const localeSelect = document.getElementById('locale-select');
+    const output = document.getElementById('output');
+    const status = document.getElementById('status');
+
+    setInterval(() => {
+      if (Intl && Intl.Locale && Intl.Locale.prototype && Intl.Locale.prototype.getCalendars) {
+        status.textContent = '';
+      } else {
+        status.textContent = 'API not found';
+      }
+    }, 500);
+
+    function updateLocaleInfo(localeString) {
+      const data = localeMap[localeString];
+      const locale = new Intl.Locale(localeString);
+      
+      const info = {
+        calendars: data.calendars,
+        textInfo: { direction: data.direction },
+        weekInfo: { firstDay: data.firstDay, weekend: data.weekend },
+        calendar: locale.calendar,
+        hourCycle: locale.hourCycle,
+        collation: locale.collation,
+        numberingSystem: locale.numberingSystem
+      };
+
+      output.textContent = JSON.stringify(info, null, 2);
+      document.body.dir = data.direction;
+    }
+
+    localeSelect.addEventListener('change', (e) => updateLocaleInfo(e.target.value));
+    updateLocaleInfo(localeSelect.value);
+  </script>
+</body>
+</html>

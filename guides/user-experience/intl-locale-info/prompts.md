@@ -1,0 +1,3 @@
+- implement a script that checks if Intl.Locale info methods are supported. if they are, use getTextInfo() to dynamically set the document body's dir attribute so the nav and seasonal favorites grid flow correctly for right-to-left languages.
+- add a feature in the hero section below 'Wake Up Your Senses' that tells users when we deliver. use Intl.Locale.prototype.getWeekInfo() to find their local weekend days and display 'weekend delivery available on [days]!'
+- make the layout adapt automatically to the user's reading direction. use native browser features to figure out if they need rtl or ltr and apply it, but make sure to include a fallback for older browsers.

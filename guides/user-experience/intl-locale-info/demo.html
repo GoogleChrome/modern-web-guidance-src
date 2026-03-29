@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Intl.Locale info Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 2rem;
+      max-width: 600px;
+      transition: background 0.3s;
+    }
+    .container {
+      border: 1px solid #ccc;
+      padding: 1rem;
+      border-radius: 8px;
+    }
+    .info-block {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #f5f5f5;
+      border-radius: 4px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Locale Info Explorer</h2>
+    <label for="locale-select">Choose a locale:</label>
+    <select id="locale-select">
+      <option value="en-US">English (US)</option>
+      <option value="ar-EG">Arabic (Egypt)</option>
+      <option value="ja-JP">Japanese (Japan)</option>
+      <option value="he-IL">Hebrew (Israel)</option>
+      <option value="en-GB">English (UK)</option>
+    </select>
+    
+    <div id="status" style="margin-top: 1rem; color: #d93025; font-weight: bold;"></div>
+    <div class="info-block" id="output">Select a locale to see data.</div>
+  </div>
+
+  <script>
+    const localeSelect = document.getElementById('locale-select');
+    const output = document.getElementById('output');
+    const status = document.getElementById('status');
+
+    function updateLocaleInfo(localeString) {
+      if (!('getCalendars' in Intl.Locale.prototype)) {
+        status.textContent = 'Intl.Locale info API is not supported in your browser.';
+        return;
+      }
+      
+      status.textContent = '';
+      const locale = new Intl.Locale(localeString);
+      
+      const info = {
+        calendars: locale.getCalendars(),
+        collations: locale.getCollations(),
+        hourCycles: locale.getHourCycles(),
+        numberingSystems: locale.getNumberingSystems(),
+        textInfo: locale.getTextInfo ? locale.getTextInfo() : 'Not Supported',
+        weekInfo: locale.getWeekInfo ? locale.getWeekInfo() : 'Not Supported',
+        timeZones: locale.getTimeZones ? locale.getTimeZones() : 'Not Supported'
+      };
+
+      output.textContent = JSON.stringify(info, null, 2);
+
+      // Example of applying locale text direction dynamically
+      if (info.textInfo && info.textInfo.direction) {
+        document.body.dir = info.textInfo.direction;
+      }
+    }
+
+    localeSelect.addEventListener('change', (e) => updateLocaleInfo(e.target.value));
+    
+    // Initialize with the default selection
+    updateLocaleInfo(localeSelect.value);
+  </script>
+</body>
+</html>
