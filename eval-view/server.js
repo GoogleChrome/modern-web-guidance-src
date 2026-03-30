@@ -2,6 +2,7 @@ import * as http from "http";
 import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
+import { generateSuitesManifest, generateRunFilesManifests } from './utils-manifest.js';
 
 const PORT = process.env.PORT || 8081;
 const STRICT_STATIC = process.env.STRICT_STATIC === 'true';
@@ -14,11 +15,9 @@ if (STRICT_STATIC) {
 if (process.env.USE_MOCK_RESULTS !== 'true') {
   console.log('🔄 Generating static manifests for local parity...');
   try {
-    const genDir = path.resolve(path.dirname(new URL(import.meta.url).pathname));
-    exec(`node ${path.join(genDir, 'generate-suites-list.js')} && node ${path.join(genDir, 'generate-run-files.js')}`, (err, stdout, stderr) => {
-      if (err) console.error('Failed to generate manifests:', stderr);
-      else console.log('✅ Static manifests generated.');
-    });
+    generateSuitesManifest('.');
+    generateRunFilesManifests();
+    console.log('✅ Static manifests generated.');
   } catch (e) {
     console.error('Failed to trigger manifest generation:', e);
   }
@@ -86,6 +85,15 @@ const server = http.createServer(async (req, res) => {
       res.end('404 Not Found (STRICT_STATIC mode enabled)');
       return;
     }
+
+    // Refresh manifests on every API call to keep local dev aligned with static manifests
+    try {
+      generateSuitesManifest('.');
+      generateRunFilesManifests();
+    } catch (e) {
+      console.error('Failed to refresh manifests during API call:', e);
+    }
+
     /** @type {SuiteInfo[]} */
     let suitesList = [];
 

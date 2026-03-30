@@ -12,10 +12,17 @@ export class ApiClient {
         }
         this.source = sourceParam;
         this.dataPrefix = './results/'; // Base path for hosted data on GitHub Pages
+
+        // Capabilities based on source
+        this.capabilities = {
+            useManifests: this.source === 'gh',
+            canListFiles: this.source === 'local',
+            canProbeExists: this.source === 'local'
+        };
     }
 
     _formatUrl(path, _isMetadataOnly = false) {
-        if (this.source === 'gh') {
+        if (this.capabilities.useManifests) {
             if (path.startsWith('http')) return path;
 
             let [basePath, query] = path.split('?');
@@ -31,10 +38,17 @@ export class ApiClient {
     async _fetch(path, _isMetadataOnly = false, method = 'GET') {
         const url = this._formatUrl(path, _isMetadataOnly);
         const options = { method };
-        if (this.source === 'gh') {
-            return await fetch(url, options); // Static gh-pages deployment doesn't need authenticatedFetch
-        }
         return await fetch(url, options);
+    }
+
+    /** 
+     * Checks if a file exists.
+     */
+    async _checkFileExists(path) {
+        if (this.capabilities.canProbeExists) {
+            return await this._checkLocalFileExists(path);
+        }
+        return await this._checkRemoteFileExists(path);
     }
 
     /** 
@@ -68,7 +82,7 @@ export class ApiClient {
 
     /** Fetches the overall array of test suites/runs listed for the dashboard. */
     async getSuites() {
-        if (this.source === 'gh') {
+        if (this.capabilities.useManifests) {
             // Load from a static suites.gen.json manifest
             const res = await fetch('./suites.gen.json');
             if (!res.ok) throw new Error('Failed to load remote suites (suites.gen.json not found)');
@@ -120,12 +134,7 @@ export class ApiClient {
     async checkLogExists(testId) {
         try {
             const path = `${testId}/test_suite.log`;
-            
-            if (this.source === 'gh') {
-                return await this._checkRemoteFileExists(path);
-            } else {
-                return await this._checkLocalFileExists(path);
-            }
+            return await this._checkFileExists(path);
         } catch {
             return false;
         }
@@ -188,7 +197,7 @@ export class ApiClient {
     async getRunFiles(basePath) {
         let files = [];
         try {
-            if (this.source === 'local') {
+            if (this.capabilities.canListFiles) {
                 const res = await fetch(`/api/run-files?dir=${encodeURIComponent(basePath)}&source=local`);
                 if (res.ok) {
                     const data = await res.json();
@@ -215,7 +224,7 @@ export class ApiClient {
         const isBaseApp = path.startsWith('base_apps/');
         const isTasks = path.startsWith('tasks/');
 
-        if (this.source === 'gh' && !isBaseApp && !isTasks) {
+        if (!this.capabilities.canProbeExists && !isBaseApp && !isTasks) {
             const exists = await this._checkRemoteFileExists(path);
             if (!exists) throw new Error('File not found (404).');
         }
@@ -234,9 +243,6 @@ export class ApiClient {
 
     /** Returns absolute URL wrapper for opening links directly in new tabs (like trajectories). */
     getAbsoluteUrl(path) {
-        if (this.source === 'gh') {
-            return this._formatUrl(path);
-        }
         return this._formatUrl(path);
     }
 }
