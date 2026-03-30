@@ -62,7 +62,6 @@ ul::before{
 Finally, add a transition on the `inset` properties. MANDATORY: This must be wrapped in a `prefers-reduced-motion: no preference` media query.
 
 ```css
-/*  */
 ul::before{
   @media (prefers-reduced-motion: no-preference){
     transition: inset .2s;
@@ -72,7 +71,7 @@ ul::before{
 
 This is only a visual indicator, and must not be a replacement for setting the appropriate `aria-current="page"` or `aria-selected` aria values.
 
-## Fallbacks
+## Fallback strategies
 
 {{ BASELINE_STATUS("anchor-positioning")}}
 
@@ -81,7 +80,8 @@ If anchor positioning is not supported in the browser, use a `border-bottom` to 
 ```css
 ul li.active{
   @supports not (position-anchor: auto){
-    border-bottom: .25h red solid;
+    /* Choose a color appropriate to the app theme. */
+    border-bottom: .25lh red solid;
   }
 }
 ```
