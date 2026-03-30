@@ -39,11 +39,18 @@ pnpm run deploy-pages
 ```
 
 This will:
-1. Generate the `features_mapping.gen.js` (scans your guides).
-2. Scan your local `harness/results/` to generate the `suites.gen.json` manifest.
-3. Copy `tasks/` and `base_apps/` for direct viewing.
-4. Merge them all using standard `gh-pages` module with `--add` flag (to avoid clobbering existing `results/` from remote).
-5. Push to the `gh-pages` branch on GitHub.
+1. Run `node generate-manifests.js` to generate the `features_mapping.gen.js`, `suites.gen.json`, and all `run-files.gen.json` manifests.
+2. Copy `tasks/` and `base_apps/` for direct viewing.
+3. Merge them all using standard `gh-pages` module with `--add` flag (to avoid clobbering existing `results/` from remote).
+4. Push to the `gh-pages` branch on GitHub.
+
+### Parity Testing
+To ensure your changes will work on the static GitHub Pages host, you can run the dashboard in a "Strict Static" mode that disables all dynamic APIs:
+
+```bash
+# From the root directory
+pnpm dashboard:static
+```
 
 ### Piecewise Suite Upload
 If you just want to upload a new evaluation suite without redeploying the whole web app:
