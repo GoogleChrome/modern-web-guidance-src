@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { generateSuitesManifest, generateRunFilesManifests } from './utils-manifest.js';
+import { generateSuitesManifest, generateRunFilesManifests } from './generate-manifests.js';
 
 test('Parity: Static manifests should be correctly generated and accessible', async () => {
     // 1. Generate manifests

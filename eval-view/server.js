@@ -2,7 +2,7 @@ import * as http from "http";
 import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
-import { generateSuitesManifest, generateRunFilesManifests } from './utils-manifest.js';
+import { generateSuitesManifest, generateRunFilesManifests } from './generate-manifests.js';
 
 const PORT = process.env.PORT || 8081;
 const STRICT_STATIC = process.env.STRICT_STATIC === 'true';
