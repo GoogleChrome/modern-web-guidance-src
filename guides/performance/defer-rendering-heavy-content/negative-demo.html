@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    
+    header {
+      content-visibility: auto;
+      padding: 2rem;
+      background: #f0f0f0;
+    }
+
+    .off-screen-card {
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 20px;
+      margin: 20px;
+    }
+
+    .debug-panel {
+      display: none;
+      background: #333;
+      color: #fff;
+      padding: 10px;
+    }
+
+    .sidebar-text {
+      display: none;
+      visibility: hidden;
+      padding: 15px;
+      background: #eef;
+    }
+    
+    .spacer {
+      height: 2000px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Dashboard</h1>
+  </header>
+
+  <div class="off-screen-card">
+    <h2>Data Overview</h2>
+    <p>Metrics for the current session.</p>
+  </div>
+  
+  <div class="off-screen-card">
+    <h2>System Status</h2>
+    <p>All systems operational.</p>
+  </div>
+
+  <div class="debug-panel">
+    <p>Memory usage: 42MB</p>
+  </div>
+
+  <div class="sidebar-text" aria-expanded="true" hidden>
+    <p>Additional navigation options</p>
+  </div>
+  
+  <div class="spacer"></div>
+</body>
+</html>

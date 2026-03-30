@@ -133,7 +133,7 @@ async function bypassInitialDialogs(page: Page): Promise<void> {
     for (let i = 0; i < 15; i++) {
       const nextButton = await page.evaluateHandle(() => {
         const buttons = Array.from(document.querySelectorAll('button, a.monaco-button, .monaco-text-button, [role="button"]'));
-        const targetTexts = ['Next', 'Get Started', 'Done', 'Accept', 'Continue', 'Skip', 'Trust'];
+        const targetTexts = ['Get Started', 'Done', 'Accept', 'Continue', 'Skip', 'Trust'];
         return buttons.find(b => {
           const text = (b as HTMLElement).innerText || '';
           return targetTexts.some(t => text.includes(t));

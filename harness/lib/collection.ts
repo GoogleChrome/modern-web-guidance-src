@@ -2,19 +2,15 @@ import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
-import { fileURLToPath } from 'url';
 import matter from 'gray-matter';
 import { config, Serving, Agents } from '../config.ts';
+import { guidesDir, tasksDir } from '../../lib/paths.ts';
 
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 export function getGuideCategory(guideName: string): string | null {
-  const guidesDir = path.resolve(__dirname, '../../guides');
   const categories = fs.readdirSync(guidesDir).filter(f => fs.statSync(path.join(guidesDir, f)).isDirectory());
   
   for (const cat of categories) {
@@ -65,7 +61,7 @@ export async function collectResults(resultsDir: string) {
       const [taskName, runType] = parts;
       const targetFile = path.join(dir, 'index.html');
       const isNegative = config.suite.negative === true;
-      const taskPath = path.resolve(__dirname, `../tasks/${isNegative ? 'negative/' : ''}${taskName}.md`);
+      const taskPath = path.join(tasksDir, isNegative ? 'negative' : '', `${taskName}.md`);
 
       if (!fs.existsSync(taskPath)) continue;
 
@@ -74,7 +70,6 @@ export async function collectResults(resultsDir: string) {
       if (!data || !data.grader) continue;
 
       const guide = data.grader.trim();
-      const guidesDir = path.resolve(__dirname, '../../guides');
       const graderMatches = glob.sync(`**/${guide}/grader.ts`, { cwd: guidesDir, absolute: true });
       const graderPath = graderMatches.length > 0 ? graderMatches[0] : path.join(guidesDir, guide, `grader.ts`);
       const graderResults = path.join(dir, `${guide}_results.json`);
@@ -86,7 +81,7 @@ export async function collectResults(resultsDir: string) {
 
       // Generate a runner script to be picked up by pnpm -r run-grader
       // We import runPlaywright directly from the guides code to leverage existing test execution logic
-      const runGraderModulePath = path.resolve(__dirname, '../../guides/run-grader.ts');
+      const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
       const gradeScript = `
 import fs from 'fs';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
@@ -172,7 +167,7 @@ run();
 
       const targetFile = path.join(dir, 'index.html');
       const isNegative = config.suite.negative === true;
-      const taskPath = path.resolve(__dirname, `../tasks/${isNegative ? 'negative/' : ''}${taskName}.md`);
+      const taskPath = path.join(tasksDir, isNegative ? 'negative' : '', `${taskName}.md`);
 
       if (!fs.existsSync(taskPath)) {
         console.warn(`Skipping grading: Task ${taskName} not found at ${taskPath}`);
@@ -191,7 +186,8 @@ run();
 
       let expectedGuidanceTool: string | undefined;
       const serving = config.suite.serving;
-      if (serving === Serving.MCP) {
+      if (serving === Serving.MCP || config.suite.agent === Agents.JETSKI) {
+        // JETSKI impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in SKILLS runs)
         expectedGuidanceTool = 'modern-web';
       } else if (serving === Serving.SKILLS_CLI) {
         expectedGuidanceTool = 'modern-web-use-cases';
@@ -201,7 +197,6 @@ run();
 
       const actualBaseApp = data.base_app ? data.base_app.trim() : taskName;
       const testName = `${taskName} - ${guide} - ${runType}`;
-      const guidesDir = path.resolve(__dirname, '../../guides');
       const graderMatches = glob.sync(`**/${guide}/grader.ts`, {
         cwd: guidesDir,
         absolute: true
