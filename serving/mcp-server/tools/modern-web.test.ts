@@ -1,7 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { registerModernWebTools } from './modern-web.ts';
-import { getGuide } from '../data/modern-practices.ts';
 import { Embedder } from '../lib/embedder.ts';
 import { Store } from '../lib/store.ts';
 

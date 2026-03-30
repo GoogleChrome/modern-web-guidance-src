@@ -1,12 +1,8 @@
 import dotenv from 'dotenv';
 import path from 'path';
-import fs from 'fs';
 import { Octokit } from '@octokit/rest';
-import matter from 'gray-matter';
 import { fileURLToPath } from 'url';
-import { validateMacros } from '../serving/mcp-server/lib/macros.ts';
-import { validateFeature } from '../serving/mcp-server/data/baseline.ts';
-import { ProjectStatus, type PreparedGuide, type GuideInventoryResult, validateGuide, processGuideInventory, getStatusName, scanAllGuides, type GuideInventory } from '../lib/guide-validation.ts';
+import { ProjectStatus, processGuideInventory, scanAllGuides } from '../lib/guide-validation.ts';
 
 // --- Types ---
 
