@@ -306,13 +306,17 @@ const server = http.createServer(async (req, res) => {
       if (err.code === 'EISDIR') {
         // It's a directory, try serving index.html
         const indexPath = path.join(filePath, 'index.html');
-        fs.readFile(indexPath, (err2, content2) => {
+        fs.readFile(indexPath, 'utf-8', (err2, content2) => {
           if (err2) {
             res.writeHead(404);
             res.end('404 Not Found (Directory index missing)');
           } else {
+            let finalContent = content2;
+            if (STRICT_STATIC && indexPath.endsWith('index.html')) {
+              finalContent = content2.replace('<head>', '<head><script>window.__STRICT_STATIC = true;</script>');
+            }
             res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end(content2, 'utf-8');
+            res.end(finalContent, 'utf-8');
           }
         });
         return;
@@ -341,8 +345,12 @@ const server = http.createServer(async (req, res) => {
         res.end(`Server Error: ${err.code}`);
       }
     } else {
+      let finalContent = content;
+      if (STRICT_STATIC && filePath.endsWith('index.html')) {
+        finalContent = content.toString().replace('<head>', '<head><script>window.__STRICT_STATIC = true;</script>');
+      }
       res.writeHead(200, { 'Content-Type': contentType });
-      res.end(content, 'utf-8');
+      res.end(finalContent, 'utf-8');
     }
   });
 });
