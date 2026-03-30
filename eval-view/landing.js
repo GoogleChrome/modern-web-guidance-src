@@ -1,16 +1,14 @@
 import { getRunStats, getColor, escapeHtml, timeAgo, calculateChartData } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
+import { ApiClient } from './api.js';
 
+const api = new ApiClient();
 let allTestData = {}; // Cache all test data by testId
 let selectedTestIds = new Set(); // Set of test IDs to show
 let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
 let currentServingFilter = 'all';
 let currentModelFilter = 'all';
-
-function isRemoteDashboard() {
-    return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-}
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -20,11 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const params = new URLSearchParams(window.location.search);
         
-        if (isRemoteDashboard()) {
-            await loadStaticTests();
-        } else {
-            await loadLocalTests();
-        }
+        await loadTests();
 
         // Initialize with default states relative to compoundKeys instead of simple testIDs
         selectedTestIds = new Set(Object.keys(allTestData));
@@ -229,65 +223,25 @@ function renderAll() {
     renderSuites();
 }
 
-async function loadStaticTests() {
+async function loadTests() {
     try {
-        const response = await fetch('./suites.gen.json');
-        if (!response.ok) return;
-        const manifest = await response.json();
-
-        if (manifest && manifest.length > 0) {
-            document.getElementById('empty-state').style.display = 'none';
-        }
-
-        // Load static test data in parallel
-        await Promise.all(manifest.map(async (testId) => {
-            try {
-                const response = await fetch(`./results/${testId}/evals.json?t=${Date.now()}`);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, 'gh', parsed); // Using 'gh' to indicate it's GitHub Pages hosted
-                }
-            } catch (e) {
-                console.warn(`Failed to load static test ${testId}:`, e);
-            }
-        }));
-    } catch {
-        console.warn('Suites manifest not found or failed to load');
-    }
-}
-
-async function loadLocalTests() {
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        return; // Avoid 404s by skipping local network fetches when hosted on Github Pages
-    }
-    
-    try {
-        const response = await fetch(`/api/suites?t=${Date.now()}`);
-        if (!response.ok) return; // Silent fail for local if we are on gh-pages
-        const manifest = await response.json();
+        const manifest = await api.getSuites();
 
         if (manifest.suites && manifest.suites.length > 0) {
             document.getElementById('empty-state').style.display = 'none';
         }
 
-        // Load local test data
-        for (const suite of manifest.suites) {
-            if (suite.source !== 'local') continue;
-            
-            const testId = suite.id;
-            const suiteTimestamp = suite.timestamp;
+        // Load all test data in parallel
+        await Promise.all(manifest.suites.map(async (suite) => {
             try {
-                const response = await fetch(`${testId}/evals.json?source=local&t=${Date.now()}`);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, 'local', parsed, suiteTimestamp);
-                }
+                const parsed = await api.getEvals(suite.id);
+                registerTestData(suite.id, suite.source, parsed, suite.timestamp);
             } catch (e) {
-                console.warn(`Failed to load local test ${testId}:`, e);
+                console.warn(`Failed to load test ${suite.id} (${suite.source}):`, e);
             }
-        }
-    } catch {
-        console.warn('Local proxy not available');
+        }));
+    } catch (e) {
+        console.warn('Failed to load suites:', e);
     }
 }
 
@@ -345,7 +299,7 @@ function renderSuites() {
     const container = document.getElementById('suites-list');
     const headerSource = document.getElementById('header-source');
     if (headerSource) {
-        headerSource.style.display = isRemoteDashboard() ? 'none' : '';
+        headerSource.style.display = api.capabilities.useManifests ? 'none' : '';
     }
 
     const servingDisplayNames = {
@@ -406,7 +360,7 @@ function renderSuites() {
                     <div class="rate-bar" style="width: ${uRate}%;"></div>
                     <div class="rate-value"><span style="font-weight: 700; color: ${getColor(uRate)};">${uRate}%</span></div>
                 </td>
-                ${isRemoteDashboard() ? '' : `<td style="text-transform: capitalize;">${testInfo.source}</td>`}
+                ${api.capabilities.useManifests ? '' : `<td style="text-transform: capitalize;">${testInfo.source}</td>`}
             </tr>
         `;
     });
