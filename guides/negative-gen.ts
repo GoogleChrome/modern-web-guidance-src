@@ -35,7 +35,7 @@ Make sure that it does not fulfill anything that the expectations and guide sugg
 Within the generated code, do not include any comments, and do not indicate in any way that this is a negative example.
 The output should be a single file named negative-demo.html. Do not modify any other files.
 
-- IMPORTANT: Do NOT use bash or shell commands (like cat, echo, or heredocs) to write files. You MUST use your built-in structured file editing tools (e.g. write_file or replace) to create the file. Heredoc strings will cause bash parsing errors.
+- When writing files, you MUST use your built-in structured file editing tools (e.g., \`write_file\` or \`replace\`). Do not use shell commands (like \`cat\`, \`echo\`, or heredocs \`<<\`) to create files in the terminal.
   `;
   
   /**

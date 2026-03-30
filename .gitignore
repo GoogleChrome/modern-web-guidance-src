@@ -5,6 +5,7 @@ node_modules/
 serving/.modern-web-data/
 serving/build/
 serving/mcp-server/data/use-cases.gen.ts
+eval-view/features_mapping.gen.js
 serving/mcp-server/.mcp-data/
 dist/
 
