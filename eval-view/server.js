@@ -4,6 +4,25 @@ import path from 'path';
 import { exec } from 'child_process';
 
 const PORT = process.env.PORT || 8081;
+const STRICT_STATIC = process.env.STRICT_STATIC === 'true';
+
+if (STRICT_STATIC) {
+  console.log('⚠️  Running in STRICT_STATIC mode. All dynamic API endpoints are disabled.');
+}
+
+// Auto-generate manifests on startup to ensure local parity
+if (process.env.USE_MOCK_RESULTS !== 'true') {
+  console.log('🔄 Generating static manifests for local parity...');
+  try {
+    const genDir = path.resolve(path.dirname(new URL(import.meta.url).pathname));
+    exec(`node ${path.join(genDir, 'generate-suites-list.js')} && node ${path.join(genDir, 'generate-run-files.js')}`, (err, stdout, stderr) => {
+      if (err) console.error('Failed to generate manifests:', stderr);
+      else console.log('✅ Static manifests generated.');
+    });
+  } catch (e) {
+    console.error('Failed to trigger manifest generation:', e);
+  }
+}
 
 /** @type {Record<string, string>} */
 const MIME_TYPES = {
@@ -62,6 +81,11 @@ const server = http.createServer(async (req, res) => {
 
   // Handle /api/suites endpoint
   if (decodedPath === '/api/suites') {
+    if (STRICT_STATIC) {
+      res.writeHead(404);
+      res.end('404 Not Found (STRICT_STATIC mode enabled)');
+      return;
+    }
     /** @type {SuiteInfo[]} */
     let suitesList = [];
 
@@ -107,6 +131,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (decodedPath === '/api/run-files') {
+    if (STRICT_STATIC) {
+      res.writeHead(404);
+      res.end('404 Not Found (STRICT_STATIC mode enabled)');
+      return;
+    }
     const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
     const relativePath = parsedUrl.searchParams.get('dir');
     const source = parsedUrl.searchParams.get('source') || 'local';
@@ -144,6 +173,11 @@ const server = http.createServer(async (req, res) => {
   // --- Silent File Probing API ---
   // Avoids native browser 404 console errors by returning JSON { exists: boolean }
   if (decodedPath === '/api/exists') {
+    if (STRICT_STATIC) {
+      res.writeHead(404);
+      res.end('404 Not Found (STRICT_STATIC mode enabled)');
+      return;
+    }
     const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
     const checkPath = parsedUrl.searchParams.get('path');
     if (!checkPath) {
