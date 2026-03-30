@@ -550,6 +550,13 @@ describe('getFeaturesNeedingSync', () => {
     assert.strictEqual(result[0].featureId, 'view-transitions');
     assert.strictEqual(result[0].targetStatus, 'Needs use cases');
   });
+
+  test('sets "Needs investigation" for feature with use cases needing investigation', () => {
+    const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(['autofill']), new Set(['autofill']), new Set(['autofill']));
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsInvestigation);
+  });
 });
 
 describe('buildUseCaseChecklist', () => {
