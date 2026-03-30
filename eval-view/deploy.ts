@@ -18,10 +18,8 @@ function runCommand(cmd: string) {
 }
 
 try {
-  // 1. Generate mappings and manifests
-  runCommand('node generate-mapping.js');
-  runCommand('node generate-suites-list.js');
-  runCommand('node generate-run-files.js');
+  // 1. Generate all static manifests and mappings
+  runCommand('node generate-manifests.js');
 
   // 2. Clear out any stale temp folders before copying
   if (fs.existsSync(tasksDest)) fs.rmSync(tasksDest, { recursive: true });
