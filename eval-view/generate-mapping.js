@@ -3,7 +3,7 @@ import path from 'path';
 import matter from 'gray-matter';
 
 const guidesDir = path.resolve('../guides');
-const outputFilePath = path.resolve('./features_mapping.gen.js.js');
+const outputFilePath = path.resolve('./features_mapping.gen.js');
 
 const mapping = {}; // usecase -> [feature_ids]
 

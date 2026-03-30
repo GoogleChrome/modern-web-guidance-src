@@ -40,7 +40,7 @@ export class DumbbellChart {
 
     const width = this.options.size;
 
-    // Group items by Feature Name (lookup from features_mapping.gen.js.js if available)
+    // Group items by Feature Name (lookup from features_mapping.gen.js if available)
     const groups = {};
     const featuresMap = window.__featuresMapping || {};
 
