@@ -1,13 +1,9 @@
 import lancedb from "@lancedb/lancedb";
 import path from "path";
 import fs from "fs";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Data directory for LanceDB
-const DATA_DIR = path.resolve(__dirname, "../../.modern-web-data");
+const DATA_DIR = path.resolve(import.meta.dirname, "../../.modern-web-data");
 
 export interface UseCase {
   id: string;

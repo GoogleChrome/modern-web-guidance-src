@@ -1,13 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 
 // Get current directory in ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-
-
 import { USE_CASES } from "./use-cases.gen.ts";
 
 
@@ -34,7 +28,7 @@ export async function getGuide(useCaseId: string): Promise<string | null> {
   const useCase = USE_CASES.find((u) => u.id === useCaseId);
   if (!useCase) return null;
 
-  const guidesDir = path.resolve(__dirname, "../../build/guides");
+  const guidesDir = path.resolve(import.meta.dirname, "../../build/guides");
   const filePath = path.join(guidesDir, useCase.category, `${useCaseId}.md`);
 
   try {

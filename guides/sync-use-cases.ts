@@ -96,7 +96,7 @@ export interface GuideInventoryResult {
 
 // --- Constants ---
 
-import { rootDir } from '../lib/root.ts';
+import { rootDir } from '../lib/paths.ts';
 
 const REPO_ROOT = rootDir;
 dotenv.config({ path: path.join(REPO_ROOT, '.env') });
