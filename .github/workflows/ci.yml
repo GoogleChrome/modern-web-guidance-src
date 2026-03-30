@@ -31,6 +31,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Preflight (Typecheck, Lint, Tests)
+        env:
+          TEST_REPORTER: spec
         run: pnpm run preflight
 
       # Fail if any changes were written to any source files or generated untracked files

@@ -3,7 +3,7 @@ import path from 'path';
 
 import { baseAppsDir, tasksDir } from '../lib/paths.ts';
 
-import { scanAllGuides, classifyGuide } from '../harness/lib/utils.ts';
+import { scanAllGuides, classifyGuide } from '../lib/guide-validation.ts';
 
 const negativeTasksDir = path.join(tasksDir, 'negative');
 function readFileSafe(filePath: string): string {

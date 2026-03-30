@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents } from '../config.ts';
-import { classifyGuide, scanAllGuides } from './utils.ts';
+import { classifyGuide, scanAllGuides } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
 
 /**

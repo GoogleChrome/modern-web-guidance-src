@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
 import { chunkMarkdown } from './build-guides.ts';
 
 describe('chunkMarkdown', () => {
@@ -10,11 +11,11 @@ Some text here.
 More text.`;
     
     const chunks = chunkMarkdown(input);
-    expect(chunks).toHaveLength(2);
-    expect(chunks[0]).toContain('Heading 1');
-    expect(chunks[0]).toContain('Some text here.');
-    expect(chunks[1]).toContain('Heading 2');
-    expect(chunks[1]).toContain('More text.');
+    assert.strictEqual(chunks.length, 2);
+    assert.ok(chunks[0].includes('Heading 1'));
+    assert.ok(chunks[0].includes('Some text here.'));
+    assert.ok(chunks[1].includes('Heading 2'));
+    assert.ok(chunks[1].includes('More text.'));
   });
 
   it('keeps paragraphs that appear before any heading', () => {
@@ -24,9 +25,9 @@ More text.`;
 Text under first heading.`;
     
     const chunks = chunkMarkdown(input);
-    expect(chunks).toHaveLength(2);
-    expect(chunks[0]).toContain('Intro text.');
-    expect(chunks[1]).toContain('First heading');
+    assert.strictEqual(chunks.length, 2);
+    assert.ok(chunks[0].includes('Intro text.'));
+    assert.ok(chunks[1].includes('First heading'));
   });
 
   it('handles multiple headings without content correctly', () => {
@@ -36,14 +37,14 @@ Text under first heading.`;
     
     // Each heading creates a new chunk based on the current implementation
     const chunks = chunkMarkdown(input);
-    expect(chunks).toHaveLength(3);
-    expect(chunks[0]).toBe('# Heading 1\n');
-    expect(chunks[1]).toBe('## Heading 2\n');
-    expect(chunks[2]).toBe('### Heading 3');
+    assert.strictEqual(chunks.length, 3);
+    assert.strictEqual(chunks[0], '# Heading 1\n');
+    assert.strictEqual(chunks[1], '## Heading 2\n');
+    assert.strictEqual(chunks[2], '### Heading 3');
   });
 
   it('returns empty array for empty string', () => {
     const chunks = chunkMarkdown('');
-    expect(chunks).toHaveLength(0);
+    assert.strictEqual(chunks.length, 0);
   });
 });
