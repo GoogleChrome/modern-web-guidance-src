@@ -103,7 +103,7 @@ async function main() {
   }
 
   console.log("Copying SKILL.md...");
-  const skillMdSource = path.join(ROOT_DIR, "skills-drafts/modern-web-use-cases/SKILL.md");
+  const skillMdSource = path.join(ROOT_DIR, "guides/modern-web-use-cases/SKILL.md");
   const skillMdDest = path.join(DIST_DIR, "SKILL.md");
 
   if (fs.existsSync(skillMdSource)) {
