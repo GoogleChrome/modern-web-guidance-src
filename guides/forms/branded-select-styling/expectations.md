@@ -1,0 +1,9 @@
+- The implementation MUST apply `appearance: base-select` to the `<select>` element to opt into the customizable select behavior.
+- The implementation MUST apply `appearance: base-select` to the `::picker(select)` pseudo-element to enable custom styling for the options dropdown.
+- The implementation MUST use the `::picker(select)` pseudo-element to define the visual container for the options list (e.g., borders, shadows, background).
+- The implementation MUST use `select::picker-icon` to customize the drop-down arrow icon.
+- The implementation MUST use `option::checkmark` to customize the checkmark indicator for the selected option.
+- The markup MUST include a `<button>` element inside the `<select>` to replace the default trigger button.
+- The trigger button MUST include a `<selectedcontent>` element to display the active option.
+- The implementation MUST NOT use JavaScript as the primary mechanism for toggling the dropdown or styling the picker.
+- A progressive enhancement fallback MUST be included that uses `!CSS.supports("appearance", "base-select")` to detect unsupported browsers before attempting any fallback adjustments.

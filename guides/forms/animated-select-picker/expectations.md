@@ -1,0 +1,6 @@
+- The implementation MUST apply `appearance: base-select` to the `<select>` element and the `::picker(select)` pseudo-element to opt into customizable select.
+- The implementation MUST use `transition-behavior: allow-discrete` (either standalone or within a shorthand `transition` property) on `::picker(select)` to ensure the dropdown animates correctly between `display: none` and visible states.
+- The implementation MUST use `@starting-style` to declare the visual state (e.g., `opacity: 0`, `height: 0`) computed immediately before the picker opens.
+- The implementation MUST animate the dropdown icon using the `:open::picker-icon` pseudo-element selector (e.g., applying `transform: rotate(180deg)`).
+- The implementation MUST NOT use JavaScript as the primary mechanism for toggling top-layer visibility or running the dropdown animation.
+- A progressive enhancement fallback MUST be included that checks for `!CSS.supports("appearance", "base-select")` before logging support or applying standard legacy fallbacks.
