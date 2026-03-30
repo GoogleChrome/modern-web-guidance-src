@@ -79,7 +79,14 @@ const server = http.createServer(async (req, res) => {
           let timestamp = null;
           try {
             if (fs.existsSync(evalsJsonPath)) {
-              timestamp = fs.statSync(evalsJsonPath).mtime.toISOString();
+              // Try reading internal canonical timestamp if it exists, fallback to mtime
+              const evalsContent = fs.readFileSync(evalsJsonPath, 'utf-8');
+              const match = evalsContent.match(/"timestamp":\s*"([^"]+)"/);
+              if (match) {
+                timestamp = match[1];
+              } else {
+                timestamp = fs.statSync(evalsJsonPath).mtime.toISOString();
+              }
             } else {
               timestamp = fs.statSync(suiteDir).mtime.toISOString();
             }
