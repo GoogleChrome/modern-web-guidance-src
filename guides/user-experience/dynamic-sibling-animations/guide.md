@@ -12,10 +12,7 @@ sources:
 
 # Creating a stagger animation
 
-Stagger animations provide an interesting effect where multiple ordered elements animate
-sequentially with a slight delay between each, rather than all animating
-at once. This technique is often used in lists, galleries, or navigation
-menus to guide the user's eye and add a polished, rhythmic feel to interactions.
+Stagger animations provide an interesting effect where multiple ordered elements animate sequentially with a slight delay between each, rather than all animating at once. This technique is often used in lists, galleries, or navigation menus to guide the user's eye and add a polished, rhythmic feel to interactions.
 
 ## Stagger animations with `sibling-index()`
 
@@ -31,12 +28,14 @@ Use the `sibling-index()` property on the `animation-delay` property so that the
 }
 ```
 
-Do respect user preferences by disabling the animation for users who prefer reduced motion. 
+**MANDATORY:** Respect user preferences by disabling the animation for users who prefer reduced motion. 
 
 ```css
 @media (prefers-reduced-motion: reduce){
   /* Disable animation for users who prefer reduced motion. */
-  animation: none;
+  #stagger-list > .item {
+    animation: none;
+  }
 }
 ```
 
@@ -60,6 +59,6 @@ Add an `animation-delay` declaration that uses the `--sibling-index` custom prop
 ```css
 #stagger-list > .item {
   animation-delay: calc(var(--sibling-index) * var(--stagger-time));
-  animation-delay: calc(var(sibling-index()) * var(--stagger-time));
+  animation-delay: calc(sibling-index() * var(--stagger-time));
 }
 ```
