@@ -124,7 +124,6 @@ For browsers that do not support `appearance: base-select`, the control degrades
 
 ```javascript
 document.addEventListener("DOMContentLoaded", () => {
-  // Check if browser supports base-select
   if (!CSS.supports("appearance", "base-select")) {
     console.log("Modern select overrides not supported.");
   }

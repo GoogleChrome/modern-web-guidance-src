@@ -95,9 +95,6 @@ For browsers that do not yet support `appearance: base-select`, the select will 
 If the grid layout is critical and must be preserved, use a feature detection check and a JavaScript fallback (or use a framework component).
 
 ```javascript
-/**
- * Graceful Degradation / Progressive Enhancement
- */
 document.addEventListener("DOMContentLoaded", () => {
   if (!CSS.supports("appearance", "base-select")) {
     console.log("Custom select layout not supported. Falling back to native UI.");

@@ -116,7 +116,7 @@ For browsers that do not support `appearance: base-select`, the control degrades
 
 ```javascript
 document.addEventListener("DOMContentLoaded", () => {
-  // Check if browser supports the base-select value
+  // Check if browser supports base-select value
   if (!CSS.supports("appearance", "base-select")) {
     console.log("Custom select overrides are not supported natively.");
     // Apply standard override fallback classes if needed

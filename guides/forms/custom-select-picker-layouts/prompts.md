@@ -1,0 +1,1 @@
+- Add a select dropdown above the "Order Now" button in the hero for choosing a roast (light, medium, dark). Style the dropdown's options menu as a 3-column grid picker  instead of a normal vertical list so the choices are side-by-side.
