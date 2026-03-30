@@ -11,7 +11,7 @@ if (!GEMINI_API_KEY) {
 const GEMINI_MODEL_DEEP_RESEARCH = 'deep-research-pro-preview-12-2025';
 const url = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 
-const { values, positionals } = parseArgs({
+const { values } = parseArgs({
   options: {
     discipline: { type: 'string' },
     'interaction-id': { type: 'string' },

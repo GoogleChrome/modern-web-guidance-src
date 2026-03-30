@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents } from '../config.ts';
-import { classifyGuide, scanAllGuides } from './utils.ts';
+import { classifyGuide, scanAllGuides } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
 
 /**
@@ -205,7 +205,7 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
   try {
     fs.mkdirSync(destDir, { recursive: true });
 
-    if (cli) { // Add modern-web-use-cases Skill from skills-cli dist
+    if (cli) { // Add modern-web-use-cases Skill (& resources) from skills-cli dist
       const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web-use-cases');
       if (!fs.existsSync(distSource)) {
         console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter modern-web-mcp build-dist' automatically...`);
@@ -250,7 +250,12 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
 
     // 1. Scan top-level directories for SKILL.md and copy them
     const topLevelDirs = fs.readdirSync(guidesSource, { withFileTypes: true })
-      .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules');
+      .filter(
+        d => d.isDirectory() &&
+        !d.name.startsWith('.') &&
+        d.name !== 'node_modules' &&
+        d.name !== 'modern-web-use-cases' // only needed when using Skills (CLI), already added above
+      );
 
     for (const dir of topLevelDirs) {
       const categorySrc = path.join(guidesSource, dir.name);

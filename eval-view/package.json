@@ -3,15 +3,16 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "node generate-mapping.js && node server.js",
     "test:e2e": "playwright test",
     "typecheck": "tsc server.js --allowJs --checkJs --noEmit --module nodenext --target esnext --skipLibCheck",
-    "deploy-pages": "cp -r ../harness/tasks ./tasks && cp -RL ../harness/base_apps ./base_apps && gh-pages --nojekyll --dist . ; rm -rf ./tasks ./base_apps"
+    "deploy-pages": "node generate-mapping.js && cp -r ../harness/tasks ./tasks && cp -RL ../harness/base_apps ./base_apps && gh-pages --nojekyll --dist . ; rm -rf ./tasks ./base_apps"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@types/node": "^25.5.0",
     "gh-pages": "^6.3.0",
+    "gray-matter": "^4.0.3",
     "playwright": "^1.58.2",
     "typescript": "^5.9.3"
   }

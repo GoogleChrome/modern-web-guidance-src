@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import matter from "gray-matter";
-import { classifyGuide, scanAllGuides } from "../../harness/lib/utils.ts";
+import { classifyGuide, scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
@@ -103,7 +103,7 @@ async function main() {
   }
 
   console.log("Copying SKILL.md...");
-  const skillMdSource = path.join(ROOT_DIR, "skills-drafts/modern-web-use-cases/SKILL.md");
+  const skillMdSource = path.join(ROOT_DIR, "guides/modern-web-use-cases/SKILL.md");
   const skillMdDest = path.join(DIST_DIR, "SKILL.md");
 
   if (fs.existsSync(skillMdSource)) {
