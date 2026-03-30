@@ -195,10 +195,13 @@ export class ApiClient {
                     files = data.files || [];
                 }
             } else {
-                // We cannot list run files on static GitHub Pages without a manifest.
-                // Fallback to checking potential candidates or assuming a default list if needed.
-                // For now, we'll try to find any standard files or assume it's just index.html.
-                files = [];
+                // Fetch from the static run-files.json manifest
+                const url = this._formatUrl(`${basePath}/run-files.json`);
+                const res = await fetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    files = data.files || [];
+                }
             }
         } catch (e) {
             console.log('Error checking run files:', e);

@@ -21,6 +21,7 @@ try {
   // 1. Generate mappings and manifests
   runCommand('node generate-mapping.js');
   runCommand('node generate-suites-list.js');
+  runCommand('node generate-run-files.js');
 
   // 2. Clear out any stale temp folders before copying
   if (fs.existsSync(tasksDest)) fs.rmSync(tasksDest, { recursive: true });
