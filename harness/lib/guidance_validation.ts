@@ -1,104 +1,76 @@
 import fs from 'fs';
 import path from 'path';
-import { glob } from 'glob';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { Agents, Serving } from '../config.ts';
-import { collectGeminiCliGuides } from '../agents/gemini-cli-agent.ts';
-import { collectClaudeCodeGuides } from '../agents/claude-code-agent.ts';
-import { collectJetskiGuides } from '../agents/jetski-agent.ts';
+import { collectGeminiGuidesFromTrajectory, collectGeminiToolsFromTrajectory } from '../agents/gemini-cli-agent.ts';
+import { collectClaudeGuidesFromTrajectory, collectClaudeToolsFromTrajectory } from '../agents/claude-code-agent.ts';
+import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory } from '../agents/codex-cli-agent.ts';
 
 export async function collectGuidesUsed(dirPath: string, serving: Serving, agent: string): Promise<string[]> {
-  if (serving === Serving.SKILLS_CLI || serving === Serving.SKILLS) { // Skills path
-    if (agent === Agents.GEMINI_CLI) {
-      return collectGeminiCliGuides(dirPath, serving);
-    } else if (agent === Agents.JETSKI) {
-      return collectJetskiGuides(dirPath, serving);
-    } else if (agent === Agents.CLAUDE_CODE) {
-      return collectClaudeCodeGuides(dirPath, serving);
-    } else {
-      console.warn(`Unknown agent ${agent} for skills collection`);
+  // For MCP and Jetski runs, collect guide usage from modern-web log if present
+  // Jetski impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in Skills runs)
+  if (serving === Serving.MCP || agent === Agents.JETSKI) {
+    const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
+
+    if (!fs.existsSync(logPath)) {
       return [];
     }
-  } else { // MCP path
-    const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
-    let guidesFromLog: string[] = [];
 
-    if (fs.existsSync(logPath)) {
-      const logContent = fs.readFileSync(logPath, 'utf8').trim();
-      let toolCalls: any[] = [];
+    const logContent = fs.readFileSync(logPath, 'utf8').trim();
+    const toolCalls: any[] = [];
 
-      if (logContent) {
-        const lines = logContent.split('\n');
-        for (const line of lines) {
-          if (line.trim().startsWith('{')) {
-            try {
-              toolCalls.push(JSON.parse(line));
-            } catch (e) {
-              console.error(`Failed to parse line in ${logPath}:`, e);
-            }
+    if (logContent) {
+      const lines = logContent.split('\n');
+      for (const line of lines) {
+        if (line.trim().startsWith('{')) {
+          try {
+            toolCalls.push(JSON.parse(line));
+          } catch (e) {
+            console.error(`Failed to parse line in ${logPath}:`, e);
           }
         }
       }
-
-      guidesFromLog = toolCalls
-        .filter(call => call.tool === 'get_best_practices' && Array.isArray(call.result))
-        .flatMap(call => call.result.map((r: any) => r.id || ''))
-        .filter(Boolean);
     }
+
+    const guidesFromLog = toolCalls
+      .filter(call => call.tool === 'get_best_practices' && Array.isArray(call.result))
+      .flatMap(call => call.result.map((r: any) => r.id || ''))
+      .filter(Boolean);
 
     return [...new Set(guidesFromLog)];
   }
+
+  // For SKILLS and SKILLS_CLI approaches, collect guide usage from trajectory files
+  if (agent === Agents.GEMINI_CLI) {
+    return collectGeminiGuidesFromTrajectory(dirPath, serving);
+  } else if (agent === Agents.CLAUDE_CODE) {
+    return collectClaudeGuidesFromTrajectory(dirPath, serving);
+  } else if (agent === Agents.CODEX_CLI) {
+    return collectCodexGuidesFromTrajectory(dirPath, serving);
+  }
+  console.warn(`Unknown agent ${agent} for skills collection`);
+  return [];
 }
 
-export async function collectGuidanceToolsUsed(dir: string, serving: Serving): Promise<string[]> {
-  const toolsUsed: string[] = [];
-  
-  if (serving === Serving.MCP) {
+export async function collectGuidanceToolsUsed(dir: string, serving: Serving, agent: string): Promise<string[]> {
+  // For MCP and JETSKI runs, collect tool usage from modern-web log presence
+  // JETSKI impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in SKILLS runs)
+  if (serving === Serving.MCP || agent === Agents.JETSKI) {
     if (fs.existsSync(path.join(dir, MODERN_WEB_LOG_FILE))) {
-      toolsUsed.push('modern-web');
+      return ['modern-web'];
     }
-    return toolsUsed;
+    return [];
   }
 
-  const sessionFiles = glob.sync('session-*.{json,jsonl}', { cwd: dir, absolute: true });
-  const firstSession = sessionFiles[0];
-  if (!firstSession) return toolsUsed;
-
-  try {
-    const isJsonl = firstSession.endsWith('.jsonl');
-    const content = fs.readFileSync(firstSession, 'utf8');
-
-    if (isJsonl) {
-      const lines = content.split('\n');
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        const obj = JSON.parse(line);
-        if (obj.message && Array.isArray(obj.message.content)) {
-          for (const item of obj.message.content) {
-            if (item.type === 'tool_use' && item.name === 'Skill' && item.input?.skill) {
-              toolsUsed.push(item.input.skill);
-            }
-          }
-        }
-      }
-    } else {
-      const session = JSON.parse(content);
-      if (Array.isArray(session.messages)) {
-        for (const msg of session.messages) {
-          if (Array.isArray(msg.toolCalls)) {
-            for (const tc of msg.toolCalls) {
-              if (tc.name === 'activate_skill' && tc.args?.name) {
-                toolsUsed.push(tc.args.name);
-              }
-            }
-          }
-        }
-      }
-    }
-  } catch (e) {
-    console.error(`Failed to collect guidance tools used in ${firstSession}:`, e);
+  // For SKILLS and SKILLS_CLI approaches, collect tool usage from trajectory files
+  if (agent === Agents.GEMINI_CLI) {
+    return collectGeminiToolsFromTrajectory(dir);
+  } else if (agent === Agents.CLAUDE_CODE) {
+    return collectClaudeToolsFromTrajectory(dir);
+  } else if (agent === Agents.CODEX_CLI) {
+    return collectCodexToolsFromTrajectory(dir);
   }
 
-  return Array.from(new Set(toolsUsed));
+  console.warn(`Unknown agent ${agent} for guidance tools collection`);
+  return [];
 }
-

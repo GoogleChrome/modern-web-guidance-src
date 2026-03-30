@@ -2,15 +2,15 @@ import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
-import { fileURLToPath } from 'url';
 import matter from 'gray-matter';
-import { config, Serving } from '../config.ts';
+import { config, Serving, Agents } from '../config.ts';
+import { guidesDir, tasksDir } from '../../lib/paths.ts';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
+import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
+import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
 
 export function getGuideCategory(guideName: string): string | null {
-  const guidesDir = path.resolve(__dirname, '../../guides');
   const categories = fs.readdirSync(guidesDir).filter(f => fs.statSync(path.join(guidesDir, f)).isDirectory());
   
   for (const cat of categories) {
@@ -21,51 +21,15 @@ export function getGuideCategory(guideName: string): string | null {
   return null;
 }
 
-export function extractModelFromResults(resultsDir: string): string {
-  // Use recursive glob to find session logs deep in the task results
-  const sessionFiles = glob.sync('**/*/session-*.{json,jsonl}', { cwd: resultsDir, absolute: true });
-  if (sessionFiles.length === 0) return 'unknown';
-
-  const counts: Record<string, number> = {};
-  for (const sessionPath of sessionFiles) {
-    try {
-      const isJsonl = sessionPath.endsWith('.jsonl');
-      const content = fs.readFileSync(sessionPath, 'utf8');
-
-      if (isJsonl) {
-        const lines = content.split('\n');
-        for (const line of lines) {
-          // Optimization: skip lines that definitely don't have model info
-          if (!line.trim() || !line.includes('"model"')) continue;
-          try {
-            const obj = JSON.parse(line);
-            if (obj.message && obj.message.model) {
-              const m = obj.message.model;
-              counts[m] = (counts[m] || 0) + 1;
-            }
-          } catch (e) {
-            // Robust error handling: skip malformed JSONL lines
-            console.warn(`Malformed JSONL line in ${sessionPath}:`, e);
-          }
-        }
-      } else {
-        const session = JSON.parse(content);
-        if (session.messages) {
-          for (const m of session.messages) {
-            if (m.type === 'gemini' && m.model) {
-              counts[m.model] = (counts[m.model] || 0) + 1;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn(`Failed to extract model from ${sessionPath}:`, e);
-    }
+export function extractModelFromResults(resultsDir: string, agent: string): string {
+  if (agent === Agents.GEMINI_CLI) {
+    return extractGeminiCliModel(resultsDir);
+  } else if (agent === Agents.CLAUDE_CODE) {
+    return extractClaudeCodeModel(resultsDir);
+  } else if (agent === Agents.CODEX_CLI) {
+    return extractCodexCliModel(resultsDir);
   }
-
-  const topModel = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  if (topModel) return topModel[0];
-
+  // JETSKI impl does not support trajectory pb parsing, leave model as unknown
   return 'unknown';
 }
 
@@ -97,7 +61,7 @@ export async function collectResults(resultsDir: string) {
       const [taskName, runType] = parts;
       const targetFile = path.join(dir, 'index.html');
       const isNegative = config.suite.negative === true;
-      const taskPath = path.resolve(__dirname, `../tasks/${isNegative ? 'negative/' : ''}${taskName}.md`);
+      const taskPath = path.join(tasksDir, isNegative ? 'negative' : '', `${taskName}.md`);
 
       if (!fs.existsSync(taskPath)) continue;
 
@@ -106,7 +70,6 @@ export async function collectResults(resultsDir: string) {
       if (!data || !data.grader) continue;
 
       const guide = data.grader.trim();
-      const guidesDir = path.resolve(__dirname, '../../guides');
       const graderMatches = glob.sync(`**/${guide}/grader.ts`, { cwd: guidesDir, absolute: true });
       const graderPath = graderMatches.length > 0 ? graderMatches[0] : path.join(guidesDir, guide, `grader.ts`);
       const graderResults = path.join(dir, `${guide}_results.json`);
@@ -118,7 +81,7 @@ export async function collectResults(resultsDir: string) {
 
       // Generate a runner script to be picked up by pnpm -r run-grader
       // We import runPlaywright directly from the guides code to leverage existing test execution logic
-      const runGraderModulePath = path.resolve(__dirname, '../../guides/run-grader.ts');
+      const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
       const gradeScript = `
 import fs from 'fs';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
@@ -199,12 +162,12 @@ run();
       if (runType === 'guided') {
         const serving = config.suite.serving;
         guidesUsedResult = await collectGuidesUsed(dir, serving, config.suite.agent);
-        guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir, serving);
+        guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir, serving, config.suite.agent);
       }
 
       const targetFile = path.join(dir, 'index.html');
       const isNegative = config.suite.negative === true;
-      const taskPath = path.resolve(__dirname, `../tasks/${isNegative ? 'negative/' : ''}${taskName}.md`);
+      const taskPath = path.join(tasksDir, isNegative ? 'negative' : '', `${taskName}.md`);
 
       if (!fs.existsSync(taskPath)) {
         console.warn(`Skipping grading: Task ${taskName} not found at ${taskPath}`);
@@ -223,7 +186,8 @@ run();
 
       let expectedGuidanceTool: string | undefined;
       const serving = config.suite.serving;
-      if (serving === Serving.MCP) {
+      if (serving === Serving.MCP || config.suite.agent === Agents.JETSKI) {
+        // JETSKI impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in SKILLS runs)
         expectedGuidanceTool = 'modern-web';
       } else if (serving === Serving.SKILLS_CLI) {
         expectedGuidanceTool = 'modern-web-use-cases';
@@ -233,7 +197,6 @@ run();
 
       const actualBaseApp = data.base_app ? data.base_app.trim() : taskName;
       const testName = `${taskName} - ${guide} - ${runType}`;
-      const guidesDir = path.resolve(__dirname, '../../guides');
       const graderMatches = glob.sync(`**/${guide}/grader.ts`, {
         cwd: guidesDir,
         absolute: true

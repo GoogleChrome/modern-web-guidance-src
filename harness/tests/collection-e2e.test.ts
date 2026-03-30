@@ -2,11 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { collectResults } from '../lib/collection.ts';
-
-const __filename = fileURLToPath(import.meta.url);
-const testDir = path.dirname(__filename);
+const testDir = import.meta.dirname;
 const harnessDir = path.resolve(testDir, '..');
 
 test('collectResults extracts explicit baseApp, taskName, and guide from new data structures', async (_t) => {

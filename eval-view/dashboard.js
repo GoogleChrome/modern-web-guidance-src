@@ -71,7 +71,7 @@ async function loadDashboardData(testId) {
             timestamp = manifestTimestamp;
         }
 
-        renderTestHeader(testId, jetskiVersion, timestamp);
+        renderTestHeader(testId, jetskiVersion, timestamp, data);
         renderSummary(data);
         renderGrid(data, testId);
         renderRadarChart(data, testId);
@@ -287,10 +287,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-function renderTestHeader(testId, jetskiVersion, timestamp) {
+function renderTestHeader(testId, jetskiVersion, timestamp, data) {
     const container = document.getElementById('test-header');
     if (container) {
-        let html = `Test ID: <strong>${testId}</strong>`;
+        let html = `Test ID: <strong>${escapeHtml(testId)}</strong>`;
 
         if (timestamp) {
             let timeStr = timestamp;
@@ -308,8 +308,32 @@ function renderTestHeader(testId, jetskiVersion, timestamp) {
         }
 
         if (jetskiVersion) {
-            html += ` — Jetski Version: <strong>${jetskiVersion}</strong>`;
+            html += ` — Jetski Version: <strong>${escapeHtml(jetskiVersion)}</strong>`;
         }
+
+        if (data) {
+            let agent = data.agent || 'unknown';
+            let serving = 'unknown';
+            if (data.serving !== undefined) {
+                serving = data.serving;
+            } else if (data.enableSkills !== undefined) {
+                serving = data.enableSkills ? 'skills' : 'mcp';
+            }
+            const servingDisplayNames = {
+                'skills': 'Skills',
+                'skills_cli': 'Skills (CLI)',
+                'mcp': 'MCP'
+            };
+            serving = servingDisplayNames[serving] || serving;
+            let model = data.model || 'unknown';
+
+            html += `<div style="margin-top: 6px; display: flex; flex-direction: column; gap: 2px;">
+                <span>Agent: <strong>${escapeHtml(agent)}</strong></span>
+                <span>Model: <strong style="color: var(--text-secondary);">${escapeHtml(model)}</strong></span>
+                <span>Serving: <strong>${escapeHtml(serving)}</strong></span>
+            </div>`;
+        }
+
         container.innerHTML = html;
     }
 }
