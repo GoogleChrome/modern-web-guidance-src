@@ -255,7 +255,8 @@ export function updateFeatureIssueBody(currentBody: string, useCases: UseCaseEnt
 export function getFeaturesNeedingSync(
   featureToIssueMap: Map<string, FeatureIssueData>,
   featuresWithActiveUseCases: Set<string>,
-  featuresWithAnyUseCases: Set<string>
+  featuresWithAnyUseCases: Set<string>,
+  featuresNeedingInvestigation: Set<string> = new Set()
 ): FeatureToSync[] {
   const result: FeatureToSync[] = [];
   for (const [featureId, featureData] of featureToIssueMap) {
@@ -263,12 +264,13 @@ export function getFeaturesNeedingSync(
     const hasCompletedUseCases = !hasActiveUseCases && featuresWithAnyUseCases.has(featureId);
 
     if (hasActiveUseCases) {
+      const isInvestigating = featuresNeedingInvestigation.has(featureId);
       result.push({
         featureId,
         issueNumber: featureData.number,
         needsReopen: featureData.state === 'closed',
         closeReason: null,
-        targetStatus: ProjectStatus.NeedsEvals,
+        targetStatus: isInvestigating ? ProjectStatus.NeedsInvestigation : ProjectStatus.NeedsEvals,
       });
     } else if (hasCompletedUseCases && featureData.state === 'open') {
       result.push({
@@ -723,8 +725,9 @@ async function processUseCases(
   nameToIssueMap: Map<string, any>,
   subdirToIssueMap: Map<string, any>,
   projectDetails: ProjectDetails | null
-): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean; errors: string[] }> {
+): Promise<{ activeIssueNumbers: Set<number>; featuresWithActiveUseCases: Set<string>; featuresWithAnyUseCases: Set<string>; featuresNeedingInvestigation: Set<string>; featureUseCaseMap: Map<string, UseCaseEntry[]>; hasError: boolean; errors: string[] }> {
   const activeIssueNumbers = new Set<number>();
+  const featuresNeedingInvestigation = new Set<string>();
   const featureUseCaseMap = new Map<string, UseCaseEntry[]>();
 
   const guides = scanAllGuides();
@@ -750,6 +753,7 @@ async function processUseCases(
     if (currentProjectStatus === ProjectStatus.NeedsInvestigation) {
       for (const id of featureIds) {
         featuresWithActiveUseCases.add(id);
+        featuresNeedingInvestigation.add(id);
       }
     }
 
@@ -785,7 +789,7 @@ async function processUseCases(
     }
   }
 
-  return { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError, errors };
+  return { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featuresNeedingInvestigation, featureUseCaseMap, hasError, errors };
 }
 
 async function syncFeatureIssues(
@@ -793,11 +797,12 @@ async function syncFeatureIssues(
   featuresWithActiveUseCases: Set<string>,
   featuresWithAnyUseCases: Set<string>,
   featureUseCaseMap: Map<string, UseCaseEntry[]>,
-  projectDetails: ProjectDetails | null
+  projectDetails: ProjectDetails | null,
+  featuresNeedingInvestigation: Set<string>
 ) {
   if (!GITHUB_TOKEN && !IS_DRY_RUN) return;
 
-  const featuresToSync = getFeaturesNeedingSync(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases);
+  const featuresToSync = getFeaturesNeedingSync(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featuresNeedingInvestigation);
   if (featuresToSync.length === 0) return;
 
   console.log('🔄 Syncing feature issue states based on use case progress...');
@@ -914,9 +919,9 @@ async function run() {
   console.log('🚀 Starting use case sync...');
 
   const { featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails } = await fetchGitHubData();
-  const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError, errors } = await processUseCases(featureToIssueMap, nameToIssueMap, subdirToIssueMap, projectDetails);
+  const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featuresNeedingInvestigation, featureUseCaseMap, hasError, errors } = await processUseCases(featureToIssueMap, nameToIssueMap, subdirToIssueMap, projectDetails);
   await cleanupOrphanedIssues(allUseCases, activeIssueNumbers);
-  await syncFeatureIssues(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, projectDetails);
+  await syncFeatureIssues(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, projectDetails, featuresNeedingInvestigation);
 
   if (hasError) {
     console.error('\n🛑 Sync failed due to validation errors:\n');
