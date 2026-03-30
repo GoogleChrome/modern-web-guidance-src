@@ -47,7 +47,7 @@ jobs:
       #     git add guides/features-and-use-cases.md
       - name: Deploy Dashboard
         if: github.ref == 'refs/heads/main'
-        run: pnpm gd deploy
+        run: pnpm run deploy:dashboard
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
