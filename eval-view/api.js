@@ -1,5 +1,3 @@
-import { authenticatedFetch } from './utils.js';
-
 export class ApiClient {
     constructor() {
         const params = new URLSearchParams(window.location.search);
@@ -16,7 +14,7 @@ export class ApiClient {
         this.dataPrefix = './results/'; // Base path for hosted data on GitHub Pages
     }
 
-    _formatUrl(path, isMetadataOnly = false) {
+    _formatUrl(path, _isMetadataOnly = false) {
         if (this.source === 'gh') {
             if (path.startsWith('http')) return path;
 
@@ -30,8 +28,8 @@ export class ApiClient {
         }
     }
 
-    async _fetch(path, isMetadataOnly = false, method = 'GET') {
-        const url = this._formatUrl(path, isMetadataOnly);
+    async _fetch(path, _isMetadataOnly = false, method = 'GET') {
+        const url = this._formatUrl(path, _isMetadataOnly);
         const options = { method };
         if (this.source === 'gh') {
             return await fetch(url, options); // Static gh-pages deployment doesn't need authenticatedFetch

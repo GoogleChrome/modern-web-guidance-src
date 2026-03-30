@@ -1,4 +1,4 @@
-import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData } from './utils.js';
+import { getRunStats, getColor, escapeHtml, timeAgo, calculateChartData } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
 let allTestData = {}; // Cache all test data by testId
@@ -288,48 +288,6 @@ async function loadLocalTests() {
         }
     } catch {
         console.warn('Local proxy not available');
-    }
-}
-
-async function loadRemoteTests() {
-    try {
-        // Fetch from GCS JSON API directly instead of our node proxy
-        const response = await authenticatedFetch(`https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/`);
-        if (!response.ok) throw new Error('Failed to fetch remote suites');
-        
-        const data = await response.json();
-        const prefixes = data.prefixes || [];
-        
-        if (prefixes.length > 0) {
-             document.getElementById('empty-state').style.display = 'none';
-        }
-
-        // Load remote test data in parallel
-        await Promise.all(prefixes.map(async (prefix) => {
-            const testId = prefix.slice(0, -1); // Remove trailing slash
-            try {
-                const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(prefix + 'evals.json')}?alt=media`;
-                const response = await authenticatedFetch(fileUrl);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, 'remote', parsed);
-                }
-            } catch (e) {
-                console.warn(`Failed to load remote test ${testId}:`, e);
-            }
-        }));
-        
-        // Re-render UI now that we have remote data
-        const params = new URLSearchParams(window.location.search);
-        let initialTests = params.get('tests');
-        if (!initialTests || initialTests.trim() === '') {
-            selectedTestIds = new Set(Object.keys(allTestData));
-        }
-        renderFilterMenuItems();
-        renderAll();
-
-    } catch (error) {
-        console.error('Error loading remote suites:', error);
     }
 }
 

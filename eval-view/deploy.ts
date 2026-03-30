@@ -3,10 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import { tasksDir, baseAppsDir, resultsDir, evalViewDir } from '../lib/paths.ts';
 
-function cCyan(text: string) { return `\x1b[36m${text}\x1b[0m`; }
-function cRed(text: string) { return `\x1b[31m${text}\x1b[0m`; }
-function cGreen(text: string) { return `\x1b[32m${text}\x1b[0m`; }
-
 const tasksDest = path.join(evalViewDir, 'tasks');
 const appsDest = path.join(evalViewDir, 'base_apps');
 const resultsDest = path.join(evalViewDir, 'results');
