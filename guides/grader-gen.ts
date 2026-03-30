@@ -23,7 +23,7 @@ TARGET_FILE=$(pwd)/negative-demo.html npx playwright test grader.ts
 
 Important rules for generating the grader:
 - Do not use generic try/catch blocks that aggressively swallow exceptions (e.g. \`catch (e) { /* ignore */ }\`). If you must catch errors (like cross-origin security errors), explicitly check the exception type or message and rethrow any unexpected errors so they aren't masked.
-- IMPORTANT: Do NOT use bash or shell commands (like \`cat\`, \`echo\`, or heredocs using \`<<\`) to write files. You MUST use your built-in structured file editing tools (e.g. \`write_file\` or \`replace\`) to create the file.
+- When writing files, you MUST use your built-in structured file editing tools (e.g., \`write_file\` or \`replace\`). Do not use shell commands (like \`cat\`, \`echo\`, or heredocs \`<<\`) to create files in the terminal.
 - Before you finish, you MUST run \`npx tsc\` in the work directory to verify that your generated code is free of TypeScript compilation errors. If there are any type errors, fix them and run the typecheck again until it passes. Do not leave the typecheck failing.
 
 The final output must be exactly one file named \`grader.ts\`. You may create intermediate temporary files for testing during your process, but do not override the existing HTML, guide, or expectation files.

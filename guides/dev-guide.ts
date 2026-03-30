@@ -259,7 +259,7 @@ Rules:
 - Do NOT tell the agent which web API or CSS property to use unless a real developer would naturally do so.
 - Each prompt must be on its own line, prefixed with "- ".
 
-- IMPORTANT: Do NOT use bash or shell commands (like cat, echo, or heredocs) to write files. You MUST use your built-in structured file editing tools (e.g. write_file or replace) to create the file. Heredoc strings will cause bash parsing errors.
+- When writing files, you MUST use your built-in structured file editing tools (e.g., \`write_file\` or \`replace\`). Do not use shell commands (like \`cat\`, \`echo\`, or heredocs \`<<\`) to create files in the terminal.
 
 Only create the ${PROMPTS_FILE} file. Do not modify any other files.`;
 
