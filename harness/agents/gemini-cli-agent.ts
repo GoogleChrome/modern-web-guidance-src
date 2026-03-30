@@ -74,6 +74,7 @@ async function run() {
     const command = config.environment.geminiCliBin;
     const commandArgs = [
       '-p', userPrompt,
+      '-o', 'stream-json',
       '--yolo'
     ];
 
