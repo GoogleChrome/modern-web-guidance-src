@@ -9,6 +9,7 @@
     "gd": "./bin/gd.ts"
   },
   "scripts": {
+    "gd": "node --experimental-strip-types bin/gd.ts",
     "test": "pnpm -r test",
     "baselinestatus": "pnpm --filter modern-web-mcp baselinestatus",
     "lint": "oxlint --ignore-path .oxlintignore",
