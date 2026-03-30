@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom Select Picker Demo</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f4f4f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    
+    .demo-container {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      width: 300px;
+    }
+
+    .select-label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #666;
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .custom-select-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    .custom-select-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background-color: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 0.875rem 1rem;
+      font-size: 1rem;
+      color: #333;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+
+    .custom-select-trigger .chevron {
+      transition: transform 0.3s ease;
+    }
+
+    .custom-select-trigger.open .chevron {
+      transform: rotate(180deg);
+    }
+
+    .custom-select-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      margin-top: 0.25rem;
+      overflow: hidden;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 10;
+    }
+
+    .custom-select-dropdown.show {
+      display: block;
+    }
+    
+    .custom-select-dropdown.fade-in {
+      opacity: 1;
+    }
+
+    .custom-option {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .custom-option:hover {
+      background-color: #f0f0f0;
+    }
+
+    .custom-option.selected {
+      background-color: #e0e0ff;
+      font-weight: bold;
+    }
+
+    select {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="demo-container">
+    <div class="select-label">Visual Theme</div>
+    <div class="custom-select-wrapper">
+      <div class="custom-select-trigger" id="selectTrigger">
+        <span class="selected-text" id="selectedText">System Default</span>
+        <svg class="chevron" id="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </div>
+      <div class="custom-select-dropdown" id="selectDropdown">
+        <div class="custom-option selected" data-value="system">System Default</div>
+        <div class="custom-option" data-value="light">Light UI</div>
+        <div class="custom-option" data-value="dark">Dark UI</div>
+      </div>
+      <select id="hiddenSelect">
+        <selectedoption></selectedoption>
+        <option value="system" selected>System Default</option>
+        <option value="light">Light UI</option>
+        <option value="dark">Dark UI</option>
+      </select>
+    </div>
+  </div>
+
+  <script>
+    const trigger = document.getElementById('selectTrigger');
+    const dropdown = document.getElementById('selectDropdown');
+    const hiddenSelect = document.getElementById('hiddenSelect');
+    const selectedText = document.getElementById('selectedText');
+    const options = document.querySelectorAll('.custom-option');
+
+    trigger.addEventListener('click', () => {
+      const isOpen = trigger.classList.contains('open');
+      
+      if (isOpen) {
+        dropdown.classList.remove('fade-in');
+        setTimeout(() => {
+          dropdown.classList.remove('show');
+          trigger.classList.remove('open');
+        }, 300);
+      } else {
+        trigger.classList.add('open');
+        dropdown.classList.add('show');
+        setTimeout(() => {
+          dropdown.classList.add('fade-in');
+        }, 10);
+      }
+    });
+
+    options.forEach(option => {
+      option.addEventListener('click', () => {
+        options.forEach(opt => opt.classList.remove('selected'));
+        option.classList.add('selected');
+        
+        const value = option.getAttribute('data-value');
+        const text = option.textContent;
+        
+        selectedText.textContent = text;
+        hiddenSelect.value = value;
+        
+        dropdown.classList.remove('fade-in');
+        setTimeout(() => {
+          dropdown.classList.remove('show');
+          trigger.classList.remove('open');
+        }, 300);
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
+        if (trigger.classList.contains('open')) {
+          dropdown.classList.remove('fade-in');
+          setTimeout(() => {
+            dropdown.classList.remove('show');
+            trigger.classList.remove('open');
+          }, 300);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

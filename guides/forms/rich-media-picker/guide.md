@@ -27,15 +27,15 @@ The native `<select>` element was historically difficult to style and could only
 To implement a rich media picker using the Customizable Select API:
 
 1. **Opt-in to base styles**: Apply `appearance: base-select` to both the `<select>` element and its internal picker using the `::picker(select)` pseudo-element. This changes the browser's HTML parser for the contents inside the `<select>`.
-2. **Define the Button Content**: Use standard `<button>` and `<selectedcontent>` elements inside the `<select>` to define what is shown when the picker is closed. The `<selectedcontent>` element automatically mirrors the content of the selected option. This is required if you want to display the currently selected option's rich content in the button.
+2. **Define the Button Content**: Use standard `<button>` and `<selectedcontent>` elements inside the `<select>` to define what is shown when the picker is closed. The `<selectedcontent>` element automatically mirrors the content of the selected option. This is required if you want to display the currently selected rich content in the button.
 3. **Use Rich Content inside Options**: You can now place images, SVGs, and other HTML tags inside `<option>` tags. Prior to this API, the browser would strip tags from `<option>` tags and render only plain text.
 4. **Style the Popover**: Style the dropped-down options list by targeting the `::picker(select)` pseudo-element. It renders in the top layer, meaning you don't need to fight with `z-index`. Options are positioned using the Anchor Positioning API natively.
 
 ## Example Code: Rich Role Picker
 
 ```html
-<!-- HTML Structure -->
-<select class="custom-select">
+<label for="role-picker">Select your role</label>
+<select class="custom-select" name="role" id="role-picker">
   <button>
     <selectedcontent></selectedcontent> <!-- Mirrors the selected option's content automatically so you do not need JS to update the button -->
   </button>
@@ -63,7 +63,6 @@ To implement a rich media picker using the Customizable Select API:
 ```
 
 ```css
-/* CSS Styling */
 select.custom-select,
 select.custom-select::picker(select) {
   appearance: base-select; /* MUST opt-in both the select and its picker to enable the customizable state, otherwise browser standard rendering applies */
@@ -116,6 +115,7 @@ select.custom-select option::before {
 - **DO NOT** use ad-hoc elements if you notice performance lags; the browser handles native keyboard focus natively.
 - **DO** account for top-layer rendering. The picker renders in the top-layer, meaning it overrides relative `z-index` of page content.
 - **DO** hide secondary details (like descriptions) in the button state if they take too much space, by styling `.custom-select selectedcontent .option-desc { display: none; }`.
+- **DO** ensure your `<select>` has a `name` attribute and an associated `<label>`. This ensures that even with a custom UI, the component remains accessible to screen readers and works correctly with standard form submissions.
 
 ## Fallback Strategy
 

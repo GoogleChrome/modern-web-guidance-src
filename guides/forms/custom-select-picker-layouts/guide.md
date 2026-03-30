@@ -28,9 +28,9 @@ To implement a custom select picker layout:
 ## Example Code: Custom Grid Picker
 
 ```html
-<select class="grid-picker">
+<label for="weather-picker">Select weather</label>
+<select class="grid-picker" name="weather" id="weather-picker">
   <button>
-    <!-- Renders the selected value with its rich content -->
     <selectedcontent></selectedcontent>
   </button>
   <option value="sunny">
@@ -87,6 +87,7 @@ To implement a custom select picker layout:
 - **DO NOT** confuse visual layout with keyboard navigation. Standard select uses linear navigation. If you arrange options in a grid, ensure visual order matches DOM order so tab/arrow navigation makes sense.
 - **DO** use `<selectedcontent>` if you want the trigger button to show images or icons from the selected option automatically.
 - **DO** use standard `value` attributes on options to ensure form submission works exactly as before.
+- **DO** ensure your `<select>` has a `name` attribute and an associated `<label>`. This ensures that even with a custom UI, the component remains accessible to screen readers and works correctly with standard form submissions.
 
 ## Fallback Strategy
 
@@ -98,8 +99,6 @@ If the grid layout is critical and must be preserved, use a feature detection ch
 document.addEventListener("DOMContentLoaded", () => {
   if (!CSS.supports("appearance", "base-select")) {
     console.log("Custom select layout not supported. Falling back to native UI.");
-    // No action needed for standard select fallback, it just works!
-    // Or you can initialize a JS-based custom dropdown here if critical.
   }
 });
 ```

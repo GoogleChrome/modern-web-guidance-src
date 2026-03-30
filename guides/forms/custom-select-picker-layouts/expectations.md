@@ -6,3 +6,4 @@
 - The implementation MUST NOT rely on JavaScript to position the options in a grid or flex layout if the browser supports `appearance: base-select`. The styling must be achieved primarily through CSS.
 - The implementation MUST include a progressive enhancement fallback for browsers that do not support `appearance: base-select`. This fallback MUST use `CSS.supports("appearance", "base-select")` to detect support before applying fallback logic.
 - If the layout is critical, the fallback script MAY use a minimal JavaScript solution or toggle classes to ensure functionality, but graceful degradation to a standard OS select is preferred if acceptable.
+- The `<select>` MUST have a `name` attribute and an associated `<label>`. This ensures that even with a custom UI, the component remains accessible to screen readers and works correctly with standard form submissions.

@@ -7,3 +7,4 @@
 - The trigger button MUST include a `<selectedcontent>` element to display the active option and MUST NOT contain legacy `<selectedoption>` element to mirror selections.
 - The implementation MUST NOT use JavaScript as the primary mechanism for toggling the dropdown or styling the picker.
 - A progressive enhancement fallback MUST be included that uses `!CSS.supports("appearance", "base-select")` to detect unsupported browsers before attempting any fallback adjustments.
+- The `<select>` MUST have a `name` attribute and an associated `<label>`. This ensures that even with a custom UI, the component remains accessible to screen readers and works correctly with standard form submissions.

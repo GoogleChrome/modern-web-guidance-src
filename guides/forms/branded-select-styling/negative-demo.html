@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  .custom-select-container {
+    font-family: Arial, sans-serif;
+    padding: 10px;
+  }
+  .dropdown-menu {
+    display: none;
+    background: #ccc;
+  }
+  .dropdown-menu.show {
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<span>Select an item:</span>
+<select id="item-selector" class="custom-select-container">
+  <selectedoption></selectedoption>
+  <option value="1">Item 1</option>
+  <option value="2">Item 2</option>
+  <option value="3">Item 3</option>
+</select>
+
+<div id="js-dropdown" class="dropdown-menu">
+  <div>Item 1</div>
+  <div>Item 2</div>
+  <div>Item 3</div>
+</div>
+
+<script>
+  const selectElement = document.getElementById('item-selector');
+  const dropdownMenu = document.getElementById('js-dropdown');
+
+  selectElement.addEventListener('click', function(event) {
+    event.preventDefault();
+    dropdownMenu.classList.toggle('show');
+  });
+
+  if (typeof window !== 'undefined') {
+    selectElement.style.backgroundColor = '#f0f0f0';
+  }
+</script>
+
+</body>
+</html>
