@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents } from '../config.ts';
-import { classifyGuide, scanAllGuides } from './utils.ts';
+import { classifyGuide, scanAllGuides } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
 
 /**
@@ -206,7 +206,7 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
   try {
     fs.mkdirSync(destDir, { recursive: true });
 
-    if (cli) { // Skills-cli mode
+    if (cli) { // Add modern-web-use-cases Skill (& resources) from skills-cli dist
       const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web-use-cases');
       if (!fs.existsSync(distSource)) {
         console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter modern-web-mcp build-dist' automatically...`);
@@ -241,40 +241,46 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
         console.error(`Failed to copy standalone skills-cli: ${e.message}`);
         return false;
       }
-    } else { // Skills-discipline mode
-      if (!fs.existsSync(guidesSource)) {
-        console.warn(`Warning: Guides directory not found at ${guidesSource}`);
-        return false;
+    }
+
+    // Skills-discipline mode
+    if (!fs.existsSync(guidesSource)) {
+      console.warn(`Warning: Guides directory not found at ${guidesSource}`);
+      return false;
+    }
+
+    // 1. Scan top-level directories for SKILL.md and copy them
+    const topLevelDirs = fs.readdirSync(guidesSource, { withFileTypes: true })
+      .filter(
+        d => d.isDirectory() &&
+        !d.name.startsWith('.') &&
+        d.name !== 'node_modules' &&
+        d.name !== 'modern-web-use-cases' // only needed when using Skills (CLI), already added above
+      );
+
+    for (const dir of topLevelDirs) {
+      const categorySrc = path.join(guidesSource, dir.name);
+      const categoryDest = path.join(destDir, dir.name);
+      const skillPath = path.join(categorySrc, 'SKILL.md');
+
+      if (fs.existsSync(skillPath)) {
+        fs.mkdirSync(categoryDest, { recursive: true });
+        fs.copyFileSync(skillPath, path.join(categoryDest, 'SKILL.md'));
       }
+    }
 
-      // 1. Scan top-level directories for SKILL.md and copy them
-      const topLevelDirs = fs.readdirSync(guidesSource, { withFileTypes: true })
-        .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules');
+    // 2. Scan and copy guide.md for eval-ready guides
+    const allGuides = scanAllGuides();
 
-      for (const dir of topLevelDirs) {
-        const categorySrc = path.join(guidesSource, dir.name);
-        const categoryDest = path.join(destDir, dir.name);
-        const skillPath = path.join(categorySrc, 'SKILL.md');
+    for (const inv of allGuides) {
+      if (classifyGuide(inv) === 'eval-ready') {
+        const catDest = path.join(destDir, inv.category);
+        const guideDest = path.join(catDest, inv.name);
+        fs.mkdirSync(guideDest, { recursive: true });
 
-        if (fs.existsSync(skillPath)) {
-          fs.mkdirSync(categoryDest, { recursive: true });
-          fs.copyFileSync(skillPath, path.join(categoryDest, 'SKILL.md'));
-        }
-      }
-
-      // 2. Scan and copy guide.md for eval-ready guides
-      const allGuides = scanAllGuides();
-
-      for (const inv of allGuides) {
-        if (classifyGuide(inv) === 'eval-ready') {
-          const catDest = path.join(destDir, inv.category);
-          const guideDest = path.join(catDest, inv.name);
-          fs.mkdirSync(guideDest, { recursive: true });
-
-          const guideFileSrc = path.join(inv.dir, 'guide.md');
-          const guideFileDest = path.join(guideDest, 'guide.md');
-          fs.copyFileSync(guideFileSrc, guideFileDest);
-        }
+        const guideFileSrc = path.join(inv.dir, 'guide.md');
+        const guideFileDest = path.join(guideDest, 'guide.md');
+        fs.copyFileSync(guideFileSrc, guideFileDest);
       }
     }
 
