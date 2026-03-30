@@ -10,7 +10,6 @@ import { classifyGuide, scanAllGuides } from "../../harness/lib/utils.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
-const GUIDES_DIR = path.resolve(ROOT_DIR, "../guides");
 const BUILD_GUIDES_DIR = path.join(ROOT_DIR, "build/guides");
 const DATA_DIR = path.join(ROOT_DIR, "mcp-server/data");
 const OUTPUT_FILE = path.join(DATA_DIR, "use-cases.gen.ts");
