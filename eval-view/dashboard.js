@@ -1,6 +1,6 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateRadarData } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData } from './utils.js';
 import { ApiClient } from './api.js';
-import { RadarChart } from './radar.js';
+import { DumbbellChart } from './dumbbell-chart.js';
 
 // Keep track of current details state for navigation
 let currentDetails = null;
@@ -74,7 +74,7 @@ async function loadDashboardData(testId) {
         renderTestHeader(testId, jetskiVersion, timestamp, data);
         renderSummary(data);
         renderGrid(data, testId);
-        renderRadarChart(data, testId);
+        renderDashboardDumbbellChart(data, testId);
 
         // Check for deep link to modal
         const params = new URLSearchParams(window.location.search);
@@ -880,21 +880,14 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     }
 }
 
-function renderRadarChart(data, testId) {
-    const { labels, guided, unguided } = calculateRadarData(data.results);
+function renderDashboardDumbbellChart(data, testId) {
+    const { labels, guided, unguided } = calculateChartData(data.results);
     
-    if (labels.length < 3) {
+    if (labels.length < 1) {
         document.getElementById('chart-section').classList.add('hidden');
         return;
     }
-
     document.getElementById('chart-section').classList.remove('hidden');
-
-    const chart = new RadarChart('radar-chart', {
-        size: 600,
-        levels: 5,
-        padding: 80
-    });
 
     const handlePointClick = (index, type) => {
         const scenarioName = labels[index]; // e.g. "redfield (vague)"
@@ -914,27 +907,28 @@ function renderRadarChart(data, testId) {
         }
     };
 
-    chart.render({
-        labels: labels,
-        datasets: [
-            {
-                label: 'Unguided',
-                data: unguided,
-                backgroundColor: 'rgba(218, 54, 51, 0.2)',
-                borderColor: '#da3633',
-                onClick: handlePointClick
-            },
-            {
-                label: 'Guided',
-                data: guided,
-                backgroundColor: 'rgba(35, 134, 54, 0.2)',
-                borderColor: '#238636',
-                onClick: handlePointClick
-            }
-        ]
-    });
-}
+    const datasets = [
+        {
+            label: 'Unguided',
+            data: unguided,
+            onClick: handlePointClick
+        },
+        {
+            label: 'Guided',
+            data: guided,
+            onClick: handlePointClick
+        }
+    ];
 
+    // Render the Dumbbell Chart
+    if (window.dumbbellChart) window.dumbbellChart.container.innerHTML = '';
+    window.dumbbellChart = new DumbbellChart('dumbbell-chart', {
+        size: 700,
+        rowHeight: 30,
+        margin: { top: 20, right: 200, bottom: 20, left: 30 }
+    });
+    window.dumbbellChart.render({ labels, datasets });
+}
 
 async function getResultPaths(testId, run, testName) {
     return await api.getResultInfo(testId, run, testName);

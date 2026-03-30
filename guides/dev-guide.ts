@@ -14,7 +14,7 @@ import {
   createTrustedFolders,
   spawnAsync
 } from '../harness/lib/agent-shared.ts';
-import { environmentConfig } from '../harness/config.ts';
+import { environmentConfig, config, Serving } from '../harness/config.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
 import {
   type GuideInventory,
@@ -259,7 +259,7 @@ Rules:
 - Do NOT tell the agent which web API or CSS property to use unless a real developer would naturally do so.
 - Each prompt must be on its own line, prefixed with "- ".
 
-- IMPORTANT: Do NOT use bash or shell commands (like cat, echo, or heredocs) to write files. You MUST use your built-in structured file editing tools (e.g. write_file or replace) to create the file. Heredoc strings will cause bash parsing errors.
+- When writing files, you MUST use your built-in structured file editing tools (e.g., \`write_file\` or \`replace\`). Do not use shell commands (like \`cat\`, \`echo\`, or heredocs \`<<\`) to create files in the terminal.
 
 Only create the ${PROMPTS_FILE} file. Do not modify any other files.`;
 
@@ -321,11 +321,18 @@ async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<s
   console.log(`Task: ${taskInfo.taskName} (base_app: ${taskInfo.baseApp})`);
   console.log(`Prompt: ${cDim(taskInfo.prompt.substring(0, 120))}${taskInfo.prompt.length > 120 ? '...' : ''}`);
 
-  // Step d: Build MCP index
-  console.log(`\nBuilding MCP index...`);
-  const buildCode = await spawnAsync('pnpm', ['build:mcp'], { cwd: rootDir, stdio: 'inherit' });
+  // Step d: Build workspace dependencies
+  let buildCode = 0;
+  if (config.suite.serving === Serving.MCP) {
+    console.log(`\nBuilding MCP index...`);
+    buildCode = await spawnAsync('pnpm', ['build:mcp'], { cwd: rootDir, stdio: 'inherit' });
+  } else if (config.suite.serving === Serving.SKILLS_CLI) {
+    console.log(`\nBuilding skills-cli dist...`);
+    buildCode = await spawnAsync('pnpm', ['--filter', 'modern-web-mcp', 'build-dist'], { cwd: rootDir, stdio: 'inherit' });
+  }
+
   if (buildCode !== 0) {
-    console.error(cRed(`Failed to build MCP index (exit code ${buildCode})`));
+    console.error(cRed(`Failed to build workspace dependencies (exit code ${buildCode})`));
     return;
   }
 

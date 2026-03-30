@@ -56,19 +56,31 @@ export function timeAgo(date) {
     return rtf.format(-Math.floor(diff / u.s), u.name);
 }
 
-export function calculateRadarData(results) {
+export function calculateChartData(results) {
     const apps = {};
+    const taskNames = {};
+    
     Object.keys(results).forEach(key => {
         const [appName, guide, runType] = key.split(' - ');
         if (!runType) return;
         const scenario = `${appName} (${guide})`;
         if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [] };
+        
         const runs = results[key];
+        if (runs.length > 0 && runs[0].taskName) {
+            taskNames[scenario] = runs[0].taskName;
+        }
+        
         const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
         const total = runs.reduce((acc, r) => acc + r.results.length, 0);
         apps[scenario][runType].push(total > 0 ? (passed / total) * 100 : 0);
     });
-    const labels = Object.keys(apps).sort();
+    
+    const labels = Object.keys(apps).sort((a, b) => {
+        const taskA = taskNames[a] || a;
+        const taskB = taskNames[b] || b;
+        return taskA.localeCompare(taskB);
+    });
     const getAvg = (l, type) => {
         const s = apps[l][type];
         return s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;

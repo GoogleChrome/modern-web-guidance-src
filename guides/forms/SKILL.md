@@ -51,6 +51,7 @@ description: Best practices for building accessible, secure, and user-friendly w
 - **DO** always associate `<label>` with its input using `for` and `id`.
 - **DO** place labels above form controls to enable faster scanning.
 - **DO** use visible labels; do not rely on `placeholder` alone.
+- **DO** ensure the vertical margin between a label and its input is less than the margin between form groups (**Gestalt Proximity Rule**).
 - **DO** use `aria-describedby` to link inputs with help text or error messages.
 - **DO** define the `lang` attribute on `<html>` for proper device translation.
 - **DO** use non-color visual cues (icons, text) to communicate state (don't rely on color alone).
@@ -104,7 +105,7 @@ description: Best practices for building accessible, secure, and user-friendly w
 - **DO** use CSS pseudo-classes `:invalid:user-invalid` for non-intrusive styling.
 - **DO** use the ValidityState API (`setCustomValidity`) for custom messaging.
 
-- **DON'T** disable submit buttons; let users submit and highlight errors.
+- **DON'T** disable submit buttons to block validation; let users submit and highlight errors. However, **DO** disable the button *after* a valid submission is clicked to prevent double-posts.
 
 ### Code Example
 
@@ -180,6 +181,7 @@ input {
 
 - **DO** use `accent-color` for quick branding of native radios/checkboxes.
 - **DO** use `appearance: none` for custom dropdown arrows without breaking semantics.
+- **DO** ensure inputs are clearly visible with adequate border contrast (e.g., `#ccc` or darker on white backgrounds).
 - **DO** hide inputs visually using `position: absolute; opacity: 0` (NOT `display: none`) to keep them accessible.
 
 ### Code Example
@@ -251,18 +253,32 @@ form.addEventListener('submit', (e) => {
 ### Code Example
 
 ```html
-<form action="/checkout" method="POST">
+<form method="post">
   <input type="hidden" name="csrf_token" value="secure_token_abc123">
-  
-  <label for="pwd">New Password:</label>
-  <input type="password" id="pwd" name="pwd" autocomplete="new-password" required>
-  
-  <button type="submit">Complete Registration</button>
+
+  <h1>Sign up</h1>
+
+  <section>        
+    <label for="name">Full name</label>
+    <input id="name" name="name" autocomplete="name" required pattern="[\p{L}\.\- ]+">
+  </section>
+
+  <section>        
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="username" required>
+  </section>
+
+  <section>
+    <label for="password">Password</label>
+    <button id="toggle-password" type="button" aria-label="Show password as plain text. Warning: this will display your password on the screen.">Show password</button>
+    <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" aria-describedby="password-constraints" required>
+    <div id="password-constraints">Eight or more characters.</div>
+  </section>
+
+  <button id="sign-up">Sign up</button>
 </form>
 ```
 
-> [!TIP]
-> **Password Visibility**: Do not hide passwords unconditionally; provide a visibility toggle to reduce entry errors rather than forcing double-entry verification.
 
 ## 9. Address Collection
 
@@ -270,9 +286,11 @@ form.addEventListener('submit', (e) => {
 
 - **DO** use a single field for names.
 - **DO** use `autocomplete="street-address"`.
+- If the site has users in different countries, **DO** use the `<textarea>` element for addresses, to accommodate different address formats in different geographical regions. If the form uses separate inputs for address parts (e.g. Street, City), **DO** use `autocomplete` values `address-line1`, `address-line2`, etc.
 - **DO** make postal codes optional.
 
 - **DON'T** split name inputs into rigid variables ("First", "Last") for global audiences.
+- **DON'T** enforce Latin-only characters for names and usernames.
 
 ### Code Example
 
@@ -280,21 +298,19 @@ form.addEventListener('submit', (e) => {
 <!-- Accessible Address Form with Autofill -->
 <form action="/save-address" method="POST">
   <div class="form-group">
-    <label for="full-name">Full name:</label>
-    <input type="text" id="full-name" name="full_name" required autocomplete="name">
+    <label for="full-name">Full name</label>
+    <input type="text" id="full-name" name="full_name" maxlength="100" required autocomplete="name">
   </div>
 
   <div class="form-group">
-    <label for="address">Address:</label>
-    <textarea id="address" name="address" required autocomplete="street-address" rows="3"></textarea>
+    <label for="address">Address</label>
+    <textarea id="address" name="address" required autocomplete="street-address" maxlength="300"></textarea>
   </div>
 
   <button type="submit">Save Address</button>
 </form>
 ```
 
-> [!TIP]
-> **Global Schema Flexibility**: Use single-field inputs for names and free-form textareas for addresses to accommodate global diversity, rather than imposing rigid, culture-specific schemas.
 
 ## 10. Usability Testing and Analytics
 
@@ -313,8 +329,8 @@ form.addEventListener('submit', (e) => {
 
 ```html
 <form action="/submit" method="POST" id="track-form">
-  <label for="zip-track">ZIP Code:</label>
-  <input type="text" id="zip-track" name="zip" required>
+  <label for="postal-code">ZIP or postal code</label>
+  <input type="text" id="postal-code" name="postal-code" autocomplete="postal-code" maxlength="20" required>
   <button type="submit" id="submit-btn">Submit</button>
 </form>
 
@@ -326,4 +342,28 @@ form.addEventListener('submit', (e) => {
     console.log('Analytics Event: Submit clicked');
   });
 </script>
+```
+
+## 11. Multi-Page Forms
+
+### Guidelines
+
+- **DO** clearly display progress through a multi-page form with clear labels and progress indicators.
+- **DO** allow users to navigate backwards and forwards between pages.
+- **DO** use context-specific `enterkeyhint` values (e.g., `"previous"`, `"next"`) to guide navigation via on-screen keyboards.
+- **DO** design layouts so that the mobile keyboard does not obscure inputs or buttons (e.g., by placing them in the upper half of the viewport when focused or using CSS scroll-padding).
+
+### Code Example
+
+```html
+<nav aria-label="Progress">
+  <ol class="progress-tracker">
+    <li class="step-done">Step 1: Account</li>
+    <li class="step-active" aria-current="step">Step 2: Shipping</li>
+    <li class="step-todo">Step 3: Payment</li>
+  </ol>
+</nav>
+
+<button type="button" onclick="history.back()" enterkeyhint="previous">Previous</button>
+<button type="submit" enterkeyhint="next">Next</button>
 ```
