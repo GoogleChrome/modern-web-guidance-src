@@ -41,7 +41,7 @@ async function uploadToGit(suiteName: string, resultsDir: string) {
   fs.cpSync(resultsDir, destDir, { recursive: true });
 
   // Update scripts manifest inside worktree
-  console.log(cCyan(`Updating suites.json manifest inside worktree...`));
+  console.log(cCyan(`Updating suites.gen.json manifest inside worktree...`));
   const worktreeResults = path.join(CLONE_DIR, 'results');
   let suites: string[] = [];
   if (fs.existsSync(worktreeResults)) {
@@ -51,7 +51,7 @@ async function uploadToGit(suiteName: string, resultsDir: string) {
        .map(item => item.name);
   }
   suites.sort();
-  fs.writeFileSync(path.join(CLONE_DIR, 'suites.json'), JSON.stringify(suites, null, 2));
+  fs.writeFileSync(path.join(CLONE_DIR, 'suites.gen.json'), JSON.stringify(suites, null, 2));
 
   console.log(cCyan(`Committing and pushing to gh-pages...`));
   runGit(`git add .`, CLONE_DIR);

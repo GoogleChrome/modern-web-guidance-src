@@ -231,7 +231,7 @@ function renderAll() {
 
 async function loadStaticTests() {
     try {
-        const response = await fetch('./suites.json');
+        const response = await fetch('./suites.gen.json');
         if (!response.ok) return;
         const manifest = await response.json();
 

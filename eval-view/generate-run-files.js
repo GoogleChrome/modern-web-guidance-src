@@ -12,14 +12,14 @@ function scanDir(dir) {
         if (item.isDirectory()) {
             hasSubDirs = true;
             scanDir(path.join(dir, item.name));
-        } else if (item.isFile() && item.name !== 'run-files.json') {
+        } else if (item.isFile() && item.name !== 'run-files.gen.json') {
             files.push(item.name);
         }
     }
 
-    // If it's a leaf directory (or has files), write run-files.json
+    // If it's a leaf directory (or has files), write run-files.gen.json
     if (files.length > 0) {
-        const manifestPath = path.join(dir, 'run-files.json');
+        const manifestPath = path.join(dir, 'run-files.gen.json');
         fs.writeFileSync(manifestPath, JSON.stringify({ files }, null, 2));
         // console.log(`Generated manifest for ${dir}`);
     }
@@ -27,12 +27,12 @@ function scanDir(dir) {
 
 try {
     if (fs.existsSync(resultsDir)) {
-        console.log(`Scanning results in ${resultsDir} to generate run-files.json manifests...`);
+        console.log(`Scanning results in ${resultsDir} to generate run-files.gen.json manifests...`);
         scanDir(resultsDir);
-        console.log('Successfully generated run-files.json manifests.');
+        console.log('Successfully generated run-files.gen.json manifests.');
     } else {
         console.warn(`Results directory ${resultsDir} not found.`);
     }
 } catch (e) {
-    console.error('Error generating run-files.json manifests:', e);
+    console.error('Error generating run-files.gen.json manifests:', e);
 }

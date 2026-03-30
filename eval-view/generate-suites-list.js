@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 const resultsDir = path.resolve('../harness/results');
-const outputFilePath = path.resolve('./suites.json');
+const outputFilePath = path.resolve('./suites.gen.json');
 
 const suites = [];
 

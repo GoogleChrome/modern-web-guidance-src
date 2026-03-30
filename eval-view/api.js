@@ -69,9 +69,9 @@ export class ApiClient {
     /** Fetches the overall array of test suites/runs listed for the dashboard. */
     async getSuites() {
         if (this.source === 'gh') {
-            // Load from a static suites.json manifest
-            const res = await fetch('./suites.json');
-            if (!res.ok) throw new Error('Failed to load remote suites (suites.json not found)');
+            // Load from a static suites.gen.json manifest
+            const res = await fetch('./suites.gen.json');
+            if (!res.ok) throw new Error('Failed to load remote suites (suites.gen.json not found)');
 
             const suites = await res.json();
             return { suites: suites.map(id => ({ id, source: 'gh' })) };
@@ -195,8 +195,8 @@ export class ApiClient {
                     files = data.files || [];
                 }
             } else {
-                // Fetch from the static run-files.json manifest
-                const url = this._formatUrl(`${basePath}/run-files.json`);
+                // Fetch from the static run-files.gen.json manifest
+                const url = this._formatUrl(`${basePath}/run-files.gen.json`);
                 const res = await fetch(url);
                 if (res.ok) {
                     const data = await res.json();
