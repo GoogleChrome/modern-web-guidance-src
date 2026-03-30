@@ -6,11 +6,9 @@ const resultsDir = path.resolve('../harness/results');
 function scanDir(dir) {
     const items = fs.readdirSync(dir, { withFileTypes: true });
     const files = [];
-    let hasSubDirs = false;
 
     for (const item of items) {
         if (item.isDirectory()) {
-            hasSubDirs = true;
             scanDir(path.join(dir, item.name));
         } else if (item.isFile() && item.name !== 'run-files.gen.json') {
             files.push(item.name);
