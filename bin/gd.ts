@@ -7,7 +7,7 @@ import { spawn } from 'child_process';
 import omelette from 'omelette';
 import { pathToFileURL } from 'url';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
-import { Serving, mergeSuiteConfig } from '../harness/config.ts';
+import { Serving, mergeSuiteConfig, type SuiteConfig } from '../harness/config.ts';
 import { rootDir } from '../lib/root.ts';
 
 // Load environment variables (Node 20.12+)
@@ -89,6 +89,24 @@ const { positionals, values } = parseArgs({
 
 // --- Helpers ---
 
+async function resolveSuiteConfig(configPath?: string): Promise<SuiteConfig> {
+  const resolvedConfigPath = configPath
+    ? path.resolve(process.cwd(), configPath)
+    : path.resolve(rootDir, 'config.ts');
+
+  let overrides: any = {};
+  if (fs.existsSync(resolvedConfigPath)) {
+    const fileUrl = pathToFileURL(resolvedConfigPath).href;
+    const customConfig = await import(fileUrl);
+    overrides = customConfig.default || customConfig;
+  } else if (configPath) {
+    console.error(cRed('⚠️ Specified config file not found: ' + resolvedConfigPath));
+    process.exit(1);
+  }
+
+  return mergeSuiteConfig(overrides);
+}
+
 function spawnChild(command: string, args: string[], options: import('child_process').SpawnOptions = {}): Promise<number> {
   return new Promise((resolve, reject) => {
     const p = spawn(command, args, { stdio: 'inherit', cwd: rootDir, ...options });
@@ -143,13 +161,13 @@ ${cBold('Evaluation:')}
 
 ${cBold('Other:')}
   ${cCyan('baselinestatus')} <query>      Check browser support and Baseline status
-  ${cCyan('setup-completion')}       Install shell auto-completion
+  ${cCyan('setup-completion')}            Install shell auto-completion
 
 ${cBold('Options:')}
-  ${cDim('-h, --help')}             Show this help
-  ${cDim('--verbose')}              Show additional output
-  ${cDim('--usecases')}             (Audit) Group by categories/usecases (default is features)
-  ${cDim('--config <path>')}        (Eval) Path to a custom TS suite config file (defaults to config.ts, or falls back to defaults in harness/config.ts)
+  ${cDim('-h, --help')}                 Show this help
+  ${cDim('--verbose')}                  Show additional output
+  ${cDim('--usecases')}                 (Audit) Group by categories/usecases (default is features)
+  ${cDim('--config <custom_config>')}   (Eval) Path to a custom TS suite config file (defaults to config.ts, or falls back to defaults in harness/config.ts)
     `);
     process.exit(0);
   }
@@ -204,27 +222,12 @@ ${cBold('Options:')}
       auditGuides({ groupByUsecases: !!values.usecases });
       break;
     }
-    
+
     case 'run': {
       const tmpl = requireArg(positionals[1], 'gd run <template> <prompt>');
       const prompt = requireArg(positionals[2], 'gd run <template> <prompt>');
 
-      const configPath = values.config as string | undefined;
-      const resolvedConfigPath = configPath
-        ? path.resolve(process.cwd(), configPath)
-        : path.resolve(rootDir, 'config.ts');
-
-      let overrides: any = {};
-      if (fs.existsSync(resolvedConfigPath)) {
-        const fileUrl = pathToFileURL(resolvedConfigPath).href;
-        const customConfig = await import(fileUrl);
-        overrides = customConfig.default || customConfig;
-      } else if (configPath) {
-        console.error(cRed('⚠️ Specified config file not found: ' + resolvedConfigPath));
-        process.exit(1);
-      }
-
-      const mergedSuiteConfig = mergeSuiteConfig(overrides);
+      const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
       const { runAgent } = await import('../harness/run_suite.ts');
       await runAgent(tmpl, prompt, mergedSuiteConfig);
@@ -240,22 +243,7 @@ ${cBold('Options:')}
     case 'eval': {
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
 
-      const configPath = values.config as string | undefined;
-      const resolvedConfigPath = configPath
-        ? path.resolve(process.cwd(), configPath)
-        : path.resolve(rootDir, 'config.ts');
-
-      let overrides: any = {};
-      if (fs.existsSync(resolvedConfigPath)) {
-        const fileUrl = pathToFileURL(resolvedConfigPath).href;
-        const customConfig = await import(fileUrl);
-        overrides = customConfig.default || customConfig;
-      } else if (configPath) {
-        console.error(cRed('⚠️ Specified config file not found: ' + resolvedConfigPath));
-        process.exit(1);
-      }
-
-      const mergedSuiteConfig = mergeSuiteConfig(overrides);
+      const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
       let buildCode = 0;
       if (mergedSuiteConfig.serving === Serving.MCP) {

@@ -91,7 +91,6 @@ export interface SuiteConfig {
 
 export const config = {
   environment: environmentConfig,
-  suite: defaultSuiteConfig,
 };
 
 // Validate critical paths exist during configuration

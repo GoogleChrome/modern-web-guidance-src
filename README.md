@@ -71,7 +71,7 @@ gd dev [dir] [options]        # auto-generate/calibrate
 # Evaluation
 gd eval                       # run the full evaluation suite
 gd eval [task1] [task2]       # run specific tasks
-gd eval [config]              # run with config overrides (e.g. --config my_custom_config.ts, defaults to config.ts, or falls back to defaults in harness/config.ts)
+gd eval --config <custom_config>       # run with config overrides (defaults to config.ts, or harness/config.ts)
 gd dashboard                  # start the evaluation dashboard
 
 # To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)

@@ -2,8 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
-import { Agents, defaultSuiteConfig } from './config.ts';
-import type { SuiteConfig } from './config.ts';
+import { Agents, defaultSuiteConfig, type SuiteConfig } from './config.ts';
 import matter from 'gray-matter';
 import { evaluateSuite } from './evaluate.ts';
 import { rootDir } from '../lib/root.ts';
@@ -65,7 +64,7 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string,
       'guided', // Default to guided for ad-hoc tool execution
       targetDir,
       templateDir
-    ], undefined, { GD_SUITE_CONFIG: suiteConfigPath });
+    ], { GD_SUITE_CONFIG: suiteConfigPath });
     console.log(`\n✅ ${taskNameLabel} complete! Results in ${targetDir}`);
   } catch (error) {
     console.error(`❌ ${taskNameLabel} failed:`, error);
@@ -201,7 +200,7 @@ const args = [
     templateDir
   ])}
 ];
-const result = spawnSync('node', args, { stdio: 'inherit' });
+const result = spawnSync('node', args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
 process.exit(result.status ?? 0);
 `.trim();
           
@@ -239,7 +238,7 @@ process.exit(result.status ?? 0);
           }
           pnpmArgs.push('run-agent');
           const suiteConfigPath = path.resolve(testDir, 'suite_config.json');
-          await runCommand('pnpm', pnpmArgs, runDir, { GD_SUITE_CONFIG: suiteConfigPath });
+          await runCommand('pnpm', pnpmArgs, { GD_SUITE_CONFIG: suiteConfigPath }, runDir);
           console.log(`✅ Completed Run ${runNumber} test executions`);
         } catch (error) {
           console.error(`❌ Failed during Run ${runNumber} test execution`, error);
@@ -325,7 +324,7 @@ function restoreLogging(originals: any) {
   }
 }
 
-async function runCommand(command: string, args: string[] = [], cwd?: string, envOverrides?: Record<string, string>) {
+async function runCommand(command: string, args: string[] = [], envOverrides?: Record<string, string>, cwd?: string) {
   return new Promise((resolve, reject) => {
     const childProcess = spawn(command, args, {
       stdio: 'inherit',
@@ -353,9 +352,7 @@ async function runCommand(command: string, args: string[] = [], cwd?: string, en
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const positionalArgs = args.filter(arg => !arg.startsWith('--'));
-  if (positionalArgs.length === 2 && args.includes('--with-template')) {
-    runAgent(positionalArgs[0], positionalArgs[1]).catch(console.error);
-  } else if (positionalArgs.length >= 1) {
+  if (positionalArgs.length >= 1) {
     runSuite({ tasks: positionalArgs }).catch(console.error);
   } else {
     runSuite().catch(console.error);
