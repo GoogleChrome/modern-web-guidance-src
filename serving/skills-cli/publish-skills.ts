@@ -67,6 +67,13 @@ async function main() {
   execSync('npm install --omit=dev', { cwd: publishCliDir, stdio: 'inherit' });
   execSync('npm shrinkwrap', { cwd: publishCliDir, stdio: 'inherit' });
 
+  console.log(`\nAttempting npm publish dry-run (to verify files packaging)...`);
+  try {
+    execSync('npm publish --dry-run', { cwd: publishCliDir, stdio: 'inherit' });
+  } catch (err) {
+    console.warn(`\n[Warn] npm publish --dry-run failed (expected if the package is set to 'private: true'). Use \`npm pack --dry-run\` to inspect files without publishing checks.`);
+  }
+
 
   if (isDryRun) {
     const files = await fs.readdir(path.join(DIST_DIR, "skills-cli"), {recursive: true});

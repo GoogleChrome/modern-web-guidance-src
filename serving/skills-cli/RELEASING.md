@@ -28,7 +28,17 @@ When unauthenticated users attempt to hit the GitHub API to fetch a release, Git
 
 *(Note: Once the repository goes public, we should resume creating GitHub Releases for each version bump to ensure lightning-fast archive downloads for the Gemini CLI!).*
 
+## Local Development & Global Linking
+
+To install and test the compiled package locally as a CLI on your machine:
+```bash
+cd dist/skills-cli
+pnpm link --global
+```
+This registers `@paulirish/skills-alpha` globally and places the binaries (`modern-web`) in your PATH! You can then run testing binaries (`modern-web --help`) natively. Overrides or updates can easily be test-packed this way!
+
 ## Architecture Note: The "Single Bundle" Approach
+
 
 For Claude Code, the `skills-alpha` repository acts as a **single bundled plugin** (`googlechrome-skills`) rather than a marketplace catalog of individual plugins.
 

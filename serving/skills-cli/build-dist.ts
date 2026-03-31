@@ -46,8 +46,8 @@ async function main() {
   console.log("Copying installation manifests and metadata for AI tools...");
   fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), PUBLISH_ROOT, { recursive: true });
 
-  console.log("Renaming vscode-ext-package.json to package.json for publishing...");
-  fs.renameSync(path.join(PUBLISH_ROOT, "vscode-ext-package.json"), path.join(PUBLISH_ROOT, "package.json"));
+  console.log("Renaming steps ignored as template is now package.json");
+
 
   console.log("Copying data files...");
   // 3. Copy .modern-web-data
