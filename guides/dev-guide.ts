@@ -168,8 +168,6 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   // Step 5: Test task and prompt generation
   if (calibrationResult?.success) {
     console.log(cCyan(`\n--- Setting up test task ---`));
-    const existingTask = taskMap.get(currentInv.name);
-    const baseApp = existingTask?.baseApp ?? 'daily-grind';
 
     const taskPath = path.join(targetDir, TASK_FILE);
     if (!fs.existsSync(taskPath)) {

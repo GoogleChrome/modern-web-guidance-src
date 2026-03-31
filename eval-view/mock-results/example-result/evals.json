@@ -49,7 +49,7 @@
         ]
       }
     ],
-    "cards-app - preload-prerender - unguided": [
+    "preload-prerender - unguided": [
       {
         "runNumber": 1,
         "results": [
@@ -133,7 +133,7 @@
         }
       }
     ],
-    "cards-app - preload-prerender - guided": [
+    "preload-prerender - guided": [
       {
         "runNumber": 1,
         "results": [
@@ -195,13 +195,13 @@
       "runsUsingGuide": 1,
       "runCount": 1
     },
-    "cards-app - preload-prerender - unguided": {
+    "preload-prerender - unguided": {
       "median": 33,
       "rates": [
         33
       ]
     },
-    "cards-app - preload-prerender - guided": {
+    "preload-prerender - guided": {
       "median": 33,
       "rates": [
         33
