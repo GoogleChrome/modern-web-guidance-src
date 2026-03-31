@@ -60,13 +60,8 @@ async function main() {
   const newVersion = await bumpVersions();
   
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
-  try {
-    await fs.access(publishCliDir);
-    console.log(`\nCleaning distribution directory dist/skills-cli/ for fresh release...`);
-    await fs.rm(publishCliDir, { recursive: true, force: true });
-  } catch {
-    // Directory doesn't exist, proceed!
-  }
+  console.log(`\nCleaning distribution directory dist/skills-cli/ for fresh release...`);
+  await fs.rm(publishCliDir, { recursive: true, force: true });
 
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
   const { buildDist } = await import("./build-dist.ts");
