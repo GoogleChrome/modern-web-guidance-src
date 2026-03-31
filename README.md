@@ -71,6 +71,7 @@ gd dev [dir] [options]        # auto-generate/calibrate
 # Evaluation
 gd eval                       # run the full evaluation suite
 gd eval [task1] [task2]       # run specific tasks
+gd eval --config <custom_config>       # run with config overrides (defaults to config.ts, or harness/config.ts)
 gd dashboard                  # start the evaluation dashboard
 
 # To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
@@ -85,7 +86,21 @@ All configuration is centralized in [`harness/config.ts`](./harness/config.ts). 
 -   **Environment**: Paths to binaries (Jetski, Gemini CLI, Claude Code), API keys, and server locations.
 -   **Suite**: Agent selection, number of runs, tasks to run, enabled MCP servers, and skills.
 
-All settings must be adjusted in `harness/config.ts` or via environment variables in `.env` at the `guidance/` root.
+### Runtime Configuration Overrides
+
+You can override suite configurations without modifying `harness/config.ts` directly. The `gd eval` command automatically looks for a `config.ts` file in the project root. If this file doesn't exist and no `--config` flag is provided, it safely falls back to the defaults in `harness/config.ts`.
+
+To get started, copy the template:
+```bash
+cp config.ts.example config.ts
+```
+
+If you want to maintain multiple configuration profiles, you can specify a custom file using the `--config` flag:
+```bash
+gd eval --config my_custom_config.ts
+```
+
+Environment variables in `.env` at the `guidance/` root are still required for setting paths to binaries and API keys.
 
 ### Agents
 

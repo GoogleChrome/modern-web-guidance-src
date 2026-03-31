@@ -33,8 +33,14 @@ skills/modern-web/
 # team context repo
 project-gleam/
 
+# Local configs
+config.ts
+
 # Git worktrees directory
 .worktrees
+# Local agent stuff
+.gemini/
+GEMINI.md
 
 # Research drafts
 skills-drafts/.research/

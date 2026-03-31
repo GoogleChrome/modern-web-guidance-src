@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import matter from 'gray-matter';
-import { config, Serving, Agents } from '../config.ts';
+import { Serving, Agents, type SuiteConfig } from '../config.ts';
 import { guidesDir, tasksDir } from '../../lib/paths.ts';
 
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
@@ -33,7 +33,7 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   return 'unknown';
 }
 
-export async function collectResults(resultsDir: string) {
+export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
   const runDirs = fs.readdirSync(resultsDir)
     .filter(name => {
       const fullPath = path.join(resultsDir, name);
@@ -60,7 +60,7 @@ export async function collectResults(resultsDir: string) {
 
       const [taskName, runType] = parts;
       const targetFile = path.join(dir, 'index.html');
-      const isNegative = config.suite.negative === true;
+      const isNegative = suiteConfig.negative === true;
       const taskPath = path.join(tasksDir, isNegative ? 'negative' : '', `${taskName}.md`);
 
       if (!fs.existsSync(taskPath)) continue;
@@ -160,13 +160,13 @@ run();
       let guidanceToolsUsedResult: string[] = [];
 
       if (runType === 'guided') {
-        const serving = config.suite.serving;
-        guidesUsedResult = await collectGuidesUsed(dir, serving, config.suite.agent);
-        guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir, serving, config.suite.agent);
+        const serving = suiteConfig.serving;
+        guidesUsedResult = await collectGuidesUsed(dir, serving, suiteConfig.agent);
+        guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir, serving, suiteConfig.agent);
       }
 
       const targetFile = path.join(dir, 'index.html');
-      const isNegative = config.suite.negative === true;
+      const isNegative = suiteConfig.negative === true;
       const taskPath = path.join(tasksDir, isNegative ? 'negative' : '', `${taskName}.md`);
 
       if (!fs.existsSync(taskPath)) {
@@ -185,8 +185,8 @@ run();
       const taskCategory = getGuideCategory(guide);
 
       let expectedGuidanceTool: string | undefined;
-      const serving = config.suite.serving;
-      if (serving === Serving.MCP || config.suite.agent === Agents.JETSKI) {
+      const serving = suiteConfig.serving;
+      if (serving === Serving.MCP || suiteConfig.agent === Agents.JETSKI) {
         // JETSKI impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in SKILLS runs)
         expectedGuidanceTool = 'modern-web';
       } else if (serving === Serving.SKILLS_CLI) {
