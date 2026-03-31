@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import ghpages from 'gh-pages';
+import { buildDist } from './build-dist.ts';
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const SERVING_DIR = path.join(ROOT_DIR, "serving");
@@ -60,11 +61,11 @@ async function main() {
   const newVersion = await bumpVersions();
   
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
-  console.log(`\nCleaning distribution directory dist/skills-cli/ for fresh release...`);
+  await fs.mkdir(publishCliDir, {recursive: true});
   await fs.rm(publishCliDir, { recursive: true, force: true });
 
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  const { buildDist } = await import("./build-dist.ts");
+  
   await buildDist();
   
   console.log(`\nVerifying built distribution with test-dist.test.ts suite...`);
