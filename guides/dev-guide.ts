@@ -330,7 +330,7 @@ async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<s
     buildCode = await spawnAsync('pnpm', ['build:mcp'], { cwd: rootDir, stdio: 'inherit' });
   } else if (serving === Serving.SKILLS_CLI) {
     console.log(`\nBuilding skills-cli dist...`);
-    buildCode = await spawnAsync('pnpm', ['--filter', 'modern-web-mcp', 'build-dist'], { cwd: rootDir, stdio: 'inherit' });
+    buildCode = await spawnAsync('pnpm', ['--filter', 'serving', 'build-dist'], { cwd: rootDir, stdio: 'inherit' });
   }
 
   if (buildCode !== 0) {

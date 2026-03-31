@@ -248,7 +248,7 @@ ${cBold('Options:')}
       if (mergedSuiteConfig.serving === Serving.MCP) {
         buildCode = await runNpm(['build:mcp']);
       } else if (mergedSuiteConfig.serving === Serving.SKILLS_CLI) {
-        buildCode = await runNpm(['--filter', 'modern-web-mcp', 'build-dist']);
+        buildCode = await runNpm(['--filter', 'serving', 'build-dist']);
       }
 
       if (buildCode !== 0) process.exit(buildCode);
