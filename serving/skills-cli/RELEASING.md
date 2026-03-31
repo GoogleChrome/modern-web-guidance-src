@@ -35,7 +35,7 @@ To install and test the compiled package locally as a CLI on your machine:
 cd "$(git rev-parse --show-cdup)" && node serving/skills-cli/build-dist.ts && cd dist/skills-cli && npm install --global .
 ```
 
-This registers the package globally and places the binaries (`modern-web`) in your PATH! You can then run testing binaries (`modern-web --help`) natively. Overrides or updates can easily be test-packed this way!
+This registers the package globally and places the binaries (`modern-web`) in your PATH.
 
 
 ## Architecture Note: The "Single Bundle" Approach

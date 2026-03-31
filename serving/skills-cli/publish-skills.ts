@@ -85,7 +85,7 @@ async function main() {
 
   if (isDryRun) {
     const files = await fs.readdir(path.join(DIST_DIR, "skills-cli"), {recursive: true});
-    console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${files.join('\n - ')}`);
+    console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${files.filter(f => !f.includes('node_modules')).join('\n - ')}`);
     console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
   } else {
     console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/skills-alpha (main branch)...`);
