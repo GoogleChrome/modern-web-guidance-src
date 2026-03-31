@@ -8,10 +8,11 @@ const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
 console.log("Running build-dist to ensure fresh build...");
-execSync('npm run build-dist', { 
+execSync('node --experimental-strip-types skills-cli/build-dist.ts', { 
   cwd: path.resolve(import.meta.dirname, '..'), 
   stdio: 'inherit' 
 });
+
 
 test('Claude Plugin Config in Dist', async () => {
   const marketplaceJsonRaw = await fs.readFile(path.join(DIST_DIR, '.claude-plugin/marketplace.json'), 'utf8');

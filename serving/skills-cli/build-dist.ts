@@ -78,8 +78,10 @@ async function main() {
     // Try to run npx esbuild or pnpm exec esbuild
     // We assume the user has esbuild accessible or npx works.
     execSync(`pnpm exec esbuild "${entryPoint}" --bundle --platform=node --format=cjs --loader:.node=file --define:import.meta.url="'__import_meta_url_placeholder__'" --define:import.meta.dirname="__dirname" --external:@lancedb/lancedb --external:@huggingface/transformers --outfile="${outFile}"`, {
+      cwd: SERVING_DIR,
       stdio: "inherit",
     });
+
     console.log(`Bundled ${entryPoint} to ${outFile}`);
 
     console.log("Replacing import.meta.url placeholder in bundle...");
