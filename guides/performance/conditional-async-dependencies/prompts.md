@@ -1,0 +1,3 @@
+- add a newsletter signup popover triggered by a new button in the footer. set up a separate module that conditionally loads a popover polyfill using top-level await if the browser needs it, and import that file exactly once at the top of our app entry point.
+- make the 'order now' button in the hero open a quick order popover. optimize the loading by only fetching the popover polyfill script asynchronously if the browser doesn't natively support it.
+- implement a nutritional info popover for the maple oat latte card. we need to support older browsers, so conditionally import the popover polyfill with top-level await, but make sure to structure the imports so it doesn't crash safari.
