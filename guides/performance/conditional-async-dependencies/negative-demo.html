@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Async Dependencies</title>
+</head>
+<body>
+  <h1>Async Dependencies</h1>
+  
+  <button id="toggle-btn">Toggle Popover</button>
+  <div id="my-popover">
+    <p>This is the content of the popover.</p>
+  </div>
+
+  <div id="status">Initializing...</div>
+
+  <script type="module">
+    const status = document.getElementById('status');
+
+    if (!('popover' in window)) {
+      status.textContent = 'Loading polyfill...';
+      import('data:text/javascript,console.log("Polyfill loaded");');
+      status.textContent = 'Polyfill loaded successfully.';
+    } else {
+      status.textContent = 'Native support detected. No polyfill needed.';
+    }
+
+    const myPopover = document.getElementById('my-popover');
+    if (myPopover && typeof myPopover.showPopover === 'function') {
+      myPopover.showPopover();
+    }
+  </script>
+  
+  <script type="module">
+    if (!('popover' in document)) {
+      import('data:text/javascript,console.log("Polyfill loaded 2");');
+    }
+  </script>
+</body>
+</html>
