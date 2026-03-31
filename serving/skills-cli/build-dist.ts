@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import matter from "gray-matter";
+import * as esbuild from "esbuild";
 import { classifyGuide, scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
@@ -71,9 +72,14 @@ async function main() {
   try {
     console.time("⏳ esbuild bundle");
     // We emit pure ESM (.mjs) using esbuild! Node 20+ handles import.meta.dirname & url natively!
-    execSync(`pnpm exec esbuild "${entryPoint}" --bundle --platform=node --format=esm --loader:.node=file --external:@lancedb/lancedb --external:@huggingface/transformers --outfile="${outFile}"`, {
-      cwd: SERVING_DIR,
-      stdio: "inherit",
+    await esbuild.build({
+      entryPoints: [entryPoint],
+      bundle: true,
+      platform: "node",
+      format: "esm",
+      loader: { ".node": "file" },
+      external: ["@lancedb/lancedb", "@huggingface/transformers"],
+      outfile: outFile,
     });
     console.timeEnd("⏳ esbuild bundle");
 
