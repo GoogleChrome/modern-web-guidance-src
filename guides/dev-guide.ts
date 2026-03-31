@@ -14,7 +14,7 @@ import {
   createTrustedFolders,
   spawnAsync
 } from '../harness/lib/agent-shared.ts';
-import { environmentConfig, config, Serving } from '../harness/config.ts';
+import { environmentConfig, defaultSuiteConfig, Serving, type SuiteConfig } from '../harness/config.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
 import {
   type GuideInventory,
@@ -38,6 +38,7 @@ export interface DevGuideOptions {
   test?: boolean;        // default: true — run agent test after calibration
   guidedOnly?: boolean;  // skip calibration and only run the guided agent test
   verbose?: boolean;
+  suiteConfig?: SuiteConfig;
 }
 
 function printInventory(inv: GuideInventory): void {
@@ -192,7 +193,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
   // Step 6: Optional agent test
   if (options.test !== false && calibrationResult?.success) {
-    await runAgentTest(targetDir, currentInv.name, taskMap, options.guidedOnly);
+    await runAgentTest(targetDir, currentInv.name, taskMap, options.guidedOnly, options.suiteConfig);
   }
 
   // Step 7: Summary
@@ -309,7 +310,7 @@ ${prompt}
   return { taskName, baseApp: 'daily-grind', prompt };
 }
 
-async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<string, TaskInfo>, guidedOnly = false): Promise<void> {
+async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<string, TaskInfo>, guidedOnly = false, suiteConfig?: SuiteConfig): Promise<void> {
   console.log(cCyan(`\n--- Running agent test ---`));
 
   const taskInfo = taskMap.get(guideName);
@@ -323,10 +324,11 @@ async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<s
 
   // Step d: Build workspace dependencies
   let buildCode = 0;
-  if (config.suite.serving === Serving.MCP) {
+  const serving = suiteConfig ? suiteConfig.serving : defaultSuiteConfig.serving;
+  if (serving === Serving.MCP) {
     console.log(`\nBuilding MCP index...`);
     buildCode = await spawnAsync('pnpm', ['build:mcp'], { cwd: rootDir, stdio: 'inherit' });
-  } else if (config.suite.serving === Serving.SKILLS_CLI) {
+  } else if (serving === Serving.SKILLS_CLI) {
     console.log(`\nBuilding skills-cli dist...`);
     buildCode = await spawnAsync('pnpm', ['--filter', 'modern-web-mcp', 'build-dist'], { cwd: rootDir, stdio: 'inherit' });
   }

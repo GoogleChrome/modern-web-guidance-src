@@ -5,6 +5,28 @@ import { Agents } from '../config.ts';
 import { classifyGuide, scanAllGuides } from '../../lib/guide-validation.ts';
 import { rootDir, guidesDir } from '../../lib/paths.ts';
 
+import { type SuiteConfig } from '../config.ts';
+
+/**
+ * Gets the suite configuration from environment variables or returns default.
+ */
+export function getSuiteConfig(): SuiteConfig {
+  const configEnv = process.env.GD_SUITE_CONFIG;
+  if (configEnv) {
+    try {
+      let configContent = configEnv;
+      if (!configEnv.trim().startsWith('{') && fs.existsSync(configEnv)) {
+        configContent = fs.readFileSync(configEnv, 'utf8');
+      }
+      return JSON.parse(configContent);
+    } catch (e) {
+      throw new Error(`Failed to parse GD_SUITE_CONFIG environment variable: ${e}`);
+    }
+  }
+  throw new Error('GD_SUITE_CONFIG environment variable is missing.');
+}
+
+
 /**
  * Promisified version of child_process.spawn.
  */

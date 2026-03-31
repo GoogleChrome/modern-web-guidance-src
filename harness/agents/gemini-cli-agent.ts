@@ -4,8 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import config, { Agents, Serving } from '../config.ts';
+import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
 
-import { updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
@@ -39,14 +39,15 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
-    const approach = config.suite.serving;
+    const suiteConfig = getSuiteConfig();
+    const approach = suiteConfig.serving;
 
     if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
       copySkills(tempHome, Agents.GEMINI_CLI, approach === Serving.SKILLS_CLI);
     } else if (approach === Serving.MCP) {
       updateMcpConfig(
         path.join(geminiDest, 'settings.json'),
-        config.suite.mcpServersToEnable,
+        suiteConfig.mcpServersToEnable,
         config.environment.modernWebServerPath,
         config.environment.mcpApiKey,
         Agents.GEMINI_CLI
