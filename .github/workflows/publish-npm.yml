@@ -1,0 +1,44 @@
+name: Publish Skills Alpha to npm
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'skills-v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for secure OIDC token fetching!
+      contents: read  # Required for actions/checkout
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js (Node 22.14.0+ required for tokenless OIDC)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install Workspace dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build and Audit package tree
+        # Runs build-dist, test-dist, npm install, shrinkwrap, and audits .tgz files offline!
+        run: cd serving && pnpm run publish-skills -- --dry-run
+
+      - name: Publish to npm via OIDC Provenance
+        run: |
+          npm install -g npm@latest
+          cd dist/skills-cli
+          
+          # Un-private the package momentarily if you specify private: true in source template,
+          # otherwise npm will refuse to publish. Or leave it up to you to flip the bit when ready!
+          npm publish --provenance --access public --registry https://registry.npmjs.org/
