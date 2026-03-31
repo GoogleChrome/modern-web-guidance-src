@@ -10,6 +10,7 @@
   },
   "files": [
     "mcp-server",
+    "lib",
     "build",
     "vector_store",
     "AGENTS.md",
