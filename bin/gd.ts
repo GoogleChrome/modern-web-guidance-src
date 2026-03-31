@@ -8,7 +8,7 @@ import omelette from 'omelette';
 import { pathToFileURL } from 'url';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
 import { Serving, mergeSuiteConfig, type SuiteConfig } from '../harness/config.ts';
-import { rootDir } from '../lib/root.ts';
+import { rootDir, guidesDir, tasksDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
 
 // Load environment variables (Node 20.12+)
 try {
@@ -20,7 +20,6 @@ try {
 // --- Shell Auto-Completion ---
 
 function listGuideDirs(): string[] {
-  const guidesDir = path.join(rootDir, 'guides');
   if (!fs.existsSync(guidesDir)) return [];
   const categories = fs.readdirSync(guidesDir, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.'))
@@ -44,7 +43,6 @@ completion.on('command', ({ reply }) => {
 
 completion.on('arg1', ({ before, reply }) => {
   if (before === 'eval') {
-    const tasksDir = path.join(rootDir, 'harness', 'tasks');
     const tasks = fs.existsSync(tasksDir) ? fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).map(f => f.replace('.md', '')) : [];
     reply(['suite', ...tasks]);
   } else if (before === 'gen') {
@@ -56,7 +54,6 @@ completion.on('arg1', ({ before, reply }) => {
 
 completion.on('arg2', ({ before, line, reply }) => {
   if (before === 'run') {
-    const baseAppsDir = path.join(rootDir, 'harness', 'base_apps');
     if (fs.existsSync(baseAppsDir)) {
       reply(fs.readdirSync(baseAppsDir).filter(d => fs.statSync(path.join(baseAppsDir, d)).isDirectory()));
     }
@@ -203,9 +200,11 @@ ${cBold('Options:')}
       }
       // Default dev-guide pipeline
       const { devGuide } = await import('../guides/dev-guide.ts');
+      const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
       const success = await devGuide(dir, {
         guidedOnly: !!values.guided,
         verbose: !!values.verbose,
+        suiteConfig: mergedSuiteConfig,
       });
       process.exit(success ? 0 : 1);
     }
@@ -235,7 +234,7 @@ ${cBold('Options:')}
     }
 
     case 'dashboard': {
-      process.chdir(path.join(rootDir, 'eval-view'));
+      process.chdir(evalViewDir);
       await import('../eval-view/server.js');
       break;
     }

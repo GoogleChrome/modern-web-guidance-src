@@ -5,10 +5,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { rootDir } from '../lib/root.ts';
+import { guidesDir } from '../lib/paths.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold } from '../lib/colors.ts';
-
-const guidesDir = path.join(rootDir, 'guides');
 
 export function findGrader(startDir: string): string | null {
   let currentDir = startDir;

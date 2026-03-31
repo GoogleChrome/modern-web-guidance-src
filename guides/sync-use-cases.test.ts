@@ -1,13 +1,10 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
 import { ProjectStatus, validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, processGuideInventory, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
 import type { GuideInventory } from '../harness/lib/utils.ts';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'sync-use-cases-test-'));
@@ -552,6 +549,13 @@ describe('getFeaturesNeedingSync', () => {
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0].featureId, 'view-transitions');
     assert.strictEqual(result[0].targetStatus, 'Needs use cases');
+  });
+
+  test('sets "Needs investigation" for feature with use cases needing investigation', () => {
+    const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(['autofill']), new Set(['autofill']), new Set(['autofill']));
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsInvestigation);
   });
 });
 

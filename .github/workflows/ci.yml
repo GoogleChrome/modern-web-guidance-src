@@ -45,8 +45,11 @@ jobs:
       #     git config user.name "github-actions[bot]"
       #     git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       #     git add guides/features-and-use-cases.md
-      #     git commit -m "Auto-generate features-and-use-cases.md" || echo "No changes to commit"
-      #     git push
+      - name: Deploy Dashboard
+        if: github.ref == 'refs/heads/main'
+        run: pnpm run deploy:dashboard
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   browser:
     runs-on: ubuntu-latest

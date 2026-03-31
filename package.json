@@ -39,6 +39,7 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
+      "gpt4all",
       "keytar",
       "node-pty",
       "onnxruntime-node",

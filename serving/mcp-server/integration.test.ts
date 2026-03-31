@@ -2,10 +2,6 @@ import { describe, it, expect } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import path from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 describe("MCP Server Integration (Functional)", () => {
   it("should respond to search_use_cases tool call in a real node process", async () => {
     // This test runs the actual server using the same 'node' command that users use.
@@ -16,7 +12,7 @@ describe("MCP Server Integration (Functional)", () => {
 
     const transport = new StdioClientTransport({
       command: "node",
-      args: [path.resolve(__dirname, "index.ts")],
+      args: [path.resolve(import.meta.dirname, "index.ts")],
       env: { ...process.env, MCP_LOG_DIR: (await import("os")).tmpdir() }
     });
 
