@@ -29,7 +29,7 @@ async function bumpVersions() {
   geminiData.version = newVersion;
 
   // VSCode
-  const vscodePath = path.join(SKILLS_CLI_TEMPLATE_DIR, "vscode-ext-package.json");
+  const vscodePath = path.join(SKILLS_CLI_TEMPLATE_DIR, "package.json");
   const vscodeData = JSON.parse(await fs.readFile(vscodePath, 'utf8'));
   vscodeData.version = newVersion;
 
@@ -67,12 +67,22 @@ async function main() {
   execSync('npm install --omit=dev', { cwd: publishCliDir, stdio: 'inherit' });
   execSync('npm shrinkwrap', { cwd: publishCliDir, stdio: 'inherit' });
 
-  console.log(`\nAttempting npm publish dry-run (to verify files packaging)...`);
+  console.log(`\nTesting npm pack to verify files packaging (will clean up after)...`);
   try {
-    execSync('npm publish --dry-run', { cwd: publishCliDir, stdio: 'inherit' });
+    execSync('npm pack', { cwd: publishCliDir, stdio: 'inherit' });
+    
+    // Find any .tgz files in the published root and delete them
+    const files = fs.readdirSync(publishCliDir);
+    for (const file of files) {
+      if (file.endsWith('.tgz')) {
+        fs.unlinkSync(path.join(publishCliDir, file));
+        console.log(`Cleaned up tarball artifact: ${file}`);
+      }
+    }
   } catch (err) {
-    console.warn(`\n[Warn] npm publish --dry-run failed (expected if the package is set to 'private: true'). Use \`npm pack --dry-run\` to inspect files without publishing checks.`);
+    console.warn(`\n[Warn] npm pack failed to create listing. Proceeding anyway.`);
   }
+
 
 
   if (isDryRun) {
