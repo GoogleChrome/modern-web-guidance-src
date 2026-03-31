@@ -1,4 +1,5 @@
-name: Publish Skills Alpha to npm
+name: Publish Skills Alpha to npm (disabled)
+
 
 on:
   workflow_dispatch:
@@ -34,11 +35,14 @@ jobs:
         # Runs build-dist, test-dist, npm install, shrinkwrap, and audits .tgz files offline!
         run: cd serving && pnpm run publish-skills -- --dry-run
 
-      - name: Publish to npm via OIDC Provenance
+      - name: Publish to npm via OIDC Provenance (disabled)
         run: |
           npm install -g npm@latest
           cd dist/skills-cli
           
-          # Un-private the package momentarily if you specify private: true in source template,
-          # otherwise npm will refuse to publish. Or leave it up to you to flip the bit when ready!
-          npm publish --provenance --access public --registry https://registry.npmjs.org/
+          # TODO: Turn this on when we are ready to publish publicly!
+          # npm publish --provenance --access public --registry https://registry.npmjs.org/
+          
+          # Using dry-run for safety until we go public!
+          npm publish --dry-run --provenance --access public --registry https://registry.npmjs.org/
+
