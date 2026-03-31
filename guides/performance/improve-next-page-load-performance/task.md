@@ -1,0 +1,5 @@
+---
+base_app: daily-grind
+---
+- hey can you add prefetching for links on my site so the next pages load faster when users click them?
+- can you prerender all same-origin links on my page? use moderate eagerness so it triggers on hover.

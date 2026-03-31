@@ -8,7 +8,8 @@ import omelette from 'omelette';
 import { pathToFileURL } from 'url';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
 import { Serving, mergeSuiteConfig, type SuiteConfig } from '../harness/config.ts';
-import { rootDir, guidesDir, tasksDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
+import { rootDir, guidesDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
+import { getTaskMap } from '../lib/guide-validation.ts';
 
 // Load environment variables (Node 20.12+)
 try {
@@ -38,12 +39,12 @@ function listGuideDirs(): string[] {
 const completion = omelette('gd <command> <arg1> <arg2>');
 
 completion.on('command', ({ reply }) => {
-  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'baselinestatus', 'setup-completion', 'gen-negative-suite']);
+  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'baselinestatus', 'setup-completion']);
 });
 
 completion.on('arg1', ({ before, reply }) => {
   if (before === 'eval') {
-    const tasks = fs.existsSync(tasksDir) ? fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).map(f => f.replace('.md', '')) : [];
+    const tasks = Array.from(getTaskMap().keys());
     reply(['suite', ...tasks]);
   } else if (before === 'gen') {
     reply(['grader', 'negative']);
@@ -154,7 +155,6 @@ ${cBold('Evaluation:')}
   ${cCyan('run')} <tmpl> <prompt>    Run an ad-hoc agent test against a template
   ${cCyan('deploy')}                 Deploy the dashboard to GitHub Pages
   ${cCyan('upload')} <suite>         Upload generated evaluation suite to GCS
-  ${cCyan('gen-negative-suite')}     Generate resources for negative suite
 
 ${cBold('Other:')}
   ${cCyan('baselinestatus')} <query>      Check browser support and Baseline status
@@ -279,11 +279,6 @@ ${cBold('Options:')}
       process.exit(code);
     }
 
-    case 'gen-negative-suite': {
-      const { generateNegativeSuite } = await import('../guides/negative-suite-gen.ts');
-      await generateNegativeSuite();
-      break;
-    }
 
     default: {
       // Legacy fallbacks — guide namespace was flattened

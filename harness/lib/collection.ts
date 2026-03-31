@@ -2,10 +2,9 @@ import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
-import matter from 'gray-matter';
 import { Serving, Agents, type SuiteConfig } from '../config.ts';
-import { guidesDir, tasksDir } from '../../lib/paths.ts';
-
+import { guidesDir } from '../../lib/paths.ts';
+import { getTaskMap } from '../../lib/guide-validation.ts';
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
@@ -33,6 +32,7 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   return 'unknown';
 }
 
+
 export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
   const runDirs = fs.readdirSync(resultsDir)
     .filter(name => {
@@ -58,29 +58,21 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       const parts = relPath.split(path.sep);
       if (parts.length < 2) continue;
 
-      const [taskName, runType] = parts;
+      const [guide, runType] = parts;
+      if (runType === 'base_app') continue; // Skip the base app setup folder
       const targetFile = path.join(dir, 'index.html');
-      const isNegative = suiteConfig.negative === true;
-      const taskPath = path.join(tasksDir, isNegative ? 'negative' : '', `${taskName}.md`);
+      const taskMap = getTaskMap();
+      const taskInfo = taskMap.get(guide);
+      if (!taskInfo) continue;
 
-      if (!fs.existsSync(taskPath)) continue;
-
-      const fileContent = fs.readFileSync(taskPath, 'utf8');
-      const { data } = matter(fileContent);
-      if (!data || !data.grader) continue;
-
-      const guide = data.grader.trim();
       const graderMatches = glob.sync(`**/${guide}/grader.ts`, { cwd: guidesDir, absolute: true });
       const graderPath = graderMatches.length > 0 ? graderMatches[0] : path.join(guidesDir, guide, `grader.ts`);
       const graderResults = path.join(dir, `${guide}_results.json`);
 
-      // If grader is missing, target file is missing, or results already exist, skip generating a runner.
       if (!fs.existsSync(graderPath) || !fs.existsSync(targetFile) || fs.existsSync(graderResults)) {
         continue;
       }
 
-      // Generate a runner script to be picked up by pnpm -r run-grader
-      // We import runPlaywright directly from the guides code to leverage existing test execution logic
       const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
       const gradeScript = `
 import fs from 'fs';
@@ -102,26 +94,22 @@ async function run() {
 }
 
 run();
-      `.trim();
+`.trim();
 
       const relativeId = path.relative(resultsDir, dir);
       fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
       fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
-        name: `${taskName.substring(0, 30)}-${runType}-grader`,
+        name: `${guide.substring(0, 30)}-${runType}-grader`,
         type: "module",
         scripts: {
-          // The --id flag is not used by grade.mjs, it is purely added here 
-          // so that the pnpm log output clearly identifies which test is running.
           "run-grader": `node grade.mjs --id ${relativeId}`
         }
       }, null, 2));
 
-      // path.relative(resultsDir, dir) gives e.g. "1/taskName/guided"
       pnpmWorkspacePackages.push(relativeId);
     }
   }
 
-  // --- PASS 1.5: Execute the accumulated grading runs in parallel ---
   if (pnpmWorkspacePackages.length > 0) {
     console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
     const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
@@ -141,21 +129,15 @@ run();
 
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
-
-    // Structure: results/{suiteName}/{runNumber}/{taskName}/{runType}
-    const directories = glob.sync('*/*/', {
-      cwd: runPath,
-      absolute: true
-    });
+    const directories = glob.sync('*/*/', { cwd: runPath, absolute: true });
 
     for (const dir of directories) {
       const relPath = path.relative(runPath, dir);
       const parts = relPath.split(path.sep);
-
       if (parts.length < 2) continue;
 
-      const [taskName, runType] = parts;
-
+      const [guide, runType] = parts;
+      if (runType === 'base_app') continue; // Skip the base app setup folder
       let guidesUsedResult: string[] = [];
       let guidanceToolsUsedResult: string[] = [];
 
@@ -167,27 +149,19 @@ run();
 
       const targetFile = path.join(dir, 'index.html');
       const isNegative = suiteConfig.negative === true;
-      const taskPath = path.join(tasksDir, isNegative ? 'negative' : '', `${taskName}.md`);
-
-      if (!fs.existsSync(taskPath)) {
-        console.warn(`Skipping grading: Task ${taskName} not found at ${taskPath}`);
+      const taskMap = getTaskMap();
+      const taskInfo = taskMap.get(guide);
+      if (!taskInfo) {
+        console.warn(`Skipping grading: Task ${guide} not found in task map`);
         continue;
       }
 
-      const fileContent = fs.readFileSync(taskPath, 'utf8');
-      const { data } = matter(fileContent);
-
-      if (!data || !data.grader) {
-        continue;
-      }
-
-      const guide = data.grader.trim();
+      const actualBaseApp = isNegative ? 'negative-demo.html' : taskInfo.baseApp;
       const taskCategory = getGuideCategory(guide);
 
       let expectedGuidanceTool: string | undefined;
       const serving = suiteConfig.serving;
       if (serving === Serving.MCP || suiteConfig.agent === Agents.JETSKI) {
-        // JETSKI impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in SKILLS runs)
         expectedGuidanceTool = 'modern-web';
       } else if (serving === Serving.SKILLS_CLI) {
         expectedGuidanceTool = 'modern-web-use-cases';
@@ -195,12 +169,8 @@ run();
         expectedGuidanceTool = taskCategory || undefined;
       }
 
-      const actualBaseApp = data.base_app ? data.base_app.trim() : taskName;
-      const testName = `${taskName} - ${guide} - ${runType}`;
-      const graderMatches = glob.sync(`**/${guide}/grader.ts`, {
-        cwd: guidesDir,
-        absolute: true
-      });
+      const testName = `${guide} - ${runType}`;
+      const graderMatches = glob.sync(`**/${guide}/grader.ts`, { cwd: guidesDir, absolute: true });
       const graderPath = graderMatches.length > 0 ? graderMatches[0] : path.join(guidesDir, guide, `grader.ts`);
 
       let scenarioResults: any[] = [];
@@ -221,8 +191,6 @@ run();
             } catch (e) {
               console.error(`Error parsing JSON results for ${guide} in ${dir}`, e);
             }
-          } else {
-            console.error(`Missing grader results JSON for ${guide} in ${dir}`);
           }
 
           if (json && json.suites && json.suites.length > 0) {
@@ -256,9 +224,9 @@ run();
         guidesUsed: guidesUsedResult,
         guidanceToolsUsed: guidanceToolsUsedResult,
         expectedGuidanceTool: expectedGuidanceTool,
-        expectedGuide: guide,
+        guideName: guide,
         baseApp: actualBaseApp,
-        taskName: taskName
+        prompt: taskInfo.prompt
       });
     }
   }

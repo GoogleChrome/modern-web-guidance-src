@@ -147,17 +147,31 @@ export class ApiClient {
 
     /** Resolves the correct base path for specific run details, parsing legacy logic. */
     async getResultInfo(testId, run, testName) {
-        const [appName, _, runType] = testName.split(' - ');
-        const actualBaseApp = run.baseApp || appName;
+        const parts = testName.split(' - ');
+        const taskName = parts[0];
+        const runType = parts.length === 3 ? parts[2] : parts[1];
+        const actualBaseApp = run.baseApp;
 
-        const logicalBasePath = `${testId}/${run.runNumber}/${appName}/${runType}`;
+        const logicalBasePath = `${testId}/${run.runNumber}/${taskName}/${runType}`;
         const entryPointPath = await this._findBestEntryPoint(logicalBasePath);
 
         // Calculate relative sub-path to build the setup apps correlation
         const relativePath = entryPointPath.replace(logicalBasePath + '/', '');
 
+        // Try run-local base_app first (at the appName level, not inside guided/unguided), fallback to centralized base_apps for older runs
+        const localBaseAppPath = `${testId}/${run.runNumber}/${taskName}/base_app/${relativePath}`;
+        let exists = false;
+
+        if (this.source === 'remote') {
+            exists = await this._checkRemoteFileExists(localBaseAppPath);
+        } else {
+            exists = await this._checkLocalFileExists(localBaseAppPath);
+        }
+
+        const setupPath = exists ? localBaseAppPath : `base_apps/${actualBaseApp}/${relativePath}`;
+
         return {
-            setupPath: `base_apps/${actualBaseApp}/${relativePath}`,
+            setupPath,
             resultPath: entryPointPath,
             usedBasePath: logicalBasePath
         };

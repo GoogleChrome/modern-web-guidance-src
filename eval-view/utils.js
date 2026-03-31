@@ -61,9 +61,13 @@ export function calculateChartData(results) {
     const taskNames = {};
     
     Object.keys(results).forEach(key => {
-        const [appName, guide, runType] = key.split(' - ');
-        if (!runType) return;
-        const scenario = `${appName} (${guide})`;
+        const parts = key.split(' - ');
+        if (parts.length < 2) return;
+
+        const guide = parts.length === 3 ? parts[1] : parts[0];
+        const runType = parts.length === 3 ? parts[2] : parts[1];
+        const scenario = guide;
+        if (!['guided', 'unguided'].includes(runType)) return; // Ignore non-standard run types for the chart
         if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [] };
         
         const runs = results[key];
