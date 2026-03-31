@@ -1,7 +1,9 @@
 {
-  "name": "skills-alpha",
+  "name": "@paulirish/skills-alpha",
   "displayName": "Chrome Web Development Skills",
+  "private": true,
   "description": "Curated collection of agent skills for modern web development.",
+
   "version": "0.0.6",
   "publisher": "GoogleChrome",
   "engines": {
