@@ -22,10 +22,12 @@ async function main() {
   console.log("Generating guides and updating vector store...");
   // 1. Run build-guides.ts to update .modern-web-data and build/guides
   try {
+    console.time("⏳ build-guides.ts");
     execSync("node --experimental-strip-types scripts/build-guides.ts", {
       cwd: SERVING_DIR,
       stdio: "inherit",
     });
+    console.timeEnd("⏳ build-guides.ts");
   } catch (error) {
     console.error("Failed to build guides:", error);
     process.exit(1);
@@ -70,11 +72,13 @@ async function main() {
   const outFile = path.join(BUNDLE_OUT_DIR, "modern-web.mjs");
   
   try {
+    console.time("⏳ esbuild bundle");
     // We emit pure ESM (.mjs) using esbuild! Node 20+ handles import.meta.dirname & url natively!
     execSync(`pnpm exec esbuild "${entryPoint}" --bundle --platform=node --format=esm --loader:.node=file --external:@lancedb/lancedb --external:@huggingface/transformers --outfile="${outFile}"`, {
       cwd: SERVING_DIR,
       stdio: "inherit",
     });
+    console.timeEnd("⏳ esbuild bundle");
 
   } catch (error) {
     console.error("Failed to bundle with esbuild:", error);
@@ -100,8 +104,10 @@ async function main() {
 
   console.log("Installing dependencies and generating npm shrinkwrap in published root (so local dev matches publish)...");
   try {
+    console.time("⏳ npm install & shrinkwrap");
     execSync("npm install --omit=dev", { cwd: PUBLISH_ROOT, stdio: "inherit" });
     execSync("npm shrinkwrap", { cwd: PUBLISH_ROOT, stdio: "inherit" });
+    console.timeEnd("⏳ npm install & shrinkwrap");
   } catch (error) {
     console.error("Failed to run npm install or shrinkwrap:", error);
     process.exit(1);
