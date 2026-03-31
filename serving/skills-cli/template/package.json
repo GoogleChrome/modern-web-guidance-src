@@ -1,11 +1,9 @@
 {
   "name": "skills-alpha",
-
   "displayName": "Chrome Web Development Skills",
   "private": true,
   "description": "Curated collection of agent skills for modern web development.",
-
-  "version": "0.0.6",
+  "version": "0.0.7",
   "publisher": "GoogleChrome",
   "engines": {
     "vscode": "^1.90.0",
@@ -25,10 +23,8 @@
   "bin": {
     "modern-web": "./skills/modern-web-use-cases/cli/serving/bin/modern-web.mjs"
   },
-
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
     "@lancedb/lancedb": "^0.26.2"
   }
 }
-
