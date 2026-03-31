@@ -1,5 +1,6 @@
 {
-  "name": "@paulirish/skills-alpha",
+  "name": "skills-alpha",
+
   "displayName": "Chrome Web Development Skills",
   "private": true,
   "description": "Curated collection of agent skills for modern web development.",
