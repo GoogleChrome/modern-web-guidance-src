@@ -1,10 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, createWorkDir, copySkills, watchLogFile, runCliAgentCommand } from '../lib/agent-shared.ts';
+import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, copyFileIfExists, updateMcpConfig, createWorkDir, copySkills, watchLogFile, runCliAgentCommand } from '../lib/agent-shared.ts';
 import config, { Agents, Serving } from '../config.ts';
+
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
+
 
 // Usage: node claude-code-agent.ts <prompt> <runType> <targetDir> <templateDir>
 /**
@@ -25,14 +27,15 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
 
   // Add CLAUDE context and MCP servers for guided runs
   if (runType === 'guided') {
-    const approach = config.suite.serving;
+    const suiteConfig = getSuiteConfig();
+    const approach = suiteConfig.serving;
 
     if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
       copySkills(tempHome, Agents.CLAUDE_CODE, approach === Serving.SKILLS_CLI);
     } else if (approach === Serving.MCP) {
       updateMcpConfig(
         path.join(tempHome, '.claude.json'),
-        config.suite.mcpServersToEnable,
+        suiteConfig.mcpServersToEnable,
         config.environment.modernWebServerPath,
         config.environment.mcpApiKey,
         Agents.CLAUDE_CODE

@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
-import { config, Agents } from './config.ts';
+import { Agents, defaultSuiteConfig, type SuiteConfig } from './config.ts';
 import matter from 'gray-matter';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, tasksDir, resultsDir } from '../lib/paths.ts';
@@ -15,8 +15,9 @@ let logStream: fs.WriteStream | null = null;
 
 const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
-export async function runAgent(templateDirRaw: string, promptContentRaw: string) {
-  const agent = config.suite.agent;
+export async function runAgent(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
+  const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
+  const agent = suiteConfig.agent;
   let templateDir = templateDirRaw;
   if (!path.isAbsolute(templateDir)) {
     templateDir = path.resolve(process.cwd(), templateDir);
@@ -40,6 +41,9 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string)
     fs.mkdirSync(targetDir, { recursive: true });
   }
 
+  // Save a snapshot of the current global configuration (which may have been merged with overrides)
+  fs.writeFileSync(path.join(targetDir, 'suite_config.json'), JSON.stringify(suiteConfig, null, 2));
+
   try {
     const agentScript = path.join(harnessDir, 'agents',
       agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
@@ -48,6 +52,7 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string)
             'jetski-agent.ts'
     );
 
+    const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
     await runCommand('node', [
       '--experimental-strip-types', 
       agentScript, 
@@ -55,7 +60,7 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string)
       'guided', // Default to guided for ad-hoc tool execution
       targetDir,
       templateDir
-    ]);
+    ], { GD_SUITE_CONFIG: suiteConfigPath });
     console.log(`\n✅ ${taskNameLabel} complete! Results in ${targetDir}`);
   } catch (error) {
     console.error(`❌ ${taskNameLabel} failed:`, error);
@@ -69,24 +74,30 @@ export interface RunSuiteOptions {
   numRuns?: number;
   skipEval?: boolean;
   guidedOnly?: boolean;
+  suiteConfig?: SuiteConfig;
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
+  const suiteConfig = options.suiteConfig || defaultSuiteConfig;
+
   // Create results directory if it doesn't exist
   if (!fs.existsSync(resultsDir)) {
     fs.mkdirSync(resultsDir, { recursive: true });
   }
 
-  const agent = config.suite.agent;
+  const agent = suiteConfig.agent;
 
   // Generate a unique testID with timestamp or use custom name
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-  const testID = options.name || config.suite.name || `test_${timestamp}`;
+  const testID = options.name || suiteConfig.name || `test_${timestamp}`;
   const testDir = options.outputDir || path.join(resultsDir, testID);
   
   if (!fs.existsSync(testDir)) {
     fs.mkdirSync(testDir, { recursive: true });
   }
+
+  // Save a snapshot of the merged configuration
+  fs.writeFileSync(path.join(testDir, 'suite_config.json'), JSON.stringify(suiteConfig, null, 2));
 
   // Setup logging to file
   const logFilePath = path.join(testDir, 'test_suite.log');
@@ -98,9 +109,9 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
   try {
     let hasErrors = false;
-    const numRuns = options.numRuns || config.suite.numRuns;
+    const numRuns = options.numRuns || suiteConfig.numRuns;
     const endRun = 1 + numRuns;
-      const isNegativeSuite = config.suite.negative === true;
+      const isNegativeSuite = suiteConfig.negative === true;
       const currentTasksDir = isNegativeSuite ? path.join(tasksDir, 'negative') : tasksDir;
 
       console.log(`\nStarting execution for ${numRuns} runs ${isNegativeSuite ? '(Negative Suite)' : ''}`);
@@ -121,8 +132,8 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         // Use configured tasks, or discover all tasks in the tasks directory
         const tasksToRun = options.tasks && options.tasks.length > 0
           ? options.tasks
-          : (config.suite.tasks.length > 0
-            ? config.suite.tasks
+          : (suiteConfig.tasks.length > 0
+            ? suiteConfig.tasks
             : fs.readdirSync(currentTasksDir).filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, '')));
 
         for (const task of tasksToRun) {
@@ -174,8 +185,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           // we trick pnpm into thinking each test run is a package in a pnpm workspace.
           // This way we get \`pnpm -r\`'s great parallel scheduler and log interleaving for free.
 // This run.mjs wrapper executes the actual agent command via spawnSync.
-          const runnerContent = `
-import { spawnSync } from 'child_process';
+          const runnerContent = `import { spawnSync } from 'child_process';
 const args = [
   '--experimental-strip-types',
   ...${JSON.stringify([
@@ -188,7 +198,7 @@ const args = [
 ];
 const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
 process.exit(result.status ?? 0);
-          `.trim();
+`.trim();
           
           fs.writeFileSync(path.join(targetDir, 'run.mjs'), runnerContent);
 
@@ -223,7 +233,8 @@ process.exit(result.status ?? 0);
             pnpmArgs.push('--workspace-concurrency', '1');
           }
           pnpmArgs.push('run-agent');
-          await runCommand('pnpm', pnpmArgs, runDir);
+          const suiteConfigPath = path.resolve(testDir, 'suite_config.json');
+          await runCommand('pnpm', pnpmArgs, { GD_SUITE_CONFIG: suiteConfigPath }, runDir);
           console.log(`✅ Completed Run ${runNumber} test executions`);
         } catch (error) {
           console.error(`❌ Failed during Run ${runNumber} test execution`, error);
@@ -309,15 +320,16 @@ function restoreLogging(originals: any) {
   }
 }
 
-async function runCommand(command: string, args: string[] = [], cwd?: string) {
+async function runCommand(command: string, args: string[] = [], envOverrides?: Record<string, string>, cwd?: string) {
   return new Promise((resolve, reject) => {
-    const process = spawn(command, args, {
+    const childProcess = spawn(command, args, {
       stdio: 'inherit',
       shell: true,
-      cwd
+      cwd,
+      env: envOverrides ? { ...process.env, ...envOverrides } : process.env
     });
 
-    process.on('close', (code) => {
+    childProcess.on('close', (code) => {
       if (code === 0) {
         resolve(true);
       } else {
@@ -325,7 +337,7 @@ async function runCommand(command: string, args: string[] = [], cwd?: string) {
       }
     });
 
-    process.on('error', (err) => {
+    childProcess.on('error', (err) => {
       reject(err);
     });
   });
@@ -336,9 +348,7 @@ async function runCommand(command: string, args: string[] = [], cwd?: string) {
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const positionalArgs = args.filter(arg => !arg.startsWith('--'));
-  if (positionalArgs.length === 2 && args.includes('--with-template')) {
-    runAgent(positionalArgs[0], positionalArgs[1]).catch(console.error);
-  } else if (positionalArgs.length >= 1) {
+  if (positionalArgs.length >= 1) {
     runSuite({ tasks: positionalArgs }).catch(console.error);
   } else {
     runSuite().catch(console.error);
