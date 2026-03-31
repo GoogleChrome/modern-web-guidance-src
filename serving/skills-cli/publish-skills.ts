@@ -59,11 +59,19 @@ async function bumpVersions() {
 async function main() {
   const newVersion = await bumpVersions();
   
+  const publishCliDir = path.join(DIST_DIR, "skills-cli");
+  const fsSync = await import("node:fs");
+  if (fsSync.existsSync(publishCliDir)) {
+    console.log(`\nCleaning distribution directory dist/skills-cli/ for fresh release...`);
+    fsSync.rmSync(publishCliDir, { recursive: true, force: true });
+  }
+
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
   const { buildDist } = await import("./build-dist.ts");
   await buildDist();
   
-  const publishCliDir = path.join(DIST_DIR, "skills-cli");
+  console.log(`\nVerifying built distribution with test-dist.test.ts suite...`);
+  execSync('node --test skills-cli/test-dist.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
 
 
 
