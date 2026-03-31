@@ -43,7 +43,7 @@ async function main() {
 
   let text = fs.readFileSync(researchPath, 'utf8');
 
-  const regex = /(https:\/\/vertexaisearch\.cloud\.google\.com\/grounding-api-redirect\/[^\s\)]+)/g;
+  const regex = /(https:\/\/vertexaisearch\.cloud\.google\.com\/grounding-api-redirect\/[^\s)]+)/g;
   const matches = [...new Set(text.match(regex))]; // unique
 
   if (!matches.length) {

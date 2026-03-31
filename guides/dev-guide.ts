@@ -14,7 +14,7 @@ import {
   createTrustedFolders,
   spawnAsync
 } from '../harness/lib/agent-shared.ts';
-import { environmentConfig } from '../harness/config.ts';
+import { environmentConfig, defaultSuiteConfig, Serving, type SuiteConfig } from '../harness/config.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
 import {
   type GuideInventory,
@@ -31,13 +31,14 @@ import {
   readFileSafe,
   classifyGuide,
   scanAllGuides
-} from '../harness/lib/utils.ts';
+} from '../lib/guide-validation.ts';
 
 export interface DevGuideOptions {
   maxRetries?: number;   // default: 2
   test?: boolean;        // default: true — run agent test after calibration
   guidedOnly?: boolean;  // skip calibration and only run the guided agent test
   verbose?: boolean;
+  suiteConfig?: SuiteConfig;
 }
 
 function printInventory(inv: GuideInventory): void {
@@ -192,7 +193,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
   // Step 6: Optional agent test
   if (options.test !== false && calibrationResult?.success) {
-    await runAgentTest(targetDir, currentInv.name, taskMap, options.guidedOnly);
+    await runAgentTest(targetDir, currentInv.name, taskMap, options.guidedOnly, options.suiteConfig);
   }
 
   // Step 7: Summary
@@ -259,7 +260,7 @@ Rules:
 - Do NOT tell the agent which web API or CSS property to use unless a real developer would naturally do so.
 - Each prompt must be on its own line, prefixed with "- ".
 
-- IMPORTANT: Do NOT use bash or shell commands (like cat, echo, or heredocs) to write files. You MUST use your built-in structured file editing tools (e.g. write_file or replace) to create the file. Heredoc strings will cause bash parsing errors.
+- When writing files, you MUST use your built-in structured file editing tools (e.g., \`write_file\` or \`replace\`). Do not use shell commands (like \`cat\`, \`echo\`, or heredocs \`<<\`) to create files in the terminal.
 
 Only create the ${PROMPTS_FILE} file. Do not modify any other files.`;
 
@@ -309,7 +310,7 @@ ${prompt}
   return { taskName, baseApp: 'daily-grind', prompt };
 }
 
-async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<string, TaskInfo>, guidedOnly = false): Promise<void> {
+async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<string, TaskInfo>, guidedOnly = false, suiteConfig?: SuiteConfig): Promise<void> {
   console.log(cCyan(`\n--- Running agent test ---`));
 
   const taskInfo = taskMap.get(guideName);
@@ -321,11 +322,19 @@ async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<s
   console.log(`Task: ${taskInfo.taskName} (base_app: ${taskInfo.baseApp})`);
   console.log(`Prompt: ${cDim(taskInfo.prompt.substring(0, 120))}${taskInfo.prompt.length > 120 ? '...' : ''}`);
 
-  // Step d: Build MCP index
-  console.log(`\nBuilding MCP index...`);
-  const buildCode = await spawnAsync('pnpm', ['build:mcp'], { cwd: rootDir, stdio: 'inherit' });
+  // Step d: Build workspace dependencies
+  let buildCode = 0;
+  const serving = suiteConfig ? suiteConfig.serving : defaultSuiteConfig.serving;
+  if (serving === Serving.MCP) {
+    console.log(`\nBuilding MCP index...`);
+    buildCode = await spawnAsync('pnpm', ['build:mcp'], { cwd: rootDir, stdio: 'inherit' });
+  } else if (serving === Serving.SKILLS_CLI) {
+    console.log(`\nBuilding skills-cli dist...`);
+    buildCode = await spawnAsync('pnpm', ['--filter', 'modern-web-mcp', 'build-dist'], { cwd: rootDir, stdio: 'inherit' });
+  }
+
   if (buildCode !== 0) {
-    console.error(cRed(`Failed to build MCP index (exit code ${buildCode})`));
+    console.error(cRed(`Failed to build workspace dependencies (exit code ${buildCode})`));
     return;
   }
 
