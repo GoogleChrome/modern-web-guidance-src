@@ -59,8 +59,9 @@ async function bumpVersions() {
 async function main() {
   const newVersion = await bumpVersions();
   
-  console.log(`\nRebuilding distribution and running tests with version ${newVersion}...`);
-  execSync('node --test skills-cli/test-dist.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
+  console.log(`\nRebuilding distribution with version ${newVersion}...`);
+  const { buildDist } = await import("./build-dist.ts");
+  await buildDist();
   
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 

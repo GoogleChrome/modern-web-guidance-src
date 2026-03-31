@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
+import { fileURLToPath } from "url";
 import matter from "gray-matter";
 import * as esbuild from "esbuild";
 import { classifyGuide, scanAllGuides } from "../../lib/guide-validation.ts";
@@ -204,4 +205,8 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   }
 }
 
-main().catch(console.error);
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch(console.error);
+}
+
+export { main as buildDist };
