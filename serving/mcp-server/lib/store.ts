@@ -2,8 +2,12 @@ import lancedb from "@lancedb/lancedb";
 import path from "path";
 import fs from "fs";
 
-// Data directory for LanceDB
-const DATA_DIR = path.resolve(import.meta.dirname, "../../.modern-web-data");
+const findDataDir = () => {
+  const localDistPath = path.resolve(import.meta.dirname, "../vector_store");
+  if (fs.existsSync(localDistPath)) return localDistPath;
+  return path.resolve(import.meta.dirname, "../../vector_store"); // fallback for dev
+};
+const DATA_DIR = findDataDir();
 
 export interface UseCase {
   id: string;

@@ -28,7 +28,7 @@ async function processGuides() {
   // Scan guides first to see if we even need to run
   const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
 
-  const LANCE_DB_DIR = path.join(ROOT_DIR, ".modern-web-data");
+  const LANCE_DB_DIR = path.join(ROOT_DIR, "vector_store");
 
   if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(LANCE_DB_DIR) && fs.readdirSync(LANCE_DB_DIR).length > 0) {
     const outputFileMTime = fs.statSync(OUTPUT_FILE).mtimeMs;

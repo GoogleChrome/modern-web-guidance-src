@@ -11,7 +11,7 @@
   "files": [
     "mcp-server",
     "build",
-    ".modern-web-data",
+    "vector_store",
     "AGENTS.md",
     "README.md"
   ],

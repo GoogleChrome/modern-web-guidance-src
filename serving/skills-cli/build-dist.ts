@@ -11,7 +11,6 @@ const ROOT_DIST_DIR = path.join(rootDir, "dist");
 const PUBLISH_ROOT = path.join(ROOT_DIST_DIR, "skills-cli");
 
 const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases");
-const CLI_DIR = path.join(DIST_DIR, "cli");
 
 async function main() {
   console.log("Cleaning previous dist/ output...");
@@ -32,15 +31,10 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Creating output directories in ${CLI_DIR}...`);
-  // 2. Clear and create output directory
-  if (fs.existsSync(CLI_DIR)) {
-    fs.rmSync(CLI_DIR, { recursive: true, force: true });
+  const BUNDLE_OUT_DIR = path.join(PUBLISH_ROOT, "bin");
+  if (fs.existsSync(BUNDLE_OUT_DIR)) {
+    fs.rmSync(BUNDLE_OUT_DIR, { recursive: true, force: true });
   }
-  fs.mkdirSync(CLI_DIR, { recursive: true });
-
-  // Create deeper directory to mimic original path depth for relative path resolution
-  const BUNDLE_OUT_DIR = path.join(CLI_DIR, "serving/bin");
   fs.mkdirSync(BUNDLE_OUT_DIR, { recursive: true });
 
   console.log("Copying installation manifests and metadata for AI tools...");
@@ -50,9 +44,9 @@ async function main() {
 
 
   console.log("Copying data files...");
-  // 3. Copy .modern-web-data
-  const mcpDataDir = path.join(SERVING_DIR, ".modern-web-data");
-  const destMcpDataDir = path.join(CLI_DIR, ".modern-web-data");
+  // 3. Copy vector_store
+  const mcpDataDir = path.join(SERVING_DIR, "vector_store");
+  const destMcpDataDir = path.join(PUBLISH_ROOT, "vector_store");
   if (fs.existsSync(mcpDataDir)) {
     fs.cpSync(mcpDataDir, destMcpDataDir, { recursive: true });
     console.log(`Copied ${mcpDataDir} to ${destMcpDataDir}`);
@@ -62,7 +56,7 @@ async function main() {
 
   // 4. Copy build/guides
   const buildGuidesDir = path.join(SERVING_DIR, "build/guides");
-  const destBuildGuidesDir = path.join(CLI_DIR, "build/guides");
+  const destBuildGuidesDir = path.join(PUBLISH_ROOT, "guides");
   if (fs.existsSync(buildGuidesDir)) {
     fs.cpSync(buildGuidesDir, destBuildGuidesDir, { recursive: true });
     console.log(`Copied ${buildGuidesDir} to ${destBuildGuidesDir}`);

@@ -21,7 +21,7 @@
     ]
   },
   "bin": {
-    "modern-web": "./skills/modern-web-use-cases/cli/serving/bin/modern-web.mjs"
+    "modern-web": "./bin/modern-web.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
