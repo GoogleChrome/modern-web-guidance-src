@@ -62,10 +62,8 @@ async function main() {
   console.log(`\nRebuilding distribution and running tests with version ${newVersion}...`);
   execSync('node --test skills-cli/test-dist.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
   
-  console.log(`\nInstalling dependencies and generating npm shrinkwrap in published root...`);
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
-  execSync('npm install --omit=dev', { cwd: publishCliDir, stdio: 'inherit' });
-  execSync('npm shrinkwrap', { cwd: publishCliDir, stdio: 'inherit' });
+
 
   console.log(`\nTesting npm pack to verify files packaging (will clean up after)...`);
   try {

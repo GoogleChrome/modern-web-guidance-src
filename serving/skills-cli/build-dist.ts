@@ -104,6 +104,15 @@ async function main() {
 
   updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
 
+  console.log("Installing dependencies and generating npm shrinkwrap in published root (so local dev matches publish)...");
+  try {
+    execSync("npm install --omit=dev", { cwd: PUBLISH_ROOT, stdio: "inherit" });
+    execSync("npm shrinkwrap", { cwd: PUBLISH_ROOT, stdio: "inherit" });
+  } catch (error) {
+    console.error("Failed to run npm install or shrinkwrap:", error);
+    process.exit(1);
+  }
+
   console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
 }
 
