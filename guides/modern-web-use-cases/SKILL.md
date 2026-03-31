@@ -23,10 +23,10 @@ Must use this skill:
 
 You can execute these tools using standard `node` from the command line from **any** directory. 
 
-### Prerequisite check: Ensure the binary is installed!
-If you find `modern-web` is not available out of the box in your path, you can use standard `pnpm link --global` inside `dist/skills-cli` to set it up:
+### 0. Install the modern-web CLI
+First, ensure the modern-web CLI is installed. The below command If you find `modern-web` is not available out of the box in your path, you can use standard `pnpm link --global` inside `dist/skills-cli` to set it up:
 ```bash
-command -v modern-web >/dev/null 2>&1 || (cd dist/skills-cli && pnpm install && pnpm link --global)
+command -v modern-web >/dev/null 2>&1 || (cd path/to/skills-alpha && npm install --global .)
 ```
 
 ### 1. Search Use Cases
