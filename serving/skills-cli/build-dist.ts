@@ -99,11 +99,21 @@ async function main() {
 
   updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
 
-  const nodeModulesExist = fs.existsSync(path.join(PUBLISH_ROOT, "node_modules"));
-  const forcePublish = process.argv.includes("--force-publish") || !nodeModulesExist;
+  let nodeModulesValid = false;
+  if (fs.existsSync(path.join(PUBLISH_ROOT, "node_modules"))) {
+    try {
+      // npm ls will exit with code 0 if all dependencies are satisfied according to package.json!
+      execSync("npm ls --depth=0", { cwd: PUBLISH_ROOT, stdio: "ignore" });
+      nodeModulesValid = true;
+    } catch {
+      nodeModulesValid = false;
+    }
+  }
+
+  const forcePublish = process.argv.includes("--force-publish") || !nodeModulesValid;
 
   if (!forcePublish) {
-    console.log("Reusing existing node_modules in published root (skip npm install). Pass --force-publish to overwrite.");
+    console.log("Reusing valid node_modules in published root (npm ls passed). Pass --force-publish to overwrite.");
   } else {
     console.log("Installing dependencies and generating npm shrinkwrap in published root (so local dev matches publish)...");
     try {
