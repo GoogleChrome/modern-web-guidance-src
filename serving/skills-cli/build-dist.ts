@@ -13,11 +13,8 @@ const PUBLISH_ROOT = path.join(ROOT_DIST_DIR, "skills-cli");
 const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases");
 
 async function main() {
-  console.log("Cleaning previous dist/ output...");
-  if (fs.existsSync(ROOT_DIST_DIR)) {
-    fs.rmSync(ROOT_DIST_DIR, { recursive: true, force: true });
-  }
-  fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
+  console.log("Ensuring dist/ output directory exists...");
+  fs.mkdirSync(PUBLISH_ROOT, { recursive: true });
 
   console.log("Generating guides and updating vector store...");
   // 1. Run build-guides.ts to update .modern-web-data and build/guides
@@ -102,15 +99,22 @@ async function main() {
 
   updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
 
-  console.log("Installing dependencies and generating npm shrinkwrap in published root (so local dev matches publish)...");
-  try {
-    console.time("⏳ npm install & shrinkwrap");
-    execSync("npm install --omit=dev", { cwd: PUBLISH_ROOT, stdio: "inherit" });
-    execSync("npm shrinkwrap", { cwd: PUBLISH_ROOT, stdio: "inherit" });
-    console.timeEnd("⏳ npm install & shrinkwrap");
-  } catch (error) {
-    console.error("Failed to run npm install or shrinkwrap:", error);
-    process.exit(1);
+  const nodeModulesExist = fs.existsSync(path.join(PUBLISH_ROOT, "node_modules"));
+  const forcePublish = process.argv.includes("--force-publish") || !nodeModulesExist;
+
+  if (!forcePublish) {
+    console.log("Reusing existing node_modules in published root (skip npm install). Pass --force-publish to overwrite.");
+  } else {
+    console.log("Installing dependencies and generating npm shrinkwrap in published root (so local dev matches publish)...");
+    try {
+      console.time("⏳ npm install & shrinkwrap");
+      execSync("npm install --omit=dev", { cwd: PUBLISH_ROOT, stdio: "inherit" });
+      execSync("npm shrinkwrap", { cwd: PUBLISH_ROOT, stdio: "inherit" });
+      console.timeEnd("⏳ npm install & shrinkwrap");
+    } catch (error) {
+      console.error("Failed to run npm install or shrinkwrap:", error);
+      process.exit(1);
+    }
   }
 
   console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
