@@ -4,11 +4,12 @@ import { execSync } from "child_process";
 import matter from "gray-matter";
 import { classifyGuide, scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
+import { rootDir } from "../../lib/paths.ts";
 
-const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
-const SERVING_DIR = path.resolve(import.meta.dirname, ".."); // guidance/serving/
-const ROOT_DIST_DIR = path.join(ROOT_DIR, "dist");
+const SERVING_DIR = path.join(rootDir, "serving");
+const ROOT_DIST_DIR = path.join(rootDir, "dist");
 const PUBLISH_ROOT = path.join(ROOT_DIST_DIR, "skills-cli");
+
 const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases");
 const CLI_DIR = path.join(DIST_DIR, "cli");
 
@@ -93,19 +94,15 @@ async function main() {
     fs.writeFileSync(outFile, bundleContent);
     console.log("Placeholder replaced successfully.");
 
-    console.log("Downloading external production dependencies via npm install...");
-    execSync("npm install --omit=dev", {
-      cwd: CLI_DIR,
-      stdio: "inherit",
-    });
-    console.log("Dependencies downloaded successfully.");
   } catch (error) {
     console.error("Failed to bundle with esbuild:", error);
     process.exit(1);
   }
 
+
   console.log("Copying SKILL.md...");
-  const skillMdSource = path.join(ROOT_DIR, "guides/modern-web-use-cases/SKILL.md");
+  const skillMdSource = path.join(rootDir, "guides/modern-web-use-cases/SKILL.md");
+
   const skillMdDest = path.join(DIST_DIR, "SKILL.md");
 
   if (fs.existsSync(skillMdSource)) {

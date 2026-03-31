@@ -17,5 +17,13 @@
         "path": "./skills/modern-web-use-cases/SKILL.md"
       }
     ]
+  },
+  "bin": {
+    "modern-web": "./skills/modern-web-use-cases/cli/serving/bin/modern-web.cjs"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
+    "@lancedb/lancedb": "^0.26.2"
   }
 }
+

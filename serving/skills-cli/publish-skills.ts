@@ -62,8 +62,11 @@ async function main() {
   console.log(`\nRebuilding distribution and running tests with version ${newVersion}...`);
   execSync('node --test skills-cli/test-dist.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
   
-  console.log(`\nGenerating npm shrinkwrap...`);
-  execSync('npm shrinkwrap', { cwd: path.join(DIST_DIR, "skills-cli"), stdio: 'inherit' });
+  console.log(`\nInstalling dependencies and generating npm shrinkwrap in published root...`);
+  const publishCliDir = path.join(DIST_DIR, "skills-cli");
+  execSync('npm install --omit=dev', { cwd: publishCliDir, stdio: 'inherit' });
+  execSync('npm shrinkwrap', { cwd: publishCliDir, stdio: 'inherit' });
+
 
   if (isDryRun) {
     const files = await fs.readdir(path.join(DIST_DIR, "skills-cli"), {recursive: true});
@@ -73,13 +76,14 @@ async function main() {
     console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/skills-alpha (main branch)...`);
     
     await ghPagesPublish(path.join(DIST_DIR, "skills-cli"), {
-      src: ['**/*', '**/node_modules/**/*'],
+      src: ['**/*'], // No longer vendor node_modules! Users will install via npx -y!
       branch: 'main',
       repo: 'git@github.com:GoogleChrome/skills-alpha.git',
       dotfiles: true,
       message: `Release v${newVersion}`,
       remove: "**/*"
     });
+
 
     console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/skills-alpha!`);
   }
