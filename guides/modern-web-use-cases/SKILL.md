@@ -21,19 +21,18 @@ Must use this skill:
 
 ## Usage Instructions
 
-You can execute these tools using standard `node` from the command line from **any** directory. 
+### Step 0. Install the modern-web CLI
+First, ensure the modern-web CLI is installed. The below command installs it globally if needed:
 
-### 0. Install the modern-web CLI
-First, ensure the modern-web CLI is installed. The below command If you find `modern-web` is not available out of the box in your path, you can use standard `pnpm link --global` inside `dist/skills-cli` to set it up:
-```bash
+```sh
 command -v modern-web >/dev/null 2>&1 || (cd path/to/skills-alpha && npm install --global .)
 ```
 
-### 1. Search Use Cases
+### Step 1. Search Use Cases
 
 Search with an action-oriented query summarizing what you want to achieve using the `--search` flag.
 
-```bash
+```sh
 modern-web --search "<query>"
 ```
 
@@ -51,11 +50,11 @@ modern-web --search "<query>"
 
 ---
 
-### 2. Retrieve Best Practices
+### Step 2. Retrieve Best Practices
 
 Once you have a relevant `id` from the search results, call this script using the `--retrieve` flag to get the full guide. You can pass multiple IDs separated by commas.
 
-```bash
+```sh
 modern-web --retrieve "<id>"
 ```
 
