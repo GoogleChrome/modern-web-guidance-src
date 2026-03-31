@@ -3,7 +3,6 @@ name: conditional-async-dependencies
 description: Conditionally load or initialize async dependencies (such as importing polyfills for missing web features) without requiring complex orchestration across all of a page's script dependencies.
 web-feature-ids:
   - top-level-await
-  - popover
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/await
   - https://bugs.webkit.org/show_bug.cgi?id=242740
@@ -13,9 +12,11 @@ Top-level `await` allows modules to act as asynchronous functions, meaning they 
 
 By utilizing top-level await, you can encapsulate the conditional loading logic inside a single module, effectively preventing downstream consumer modules from executing until the dependency is fully loaded and ready.
 
-### Conditional Polyfill Pattern
+### Conditional polyfill pattern
 
-This approach encapsulates feature detection and the dynamic import inside a single dependency module.
+While top-level `await` can be used to conditionally load any async dependency that's a module, a good use of the conditional depenency loading pattern is to conditionally load polyfills for browsers that don't support a specific feature. This approach encapsulates feature detection and the dynamic import inside a single dependency module.
+
+In the following case, the `popover` attribute polyfill is conditionally loaded if it isn't present on `HTMLElement.prototype`:
 
 ```javascript
 // conditionally-load-polyfill.js
@@ -47,9 +48,9 @@ if (myPopover) {
 }
 ```
 
-### Avoiding Safari Top-Level Await Bug
+### Avoiding the Safari top-level `await` bug
 
-**MANDATORY:** You must structure your imports carefully to avoid WebKit Bug 242740. Safari has a bug where a `ReferenceError` is thrown if multiple modules *simultaneously* import a module that contains a top-level await.
+**MANDATORY:** You must structure your imports carefully to avoid a bug where top-level await doesn't behave as expected in Webkit, which occurs when multiple modules *simultaneously* import a module that contains a top-level `await`:
 
 ```javascript
 // DO NOT do this: importing the top-level await module from multiple sibling modules
@@ -70,7 +71,6 @@ import './app.js';
 ### Fallback strategies
 
 {{ BASELINE_STATUS("top-level-await") }}
-{{ BASELINE_STATUS("popover") }}
 
 If you must support older browsers that lack top-level `await` support entirely, you cannot use it to block module execution. Instead, you must use standard asynchronous functions or dynamic `import()` and orchestrate the initialization manually:
 
