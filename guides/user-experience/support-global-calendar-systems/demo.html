@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Temporal API: Global Calendar Converter</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-color: #f1f5f9;
+      --text-dim: #94a3b8;
+      --primary: #38bdf8;
+      --accent: #818cf8;
+      --border: #334155;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      max-width: 600px;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+      background: linear-gradient(to right, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.subtitle {
+      color: var(--text-dim);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    #unsupported-warning {
+      background-color: #7c2d12;
+      color: #fed7aa;
+      padding: 1rem 1.5rem;
+      border-radius: 0.5rem;
+      border: 1px solid #9a3412;
+      margin-bottom: 2rem;
+      text-align: center;
+      max-width: 600px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      background-color: var(--card-bg);
+      padding: 1rem 1.5rem;
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      margin-bottom: 2rem;
+      width: 100%;
+      max-width: 400px;
+      justify-content: center;
+    }
+
+    label {
+      font-weight: 500;
+      color: var(--text-dim);
+    }
+
+    input[type="date"] {
+      background-color: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      color: var(--text-color);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="date"]:focus {
+      border-color: var(--primary);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      width: 100%;
+      max-width: 1000px;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.75rem;
+    }
+
+    .card-title .emoji {
+      font-size: 1.5rem;
+    }
+
+    .date-display {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-color);
+      margin: 0.5rem 0;
+      text-align: center;
+    }
+
+    .stats {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      background-color: #0f172a;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-dim);
+    }
+
+    .stat-value {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .highlight-note {
+      font-size: 0.85rem;
+      color: #38bdf8;
+      background-color: rgba(56, 189, 248, 0.1);
+      padding: 0.5rem;
+      border-radius: 0.375rem;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>Global Calendar Converter</h1>
+    <p class="subtitle">
+      Convert Gregorian dates into non-ISO calendar systems natively with Temporal.
+      See how <code>monthCode</code> offers stable month identification across leap months.
+    </p>
+  </header>
+
+  <!-- Unsupported Warning Banner -->
+  <div id="unsupported-warning">
+    🚫 This demo requires a browser with native Temporal support
+  </div>
+
+  <div class="controls">
+    <label for="date-input">Select Date:</label>
+    <input type="date" id="date-input">
+  </div>
+
+  <div class="grid">
+    <!-- Islamic Calendar -->
+    <div class="card" id="card-islamic">
+      <div class="card-title">
+        <span class="emoji">🌙</span> Islamic (Umm al-Qura)
+      </div>
+      <div class="date-display" id="islamic-date">Loading...</div>
+      <div class="stats">
+        <div class="stat-row"><span>Year:</span> <span class="stat-value" id="islamic-year">-</span></div>
+        <div class="stat-row"><span>Month:</span> <span class="stat-value" id="islamic-month">-</span></div>
+        <div class="stat-row"><span>Month Code:</span> <span class="stat-value" id="islamic-monthCode">-</span></div>
+      </div>
+    </div>
+
+    <!-- Hebrew Calendar -->
+    <div class="card" id="card-hebrew">
+      <div class="card-title">
+        <span class="emoji">✡️</span> Hebrew
+      </div>
+      <div class="date-display" id="hebrew-date">Loading...</div>
+      <div class="stats">
+        <div class="stat-row"><span>Year:</span> <span class="stat-value" id="hebrew-year">-</span></div>
+        <div class="stat-row"><span>Month:</span> <span class="stat-value" id="hebrew-month">-</span></div>
+        <div class="stat-row"><span>Month Code:</span> <span class="stat-value" id="hebrew-monthCode">-</span></div>
+      </div>
+      <div id="hebrew-note" class="highlight-note" style="display: none;">
+        💡 <strong>Leap Month</strong>: This month uses a leap code (e.g., Adar I).
+      </div>
+    </div>
+
+    <!-- Chinese Calendar -->
+    <div class="card" id="card-chinese">
+      <div class="card-title">
+        <span class="emoji">🏮</span> Chinese (Lunisolar)
+      </div>
+      <div class="date-display" id="chinese-date">Loading...</div>
+      <div class="stats">
+        <div class="stat-row"><span>Year:</span> <span class="stat-value" id="chinese-year">-</span></div>
+        <div class="stat-row"><span>Month:</span> <span class="stat-value" id="chinese-month">-</span></div>
+        <div class="stat-row"><span>Month Code:</span> <span class="stat-value" id="chinese-monthCode">-</span></div>
+      </div>
+      <div id="chinese-note" class="highlight-note" style="display: none;">
+        💡 <strong>Leap Month</strong>: Chinese calendar uses 'L' suffix for leap months.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    if (typeof Temporal !== 'undefined') {
+      document.getElementById('unsupported-warning').style.display = 'none';
+      initializeDemo();
+    }
+
+    function initializeDemo() {
+      const input = document.getElementById('date-input');
+
+      // Set initial date to today
+      const today = Temporal.Now.plainDateISO();
+      input.value = today.toString();
+
+      // Listen to changes
+      input.addEventListener('input', () => updateCalendars(input.value));
+
+      // Run initial update
+      updateCalendars(input.value);
+    }
+
+    function updateCalendars(isoString) {
+      if (!isoString) return;
+
+      try {
+        const baseDate = Temporal.PlainDate.from(isoString);
+
+        const calendars = [
+          { id: 'islamic', name: 'islamic-umalqura' },
+          { id: 'hebrew', name: 'hebrew' },
+          { id: 'chinese', name: 'chinese' }
+        ];
+
+        calendars.forEach(cal => {
+          try {
+            const converted = baseDate.withCalendar(cal.name);
+
+            // Update Display Date
+            const dateDisplay = document.getElementById(`${cal.id}-date`);
+            dateDisplay.innerText = converted.toLocaleString('en-u-ca-' + cal.name, {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric'
+            });
+
+            // Update Stats
+            document.getElementById(`${cal.id}-year`).innerText = converted.year;
+            document.getElementById(`${cal.id}-month`).innerText = converted.month;
+            document.getElementById(`${cal.id}-monthCode`).innerText = converted.monthCode;
+
+            // Handle Note highlights for Leap Months (usually end with 'L')
+            const note = document.getElementById(`${cal.id}-note`);
+            if (note) {
+              if (converted.monthCode.endsWith('L')) {
+                note.style.display = 'block';
+              } else {
+                note.style.display = 'none';
+              }
+            }
+
+          } catch (err) {
+            document.getElementById(`${cal.id}-date`).innerText = "Error: " + err.message;
+          }
+        });
+
+      } catch (err) {
+        console.error("Invalid base date:", err);
+      }
+    }
+  </script>
+
+</body>
+
+</html>

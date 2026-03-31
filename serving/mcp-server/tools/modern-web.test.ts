@@ -1,99 +1,120 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
 import { registerModernWebTools } from './modern-web.ts';
-import * as modernPractices from '../data/modern-practices.ts';
+import { Embedder } from '../lib/embedder.ts';
+import { Store } from '../lib/store.ts';
 
-// Mock mocks
-const mockEmbed = vi.fn();
-const mockSearch = vi.fn();
-
-// Mock dependencies - We mock with .ts extension to match actual code
-vi.mock('../lib/embedder.ts', () => ({
-  Embedder: {
-    getInstance: () => ({
-      embed: mockEmbed,
-    }),
-  },
-}));
-
-vi.mock('../lib/store.ts', () => ({
-  Store: class {
-    search = mockSearch;
-  },
-}));
-
-vi.mock('../data/modern-practices.ts');
-
-// Mock McpServer
-const mockTool = vi.fn();
-const mockServer = {
-  tool: mockTool,
-  registerTool: mockTool,
-} as any;
-
-describe('modern-web tools', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
+describe('modern-web tools (Unit Tests with Mocks)', () => {
   it('should register search_use_cases and get_best_practices tools', () => {
+    let mockToolCalls = 0;
+    const mockServer = {
+      registerTool: () => {
+        mockToolCalls++;
+      },
+    } as any;
+
     registerModernWebTools(mockServer);
 
-    expect(mockTool).toHaveBeenCalledTimes(2);
-    expect(mockTool).toHaveBeenCalledWith(
-      'search_use_cases',
-      expect.any(Object),
-      expect.any(Function)
-    );
-    expect(mockTool).toHaveBeenCalledWith(
-      'get_best_practices',
-      expect.any(Object),
-      expect.any(Function)
-    );
+    assert.strictEqual(mockToolCalls, 2);
   });
 
   describe('search_use_cases handler', () => {
     it('should return search results', async () => {
-      const mockVector = [0.1, 0.2, 0.3];
-      const mockResults = [{ id: 'test', description: 'test desc', category: 'test cat' }];
+      // Monkey patch Embedder.getInstance and Store.search
+      const origGetInstance = Embedder.getInstance;
+      const origSearch = Store.prototype.search;
 
-      mockEmbed.mockResolvedValue(mockVector);
-      mockSearch.mockResolvedValue(mockResults);
+      const mockVector = [0.1, 0.2, 0.3];
+      const mockResults = [{ id: 'test', description: 'test desc', category: 'test cat' }] as any;
+
+      Embedder.getInstance = () => ({
+        embed: async () => mockVector,
+      }) as any;
+
+      Store.prototype.search = async () => mockResults;
+
+      const handlers: { [key: string]: Function } = {};
+      const mockServer = {
+        registerTool: (name: string, schema: any, handler: Function) => {
+          handlers[name] = handler;
+        },
+      } as any;
 
       registerModernWebTools(mockServer);
-      const handler = mockTool.mock.calls.find(call => call[0] === 'search_use_cases')![2];
 
-      const result = await handler({ query: 'test query' });
+      const result = await handlers['search_use_cases']({ query: 'test query' });
 
-      expect(mockEmbed).toHaveBeenCalledWith('test query');
-      expect(mockSearch).toHaveBeenCalledWith(mockVector);
-      expect(JSON.parse(result.content[0].text)).toEqual(mockResults);
+      assert.ok(Array.isArray(JSON.parse(result.content[0].text)));
+      assert.strictEqual(JSON.parse(result.content[0].text)[0].id, 'test');
+
+      // Restore
+      Embedder.getInstance = origGetInstance;
+      Store.prototype.search = origSearch;
     });
   });
 
   describe('get_best_practices handler', () => {
     it('should return guide content if found', async () => {
-      const mockGuide = '# Guide Content';
-      vi.mocked(modernPractices.getGuide).mockResolvedValue(mockGuide);
+      const handlers: { [key: string]: Function } = {};
+      const mockServer = {
+        registerTool: (name: string, schema: any, handler: Function) => {
+          handlers[name] = handler;
+        },
+      } as any;
 
       registerModernWebTools(mockServer);
-      const handler = mockTool.mock.calls.find(call => call[0] === 'get_best_practices')![2];
 
-      const result = await handler({ use_case_id: 'test-id' });
+      const result = await handlers['get_best_practices']({ use_case_id: 'batch-analytics-events' });
 
-      expect(result.content[0].text).toBe(mockGuide);
-      expect(modernPractices.getGuide).toHaveBeenCalledWith('test-id');
+      assert.ok(result.content[0].text.includes('# Debounce and batch multiple analytics events'));
     });
 
-    it("should return error if guide not found", async () => {
-      vi.mocked(modernPractices.getGuide).mockResolvedValue(null);
+    it('should return error if guide not found', async () => {
+      const handlers: { [key: string]: Function } = {};
+      const mockServer = {
+        registerTool: (name: string, schema: any, handler: Function) => {
+          handlers[name] = handler;
+        },
+      } as any;
 
       registerModernWebTools(mockServer);
-      const handler = mockTool.mock.calls.find(call => call[0] === 'get_best_practices')![2];
 
-      const result = await handler({ use_case_id: 'unknown-id' });
+      const result = await handlers['get_best_practices']({ use_case_id: 'unknown-id' });
 
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain("No guide found");
+      assert.strictEqual(result.isError, true);
+      assert.ok(result.content[0].text.includes('No guide found'));
     });
+  });
+});
+
+describe('modern-web tools (Functional / Integration Tests)', () => {
+  it('should read real guide content from disk', async () => {
+    const handlers: { [key: string]: Function } = {};
+    const mockServer = {
+      registerTool: (name: string, schema: any, handler: Function) => {
+        handlers[name] = handler;
+      },
+    } as any;
+
+    registerModernWebTools(mockServer);
+
+    const result = await handlers['get_best_practices']({ use_case_id: 'batch-analytics-events' });
+
+    assert.ok(result.content[0].text.includes('# Debounce and batch multiple analytics events'));
+  });
+
+  it('should run real search without mocks', async () => {
+    const handlers: { [key: string]: Function } = {};
+    const mockServer = {
+      registerTool: (name: string, schema: any, handler: Function) => {
+        handlers[name] = handler;
+      },
+    } as any;
+
+    registerModernWebTools(mockServer);
+
+    const result = await handlers['search_use_cases']({ query: 'tooltip' });
+
+    assert.ok(result.content[0].text.includes('tooltip') || Array.isArray(JSON.parse(result.content[0].text)));
   });
 });

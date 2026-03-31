@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Address Form Autofill</title>
+</head>
+<body>
+  <h1>Address</h1>
+  <form id="address-form" name="address-form">
+    <section>
+      <label for="name">Name</label>
+      <input id="name" name="name" type="text" autocomplete="name" maxlength="100" pattern="[\p{L} \-\.]+" required>
+    </section>
+
+    <section>
+      <label for="address">Address</label>
+      <textarea id="address" name="address" autocomplete="street-address" maxlength="300" required></textarea>
+    </section>
+
+    <section>
+      <label for="postal-code">ZIP or postal code</label>
+      <input id="postal-code" name="postal-code" type="text" autocomplete="postal-code" maxlength="20" required>
+    </section>
+
+    <button type="submit">Submit</button>
+  </form>
+</body>
+</html>

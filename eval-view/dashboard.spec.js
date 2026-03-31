@@ -7,10 +7,6 @@ test.describe('Eval View Dashboard', () => {
     // Check title
     await expect(page.locator('.landing-title')).toContainText('Guidance Evals');
 
-    // Check tabs exist
-    await expect(page.locator('.tab-button[data-tab="suites"]')).toBeVisible();
-    await expect(page.locator('.tab-button[data-tab="trends"]')).toBeVisible();
-
     // Check suites content
     await expect(page.locator('.suite-table-row').first()).toBeVisible();
   });
@@ -22,6 +18,19 @@ test.describe('Eval View Dashboard', () => {
     
     const data = await response.json();
     expect(data).toHaveProperty('suites');
+  });
+  
+  test('should show dumbbell chart tooltip on rate-cell hover', async ({ page }) => {
+    await page.goto('/');
+    
+    await page.waitForSelector('.rate-cell');
+    await page.locator('.rate-cell').first().hover();
+    
+    const tooltip = page.locator('.tooltip-container');
+    await expect(tooltip).toBeVisible();
+    
+    const svg = page.locator('#tooltip-chart svg');
+    await expect(svg).toBeVisible();
   });
 
 

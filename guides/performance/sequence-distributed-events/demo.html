@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>High-Frequency Tracing: Temporal.Instant vs Date.now()</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #10b981;
+      --warning-bg: #451a03;
+      --warning-border: #ea580c;
+      --warning-text: #fed7aa;
+      --collision-bg: #78350f;
+      --border-color: #334155;
+      --table-hover: #1e293b;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.description {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      max-width: 700px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+      justify-content: center;
+      background: var(--card-bg);
+      padding: 1.5rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    label {
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent-primary);
+      width: 140px;
+    }
+
+    button {
+      background-color: var(--accent-primary);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    button:hover {
+      background-color: #2563eb;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      height: 600px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .panel-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      font-weight: 600;
+    }
+
+    .badge.date {
+      background-color: #f59e0b20;
+      color: #f59e0b;
+      border: 1px solid #f59e0b40;
+    }
+
+    .badge.temporal {
+      background-color: #10b98120;
+      color: #10b981;
+      border: 1px solid #10b98140;
+    }
+
+    .table-container {
+      overflow-y: auto;
+      flex-grow: 1;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      text-align: left;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #1e293b;
+      padding: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
+      z-index: 10;
+    }
+
+    td {
+      padding: 0.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-family: monospace;
+      vertical-align: middle;
+    }
+
+    tr:hover {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .collision-row {
+      background-color: var(--collision-bg) !important;
+    }
+
+    .status {
+      font-size: 0.85rem;
+      color: var(--warning-text);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .node-tag {
+      display: inline-block;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      color: white;
+    }
+
+    .node-1 {
+      background-color: #ef4444;
+    }
+
+    .node-2 {
+      background-color: #3b82f6;
+    }
+
+    .node-3 {
+      background-color: #a855f7;
+    }
+
+    .banner {
+      background-color: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      display: none;
+      /* Hidden by default, shown if collisions found */
+    }
+
+    .banner-icon {
+      font-size: 1.5rem;
+    }
+
+    .value-diff {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--accent-secondary);
+      margin-top: 0.25rem;
+    }
+
+    .placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-secondary);
+      gap: 1rem;
+    }
+
+    .placeholder-icon {
+      font-size: 3rem;
+      opacity: 0.3;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Sequence Distributed Events</h1>
+      <p class="description">
+        Simulate high-frequency events across distributed nodes. Compare how millisecond resolution
+        (<code>Date.now()</code>) causes sorting collisions, while <code>Temporal.Instant</code> (nanosecond resolution)
+        maintains absolute chronological order.
+      </p>
+    </header>
+
+    <div class="controls">
+      <div class="control-group">
+        <label for="eventCount">Events Count:</label>
+        <input type="range" id="eventCount" min="20" max="100" value="50">
+        <span id="countDisplay">50</span>
+      </div>
+      <button id="simulateBtn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        Simulate High-Freq Events
+      </button>
+    </div>
+
+    <div id="unsupportedBanner" class="banner" style="background-color: #7f1d1d; border-color: #dc2626; display: none;">
+      <div class="banner-icon">🚫</div>
+      <div>This demo requires a browser with native Temporal support</div>
+    </div>
+
+    <div id="collisionBanner" class="banner">
+      <div class="banner-icon">⚠️</div>
+      <div>
+        <strong style="color: var(--warning-text)">Timestamp Collision Detected!</strong><br>
+        Multiple events share the exact same timestamp in <code>Date.now()</code>.
+        Their sorted order is unstable, leading to potential data racing/out-of-order execution in traces.
+      </div>
+    </div>
+
+    <div class="dashboard">
+      <!-- Date.now() Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            Date.now()
+            <span class="badge date">ms precision</span>
+          </div>
+          <div id="dateCollisions" class="status"></div>
+        </div>
+        <div class="table-container" id="dateContainer">
+          <div class="placeholder">
+            <div class="placeholder-icon">📊</div>
+            <div>Click Simulate to generate events</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Temporal Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            Temporal.Instant
+            <span class="badge temporal">ns precision</span>
+          </div>
+          <div id="temporalCollisions" class="status"></div>
+        </div>
+        <div class="table-container" id="temporalContainer">
+          <div class="placeholder">
+            <div class="placeholder-icon">🧬</div>
+            <div>Click Simulate to generate events</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const simulateBtn = document.getElementById('simulateBtn');
+    const eventCountSlider = document.getElementById('eventCount');
+    const countDisplay = document.getElementById('countDisplay');
+    const dateContainer = document.getElementById('dateContainer');
+    const temporalContainer = document.getElementById('temporalContainer');
+    const collisionBanner = document.getElementById('collisionBanner');
+    const dateCollisionsStatus = document.getElementById('dateCollisions');
+
+    if (typeof Temporal === 'undefined') {
+      const unsupportedBanner = document.getElementById('unsupportedBanner');
+      if (unsupportedBanner) unsupportedBanner.style.display = 'flex';
+      simulateBtn.disabled = true;
+      simulateBtn.style.opacity = '0.5';
+      simulateBtn.style.cursor = 'not-allowed';
+    }
+
+    eventCountSlider.addEventListener('input', (e) => {
+      countDisplay.textContent = e.target.value;
+    });
+
+    simulateBtn.addEventListener('click', runSimulation);
+
+    function runSimulation() {
+      if (typeof Temporal === 'undefined') {
+        alert('Temporal API is not available/loaded yet.');
+        return;
+      }
+
+      const count = parseInt(eventCountSlider.value);
+      const events = [];
+
+      // Simulate 3 nodes emitting events back-to-back
+      for (let i = 0; i < count; i++) {
+        const nodeId = Math.floor(Math.random() * 3) + 1;
+        const eventType = ['INFO', 'TRACE', 'DEBUG'][Math.floor(Math.random() * 3)];
+
+        // Capture both timestamps
+        const dateMs = Date.now();
+        const temporalInstant = Temporal.Now.instant();
+
+        // Micro-burn loop to simulate high-frequency events occurance
+        for (let j = 0; j < 500; j++) { Math.random(); }
+
+        events.push({
+          id: i + 1,
+          nodeId,
+          eventType,
+          dateMs,
+          temporalInstant
+        });
+      }
+
+      renderDashboard(events);
+    }
+
+    function renderDashboard(events) {
+      const shuffledEvents = [...events].sort(() => Math.random() - 0.5);
+
+      // 1. Sort for Date.now() view
+      const dateSorted = [...shuffledEvents].sort((a, b) => a.dateMs - b.dateMs);
+
+      // 2. Sort for Temporal view
+      const temporalSorted = [...shuffledEvents].sort((a, b) =>
+        Temporal.Instant.compare(a.temporalInstant, b.temporalInstant)
+      );
+
+      // 3. Count Collisions in Date.now() sorted array
+      let collisionsCount = 0;
+      const collisionGroups = new Set();
+
+      for (let i = 1; i < dateSorted.length; i++) {
+        if (dateSorted[i].dateMs === dateSorted[i - 1].dateMs) {
+          collisionsCount++;
+          collisionGroups.add(dateSorted[i].dateMs);
+        }
+      }
+
+      // 4. Count Collisions in Temporal sorted array
+      let temporalCollisionsCount = 0;
+      const temporalCollisionGroups = new Set();
+      for (let i = 1; i < temporalSorted.length; i++) {
+        if (Temporal.Instant.compare(temporalSorted[i].temporalInstant, temporalSorted[i - 1].temporalInstant) === 0) {
+          temporalCollisionsCount++;
+          temporalCollisionGroups.add(temporalSorted[i].temporalInstant.toString());
+        }
+      }
+
+      // 5. Update Individual Status Indicators
+      dateCollisionsStatus.innerHTML = collisionsCount > 0
+        ? `⚠️ <span style="font-weight:600">${collisionsCount}</span> Collision${collisionsCount > 1 ? 's' : ''}`
+        : '✓ No Collisions';
+
+      const temporalCollisionsStatus = document.getElementById('temporalCollisions');
+      if (temporalCollisionsCount > 0) {
+        temporalCollisionsStatus.innerHTML = `⚠️ <span style="font-weight:600">${temporalCollisionsCount}</span> Collision${temporalCollisionsCount > 1 ? 's' : ''}`;
+        temporalCollisionsStatus.style.color = '#f59e0b';
+      } else {
+        temporalCollisionsStatus.innerHTML = '✓ 0 Collisions';
+        temporalCollisionsStatus.style.color = 'var(--accent-secondary)';
+      }
+
+      // 6. Update Main Banner Alert
+      if (collisionsCount > 0 || temporalCollisionsCount > 0) {
+        collisionBanner.style.display = 'flex';
+        let sourceText = 'in <code>Date.now()</code>';
+        if (collisionsCount > 0 && temporalCollisionsCount > 0) {
+          sourceText = 'in BOTH <code>Date.now()</code> and <code>Temporal.Instant</code>';
+        } else if (temporalCollisionsCount > 0) {
+          sourceText = 'in <code>Temporal.Instant</code>';
+        }
+
+        collisionBanner.innerHTML = `
+          <div class="banner-icon">⚠️</div>
+          <div>
+            <strong style="color: var(--warning-text)">Timestamp Collision Detected!</strong><br>
+            Multiple events share the exact same timestamp ${sourceText}.
+            Their sorted order is unstable, leading to potential data racing/out-of-order execution in traces.
+          </div>
+        `;
+      } else {
+        collisionBanner.style.display = 'none';
+      }
+
+      // Render Tables
+      renderDateTable(dateSorted, collisionGroups);
+      renderTemporalTable(temporalSorted, temporalCollisionGroups);
+    }
+
+    function renderDateTable(sortedEvents, collisionGroups) {
+      let html = `<table>
+            <thead>
+                <tr>
+                    <th>Seq</th>
+                    <th>Node</th>
+                    <th>Type</th>
+                    <th>Timestamp (ms)</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+      sortedEvents.forEach((evt) => {
+        const isCollided = collisionGroups.has(evt.dateMs);
+        const rowClass = isCollided ? 'collision-row' : '';
+
+        html += `<tr class="${rowClass}">
+                <td>${evt.id}</td>
+                <td><span class="node-tag node-${evt.nodeId}">N-${evt.nodeId}</span></td>
+                <td>${evt.eventType}</td>
+                <td>${evt.dateMs}</td>
+            </tr>`;
+      });
+
+      html += '</tbody></table>';
+      dateContainer.innerHTML = html;
+    }
+
+    function renderTemporalTable(sortedEvents, temporalCollisionGroups) {
+      let html = `<table>
+            <thead>
+                <tr>
+                    <th>Seq</th>
+                    <th>Node</th>
+                    <th>Type</th>
+                    <th>Timestamp (ns/iso)</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+      sortedEvents.forEach((evt, index) => {
+        const iso = evt.temporalInstant.toString();
+        const isCollided = temporalCollisionGroups.has(iso);
+        const rowClass = isCollided ? 'collision-row' : '';
+        // Extract the time part for cleaner display, showing the nanoseconds better
+        // e.g., 2026-03-11T16:28:02.499925049Z => 16:28:02.499925049
+        const timePart = iso.split('T')[1].replace('Z', '');
+
+        // Calculate diff from previous row to show precision
+        let diffHtml = '';
+        if (index > 0) {
+          const prev = sortedEvents[index - 1].temporalInstant;
+          // Calculate difference in nanoseconds
+          const duration = evt.temporalInstant.since(prev);
+          const nsDiff = duration.total('nanoseconds');
+          if (nsDiff > 0) {
+            diffHtml = `<span class="value-diff">+${nsDiff.toLocaleString()}ns</span>`;
+          }
+        }
+
+        html += `<tr class="${rowClass}">
+                <td>${evt.id}</td>
+                <td><span class="node-tag node-${evt.nodeId}">N-${evt.nodeId}</span></td>
+                <td>${evt.eventType}</td>
+                <td title="${iso}">${timePart}${diffHtml}</td>
+            </tr>`;
+      });
+
+      html += '</tbody></table>';
+      temporalContainer.innerHTML = html;
+    }
+  </script>
+
+</body>
+
+</html>

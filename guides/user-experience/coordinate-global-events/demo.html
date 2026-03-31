@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timezone-Aware Meeting Planner (Temporal)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #111827;
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #10b981;
+      --warning-bg: rgba(245, 158, 11, 0.1);
+      --warning-border: rgba(245, 158, 11, 0.3);
+      --warning-text: #f59e0b;
+      --danger-bg: rgba(239, 68, 68, 0.1);
+      --danger-border: rgba(239, 68, 68, 0.3);
+      --danger-text: #ef4444;
+      --border-color: #1f2937;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.description {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      margin: 0 auto;
+      max-width: 800px;
+      line-height: 1.6;
+    }
+
+    .banner {
+      background-color: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      color: var(--danger-text);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      display: none;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    /* Controls Bar */
+    .controls-bar {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 1.5rem;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 180px;
+    }
+
+    label {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input,
+    select {
+      background: #1f2937;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .presets-container {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .preset-btn {
+      background: rgba(31, 41, 55, 0.5);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.6rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .preset-btn:hover {
+      background: rgba(55, 65, 81, 0.5);
+      border-color: var(--accent-primary);
+    }
+
+    /* Status Banner for Host Conflict */
+    .host-warning {
+      background-color: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      color: var(--warning-text);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      display: none;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
+    /* Comparison Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+      width: 100%;
+    }
+
+    .tz-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .tz-card.host-card {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .tz-name {
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-host {
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--accent-primary);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .resolved-time {
+      font-size: 2.25rem;
+      font-weight: 800;
+      margin: 0.75rem 0;
+    }
+
+    .card-details {
+      margin-top: auto;
+      border-top: 1px solid var(--border-color);
+      padding-top: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .detail-item {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .detail-value {
+      font-family: monospace;
+      color: var(--text-primary);
+    }
+
+    code {
+      font-family: monospace;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.1rem 0.3rem;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Meeting Planner (Temporal)</h1>
+      <p class="description">
+        Schedule a meeting in a host timezone. High-precision calculations resolve Daylight Saving Time (DST) conflicts
+        accurately around the globe.
+      </p>
+    </header>
+
+    <div id="unsupportedBanner" class="banner">
+      <div class="banner-icon">🚫</div>
+      <div>This demo requires a browser with native Temporal support</div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-bar">
+      <div class="control-group">
+        <label for="dateInput">Meeting Date</label>
+        <input type="date" id="dateInput" value="2025-03-09">
+      </div>
+      <div class="control-group">
+        <label for="timeInput">Meeting Time</label>
+        <input type="time" id="timeInput" value="14:00">
+      </div>
+      <div class="control-group">
+        <label for="hostTzSelect">Host Timezone</label>
+        <select id="hostTzSelect">
+          <option value="America/New_York">New York (EST/EDT)</option>
+          <option value="Europe/London">London (GMT/BST)</option>
+          <option value="Asia/Tokyo">Tokyo (JST)</option>
+          <option value="UTC">UTC</option>
+        </select>
+      </div>
+      <div style="flex: 2;">
+        <label style="margin-bottom: 0.5rem; display: block;">Simulate DST Conflicts:</label>
+        <div class="presets-container">
+          <button class="preset-btn" onclick="loadPreset('2025-03-09', '02:30', 'America/New_York')">🇺🇸 Spring Forward
+            (NY)</button>
+          <button class="preset-btn" onclick="loadPreset('2025-11-02', '01:30', 'America/New_York')">🇺🇸 Fall Back
+            (NY)</button>
+          <button class="preset-btn" onclick="loadPreset('2025-03-30', '01:30', 'Europe/London')">🇬🇧 Spring Forward
+            (London)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conflict Warning -->
+    <div id="hostWarning" class="host-warning"></div>
+
+    <!-- Comparison Grid -->
+    <div id="grid" class="grid"></div>
+
+  </div>
+
+  <script>
+    const dateInput = document.getElementById('dateInput');
+    const timeInput = document.getElementById('timeInput');
+    const hostTzSelect = document.getElementById('hostTzSelect');
+    const grid = document.getElementById('grid');
+    const hostWarning = document.getElementById('hostWarning');
+    const unsupportedBanner = document.getElementById('unsupportedBanner');
+
+    const targetTimezones = [
+      { zone: 'America/New_York', name: 'New York', flag: '🇺🇸' },
+      { zone: 'Europe/London', name: 'London', flag: '🇬🇧' },
+      { zone: 'Asia/Tokyo', name: 'Tokyo', flag: '🇯🇵' },
+      { zone: 'UTC', name: 'UTC', flag: '🌐' }
+    ];
+
+    // Check Support
+    if (typeof Temporal === 'undefined') {
+      unsupportedBanner.style.display = 'flex';
+      dateInput.disabled = true;
+      timeInput.disabled = true;
+      hostTzSelect.disabled = true;
+    } else {
+      initializeDemo();
+    }
+
+    function initializeDemo() {
+      [dateInput, timeInput, hostTzSelect].forEach(el => {
+        el.addEventListener('input', updateAll);
+      });
+      updateAll();
+    }
+
+    function loadPreset(date, time, tz) {
+      dateInput.value = date;
+      timeInput.value = time;
+      hostTzSelect.value = tz;
+      updateAll();
+    }
+
+    function updateAll() {
+      const date = dateInput.value;
+      const time = timeInput.value;
+      const hostTz = hostTzSelect.value;
+
+      if (!date || !time) return;
+
+      grid.innerHTML = ''; // Clear Output
+      hostWarning.style.display = 'none'; // Clear previous warning
+
+      try {
+        const dateTimeStr = `${date}T${time}`;
+        const inputStr = `${dateTimeStr}[${hostTz}]`;
+
+        // 1. Conflict Tracking at Host Timezone
+        let hasConflict = false;
+        let conflictType = "";
+        try {
+          Temporal.ZonedDateTime.from(inputStr, { disambiguation: 'reject' });
+        } catch (e) {
+          if (e instanceof RangeError) {
+            hasConflict = true;
+            const earlier = Temporal.ZonedDateTime.from(inputStr, { disambiguation: 'earlier' });
+            const later = Temporal.ZonedDateTime.from(inputStr, { disambiguation: 'later' });
+            conflictType = earlier.toPlainTime().equals(later.toPlainTime()) ? "Repeated" : "Skipped";
+          }
+        }
+
+        // 2. Resolve Host Time
+        const hostZdt = Temporal.ZonedDateTime.from(inputStr, { disambiguation: 'compatible' });
+
+        if (hasConflict) {
+          hostWarning.style.display = 'block';
+          if (conflictType === "Skipped") {
+            hostWarning.innerHTML = `⚠️ <strong>Host Time Clarified:</strong> The time <code>${time}</code> was skipped in ${hostTzSelect.options[hostTzSelect.selectedIndex].text} due to clocks rolling forward. Temporal resolved it to <strong>${hostZdt.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' })}</strong>.`;
+          } else {
+            hostWarning.innerHTML = `⚠️ <strong>Host Time Constant:</strong> The time <code>${time}</code> occurs twice in ${hostTzSelect.options[hostTzSelect.selectedIndex].text} (falling back). Temporal assigns the first occurrence safely.`;
+          }
+        }
+
+        function formatTime(zdt) {
+          const time = zdt.toPlainTime();
+          let hour = time.hour;
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          hour = hour % 12 || 12;
+          const minute = String(time.minute).padStart(2, '0');
+          return `${hour}:${minute} ${ampm}`;
+        }
+
+        // 3. Render Cards
+        targetTimezones.forEach(tz => {
+          const isHost = tz.zone === hostTz;
+          const targetZdt = hostZdt.withTimeZone(tz.zone);
+
+          const card = document.createElement('div');
+          card.className = `tz-card ${isHost ? 'host-card' : ''}`;
+
+          card.innerHTML = `
+            <div class="card-header">
+              <span class="tz-name">${tz.flag} ${tz.name}</span>
+              ${isHost ? '<span class="badge badge-host">Host Location</span>' : ''}
+            </div>
+            <div class="resolved-time">${formatTime(targetZdt)}</div>
+            <div class="card-details">
+              <div class="detail-item"><span>Full String:</span> <span class="detail-value"><code>${targetZdt.toString()}</code></span></div>
+              <div class="detail-item"><span>Offset:</span> <span class="detail-value"><code>${targetZdt.offset}</code></span></div>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  </script>
+
+</body>
+
+</html>
