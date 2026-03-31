@@ -1,4 +1,4 @@
-# Testing modern-web-mcp
+# Testing modern-web
 
 This document outlines how to run automated tests and how to perform manual smoke tests or resets for the `modern-web-mcp` project.
 
@@ -9,12 +9,6 @@ Run all unit and integration tests using `npm`:
 ```bash
 cd serving
 npm run test
-```
-
-Run TypeScript type checks:
-
-```bash
-npm run typecheck
 ```
 
 ---
