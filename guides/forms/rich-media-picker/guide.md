@@ -117,9 +117,7 @@ select.custom-select option::before {
 - **DO** hide secondary details (like descriptions) in the button state if they take too much space, by styling `.custom-select selectedcontent .option-desc { display: none; }`.
 - **DO** ensure your `<select>` has a `name` attribute and an associated `<label>`. This ensures that even with a custom UI, the component remains accessible to screen readers and works correctly with standard form submissions.
 
-## Fallback Strategy
-
-### Fallback strategies
+## Fallback Strategies
 
 {{ BASELINE_STATUS("customizable-select") }}
 
