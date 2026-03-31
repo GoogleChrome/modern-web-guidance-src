@@ -1,7 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, updateMcpConfig, watchLogFile, copyFileIfExists, runCliAgentCommand } from '../lib/agent-shared.ts';
+import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs, createWorkDir, copySkills, updateMcpConfig, watchLogFile, copyFileIfExists, runCliAgentCommand } from '../lib/agent-shared.ts';
 import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
@@ -26,14 +26,15 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
   process.env.HOME = tempHome;
 
   if (runType === 'guided') {
-    const approach = config.suite.serving;
+    const suiteConfig = getSuiteConfig();
+    const approach = suiteConfig.serving;
 
     if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
       copySkills(tempHome, Agents.CODEX_CLI, approach === Serving.SKILLS_CLI);
     } else if (approach === Serving.MCP) {
       updateMcpConfig(
         path.join(tempHome, '.codex', 'config.toml'),
-        config.suite.mcpServersToEnable,
+        suiteConfig.mcpServersToEnable,
         config.environment.modernWebServerPath,
         config.environment.mcpApiKey,
         Agents.CODEX_CLI
