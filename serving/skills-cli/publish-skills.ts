@@ -9,8 +9,7 @@ const SERVING_DIR = path.join(ROOT_DIR, "serving");
 const DIST_DIR = path.join(ROOT_DIR, "dist");
 const SKILLS_CLI_TEMPLATE_DIR = path.join(SERVING_DIR, "skills-cli/template");
 
-const ghPagesPublish = ghpages.publish;
-
+const isDryRun = process.argv.includes('--dry-run');
 
 function incrementVersion(version: string): string {
   const parts = version.split('.');
@@ -18,7 +17,6 @@ function incrementVersion(version: string): string {
   return `${parts[0]}.${parts[1]}.${patch}`;
 }
 
-const isDryRun = process.argv.includes('--dry-run');
 
 async function bumpVersions() {
   console.log("Bumping versions in skills-cli templates...");
@@ -65,14 +63,10 @@ async function main() {
   await fs.rm(publishCliDir, { recursive: true, force: true });
 
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  
   await buildDist();
   
   console.log(`\nVerifying built distribution with test-dist.test.ts suite...`);
   execSync('node --test skills-cli/test-dist.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
-
-
-
 
   if (isDryRun) {
     const files = await fs.readdir(publishCliDir, {recursive: true});
@@ -81,7 +75,7 @@ async function main() {
   } else {
     console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/skills-alpha (main branch)...`);
     
-    await ghPagesPublish(publishCliDir, {
+    await ghpages.publish(publishCliDir, {
       src: ['**/*'], // No longer vendor node_modules! Users will install via npx -y!
       branch: 'main',
       repo: 'git@github.com:GoogleChrome/skills-alpha.git',
