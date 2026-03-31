@@ -65,22 +65,6 @@ async function main() {
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
 
-  console.log(`\nTesting npm pack to verify files packaging (will clean up after)...`);
-  try {
-    execSync('npm pack', { cwd: publishCliDir, stdio: 'inherit' });
-    
-    // Find any .tgz files in the published root and delete them
-    const files = fs.readdirSync(publishCliDir);
-    for (const file of files) {
-      if (file.endsWith('.tgz')) {
-        fs.unlinkSync(path.join(publishCliDir, file));
-        console.log(`Cleaned up tarball artifact: ${file}`);
-      }
-    }
-  } catch (err) {
-    console.warn(`\n[Warn] npm pack failed to create listing. Proceeding anyway.`);
-  }
-
 
 
   if (isDryRun) {
