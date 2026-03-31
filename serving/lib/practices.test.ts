@@ -1,7 +1,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert";
-import { getGuide } from "./modern-practices.ts";
+import { getGuide } from "./practices.ts";
 
 describe("getGuide", () => {
   it("should retrieve full guide when no section is provided", async () => {
