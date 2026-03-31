@@ -23,12 +23,18 @@ Must use this skill:
 
 You can execute these tools using standard `node` from the command line from **any** directory. 
 
+### Prerequisite check: Ensure the binary is installed!
+If you find `modern-web` is not available out of the box in your path, you can use standard `pnpm link --global` inside `dist/skills-cli` to set it up:
+```bash
+command -v modern-web >/dev/null 2>&1 || (cd dist/skills-cli && pnpm install && pnpm link --global)
+```
+
 ### 1. Search Use Cases
 
 Search with an action-oriented query summarizing what you want to achieve using the `--search` flag.
 
 ```bash
-node ./cli/serving/bin/modern-web.cjs --search "<query>"
+modern-web --search "<query>"
 ```
 
 **Example Output**:
@@ -50,8 +56,9 @@ node ./cli/serving/bin/modern-web.cjs --search "<query>"
 Once you have a relevant `id` from the search results, call this script using the `--retrieve` flag to get the full guide. You can pass multiple IDs separated by commas.
 
 ```bash
-node ./cli/serving/bin/modern-web.cjs --retrieve "<id>"
+modern-web --retrieve "<id>"
 ```
+
 
 **Example Output**:
 `The markdown content of the guide describing implementation steps...`
