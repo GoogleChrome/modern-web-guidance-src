@@ -88,3 +88,17 @@ test('README dynamic Skill Coverage content', async () => {
   assert.match(readmeRaw, /https:\/\/webstatus\.dev\/features\//, 'README should contain links to webstatus.dev');
 });
 
+test('modern-web CLI search and retrieve', async () => {
+  const binaryPath = path.join(DIST_DIR, 'skills/modern-web-use-cases/cli/serving/bin/modern-web.mjs');
+  
+  // 1. Validate search
+  const searchOut = execSync(`node "${binaryPath}" --search tooltip`, { encoding: 'utf8' });
+  const searchResults = JSON.parse(searchOut);
+  assert.ok(Array.isArray(searchResults), 'Search output should be a JSON array');
+  assert.ok(searchResults.length > 0, 'Should return at least one search result for tooltip');
+
+  // 2. Validate retrieve
+  const retrieveOut = execSync(`node "${binaryPath}" --retrieve accessible-error-announcement`, { encoding: 'utf8' });
+  assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
+});
+
