@@ -21,8 +21,9 @@
     ]
   },
   "bin": {
-    "modern-web": "./skills/modern-web-use-cases/cli/serving/bin/modern-web.cjs"
+    "modern-web": "./skills/modern-web-use-cases/cli/serving/bin/modern-web.mjs"
   },
+
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
     "@lancedb/lancedb": "^0.26.2"

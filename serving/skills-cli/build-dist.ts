@@ -73,31 +73,20 @@ async function main() {
   console.log("Bundling modern-web.ts with esbuild...");
   // 5. Bundle modern-web.ts
   const entryPoint = path.join(SERVING_DIR, "bin/modern-web.ts");
-  const outFile = path.join(BUNDLE_OUT_DIR, "modern-web.cjs");
+  const outFile = path.join(BUNDLE_OUT_DIR, "modern-web.mjs");
   
   try {
-    // Try to run npx esbuild or pnpm exec esbuild
-    // We assume the user has esbuild accessible or npx works.
-    execSync(`pnpm exec esbuild "${entryPoint}" --bundle --platform=node --format=cjs --loader:.node=file --define:import.meta.url="'__import_meta_url_placeholder__'" --define:import.meta.dirname="__dirname" --external:@lancedb/lancedb --external:@huggingface/transformers --outfile="${outFile}"`, {
+    // We emit pure ESM (.mjs) using esbuild! Node 20+ handles import.meta.dirname & url natively!
+    execSync(`pnpm exec esbuild "${entryPoint}" --bundle --platform=node --format=esm --loader:.node=file --external:@lancedb/lancedb --external:@huggingface/transformers --outfile="${outFile}"`, {
       cwd: SERVING_DIR,
       stdio: "inherit",
     });
-
-    console.log(`Bundled ${entryPoint} to ${outFile}`);
-
-    console.log("Replacing import.meta.url placeholder in bundle...");
-    let bundleContent = fs.readFileSync(outFile, "utf-8");
-    bundleContent = bundleContent.replace(
-      /(['"])__import_meta_url_placeholder__\1/g,
-      "require('url').pathToFileURL(__filename).toString()"
-    );
-    fs.writeFileSync(outFile, bundleContent);
-    console.log("Placeholder replaced successfully.");
 
   } catch (error) {
     console.error("Failed to bundle with esbuild:", error);
     process.exit(1);
   }
+
 
 
   console.log("Copying SKILL.md...");
