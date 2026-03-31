@@ -1,7 +1,7 @@
 {
-  "name": "modern-web-mcp",
+  "name": "modern-web",
   "version": "1.0.0",
-  "description": "An MCP server for modern web development",
+  "private": true,
   "type": "module",
   "main": "mcp-server/index.ts",
   "exports": {
@@ -30,9 +30,6 @@
     "benchmark:rag": "node --experimental-strip-types benchmarks/rag/eval-rag-suite.ts",
     "plot:serve": "npx serve benchmarks/data"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
     "@lancedb/lancedb": "^0.26.2",

@@ -1,17 +1,11 @@
 # Testing modern-web
 
-This document outlines how to run automated tests and how to perform manual smoke tests or resets for the `modern-web-mcp` project.
-
 ## Automated Tests
 
-Run all unit and integration tests using `npm`:
-
-```bash
+```sh
 cd serving
 npm run test
 ```
-
----
 
 ## Manual Testing & Reset Procedures
 
@@ -21,7 +15,7 @@ To verify that skills and the MCP server are installing and activating correctly
 
 Clear any old global installs or CLI state to ensure a clean slate:
 
-```bash
+```sh
 # Remove global modern-web CLI binaries
 npm uninstall --global modern-web
 
@@ -41,7 +35,7 @@ DISABLE_TELEMETRY=1 npx -y skills remove --global modern-web-use-cases
 
 Re-install the standard web skills to prove runtime behavior:
 
-```bash
+```sh
 # Verify base skills installer pulls correctly
 DISABLE_TELEMETRY=1 npx skills add GoogleChrome/skills-alpha
 
