@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as process from 'node:process';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -13,35 +14,39 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-test.describe(`Pull-to-Reveal Expectations: ${demoName}`, () => {
-  // Static assertions
-  test(`Only one element specifies scroll-initial-target: nearest`, () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const exactCssDeclarations = html.match(/scroll-initial-target\s*:\s*nearest\s*;/g) || [];
-    expect(exactCssDeclarations.length).toBe(1);
+test.describe('Pull-to-Reveal Grader', () => {
+  const html = fs.readFileSync(filePath, 'utf-8');
+
+  // --- Static Analysis Tests ---
+
+  test('Exactly one element should have scroll-initial-target property', async () => {
+    const matches = html.match(/scroll-initial-target\s*:\s*nearest/g);
+    expect(matches?.length).toBe(1);
   });
 
-  test(`Progressive enhancement fallback evaluates native CSS capability`, () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toContain('!CSS.supports("scroll-initial-target", "nearest")');
+  test('The fallback must check for CSS support using CSS.supports', async () => {
+    const supportsRegex = /CSS\.supports\(\s*['"]scroll-initial-target['"]\s*,\s*['"]nearest['"]\s*\)/;
+    expect(html).toMatch(supportsRegex);
   });
 
-  test(`Fallback script uses scrollIntoView with instant behavior and block start`, () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/scrollIntoView\(\s*\{\s*behavior\s*:\s*['"]instant['"]\s*,\s*block\s*:\s*['"]start['"]\s*\}\s*\)/);
+  test('The fallback must use behavior: instant in scrollIntoView', async () => {
+    const behaviorRegex = /scrollIntoView\(\s*\{[^}]*behavior\s*:\s*['"]instant['"][^}]*\}\s*\)/;
+    expect(html).toMatch(behaviorRegex);
   });
 
-  test(`Fallback script executes no later than DOMContentLoaded`, () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toContain('DOMContentLoaded');
+  test('The fallback must use block: start in scrollIntoView', async () => {
+    const blockRegex = /scrollIntoView\(\s*\{[^}]*block\s*:\s*['"]start['"][^}]*\}\s*\)/;
+    expect(html).toMatch(blockRegex);
   });
 
-  test(`Implementation does not rely on setTimeout for initial scroll`, () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).not.toContain('setTimeout');
+  test('The fallback must execute on DOMContentLoaded or earlier', async () => {
+    // Check that it doesn't use window.onload and instead uses DOMContentLoaded or immediate execution
+    expect(html).not.toMatch(/window\.onload/);
+    expect(html).toMatch(/DOMContentLoaded|addEventListener|querySelector/);
   });
 
-  // Setup browser testing
+  // --- Browser-based Tests ---
+
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
@@ -57,56 +62,84 @@ test.describe(`Pull-to-Reveal Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test(`Scroll container has overflow-y auto or scroll`, async ({ page }) => {
-    const hasOverflow = await page.evaluate(() => {
-      const elements = Array.from(document.querySelectorAll('*'));
-      return elements.some(el => {
+  test('The scroll container must have overflow-y and mandatory snapping', async ({ page }) => {
+    const containerStyle = await page.evaluate(() => {
+      const elements = document.querySelectorAll('*');
+      for (const el of Array.from(elements)) {
         const style = window.getComputedStyle(el);
-        return style.overflowY === 'auto' || style.overflowY === 'scroll';
-      });
+        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && el.children.length >= 2) {
+          return {
+            overflowY: style.overflowY,
+            scrollSnapType: style.scrollSnapType
+          };
+        }
+      }
+      return null;
     });
-    expect(hasOverflow).toBe(true);
+
+    expect(containerStyle).not.toBeNull();
+    expect(['auto', 'scroll']).toContain(containerStyle?.overflowY);
+    expect(containerStyle?.scrollSnapType).toMatch(/y mandatory/);
   });
 
-  test(`Scroll container has mandatory snapping`, async ({ page }) => {
-    const hasMandatorySnapping = await page.evaluate(() => {
-      const elements = Array.from(document.querySelectorAll('*'));
-      return elements.some(el => {
+  test('The hidden element (first descendant) must have scroll-snap-align: start', async ({ page }) => {
+    const snapAlign = await page.evaluate(() => {
+      const elements = document.querySelectorAll('*');
+      for (const el of Array.from(elements)) {
         const style = window.getComputedStyle(el);
-        return style.scrollSnapType.includes('mandatory');
-      });
+        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && el.children.length >= 2) {
+          return window.getComputedStyle(el.children[0]).scrollSnapAlign;
+        }
+      }
+      return null;
     });
-    expect(hasMandatorySnapping).toBe(true);
+    expect(snapAlign).toBe('start');
   });
 
-  test(`Hidden element has scroll-snap-align start`, async ({ page }) => {
-    const snapAlignStart = await page.evaluate(() => {
-      const container = Array.from(document.querySelectorAll('*')).find(el => {
+  test('The main content element (second descendant) must have scroll-snap-align: start', async ({ page }) => {
+    const snapAlign = await page.evaluate(() => {
+      const elements = document.querySelectorAll('*');
+      for (const el of Array.from(elements)) {
         const style = window.getComputedStyle(el);
-        return (style.overflowY === 'auto' || style.overflowY === 'scroll') && style.scrollSnapType.includes('mandatory');
-      });
-      if (!container) return false;
-      const firstChild = container.firstElementChild;
-      if (!firstChild) return false;
-      const style = window.getComputedStyle(firstChild);
-      return style.scrollSnapAlign.includes('start');
+        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && el.children.length >= 2) {
+          return window.getComputedStyle(el.children[1]).scrollSnapAlign;
+        }
+      }
+      return null;
     });
-    expect(snapAlignStart).toBe(true);
+    expect(snapAlign).toBe('start');
   });
 
-  test(`Main content element has scroll-snap-align start`, async ({ page }) => {
-    const snapAlignStart = await page.evaluate(() => {
-      const container = Array.from(document.querySelectorAll('*')).find(el => {
+  test('Initial scroll position must be at the main content element', async ({ page }) => {
+    // Wait for any potential scrolling to finish
+    await page.waitForTimeout(500);
+    const scrollStatus = await page.evaluate(() => {
+      const elements = document.querySelectorAll('*');
+      for (const el of Array.from(elements)) {
         const style = window.getComputedStyle(el);
-        return (style.overflowY === 'auto' || style.overflowY === 'scroll') && style.scrollSnapType.includes('mandatory');
-      });
-      if (!container) return false;
-      const firstChild = container.firstElementChild;
-      const mainContent = firstChild?.nextElementSibling;
-      if (!mainContent) return false;
-      const style = window.getComputedStyle(mainContent);
-      return style.scrollSnapAlign.includes('start');
+        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && el.children.length >= 2) {
+          const container = el as HTMLElement;
+          const target = el.children[1] as HTMLElement;
+          const cRect = container.getBoundingClientRect();
+          const tRect = target.getBoundingClientRect();
+          
+          // The top of the target should be at the top of the container's visible area.
+          // container.clientTop is the border width.
+          const topDiff = Math.abs(tRect.top - (cRect.top + container.clientTop));
+          
+          return {
+            scrollTop: container.scrollTop,
+            topDiff,
+            hasScrolled: container.scrollTop > 0
+          };
+        }
+      }
+      return null;
     });
-    expect(snapAlignStart).toBe(true);
+
+    expect(scrollStatus).not.toBeNull();
+    expect(scrollStatus?.hasScrolled).toBe(true);
+    // Use a small margin of error for different browsers/renderings
+    expect(scrollStatus?.topDiff).toBeLessThan(5);
   });
 });

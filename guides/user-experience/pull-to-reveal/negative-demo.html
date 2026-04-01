@@ -3,97 +3,93 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Application Interface</title>
+  <title>Content Feed</title>
   <style>
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #cccccc;
+      font-family: Arial, sans-serif;
       margin: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+      padding: 0;
+      background-color: #eeeeee;
     }
 
-    .app-window {
-      width: 320px;
-      height: 580px;
-      background: #fdfdfd;
-      border: 2px solid #333333;
+    .app-frame {
+      max-width: 400px;
+      margin: 20px auto;
+      border: 1px solid #ccc;
+      height: 600px;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      background-color: white;
     }
 
-    .header-bar {
-      background: #4a90e2;
+    .top-nav {
+      background-color: #333;
       color: white;
-      padding: 12px;
+      padding: 15px;
       text-align: center;
-      font-size: 18px;
     }
 
-    .scrolling-content {
+    .scroller {
       flex: 1;
       overflow-y: scroll;
     }
 
-    .hidden-search {
-      background-color: #eeeeee;
-      padding: 10px;
-      height: 50px;
+    .hidden-header {
+      height: 80px;
+      background-color: #ddd;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-bottom: 1px solid #bbbbbb;
     }
 
-    .hidden-search input {
-      width: 100%;
+    .search-box {
+      width: 80%;
       padding: 8px;
-      border: 1px solid #999999;
     }
 
-    .content-area {
-      padding: 15px;
-      height: 1200px;
-    }
-
-    .news-card {
-      background: #ffffff;
-      border: 1px solid #dddddd;
-      margin-bottom: 15px;
+    .main-body {
       padding: 20px;
+      min-height: 800px;
     }
 
-    .news-card h2 {
-      margin: 0 0 10px 0;
-      font-size: 16px;
+    .card {
+      background: #fff;
+      border: 1px solid #ddd;
+      margin-bottom: 15px;
+      padding: 15px;
+    }
+
+    .item-1 {
+      scroll-initial-target: nearest;
+    }
+
+    .item-2 {
+      scroll-initial-target: nearest;
     }
   </style>
 </head>
 <body>
 
-  <div class="app-window">
-    <div class="header-bar">News Feed</div>
-
-    <div class="scrolling-content" id="app-scroller">
-      <div class="hidden-search">
-        <input type="text" placeholder="Search news...">
+  <div class="app-frame">
+    <div class="top-nav">News Feed</div>
+    
+    <div class="scroller" id="scrollContainer">
+      <div class="hidden-header">
+        <input type="text" class="search-box" placeholder="Search for news...">
       </div>
 
-      <div class="content-area">
-        <div class="news-card">
-          <h2>Today's Headlines</h2>
-          <p>Welcome to your daily news digest. Scroll up to search for specific topics.</p>
+      <div class="main-body">
+        <div class="card item-1" id="firstCard">
+          <h2>Breaking News</h2>
+          <p>This is the first item in your feed. Pull down to search.</p>
         </div>
-        <div class="news-card">
+        <div class="card item-2">
           <h2>Weather Update</h2>
-          <p>Expect clear skies and sunshine throughout the weekend.</p>
+          <p>It is sunny today with a chance of clouds.</p>
         </div>
-        <div class="news-card">
-          <h2>Sports Report</h2>
-          <p>The local team secured a victory in last night's game.</p>
+        <div class="card">
+          <h2>Sports</h2>
+          <p>The local team won their game last night.</p>
         </div>
       </div>
     </div>
@@ -101,13 +97,10 @@
 
   <script>
     window.onload = function() {
-      setTimeout(function() {
-        const scroller = document.getElementById('app-scroller');
-        scroller.scrollTo({
-          top: 70,
-          behavior: 'smooth'
-        });
-      }, 800);
+      const container = document.getElementById('scrollContainer');
+      const target = document.getElementById('firstCard');
+      
+      target.scrollIntoView({ behavior: 'smooth' });
     };
   </script>
 </body>

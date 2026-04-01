@@ -1,3 +1,4 @@
-- Can you help me add a pull to reveal search bar to my app? I want it so when the user first loads the page they don't see it, but if they scroll up at the top it snaps into view.
-- I need to add a hidden search bar at the very top of the page above the nav. It should be hidden on load using the new css scroll-initial-target property and snap into place when the user pulls down.
-- Build a web app feed with a hidden top search bar that is only revealed when the user pulls down from the top of the feed, ensuring no JavaScript is used for the initial offset and no visible scrolling animation or flash occurs on initial render.
+- add a search bar at the very top of the page, above the logo. make it so it's hidden on load and you have to pull down to see it. use scroll-initial-target on the nav so the page starts there. also add scroll snapping so the search bar snaps into view.
+- add a search input tucked away above the hero section. make it so it's hidden by default but reveals when you scroll up.
+- i want a pull-to-reveal search bar above the header. make it snap into place when you pull it down.
+- stick a search field above the nav but keep it hidden when the page first opens. i want to have to scroll up to find it.
