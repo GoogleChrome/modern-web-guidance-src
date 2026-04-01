@@ -18,10 +18,10 @@ Clear any old global installs or CLI state to ensure a clean slate:
 ```sh
 npm uninstall --global modern-web
 
-gemini extensions uninstall https://github.com/GoogleChrome/skills-alpha
-
 claude plugin uninstall googlechrome-skills@skills-alpha
 #   To remove the marketplace, need to use `/plugin`
+
+gemini extensions uninstall https://github.com/GoogleChrome/skills-alpha
 
 DISABLE_TELEMETRY=1 npx -y skills remove --global modern-web-use-cases
 ```
@@ -31,10 +31,10 @@ DISABLE_TELEMETRY=1 npx -y skills remove --global modern-web-use-cases
 Re-install the standard web skills to prove runtime behavior:
 
 ```sh
-DISABLE_TELEMETRY=1 npx skills add GoogleChrome/skills-alpha
-
 # Claude, assuming marketplace already added via: /plugin marketplace add GoogleChrome/skills-alpha
 claude plugin install googlechrome-skills@skills-alpha
 
 gemini extensions install https://github.com/GoogleChrome/skills-alpha --auto-update
+
+DISABLE_TELEMETRY=1 npx skills add GoogleChrome/skills-alpha
 ```
