@@ -66,6 +66,7 @@ This command will automatically:
 1. Generate a `negative-demo.html` based on the guidance.
 2. Generate a `grader.ts` Playwright test that asserts your `expectations.md` against both `demo.html` (should pass) and `negative-demo.html` (should fail).
 3. Test and calibrate the grader by running the test suite.
+
 ## Writing `task.md`
 
 `task.md` contains realistic developer prompts used to run AI agents end-to-end against the guide's grader, prefixed by a YAML frontmatter specifying the base application.

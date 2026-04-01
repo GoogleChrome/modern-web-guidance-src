@@ -14,7 +14,7 @@
     "totalGuidedRuns": 2
   },
   "results": {
-    "cards-app - content-vis - unguided": [
+    "content-vis-task - content-vis - unguided": [
       {
         "runNumber": 1,
         "baseApp": "cards-app",
@@ -69,7 +69,7 @@
         ]
       }
     ],
-    "cards-app - content-vis - guided": [
+    "content-vis-task - content-vis - guided": [
       {
         "runNumber": 1,
         "baseApp": "cards-app",
@@ -183,13 +183,13 @@
     ]
   },
   "stats": {
-    "cards-app - content-vis - unguided": {
+    "content-vis-task - content-vis - unguided": {
       "median": 100,
       "rates": [
         100
       ]
     },
-    "cards-app - content-vis - guided": {
+    "content-vis-task - content-vis - guided": {
       "median": 100,
       "rates": [
         100

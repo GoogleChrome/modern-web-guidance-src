@@ -9,8 +9,6 @@ import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
 
-
-
 export function extractModelFromResults(resultsDir: string, agent: string): string {
   if (agent === Agents.GEMINI_CLI) {
     return extractGeminiCliModel(resultsDir);
@@ -22,7 +20,6 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   // JETSKI impl does not support trajectory pb parsing, leave model as unknown
   return 'unknown';
 }
-
 
 export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
   const taskMap = getTaskMap();
@@ -126,6 +123,7 @@ run();
 
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
+
     // Structure: results/{suiteName}/{runNumber}/{guideName}/{runType}
     const directories = glob.sync('*/*/', {
       cwd: runPath,
