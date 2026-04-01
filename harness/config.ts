@@ -51,15 +51,19 @@ export const environmentConfig: EnvironmentConfig = {
   mcpApiKey: process.env.MCP_API_KEY || '', // For google-developer-knowledge MCP server
 };
 
-export const suiteConfig: SuiteConfig = {
+export const defaultSuiteConfig: SuiteConfig = {
   name: `full-${new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-')}`,
   numRuns: 1,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
-  mcpServersToEnable: [], // Available servers: 'modern-web', 'google-developer-knowledge'
+  mcpServersToEnable: ['modern-web'],
   serving: Serving.SKILLS_CLI,
   agent: Agents.GEMINI_CLI,
   negative: false, // When `true`, runs the suite on all tasks in `tasks/negative/`
 };
+
+export function mergeSuiteConfig(overrides: Partial<SuiteConfig>): SuiteConfig {
+  return { ...defaultSuiteConfig, ...overrides };
+}
 
 export interface EnvironmentConfig {
   jetskiDir: string;
@@ -87,7 +91,6 @@ export interface SuiteConfig {
 
 export const config = {
   environment: environmentConfig,
-  suite: suiteConfig,
 };
 
 // Validate critical paths exist during configuration

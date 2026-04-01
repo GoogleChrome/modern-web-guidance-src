@@ -6,8 +6,8 @@ import { fileURLToPath } from 'url';
 import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
 import { config, Agents, Serving } from '../config.ts';
+import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, exportTrajectories, watchLogFile } from '../lib/agent-shared.ts';
 
-import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, exportTrajectories, watchLogFile } from '../lib/agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 // Usage: node jetski-agent.ts <prompt> <runType> <targetDir> <templateDir>
@@ -80,14 +80,15 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir: s
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
-    const approach = config.suite.serving;
+    const suiteConfig = getSuiteConfig();
+    const approach = suiteConfig.serving;
 
     if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
       copySkills(tempHome, Agents.JETSKI, approach === Serving.SKILLS_CLI);
     } else if (approach === Serving.MCP) {
       updateMcpConfig(
         path.join(jetskiDest, 'mcp_config.json'),
-        config.suite.mcpServersToEnable,
+        suiteConfig.mcpServersToEnable,
         config.environment.modernWebServerPath,
         config.environment.mcpApiKey,
         Agents.JETSKI

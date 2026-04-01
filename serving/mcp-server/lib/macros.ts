@@ -79,13 +79,13 @@ function processMacros(
   content: string,
   onMatch: (handler: MacroHandler, args: string[], match: string) => string | void
 ): string {
-  return content.replace(MACRO_PATTERN, (match, name, argsString) => {
+  return content.replace(MACRO_PATTERN, (match: string, name: string, argsString: string): string => {
     const handler = MACRO_HANDLERS[name];
     if (!handler) return match;
 
     const args = parseArguments(argsString);
     const result = onMatch(handler, args, match);
-    return result !== undefined ? result : match;
+    return typeof result === 'string' ? result : match;
   });
 }
 
