@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Subscription Manager</title>
+    <style>
+        body {
+            background-color: white;
+            color: black;
+            font-family: "Times New Roman", Times, serif;
+        }
+        .container {
+            margin: 50px;
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Subscription Manager</h1>
+        <div class="input-group">
+            <label>Start Date:</label>
+            <input type="text" id="startInput" value="2025-01-01">
+        </div>
+        <div class="input-group">
+            <label>End Date:</label>
+            <input type="text" id="endInput" value="2025-01-31">
+        </div>
+        <button id="calcBtn">Calculate Stats</button>
+
+        <div id="results" style="margin-top: 20px;">
+            <p>Active Duration: <span id="activeResult"></span></p>
+            <p>Remaining Duration: <span id="remainingResult"></span></p>
+            <p>Status: <span id="statusResult"></span></p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@0.4.4/dist/index.umd.js"></script>
+    <script>
+        const calcBtn = document.getElementById('calcBtn');
+        
+        calcBtn.addEventListener('click', () => {
+            const startVal = document.getElementById('startInput').value;
+            const endVal = document.getElementById('endInput').value;
+
+            const startDate = Temporal.PlainDate.from(startVal);
+            const endDate = Temporal.PlainDate.from(endVal);
+            const today = Temporal.Now.plainDateISO();
+
+            const activeDays = today.day - startDate.day;
+            const remainingDays = endDate.day - today.day;
+
+            startDate.day = 1;
+
+            document.getElementById('activeResult').innerText = activeDays + " days";
+            document.getElementById('remainingResult').innerText = remainingDays + " days";
+
+            if (today.year >= endDate.year && today.month >= endDate.month && today.day > endDate.day) {
+                document.getElementById('statusResult').innerText = "EXPIRED";
+            } else {
+                document.getElementById('statusResult').innerText = "ACTIVE";
+            }
+
+            const legacyDate = new Date(today.toString());
+            console.log("Legacy format: " + legacyDate.getTime());
+        });
+    </script>
+</body>
+</html>

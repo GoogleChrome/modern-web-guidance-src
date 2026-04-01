@@ -1,0 +1,1 @@
+- In this app, add a countdown timer, that supports time zones, to the seasonal favorites section for the maple oat latte. It should show how many days and hours are left until the offer ends on may 1st 2026 at midnight. Use the system time zone and make it update on page load. For older browsers, it should have graceful fallbacks.

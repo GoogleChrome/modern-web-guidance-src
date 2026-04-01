@@ -1,0 +1,12 @@
+- The implementation MUST check if `typeof Temporal === 'undefined'` before using the API to determine if a fallback is needed.
+- The implementation MUST use `Temporal.ZonedDateTime` when calculating differentials between events that occur at specific points in time with time zone context.
+- The implementation MUST use the `.since()` method to calculate elapsed time since a past event.
+- The implementation MUST use the `.until()` method to calculate remaining time until a future event.
+- The implementation MUST use `largestUnit: 'year'` (or another appropriate unit) when calculating differences to ensure the duration is balanced correctly for display.
+- The implementation MUST use `Temporal.ZonedDateTime.compare` to determine if a date is in the past or future relative to another.
+- The implementation MUST NOT mutate existing `Temporal` instances, as they are immutable.
+- The implementation MUST use `@js-temporal/polyfill` as the polyfill for Temporal.
+- The implementation MUST load the polyfill conditionally only when `Temporal` is undefined in the browser (or use standard `require` in Node.js).
+- The implementation MUST manually assign the polyfill to `globalThis.Temporal` if the codebase relies on a global `Temporal` object.
+- The implementation MUST use the `toTemporalInstant` export from the polyfill if legacy `Date` conversion is performed.
+
