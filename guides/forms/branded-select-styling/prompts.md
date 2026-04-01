@@ -1,1 +1,4 @@
-- Add a store location select dropdown to the nav menu. I want to include rich media to style it. Make sure to use so we can style the picker dropdown list to match the dark primary color of the nav, and include a custom trigger button.
+- add a coffee roast selector (light, medium, dark) to the hero section. use the new customizable select features so the dropdown list, the arrow, and the checkmark all match the site's dark brown (#4e342e) and orange (#ffab40) palette.
+- can you add a milk choice dropdown to the coffee cards? i want it to look like a button that matches our style, and the dropdown menu should have the same rounded corners as the cards.
+- i need to style the dropdown picker for a new order menu. can you set up a select using the base-select appearance so the dropdown background and text colors match our theme?
+- add a location picker to the nav. make sure the dropdown doesn't just use the basic browser look—it needs to feel branded like the rest of the header.

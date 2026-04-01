@@ -13,52 +13,46 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-// Tests
 test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
-  // Static assertions
-  test(`MUST apply appearance: base-select to <select>`, async () => {
+  // 1. Static assertions
+  test('Requirement 1: select element MUST have appearance: base-select', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/select[\s\S]*?\{[^}]*appearance:\s*base-select/);
+    // Check for select { ... appearance: base-select; ... } or select, ... { ... appearance: base-select; ... }
+    expect(html).toMatch(/select[^{,]*([^{]*\{|,[^{]*\{)[^}]*appearance\s*:\s*base-select/i);
   });
 
-  test(`MUST apply appearance: base-select to ::picker(select)`, async () => {
+  test('Requirement 2: ::picker(select) pseudo-element MUST have appearance: base-select', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/::picker\(select\)[\s\S]*?\{[^}]*appearance:\s*base-select/);
+    expect(html).toMatch(/::picker\(select\)[^{,]*([^{]*\{|,[^{]*\{)[^}]*appearance\s*:\s*base-select/i);
   });
 
-  test(`MUST use ::picker(select) to define visual container`, async () => {
+  test('Requirement 3: ::picker(select) MUST define the visual container (border, background, etc.)', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/::picker\(select\)\s*\{[^}]*(?:background|border|padding|color)[^}]*\}/);
+    // Look for styles in ::picker(select) block
+    expect(html).toMatch(/::picker\(select\)[^{]*\{[^}]*(border|background|padding|box-shadow)/i);
   });
 
-  test(`MUST use select::picker-icon`, async () => {
+  test('Requirement 4: MUST use select::picker-icon to customize the drop-down arrow icon', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/select::picker-icon\s*\{/);
+    expect(html).toContain('select::picker-icon');
   });
 
-  test(`MUST use option::checkmark`, async () => {
+  test('Requirement 5: MUST use option::checkmark to customize the checkmark indicator', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/option::checkmark\s*\{/);
+    expect(html).toContain('option::checkmark');
   });
 
-  test(`MUST NOT use JS to toggle dropdown`, async () => {
+  test('Requirement 9: MUST include a progressive enhancement fallback check if JS is used for custom behavior', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    const hasJsToggle = html.includes('addEventListener(\'click\'') && html.includes('classList.toggle');
-    expect(hasJsToggle).toBe(false);
-  });
-
-  test(`MUST use CSS.supports for progressive enhancement fallback`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasScript = /<script>[\s\S]*?<\/script>/.test(html);
-    if (hasScript) {
-      const scriptContent = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] || '';
-      const hasStyleAdjustment = scriptContent.includes('.style.') || scriptContent.includes('classList');
-      if (hasStyleAdjustment) {
-        expect(scriptContent).toContain('CSS.supports');
-      } else {
-        expect(true).toBe(true);
-      }
+    const hasJS = html.includes('<script') || html.includes('onclick') || html.includes('addEventListener');
+    const hasBaseSelect = html.includes('appearance: base-select');
+    
+    // If it attempts custom UI (indicated by JS or hiding the select) but lacks base-select,
+    // it MUST have the CSS.supports check.
+    if (hasJS && !hasBaseSelect) {
+      expect(html).toContain('CSS.supports("appearance", "base-select")');
     } else {
+      // Passes if it uses base-select natively or has no JS fallbacks
       expect(true).toBe(true);
     }
   });
@@ -79,50 +73,62 @@ test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  // Browser assertions
-  test(`MUST include <button> inside <select>`, async ({ page }) => {
-    const selectHasButton = await page.evaluate(() => {
-      const select = document.querySelector('select');
-      return select ? select.querySelector('button') !== null : false;
-    });
-    expect(selectHasButton).toBe(true);
+  // 2. Browser assertions
+  test('Requirement 6: markup MUST include a <button> element inside the <select>', async ({ page }) => {
+    const button = await page.$('select > button');
+    expect(button).not.toBeNull();
   });
 
-  test(`MUST include <selectedcontent> in trigger button`, async ({ page }) => {
-    const hasSelectedContent = await page.evaluate(() => {
-      const btn = document.querySelector('select button');
-      return btn ? btn.querySelector('selectedcontent') !== null : false;
-    });
-    expect(hasSelectedContent).toBe(true);
+  test('Requirement 7a: trigger button MUST include a <selectedcontent> element', async ({ page }) => {
+    const selectedContent = await page.$('select > button selectedcontent');
+    expect(selectedContent).not.toBeNull();
   });
 
-  test(`MUST NOT contain legacy <selectedoption>`, async ({ page }) => {
-    const hasLegacy = await page.evaluate(() => {
-      return document.querySelector('selectedoption') !== null;
+  test('Requirement 7b: trigger button MUST NOT contain legacy <selectedoption> element', async ({ page }) => {
+    // Return true if button doesn't exist to make the test fail
+    const hasSelectedOption = await page.evaluate(() => {
+      const button = document.querySelector('select > button');
+      if (!button) return true; 
+      return !!button.querySelector('selectedoption');
     });
-    expect(hasLegacy).toBe(false);
+    expect(hasSelectedOption).toBe(false);
   });
 
-  test(`<select> MUST have a name attribute`, async ({ page }) => {
-    const hasName = await page.evaluate(() => {
-      const select = document.querySelector('select');
-      return select ? select.hasAttribute('name') : false;
-    });
-    expect(hasName).toBe(true);
+  test('Requirement 8: MUST NOT use JavaScript as the primary mechanism for toggling the dropdown', async ({ page }) => {
+    // Check if the select is hidden (common in JS-based custom selects)
+    const select = await page.$('select');
+    if (!select) {
+      throw new Error('Select element not found');
+    }
+    const isVisible = await select.isVisible();
+    
+    // Check for common JS-based trigger patterns if select is hidden
+    const hasCustomTrigger = await page.$('[onclick*="toggle"], [class*="trigger"]');
+    
+    if (!isVisible && hasCustomTrigger) {
+      throw new Error('JS used for toggling instead of native base-select');
+    }
+    expect(isVisible).toBe(true);
   });
 
-  test(`<select> MUST have an associated <label>`, async ({ page }) => {
-    const hasLabel = await page.evaluate(() => {
-      const select = document.querySelector('select');
-      if (!select) return false;
-      const id = select.getAttribute('id');
-      if (id) {
-        const label = document.querySelector(`label[for="${id}"]`);
-        if (label) return true;
-      }
-      const parentLabel = select.closest('label');
-      return parentLabel !== null;
-    });
-    expect(hasLabel).toBe(true);
+  test('Requirement 10a: <select> MUST have a name attribute', async ({ page }) => {
+    const select = await page.$('select');
+    const name = await select?.getAttribute('name');
+    expect(name).toBeTruthy();
+  });
+
+  test('Requirement 10b: <select> MUST have an associated <label>', async ({ page }) => {
+    const select = await page.$('select');
+    const id = await select?.getAttribute('id');
+    if (!id) {
+      // If no ID, it might be nested in a label, but requirement says "associated label"
+      // and usually implies for/id or nesting.
+      // Demo has id/for. Negative has neither.
+      const parentLabel = await page.$(`label:has(select)`);
+      expect(parentLabel).not.toBeNull();
+    } else {
+      const label = await page.$(`label[for="${id}"]`);
+      expect(label).not.toBeNull();
+    }
   });
 });

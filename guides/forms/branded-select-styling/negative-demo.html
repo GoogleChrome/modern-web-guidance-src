@@ -3,46 +3,110 @@
 <head>
 <meta charset="utf-8">
 <style>
-  .custom-select-container {
-    font-family: Arial, sans-serif;
+  body {
+    font-family: sans-serif;
+    padding: 20px;
+  }
+
+  .custom-select-wrapper {
+    position: relative;
+    user-select: none;
+    width: 200px;
+  }
+
+  .custom-select-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     padding: 10px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
   }
-  .dropdown-menu {
+
+  .custom-options {
+    position: absolute;
     display: none;
-    background: #ccc;
+    top: 100%;
+    left: 0;
+    right: 0;
+    border: 1px solid #ccc;
+    background: #fff;
+    z-index: 2;
   }
-  .dropdown-menu.show {
+
+  .custom-options.open {
     display: block;
+  }
+
+  .custom-option {
+    padding: 10px;
+    cursor: pointer;
+  }
+
+  .custom-option:hover {
+    background: #f0f0f0;
+  }
+
+  .custom-option.selected {
+    background: #e0e0e0;
+  }
+
+  .arrow {
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid #000;
+  }
+
+  select {
+    display: none;
   }
 </style>
 </head>
 <body>
 
-<span>Select an item:</span>
-<select id="item-selector" class="custom-select-container">
-  <selectedoption></selectedoption>
-  <option value="1">Item 1</option>
-  <option value="2">Item 2</option>
-  <option value="3">Item 3</option>
-</select>
-
-<div id="js-dropdown" class="dropdown-menu">
-  <div>Item 1</div>
-  <div>Item 2</div>
-  <div>Item 3</div>
+<div class="custom-select-wrapper">
+  <div class="custom-select-trigger" onclick="toggleOptions()">
+    <span id="selected-text">Select an option</span>
+    <div class="arrow"></div>
+  </div>
+  <div class="custom-options" id="options-list">
+    <div class="custom-option" onclick="selectOption('Option 1')">Option 1</div>
+    <div class="custom-option" onclick="selectOption('Option 2')">Option 2</div>
+    <div class="custom-option" onclick="selectOption('Option 3')">Option 3</div>
+  </div>
 </div>
 
+<select id="hidden-select">
+  <option value="1">Option 1</option>
+  <option value="2">Option 2</option>
+  <option value="3">Option 3</option>
+</select>
+
 <script>
-  const selectElement = document.getElementById('item-selector');
-  const dropdownMenu = document.getElementById('js-dropdown');
+  function toggleOptions() {
+    document.getElementById('options-list').classList.toggle('open');
+  }
 
-  selectElement.addEventListener('click', function(event) {
-    event.preventDefault();
-    dropdownMenu.classList.toggle('show');
-  });
+  function selectOption(val) {
+    document.getElementById('selected-text').innerText = val;
+    document.getElementById('options-list').classList.remove('open');
+    
+    const select = document.getElementById('hidden-select');
+    for (let i = 0; i < select.options.length; i++) {
+      if (select.options[i].text === val) {
+        select.selectedIndex = i;
+        break;
+      }
+    }
+  }
 
-  if (typeof window !== 'undefined') {
-    selectElement.style.backgroundColor = '#f0f0f0';
+  window.onclick = function(event) {
+    if (!event.target.closest('.custom-select-wrapper')) {
+      document.getElementById('options-list').classList.remove('open');
+    }
   }
 </script>
 

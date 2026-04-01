@@ -2,4 +2,4 @@
 base_app: daily-grind
 grader: branded-select-styling
 ---
-Add a store location select dropdown to the nav menu. I want to include rich media to style it. Make sure to use so we can style the picker dropdown list to match the dark primary color of the nav, and include a custom trigger button.
+add a coffee roast selector (light, medium, dark) to the hero section. use the new customizable select features so the dropdown list, the arrow, and the checkmark all match the site's dark brown (#4e342e) and orange (#ffab40) palette.

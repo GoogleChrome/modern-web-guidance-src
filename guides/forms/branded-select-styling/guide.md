@@ -124,9 +124,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Check if browser supports base-select value
   if (!CSS.supports("appearance", "base-select")) {
     console.log("Custom select overrides are not supported natively.");
-    // Apply standard override fallback classes if needed
-    // Example: Standard select custom styling (without picker overrides)
-    document.querySelector('.brand-select').classList.add('fallback-standard');
   }
 });
 ```
