@@ -16,18 +16,13 @@ To verify that skills and the MCP server are installing and activating correctly
 Clear any old global installs or CLI state to ensure a clean slate:
 
 ```sh
-# Remove global modern-web CLI binaries
 npm uninstall --global modern-web
 
-# Purge gemini extensions
 gemini extensions uninstall https://github.com/GoogleChrome/skills-alpha
 
-# Purge claude plugins
 claude plugin uninstall googlechrome-skills@skills-alpha
+#   To remove the marketplace, need to use `/plugin`
 
-# Claude marketplaces cannot be done with CLI commands (must be done with slash commands)
-
-# Purge standard skill assets
 DISABLE_TELEMETRY=1 npx -y skills remove --global modern-web-use-cases
 ```
 
@@ -36,12 +31,10 @@ DISABLE_TELEMETRY=1 npx -y skills remove --global modern-web-use-cases
 Re-install the standard web skills to prove runtime behavior:
 
 ```sh
-# Verify base skills installer pulls correctly
 DISABLE_TELEMETRY=1 npx skills add GoogleChrome/skills-alpha
 
-# Establish bindings for claude
+# Claude, assuming marketplace already added via: /plugin marketplace add GoogleChrome/skills-alpha
 claude plugin install googlechrome-skills@skills-alpha
 
-# Establish bindings for gemini
 gemini extensions install https://github.com/GoogleChrome/skills-alpha --auto-update
 ```

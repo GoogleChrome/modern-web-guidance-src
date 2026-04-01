@@ -41,8 +41,6 @@ async function main() {
   console.log("Copying installation manifests and metadata for AI tools...");
   fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), PUBLISH_ROOT, { recursive: true });
 
-  console.log("Renaming steps ignored as template is now package.json");
-
 
   console.log("Copying data files...");
   // 3. Copy vector_store
