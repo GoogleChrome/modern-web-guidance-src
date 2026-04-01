@@ -1,3 +1,3 @@
-- add a telemetry script that tracks clicks on the 'view details' buttons. use temporal to get nanosecond-resolution timestamps for each click, sort them chronologically, and log the time difference between consecutive clicks.
-- i need to see the exact order people interact with the seasonal drink cards. can you set up something to capture those clicks with sub-millisecond precision so we don't have collisions in our logs?
-- can you implement a high-res event logger for the 'order now' button using Temporal.Now.instant()? also make sure to include the polyfill check so it works on older browsers.
+- Add a telemetry script that tracks clicks on the 'view details' buttons. Use temporal to get nanosecond-resolution timestamps for each click, sort them chronologically, and log the time difference between consecutive clicks.
+- I need to see the exact order people interact with the seasonal drink cards. Can you set up something to capture those clicks with sub-millisecond precision so we don't have collisions in our logs?
+- Can you implement a high-res event logger for the 'order now' button using Temporal.Now.instant()? Also make sure to include the polyfill check so it works on older browsers.
