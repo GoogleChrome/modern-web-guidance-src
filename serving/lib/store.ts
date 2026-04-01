@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 
 let DATA_DIR = path.resolve(import.meta.dirname, "../vector_store");
-if (!fs.existsSync(DATA_DIR)) {
+if (!fs.existsSync(DATA_DIR) && fs.existsSync(path.resolve(import.meta.dirname, "../../vector_store"))) {
   DATA_DIR = path.resolve(import.meta.dirname, "../../vector_store");
 }
 
