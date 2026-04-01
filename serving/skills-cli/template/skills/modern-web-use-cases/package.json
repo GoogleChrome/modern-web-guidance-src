@@ -1,0 +1,12 @@
+{
+  "name": "modern-web-use-cases",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "modern-web": "../../../bin/modern-web.mjs"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
+    "@lancedb/lancedb": "^0.26.2"
+  }
+}

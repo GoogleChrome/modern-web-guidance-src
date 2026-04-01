@@ -86,6 +86,8 @@ async function main() {
 
 
     console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/skills-alpha!`);
+
+    console.log('Perhaps also:\n    pushd ~/code/skills-alpha && git pull gh && git push gob && popd');
   }
 }
 
