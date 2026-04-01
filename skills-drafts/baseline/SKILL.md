@@ -21,8 +21,6 @@ Baseline brings clarity to browser support tracking for web platform features, a
 - **DO** check ESLint configurations for standard web compatibility rules.
 - **DO** check `package.json` for project-specific settings (specifically the `browserslist` key, as no other custom baseline keys are supported there).
 
----
-
 ## Baseline Targets Reference
 
 Definitions of standard targets for use in verifying feature readiness.
@@ -39,8 +37,6 @@ Developers can tune the window by specifying calendar years or specific observat
 - `'baseline 2024'` - Feature met Baseline in the given calendar year (tested as of end of year).
 - `'baseline widely available on 2024-01-01'` - Feature was Widely available on that specific date.
 
----
-
 ## Technical Auditing Heuristics
 
 ### Where to Find Project Targets
@@ -53,36 +49,37 @@ Developers can tune the window by specifying calendar years or specific observat
      - Type: `boolean` (Default: `true`)
      - Description: Set to `false` to opt-out of generating `TODO(baseline/...)` comments for unsupported features.
    - Example:
-     ```json
-     {
-       "baseline_target": "widely available",
-       "enable_baseline_todos": true
-     }
-     ```
+       ```json
+       {
+         "baseline_target": "widely available",
+         "enable_baseline_todos": true
+       }
+       ```
 
 2. **Browserslist Check**
-   - Check for `baseline` queries in `.browserslistrc` or `package.json`. The `browserslist` config will literally contain the word `baseline`. Refer to the latest `browserslist` documentation for how to parse these queries. **DO NOT** attempt to map `> 1%` or `last 2 versions` to a Baseline equivalent as this does not work.
+   - Check for `baseline` queries in `.browserslistrc` or `package.json`. The `browserslist` config will contain the word `baseline`. **DO NOT** attempt to map `> 1%` or `last 2 versions` to a Baseline equivalent as this does not work.
+   - **Supported Baseline Queries:**
+     - `baseline widely available`: Browser versions supporting all features interoperable for at least 30 months.
+     - `baseline newly available`: Browser versions supporting all features interoperable today.
+     - `baseline widely available on YYYY-MM-DD`: Browser versions supporting the Widely set on a specific date.
+     - `baseline YYYY` (e.g., `baseline 2024`): Browser versions compatible with features that were Newly available at the end of that year.
 
 3. **ESLint Integration**
    - Check if the linter is configured to flag unsupported APIs. Defer to linter rules if they enforce strict browser support.
 
----
+## Interpreting Feature Status Messages
 
-## Interpreting Guide Macros and Literals
+Guide files contain status messages describing a feature's Baseline status. Use these messages as hints to determine if a feature satisfies your project target:
 
-Guide files use a `{{ BASELINE_STATUS("feature-id") }}` macro which expands into a text string describing the feature's status. Use these literal messages as hints to determine if a feature satisfies your project target:
-
-| Literal Message Fragment | Target Readiness | Action |
+| Status Message | Target Readiness | Action |
 | --- | --- | --- |
 | `"... is Widely. It's been Baseline since ..."` | **Met** for `'widely available'` and `'newly available'`. | Safe to use natively without fallback. |
 | `"... is Newly. It's been Baseline since ..."` | **Met** for `'newly available'`. Check the date for `'baseline YYYY'`. | Use progressive enhancement if target is older. |
 | `"... is Limited."` | **Not Met** for any Baseline target. | Fallback required (or `TODO` placeholder if none exists). |
 
----
-
 ## Reconciling Targets with Use Case Guides
 
-When implementing code from project guides (e.g., under `/guides/`), reconcile the project target with the feature statuses defined in the guide (or via macro literals).
+When implementing code from project guides, reconcile the project target with the feature statuses defined in the guide.
 
 ### Single-Browser Targets (e.g., Electron, Chrome-only Intranets)
 
@@ -99,7 +96,7 @@ Web features can be renamed ("moved") or broken down ("split"). The tool script 
 - **Resolving Moved vs Split IDs:**
   - **Moved:** Replace the stale ID with the single modern canonical ID directly in the source code.
   - **Split:** Analyze the context of the code block. Determine which sub-feature(s) apply. Use the specific sub-feature ID(s).
-  - **Single ID per Comment (Recommendation):** If multiple split sub-features apply to the same code block, add a separate `// TODO(baseline/canonical-id)` comment for each (stack them). Do **NOT** use comma-separated lists inside `TODO` comments (e.g., `// TODO(baseline/id1,id2)`) as it breaks 1:1 compatibility with CLI tools.
+  - **Single ID per Comment (Recommendation):** If multiple split sub-features apply to the same code block, add a separate `// TODO(baseline/feature-id)` comment for each (stack them). Do **NOT** use comma-separated lists inside `TODO` comments (e.g., `// TODO(baseline/id1,id2)`) as it breaks 1:1 compatibility with CLI tools.
 
 ### Data Synchronization & Maintenance
 
@@ -142,13 +139,13 @@ If a feature does not meet the project target AND cannot be used safely with sta
 
 The comment **MUST** contain a high-level description of what needs to be done. It does **not** need to contain code sketches or specific criteria for "when ready," as the `baseline/feature-id` itself implies it should be done when that feature meets the target.
 
-**Syntax:**
-`// TODO(baseline/feature-id): <High-level description of what to do>`
+**Comment Syntax:**
+`TODO(baseline/feature-id): <High-level description of what to do>`
+
+Use this syntax inside standard comment delimiters for the language you are writing (single-line or multi-line).
 
 **Example:**
-```javascript
-// TODO(baseline/fetch): Replace XHR with the fetch API for data retrieval.
-// Using legacy XHR wrapper for now as a fallback.
-xhrRequest('/api/search', query);
-```
+```html
+<!-- TODO(baseline/fencedframe): Use privacy-preserving embeds. -->
+<iframe src="https://example.com"></iframe>
 ```
