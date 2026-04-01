@@ -109,10 +109,10 @@ test('modern-web CLI search and retrieve', async () => {
   const binaryPath = path.join(DIST_DIR, 'skills/modern-web-use-cases/modern-web.mjs');
   
   // 1. Validate search
-  const searchOut = execSync(`node "${binaryPath}" --search tooltip`, { encoding: 'utf8' });
+  const searchOut = execSync(`node "${binaryPath}" --search "address form"`, { encoding: 'utf8' });
   const searchResults = JSON.parse(searchOut);
   assert.ok(Array.isArray(searchResults), 'Search output should be a JSON array');
-  assert.ok(searchResults.length > 0, 'Should return at least one search result for tooltip');
+  assert.ok(searchResults.length > 0, 'Should return at least one search result for address form');
 
   // 2. Validate retrieve
   const retrieveOut = execSync(`node "${binaryPath}" --retrieve accessible-error-announcement`, { encoding: 'utf8' });
