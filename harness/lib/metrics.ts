@@ -65,6 +65,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       return guideNameA.localeCompare(guideNameB);
     }
 
+    // Sort known run types first, others alphabetically
     const orderA = runTypeOrder[runTypeA] || 99;
     const orderB = runTypeOrder[runTypeB] || 99;
 

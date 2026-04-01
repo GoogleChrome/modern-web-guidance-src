@@ -58,8 +58,8 @@ test.describe('Eval View Dashboard', () => {
     await page.goto('/dashboard.html?testId=example-result');
 
     // Wait for cards and click the card
-    const targetCard = page.locator('.test-card', { hasText: 'preload-prerender / unguided' });
-    await targetCard.click();
+    const firstCard = page.locator('.test-card').first();
+    await firstCard.click();
 
     // Verify modal is shown
     const modal = page.locator('#modal');

@@ -170,12 +170,12 @@ The eval harness measures whether guides actually improve agent output.
 
 ### How a suite run works (`gd eval`)
 
-1. **Build MCP index**: Compiles all guides into the MCP server's searchable index.
+1. **Build Guide Index**: Compiles all guides into a searchable index (RAG).
 2. **Discover tasks**: Scans guide directories for `task.md` definitions (or uses explicitly configured tasks).
 3. **For each task, for each run** (configurable `numRuns`, default 2):
    - Set up an isolated working directory with the base app
-   - Run the agent in **unguided mode** (no MCP servers)
-   - Run the agent in **guided mode** (with configured MCP servers)
+   - Run the agent in **unguided mode** (no guidance)
+   - Run the agent in **guided mode** (with configured guidance)
    - Grade both outputs using the task's grader
 4. **Generate reports**: JSON results + HTML report in the output directory.
 5. **Upload** (optional): `pnpm upload <suite-name>` pushes results to GCS for the dashboard.

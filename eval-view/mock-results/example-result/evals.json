@@ -17,6 +17,7 @@
     "cards-app - content-vis - unguided": [
       {
         "runNumber": 1,
+        "baseApp": "cards-app",
         "results": [
           {
             "passed": true,
@@ -71,6 +72,7 @@
     "cards-app - content-vis - guided": [
       {
         "runNumber": 1,
+        "baseApp": "cards-app",
         "results": [
           {
             "passed": true,

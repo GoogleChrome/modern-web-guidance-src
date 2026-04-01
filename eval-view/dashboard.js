@@ -267,9 +267,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const nextScenario = sortedScenarios[sIdx];
             const nextRunType = currentRunTypes[rIdx];
-            const nextTestName = parts.length === 3 ? `${parts[0]} - ${nextScenario} - ${nextRunType}` : `${nextScenario} - ${nextRunType}`;
+            const targetSuffix = `${nextScenario} - ${nextRunType}`;
+            const nextTestName = Object.keys(allTestData.results).find(k => k === targetSuffix || k.endsWith(` - ${targetSuffix}`));
 
-            if (nextTestName !== currentDetails.testName && allTestData.results[nextTestName]) {
+            if (nextTestName && nextTestName !== currentDetails.testName && allTestData.results[nextTestName]) {
                 e.preventDefault();
                 showDetails(
                     nextTestName,
@@ -428,54 +429,54 @@ function renderGrid(data, testId) {
             const testName = results[testIdentifierStr] ? testIdentifierStr : legacyTestIdentifierStr;
 
             const card = document.createElement('div');
-                card.className = 'test-card';
+            card.className = 'test-card';
 
-                // Calculate Total/Average Pass Rate for this specific test configuration
-                const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
-                const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
-                const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
+            // Calculate Total/Average Pass Rate for this specific test configuration
+            const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
+            const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
+            const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
 
-                let toolActivationHtml = '';
-                if (runType === 'guided' && testStats && testStats.runsWithToolActivation !== undefined) {
-                    const count = testStats.runsWithToolActivation;
-                    const total = testStats.runCount;
-                    const toolActivationRate = total > 0 ? Math.round((count / total) * 100) : 0;
-                    const color = getColor(toolActivationRate);
-                    toolActivationHtml = `
-                        <div style="font-size: 0.85em; margin-top: 4px; color: ${color}; font-weight: 500;">
-                            Tool Activated (${count}/${total} runs)
-                        </div>
-                    `;
-                }
-
-                let guideUsageHtml = '';
-                if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined) {
-                    const count = testStats.runsUsingGuide;
-                    const total = testStats.runCount;
-                    const usageRate = total > 0 ? Math.round((count / total) * 100) : 0;
-                    const color = getColor(usageRate);
-                    guideUsageHtml = `
-                        <div style="font-size: 0.85em; margin-top: 6px; color: ${color}; font-weight: 500;">
-                            Guide Used (${count}/${total} runs)
-                        </div>
-                    `;
-                }
-
-                card.onclick = () => showDetails(testName, runData, testStats, testId);
-                card.innerHTML = `
-                    <h3>${formatTestName(testName)}</h3>
-                    <div class="pass-rate-bar">
-                        <div class="pass-rate-fill" style="width: ${avgRate}%; background-color: ${getColor(avgRate)}"></div>
+            let toolActivationHtml = '';
+            if (runType === 'guided' && testStats && testStats.runsWithToolActivation !== undefined) {
+                const count = testStats.runsWithToolActivation;
+                const total = testStats.runCount;
+                const toolActivationRate = total > 0 ? Math.round((count / total) * 100) : 0;
+                const color = getColor(toolActivationRate);
+                toolActivationHtml = `
+                    <div style="font-size: 0.85em; margin-top: 4px; color: ${color}; font-weight: 500;">
+                        Tool Activated (${count}/${total} runs)
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.9em; color: var(--text-secondary);">
-                        <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
-                        <span>Runs: ${runData.length}</span>
-                    </div>
-                    ${toolActivationHtml}
-                    ${guideUsageHtml}
                 `;
+            }
 
-                grid.appendChild(card);
+            let guideUsageHtml = '';
+            if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined) {
+                const count = testStats.runsUsingGuide;
+                const total = testStats.runCount;
+                const usageRate = total > 0 ? Math.round((count / total) * 100) : 0;
+                const color = getColor(usageRate);
+                guideUsageHtml = `
+                    <div style="font-size: 0.85em; margin-top: 6px; color: ${color}; font-weight: 500;">
+                        Guide Used (${count}/${total} runs)
+                    </div>
+                `;
+            }
+
+            card.onclick = () => showDetails(testName, runData, testStats, testId);
+            card.innerHTML = `
+                <h3>${formatTestName(testName)}</h3>
+                <div class="pass-rate-bar">
+                    <div class="pass-rate-fill" style="width: ${avgRate}%; background-color: ${getColor(avgRate)}"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.9em; color: var(--text-secondary);">
+                    <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
+                    <span>Runs: ${runData.length}</span>
+                </div>
+                ${toolActivationHtml}
+                ${guideUsageHtml}
+            `;
+
+            grid.appendChild(card);
         });
     });
 }
@@ -548,14 +549,13 @@ async function showDetails(testName, runs, stats, testId) {
                 let prompt = run.prompt || '';
                 const baseApp = run.baseApp || 'n/a';
 
-                if (!prompt) {
+                if (!prompt) { // Fallback for legacy evaluations
                     try {
                         const legacyTaskName = parts.length === 3 ? parts[0] : run.taskName;
                         const isNegative = legacyTaskName && legacyTaskName.endsWith('-negative');
                         const taskPath = `tasks/${isNegative ? 'negative/' : ''}${legacyTaskName}.md`;
                         const taskMd = await api.getFileText(taskPath);
-
-                        prompt = taskMd.replace(/^---[\s\S]+?---\n+/, '').trim(); // Strip frontmatter only for legacy evaluations
+                        prompt = taskMd.replace(/^---[\s\S]+?---\n+/, '').trim();
                     } catch {
                         console.log(`Fallback failed: Could not resolve legacy task file for ${run.taskName}`);
                     }

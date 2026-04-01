@@ -16,7 +16,6 @@ import { environmentConfig, defaultSuiteConfig, Serving, type SuiteConfig } from
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../lib/colors.ts';
 import {
   type GuideInventory,
-  type TaskInfo,
   type GuideStatus,
   GUIDE_FILE,
   DEMO_FILE,
@@ -73,7 +72,6 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   }
 
   // Step 1: Inventory (use provided inventory or scan)
-  let taskMap = getTaskMap();
   const currentInv = inv || inventoryGuide(targetDir);
   printInventory(currentInv);
 
@@ -166,6 +164,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   }
 
   // Step 5: Test task and prompt generation
+
   if (calibrationResult?.success) {
     console.log(cCyan(`\n--- Setting up test task ---`));
 
@@ -174,8 +173,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
       console.log(`${TASK_FILE} not found, generating...`);
       try {
         await generateTask(targetDir);
-        // Refresh mapping after generation
-        taskMap = getTaskMap();
+
       } catch (err) {
         console.error(cRed(`Failed to generate ${TASK_FILE}: ${err}`));
       }
@@ -184,7 +182,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
   // Step 6: Optional agent test
   if (options.test !== false && calibrationResult?.success) {
-    await runAgentTest(targetDir, currentInv.name, taskMap, options.guidedOnly, options.suiteConfig);
+    await runAgentTest(targetDir, currentInv.name, options.guidedOnly, options.suiteConfig);
   }
 
   // Step 7: Summary
@@ -286,9 +284,10 @@ Only create the ${TASK_FILE} file. Do not modify any other files.`;
   }
 }
 
-async function runAgentTest(targetDir: string, guideName: string, taskMap: Map<string, TaskInfo>, guidedOnly = false, suiteConfig?: SuiteConfig): Promise<void> {
+async function runAgentTest(targetDir: string, guideName: string, guidedOnly = false, suiteConfig?: SuiteConfig): Promise<void> {
   console.log(cCyan(`\n--- Running agent test ---`));
 
+  const taskMap = getTaskMap();
   const taskInfo = taskMap.get(guideName);
   if (!taskInfo) {
     console.error(cRed(`Task info not found for ${guideName}, cannot run agent test.`));
@@ -463,7 +462,6 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
     if (!inv.hasNegativeDemo) missing.push(NEGATIVE_DEMO_FILE);
     if (!inv.hasGrader) missing.push(GRADER_FILE);
     if (!inv.hasTask) missing.push(TASK_FILE);
-    if (!inv.hasTask) missing.push('task');
     console.log(`  ${inv.name} ${cDim(`(missing: ${missing.join(', ')})`)}`);
   }
   console.log('');

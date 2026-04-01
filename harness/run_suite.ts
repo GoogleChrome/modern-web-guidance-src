@@ -149,13 +149,12 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
         promptContent += COMMON_APPEND_PROMPT;
 
+        // Copy the base app to the run directory (for tracking purposes)
         const taskDir = path.join(runDir, task);
         const workspaceBaseAppDir = path.join(taskDir, 'base_app');
         if (!fs.existsSync(workspaceBaseAppDir)) {
           fs.mkdirSync(workspaceBaseAppDir, { recursive: true });
         }
-
-        let templateDir = workspaceBaseAppDir;
         if (isNegativeSuite) {
           const negativeDemoPath = path.join(taskInfo.guideDir, 'negative-demo.html');
           if (fs.existsSync(negativeDemoPath)) {
@@ -198,7 +197,7 @@ const args = [
   promptContent,
   runType,
   targetDir,
-  templateDir
+  workspaceBaseAppDir
 ])}
 ];
 const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
@@ -251,6 +250,7 @@ process.exit(result.status ?? 0);
         }
       }
     }
+
     if (hasErrors) {
       console.log(`\n❌ Test suite completed with errors! Results saved to: ${testDir}`);
     } else {

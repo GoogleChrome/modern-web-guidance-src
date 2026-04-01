@@ -66,18 +66,17 @@ export function calculateChartData(results) {
 
         const guide = parts.length === 3 ? parts[1] : parts[0];
         const runType = parts.length === 3 ? parts[2] : parts[1];
-        const scenario = guide;
-        if (!['guided', 'unguided'].includes(runType)) return; // Ignore non-standard run types for the chart
-        if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [] };
-        
+        if (!['guided', 'unguided'].includes(runType)) return;
+        if (!apps[guide]) apps[guide] = { guided: [], unguided: [] };
+
         const runs = results[key];
         if (runs.length > 0 && runs[0].taskName) {
-            taskNames[scenario] = runs[0].taskName;
+            taskNames[guide] = runs[0].taskName;
         }
-        
+
         const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
         const total = runs.reduce((acc, r) => acc + r.results.length, 0);
-        apps[scenario][runType].push(total > 0 ? (passed / total) * 100 : 0);
+        apps[guide][runType].push(total > 0 ? (passed / total) * 100 : 0);
     });
     
     const labels = Object.keys(apps).sort((a, b) => {
