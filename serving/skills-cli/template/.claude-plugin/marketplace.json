@@ -8,7 +8,7 @@
       "name": "googlechrome-skills",
       "source": "./",
       "description": "Google Chrome's agent skills collection",
-      "version": "0.0.10"
+      "version": "0.0.11"
     }
   ]
 }
