@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Logger Pro</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Event Logger Pro</h1>
+            <button id="generate">Generate Batch</button>
+        </header>
+        <div id="log-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Event ID</th>
+                        <th>Timestamp (ms)</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody id="log-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const generateBtn = document.getElementById('generate');
+        const logBody = document.getElementById('log-body');
+
+        generateBtn.addEventListener('click', () => {
+            const events = [];
+            for (let i = 0; i < 10; i++) {
+                events.push({
+                    id: Math.random().toString(36).substr(2, 9),
+                    timestamp: Date.now(),
+                    type: ['CLICK', 'HOVER', 'KEYPRESS'][Math.floor(Math.random() * 3)]
+                });
+            }
+
+            events.sort((a, b) => a.timestamp - b.timestamp);
+
+            render(events);
+        });
+
+        function render(events) {
+            logBody.innerHTML = '';
+            events.forEach(event => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${event.id}</td>
+                    <td>${event.timestamp}</td>
+                    <td>${event.type}</td>
+                `;
+                logBody.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>

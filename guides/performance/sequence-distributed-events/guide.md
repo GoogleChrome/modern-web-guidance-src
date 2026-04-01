@@ -5,85 +5,80 @@ web-feature-ids:
     - temporal
 sources:
   - https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Temporal
+  - https://tc39.es/proposal-temporal/docs/
+  - https://www.w3schools.com/js/js_temporal.asp
 ---
 
-# Sequence Distributed Events
 
-In high-frequency distributed tracing environments, millisecond-precision timestamps (e.g., `Date.now()`) can lead to sorting collisions when multiple events are emitted back-to-back. The `Temporal` API, specifically `Temporal.Instant`, provides nanosecond-precision timestamps that can prevent these collisions and ensure absolute chronological ordering.
+# Sequencing Distributed Events
+
+High-frequency tracing and event logging in distributed systems require precise timestamps to ensure correct causal ordering. Standard JavaScript `Date.now()` provides millisecond resolution, which can lead to timestamp collisions when multiple events occur within the same millisecond. 
+
+The `Temporal` API, specifically `Temporal.Instant`, provides nanosecond-resolution timestamps, enabling precise sequencing of events without collisions.
 
 ## How to Implement
 
-To implement accurate distributed event sequencing:
+To sequence high-frequency events using `Temporal`:
 
-1. **Check for native support:** Verify if `Temporal` is available in the environment (`typeof Temporal !== 'undefined'`).
-2. **Capture timestamps:** Use `Temporal.Now.instant()` to capture the current time with nanosecond precision.
-3. **Compare timestamps:** Use `Temporal.Instant.compare(a, b)` to sort events.
-4. **Calculate precision differences:** Use `since` to find the duration between two instants, and `total({ unit: 'nanoseconds' })` to display the difference in nanoseconds.
+1. **Capture exact timestamps**: Use `Temporal.Now.instant()` to get the current exact time with nanosecond precision.
+2. **Sort events chronologically**: Use `Temporal.Instant.compare(a, b)` to sort event objects. This method resolves ordering differences up to the nanosecond level.
+3. **Calculate delays**: Use `Temporal.Instant.prototype.since(other)` to find the precise duration between events.
+4. **Serialize for transmission**: Use `Temporal.Instant.prototype.toString()` to convert the timestamp to a standard ISO-8601 string for logging or network transmission.
 
-## Example Code: High-Frequency Tracing
+## Example Code: High-Frequency Event Sequencing
 
 ```javascript
-/**
- * Capture High-Frequency Events
- * Uses Temporal.Instant for nanosecond precision to avoid collisions.
- */
-function captureEvent(eventType, nodeId) {
-  // Capture timestamp with nanosecond resolution
-  const temporalInstant = Temporal.Now.instant();
-  
+// 1. Capture timestamps for incoming events
+function recordEvent(eventType, nodeId) {
   return {
     nodeId,
     eventType,
-    timestamp: temporalInstant
+    timestamp: Temporal.Now.instant() // Nanosecond resolution
   };
 }
 
-/**
- * Sort Events Accurately
- * Uses Temporal.Instant.compare to ensure chronological order.
- */
-function sortEvents(events) {
-  return [...events].sort((a, b) => 
-    Temporal.Instant.compare(a.timestamp, b.timestamp)
-  );
+// 2. Sort events chronologically
+function sequenceEvents(events) {
+  // Always use Temporal.Instant.compare for sorting instants
+  return [...events].sort((a, b) => Temporal.Instant.compare(a.timestamp, b.timestamp));
 }
 
-/**
- * Calculate Precision Difference
- * Finds the exact nanoseconds difference between two events.
- */
-function getEventDiff(currentEvt, prevEvt) {
-  const duration = currentEvt.timestamp.since(prevEvt.timestamp);
-  // Returns total nanoseconds difference
-  return duration.total({ unit: 'nanoseconds' }); 
+// 3. Calculate delays between events
+function analyzeTelemetry(sortedEvents) {
+  for (let i = 1; i < sortedEvents.length; i++) {
+    const prev = sortedEvents[i - 1];
+    const curr = sortedEvents[i];
+    
+    // Calculate difference in nanoseconds
+    const duration = curr.timestamp.since(prev.timestamp);
+    const nsDiff = duration.total('nanoseconds');
+    
+    console.log(`Delay between Event ${prev.eventType} and Event ${curr.eventType}: ${nsDiff}ns`);
+  }
 }
 ```
 
 ## Strategic Implementation & Best Practices
 
-- **DO** use `Temporal.Now.instant()` when resolution higher than 1ms is required for tracing or logging.
-- **DO NOT** use `Date.now()` for ordering high-frequency events if collisions are occurring or likely to occur in telemetry.
-- **DO** use standard `Temporal` comparisons (`Temporal.Instant.compare`) instead of manual subtraction to avoid overflow or precision loss if applicable.
-- **DO NOT** use `Temporal` without checking support if older browser environments are expected.
+- **DO** use `Temporal.Now.instant()` for server-side tracing or client-side telemetry where millisecond precision is insufficient (e.g., microsecond profiling).
+- **DO NOT** use `Date.now()` if you require stable sorting of events that happen back-to-back.
+- **DO NOT** use `Temporal.Instant` for wall-clock time display unless you pair it with a time zone (use `Temporal.ZonedDateTime` for localized display).
+- **DO** verify that the environment supports `Temporal` before using it natively or providing a fallback.
 
-## Fallback Strategy
+## Fallback strategies
 
 {{ BASELINE_STATUS("temporal") }}
 
-For browsers that do not yet support the API, use a fallback that uses `Date.now()` or informative messages. Note that for high-frequency events, you may need a server-side or more precise mechanism if client-side millisecond resolution is insufficient.
+For environments without native support, use a standards-compliant polyfill such as `@js-temporal/polyfill`. Load it conditionally to avoid bloating the payload for modern clients.
 
 ```javascript
-/**
- * Progressive Enhancement Fallback for Calculating Difference
- */
-function getEventDiffFallback(currentEvt, prevEvt) {
-  if (typeof Temporal !== 'undefined') {
-    const duration = currentEvt.timestamp.since(prevEvt.timestamp);
-    return duration.total({ unit: 'nanoseconds' }); 
-  } else {
-    // Falls back to Date milliseconds converted to nanoseconds
-    const msDiff = currentEvt.dateMs - prevEvt.dateMs;
-    return msDiff * 1000000; 
+(async () => {
+  // Check for native support
+  if (typeof Temporal === 'undefined') {
+    // Dynamically load polyfill
+    await import('https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@latest/dist/index.umd.js');
   }
-}
+  
+  // Proceed with application logic
+})();
 ```
