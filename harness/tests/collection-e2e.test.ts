@@ -2,11 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { defaultSuiteConfig } from '../config.ts';
 import { collectResults } from '../lib/collection.ts';
-
-const __filename = fileURLToPath(import.meta.url);
-const testDir = path.dirname(__filename);
+const testDir = import.meta.dirname;
 const harnessDir = path.resolve(testDir, '..');
 
 test('collectResults extracts explicit baseApp, taskName, and guide from new data structures', async (_t) => {
@@ -64,7 +62,7 @@ base_app: ${actualBaseAppName}
         fs.writeFileSync(path.join(targetDir, `${guideName}_results.json`), JSON.stringify(mockPlaywrightOutput));
 
         // 6. Execute system under test
-        const { allResults, numRuns } = await collectResults(resultsBase);
+        const { allResults, numRuns } = await collectResults(resultsBase, defaultSuiteConfig);
 
         // 7. Verify E2E extraction output
         assert.strictEqual(numRuns, 1, 'Expected 1 run detected');

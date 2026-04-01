@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Payment Form Autofill</title>
+</head>
+<body>
+  <h1>Payment</h1>
+  <form id="payment-form" name="payment-form">
+    <section>
+      <label for="cc-number">Card number</label>
+      <input id="cc-number" name="cc-number" type="text" autocomplete="cc-number" inputmode="numeric" maxlength="50" pattern="[\d ]{10,30}" required>
+    </section>
+
+    <section>
+      <label for="cc-name">Name on card</label>
+      <input id="cc-name" name="cc-name" type="text" autocomplete="cc-name" maxlength="50" pattern="[\p{L} \-\.]+" required>
+    </section>
+
+    <section>
+      <label for="cc-exp">Expiry date</label>
+      <input id="cc-exp" name="cc-exp" type="text" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5" required>
+    </section>
+
+    <section>
+      <label for="cc-csc">Security code</label>
+      <input id="cc-csc" name="cc-csc" type="text" autocomplete="cc-csc" inputmode="numeric" maxlength="4" pattern="[0-9]{3,4}" required>
+    </section>
+
+    <button type="submit">Complete payment</button>
+  </form>
+</body>
+</html>

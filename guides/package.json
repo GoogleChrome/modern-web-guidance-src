@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "npm run test:unit && npm run sync:dry",
-    "test:unit": "node --experimental-strip-types --test ./sync-use-cases.test.ts",
-    "sync:dry": "node --experimental-strip-types ./sync-use-cases.ts",
+    "test": "npm run test:unit && npm run test:validation",
+    "test:unit": "node --experimental-strip-types --test --test-reporter ${TEST_REPORTER:-dot} ./sync-use-cases.test.ts",
+    "test:validation": "node --experimental-strip-types --test --test-reporter ${TEST_REPORTER:-dot} ./guides-integrity.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

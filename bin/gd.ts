@@ -5,12 +5,10 @@ import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
-import { fileURLToPath } from 'url';
+import { pathToFileURL } from 'url';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const rootDir = path.resolve(__dirname, '..');
+import { Serving, mergeSuiteConfig, type SuiteConfig } from '../harness/config.ts';
+import { rootDir, guidesDir, tasksDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
 
 // Load environment variables (Node 20.12+)
 try {
@@ -22,7 +20,6 @@ try {
 // --- Shell Auto-Completion ---
 
 function listGuideDirs(): string[] {
-  const guidesDir = path.join(rootDir, 'guides');
   if (!fs.existsSync(guidesDir)) return [];
   const categories = fs.readdirSync(guidesDir, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.'))
@@ -46,7 +43,6 @@ completion.on('command', ({ reply }) => {
 
 completion.on('arg1', ({ before, reply }) => {
   if (before === 'eval') {
-    const tasksDir = path.join(rootDir, 'harness', 'tasks');
     const tasks = fs.existsSync(tasksDir) ? fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).map(f => f.replace('.md', '')) : [];
     reply(['suite', ...tasks]);
   } else if (before === 'gen') {
@@ -58,7 +54,6 @@ completion.on('arg1', ({ before, reply }) => {
 
 completion.on('arg2', ({ before, line, reply }) => {
   if (before === 'run') {
-    const baseAppsDir = path.join(rootDir, 'harness', 'base_apps');
     if (fs.existsSync(baseAppsDir)) {
       reply(fs.readdirSync(baseAppsDir).filter(d => fs.statSync(path.join(baseAppsDir, d)).isDirectory()));
     }
@@ -83,12 +78,31 @@ const { positionals, values } = parseArgs({
     guided: { type: 'boolean' },
     verbose: { type: 'boolean' },
     usecases: { type: 'boolean' },
+    config: { type: 'string' },
   },
   allowPositionals: true,
   strict: false,
 });
 
 // --- Helpers ---
+
+async function resolveSuiteConfig(configPath?: string): Promise<SuiteConfig> {
+  const resolvedConfigPath = configPath
+    ? path.resolve(process.cwd(), configPath)
+    : path.resolve(rootDir, 'config.ts');
+
+  let overrides: any = {};
+  if (fs.existsSync(resolvedConfigPath)) {
+    const fileUrl = pathToFileURL(resolvedConfigPath).href;
+    const customConfig = await import(fileUrl);
+    overrides = customConfig.default || customConfig;
+  } else if (configPath) {
+    console.error(cRed('⚠️ Specified config file not found: ' + resolvedConfigPath));
+    process.exit(1);
+  }
+
+  return mergeSuiteConfig(overrides);
+}
 
 function spawnChild(command: string, args: string[], options: import('child_process').SpawnOptions = {}): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -144,12 +158,13 @@ ${cBold('Evaluation:')}
 
 ${cBold('Other:')}
   ${cCyan('baselinestatus')} <query>      Check browser support and Baseline status
-  ${cCyan('setup-completion')}       Install shell auto-completion
+  ${cCyan('setup-completion')}            Install shell auto-completion
 
 ${cBold('Options:')}
-  ${cDim('-h, --help')}             Show this help
-  ${cDim('--verbose')}              Show additional output
-  ${cDim('--usecases')}             (Audit) Group by categories/usecases (default is features)
+  ${cDim('-h, --help')}                 Show this help
+  ${cDim('--verbose')}                  Show additional output
+  ${cDim('--usecases')}                 (Audit) Group by categories/usecases (default is features)
+  ${cDim('--config <custom_config>')}   (Eval) Path to a custom TS suite config file (defaults to config.ts, or falls back to defaults in harness/config.ts)
     `);
     process.exit(0);
   }
@@ -185,9 +200,11 @@ ${cBold('Options:')}
       }
       // Default dev-guide pipeline
       const { devGuide } = await import('../guides/dev-guide.ts');
+      const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
       const success = await devGuide(dir, {
         guidedOnly: !!values.guided,
         verbose: !!values.verbose,
+        suiteConfig: mergedSuiteConfig,
       });
       process.exit(success ? 0 : 1);
     }
@@ -204,39 +221,44 @@ ${cBold('Options:')}
       auditGuides({ groupByUsecases: !!values.usecases });
       break;
     }
-    
+
     case 'run': {
       const tmpl = requireArg(positionals[1], 'gd run <template> <prompt>');
       const prompt = requireArg(positionals[2], 'gd run <template> <prompt>');
+
+      const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
+
       const { runAgent } = await import('../harness/run_suite.ts');
-      await runAgent(tmpl, prompt);
+      await runAgent(tmpl, prompt, mergedSuiteConfig);
       break;
     }
 
     case 'dashboard': {
-      process.chdir(path.join(rootDir, 'eval-view'));
+      process.chdir(evalViewDir);
       await import('../eval-view/server.js');
       break;
     }
 
     case 'eval': {
-      const action = positionals[1] || 'suite';
-      
-      if (action === 'dashboard') {
-        console.error(`${cRed(`'gd eval dashboard' has moved.`)} Run: ${cCyan(`gd dashboard`)}\n`);
-        process.exit(1);
+      const tasks = positionals.slice(1).filter(a => a !== 'suite');
+
+      const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
+
+      let buildCode = 0;
+      if (mergedSuiteConfig.serving === Serving.MCP) {
+        buildCode = await runNpm(['build:mcp']);
+      } else if (mergedSuiteConfig.serving === Serving.SKILLS_CLI) {
+        buildCode = await runNpm(['--filter', 'modern-web-mcp', 'build-dist']);
       }
-      
-      const buildCode = await runNpm(['build:mcp']);
+
       if (buildCode !== 0) process.exit(buildCode);
+
       const { runSuite } = await import('../harness/run_suite.ts');
 
-      const tasks = positionals.slice(1).filter(a => a !== 'suite');
-      if (tasks.length > 0) {
-        await runSuite({ tasks });
-      } else {
-        await runSuite();
-      }
+      const runOptions: any = { suiteConfig: mergedSuiteConfig }; // Pass the merged config
+      if (tasks.length > 0) runOptions.tasks = tasks;
+
+      await runSuite(runOptions);
       break;
     }
 
@@ -248,11 +270,6 @@ ${cBold('Options:')}
 
     case 'deploy': {
       const code = await runNpm(['deploy:dashboard']);
-      process.exit(code);
-    }
-
-    case 'dist-gen': {
-      const code = await runNpm(['--filter', 'modern-web-mcp', 'dist-gen']);
       process.exit(code);
     }
 

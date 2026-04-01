@@ -66,17 +66,26 @@
                 </select>
               </th>
               <th>
-                <select id="filter-skills" class="header-filter-select">
+                <select id="filter-serving" class="header-filter-select">
                   <option value="all">Serving</option>
                   <optgroup label="Select Architecture">
                     <option value="skills">Skills</option>
+                    <option value="skills_cli">Skills (CLI)</option>
                     <option value="mcp">MCP</option>
+                  </optgroup>
+                </select>
+              </th>
+              <th>
+                <select id="filter-model" class="header-filter-select">
+                  <option value="all">Model</option>
+                  <optgroup label="Select Model" id="filter-model-group">
+                    <!-- populated dynamically -->
                   </optgroup>
                 </select>
               </th>
               <th style="text-align: right; padding-right: 15px;">Guided</th>
               <th style="text-align: right; padding-right: 15px;">Unguided</th>
-              <th>
+              <th id="header-source">
                 <select id="filter-source" class="header-filter-select">
                   <option value="all">Source</option>
                   <optgroup label="Select Source">
@@ -99,9 +108,9 @@
     </div>
   </div>
 
-  <div id="radar-tooltip-container" class="radar-tooltip-container hidden">
-    <div id="radar-tooltip-header"></div>
-    <div id="radar-tooltip-chart" style="width: 300px; height: 300px;"></div>
+  <div id="tooltip-container" class="tooltip-container hidden">
+    <div id="tooltip-header"></div>
+    <div id="tooltip-chart"></div>
   </div>
 
   <script type="module" src="landing.js"></script>

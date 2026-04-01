@@ -5,9 +5,9 @@ import puppeteer from 'puppeteer-core';
 import { fileURLToPath } from 'url';
 import type { Page } from 'puppeteer-core';
 import { spawn, execSync } from 'child_process';
-import { config, Agents } from '../config.ts';
+import { config, Agents, Serving } from '../config.ts';
+import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, exportTrajectories, watchLogFile } from '../lib/agent-shared.ts';
 
-import { createIsolatedHome, cleanupIsolatedHome, updateMcpConfig, createTrustedFolders, sleep, killProcessOnPort, parseAgentArgs, copyResultsToTarget, createWorkDir, copySkills, exportTrajectories, watchLogFile } from '../lib/agent-shared.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 // Usage: node jetski-agent.ts <prompt> <runType> <targetDir> <templateDir>
@@ -76,21 +76,24 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir: s
   // Set environment variables
   process.env.HOME = tempHome;
   process.env.JETSKI_DIR = jetskiDest;
-  process.env.MCP_LOG_DIR = targetDir;
+  process.env.MODERN_WEB_LOG_DIR = targetDir;
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
-    if (config.suite.enableSkills) {
-      copySkills(tempHome, Agents.JETSKI)
-    }
+    const suiteConfig = getSuiteConfig();
+    const approach = suiteConfig.serving;
 
-    updateMcpConfig(
-      path.join(jetskiDest, 'mcp_config.json'),
-      config.suite.mcpServersToEnable,
-      config.environment.modernWebServerPath,
-      config.environment.mcpApiKey,
-      Agents.JETSKI
-    );
+    if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
+      copySkills(tempHome, Agents.JETSKI, approach === Serving.SKILLS_CLI);
+    } else if (approach === Serving.MCP) {
+      updateMcpConfig(
+        path.join(jetskiDest, 'mcp_config.json'),
+        suiteConfig.mcpServersToEnable,
+        config.environment.modernWebServerPath,
+        config.environment.mcpApiKey,
+        Agents.JETSKI
+      );
+    }
   }
 
   return workDir;
@@ -131,7 +134,7 @@ async function bypassInitialDialogs(page: Page): Promise<void> {
     for (let i = 0; i < 15; i++) {
       const nextButton = await page.evaluateHandle(() => {
         const buttons = Array.from(document.querySelectorAll('button, a.monaco-button, .monaco-text-button, [role="button"]'));
-        const targetTexts = ['Next', 'Get Started', 'Done', 'Accept', 'Continue', 'Skip', 'Trust'];
+        const targetTexts = ['Get Started', 'Done', 'Accept', 'Continue', 'Skip', 'Trust'];
         return buttons.find(b => {
           const text = (b as HTMLElement).innerText || '';
           return targetTexts.some(t => text.includes(t));
@@ -466,12 +469,6 @@ async function run(): Promise<void> {
     killProcessOnPort(config.environment.jetskiDebugPort);
     cleanupIsolatedHome(path.dirname(workDir));
   }
-}
-
-export async function collectJetskiGuides(dirPath: string): Promise<string[]> {
-  // TODO: Implement skills guide collection for Jetski (need gLinux-only binary, cannot land in GH)
-  console.log(`Jetski skills collection for ${dirPath} still needs to be populated.`);
-  return [];
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);

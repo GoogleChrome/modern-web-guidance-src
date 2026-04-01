@@ -1,18 +1,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import ghpages from 'gh-pages';
-import { promisify } from 'node:util';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const ROOT_DIR = path.resolve(__dirname, "../.."); // guidance/
+const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const SERVING_DIR = path.join(ROOT_DIR, "serving");
 const DIST_DIR = path.join(ROOT_DIR, "dist");
 const SKILLS_CLI_TEMPLATE_DIR = path.join(SERVING_DIR, "skills-cli/template");
 
-const ghPagesPublish = promisify(ghpages.publish);
+const ghPagesPublish = ghpages.publish;
+
 
 function incrementVersion(version: string): string {
   const parts = version.split('.');
@@ -65,8 +62,11 @@ async function main() {
   console.log(`\nRebuilding distribution and running tests with version ${newVersion}...`);
   execSync('node --test skills-cli/test-dist.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
   
+  console.log(`\nGenerating npm shrinkwrap...`);
+  execSync('npm shrinkwrap', { cwd: path.join(DIST_DIR, "skills-cli"), stdio: 'inherit' });
+
   if (isDryRun) {
-    const files = await (await fs.readdir(path.join(DIST_DIR, "skills-cli"), {recursive: true}));
+    const files = await fs.readdir(path.join(DIST_DIR, "skills-cli"), {recursive: true});
     console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${files.join('\n - ')}`);
     console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
   } else {

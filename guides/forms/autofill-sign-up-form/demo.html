@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sign Up Form Autofill</title>
+</head>
+<body>
+  <h1>Sign Up</h1>
+  <form id="sign-up-form" name="sign-up-form">
+    <section>
+      <label for="name">Full name</label>
+      <input id="name" name="name" type="text" autocomplete="name" required pattern="[\p{L}\.\- ]+">
+    </section>
+
+    <section>
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="username" required>
+    </section>
+
+    <section>
+      <label for="new-password">Password</label>
+      <input id="new-password" name="new-password" type="password" autocomplete="new-password" minlength="8" required>
+    </section>
+
+    <button type="submit">Sign Up</button>
+  </form>
+</body>
+</html>
