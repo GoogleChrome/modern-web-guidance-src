@@ -22,10 +22,10 @@ Must use this skill:
 ## Usage Instructions
 
 ### Step 0. Install the modern-web CLI
-First, ensure the modern-web CLI is installed. The below command installs it globally if needed:
+First, ensure the modern-web CLI is installed. The below command installs it globally if needed; adjust the path to the modern-web skill directory.
 
 ```sh
-command -v modern-web >/dev/null 2>&1 || (cd path/to/skills-alpha && npm install --global .)
+command -v modern-web >/dev/null 2>&1 || (cd <modern-web-skill-directory> && npm install && npm install -g .)
 ```
 
 ### Step 1. Search Use Cases
