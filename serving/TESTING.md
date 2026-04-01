@@ -38,3 +38,11 @@ gemini extensions install https://github.com/GoogleChrome/skills-alpha --auto-up
 
 DISABLE_TELEMETRY=1 npx skills add GoogleChrome/skills-alpha
 ```
+
+
+Example one-liners to test integration:
+
+```sh
+claude --plugin-dir ~/code/guidance/dist/skills-cli --allow-dangerously-skip-permissions -p "add an address form to the bottom of the page"
+
+```
