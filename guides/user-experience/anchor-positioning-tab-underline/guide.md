@@ -1,5 +1,5 @@
 ---
-name: transition-between-target-element-positions
+name: anchor-positioning-tab-underline
 description: Transition an element seamlessly between two target element positions. For example, moving a selected tab underline between the previously selected tab and the currently selected tab.
 web-feature-ids:
   - anchor-positioning
@@ -13,7 +13,7 @@ In a tab menu, you should provide visual hints to users about what page they are
 
 You can also use this effect to add an animated dot to indicate the active tab in a vertical tab bar.
 
-Create the underline using a `::before` pseudo-element on the `<ul>` that contains the `<li>` elements.
+Create the underline using a `::before` pseudo-element on the `<ul>` that contains the `<li>` elements. **Using a pseudo-element is the preferred approach as it keeps the DOM clean and avoids adding extra elements for purely decorative effects.**
 
 ```css
 ul::before {
@@ -47,9 +47,9 @@ Position the underline relative to the anchor using the inset properties and `an
 ul::before {
   /* DO NOT use position-area, which can not be transitioned. */
   /* Use calc() to offset the top slightly */
-  inset-block-start: calc(anchor(end) + .1lh);
-  inset-inline-start: anchor(start);
-  inset-inline-end: anchor(end);
+  inset-block-start: calc(anchor(bottom) + .1lh);
+  inset-inline-start: anchor(left);
+  inset-inline-end: anchor(right);
 }
 ```
 
@@ -86,7 +86,7 @@ If anchor positioning is not supported in the browser, use a `border-bottom` to 
 ul li.active {
   @supports not (position-anchor: auto) {
     /* Choose a color appropriate to the app theme. */
-    border-bottom: .25lh red solid;
+    border-bottom: .25lh var(--primary) solid;
   }
 }
 ```
