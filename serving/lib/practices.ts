@@ -28,11 +28,12 @@ export function getUseCasesByCategory(category?: string): UseCase[] {
 export async function getGuide(useCaseId: string): Promise<string | null> {
   const useCase = USE_CASES.find((u) => u.id === useCaseId);
   if (!useCase) return null;
-  let localDistPath = path.resolve(import.meta.dirname, "../guides");
-  if (!existsSync(localDistPath)) {
-    localDistPath = path.resolve(import.meta.dirname, "../../guides");
+  let guidesDir = path.resolve(import.meta.dirname, "../build/guides");
+  if (!existsSync(guidesDir)) {
+    // We are in production: either Option A (../guides) or self-contained Option B (../../guides)
+    const selfContainedPath = path.resolve(import.meta.dirname, "../../guides");
+    guidesDir = existsSync(selfContainedPath) ? selfContainedPath : path.resolve(import.meta.dirname, "../guides");
   }
-  const guidesDir = existsSync(localDistPath) ? localDistPath : path.resolve(import.meta.dirname, "../build/guides");
   const filePath = path.join(guidesDir, useCase.category, `${useCaseId}.md`);
 
   try {
