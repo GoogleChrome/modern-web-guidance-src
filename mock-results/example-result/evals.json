@@ -14,10 +14,9 @@
     "totalGuidedRuns": 2
   },
   "results": {
-    "content-vis-task - content-vis - unguided": [
+    "cards-app - content-vis - unguided": [
       {
         "runNumber": 1,
-        "baseApp": "cards-app",
         "results": [
           {
             "passed": true,
@@ -50,7 +49,7 @@
         ]
       }
     ],
-    "preload-prerender - unguided": [
+    "cards-app - preload-prerender - unguided": [
       {
         "runNumber": 1,
         "results": [
@@ -69,10 +68,9 @@
         ]
       }
     ],
-    "content-vis-task - content-vis - guided": [
+    "cards-app - content-vis - guided": [
       {
         "runNumber": 1,
-        "baseApp": "cards-app",
         "results": [
           {
             "passed": true,
@@ -135,7 +133,7 @@
         }
       }
     ],
-    "preload-prerender - guided": [
+    "cards-app - preload-prerender - guided": [
       {
         "runNumber": 1,
         "results": [
@@ -183,13 +181,13 @@
     ]
   },
   "stats": {
-    "content-vis-task - content-vis - unguided": {
+    "cards-app - content-vis - unguided": {
       "median": 100,
       "rates": [
         100
       ]
     },
-    "content-vis-task - content-vis - guided": {
+    "cards-app - content-vis - guided": {
       "median": 100,
       "rates": [
         100
@@ -197,13 +195,13 @@
       "runsUsingGuide": 1,
       "runCount": 1
     },
-    "preload-prerender - unguided": {
+    "cards-app - preload-prerender - unguided": {
       "median": 33,
       "rates": [
         33
       ]
     },
-    "preload-prerender - guided": {
+    "cards-app - preload-prerender - guided": {
       "median": 33,
       "rates": [
         33
