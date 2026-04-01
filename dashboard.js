@@ -243,11 +243,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
 
             const parts = currentDetails.testName.split(' - ');
-            if (parts.length !== 3) return;
-            const [appName, guide, runType] = parts;
-            const currentScenario = `${appName} - ${guide}`;
+            const guide = parts.length === 3 ? parts[1] : parts[0];
+            const runType = parts.length === 3 ? parts[2] : parts[1];
 
-            let sIdx = sortedScenarios.indexOf(currentScenario);
+            let sIdx = sortedScenarios.indexOf(guide);
             let rIdx = currentRunTypes.indexOf(runType);
 
             if (sIdx === -1 || rIdx === -1) return;
@@ -268,9 +267,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const nextScenario = sortedScenarios[sIdx];
             const nextRunType = currentRunTypes[rIdx];
-            const nextTestName = `${nextScenario} - ${nextRunType}`;
+            const targetSuffix = `${nextScenario} - ${nextRunType}`;
+            const nextTestName = Object.keys(allTestData.results).find(k => k === targetSuffix || k.endsWith(` - ${targetSuffix}`));
 
-            if (nextTestName !== currentDetails.testName && allTestData.results[nextTestName]) {
+            if (nextTestName && nextTestName !== currentDetails.testName && allTestData.results[nextTestName]) {
                 e.preventDefault();
                 showDetails(
                     nextTestName,
@@ -389,82 +389,94 @@ function renderGrid(data, testId) {
 
     // Extract dimensions dynamically from data keys
     const keys = Object.keys(results);
-    const partsMap = keys.map(k => k.split(' - '));
+    const validParts = keys.map(k => {
+        const parts = k.split(' - ');
+        if (parts.length === 3) {
+            return { raw: k, taskName: parts[0], guide: parts[1], runType: parts[2] };
+        } else if (parts.length === 2) {
+            return { raw: k, taskName: parts[0], guide: parts[0], runType: parts[1] };
+        }
+        return null;
+    }).filter(p => p !== null);
 
-    // Assume 3 parts: [appName, guide, runType]
-    const validParts = partsMap.filter(p => p.length === 3);
-
-    const sortedAppNames = [...new Set(validParts.map(p => p[0]))].sort();
-    const sortedGuides = [...new Set(validParts.map(p => p[1]))].sort();
+    const sortedGuides = [...new Set(validParts.map(p => p.guide))].sort();
 
     // Sort runTypes: unguided first, then guided, then alphabetical
-    const sortedRunTypes = [...new Set(validParts.map(p => p[2]))].sort((a, b) => {
+    const sortedRunTypes = [...new Set(validParts.map(p => p.runType))].sort((a, b) => {
         if (a === 'unguided' && b === 'guided') return -1;
         if (a === 'guided' && b === 'unguided') return 1;
         return a.localeCompare(b);
     });
     currentRunTypes = sortedRunTypes;
 
-    sortedAppNames.forEach(appName => {
-        sortedGuides.forEach(guide => {
-            sortedScenarios.push(`${appName} - ${guide}`);
-            sortedRunTypes.forEach(runType => {
-                const testName = `${appName} - ${guide} - ${runType}`;
-                const runData = results[testName];
-                const testStats = stats[testName];
+    sortedGuides.forEach(guide => {
+        sortedScenarios.push(guide);
 
-                if (!runData) return; // Skip combinations that don't exist
+        const groupParts = validParts.filter(p => p.guide === guide);
+        // If length 3 exists for this guide, resolve its taskName
+        const legacyTestIdentifier = groupParts.find(p => p.raw.split(' - ').length === 3);
+        const taskName = legacyTestIdentifier ? legacyTestIdentifier.taskName : guide;
 
-                const card = document.createElement('div');
-                card.className = 'test-card';
+        sortedRunTypes.forEach(runType => {
+            const legacyTestIdentifierStr = `${taskName} - ${guide} - ${runType}`;
+            const testIdentifierStr = `${guide} - ${runType}`;
 
-                // Calculate Total/Average Pass Rate for this specific test configuration
-                const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
-                const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
-                const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
+            const runData = results[testIdentifierStr] || results[legacyTestIdentifierStr];
+            const testStats = stats[testIdentifierStr] || stats[legacyTestIdentifierStr];
 
-                let toolActivationHtml = '';
-                if (runType === 'guided' && testStats && testStats.runsWithToolActivation !== undefined) {
-                    const count = testStats.runsWithToolActivation;
-                    const total = testStats.runCount;
-                    const toolActivationRate = total > 0 ? Math.round((count / total) * 100) : 0;
-                    const color = getColor(toolActivationRate);
-                    toolActivationHtml = `
-                        <div style="font-size: 0.85em; margin-top: 4px; color: ${color}; font-weight: 500;">
-                            Tool Activated (${count}/${total} runs)
-                        </div>
-                    `;
-                }
+            if (!runData) return; // Skip combinations that don't exist
 
-                let guideUsageHtml = '';
-                if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined) {
-                    const count = testStats.runsUsingGuide;
-                    const total = testStats.runCount;
-                    const usageRate = total > 0 ? Math.round((count / total) * 100) : 0;
-                    const color = getColor(usageRate);
-                    guideUsageHtml = `
-                        <div style="font-size: 0.85em; margin-top: 6px; color: ${color}; font-weight: 500;">
-                            Guide Used (${count}/${total} runs)
-                        </div>
-                    `;
-                }
+            const testName = results[testIdentifierStr] ? testIdentifierStr : legacyTestIdentifierStr;
 
-                card.onclick = () => showDetails(testName, runData, testStats, testId);
-                card.innerHTML = `
-                    <h3>${formatTestName(testName)}</h3>
-                    <div class="pass-rate-bar">
-                        <div class="pass-rate-fill" style="width: ${avgRate}%; background-color: ${getColor(avgRate)}"></div>
+            const card = document.createElement('div');
+            card.className = 'test-card';
+
+            // Calculate Total/Average Pass Rate for this specific test configuration
+            const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
+            const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
+            const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
+
+            let toolActivationHtml = '';
+            if (runType === 'guided' && testStats && testStats.runsWithToolActivation !== undefined) {
+                const count = testStats.runsWithToolActivation;
+                const total = testStats.runCount;
+                const toolActivationRate = total > 0 ? Math.round((count / total) * 100) : 0;
+                const color = getColor(toolActivationRate);
+                toolActivationHtml = `
+                    <div style="font-size: 0.85em; margin-top: 4px; color: ${color}; font-weight: 500;">
+                        Tool Activated (${count}/${total} runs)
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.9em; color: var(--text-secondary);">
-                        <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
-                        <span>Runs: ${runData.length}</span>
-                    </div>
-                    ${toolActivationHtml}
-                    ${guideUsageHtml}
                 `;
+            }
 
-                grid.appendChild(card);
-            });
+            let guideUsageHtml = '';
+            if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined) {
+                const count = testStats.runsUsingGuide;
+                const total = testStats.runCount;
+                const usageRate = total > 0 ? Math.round((count / total) * 100) : 0;
+                const color = getColor(usageRate);
+                guideUsageHtml = `
+                    <div style="font-size: 0.85em; margin-top: 6px; color: ${color}; font-weight: 500;">
+                        Guide Used (${count}/${total} runs)
+                    </div>
+                `;
+            }
+
+            card.onclick = () => showDetails(testName, runData, testStats, testId);
+            card.innerHTML = `
+                <h3>${formatTestName(testName)}</h3>
+                <div class="pass-rate-bar">
+                    <div class="pass-rate-fill" style="width: ${avgRate}%; background-color: ${getColor(avgRate)}"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.9em; color: var(--text-secondary);">
+                    <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
+                    <span>Runs: ${runData.length}</span>
+                </div>
+                ${toolActivationHtml}
+                ${guideUsageHtml}
+            `;
+
+            grid.appendChild(card);
         });
     });
 }
@@ -503,7 +515,9 @@ async function showDetails(testName, runs, stats, testId) {
     const title = document.getElementById('modal-title');
     const contentDiv = document.querySelector('.modal-content');
     const body = document.getElementById('modal-body');
-    const [, guide, runType] = testName.split(' - ');
+    const parts = testName.split(' - ');
+    const guide = parts.length === 3 ? parts[1] : parts[0];
+    const runType = parts.length === 3 ? parts[2] : parts[1];
 
     // Reset modifier classes
     modal.classList.remove('diff-modal');
@@ -530,35 +544,31 @@ async function showDetails(testName, runs, stats, testId) {
             console.log('Error checking run files:', e);
         }
 
-        // Fetch prompt text from the task definition
         if (run === runs[0]) {
             try {
-                const isNegative = run.taskName && run.taskName.endsWith('-negative');
-                const taskPath = `tasks/${isNegative ? 'negative/' : ''}${run.taskName}.md`;
-                const text = await api.getFileText(taskPath);
+                let prompt = run.prompt || '';
+                const baseApp = run.baseApp || 'n/a';
 
-                // Extract base_app from YAML frontmatter
-                const frontmatterMatch = text.match(/^---([\s\S]+?)---/);
-                let baseApp = 'n/a';
-                if (frontmatterMatch) {
-                    const yaml = frontmatterMatch[1];
-                    const baseAppMatch = yaml.match(/base_app:\s*([^\n\r]+)/);
-                    if (baseAppMatch) {
-                        baseApp = baseAppMatch[1].trim();
+                if (!prompt) { // Fallback for legacy evaluations
+                    try {
+                        const legacyTaskName = parts.length === 3 ? parts[0] : run.taskName;
+                        const isNegative = legacyTaskName && legacyTaskName.endsWith('-negative');
+                        const taskPath = `tasks/${isNegative ? 'negative/' : ''}${legacyTaskName}.md`;
+                        const taskMd = await api.getFileText(taskPath);
+                        prompt = taskMd.replace(/^---[\s\S]+?---\n+/, '').trim();
+                    } catch {
+                        console.log(`Fallback failed: Could not resolve legacy task file for ${run.taskName}`);
                     }
                 }
-
-                // Strip YAML frontmatter from the markdown task file
-                const cleanedText = text.replace(/^---[\s\S]+?---\n+/, '');
 
                 promptHtml = `
                     <div class="prompt-section" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--text-secondary);">
                         <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px;">Base App: <strong style="color: var(--text-primary);">${escapeHtml(baseApp)}</strong></div>
-                        <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px;">Prompt: <strong style="color: var(--text-primary); white-space: pre-wrap; font-family: inherit;">${escapeHtml(cleanedText)}</strong></div>
+                        <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px;">Prompt: <strong style="color: var(--text-primary); white-space: pre-wrap; font-family: inherit;">${escapeHtml(prompt)}</strong></div>
                     </div>
                 `;
             } catch (e) {
-                console.log('Task prompt file not found:', e.message);
+                console.log('Failed to render prompt:', e.message);
             }
         }
 
@@ -571,7 +581,7 @@ async function showDetails(testName, runs, stats, testId) {
                (run.guideUsed !== undefined ? 
                (typeof run.guideUsed === 'object' && run.guideUsed !== null ? run.guideUsed.guidesUsed : []) 
                : []);
-        const expectedGuide = run.expectedGuide || guide;
+        const expectedGuide = run.guideName || run.expectedGuide || guide;
         const hasGuideData = run.guidesUsed !== undefined || run.guideUsed !== undefined;
 
         const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : 'modern-web.log';
@@ -882,7 +892,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 
 function renderDashboardDumbbellChart(data, testId) {
     const { labels, guided, unguided } = calculateChartData(data.results);
-    
+
     if (labels.length < 1) {
         document.getElementById('chart-section').classList.add('hidden');
         return;
