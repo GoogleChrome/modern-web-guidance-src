@@ -3,7 +3,7 @@
   "displayName": "Chrome Web Development Skills",
   "private": true,
   "description": "Curated collection of agent skills for modern web development.",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "publisher": "GoogleChrome",
   "engines": {
     "vscode": "^1.90.0",

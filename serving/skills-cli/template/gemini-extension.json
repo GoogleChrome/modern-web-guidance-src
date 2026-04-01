@@ -1,7 +1,7 @@
 {
   "name": "googlechrome-skills",
   "description": "Google Chrome's web development agent skills.",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "author": {
     "name": "Google Chrome"
   }
