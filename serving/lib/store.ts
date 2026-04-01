@@ -2,7 +2,10 @@ import lancedb from "@lancedb/lancedb";
 import path from "path";
 import fs from "fs";
 
-const DATA_DIR = path.resolve(import.meta.dirname, "../vector_store");
+let DATA_DIR = path.resolve(import.meta.dirname, "../vector_store");
+if (!fs.existsSync(DATA_DIR)) {
+  DATA_DIR = path.resolve(import.meta.dirname, "../../vector_store");
+}
 
 export interface UseCase {
   id: string;

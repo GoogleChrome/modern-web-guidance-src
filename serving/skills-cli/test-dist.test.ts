@@ -106,7 +106,7 @@ test('README dynamic Skill Coverage content', async () => {
 });
 
 test('modern-web CLI search and retrieve', async () => {
-  const binaryPath = path.join(DIST_DIR, 'bin/modern-web.mjs');
+  const binaryPath = path.join(DIST_DIR, 'skills/modern-web-use-cases/modern-web.mjs');
   
   // 1. Validate search
   const searchOut = execSync(`node "${binaryPath}" --search tooltip`, { encoding: 'utf8' });

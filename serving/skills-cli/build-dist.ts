@@ -32,11 +32,7 @@ async function main() {
     process.exit(1);
   }
 
-  const BUNDLE_OUT_DIR = path.join(PUBLISH_ROOT, "bin");
-  if (fs.existsSync(BUNDLE_OUT_DIR)) {
-    fs.rmSync(BUNDLE_OUT_DIR, { recursive: true, force: true });
-  }
-  fs.mkdirSync(BUNDLE_OUT_DIR, { recursive: true });
+  // Placing modern-web.mjs inside the skill directory instead of bin/ for self-containment!
 
   console.log("Copying installation manifests and metadata for AI tools...");
   fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), PUBLISH_ROOT, { recursive: true });
@@ -66,7 +62,7 @@ async function main() {
   console.log("Bundling modern-web.ts with esbuild...");
   // 5. Bundle modern-web.ts
   const entryPoint = path.join(SERVING_DIR, "bin/modern-web.ts");
-  const outFile = path.join(BUNDLE_OUT_DIR, "modern-web.mjs");
+  const outFile = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/modern-web.mjs");
   
   try {
     console.time("⏳ esbuild bundle");
