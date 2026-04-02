@@ -4,24 +4,24 @@ import fs from 'fs';
 import path from 'path';
 import { defaultSuiteConfig } from '../config.ts';
 import { collectResults } from '../lib/collection.ts';
+import { guidesDir } from '../../lib/paths.ts';
+
 const testDir = import.meta.dirname;
-const harnessDir = path.resolve(testDir, '..');
 
 test('collectResults extracts explicit baseApp, taskName, and guide from new data structures', async (_t) => {
     // 1. Setup mock paths and unique names
-    const guidesDir = path.resolve(harnessDir, '../guides');
     const resultsBase = path.resolve(testDir, 'fixtures-results-e2e');
 
     const guideName = '_e2e_test_guide_xyz';
     const actualBaseAppName = 'cards-app'; // Simulating unexpected split naming
 
-    const guideDir = path.join(guidesDir, 'performance', guideName);
-    const taskPath = path.join(guideDir, 'task.md');
+    const performanceGuideDir = path.join(guidesDir, 'performance', guideName);
+    const taskPath = path.join(performanceGuideDir, 'task.md');
 
     try {
         // 2. Setup fake Guide grader file
-        if (!fs.existsSync(guideDir)) fs.mkdirSync(guideDir, { recursive: true });
-        const graderPath = path.join(guideDir, 'grader.ts');
+        if (!fs.existsSync(performanceGuideDir)) fs.mkdirSync(performanceGuideDir, { recursive: true });
+        const graderPath = path.join(performanceGuideDir, 'grader.ts');
         fs.writeFileSync(graderPath, '// mock grader file for Playwright');
 
         // 3. Setup Task frontmatter mapping base_app and grader
@@ -81,7 +81,7 @@ base_app: ${actualBaseAppName}
 
     } finally {
         // Cleanup dynamically created e2e fixture files
-        if (fs.existsSync(guideDir)) fs.rmSync(guideDir, { recursive: true, force: true });
+        if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });
         if (fs.existsSync(resultsBase)) fs.rmSync(resultsBase, { recursive: true, force: true });
     }
 });
