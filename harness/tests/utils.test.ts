@@ -87,7 +87,9 @@ test('inventoryGuide detects task.md', () => {
   try {
     const useCase = path.join(tempDir, 'my-use-case');
     fs.mkdirSync(useCase);
-    fs.writeFileSync(path.join(useCase, 'task.md'), 'prompts');
+    const tasksDir = path.join(useCase, 'tasks');
+    fs.mkdirSync(tasksDir);
+    fs.writeFileSync(path.join(tasksDir, 'task.md'), 'prompts');
     const inv = inventoryGuide(useCase);
     assert.strictEqual(inv.hasTask, true);
   } finally {

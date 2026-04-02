@@ -133,19 +133,19 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const guideExists = hasGuide || inv.isStub;
     if (guideExists !== hasDemo) {
-      const missingFile = guideExists ? 'demo.html' : 'guide.md';
-      const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH guide.md and demo.html.`;
+      const missingFile = guideExists ? DEMO_FILE : GUIDE_FILE;
+      const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH ${GUIDE_FILE} and ${DEMO_FILE}.`;
       console.error(msg);
       errors.push(msg);
       hasError = true;
     }
 
     if (hasGrader !== hasTask) {
-      const missingFile = hasGrader ? 'task.md' : 'grader.ts';
-      const guideHasContent = fs.existsSync(path.join(subdir, 'guide.md')) &&
-        matter(fs.readFileSync(path.join(subdir, 'guide.md'), 'utf8')).content.trim().length > 0;
+      const missingFile = hasGrader ? TASK_FILE : GRADER_FILE;
+      const guideHasContent = fs.existsSync(path.join(subdir, GUIDE_FILE)) &&
+        matter(fs.readFileSync(path.join(subdir, GUIDE_FILE), 'utf8')).content.trim().length > 0;
       if (guideHasContent) {
-        const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH grader.ts and prompts.md.`;
+        const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH ${GRADER_FILE} and ${TASK_FILE}.`;
         console.error(msg);
         errors.push(msg);
         hasError = true;
@@ -157,7 +157,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     let guideBody = '';
 
     if (hasGuide || inv.isStub) {
-      const validation = validateGuide(path.join(subdir, 'guide.md'));
+      const validation = validateGuide(path.join(subdir, GUIDE_FILE));
       guideErrors = validation.errors;
       guideData = validation.data;
       guideBody = validation.body;
@@ -252,7 +252,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       const guideName = entry.name;
-      const taskPath = path.join(categoryDir, guideName, TASK_FILE);
+      const taskPath = path.join(categoryDir, guideName, 'tasks', TASK_FILE);
       
       const rawContent = readFileSafe(taskPath);
       if (!rawContent) continue;
@@ -266,7 +266,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
       taskMap.set(guideName, {
         baseApp: data?.base_app || 'daily-grind',
         prompt: prompt,
-        guideDir: path.dirname(taskPath)
+        guideDir: path.join(categoryDir, guideName)
       });
     }
   }
@@ -312,7 +312,7 @@ export function inventoryGuide(dir: string): GuideInventory {
     expectationsEmpty: hasExpectations && expectationsContent.length === 0,
     hasNegativeDemo: fs.existsSync(path.join(dir, NEGATIVE_DEMO_FILE)),
     hasGrader: fs.existsSync(path.join(dir, GRADER_FILE)),
-    hasTask: fs.existsSync(path.join(dir, TASK_FILE)),
+    hasTask: fs.existsSync(path.join(dir, 'tasks', TASK_FILE)),
     featureIds,
   };
 }

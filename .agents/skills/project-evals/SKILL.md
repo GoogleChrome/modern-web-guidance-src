@@ -15,13 +15,13 @@ This is the third of three stages in creating guidance:
 
 **Real-world coding agents see only `guide.md`** — retrieved automatically via the RAG skills system when a developer asks for help. Every other file in a use case directory is eval infrastructure.
 
-**The eval harness** runs a separate coding agent in a controlled environment to test whether the guidance works. This eval agent receives the first prompt from `task.md` and has access to `guide.md` via the same RAG system. The harness then runs `grader.ts` against the eval agent's output.
+**The eval harness** runs a separate coding agent in a controlled environment to test whether the guidance works. This eval agent receives the first prompt from `tasks/task.md` and has access to `guide.md` via the same RAG system. The harness then runs `grader.ts` against the eval agent's output.
 
 None of the following are ever seen by real-world coding agents:
 
 | File | Role in eval pipeline |
 |---|---|
-| `task.md` | Simulated developer prompts and base application name fed to the eval agent by the harness |
+| `tasks/task.md` | Simulated developer prompts and base application name fed to the eval agent by the harness |
 | `demo.html` | Reference implementation — grader runs against it to confirm tests pass on correct code |
 | `negative-demo.html` | Anti-example — grader runs against it to confirm tests fail on incorrect code |
 | `expectations.md` | Spec used to generate `grader.ts` |
@@ -29,8 +29,8 @@ None of the following are ever seen by real-world coding agents:
 
 ## How the eval files work together
 
-`task.md`, `expectations.md`, and `grader.ts` form a tightly coupled pipeline:
-1. **`task.md`** — Simulated developer prompts used only by the eval harness. It must start with a YAML frontmatter specifying the `base_app`, followed by a list of prompts. Each prompt should sound like a real developer request, without naming specific APIs or best practices — the eval agent is expected to discover those by reading `guide.md` via RAG. The first prompt is the most important: it is used as the default task.
+`tasks/task.md`, `expectations.md`, and `grader.ts` form a tightly coupled pipeline:
+1. **`tasks/task.md`** — Simulated developer prompts used only by the eval harness. It must start with a YAML frontmatter specifying the `base_app`, followed by a list of prompts. Each prompt should sound like a real developer request, without naming specific APIs or best practices — the eval agent is expected to discover those by reading `guide.md` via RAG. The first prompt is the most important: it is used as the default task.
 
 2. **`expectations.md`** — The ground truth for what a correct implementation looks like. Each bullet becomes exactly one test in `grader.ts`. Write expectations assuming the eval agent read `guide.md` and implemented it faithfully; they describe the observable output, not the implementation approach.
 
@@ -67,9 +67,9 @@ This command will automatically:
 2. Generate a `grader.ts` Playwright test that asserts your `expectations.md` against both `demo.html` (should pass) and `negative-demo.html` (should fail).
 3. Test and calibrate the grader by running the test suite.
 
-## Writing `task.md`
+## Writing `tasks/task.md`
 
-`task.md` contains realistic developer prompts used to run AI agents end-to-end against the guide's grader, prefixed by a YAML frontmatter specifying the base application.
+`tasks/task.md` contains realistic developer prompts used to run AI agents end-to-end against the guide's grader, prefixed by a YAML frontmatter specifying the base application.
 
 **Format:**
 ```md

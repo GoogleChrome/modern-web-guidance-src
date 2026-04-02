@@ -168,7 +168,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   if (calibrationResult?.success) {
     console.log(cCyan(`\n--- Setting up test task ---`));
 
-    const taskPath = path.join(targetDir, TASK_FILE);
+    const taskPath = path.join(targetDir, 'tasks', TASK_FILE);
     if (!fs.existsSync(taskPath)) {
       console.log(`${TASK_FILE} not found, generating...`);
       try {
@@ -273,7 +273,9 @@ Only create the ${TASK_FILE} file. Do not modify any other files.`;
 
     const generatedFile = path.join(workDir, TASK_FILE);
     if (fs.existsSync(generatedFile)) {
-      fs.copyFileSync(generatedFile, path.join(targetDir, TASK_FILE));
+      const targetPath = path.join(targetDir, 'tasks', TASK_FILE);
+      fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+      fs.copyFileSync(generatedFile, targetPath);
       console.log(cGreen(`✅ ${TASK_FILE} generated`));
     } else {
       throw new Error(`${TASK_FILE} was not created by Gemini CLI`);

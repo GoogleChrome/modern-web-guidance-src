@@ -109,7 +109,7 @@ gd dev <path/to/guide_dir>
 
 This runs the following pipeline after the grader calibrates successfully:
 
-1. **Generate `task.md`** if missing — uses Gemini CLI to create a set of developer-facing prompts derived from the guide and adds `base_app: daily-grind` frontmatter.
+1. **Generate `tasks/task.md`** if missing — uses Gemini CLI to create a set of developer-facing prompts derived from the guide and adds `base_app: daily-grind` frontmatter.
 2. **Grade the base app as-is** (pre-score) — establishes a baseline before any agent runs
 3. **Run the agent** in both `unguided` (no guide access) and `guided` (with MCP guide access) modes against the base app
 4. **Grade both outputs** and print a comparison:
@@ -123,7 +123,7 @@ Agent test results:
 ```
 
 The agent is selected from the specified [config](../config.ts) if it exists, otherwise uses default in the [harness config](../harness/config.ts).
-The base app is selected from the generated `task.md` file (which defaults to `daily-grind`).
+The base app is selected from the generated `tasks/task.md` file (which defaults to `daily-grind`).
 
 ### Negative Suite
 

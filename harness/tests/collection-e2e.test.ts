@@ -16,11 +16,12 @@ test('collectResults extracts explicit baseApp, taskName, and guide from new dat
     const actualBaseAppName = 'cards-app'; // Simulating unexpected split naming
 
     const performanceGuideDir = path.join(guidesDir, 'performance', guideName);
-    const taskPath = path.join(performanceGuideDir, 'task.md');
+    const tasksDir = path.join(performanceGuideDir, 'tasks');
+    const taskPath = path.join(tasksDir, 'task.md');
 
     try {
         // 2. Setup fake Guide grader file
-        if (!fs.existsSync(performanceGuideDir)) fs.mkdirSync(performanceGuideDir, { recursive: true });
+        if (!fs.existsSync(tasksDir)) fs.mkdirSync(tasksDir, { recursive: true });
         const graderPath = path.join(performanceGuideDir, 'grader.ts');
         fs.writeFileSync(graderPath, '// mock grader file for Playwright');
 
