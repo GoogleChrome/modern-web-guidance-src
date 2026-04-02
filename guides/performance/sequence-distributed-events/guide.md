@@ -69,14 +69,16 @@ function analyzeTelemetry(sortedEvents) {
 
 {{ BASELINE_STATUS("temporal") }}
 
-For environments without native support, use a standards-compliant polyfill such as `@js-temporal/polyfill`. Load it conditionally to avoid bloating the payload for modern clients.
+For environments without native support, use a standards-compliant polyfill such as `@js-temporal/polyfill`. Load it conditionally to avoid bloating the payload for modern clients. Note that `@js-temporal/polyfill` does not automatically install a global `Temporal` object, so you must explicitly assign it if you need it globally.
 
 ```javascript
 (async () => {
   // Check for native support
   if (typeof Temporal === 'undefined') {
-    // Dynamically load polyfill
-    await import('https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@latest/dist/index.umd.js');
+    // Dynamically load polyfill using an ESM-compatible CDN
+    const module = await import('https://esm.sh/@js-temporal/polyfill');
+    // The polyfill does not auto-install globally, so we must assign it
+    globalThis.Temporal = module.Temporal;
   }
   
   // Proceed with application logic
