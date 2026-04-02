@@ -2,70 +2,148 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Subscription Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Duration Tracker</title>
     <style>
         body {
-            background-color: white;
-            color: black;
-            font-family: "Times New Roman", Times, serif;
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background-color: #f0f2f5;
         }
-        .container {
-            margin: 50px;
+        .tracker-box {
+            background-color: #ffffff;
+            border-radius: 4px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h2 {
+            color: #1c1e21;
+            margin-top: 0;
         }
         .input-group {
-            margin-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #4b4f56;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #dddfe2;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #1877f2;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #166fe5;
+        }
+        .stats {
+            margin-top: 30px;
+            border-top: 1px solid #dddfe2;
+            padding-top: 20px;
+        }
+        .stat-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .stat-label {
+            color: #606770;
+        }
+        .stat-value {
+            font-weight: bold;
+            color: #1c1e21;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Subscription Manager</h1>
-        <div class="input-group">
-            <label>Start Date:</label>
-            <input type="text" id="startInput" value="2025-01-01">
-        </div>
-        <div class="input-group">
-            <label>End Date:</label>
-            <input type="text" id="endInput" value="2025-01-31">
-        </div>
-        <button id="calcBtn">Calculate Stats</button>
 
-        <div id="results" style="margin-top: 20px;">
-            <p>Active Duration: <span id="activeResult"></span></p>
-            <p>Remaining Duration: <span id="remainingResult"></span></p>
-            <p>Status: <span id="statusResult"></span></p>
+    <div class="tracker-box">
+        <h2>Subscription Manager</h2>
+        <div class="input-group">
+            <label>Activation Date</label>
+            <input type="datetime-local" id="activationInput">
+        </div>
+        <div class="input-group">
+            <label>Expiration Date</label>
+            <input type="datetime-local" id="expirationInput">
+        </div>
+        <button onclick="updateCalculations()">Refresh Data</button>
+
+        <div class="stats">
+            <div class="stat-line">
+                <span class="stat-label">Current Status:</span>
+                <span id="statusLabel" class="stat-value">-</span>
+            </div>
+            <div class="stat-line">
+                <span class="stat-label">Days Since Activation:</span>
+                <span id="activeDaysLabel" class="stat-value">-</span>
+            </div>
+            <div class="stat-line">
+                <span class="stat-label">Days Until Expiration:</span>
+                <span id="remainingDaysLabel" class="stat-value">-</span>
+            </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@0.4.4/dist/index.umd.js"></script>
     <script>
-        const calcBtn = document.getElementById('calcBtn');
-        
-        calcBtn.addEventListener('click', () => {
-            const startVal = document.getElementById('startInput').value;
-            const endVal = document.getElementById('endInput').value;
+        function updateCalculations() {
+            var activationVal = document.getElementById('activationInput').value;
+            var expirationVal = document.getElementById('expirationInput').value;
 
-            const startDate = Temporal.PlainDate.from(startVal);
-            const endDate = Temporal.PlainDate.from(endVal);
-            const today = Temporal.Now.plainDateISO();
+            if (activationVal && expirationVal) {
+                var now = new Date();
+                var start = new Date(activationVal);
+                var end = new Date(expirationVal);
 
-            const activeDays = today.day - startDate.day;
-            const remainingDays = endDate.day - today.day;
+                var activeDiff = now.getTime() - start.getTime();
+                var remainingDiff = end.getTime() - now.getTime();
 
-            startDate.day = 1;
+                var activeDays = Math.floor(activeDiff / (1000 * 60 * 60 * 24));
+                var remainingDays = Math.floor(remainingDiff / (1000 * 60 * 60 * 24));
 
-            document.getElementById('activeResult').innerText = activeDays + " days";
-            document.getElementById('remainingResult').innerText = remainingDays + " days";
+                document.getElementById('activeDaysLabel').innerText = activeDays + " days";
+                document.getElementById('remainingDaysLabel').innerText = remainingDays + " days";
 
-            if (today.year >= endDate.year && today.month >= endDate.month && today.day > endDate.day) {
-                document.getElementById('statusResult').innerText = "EXPIRED";
-            } else {
-                document.getElementById('statusResult').innerText = "ACTIVE";
+                if (now.getTime() > end.getTime()) {
+                    document.getElementById('statusLabel').innerText = "EXPIRED";
+                    document.getElementById('statusLabel').style.color = "red";
+                } else {
+                    document.getElementById('statusLabel').innerText = "ACTIVE";
+                    document.getElementById('statusLabel').style.color = "green";
+                }
             }
+        }
 
-            const legacyDate = new Date(today.toString());
-            console.log("Legacy format: " + legacyDate.getTime());
-        });
+        window.onload = function() {
+            var today = new Date();
+            
+            var lastWeek = new Date();
+            lastWeek.setDate(today.getDate() - 7);
+            
+            var nextMonth = new Date();
+            nextMonth.setDate(today.getDate() + 30);
+
+            document.getElementById('activationInput').value = lastWeek.toISOString().slice(0, 16);
+            document.getElementById('expirationInput').value = nextMonth.toISOString().slice(0, 16);
+
+            updateCalculations();
+        };
     </script>
+
 </body>
 </html>

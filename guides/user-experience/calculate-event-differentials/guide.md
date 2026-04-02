@@ -71,6 +71,8 @@ if (isExpired) {
 
 ## Fallback Strategy
 
+{{ BASELINE_STATUS("temporal") }}
+
 For browsers that do not yet support the native `Temporal` API, use feature detection and a polyfill. The standard reference polyfill is `@js-temporal/polyfill`.
 
 ### Loading Polyfill

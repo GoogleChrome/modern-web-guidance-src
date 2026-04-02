@@ -1,1 +1,3 @@
-- In this app, add a countdown timer, that supports time zones, to the seasonal favorites section for the maple oat latte. It should show how many days and hours are left until the offer ends on may 1st 2026 at midnight. Use the system time zone and make it update on page load. For older browsers, it should have graceful fallbacks.
+- add a trial countdown to the account page that shows exactly how many days and hours are left until may 1st 2026. make sure it's accurate with timezones.
+- i want to show how long someone has been a member. on the rewards page, calculate the months and days since october 15 2025 and display it.
+- the maple oat latte is leaving soon. can you add a "time left" message to its card based on an april 30th end date?

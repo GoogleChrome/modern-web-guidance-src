@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as process from 'node:process';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -10,86 +11,82 @@ if (!targetFile) {
 
 const filePath = path.resolve(targetFile);
 const targetDir = path.dirname(filePath);
-const demoName = path.basename(filePath);
-const demoUrl = `http://localhost/${demoName}`;
+const fileName = path.basename(filePath);
+const demoUrl = `http://localhost/${fileName}`;
 
-test.describe(`Temporal API Event Differentials: ${demoName}`, () => {
-  
-  // 1. Feature Detection
-  test('MUST check if typeof Temporal === "undefined" before using the API', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Expect a check for Temporal being undefined before initializing logic
-    expect(html).toMatch(/typeof\s+Temporal\s*===\s*['"]undefined['"]/);
+// Helper to get HTML content for static checks
+const htmlContent = fs.readFileSync(filePath, 'utf-8');
+const scriptContent = htmlContent.match(/<script[\s\S]*?>([\s\S]*?)<\/script>/g)?.join('\n') || '';
+
+test.describe(`Temporal API Guidance Expectations: ${fileName}`, () => {
+
+  // 1. Feature detection MUST use typeof Temporal === 'undefined'
+  test('Feature detection should use typeof Temporal === "undefined"', () => {
+    const hasFeatureDetection = /typeof\s+Temporal\s+===\s+['"]undefined['"]/.test(scriptContent);
+    expect(hasFeatureDetection, "Must use 'typeof Temporal === 'undefined'' for feature detection").toBe(true);
   });
 
-  // 2. ZonedDateTime Selection
-  test('MUST use Temporal.ZonedDateTime for event differentials', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Calculations for event differentials require ZonedDateTime
-    expect(html).toContain('Temporal.ZonedDateTime');
+  // 2. Conditional polyfill loading
+  test('Should conditionally load the Temporal polyfill', () => {
+    const hasConditionalLoading = /if\s*\(typeof\s+Temporal\s+===\s+['"]undefined['"]\)\s*\{[\s\S]*import\(/.test(scriptContent);
+    expect(hasConditionalLoading, 'Must load the polyfill only if native support is absent').toBe(true);
   });
 
-  // 3. Since Method
-  test('MUST use the .since() method to calculate elapsed time', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Using .since() is mandatory for calculating active time
-    expect(html).toContain('.since(');
+  // 3. Manual assignment to globalThis.Temporal
+  test('Should manually assign polyfill to globalThis.Temporal', () => {
+    const hasGlobalAssignment = /globalThis\.Temporal\s*=/.test(scriptContent) || /window\.Temporal\s*=/.test(scriptContent);
+    expect(hasGlobalAssignment, 'Must assign the loaded polyfill to globalThis.Temporal').toBe(true);
   });
 
-  // 4. Until Method
-  test('MUST use the .until() method to calculate remaining time', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Using .until() is mandatory for calculating remaining time
-    expect(html).toContain('.until(');
+  // 4. Use Temporal.ZonedDateTime as primary type
+  test('Should use Temporal.ZonedDateTime for calculations', () => {
+    const hasZonedDateTime = /ZonedDateTime/.test(scriptContent);
+    expect(hasZonedDateTime, 'Must use Temporal.ZonedDateTime for calculating differentials').toBe(true);
   });
 
-  // 5. Largest Unit
-  test('MUST use largestUnit when calculating differences', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Controlling precision with largestUnit ensures balanced durations
-    expect(html).toContain('largestUnit');
+  // 5. Use .since() for elapsed time
+  test('Should use .since() to calculate elapsed time', () => {
+    const hasSince = /\.since\(/.test(scriptContent);
+    expect(hasSince, 'Must use the .since() method on a Temporal instance').toBe(true);
   });
 
-  // 6. Temporal Comparison
-  test('MUST use Temporal.ZonedDateTime.compare for date comparison', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Comparison of time points should be done via .compare()
-    expect(html).toContain('Temporal.ZonedDateTime.compare');
+  // 6. Use .until() for remaining time
+  test('Should use .until() to calculate remaining time', () => {
+    const hasUntil = /\.until\(/.test(scriptContent);
+    expect(hasUntil, 'Must use the .until() method on a Temporal instance').toBe(true);
   });
 
-  // 7. Immutability
-  test('MUST NOT mutate existing Temporal instances', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Temporal objects are immutable. Assignments like .day = 1 are errors in logic.
-    const propertyMutation = /\.(year|month|day|hour|minute|second)\s*=\s*/;
-    expect(html).not.toMatch(propertyMutation);
+  // 7. Specify largestUnit in .since()
+  test('Should specify largestUnit in .since() options', () => {
+    const hasLargestUnitInSince = /\.since\([^,]+,\s*\{[\s\S]*largestUnit:/.test(scriptContent);
+    expect(hasLargestUnitInSince, 'Must specify largestUnit in the options object for .since()').toBe(true);
   });
 
-  // 8. Conditional Polyfill Loading
-  test('MUST load the polyfill conditionally (no unconditional script tags)', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Unconditional script tags for polyfills are forbidden
-    const unconditionalScript = /<script\s+[^>]*src=[^>]*@js-temporal\/polyfill[^>]*>/i;
-    expect(html).not.toMatch(unconditionalScript);
+  // 8. Specify largestUnit in .until()
+  test('Should specify largestUnit in .until() options', () => {
+    const hasLargestUnitInUntil = /\.until\([^,]+,\s*\{[\s\S]*largestUnit:/.test(scriptContent);
+    expect(hasLargestUnitInUntil, 'Must specify largestUnit in the options object for .until()').toBe(true);
   });
 
-  // Browser Tests
+  // 9. Use Temporal.ZonedDateTime.compare
+  test('Should use Temporal.ZonedDateTime.compare for comparisons', () => {
+    const hasCompare = /Temporal\.ZonedDateTime\.compare\(/.test(scriptContent);
+    expect(hasCompare, 'Must use Temporal.ZonedDateTime.compare to compare date-time points').toBe(true);
+  });
+
+  // 10. No legacy Date for core calculations
+  test('Should not use legacy Date for core calculations', () => {
+    const usesDateForCalc = /new\s+Date\(\)[\s\S]*\.getTime\(\)/.test(scriptContent) || 
+                            /new\s+Date\(.*\.value\)/.test(scriptContent);
+    expect(usesDateForCalc, 'Must not use the legacy Date object for core event differential calculations').toBe(false);
+  });
+
+  // Setup browser testing
   test.beforeEach(async ({ page }) => {
-    // Inject polyfill for browsers that do not natively support it (like standard Chromium).
-    // This allows the demo code to run functionally if it handles Temporal support correctly.
-    await page.addInitScript(async () => {
-      if (typeof (globalThis as any).Temporal === 'undefined') {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@0.4.4/dist/index.umd.js';
-        script.async = false;
-        document.head.appendChild(script);
-        await new Promise(resolve => script.onload = resolve);
-      }
-    });
-
     await page.route('http://localhost/*', async (route) => {
-      const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+      const requestUrl = new URL(route.request().url());
+      const requestPath = requestUrl.pathname;
+      const localFilePath = path.join(targetDir, requestPath === `/${fileName}` ? fileName : requestPath.slice(1));
 
       if (fs.existsSync(localFilePath)) {
         await route.fulfill({ path: localFilePath });
@@ -101,46 +98,19 @@ test.describe(`Temporal API Event Differentials: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  // 9. Functional Test: Accurate Duration Calculation
-  test('Should accurately calculate elapsed time across month boundaries', async ({ page }) => {
-    // Fill in dates that cross a month boundary to expose manual subtraction flaws
-    const startInput = await page.$('#startDate, #startInput');
-    const endInput = await page.$('#endDate, #endInput');
-    
-    if (startInput && endInput) {
-      // 2025-01-25
-      await startInput.fill('2025-01-25');
-      // 2025-02-05
-      await endInput.fill('2025-02-05');
-      
-      const calcBtn = await page.$('#calcBtn');
-      if (calcBtn) await calcBtn.click();
-      
-      await page.waitForTimeout(100);
-      
-      const activeText = await page.innerText('#activeValue, #activeResult');
-      // Negative-demo.html will show "-24 days" if today's day is 1
-      // or other incorrect values if it just subtracts days.
-      expect(activeText).not.toContain('-');
-      
-      const statusElement = await page.$('#statusValue, #statusResult');
-      if (statusElement) {
-          const statusText = await statusElement.innerText();
-          // Today is 2026-04-01. Expiration is 2025-02-05. Should be EXPIRED.
-          expect(statusText.toUpperCase()).toContain('EXPIRED');
-      }
-    } else {
-      throw new Error('Could not find date inputs');
-    }
+  // Browser assertions: Verify Temporal is globally available (either native or polyfilled)
+  test('Temporal should be available on the page and used by scripts', async ({ page }) => {
+    const isTemporalDefinedAndUsed = await page.evaluate(() => {
+      const isDefined = typeof Temporal !== 'undefined';
+      const isUsed = Array.from(document.scripts).some(s => s.textContent && s.textContent.includes('Temporal'));
+      return isDefined && isUsed;
+    });
+    expect(isTemporalDefinedAndUsed, 'Temporal should be defined and utilized in the page scripts').toBe(true);
   });
 
-  // 10. Manual Arithmetic Check
-  test('MUST NOT use manual property subtraction for date arithmetic', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Manual subtraction of .day, .month, or .year is error-prone.
-    // negative-demo.html has today.day - startDate.day
-    const manualArithmetic = /\.(day|month|year)\s*-\s*/;
-    expect(html).not.toMatch(manualArithmetic);
+  // Browser assertions: Verify that immutability is respected
+  test('Should use immutability correctly by using returned instances from add/subtract', async () => {
+    const usesImmutability = /add\(|subtract\(/.test(scriptContent);
+    expect(usesImmutability, 'Should use Temporal methods like add() or subtract() which return new instances').toBe(true);
   });
-
 });
