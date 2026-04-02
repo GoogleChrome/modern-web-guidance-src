@@ -136,7 +136,7 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
                 }
               } else if (serving === Serving.SKILLS_CLI && tc.name === 'run_shell_command' && tc.args && tc.args.command) {
                 const command = tc.args.command;
-                if (command.includes('modern-web.cjs') && command.includes('--retrieve')) {
+                if (command.includes('modern-web') && command.includes('--retrieve')) {
                   const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
                   if (match) {
                     const ids = match[1].split(',');
