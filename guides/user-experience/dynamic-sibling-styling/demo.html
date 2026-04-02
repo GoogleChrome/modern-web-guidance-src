@@ -1,53 +1,72 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dynamic Sibling Styling Demo</title>
+    <style>
+      .dynamic-list {
+        display: flex;
+        gap: 10px;
+        padding: 20px;
+        list-style: none;
+      }
 
-<head>
-  <meta charset="UTF-8">
-  <title>Dynamic Sibling Styling Demo</title>
-  <style>
-    .circle-layout {
-      position: relative;
-      width: 300px;
-      height: 300px;
-    }
+      .swatch {
+        height: 100px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
 
-    .circle-layout > .item {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      border-radius: 50%;
+        --index: var(--sibling-index);
+        --count: var(--sibling-count);
 
-      /* Size: shrinks with each sibling index */
-      --size: calc(20px + (sibling-count() - sibling-index()) * 5px);
-      width: var(--size);
-      height: var(--size);
-      margin-top: calc(-0.5 * var(--size));
-      margin-left: calc(-0.5 * var(--size));
+        @supports (top: calc(sibling-index() * 1px)) {
+          --index: sibling-index();
+          --count: sibling-count();
+        }
 
-      /* Color: starts red, distributed around the hue wheel */
-      background: hsl(calc((sibling-index() - 1) * (360 / sibling-count())), 70%, 50%);
+        /* Dynamic width based on total count */
+        width: calc(100% / var(--count));
 
-      /* Position: arranged in a circle */
-      --angle: calc(360deg / sibling-count() * (sibling-index() - 1));
-      --radius: 120px;
-      transform: rotate(var(--angle)) translateY(calc(-1 * var(--radius)));
-    }
-  </style>
-</head>
+        /* Dynamic color based on position in the list */
+        background-color: hsl(
+          calc(360deg / var(--count) * var(--index)),
+          70%,
+          50%
+        );
 
-<body>
-  <h1>Dynamic Sibling Styling</h1>
-  <p>Each item's position, color, and size are all dynamically computed from
-    <code>sibling-count()</code> and <code>sibling-index()</code>.</p>
+        /* Symmetrical scale effect */
+        --center: calc((var(--count) + 1) / 2);
+        --dist-from-center: calc(var(--index) - var(--center));
+        /* Items closer to the edges are slightly smaller */
+        transform: scale(calc(1 - (abs(var(--dist-from-center)) * 0.1)));
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Dynamic Sibling Styling</h1>
+    <ul class="dynamic-list">
+      <li class="swatch">1</li>
+      <li class="swatch">2</li>
+      <li class="swatch">3</li>
+      <li class="swatch">4</li>
+      <li class="swatch">5</li>
+    </ul>
 
-  <div class="circle-layout">
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-  </div>
-</body>
+    <script type="module">
+      if (!CSS.supports("top: calc(sibling-index() * 1px)")) {
+        const container = document.querySelector(".dynamic-list");
+        const items = [...container.children];
+        const count = items.length;
 
+        items.forEach((item, index) => {
+          item.style.setProperty("--sibling-index", index + 1);
+          item.style.setProperty("--sibling-count", count);
+        });
+      }
+    </script>
+  </body>
 </html>
