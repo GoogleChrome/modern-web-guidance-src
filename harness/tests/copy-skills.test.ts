@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
-import { execSync, spawn } from 'child_process';
+import { execSync } from 'child_process';
 import { createIsolatedHome, copySkills, cleanupIsolatedHome } from '../lib/agent-shared.ts';
 import { Agents } from '../config.ts';
 
@@ -12,8 +12,7 @@ test('copySkills sets up the isolated environment with the skill and its data', 
         // 1. Create isolated home
         homeDir = createIsolatedHome('test-copy-skills');
         
-        // 2. Run copySkills (cli = true)
-        // This might trigger a build if dist is missing
+        // 2. Run copySkills (cli = true). This might trigger a build if dist is missing
         const success = copySkills(homeDir, Agents.JETSKI, true);
         assert.ok(success, 'copySkills should succeed');
 
@@ -33,7 +32,7 @@ test('copySkills sets up the isolated environment with the skill and its data', 
         // 3.5 Run pnpm install in the skill directory to resolve dependencies (like @lancedb/lancedb)
         // This simulates what a real installer or environment would do.
         console.log(`Running pnpm install in ${skillDir}...`);
-        execSync('PATH=$PATH:/opt/homebrew/bin:/usr/local/bin pnpm install --no-lockfile', { 
+        execSync('pnpm install --no-lockfile', { 
             cwd: skillDir,
             stdio: 'inherit'
         });
@@ -43,6 +42,7 @@ test('copySkills sets up the isolated environment with the skill and its data', 
         const cmd = `node ${mjsPath} --search "address form"`;
         const output = execSync(cmd, { encoding: 'utf8' });
         
+        console.log({output})
         assert.ok(output.includes('Searching') || output.includes('Found') || output.includes('results') || output.includes('address'), 'Output should contain search info or results');
         
     } finally {
@@ -52,7 +52,7 @@ test('copySkills sets up the isolated environment with the skill and its data', 
     }
 });
 
-test.skip('invoking gemini-cli-agent.ts works end-to-end like in eval suite', async (t) => {
+test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', async (t) => {
     let targetDir = '';
     let templateDir = '';
     let osTmpDir = '/tmp'; // Use /tmp deliberately as per agent-shared.ts
@@ -87,11 +87,50 @@ test.skip('invoking gemini-cli-agent.ts works end-to-end like in eval suite', as
 
         execSync(cmd, { env, stdio: 'inherit' });
         
-        // Output is inherited, so we can't assert on it, but we can verify it finishes.
-        assert.ok(true, 'Execution finished');
+        const logPath = path.join(targetDir, 'chat_log.txt');
+        assert.ok(fs.existsSync(logPath), 'chat_log.txt should exist');
+        
+        const logContent = fs.readFileSync(logPath, 'utf8');
+        const lines = logContent.split('\n').filter(line => line.trim() !== '');
+        
+        let skillActivated = false;
+        let searchCalled = false;
+        let retrieveCalled = false;
+        
+        for (const line of lines) {
+            try {
+                const event = JSON.parse(line);
+                if (event.type === 'tool_use') {
+                    if (event.tool_name === 'activate_skill' && event.parameters?.name === 'modern-web-use-cases') {
+                        skillActivated = true;
+                    }
+                    if (event.tool_name === 'run_shell_command') {
+                        const command = event.parameters?.command || '';
+                        if (command.includes('--search')) {
+                            searchCalled = true;
+                        }
+                        if (command.includes('--retrieve')) {
+                            retrieveCalled = true;
+                        }
+                    }
+                }
+            } catch (e) {
+                // Ignore parse errors for partial lines if any
+            }
+        }
+        
+        console.log(`\n[Validation State]`);
+        console.log(`- Skill Activated: ${skillActivated}`);
+        console.log(`- Search Called: ${searchCalled}`);
+        console.log(`- Retrieve Called: ${retrieveCalled}\n`);
+        
+        // Assert all, but we get the log above first!
+        assert.ok(skillActivated, 'Skill should specify check for modern-web-use-cases activation');
+        assert.ok(searchCalled, 'Modern web search should be called');
+        assert.ok(retrieveCalled, 'Modern web retrieve should be called');
 
     } finally {
-        if (targetDir && fs.existsSync(targetDir)) fs.rmSync(targetDir, { recursive: true, force: true });
-        if (templateDir && fs.existsSync(templateDir)) fs.rmSync(templateDir, { recursive: true, force: true });
+        // if (targetDir && fs.existsSync(targetDir)) fs.rmSync(targetDir, { recursive: true, force: true });
+        // if (templateDir && fs.existsSync(templateDir)) fs.rmSync(templateDir, { recursive: true, force: true });
     }
 });
