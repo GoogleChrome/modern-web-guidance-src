@@ -1,0 +1,4 @@
+- "Create a dropdown menu that stays tethered to its button and flips to the top if it's too close to the bottom of the screen."
+- "Implement a context menu using CSS Anchor Positioning that flips horizontally and vertically to stay within the viewport."
+- "Build a nested dropdown system where submenus appear to the side of their parent item, using anchor-scope to prevent naming collisions."
+- "Add a resilient tooltip that automatically repositions itself when it hits the edge of the viewport without using JavaScript for positioning."

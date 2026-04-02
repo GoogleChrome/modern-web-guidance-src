@@ -87,7 +87,7 @@
       position-anchor: --kebab-anchor;
 
       /* 3. Tethering using position-area */
-      position-area: bottom span-right;
+      position-area: block-end span-inline-end;
 
       /* 4. Edge collision handling */
       position-try-fallbacks: flip-block, flip-inline;
@@ -100,8 +100,37 @@
       background: transparent;
     }
 
+    /* Nested Submenu Styles */
+    .has-submenu {
+      /* Create a scope for the submenu anchor name */
+      anchor-scope: --submenu-anchor;
+      position: relative;
+    }
+
+    .submenu-trigger {
+      anchor-name: --submenu-anchor;
+    }
+
+    .submenu {
+      /* Reset popover defaults */
+      margin: 0;
+      padding: 8px 0;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      background-color: white;
+      box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
+      min-width: 140px;
+
+      /* Anchor to the parent menu item */
+      position-anchor: --submenu-anchor;
+      position-area: inline-end span-block-end;
+      position-try-fallbacks: flip-inline, flip-block;
+      inset: auto;
+    }
+
     .menu-item {
       display: flex;
+      justify-content: space-between;
       align-items: center;
       width: 100%;
       text-align: left;
@@ -116,6 +145,17 @@
     .menu-item:hover,
     .menu-item:focus-visible {
       background-color: #f3f4f6;
+    }
+
+    .menu-item::after {
+      content: '›';
+      font-size: 18px;
+      color: #768390;
+      display: none;
+    }
+
+    .has-submenu > .menu-item::after {
+      display: block;
     }
   </style>
 </head>
@@ -132,6 +172,15 @@
   <!-- The actual dropdown menu (Popover API) -->
   <div id="dropdown-menu" class="context-menu" popover="auto">
     <button class="menu-item" type="button">Edit</button>
+    <div class="has-submenu">
+      <button class="menu-item submenu-trigger" type="button" popovertarget="submenu-options">
+        Share
+      </button>
+      <div id="submenu-options" class="submenu" popover="auto">
+        <button class="menu-item" type="button">Copy Link</button>
+        <button class="menu-item" type="button">Email</button>
+      </div>
+    </div>
     <button class="menu-item" type="button">Duplicate</button>
     <button class="menu-item" type="button" style="color: #cf222e;">Delete</button>
   </div>

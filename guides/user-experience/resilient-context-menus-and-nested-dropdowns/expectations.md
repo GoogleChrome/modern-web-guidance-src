@@ -1,0 +1,9 @@
+- An anchor is defined on the trigger element using `anchor-name`.
+- The overlay (target) is linked to the anchor using `position-anchor`.
+- `position-area` (or the older `inset-area`) is used to position the target on a grid relative to the anchor.
+- `position-try-fallbacks` (or the older `position-try-options`) is used to provide fallback positions for overflow handling.
+- `flip-block` and `flip-inline` keywords (or equivalent custom `@position-try` rules) are used to handle edge collisions.
+- The Popover API is used for the overlay (e.g., `popover` attribute) to ensure proper top-layer behavior.
+- The `anchor-scope` property is used in nested dropdown scenarios to prevent naming collisions.
+- `position-visibility: anchors-visible` is used to hide the overlay when the anchor scrolls out of view.
+- A polyfill is conditionally loaded only if `anchorName` is not supported in the browser.
