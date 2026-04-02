@@ -8,9 +8,27 @@ const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
 console.log("Running build-dist to ensure fresh build...");
-execSync('npm run build-dist', { 
+execSync('node --experimental-strip-types skills-cli/build-dist.ts', { 
   cwd: path.resolve(import.meta.dirname, '..'), 
   stdio: 'inherit' 
+});
+
+
+test('Dependency parity across package.json manifests', async () => {
+  const servingPkg = JSON.parse(await fs.readFile(path.join(ROOT_DIR, 'serving/package.json'), 'utf8'));
+  const templatePkg = JSON.parse(await fs.readFile(path.join(ROOT_DIR, 'serving/skills-cli/template/package.json'), 'utf8'));
+  const skillPkg = JSON.parse(await fs.readFile(path.join(ROOT_DIR, 'serving/skills-cli/template/skills/modern-web-use-cases/package.json'), 'utf8'));
+
+  const transformersVersion = servingPkg.dependencies["@huggingface/transformers"];
+  const lancedbVersion = servingPkg.dependencies["@lancedb/lancedb"];
+
+  // template/package.json (placed at root of dist, for global publishing)
+  assert.strictEqual(templatePkg.dependencies?.["@huggingface/transformers"], transformersVersion, "template package.json should match serving package.json @huggingface/transformers version");
+  assert.strictEqual(templatePkg.dependencies?.["@lancedb/lancedb"], lancedbVersion, "template package.json should match serving package.json @lancedb/lancedb version");
+
+  // template/skills/modern-web-use-cases/package.json (placed adjacent to SKILL.md, for skill users)
+  assert.strictEqual(skillPkg.dependencies?.["@huggingface/transformers"], transformersVersion, "skill package.json should match serving package.json @huggingface/transformers version");
+  assert.strictEqual(skillPkg.dependencies?.["@lancedb/lancedb"], lancedbVersion, "skill package.json should match serving package.json @lancedb/lancedb version");
 });
 
 test('Claude Plugin Config in Dist', async () => {
@@ -85,5 +103,19 @@ test('README dynamic Skill Coverage content', async () => {
   
   // Quick sanity check that at least one feature name format works out, e.g. webstatus links
   assert.match(readmeRaw, /https:\/\/webstatus\.dev\/features\//, 'README should contain links to webstatus.dev');
+});
+
+test('modern-web CLI search and retrieve', async () => {
+  const binaryPath = path.join(DIST_DIR, 'skills/modern-web-use-cases/modern-web.mjs');
+  
+  // 1. Validate search
+  const searchOut = execSync(`node "${binaryPath}" --search "address form"`, { encoding: 'utf8' });
+  const searchResults = JSON.parse(searchOut);
+  assert.ok(Array.isArray(searchResults), 'Search output should be a JSON array');
+  assert.ok(searchResults.length > 0, 'Should return at least one search result for address form');
+
+  // 2. Validate retrieve
+  const retrieveOut = execSync(`node "${binaryPath}" --retrieve accessible-error-announcement`, { encoding: 'utf8' });
+  assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
 });
 
