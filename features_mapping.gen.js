@@ -138,6 +138,10 @@ window.__featuresMapping = {
   "anchor-annotations-to-target-element": [
     "anchor-positioning"
   ],
+  "anchor-positioning-tab-underline": [
+    "anchor-positioning",
+    "prefers-reduced-motion"
+  ],
   "animate-element-entry-exit": [
     "starting-style",
     "transition-behavior"
@@ -392,9 +396,6 @@ window.__featuresMapping = {
   ],
   "theme-within-theme": [
     "color-scheme"
-  ],
-  "transition-between-target-element-positions": [
-    "anchor-positioning"
   ],
   "visually-stable-font-fallbacks": [
     "font-size-adjust"
