@@ -5,7 +5,7 @@ import { spawn } from 'child_process';
 import { Agents, defaultSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
-import { getTaskMap } from '../lib/guide-validation.ts';
+import { getTaskMap, TASK_FILE } from '../lib/guide-validation.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -150,8 +150,10 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         promptContent += COMMON_APPEND_PROMPT;
 
         // Copy the base app to the run directory (for tracking purposes)
-        const taskDir = path.join(runDir, task);
-        const workspaceBaseAppDir = path.join(taskDir, 'base_app');
+        const guideFolder = path.join(runDir, task);
+        const taskFileName = isNegativeSuite ? 'negative' : path.basename(TASK_FILE, '.md');
+        const taskFolder = path.join(guideFolder, taskFileName);
+        const workspaceBaseAppDir = path.join(taskFolder, 'base_app');
         if (!fs.existsSync(workspaceBaseAppDir)) {
           fs.mkdirSync(workspaceBaseAppDir, { recursive: true });
         }
@@ -174,7 +176,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
         const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
         for (const runType of runTypesToRun) {
-          const targetDir = path.join(taskDir, runType);
+          const targetDir = path.join(taskFolder, runType);
           if (!fs.existsSync(targetDir)) {
             fs.mkdirSync(targetDir, { recursive: true });
           }
@@ -215,7 +217,7 @@ process.exit(result.status ?? 0);
             scripts: { "run-agent": "node run.mjs" }
           }, null, 2));
 
-          pnpmWorkspacePackages.push(`${task}/${runType}`);
+          pnpmWorkspacePackages.push(`${task}/${taskFileName}/${runType}`);
         }
       }
 

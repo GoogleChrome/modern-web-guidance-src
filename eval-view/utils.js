@@ -62,10 +62,10 @@ export function calculateChartData(results) {
     
     Object.keys(results).forEach(key => {
         const parts = key.split(' - ');
-        if (parts.length < 2) return;
+        if (parts.length < 3) return;
 
-        const guide = parts.length === 3 ? parts[1] : parts[0];
-        const runType = parts.length === 3 ? parts[2] : parts[1];
+        const guide = parts[1];
+        const runType = parts[2];
         if (!['guided', 'unguided'].includes(runType)) return;
         if (!apps[guide]) apps[guide] = { guided: [], unguided: [] };
 

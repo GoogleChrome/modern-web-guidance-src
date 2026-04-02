@@ -243,8 +243,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
 
             const parts = currentDetails.testName.split(' - ');
-            const guide = parts.length === 3 ? parts[1] : parts[0];
-            const runType = parts.length === 3 ? parts[2] : parts[1];
+            const guide = parts[1];
+            const runType = parts[2];
 
             let sIdx = sortedScenarios.indexOf(guide);
             let rIdx = currentRunTypes.indexOf(runType);
@@ -393,8 +393,6 @@ function renderGrid(data, testId) {
         const parts = k.split(' - ');
         if (parts.length === 3) {
             return { raw: k, taskName: parts[0], guide: parts[1], runType: parts[2] };
-        } else if (parts.length === 2) {
-            return { raw: k, taskName: parts[0], guide: parts[0], runType: parts[1] };
         }
         return null;
     }).filter(p => p !== null);
@@ -413,20 +411,14 @@ function renderGrid(data, testId) {
         sortedScenarios.push(guide);
 
         const groupParts = validParts.filter(p => p.guide === guide);
-        // If length 3 exists for this guide, resolve its taskName
-        const legacyTestIdentifier = groupParts.find(p => p.raw.split(' - ').length === 3);
-        const taskName = legacyTestIdentifier ? legacyTestIdentifier.taskName : guide;
+        const taskName = groupParts[0].taskName;
 
         sortedRunTypes.forEach(runType => {
-            const legacyTestIdentifierStr = `${taskName} - ${guide} - ${runType}`;
-            const testIdentifierStr = `${guide} - ${runType}`;
+            const testName = `${taskName} - ${guide} - ${runType}`;
+            const runData = results[testName];
+            const testStats = stats[testName];
 
-            const runData = results[testIdentifierStr] || results[legacyTestIdentifierStr];
-            const testStats = stats[testIdentifierStr] || stats[legacyTestIdentifierStr];
-
-            if (!runData) return; // Skip combinations that don't exist
-
-            const testName = results[testIdentifierStr] ? testIdentifierStr : legacyTestIdentifierStr;
+            if (!runData) return;
 
             const card = document.createElement('div');
             card.className = 'test-card';
@@ -516,8 +508,8 @@ async function showDetails(testName, runs, stats, testId) {
     const contentDiv = document.querySelector('.modal-content');
     const body = document.getElementById('modal-body');
     const parts = testName.split(' - ');
-    const guide = parts.length === 3 ? parts[1] : parts[0];
-    const runType = parts.length === 3 ? parts[2] : parts[1];
+    const guide = parts[1];
+    const runType = parts[2];
 
     // Reset modifier classes
     modal.classList.remove('diff-modal');
@@ -549,15 +541,15 @@ async function showDetails(testName, runs, stats, testId) {
                 let prompt = run.prompt || '';
                 const baseApp = run.baseApp || 'n/a';
 
-                if (!prompt) { // Fallback for legacy evaluations
+                if (!prompt) {
                     try {
-                        const legacyTaskName = parts.length === 3 ? parts[0] : run.taskName;
-                        const isNegative = legacyTaskName && legacyTaskName.endsWith('-negative');
-                        const taskPath = `tasks/${isNegative ? 'negative/' : ''}${legacyTaskName}.md`;
+                        const taskName = parts[0];
+                        const isNegative = taskName && taskName.endsWith('-negative');
+                        const taskPath = `tasks/${isNegative ? 'negative/' : ''}${taskName}.md`;
                         const taskMd = await api.getFileText(taskPath);
                         prompt = taskMd.replace(/^---[\s\S]+?---\n+/, '').trim();
                     } catch {
-                        console.log(`Fallback failed: Could not resolve legacy task file for ${run.taskName}`);
+                        console.log(`Fallback failed: Could not resolve task file for ${run.taskName}`);
                     }
                 }
 

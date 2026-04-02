@@ -50,7 +50,7 @@
         ]
       }
     ],
-    "preload-prerender - unguided": [
+    "task - preload-prerender - unguided": [
       {
         "runNumber": 1,
         "results": [
@@ -135,7 +135,7 @@
         }
       }
     ],
-    "preload-prerender - guided": [
+    "task - preload-prerender - guided": [
       {
         "runNumber": 1,
         "results": [
@@ -197,13 +197,13 @@
       "runsUsingGuide": 1,
       "runCount": 1
     },
-    "preload-prerender - unguided": {
+    "task - preload-prerender - unguided": {
       "median": 33,
       "rates": [
         33
       ]
     },
-    "preload-prerender - guided": {
+    "task - preload-prerender - guided": {
       "median": 33,
       "rates": [
         33

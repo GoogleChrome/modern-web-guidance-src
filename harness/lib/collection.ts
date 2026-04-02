@@ -41,14 +41,13 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
 
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
-    const directories = glob.sync('*/*/', { cwd: runPath, absolute: true });
+    const directories = glob.sync('*/*/*/', { cwd: runPath, absolute: true });
 
     for (const dir of directories) {
       const relPath = path.relative(runPath, dir);
       const parts = relPath.split(path.sep);
-      if (parts.length < 2) continue;
-
-      const [guide, runType] = parts;
+      if (parts.length < 3) continue;
+      const [guide, _, runType] = parts;
       if (runType === 'base_app') continue; // Skip the base app setup folder
       const targetFile = path.join(dir, 'index.html');
 
@@ -124,8 +123,8 @@ run();
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
 
-    // Structure: results/{suiteName}/{runNumber}/{guideName}/{runType}
-    const directories = glob.sync('*/*/', {
+    // Structure: results/{suiteName}/{runNumber}/{guideName}/{taskName}/{runType}
+    const directories = glob.sync('*/*/*/', {
       cwd: runPath,
       absolute: true
     });
@@ -133,10 +132,9 @@ run();
     for (const dir of directories) {
       const relPath = path.relative(runPath, dir);
       const parts = relPath.split(path.sep);
+      if (parts.length < 3) continue;
 
-      if (parts.length < 2) continue;
-
-      const [guide, runType] = parts;
+      const [guide, taskName, runType] = parts;
       if (runType === 'base_app') continue; // Skip the base app setup folder
       let guidesUsedResult: string[] = [];
       let guidanceToolsUsedResult: string[] = [];
@@ -214,7 +212,7 @@ run();
         }
       }
 
-      const testName = `${guide} - ${runType}`;
+      const testName = `${taskName} - ${guide} - ${runType}`;
       const actualBaseApp = isNegative ? 'negative-demo.html' : taskInfo.baseApp;
 
       if (!allResults[testName]) {
@@ -227,6 +225,7 @@ run();
         guidanceToolsUsed: guidanceToolsUsedResult,
         expectedGuidanceTool: expectedGuidanceTool,
         guideName: guide,
+        taskName: taskName,
         baseApp: actualBaseApp,
         prompt: taskInfo.prompt
       });

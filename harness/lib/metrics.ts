@@ -51,12 +51,12 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     const partsB = b.split(' - ');
 
     const taskNameA = partsA[0];
-    const guideNameA = partsA.length === 3 ? partsA[1] : '';
-    const runTypeA = partsA.length === 3 ? partsA[2] : partsA[1];
+    const guideNameA = partsA[1];
+    const runTypeA = partsA[2];
 
     const taskNameB = partsB[0];
-    const guideNameB = partsB.length === 3 ? partsB[1] : '';
-    const runTypeB = partsB.length === 3 ? partsB[2] : partsB[1];
+    const guideNameB = partsB[1];
+    const runTypeB = partsB[2];
 
     if (taskNameA !== taskNameB) {
       return taskNameA.localeCompare(taskNameB);
@@ -107,7 +107,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let guideUsageCount = 0;
     let toolActivationCount = 0;
     const parts = name.split(' - ');
-    const runType = parts.length === 3 ? parts[2] : parts[1];
+    const runType = parts[2];
 
     if (runType === 'guided') {
       runs.forEach(run => {
@@ -154,7 +154,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
 
     keys.forEach(k => {
       const parts = k.split(' - ');
-      const runType = parts.length === 3 ? parts[2] : parts[1];
+      const runType = parts[2];
       const stats = testStats[k];
 
       if (stats) {

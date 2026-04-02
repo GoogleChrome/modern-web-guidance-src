@@ -149,17 +149,29 @@ export class ApiClient {
     async getResultInfo(testId, run, testName) {
         const parts = testName.split(' - ');
         const taskName = parts[0];
-        const runType = parts.length === 3 ? parts[2] : parts[1];
+        const guideName = parts[1];
+        const runType = parts[2];
         const actualBaseApp = run.baseApp;
+        let logicalBasePath = `${testId}/${run.runNumber}/${guideName}/${taskName}/${runType}`;
+        let entryPointPath = await this._findBestEntryPoint(logicalBasePath);
 
-        const logicalBasePath = `${testId}/${run.runNumber}/${taskName}/${runType}`;
-        const entryPointPath = await this._findBestEntryPoint(logicalBasePath);
+        // Fallback for older results stored in a depth-2 folder structure (runDir/taskName/runType)
+        if (!entryPointPath) {
+            const legacyPath = `${testId}/${run.runNumber}/${taskName}/${runType}`;
+            const legacyEntryPoint = await this._findBestEntryPoint(legacyPath);
+            if (legacyEntryPoint) {
+                logicalBasePath = legacyPath;
+                entryPointPath = legacyEntryPoint;
+            } else {
+                entryPointPath = `${logicalBasePath}/index.html`; // default fallback
+            }
+        }
 
         // Calculate relative sub-path to build the setup apps correlation
         const relativePath = entryPointPath.replace(logicalBasePath + '/', '');
 
         // Try run-local base_app first (at the appName level, not inside guided/unguided), fallback to centralized base_apps for older runs
-        const localBaseAppPath = `${testId}/${run.runNumber}/${taskName}/base_app/${relativePath}`;
+        const localBaseAppPath = `${testId}/${run.runNumber}/${guideName}/${taskName}/base_app/${relativePath}`;
         let exists = false;
 
         if (this.source === 'remote') {
@@ -219,7 +231,7 @@ export class ApiClient {
             bestCandidate = results.find(result => result !== null);
         }
 
-        return bestCandidate || `${basePath}/index.html`; // strict default fallback
+        return bestCandidate;
     }
 
     /** Lists relevant metadata files (like raw results or trajectories) for a specific test execution dir. */

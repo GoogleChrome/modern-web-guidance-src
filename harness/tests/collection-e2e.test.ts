@@ -32,7 +32,7 @@ base_app: ${actualBaseAppName}
 
         // 4. Setup mock task execution dir where results generated from agents are stored
         const runNumberDir = path.join(resultsBase, '1');
-        const targetDir = path.join(runNumberDir, guideName, 'guided');
+        const targetDir = path.join(runNumberDir, guideName, 'task', 'guided');
         fs.mkdirSync(targetDir, { recursive: true });
 
         // Target File checking
@@ -62,7 +62,7 @@ base_app: ${actualBaseAppName}
         // 7. Verify E2E extraction output
         assert.strictEqual(numRuns, 1, 'Expected 1 run detected');
 
-        const testKey = `${guideName} - guided`;
+        const testKey = `task - ${guideName} - guided`;
         assert.ok(allResults[testKey], `allResults must explicitly composite the key correctly: ${testKey}`);
 
         const runPayload = allResults[testKey][0];
