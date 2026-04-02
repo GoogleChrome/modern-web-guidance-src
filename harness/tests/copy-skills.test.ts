@@ -62,7 +62,7 @@ test('copySkills sets up the isolated environment with the skill and its data', 
     }
 });
 
-test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', { skip: true }, async (t) => {
+test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', async (t) => {
     let targetDir = '';
     let templateDir = '';
     let osTmpDir = '/tmp'; // Use /tmp deliberately as per agent-shared.ts
@@ -82,14 +82,13 @@ test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', { skip:
             name: 'test-run',
             numRuns: 1,
             tasks: [],
-            mcpServersToEnable: ['modern-web'],
+            mcpServersToEnable: [],
             negative: false
         };
 
         const env = {
             ...process.env,
             GD_SUITE_CONFIG: JSON.stringify(suiteConfig),
-            PATH: `${process.env.PATH || ''}:/opt/homebrew/bin:/usr/local/bin`
         };
 
         const agentScript = path.resolve(import.meta.dirname, '../agents/gemini-cli-agent.ts');
@@ -140,7 +139,7 @@ test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', { skip:
         assert.ok(retrieveCalled, 'Modern web retrieve should be called');
 
     } finally {
-        // if (targetDir && fs.existsSync(targetDir)) fs.rmSync(targetDir, { recursive: true, force: true });
-        // if (templateDir && fs.existsSync(templateDir)) fs.rmSync(templateDir, { recursive: true, force: true });
+        if (targetDir && fs.existsSync(targetDir)) fs.rmSync(targetDir, { recursive: true, force: true });
+        if (templateDir && fs.existsSync(templateDir)) fs.rmSync(templateDir, { recursive: true, force: true });
     }
 });
