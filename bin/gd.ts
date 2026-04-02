@@ -80,6 +80,7 @@ const { positionals, values } = parseArgs({
     verbose: { type: 'boolean' },
     usecases: { type: 'boolean' },
     config: { type: 'string' },
+    'no-ui': { type: 'boolean' },
   },
   allowPositionals: true,
   strict: false,
@@ -241,6 +242,12 @@ ${cBold('Options:')}
 
     case 'eval': {
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
+      if (!values['no-ui'] && tasks.length === 0) {
+        process.env.LAUNCH_UI = 'true';
+        process.chdir(evalViewDir);
+        await import('../eval-view/server.js');
+        break;
+      }
 
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
