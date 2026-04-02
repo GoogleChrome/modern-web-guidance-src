@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anchor Positioning Tab Underline</title>
+    <style>
+      ul {
+        padding: 0;
+        margin: 0;
+        list-style: none;
+        display: flex;
+        gap: 1rem;
+        font-size: 1.5rem;
+        position: relative;
+      }
+
+      .underline {
+        position: absolute;
+        position-anchor: --active-item;
+        position-area: bottom;
+        height: 10px;
+        width: 100px;
+        background: blue;
+        transition: all 0.5s;
+      }
+
+      ul li.active {
+        anchor-name: --active-item;
+        font-weight: bold;
+      }
+
+      ul li a {
+        color: #333;
+        text-decoration: none;
+        padding: 0.5rem;
+        display: block;
+      }
+
+      body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        font-family: sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <ul>
+        <li class="active"><a href="#">Home</a></li>
+        <li><a href="#">Gallery</a></li>
+        <li><a href="#">Services</a></li>
+        <li><a href="#">Team</a></li>
+      </ul>
+      <div class="underline"></div>
+    </nav>
+    <script>
+      const links = document.querySelectorAll('ul li');
+      links.forEach(li => {
+        li.addEventListener('click', (e) => {
+          e.preventDefault();
+          document.querySelector('li.active').classList.remove('active');
+          li.classList.add('active');
+        });
+      });
+    </script>
+  </body>
+</html>
