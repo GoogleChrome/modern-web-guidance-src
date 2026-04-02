@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Transition between target element positions</title>
+    <title>Anchor Positioning Tab Underline</title>
     <style>
       /* Demo adapted from: https://codepen.io/t_afif/pen/JoPOZNg */
       ul {
@@ -14,19 +14,26 @@
         gap: 0.5rem;
         font-size: 2.2rem;
       }
-      ul:before {
+      ul::before {
         content: '';
         position: absolute;
-        position-anchor: --li;
-        bottom: anchor(bottom);
-        left: anchor(left);
-        right: anchor(right);
-        height: 0.2em;
+        position-anchor: --active;
+        inset-block-start: calc(anchor(bottom) + .1lh);
+        inset-inline-start: anchor(left);
+        inset-inline-end: anchor(right);
+        height: 0.25lh;
         background: red;
-        transition: 0.2s;
+        @media (prefers-reduced-motion: no-preference){
+          transition: inset ease-in-out .2s;
+        }
       }
+
       ul li.active {
-        anchor-name: --li;
+        anchor-name: --active;
+        color: red;
+        @supports not (position-anchor: auto){
+          border-bottom: .25lh red solid;
+        }
       }
 
       ul li a {
