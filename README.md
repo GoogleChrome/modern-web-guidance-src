@@ -70,7 +70,7 @@ gd dev [dir] [options]        # auto-generate/calibrate
 
 # Evaluation
 gd eval                       # run the full evaluation suite
-gd eval [task1] [task2]       # run specific tasks
+gd eval [task1] [task2]       # run specific tasks (which are the names of guides e.g. `batch-analytics-events`)
 gd eval --config <custom_config>       # run with config overrides (defaults to config.ts, or harness/config.ts)
 gd dashboard                  # start the evaluation dashboard
 

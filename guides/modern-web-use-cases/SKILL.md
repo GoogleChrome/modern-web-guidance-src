@@ -21,14 +21,19 @@ Must use this skill:
 
 ## Usage Instructions
 
-You can execute these tools using standard `node` from the command line from **any** directory. 
+### Step 0. Install the modern-web CLI
+First, ensure the modern-web CLI is installed. The below command installs it globally if needed; adjust the path to the modern-web skill directory.
 
-### 1. Search Use Cases
+```sh
+command -v modern-web >/dev/null 2>&1 || <modern-web-use-cases-directory>/setup.sh
+```
+
+### Step 1. Search Use Cases
 
 Search with an action-oriented query summarizing what you want to achieve using the `--search` flag.
 
-```bash
-node ./cli/serving/bin/modern-web.cjs --search "<query>"
+```sh
+modern-web --search "<query>"
 ```
 
 **Example Output**:
@@ -45,13 +50,14 @@ node ./cli/serving/bin/modern-web.cjs --search "<query>"
 
 ---
 
-### 2. Retrieve Best Practices
+### Step 2. Retrieve Best Practices
 
 Once you have a relevant `id` from the search results, call this script using the `--retrieve` flag to get the full guide. You can pass multiple IDs separated by commas.
 
-```bash
-node ./cli/serving/bin/modern-web.cjs --retrieve "<id>"
+```sh
+modern-web --retrieve "<id>"
 ```
+
 
 **Example Output**:
 `The markdown content of the guide describing implementation steps...`
