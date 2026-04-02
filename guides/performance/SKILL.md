@@ -1,6 +1,6 @@
 ---
 name: performance
-description: Actionable guidelines for optimizing modern web applications. Use this skill when auditing performance, optimizing page load metrics (LCP, INP, CLS), or fixing slow interactions.
+description: Actionable guidelines for optimizing modern web applications. Use this skill when auditing performance, optimizing loading metrics, fixing slow interactions and optimizing Core Web Vitals (LCP, INP, CLS)
 ---
 
 ## Critical Rendering Path (CRP) Optimization
@@ -9,7 +9,7 @@ The Critical Rendering Path dictates how quickly the browser converts HTML, CSS,
 
 ### DOs
 *   **DO inline critical CSS**: Extract styles necessary for above-the-fold content and inject them directly into the HTML `<head>`. Defer the rest of the stylesheet.
-*   **DO use `async` or `defer` for all non-critical scripts**: Prevent JavaScript from blocking the DOM parser. Use `defer` for scripts that depend on the DOM or each other, and `async` for independent scripts.
+*   **DO use `async` or `defer` for all non-critical scripts**: Prevent JavaScript from blocking the DOM parser. Use `defer` for scripts that depend on the DOM or each other, and `async` for independent scripts. `type="module"` is preferred for modern JavaScript and is deferred by default so no need to have an explicit `defer` attribute but you can use `async` on independent module scripts.
 *   **DO split CSS by media queries**: Use the `media` attribute on `<link>` tags so the browser downloads unused stylesheets (e.g., print styles or desktop styles on mobile) without blocking the render.
 *   **DO utilize resource hints**: Add `preconnect` or `dns-prefetch` for essential third-party domains (e.g., font foundries or API endpoints) to establish early TLS handshakes.
 
@@ -133,52 +133,33 @@ async function processLargeList(items) {
 - **50ms - 250ms**: Slice tasks and yield with `scheduler.yield()`.
 - **> 250ms**: Offload to a Web Worker.
 
-## Third-Party Script Management & Partytown
+## Third-Party Script Management
 
-Third-party scripts (analytics, ads, chat widgets) are the primary source of main thread congestion. Because these scripts are opaque and resource-intensive, they must be sandboxed.
+Third-party scripts (analytics, ads, chat widgets) are the primary source of main thread congestion.
 
 ### DOs
-*   **DO offload third-party scripts to Web Workers**: Use libraries like Partytown to run heavy external scripts (e.g., Google Tag Manager) in a background thread while proxying DOM access.
-*   **DO apply `type="text/partytown"` to opted-in scripts**: Signal to the main thread parser to ignore the script block, allowing the Partytown worker to intercept and execute it asynchronously.
-*   **DO define `forward` proxies for global analytics calls**: Explicitly map main-thread array pushes (e.g., `dataLayer.push`) to the background worker.
+*   **DO avoid third-party scripts blocking main content**: Use `defer` with all third-party scripts unless critical to the page load and load them in the footer of the page, rather than the `<head>`.
 *   **DO self-host critical third-party dependencies**: Reduce DNS lookups and enforce custom `Cache-Control` logic by hosting third-party libraries on the origin domain.
-
-### DON'Ts
-*   **DON'T offload scripts within the critical rendering path**: UI-blocking scripts (e.g., cookie consent banners that must block access, or critical A/B testing visual overlays) should not be moved to a Web Worker.
-*   **DON'T allow third-party scripts unrestricted DOM access**: Rely on sandboxing configurations to deny third-party scripts access to sensitive APIs (like `localStorage` or `document.cookie`) unless explicitly required.
 
 ### Code Examples
 
-**HTML/JS: Partytown Integration**
+**HTML: Third-Party Script Execution**
 ```html
-<!-- 1. Configure Partytown to forward main thread events -->
-<script>
-  window.partytown = {
-    forward: ['dataLayer.push']
-  };
-</script>
-
-<!-- 2. Load Partytown Library snippet -->
-<script src="/~partytown/partytown.js"></script>
-
-<!-- 3. Move Third-Party Script to the Web Worker -->
-<script 
-  type="text/partytown" 
-  src="https://www.googletagmanager.com/gtm.js?id=GTM-XXXXXX">
-</script>
+<!-- 1. Place third-party scripts near the end of the page with the defer attribute -->
+<script defer src="http://www.example.com/third-party.js"></script>
 ```
 
 ## CSS Rendering & Containment Optimization
 
-Rendering involves Layout, Style, Paint, and Compositing calculations. CSS Containment limits the scope of these calculations.
+Rendering involves Layout, Style, Paint, and Compositing calculations. CSS Containment limits the scope of these calculations which is useful on large, complex pages where such calculations can cause performance problems.
 
 ### DOs
-*   **DO use `content-visibility: auto` on off-screen sections**: Instruct the browser to skip layout and paint calculations for entire subtrees until they approach the viewport.
+*   **DO use `content-visibility: auto` on off-screen sections on large, complex pages**: Instruct the browser to skip layout and paint calculations for entire subtrees until they approach the viewport.
 *   **DO pair `content-visibility` with `contain-intrinsic-size`**: Prevent layout shifts and scrollbar jumping by providing a placeholder height/width for unrendered containers.
 *   **DO apply explicit CSS containment (`contain`)**: For isolated UI components (like modals or widgets), use `contain: layout style paint` to prevent internal changes from triggering page-wide reflows.
-*   **DO use `will-change` strictly for dynamic state changes**: Apply it via JavaScript or specific `:hover`/`:focus` states to offload animations to the GPU, then remove it.
 
 ### DON'Ts
+*   **DON'T apply `content-visibility: auto` on smaller, simpler pages**: The gains will be negligible and there are risks of side effects with content jumping.
 *   **DON'T apply `content-visibility: auto` to above-the-fold content**: The browser will still evaluate it, but forcing it through the containment engine unnecessarily adds slight overhead to visible elements.
 *   **DON'T overuse `will-change` globally**: Indiscriminately applying `will-change: transform` to multiple elements consumes excessive VRAM, causing GPU crashes or sluggish rendering.
 *   **DON'T forget accessibility when hiding elements**: `content-visibility: auto` keeps elements in the DOM for screen readers. If content should be truly hidden from assistive technology when off-screen, manage `aria-hidden` attributes manually.
@@ -236,7 +217,6 @@ Images typically represent the largest payload on a given web page. Optimization
     width="800" 
     height="600"
     fetchpriority="high"
-    decoding="sync"
     loading="eager"
   >
 </picture>
@@ -248,10 +228,9 @@ Images typically represent the largest payload on a given web page. Optimization
     width="100" 
     height="100"
     loading="lazy"
-    decoding="async"
 >
 
-<!-- DO: Use native lazy loading for iframes -->
+<!-- DO: Use native lazy loading for below the fold iframes -->
 <iframe src="https://example.com/map" width="800" height="600" loading="lazy" title="Example Map"></iframe>
 ```
 
@@ -314,12 +293,10 @@ registerRoute(
 Web fonts are a common source of render blocking. Optimizing them reduces the Flash of Invisible Text (FOIT) and speeds up initial rendering.
 
 ### DOs
-*   **DO use `font-display: swap`**: Ensure text remains visible using a system fallback font until the web font loads.
 *   **DO preload critical fonts**: Use `<link rel="preload" as="font" type="font/woff2" crossorigin>` for fonts seen above the fold.
 *   **DO subset fonts**: Trim font weights and glyph variations to include only the characters your application requires.
 
 ### DON'Ts
-*   **DON'T block text rendering**: Avoid `font-display: block` which hides text until the font finishes loading.
 *   **DON'T preload all fonts**: Over-preloading leads to network contention that starves other critical assets.
 
 ### Code Examples
@@ -329,7 +306,6 @@ Web fonts are a common source of render blocking. Optimizing them reduces the Fl
 @font-face {
   font-family: 'Modern Sans';
   src: url('/fonts/modern-sans.woff2') format('woff2');
-  font-display: swap; /* Progressive enhancement */
 }
 ```
 
@@ -348,9 +324,11 @@ Video payloads are among the heaviest assets. Optimization focuses on reducing b
 *   **DO provide a `poster` image fallback**: Display a lightweight image placeholder while the video buffers to improve perceived performance.
 *   **DO use `preload="none"` for non-critical videos**: Delay bandwidth consumption for below-the-fold or non-autoplaying videos.
 *   **DO serve modern formats via source negotiation**: Offer WebM (better compression ratio) alongside standard MP4 formats.
+*   **DO use `loading="lazy"` for offscreen videos**: Lazy-loading videos allow `poster` and `preload` downloads to be deferred until the video is in or near the viewport.
 
 ### DON'Ts
-*   **DON'T auto-play large video files blindly**: Rely on user intent or use progressive enhancement streams.
+*   **DON'T auto-play video files blindly**: Rely on user intent or use progressive enhancement streams.
+*   **DON'T auto-play large video files at all**: Rely on user intent before downloading large files.
 
 ### Code Examples
 
