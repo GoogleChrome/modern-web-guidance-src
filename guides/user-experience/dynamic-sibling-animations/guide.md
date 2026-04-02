@@ -54,7 +54,7 @@ if(!CSS.supports('animation-delay: calc(sibling-index() * 0.1s)')){
 }
 ```
 
-Add an `animation-delay` declaration that uses the `--sibling-index` custom property. It must be before the `animation-delay` declaration that uses the `sibling-index()` function.
+Add an `animation-delay` declaration that uses the `--sibling-index` custom property. It must be before the `animation-delay` declaration that uses the `sibling-index()` function. This does not need to be wrapped in `@supports` - older browsers will not parse the second declaration and will use the first declaration.
 
 ```css
 #stagger-list > .item {
