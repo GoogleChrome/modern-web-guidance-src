@@ -1,28 +1,23 @@
-import { fileURLToPath } from "url";
-import { dirname } from "path";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
-import { config, Agents } from './config.ts';
-import matter from 'gray-matter';
+import { Agents, defaultSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
+import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
+import { getTaskMap, TASK_FILE } from '../lib/guide-validation.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
 // Global log file stream
 let logStream: fs.WriteStream | null = null;
 
-const baseDir = __dirname;
-const baseAppsDir = path.join(baseDir, 'base_apps');
-const tasksDir = path.join(baseDir, 'tasks');
-const resultsDir = path.join(baseDir, 'results');
 
 const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
-export async function runAgent(templateDirRaw: string, promptContentRaw: string) {
-  const agent = config.suite.agent;
+export async function runAgent(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
+  const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
+  const agent = suiteConfig.agent;
   let templateDir = templateDirRaw;
   if (!path.isAbsolute(templateDir)) {
     templateDir = path.resolve(process.cwd(), templateDir);
@@ -46,14 +41,18 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string)
     fs.mkdirSync(targetDir, { recursive: true });
   }
 
+  // Save a snapshot of the current global configuration (which may have been merged with overrides)
+  fs.writeFileSync(path.join(targetDir, 'suite_config.json'), JSON.stringify(suiteConfig, null, 2));
+
   try {
-    const agentScript = path.join(__dirname, 'agents',
+    const agentScript = path.join(harnessDir, 'agents',
       agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
         agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
           agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
             'jetski-agent.ts'
     );
 
+    const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
     await runCommand('node', [
       '--experimental-strip-types', 
       agentScript, 
@@ -61,7 +60,7 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string)
       'guided', // Default to guided for ad-hoc tool execution
       targetDir,
       templateDir
-    ]);
+    ], { GD_SUITE_CONFIG: suiteConfigPath });
     console.log(`\n✅ ${taskNameLabel} complete! Results in ${targetDir}`);
   } catch (error) {
     console.error(`❌ ${taskNameLabel} failed:`, error);
@@ -75,24 +74,30 @@ export interface RunSuiteOptions {
   numRuns?: number;
   skipEval?: boolean;
   guidedOnly?: boolean;
+  suiteConfig?: SuiteConfig;
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
+  const suiteConfig = options.suiteConfig || defaultSuiteConfig;
+
   // Create results directory if it doesn't exist
   if (!fs.existsSync(resultsDir)) {
     fs.mkdirSync(resultsDir, { recursive: true });
   }
 
-  const agent = config.suite.agent;
+  const agent = suiteConfig.agent;
 
   // Generate a unique testID with timestamp or use custom name
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-  const testID = options.name || config.suite.name || `test_${timestamp}`;
+  const testID = options.name || suiteConfig.name || `test_${timestamp}`;
   const testDir = options.outputDir || path.join(resultsDir, testID);
   
   if (!fs.existsSync(testDir)) {
     fs.mkdirSync(testDir, { recursive: true });
   }
+
+  // Save a snapshot of the merged configuration
+  fs.writeFileSync(path.join(testDir, 'suite_config.json'), JSON.stringify(suiteConfig, null, 2));
 
   // Setup logging to file
   const logFilePath = path.join(testDir, 'test_suite.log');
@@ -104,74 +109,79 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
   try {
     let hasErrors = false;
-    const numRuns = options.numRuns || config.suite.numRuns;
+    const numRuns = options.numRuns || suiteConfig.numRuns;
     const endRun = 1 + numRuns;
-      const isNegativeSuite = config.suite.negative === true;
-      const currentTasksDir = isNegativeSuite ? path.join(tasksDir, 'negative') : tasksDir;
+    const isNegativeSuite = suiteConfig.negative === true;
 
-      console.log(`\nStarting execution for ${numRuns} runs ${isNegativeSuite ? '(Negative Suite)' : ''}`);
+    console.log(`\nStarting execution for ${numRuns} runs ${isNegativeSuite ? '(Negative Suite)' : ''}`);
 
-      for (let runNumber = 1; runNumber < endRun; runNumber++) {
+    for (let runNumber = 1; runNumber < endRun; runNumber++) {
 
-        console.log(`\n${'='.repeat(60)}`);
-        console.log(`>>> STARTING RUN ${runNumber} <<<`);
-        console.log(`${'='.repeat(60)}\n`);
+      console.log(`\n${'='.repeat(60)}`);
+      console.log(`>>> STARTING RUN ${runNumber} <<<`);
+      console.log(`${'='.repeat(60)}\n`);
 
-        const runDir = path.join(testDir, String(runNumber));
-        if (!fs.existsSync(runDir)) {
-          fs.mkdirSync(runDir, { recursive: true });
-        }
+      const runDir = path.join(testDir, String(runNumber));
+      if (!fs.existsSync(runDir)) {
+        fs.mkdirSync(runDir, { recursive: true });
+      }
 
-        const pnpmWorkspacePackages: string[] = [];
+      const pnpmWorkspacePackages: string[] = [];
 
-        // Use configured tasks, or discover all tasks in the tasks directory
-        const tasksToRun = options.tasks && options.tasks.length > 0
-          ? options.tasks
-          : (config.suite.tasks.length > 0
-            ? config.suite.tasks
-            : fs.readdirSync(currentTasksDir).filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, '')));
+      const taskMap = getTaskMap();
 
-        for (const task of tasksToRun) {
-          // Read prompt from task
-          const taskPath = path.join(currentTasksDir, `${task}.md`);
-        if (!fs.existsSync(taskPath)) {
-          console.warn(`Skipping task ${task}: ${taskPath} not found`);
+      // Use configured tasks, or discover all tasks from the guide folders
+      const tasksToRun = options.tasks && options.tasks.length > 0
+        ? options.tasks
+        : (suiteConfig.tasks.length > 0
+          ? suiteConfig.tasks
+          : Array.from(taskMap.keys()));
+
+      for (const task of tasksToRun) {
+        const taskInfo = taskMap.get(task);
+        if (!taskInfo) {
+          console.warn(`Skipping task ${task}: Not found in task map`);
           continue;
         }
 
-        const fileContent = fs.readFileSync(taskPath, 'utf8');
-        const { data, content } = matter(fileContent);
-        
-        if (!data || Object.keys(data).length === 0) {
-          console.warn(`Skipping task ${task}: Invalid frontmatter format in ${taskPath}`);
-          continue;
-        }
-
-        if (!data.base_app) {
-          console.warn(`Skipping task ${task}: Missing base_app in frontmatter in ${taskPath}`);
-          continue;
-        }
-
-        const baseApp = data.base_app.trim();
-        let promptContent = content.trim();
+        const baseApp = taskInfo.baseApp;
+        let promptContent = taskInfo.prompt;
 
         promptContent += COMMON_APPEND_PROMPT;
 
+        // Copy the base app to the run directory (for tracking purposes)
+        const guideFolder = path.join(runDir, task);
+        const taskFileName = isNegativeSuite ? 'negative' : path.basename(TASK_FILE, '.md');
+        const taskFolder = path.join(guideFolder, taskFileName);
+        const workspaceBaseAppDir = path.join(taskFolder, 'base_app');
+        if (!fs.existsSync(workspaceBaseAppDir)) {
+          fs.mkdirSync(workspaceBaseAppDir, { recursive: true });
+        }
+        if (isNegativeSuite) {
+          const negativeDemoPath = path.join(taskInfo.guideDir, 'negative-demo.html');
+          if (fs.existsSync(negativeDemoPath)) {
+            fs.copyFileSync(negativeDemoPath, path.join(workspaceBaseAppDir, 'index.html'));
+          } else {
+            console.warn(`Skipping negative run for ${task}: Missing negative-demo.html`);
+            continue;
+          }
+        } else {
+          const sourceBaseAppDir = path.join(baseAppsDir, baseApp);
+          if (fs.existsSync(sourceBaseAppDir)) {
+            for (const file of fs.readdirSync(sourceBaseAppDir)) {
+              fs.copyFileSync(path.join(sourceBaseAppDir, file), path.join(workspaceBaseAppDir, file));
+            }
+          }
+        }
+
         const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
         for (const runType of runTypesToRun) {
-          const templateDir = path.join(baseAppsDir, baseApp);
-
-          if (!fs.existsSync(templateDir)) {
-            throw new Error(`Template directory not found: ${templateDir}`);
-          }
-
-          const targetDir = path.join(runDir, task, runType);
+          const targetDir = path.join(taskFolder, runType);
           if (!fs.existsSync(targetDir)) {
             fs.mkdirSync(targetDir, { recursive: true });
           }
 
-          const agentScript = path.join(__dirname, 'agents', 
-            agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
+          const agentScript = path.join(harnessDir, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
             agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
             agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
               'jetski-agent.ts');
@@ -179,24 +189,23 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           // Generate runner script
           // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
           // we trick pnpm into thinking each test run is a package in a pnpm workspace.
-          // This way we get \`pnpm -r\`'s great parallel scheduler and log interleaving for free.
-// This run.mjs wrapper executes the actual agent command via spawnSync.
-          const runnerContent = `
-import { spawnSync } from 'child_process';
+          // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
+          // This run.mjs wrapper executes the actual agent command via spawnSync.
+          const runnerContent = `import { spawnSync } from 'child_process';
 const args = [
-  '--experimental-strip-types',
-  ...${JSON.stringify([
-    agentScript,
-    promptContent,
-    runType,
-    targetDir,
-    templateDir
-  ])}
+'--experimental-strip-types',
+...${JSON.stringify([
+  agentScript,
+  promptContent,
+  runType,
+  targetDir,
+  workspaceBaseAppDir
+])}
 ];
-const result = spawnSync('node', args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
+const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
 process.exit(result.status ?? 0);
-          `.trim();
-          
+`.trim();
+
           fs.writeFileSync(path.join(targetDir, 'run.mjs'), runnerContent);
 
           // Generate transient package.json
@@ -208,7 +217,7 @@ process.exit(result.status ?? 0);
             scripts: { "run-agent": "node run.mjs" }
           }, null, 2));
 
-          pnpmWorkspacePackages.push(`${task}/${runType}`);
+          pnpmWorkspacePackages.push(`${task}/${taskFileName}/${runType}`);
         }
       }
 
@@ -230,7 +239,8 @@ process.exit(result.status ?? 0);
             pnpmArgs.push('--workspace-concurrency', '1');
           }
           pnpmArgs.push('run-agent');
-          await runCommand('pnpm', pnpmArgs, runDir);
+          const suiteConfigPath = path.resolve(testDir, 'suite_config.json');
+          await runCommand('pnpm', pnpmArgs, { GD_SUITE_CONFIG: suiteConfigPath }, runDir);
           console.log(`✅ Completed Run ${runNumber} test executions`);
         } catch (error) {
           console.error(`❌ Failed during Run ${runNumber} test execution`, error);
@@ -316,15 +326,16 @@ function restoreLogging(originals: any) {
   }
 }
 
-async function runCommand(command: string, args: string[] = [], cwd?: string) {
+async function runCommand(command: string, args: string[] = [], envOverrides?: Record<string, string>, cwd?: string) {
   return new Promise((resolve, reject) => {
-    const process = spawn(command, args, {
+    const childProcess = spawn(command, args, {
       stdio: 'inherit',
       shell: true,
-      cwd
+      cwd,
+      env: envOverrides ? { ...process.env, ...envOverrides } : process.env
     });
 
-    process.on('close', (code) => {
+    childProcess.on('close', (code) => {
       if (code === 0) {
         resolve(true);
       } else {
@@ -332,7 +343,7 @@ async function runCommand(command: string, args: string[] = [], cwd?: string) {
       }
     });
 
-    process.on('error', (err) => {
+    childProcess.on('error', (err) => {
       reject(err);
     });
   });
@@ -343,9 +354,7 @@ async function runCommand(command: string, args: string[] = [], cwd?: string) {
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const positionalArgs = args.filter(arg => !arg.startsWith('--'));
-  if (positionalArgs.length === 2 && args.includes('--with-template')) {
-    runAgent(positionalArgs[0], positionalArgs[1]).catch(console.error);
-  } else if (positionalArgs.length >= 1) {
+  if (positionalArgs.length >= 1) {
     runSuite({ tasks: positionalArgs }).catch(console.error);
   } else {
     runSuite().catch(console.error);

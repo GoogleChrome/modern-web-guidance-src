@@ -11,9 +11,5 @@
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true
-  },
-  "include": [
-    "mcp-server/**/*",
-    "scripts/**/*"
-  ]
+  }
 }
