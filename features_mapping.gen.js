@@ -215,7 +215,9 @@ window.__featuresMapping = {
     "invoker-commands"
   ],
   "declarative-dialog-popover-control": [
-    "invoker-commands"
+    "invoker-commands",
+    "popover",
+    "dialog"
   ],
   "design-token-reactivity": [
     "container-style-queries"
