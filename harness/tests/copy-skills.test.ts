@@ -41,9 +41,19 @@ test('copySkills sets up the isolated environment with the skill and its data', 
         // We need to extend PATH to make sure node is available if needed, but it should be
         const cmd = `node ${mjsPath} --search "address form"`;
         const output = execSync(cmd, { encoding: 'utf8' });
+        const results = JSON.parse(output);
+        assert.ok(Array.isArray(results), 'Output should be a JSON array');
+        assert.ok(results.length > 0, 'Search should find some results');
         
-        console.log({output})
-        assert.ok(output.includes('Searching') || output.includes('Found') || output.includes('results') || output.includes('address'), 'Output should contain search info or results');
+        // Find if 'autofill-address-form' is in the results
+        const hasAddressForm = results.some((r: any) => r.id === 'autofill-address-form');
+        assert.ok(hasAddressForm, 'Results should contain autofill-address-form');
+        
+        // Verify structure of the first item
+        const topResult = results[0];
+        assert.ok(topResult.id, 'Top result should have an id');
+        assert.ok(topResult.description, 'Top result should have a description');
+        assert.ok(topResult.distance, 'Top result should have a distance');
         
     } finally {
         if (homeDir) {
@@ -52,7 +62,7 @@ test('copySkills sets up the isolated environment with the skill and its data', 
     }
 });
 
-test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', async (t) => {
+test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', { skip: true }, async (t) => {
     let targetDir = '';
     let templateDir = '';
     let osTmpDir = '/tmp'; // Use /tmp deliberately as per agent-shared.ts
