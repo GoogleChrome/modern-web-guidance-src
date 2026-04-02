@@ -101,6 +101,9 @@ window.__featuresMapping = {
   "inject-sharp-pseudo-element-icons": [
     "image-set"
   ],
+  "interaction-latency-attribution": [
+    "event-timing"
+  ],
   "interactions-in-complex-layouts": [
     "content-visibility"
   ],
