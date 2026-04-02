@@ -1,3 +1,0 @@
-- Add a 'choose your store' select dropdown in the hero section below the paragraph. Use the new CSS base-select appearance so we can smoothly animate the native picker menu fading in and out with starting-style, and make the arrow rotate.
-- Put a dropdown above the seasonal favorites grid to filter by roast type. Make the dropdown menu animate in nicely instead of just appearing instantly.
-- Change the locations link in the nav to a select menu for cities. The dropdown should have a smooth fade animation when it opens instead of a harsh pop.

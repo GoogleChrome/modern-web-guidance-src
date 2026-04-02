@@ -1,4 +1,4 @@
-import { Store } from "../mcp-server/lib/store.ts";
+import { Store } from "./store.ts";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { logToolResult } from "./logger.ts";
 

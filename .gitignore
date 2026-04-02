@@ -2,11 +2,10 @@
 node_modules/
 
 # Build artifacts
-serving/.modern-web-data/
+serving/vector_store/
 serving/build/
-serving/mcp-server/data/use-cases.gen.ts
+serving/lib/use-cases.gen.ts
 eval-view/features_mapping.gen.js
-serving/mcp-server/.mcp-data/
 dist/
 
 # Test artifacts
@@ -15,6 +14,11 @@ harness/results/
 grade-report/
 test-app-results/
 
+# legacy paths (any content here should be deleted)
+serving/.mcp-data/
+serving/mcp-server/.mcp-data/
+serving/mcp-server/data/use-cases.gen.ts
+
 # Environment and Logs
 .env
 *.log
@@ -22,10 +26,6 @@ test-app-results/
 
 # OS Junk
 .DS_Store
-
-# Coverage
-coverage/
-serving/.mcp-data/
 
 # Generated Skills (temporary. This can't be ignored when publishing the repo/skill)
 skills/modern-web/
@@ -38,9 +38,12 @@ config.ts
 
 # Git worktrees directory
 .worktrees
+
 # Local agent stuff
 .gemini/
+.claude/
 GEMINI.md
 
 # Research drafts
 skills-drafts/.research/
+
