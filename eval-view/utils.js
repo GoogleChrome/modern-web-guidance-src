@@ -63,20 +63,22 @@ export function calculateChartData(results) {
     Object.keys(results).forEach(key => {
         const parts = key.split(' - ');
         if (parts.length < 3) return;
-
+        const taskName = parts[0];
         const guide = parts[1];
         const runType = parts[2];
-        if (!['guided', 'unguided'].includes(runType)) return;
-        if (!apps[guide]) apps[guide] = { guided: [], unguided: [] };
 
+        if (!['guided', 'unguided'].includes(runType)) return;
+        const scenario = `${taskName} (${guide})`;
+        if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [] };
+        
         const runs = results[key];
         if (runs.length > 0 && runs[0].taskName) {
-            taskNames[guide] = runs[0].taskName;
+            taskNames[scenario] = runs[0].taskName;
         }
-
+        
         const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
         const total = runs.reduce((acc, r) => acc + r.results.length, 0);
-        apps[guide][runType].push(total > 0 ? (passed / total) * 100 : 0);
+        apps[scenario][runType].push(total > 0 ? (passed / total) * 100 : 0);
     });
     
     const labels = Object.keys(apps).sort((a, b) => {
@@ -90,6 +92,7 @@ export function calculateChartData(results) {
     };
     return { labels, guided: labels.map(l => getAvg(l, 'guided')), unguided: labels.map(l => getAvg(l, 'unguided')) };
 }
+
 
 export function formatTestName(name) {
     if (!name) return name;

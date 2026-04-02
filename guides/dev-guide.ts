@@ -344,7 +344,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
   // 3. Grade agent output (unguided + guided)
   const runTypes = guidedOnly ? ['guided'] : ['unguided', 'guided'];
   for (const runType of runTypes) {
-    const resultDir = path.join(testOutputDir, '1', guideName, runType);
+    const resultDir = path.join(testOutputDir, '1', guideName, 'task', runType);
     if (!fs.existsSync(resultDir)) continue;
 
     const htmlFiles = fs.readdirSync(resultDir).filter(f => f.endsWith('.html'));
