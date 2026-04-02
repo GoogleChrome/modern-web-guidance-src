@@ -5,5 +5,5 @@
 * The injected `--sibling-index` value is 1-based (starts at 1, not 0).
 * The CSS is structured to use the custom property variables as a base and then override them with the native functions inside an `@supports` block (e.g., `@supports (top: calc(sibling-index() * 1px)) { --index: sibling-index(); }`).
 * The implementation uses `sibling-count()` to calculate proportions or distributions (e.g., `calc(360deg / sibling-count())` or `calc(100% / sibling-count())`).
-* The implementation uses the total count to find the midpoint for symmetrical effects (e.g., `calc((sibling-count() + 1) / 2)`).
+* If a symmetrical effect (like a fan) is implemented, the implementation uses the total count to find the midpoint (e.g., `calc((sibling-count() + 1) / 2)`).
 * If circular positioning is used, it combines sibling functions with CSS trigonometry (`sin()`, `cos()`).

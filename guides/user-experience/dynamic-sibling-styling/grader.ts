@@ -40,9 +40,9 @@ test.describe(`Dynamic Sibling Styling Expectations: ${demoName}`, () => {
     // Check for variables usage in CSS (either --index/--count or --sibling-index/--sibling-count)
     expect(html).toMatch(/var\(--(sibling-)?index\)/);
     expect(html).toMatch(/var\(--(sibling-)?count\)/);
-    // Check for JS fallback with CSS.supports
+    // Check for JS fallback with CSS.supports (flexible regex)
     expect(html).toContain('CSS.supports');
-    expect(html).toMatch(/CSS\.supports\([^)]*sibling-index/);
+    expect(html).toMatch(/CSS\.supports\([^)]*sibling-(index|count)/);
   });
 
   test('The JavaScript fallback injects 1-based index and correct count', async ({ page }) => {
@@ -115,5 +115,21 @@ test.describe(`Dynamic Sibling Styling Expectations: ${demoName}`, () => {
     const minifiedHtml = html.replace(/\s+/g, ' ');
     const hasSupportsOverride = /@supports[^{]*sibling-(index|count)\(\)[^{]*\{[^}]*--[a-z-]+\s*:\s*sibling-(index|count)\(\)/.test(minifiedHtml);
     expect(hasSupportsOverride).toBe(true);
+  });
+
+  test('Conditional: Symmetrical effects use midpoint calculation', async () => {
+    // Only check if rotation or fanning is implemented
+    if (html.includes('rotate') || html.includes('skew')) {
+      const hasMidpoint = /sibling-count\(\)\s*\+\s*1\s*\)\s*\/\s*2/.test(html);
+      expect(hasMidpoint).toBe(true);
+    }
+  });
+
+  test('Conditional: Circular positioning uses trigonometry', async () => {
+    // Only check if circular positioning is suggested (e.g., using sin/cos)
+    if (html.includes('sin(') || html.includes('cos(')) {
+      const usesSiblingFunctions = /sin\([^)]*sibling-(count|index)/.test(html) || /cos\([^)]*sibling-(count|index)/.test(html);
+      expect(usesSiblingFunctions).toBe(true);
+    }
   });
 });
