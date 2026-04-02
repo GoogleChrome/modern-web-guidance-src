@@ -138,7 +138,22 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           : Array.from(taskMap.keys()).filter(key => key.endsWith('/task')));
 
       for (const task of tasksToRun) {
-        const resolvedTask = task.includes('/') ? task : `${task}/task`;
+        let resolvedTask = task;
+        if (task.startsWith('guides/')) {
+          const segments = task.split('/');
+          if (segments.length >= 3) {
+            const guideName = segments[2];
+            let taskName = 'task';
+            const lastSegment = segments[segments.length - 1];
+            if (lastSegment.endsWith('.md')) {
+              taskName = lastSegment.replace('.md', '');
+            }
+            resolvedTask = `${guideName}/${taskName}`;
+          }
+        } else if (!task.includes('/')) {
+          resolvedTask = `${task}/task`;
+        }
+
         const taskInfo = taskMap.get(resolvedTask);
         if (!taskInfo) {
           console.warn(`Skipping task ${task}: Not found in task map`);

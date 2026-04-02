@@ -45,7 +45,7 @@ completion.on('command', ({ reply }) => {
 completion.on('arg1', ({ before, reply }) => {
   if (before === 'eval') {
     const tasks = Array.from(getTaskMap().keys());
-    reply(['suite', ...tasks]);
+    reply(['suite', ...tasks, ...listGuideDirs()]);
   } else if (before === 'gen') {
     reply(['grader', 'negative']);
   } else if (['dev', 'test', 'grade'].includes(before)) {
@@ -80,7 +80,7 @@ const { positionals, values } = parseArgs({
     verbose: { type: 'boolean' },
     usecases: { type: 'boolean' },
     config: { type: 'string' },
-    'no-ui': { type: 'boolean' },
+    ui: { type: 'boolean' },
   },
   allowPositionals: true,
   strict: false,
@@ -242,7 +242,7 @@ ${cBold('Options:')}
 
     case 'eval': {
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
-      if (!values['no-ui'] && tasks.length === 0) {
+      if (values['ui']) {
         process.env.LAUNCH_UI = 'true';
         process.chdir(evalViewDir);
         await import('../eval-view/server.js');
