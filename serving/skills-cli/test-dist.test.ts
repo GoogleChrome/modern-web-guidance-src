@@ -24,13 +24,11 @@ export function assertSearchResults(output: string) {
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
-if (process.argv[1] === fileURLToPath(import.meta.url) || process.argv[1]?.endsWith('test-dist.test.ts')) {
-    console.log("Running build-dist to ensure fresh build...");
-    execSync('node --experimental-strip-types skills-cli/build-dist.ts', { 
-      cwd: path.resolve(import.meta.dirname, '..'), 
-      stdio: 'inherit' 
-    });
-}
+console.log("Running build-dist to ensure fresh build...");
+execSync('node --experimental-strip-types skills-cli/build-dist.ts', { 
+  cwd: path.resolve(import.meta.dirname, '..'), 
+  stdio: 'inherit' 
+});
 
 
 test('Dependency parity across package.json manifests', async () => {
