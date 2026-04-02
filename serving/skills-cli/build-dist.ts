@@ -41,7 +41,7 @@ async function main() {
   console.log("Copying data files...");
   // 3. Copy vector_store
   const mcpDataDir = path.join(SERVING_DIR, "vector_store");
-  const destMcpDataDir = path.join(PUBLISH_ROOT, "vector_store");
+  const destMcpDataDir = path.join(DIST_DIR, "vector_store");
   if (fs.existsSync(mcpDataDir)) {
     fs.cpSync(mcpDataDir, destMcpDataDir, { recursive: true });
     console.log(`Copied ${mcpDataDir} to ${destMcpDataDir}`);
@@ -51,7 +51,7 @@ async function main() {
 
   // 4. Copy build/guides
   const buildGuidesDir = path.join(SERVING_DIR, "build/guides");
-  const destBuildGuidesDir = path.join(PUBLISH_ROOT, "guides");
+  const destBuildGuidesDir = path.join(DIST_DIR, "guides");
   if (fs.existsSync(buildGuidesDir)) {
     fs.cpSync(buildGuidesDir, destBuildGuidesDir, { recursive: true });
     console.log(`Copied ${buildGuidesDir} to ${destBuildGuidesDir}`);
