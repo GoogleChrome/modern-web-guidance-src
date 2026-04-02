@@ -28,11 +28,9 @@ export function getUseCasesByCategory(category?: string): UseCase[] {
 export async function getGuide(useCaseId: string): Promise<string | null> {
   const useCase = USE_CASES.find((u) => u.id === useCaseId);
   if (!useCase) return null;
-  let guidesDir = path.resolve(import.meta.dirname, "../build/guides");
-  if (!existsSync(guidesDir)) {
-    // In production, guides are located two levels up from the skill directory
-    guidesDir = path.resolve(import.meta.dirname, "../../guides");
-  }
+  const devGuidesDir = path.resolve(import.meta.dirname, "../build/guides");
+  const prodGuidesDir = path.resolve(import.meta.dirname, "../../guides");
+  const guidesDir = existsSync(devGuidesDir) ? devGuidesDir : prodGuidesDir;
   const filePath = path.join(guidesDir, useCase.category, `${useCaseId}.md`);
 
   try {

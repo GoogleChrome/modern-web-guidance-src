@@ -176,7 +176,7 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   } catch {}
 
   let dynamicMd = `#### Skill Coverage in \`v${version}\`\n\n`;
-  const featureNamesCsv = allFeaturesSorted.map(f => `${f.name.replace(/</g, '&lt;')}`).join(', ');
+  const featureNamesCsv = allFeaturesSorted.map(f => `\`${f.name.replace(/</g, '&lt;')}\``).join(', ');
 
   dynamicMd += `<details>\n<summary><strong>${allFeaturesSorted.length} web features with implementation guidance from Chrome's experts</strong>: ${featureNamesCsv}</summary>\n\n`;
   
