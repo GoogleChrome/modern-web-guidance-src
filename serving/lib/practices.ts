@@ -30,9 +30,8 @@ export async function getGuide(useCaseId: string): Promise<string | null> {
   if (!useCase) return null;
   let guidesDir = path.resolve(import.meta.dirname, "../build/guides");
   if (!existsSync(guidesDir)) {
-    // We are in production: either Option A (../guides) or self-contained Option B (../../guides)
-    const selfContainedPath = path.resolve(import.meta.dirname, "../../guides");
-    guidesDir = existsSync(selfContainedPath) ? selfContainedPath : path.resolve(import.meta.dirname, "../guides");
+    // In production, guides are located two levels up from the skill directory
+    guidesDir = path.resolve(import.meta.dirname, "../../guides");
   }
   const filePath = path.join(guidesDir, useCase.category, `${useCaseId}.md`);
 

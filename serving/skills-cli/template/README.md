@@ -33,8 +33,4 @@ gemini extensions install https://github.com/GoogleChrome/skills-alpha --auto-up
 * Select "Extensions: Install from Location..."
 * Navigate to the `skills-alpha` directory and select it.
 
-Compatibility with VSCode forks: unknown. 
-
----
-
-🎓
+Compatibility with VSCode forks: unknown.
