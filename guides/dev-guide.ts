@@ -164,7 +164,6 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   }
 
   // Step 5: Test task and prompt generation
-
   if (calibrationResult?.success) {
     console.log(cCyan(`\n--- Setting up test task ---`));
 

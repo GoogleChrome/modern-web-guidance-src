@@ -63,9 +63,7 @@ export function calculateChartData(results) {
     Object.keys(results).forEach(key => {
         const parts = key.split(' - ');
         if (parts.length < 3) return;
-        const taskName = parts[0];
-        const guide = parts[1];
-        const runType = parts[2];
+        const [taskName, guide, runType] = parts;
 
         if (!['guided', 'unguided'].includes(runType)) return;
         const scenario = `${taskName} (${guide})`;

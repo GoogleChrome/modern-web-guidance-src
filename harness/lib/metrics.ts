@@ -47,16 +47,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
   const runTypeOrder: Record<string, number> = { 'unguided': 1, 'guided': 2 };
 
   const sortedKeys = Object.keys(allResults).sort((a, b) => {
-    const partsA = a.split(' - ');
-    const partsB = b.split(' - ');
-
-    const taskNameA = partsA[0];
-    const guideNameA = partsA[1];
-    const runTypeA = partsA[2];
-
-    const taskNameB = partsB[0];
-    const guideNameB = partsB[1];
-    const runTypeB = partsB[2];
+    const [taskNameA, guideNameA, runTypeA] = a.split(' - ');
+    const [taskNameB, guideNameB, runTypeB] = b.split(' - ');
 
     if (taskNameA !== taskNameB) {
       return taskNameA.localeCompare(taskNameB);
@@ -106,14 +98,13 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
 
     let guideUsageCount = 0;
     let toolActivationCount = 0;
-    const parts = name.split(' - ');
-    const runType = parts[2];
+    const [, , runType] = name.split(' - ');
 
     if (runType === 'guided') {
       runs.forEach(run => {
         const guidesUsed = run.guidesUsed || [];
-        const guideName = run.guideName;
-        if (guideName && guidesUsed.includes(guideName)) {
+        const expectedGuide = run.guideName;
+        if (expectedGuide && guidesUsed.includes(expectedGuide)) {
           guideUsageCount++;
         }
 
@@ -153,8 +144,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let totalGuidedRuns = 0;
 
     keys.forEach(k => {
-      const parts = k.split(' - ');
-      const runType = parts[2];
+      const [, , runType] = k.split(' - ');
       const stats = testStats[k];
 
       if (stats) {

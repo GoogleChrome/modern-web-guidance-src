@@ -242,13 +242,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
             if (!currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
 
-            const parts = currentDetails.testName.split(' - ');
-            const taskName = parts[0];
-            const guide = parts[1];
-            const runType = parts[2];
-            const scenarioKey = `${taskName} - ${guide}`;
+            const [taskName, guide, runType] = currentDetails.testName.split(' - ');
+            const currentScenario = `${taskName} - ${guide}`;
 
-            let sIdx = sortedScenarios.indexOf(scenarioKey);
+            let sIdx = sortedScenarios.indexOf(currentScenario);
             let rIdx = currentRunTypes.indexOf(runType);
 
             if (sIdx === -1 || rIdx === -1) return;
@@ -267,11 +264,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (sIdx === oldSIdx && rIdx === oldRIdx) return;
 
-            const nextScenarioKey = sortedScenarios[sIdx];
+            const nextScenario = sortedScenarios[sIdx];
             const nextRunType = currentRunTypes[rIdx];
-            const nextTestName = `${nextScenarioKey} - ${nextRunType}`;
+            const nextTestName = `${nextScenario} - ${nextRunType}`;
 
-            if (nextTestName && nextTestName !== currentDetails.testName && allTestData.results[nextTestName]) {
+            if (nextTestName !== currentDetails.testName && allTestData.results[nextTestName]) {
                 e.preventDefault();
                 showDetails(
                     nextTestName,
@@ -512,9 +509,7 @@ async function showDetails(testName, runs, stats, testId) {
     const title = document.getElementById('modal-title');
     const contentDiv = document.querySelector('.modal-content');
     const body = document.getElementById('modal-body');
-    const parts = testName.split(' - ');
-    const guide = parts[1];
-    const runType = parts[2];
+    const [taskName, guide, runType] = testName.split(' - ');
 
     // Reset modifier classes
     modal.classList.remove('diff-modal');
@@ -548,7 +543,6 @@ async function showDetails(testName, runs, stats, testId) {
 
                 if (!prompt) {
                     try {
-                        const taskName = parts[0];
                         const isNegative = taskName && taskName.endsWith('-negative');
                         const taskPath = `tasks/${isNegative ? 'negative/' : ''}${taskName}.md`;
                         const taskMd = await api.getFileText(taskPath);

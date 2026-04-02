@@ -147,10 +147,7 @@ export class ApiClient {
 
     /** Resolves the correct base path for specific run details, parsing legacy logic. */
     async getResultInfo(testId, run, testName) {
-        const parts = testName.split(' - ');
-        const taskName = parts[0];
-        const guideName = parts[1];
-        const runType = parts[2];
+        const [taskName, guideName, runType] = testName.split(' - ');
         const actualBaseApp = run.baseApp;
         let logicalBasePath = `${testId}/${run.runNumber}/${guideName}/${taskName}/${runType}`;
         let entryPointPath = await this._findBestEntryPoint(logicalBasePath);
