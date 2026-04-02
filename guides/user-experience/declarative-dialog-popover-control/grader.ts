@@ -15,118 +15,116 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-// Helper to check if a button has both attributes
-function hasButtonWithAttrs(html: string, attr1: string, val1: string, attr2?: string, val2?: string) {
-  const buttonRegex = /<button\s+([^>]+)>/gi;
-  let match;
-  while ((match = buttonRegex.exec(html)) !== null) {
-    const attrs = match[1];
-    const hasAttr1 = new RegExp(`\\b${attr1}=["']${val1}["']`, 'i').test(attrs);
-    if (hasAttr1) {
-      if (!attr2) return true;
-      const hasAttr2 = val2 
-        ? new RegExp(`\\b${attr2}=["']${val2}["']`, 'i').test(attrs)
-        : new RegExp(`\\b${attr2}`, 'i').test(attrs);
-      if (hasAttr2) return true;
-    }
-  }
-  return false;
-}
 
 // Tests
 test.describe(`Declarative Dialog and Popover Expectations: ${demoName}`, () => {
   
-  // Static assertions (HTML Structure)
-  test('Button exists with commandfor attribute targeting a popover ID', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const buttonWithCommandFor = /<button[^>]*\bcommandfor=["']([^"']+)["'][^>]*>/i;
-    const match = html.match(buttonWithCommandFor);
-    expect(match).not.toBeNull();
-    const targetId = match![1];
-    const popoverTargetMatch = new RegExp(`<[^>]*id=["']${targetId}["'][^>]*\\bpopover\\b`, 'i');
-    expect(html).toMatch(popoverTargetMatch);
-  });
+  // DOM Structure and Script Checks
+  test.describe('DOM Structure Checks', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.route('http://localhost/*', async (route) => {
+        const requestPath = new URL(route.request().url()).pathname;
+        const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
 
-  test('Button to toggle popover has command="toggle-popover"', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(hasButtonWithAttrs(html, 'command', 'toggle-popover', 'commandfor')).toBe(true);
-  });
+        if (fs.existsSync(localFilePath)) {
+          await route.fulfill({ path: localFilePath });
+        } else {
+          await route.continue();
+        }
+      });
 
-  test('Button to explicitly show popover has command="show-popover"', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(hasButtonWithAttrs(html, 'command', 'show-popover', 'commandfor')).toBe(true);
-  });
+      await page.goto(demoUrl);
+    });
 
-  test('Button to explicitly hide popover has command="hide-popover"', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(hasButtonWithAttrs(html, 'command', 'hide-popover', 'commandfor')).toBe(true);
-  });
+    test('Button exists with commandfor attribute targeting a popover ID', async ({ page }) => {
+      const exists = await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll('button[commandfor]'));
+        return buttons.some(btn => {
+          const targetId = btn.getAttribute('commandfor');
+          const target = document.getElementById(targetId ?? '');
+          return target && target.hasAttribute('popover');
+        });
+      });
+      expect(exists).toBe(true);
+    });
 
-  test('Popover target element has the popover attribute', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const commandForIds = [...html.matchAll(/\bcommandfor=["']([^"']+)["']/gi)].map(m => m[1]);
-    let foundPopover = false;
-    for (const id of commandForIds) {
-      if (new RegExp(`<[^>]*id=["']${id}["'][^>]*\\bpopover\\b`, 'i').test(html)) {
-        foundPopover = true;
-        break;
-      }
-    }
-    expect(foundPopover).toBe(true);
-  });
+    test('Button to toggle popover has command="toggle-popover"', async ({ page }) => {
+      const exists = await page.locator('button[command="toggle-popover"][commandfor]').count() > 0;
+      expect(exists).toBe(true);
+    });
 
-  test('Button exists with commandfor attribute targeting a <dialog> element', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const commandForIds = [...html.matchAll(/\bcommandfor=["']([^"']+)["']/gi)].map(m => m[1]);
-    let foundDialog = false;
-    for (const id of commandForIds) {
-      if (new RegExp(`<dialog[^>]*id=["']${id}["']`, 'i').test(html)) {
-        foundDialog = true;
-        break;
-      }
-    }
-    expect(foundDialog).toBe(true);
-  });
+    test('Button to explicitly show popover has command="show-popover"', async ({ page }) => {
+      const exists = await page.locator('button[command="show-popover"][commandfor]').count() > 0;
+      expect(exists).toBe(true);
+    });
 
-  test('Button targeting a dialog has command="show-modal"', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(hasButtonWithAttrs(html, 'command', 'show-modal', 'commandfor')).toBe(true);
-  });
+    test('Button to explicitly hide popover has command="hide-popover"', async ({ page }) => {
+      const exists = await page.locator('button[command="hide-popover"][commandfor]').count() > 0;
+      expect(exists).toBe(true);
+    });
 
-  test('Target element for modal control is a <dialog> element', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const match = html.match(/<button[^>]*\bcommand=["']show-modal["'][^>]*\bcommandfor=["']([^"']+)["']/i) || 
-                  html.match(/<button[^>]*\bcommandfor=["']([^"']+)["'][^>]*\bcommand=["']show-modal["']/i);
-    expect(match).not.toBeNull();
-    const targetId = match![1];
-    expect(html).toMatch(new RegExp(`<dialog[^>]*id=["']${targetId}["']`, 'i'));
-  });
+    test('Popover target element has the popover attribute', async ({ page }) => {
+      const exists = await page.locator('[popover]').count() > 0;
+      expect(exists).toBe(true);
+    });
 
-  test('Close button for dialog exists with command="close"', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(hasButtonWithAttrs(html, 'command', 'close', 'commandfor')).toBe(true);
-  });
+    test('Button exists with commandfor attribute targeting a <dialog> element', async ({ page }) => {
+      const exists = await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll('button[commandfor]'));
+        return buttons.some(btn => {
+          const targetId = btn.getAttribute('commandfor');
+          const target = document.getElementById(targetId ?? '');
+          return target && target.tagName.toLowerCase() === 'dialog';
+        });
+      });
+      expect(exists).toBe(true);
+    });
 
-  test('Invokers polyfill is loaded conditionally', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/if\s*\(\s*!\s*\(\s*['"]commandForElement['"]\s*in\s*HTMLButtonElement\.prototype\s*\)\s*\)/);
-  });
+    test('Button targeting a dialog has command="show-modal"', async ({ page }) => {
+      const exists = await page.locator('button[command="show-modal"][commandfor]').count() > 0;
+      expect(exists).toBe(true);
+    });
 
-  test('Popover polyfill is loaded conditionally', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/if\s*\(\s*!\s*\(\s*['"]popover['"]\s*in\s*HTMLElement\.prototype\s*\)\s*\)/);
-  });
+    test('Target element for modal control is a <dialog> element', async ({ page }) => {
+      const exists = await page.evaluate(() => {
+        const btn = document.querySelector('button[command="show-modal"]');
+        if (!btn) return false;
+        const targetId = btn.getAttribute('commandfor');
+        const target = document.getElementById(targetId ?? '');
+        return target && target.tagName.toLowerCase() === 'dialog';
+      });
+      expect(exists).toBe(true);
+    });
 
-  test('CSS rules for :popover-open and .\\:popover-open are separate', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // Check for comma-separated rules involving :popover-open
-    const combinedRule = /[,]\s*:popover-open|:popover-open\s*[,]/;
-    expect(html).not.toMatch(combinedRule);
-  });
+    test('Close button for dialog exists with command="close"', async ({ page }) => {
+      const exists = await page.locator('button[command="close"][commandfor]').count() > 0;
+      expect(exists).toBe(true);
+    });
 
-  test('CSS includes rule for the polyfill class .\\:popover-open', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/\.\\:popover-open/);
+    test('Invokers polyfill is loaded conditionally', async ({ page }) => {
+      const scripts = await page.locator('script').evaluateAll(tags => tags.map(t => t.textContent || ''));
+      const conditionMet = scripts.some(s => /if\s*\(\s*!\s*\(\s*['"]commandForElement['"]\s*in\s*HTMLButtonElement\.prototype\s*\)\s*\)/.test(s));
+      expect(conditionMet).toBe(true);
+    });
+
+    test('Popover polyfill is loaded conditionally', async ({ page }) => {
+      const scripts = await page.locator('script').evaluateAll(tags => tags.map(t => t.textContent || ''));
+      const conditionMet = scripts.some(s => /if\s*\(\s*!\s*\(\s*['"]popover['"]\s*in\s*HTMLElement\.prototype\s*\)\s*\)/.test(s));
+      expect(conditionMet).toBe(true);
+    });
+
+    test('CSS rules for :popover-open and .\\:popover-open are separate', async ({ page }) => {
+      const styles = await page.locator('style').evaluateAll(tags => tags.map(t => t.textContent || ''));
+      const combinedStyle = styles.join('\n');
+      const combinedRule = /[,]\s*:popover-open|:popover-open\s*[,]/;
+      expect(combinedStyle).not.toMatch(combinedRule);
+    });
+
+    test('CSS includes rule for the polyfill class .\\:popover-open', async ({ page }) => {
+      const styles = await page.locator('style').evaluateAll(tags => tags.map(t => t.textContent || ''));
+      const combinedStyle = styles.join('\n');
+      expect(combinedStyle).toMatch(/\.\\:popover-open/);
+    });
   });
 
   // Browser assertions
