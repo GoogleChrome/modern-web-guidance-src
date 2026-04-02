@@ -101,7 +101,7 @@ test.describe(`Temporal API Guidance Expectations: ${fileName}`, () => {
   // Browser assertions: Verify Temporal is globally available (either native or polyfilled)
   test('Temporal should be available on the page and used by scripts', async ({ page }) => {
     const isTemporalDefinedAndUsed = await page.evaluate(() => {
-      const isDefined = typeof Temporal !== 'undefined';
+      const isDefined = typeof (globalThis as any).Temporal !== 'undefined';
       const isUsed = Array.from(document.scripts).some(s => s.textContent && s.textContent.includes('Temporal'));
       return isDefined && isUsed;
     });

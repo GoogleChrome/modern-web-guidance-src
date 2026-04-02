@@ -66,6 +66,7 @@ if (isExpired) {
 
 -   **DO** use `Temporal.ZonedDateTime` for calculations involving real-world events that occur in specific time zones (like subscription renewals or event scheduling).
 -   **DO** use `largestUnit` to specify the largest unit you want in the result (e.g., `'year'` or `'month'`). If you omit it, it defaults to `'auto'` which might not always sum up to years/months as expected for human-readable durations.
+-   **DO** use `.since()` when calculating time elapsed *since* a past event (e.g., `now.since(start)`), and `.until()` for time remaining *until* a future event (e.g., `now.until(end)`).
 -   **DO NOT** modify instances directly; `Temporal` objects are **immutable**. Operations like `add()`, `subtract()`, or `with()` return a *new* instance.
 -   **DO** use `Temporal.ZonedDateTime.compare` to check if one time point is after another. It returns `1` if the first is after the second, `-1` if before, and `0` if equal.
 
@@ -85,7 +86,6 @@ If you are using Node.js with CommonJS, require the polyfill and extend the `Dat
 
 ```javascript
 const { Temporal, Intl, toTemporalInstant } = require('@js-temporal/polyfill');
-
 // Extend Date.prototype for compatibility (optional but recommended for migration)
 Date.prototype.toTemporalInstant = toTemporalInstant;
 // Use Temporal
@@ -106,9 +106,35 @@ if (typeof Temporal === 'undefined') {
     globalThis.Temporal = TemporalPolyfill;
     // Extend Date.prototype if needed
     Date.prototype.toTemporalInstant = toTemporalInstant;
-    // Initialize your app
     initializeApp();
   });
+} else {
+  // Native Temporal is available
+  initializeApp();
+}
+
+function initializeApp() {
+  const now = Temporal.Now.zonedDateTimeISO();
+  console.log(now.toString());
+}
+```
+
+#### Browsers (Global Script)
+
+If you are not using ES modules and are loading the polyfill via a standard `<script>` tag, you should still load it conditionally to avoid penalizing modern browsers. You must also ensure it is correctly assigned to `globalThis.Temporal` if your code relies on the global variable.
+
+```javascript
+// Check if Temporal is supported natively
+if (typeof Temporal === 'undefined') {
+  // Load the polyfill conditionally via a script tag
+  const script = document.createElement('script');
+  script.src = 'https://unpkg.com/@js-temporal/polyfill/dist/index.umd.js';
+  script.onload = () => {
+    // Ensure it's available on globalThis.Temporal
+    globalThis.Temporal = globalThis.Temporal || window.Temporal || window.temporal;
+    initializeApp();
+  };
+  document.head.appendChild(script);
 } else {
   // Native Temporal is available
   initializeApp();
