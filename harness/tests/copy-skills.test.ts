@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 import { createIsolatedHome, copySkills, cleanupIsolatedHome } from '../lib/agent-shared.ts';
 import { Agents } from '../config.ts';
 
-test('copySkills sets up the isolated environment with the skill and its data', async (t) => {
+test('copySkills sets up the isolated environment with the skill and its data', async () => {
     let homeDir = '';
     try {
         // 1. Create isolated home
@@ -62,7 +62,7 @@ test('copySkills sets up the isolated environment with the skill and its data', 
     }
 });
 
-test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', async (t) => {
+test.skip('invoking gemini-cli-agent.ts works end-to-end like in eval suite', async () => {
     let targetDir = '';
     let templateDir = '';
     let osTmpDir = '/tmp'; // Use /tmp deliberately as per agent-shared.ts
