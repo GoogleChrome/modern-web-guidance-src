@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import { createIsolatedHome, copySkills, cleanupIsolatedHome } from '../lib/agent-shared.ts';
 import { Agents } from '../config.ts';
 
@@ -49,5 +49,49 @@ test('copySkills sets up the isolated environment with the skill and its data', 
         if (homeDir) {
             cleanupIsolatedHome(homeDir);
         }
+    }
+});
+
+test.skip('invoking gemini-cli-agent.ts works end-to-end like in eval suite', async (t) => {
+    let targetDir = '';
+    let templateDir = '';
+    let osTmpDir = '/tmp'; // Use /tmp deliberately as per agent-shared.ts
+    
+    try {
+        const rand = Math.random().toString(36).substring(7);
+        targetDir = path.join(osTmpDir, `test-gemini-target-${rand}`);
+        templateDir = path.join(osTmpDir, `test-gemini-template-${rand}`);
+        
+        fs.mkdirSync(targetDir, { recursive: true });
+        fs.mkdirSync(templateDir, { recursive: true });
+
+        // Set up the suite config
+        const suiteConfig = {
+            serving: 'skills_cli',
+            agent: 'gemini_cli',
+            name: 'test-run',
+            numRuns: 1,
+            tasks: [],
+            mcpServersToEnable: ['modern-web'],
+            negative: false
+        };
+
+        const env = {
+            ...process.env,
+            GD_SUITE_CONFIG: JSON.stringify(suiteConfig),
+            PATH: `${process.env.PATH || ''}:/opt/homebrew/bin:/usr/local/bin`
+        };
+
+        const agentScript = path.resolve(import.meta.dirname, '../agents/gemini-cli-agent.ts');
+        const cmd = `node ${agentScript} "use modern-web to search for address form" guided "${targetDir}" "${templateDir}"`;
+
+        execSync(cmd, { env, stdio: 'inherit' });
+        
+        // Output is inherited, so we can't assert on it, but we can verify it finishes.
+        assert.ok(true, 'Execution finished');
+
+    } finally {
+        if (targetDir && fs.existsSync(targetDir)) fs.rmSync(targetDir, { recursive: true, force: true });
+        if (templateDir && fs.existsSync(templateDir)) fs.rmSync(templateDir, { recursive: true, force: true });
     }
 });
