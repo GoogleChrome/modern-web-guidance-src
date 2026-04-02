@@ -1,57 +1,47 @@
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
+import { fileURLToPath } from "url";
 import matter from "gray-matter";
+import * as esbuild from "esbuild";
 import { classifyGuide, scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
+import { rootDir } from "../../lib/paths.ts";
 
-const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
-const SERVING_DIR = path.resolve(import.meta.dirname, ".."); // guidance/serving/
-const ROOT_DIST_DIR = path.join(ROOT_DIR, "dist");
+const SERVING_DIR = path.join(rootDir, "serving");
+const ROOT_DIST_DIR = path.join(rootDir, "dist");
 const PUBLISH_ROOT = path.join(ROOT_DIST_DIR, "skills-cli");
+
 const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases");
-const CLI_DIR = path.join(DIST_DIR, "cli");
 
 async function main() {
-  console.log("Cleaning previous dist/ output...");
-  if (fs.existsSync(ROOT_DIST_DIR)) {
-    fs.rmSync(ROOT_DIST_DIR, { recursive: true, force: true });
-  }
-  fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
+  console.log("Ensuring dist/ output directory exists...");
+  fs.mkdirSync(PUBLISH_ROOT, { recursive: true });
 
   console.log("Generating guides and updating vector store...");
   // 1. Run build-guides.ts to update .modern-web-data and build/guides
   try {
+    console.time("⏳ build-guides.ts");
     execSync("node --experimental-strip-types scripts/build-guides.ts", {
       cwd: SERVING_DIR,
       stdio: "inherit",
     });
+    console.timeEnd("⏳ build-guides.ts");
   } catch (error) {
     console.error("Failed to build guides:", error);
     process.exit(1);
   }
 
-  console.log(`Creating output directories in ${CLI_DIR}...`);
-  // 2. Clear and create output directory
-  if (fs.existsSync(CLI_DIR)) {
-    fs.rmSync(CLI_DIR, { recursive: true, force: true });
-  }
-  fs.mkdirSync(CLI_DIR, { recursive: true });
-
-  // Create deeper directory to mimic original path depth for relative path resolution
-  const BUNDLE_OUT_DIR = path.join(CLI_DIR, "serving/bin");
-  fs.mkdirSync(BUNDLE_OUT_DIR, { recursive: true });
+  // Placing modern-web.mjs inside the skill directory instead of bin/ for self-containment!
 
   console.log("Copying installation manifests and metadata for AI tools...");
   fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), PUBLISH_ROOT, { recursive: true });
 
-  console.log("Renaming vscode-ext-package.json to package.json for publishing...");
-  fs.renameSync(path.join(PUBLISH_ROOT, "vscode-ext-package.json"), path.join(PUBLISH_ROOT, "package.json"));
 
   console.log("Copying data files...");
-  // 3. Copy .modern-web-data
-  const mcpDataDir = path.join(SERVING_DIR, ".modern-web-data");
-  const destMcpDataDir = path.join(CLI_DIR, ".modern-web-data");
+  // 3. Copy vector_store
+  const mcpDataDir = path.join(SERVING_DIR, "vector_store");
+  const destMcpDataDir = path.join(PUBLISH_ROOT, "vector_store");
   if (fs.existsSync(mcpDataDir)) {
     fs.cpSync(mcpDataDir, destMcpDataDir, { recursive: true });
     console.log(`Copied ${mcpDataDir} to ${destMcpDataDir}`);
@@ -61,7 +51,7 @@ async function main() {
 
   // 4. Copy build/guides
   const buildGuidesDir = path.join(SERVING_DIR, "build/guides");
-  const destBuildGuidesDir = path.join(CLI_DIR, "build/guides");
+  const destBuildGuidesDir = path.join(PUBLISH_ROOT, "guides");
   if (fs.existsSync(buildGuidesDir)) {
     fs.cpSync(buildGuidesDir, destBuildGuidesDir, { recursive: true });
     console.log(`Copied ${buildGuidesDir} to ${destBuildGuidesDir}`);
@@ -72,38 +62,32 @@ async function main() {
   console.log("Bundling modern-web.ts with esbuild...");
   // 5. Bundle modern-web.ts
   const entryPoint = path.join(SERVING_DIR, "bin/modern-web.ts");
-  const outFile = path.join(BUNDLE_OUT_DIR, "modern-web.cjs");
+  const outFile = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/modern-web.mjs");
   
   try {
-    // Try to run npx esbuild or pnpm exec esbuild
-    // We assume the user has esbuild accessible or npx works.
-    execSync(`pnpm exec esbuild "${entryPoint}" --bundle --platform=node --format=cjs --loader:.node=file --define:import.meta.url="'__import_meta_url_placeholder__'" --define:import.meta.dirname="__dirname" --external:@lancedb/lancedb --external:@huggingface/transformers --outfile="${outFile}"`, {
-      stdio: "inherit",
+    console.time("⏳ esbuild bundle");
+    // We emit pure ESM (.mjs) using esbuild! Node 20+ handles import.meta.dirname & url natively!
+    await esbuild.build({
+      entryPoints: [entryPoint],
+      bundle: true,
+      platform: "node",
+      format: "esm",
+      loader: { ".node": "file" },
+      external: ["@lancedb/lancedb", "@huggingface/transformers"],
+      outfile: outFile,
     });
-    console.log(`Bundled ${entryPoint} to ${outFile}`);
+    console.timeEnd("⏳ esbuild bundle");
 
-    console.log("Replacing import.meta.url placeholder in bundle...");
-    let bundleContent = fs.readFileSync(outFile, "utf-8");
-    bundleContent = bundleContent.replace(
-      /(['"])__import_meta_url_placeholder__\1/g,
-      "require('url').pathToFileURL(__filename).toString()"
-    );
-    fs.writeFileSync(outFile, bundleContent);
-    console.log("Placeholder replaced successfully.");
-
-    console.log("Downloading external production dependencies via npm install...");
-    execSync("npm install --omit=dev", {
-      cwd: CLI_DIR,
-      stdio: "inherit",
-    });
-    console.log("Dependencies downloaded successfully.");
   } catch (error) {
     console.error("Failed to bundle with esbuild:", error);
     process.exit(1);
   }
 
+
+
   console.log("Copying SKILL.md...");
-  const skillMdSource = path.join(ROOT_DIR, "guides/modern-web-use-cases/SKILL.md");
+  const skillMdSource = path.join(rootDir, "guides/modern-web-use-cases/SKILL.md");
+
   const skillMdDest = path.join(DIST_DIR, "SKILL.md");
 
   if (fs.existsSync(skillMdSource)) {
@@ -115,6 +99,34 @@ async function main() {
   }
 
   updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
+
+  let nodeModulesValid = false;
+  if (fs.existsSync(path.join(PUBLISH_ROOT, "node_modules"))) {
+    try {
+      // npm ls will exit with code 0 if all dependencies are satisfied according to package.json!
+      execSync("npm ls --depth=0", { cwd: PUBLISH_ROOT, stdio: "ignore" });
+      nodeModulesValid = true;
+    } catch {
+      nodeModulesValid = false;
+    }
+  }
+
+  const forcePublish = process.argv.includes("--force-publish") || !nodeModulesValid;
+
+  if (!forcePublish) {
+    console.log("Reusing valid node_modules in published root (npm ls passed). Pass --force-publish to overwrite.");
+  } else {
+    console.log("Installing dependencies and generating npm shrinkwrap in published root (so local dev matches publish)...");
+    try {
+      console.time("⏳ npm install & shrinkwrap");
+      execSync("npm install --omit=dev", { cwd: PUBLISH_ROOT, stdio: "inherit" });
+      execSync("npm shrinkwrap", { cwd: PUBLISH_ROOT, stdio: "inherit" });
+      console.timeEnd("⏳ npm install & shrinkwrap");
+    } catch (error) {
+      console.error("Failed to run npm install or shrinkwrap:", error);
+      process.exit(1);
+    }
+  }
 
   console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
 }
@@ -164,7 +176,7 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   } catch {}
 
   let dynamicMd = `#### Skill Coverage in \`v${version}\`\n\n`;
-  const featureNamesCsv = allFeaturesSorted.map(f => `${f.name.replace(/</g, '&lt;')}`).join(', ');
+  const featureNamesCsv = allFeaturesSorted.map(f => `\`${f.name.replace(/</g, '&lt;')}\``).join(', ');
 
   dynamicMd += `<details>\n<summary><strong>${allFeaturesSorted.length} web features with implementation guidance from Chrome's experts</strong>: ${featureNamesCsv}</summary>\n\n`;
   
@@ -187,4 +199,8 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   }
 }
 
-main().catch(console.error);
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch(console.error);
+}
+
+export { main as buildDist };

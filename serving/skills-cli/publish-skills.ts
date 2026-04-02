@@ -2,14 +2,14 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import ghpages from 'gh-pages';
+import { buildDist } from './build-dist.ts';
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const SERVING_DIR = path.join(ROOT_DIR, "serving");
 const DIST_DIR = path.join(ROOT_DIR, "dist");
 const SKILLS_CLI_TEMPLATE_DIR = path.join(SERVING_DIR, "skills-cli/template");
 
-const ghPagesPublish = ghpages.publish;
-
+const isDryRun = process.argv.includes('--dry-run');
 
 function incrementVersion(version: string): string {
   const parts = version.split('.');
@@ -17,7 +17,6 @@ function incrementVersion(version: string): string {
   return `${parts[0]}.${parts[1]}.${patch}`;
 }
 
-const isDryRun = process.argv.includes('--dry-run');
 
 async function bumpVersions() {
   console.log("Bumping versions in skills-cli templates...");
@@ -29,7 +28,7 @@ async function bumpVersions() {
   geminiData.version = newVersion;
 
   // VSCode
-  const vscodePath = path.join(SKILLS_CLI_TEMPLATE_DIR, "vscode-ext-package.json");
+  const vscodePath = path.join(SKILLS_CLI_TEMPLATE_DIR, "package.json");
   const vscodeData = JSON.parse(await fs.readFile(vscodePath, 'utf8'));
   vscodeData.version = newVersion;
 
@@ -59,21 +58,25 @@ async function bumpVersions() {
 async function main() {
   const newVersion = await bumpVersions();
   
-  console.log(`\nRebuilding distribution and running tests with version ${newVersion}...`);
-  execSync('node --test skills-cli/test-dist.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
+  const publishCliDir = path.join(DIST_DIR, "skills-cli");
+  await fs.mkdir(publishCliDir, {recursive: true});
+  await fs.rm(publishCliDir, { recursive: true, force: true });
+
+  console.log(`\nRebuilding distribution with version ${newVersion}...`);
+  await buildDist();
   
-  console.log(`\nGenerating npm shrinkwrap...`);
-  execSync('npm shrinkwrap', { cwd: path.join(DIST_DIR, "skills-cli"), stdio: 'inherit' });
+  console.log(`\nVerifying built distribution with test-dist.test.ts suite...`);
+  execSync('node --test skills-cli/test-dist.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
 
   if (isDryRun) {
-    const files = await fs.readdir(path.join(DIST_DIR, "skills-cli"), {recursive: true});
-    console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${files.join('\n - ')}`);
+    const files = await fs.readdir(publishCliDir, {recursive: true});
+    console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${files.filter(f => !f.includes('node_modules')).sort((a,b) => a.localeCompare(b)).join('\n - ')}`);
     console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
   } else {
     console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/skills-alpha (main branch)...`);
     
-    await ghPagesPublish(path.join(DIST_DIR, "skills-cli"), {
-      src: ['**/*', '**/node_modules/**/*'],
+    await ghpages.publish(publishCliDir, {
+      src: ['**/*'], // No longer vendor node_modules! Users will install via npx -y!
       branch: 'main',
       repo: 'git@github.com:GoogleChrome/skills-alpha.git',
       dotfiles: true,
@@ -81,7 +84,10 @@ async function main() {
       remove: "**/*"
     });
 
+
     console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/skills-alpha!`);
+
+    console.log('Perhaps also:\n    pushd ~/code/skills-alpha && git pull gh && git push gob && popd');
   }
 }
 
