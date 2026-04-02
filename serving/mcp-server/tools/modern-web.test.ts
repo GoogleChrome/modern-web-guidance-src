@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { registerModernWebTools } from './modern-web.ts';
 import { Embedder } from '../lib/embedder.ts';
-import { Store } from '../lib/store.ts';
+import { Store } from '../../lib/store.ts';
 
 describe('modern-web tools (Unit Tests with Mocks)', () => {
   it('should register search_use_cases and get_best_practices tools', () => {
