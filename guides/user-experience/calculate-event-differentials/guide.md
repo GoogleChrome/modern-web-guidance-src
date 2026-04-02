@@ -88,7 +88,6 @@ const { Temporal, Intl, toTemporalInstant } = require('@js-temporal/polyfill');
 
 // Extend Date.prototype for compatibility (optional but recommended for migration)
 Date.prototype.toTemporalInstant = toTemporalInstant;
-
 // Use Temporal
 const now = Temporal.Now.zonedDateTimeISO();
 console.log(now.toString());
@@ -105,10 +104,8 @@ if (typeof Temporal === 'undefined') {
   import('@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill, toTemporalInstant }) => {
     // Manually assign to global scope if your app code uses the global 'Temporal'
     globalThis.Temporal = TemporalPolyfill;
-    
     // Extend Date.prototype if needed
     Date.prototype.toTemporalInstant = toTemporalInstant;
-    
     // Initialize your app
     initializeApp();
   });
