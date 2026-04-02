@@ -5,7 +5,7 @@ import { spawn } from 'child_process';
 import { Agents, defaultSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
-import { getTaskMap, TASK_FILE } from '../lib/guide-validation.ts';
+import { getTaskMap } from '../lib/guide-validation.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -111,9 +111,8 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     let hasErrors = false;
     const numRuns = options.numRuns || suiteConfig.numRuns;
     const endRun = 1 + numRuns;
-    const isNegativeSuite = suiteConfig.negative === true;
 
-    console.log(`\nStarting execution for ${numRuns} runs ${isNegativeSuite ? '(Negative Suite)' : ''}`);
+    console.log(`\nStarting execution for ${numRuns} runs`);
 
     for (let runNumber = 1; runNumber < endRun; runNumber++) {
 
@@ -130,34 +129,36 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
       const taskMap = getTaskMap();
 
-      // Use configured tasks, or discover all tasks from the guide folders
+      // Use configured tasks, or discover all tasks from the guide folders.
+      // Default to only tasks ending in '/task' if no tasks are specified.
       const tasksToRun = options.tasks && options.tasks.length > 0
         ? options.tasks
         : (suiteConfig.tasks.length > 0
           ? suiteConfig.tasks
-          : Array.from(taskMap.keys()));
+          : Array.from(taskMap.keys()).filter(key => key.endsWith('/task')));
 
       for (const task of tasksToRun) {
-        const taskInfo = taskMap.get(task);
+        const resolvedTask = task.includes('/') ? task : `${task}/task`;
+        const taskInfo = taskMap.get(resolvedTask);
         if (!taskInfo) {
           console.warn(`Skipping task ${task}: Not found in task map`);
           continue;
         }
 
+        const [guideName, taskName] = resolvedTask.split('/');
         const baseApp = taskInfo.baseApp;
         let promptContent = taskInfo.prompt;
-
         promptContent += COMMON_APPEND_PROMPT;
 
         // Copy the base app to the run directory (for tracking purposes)
-        const guideFolder = path.join(runDir, task);
-        const taskFileName = isNegativeSuite ? 'negative' : path.basename(TASK_FILE, '.md');
-        const taskFolder = path.join(guideFolder, taskFileName);
+        const guideFolder = path.join(runDir, guideName);
+        const taskFolder = path.join(guideFolder, taskName);
         const workspaceBaseAppDir = path.join(taskFolder, 'base_app');
         if (!fs.existsSync(workspaceBaseAppDir)) {
           fs.mkdirSync(workspaceBaseAppDir, { recursive: true });
         }
-        if (isNegativeSuite) {
+
+        if (taskName === 'negative') {
           const negativeDemoPath = path.join(taskInfo.guideDir, 'negative-demo.html');
           if (fs.existsSync(negativeDemoPath)) {
             fs.copyFileSync(negativeDemoPath, path.join(workspaceBaseAppDir, 'index.html'));
@@ -186,11 +187,6 @@ export async function runSuite(options: RunSuiteOptions = {}) {
             agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
               'jetski-agent.ts');
 
-          // Generate runner script
-          // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
-          // we trick pnpm into thinking each test run is a package in a pnpm workspace.
-          // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
-          // This run.mjs wrapper executes the actual agent command via spawnSync.
           const runnerContent = `import { spawnSync } from 'child_process';
 const args = [
 '--experimental-strip-types',
@@ -208,16 +204,13 @@ process.exit(result.status ?? 0);
 
           fs.writeFileSync(path.join(targetDir, 'run.mjs'), runnerContent);
 
-          // Generate transient package.json
-          // This tells pnpm that this directory is a "package" that can be run
-          // via \`pnpm run-agent\`.
           fs.writeFileSync(path.join(targetDir, 'package.json'), JSON.stringify({
-            name: `${task.substring(0, 30)}-${runType}`,
+            name: `${taskName.substring(0, 30)}-${runType}`,
             type: "module",
             scripts: { "run-agent": "node run.mjs" }
           }, null, 2));
 
-          pnpmWorkspacePackages.push(`${task}/${taskFileName}/${runType}`);
+          pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
       }
 

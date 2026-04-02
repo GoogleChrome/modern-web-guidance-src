@@ -47,11 +47,11 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       const relPath = path.relative(runPath, dir);
       const parts = relPath.split(path.sep);
       if (parts.length < 3) continue;
-      const [guide, _, runType] = parts;
+      const [guide, taskNameDir, runType] = parts;
       if (runType === 'base_app') continue; // Skip the base app setup folder
       const targetFile = path.join(dir, 'index.html');
 
-      const taskInfo = taskMap.get(guide);
+      const taskInfo = taskMap.get(`${guide}/${taskNameDir}`);
       if (!taskInfo) continue;
 
       const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
@@ -146,9 +146,7 @@ run();
       }
 
       const targetFile = path.join(dir, 'index.html');
-      const isNegative = suiteConfig.negative === true;
-
-      const taskInfo = taskMap.get(guide);
+      const taskInfo = taskMap.get(`${guide}/${taskName}`);
       if (!taskInfo) {
         console.warn(`Skipping grading: Task ${guide} not found in task map`);
         continue;
@@ -213,7 +211,7 @@ run();
       }
 
       const testName = `${taskName} - ${guide} - ${runType}`;
-      const actualBaseApp = isNegative ? 'negative-demo.html' : taskInfo.baseApp;
+      const actualBaseApp = taskInfo.baseApp;
 
       if (!allResults[testName]) {
         allResults[testName] = [];
