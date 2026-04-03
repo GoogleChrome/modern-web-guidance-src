@@ -65,7 +65,7 @@ test('copySkills sets up the isolated environment with the skill and its data', 
     }
 });
 
-test.skip('invoking gemini-cli-agent.ts works end-to-end like in eval suite', async () => {
+test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', { skip: !process.env.FULL }, async () => {
     let targetDir = '';
     let templateDir = '';
     let osTmpDir = '/tmp'; // Use /tmp deliberately as per agent-shared.ts

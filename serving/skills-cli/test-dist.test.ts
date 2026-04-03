@@ -3,7 +3,6 @@ import assert from 'node:assert';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 
 export function assertSearchResults(output: string) {
     const results = JSON.parse(output);
