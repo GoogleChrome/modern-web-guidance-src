@@ -1,13 +1,10 @@
 ---
 name: calculate-event-differentials
-description: Determine the exact time elapsed between two discrete events to calculate trial expirations or prorated costs.
+description: Calculate the duration and time remaining between dates and times.
 web-feature-ids:
   - temporal
 sources:
   - https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Temporal
-  - https://tc39.es/proposal-temporal/docs/
-  - https://www.w3schools.com/js/js_temporal.asp
-  - https://www.npmjs.com/package/@js-temporal/polyfill
 ---
 
 # Calculating Event Differentials with Temporal
@@ -76,27 +73,6 @@ if (isExpired) {
 
 For browsers that do not yet support the native `Temporal` API, use feature detection and a polyfill. The standard reference polyfill is `@js-temporal/polyfill`.
 
-### Loading Polyfill
-
-Depending on your environment (Node.js or Browser), use the appropriate usage pattern. **Note that `@js-temporal/polyfill` does not set `globalThis.Temporal` automatically.**
-
-#### Node.js (CommonJS)
-
-If you are using Node.js with CommonJS, require the polyfill and extend the `Date` prototype if you need legacy date conversion:
-
-```javascript
-const { Temporal, Intl, toTemporalInstant } = require('@js-temporal/polyfill');
-// Extend Date.prototype for compatibility (optional but recommended for migration)
-Date.prototype.toTemporalInstant = toTemporalInstant;
-// Use Temporal
-const now = Temporal.Now.zonedDateTimeISO();
-console.log(now.toString());
-```
-
-#### Browsers (ES Modules)
-
-If you are using ES modules in the browser, you should conditionally load the polyfill using dynamic `import()` to avoid penalizing users on modern browsers.
-
 ```javascript
 // Check if Temporal is supported natively
 if (typeof Temporal === 'undefined') {
@@ -108,33 +84,6 @@ if (typeof Temporal === 'undefined') {
     Date.prototype.toTemporalInstant = toTemporalInstant;
     initializeApp();
   });
-} else {
-  // Native Temporal is available
-  initializeApp();
-}
-
-function initializeApp() {
-  const now = Temporal.Now.zonedDateTimeISO();
-  console.log(now.toString());
-}
-```
-
-#### Browsers (Global Script)
-
-If you are not using ES modules and are loading the polyfill via a standard `<script>` tag, you should still load it conditionally to avoid penalizing modern browsers. You must also ensure it is correctly assigned to `globalThis.Temporal` if your code relies on the global variable.
-
-```javascript
-// Check if Temporal is supported natively
-if (typeof Temporal === 'undefined') {
-  // Load the polyfill conditionally via a script tag
-  const script = document.createElement('script');
-  script.src = 'https://unpkg.com/@js-temporal/polyfill/dist/index.umd.js';
-  script.onload = () => {
-    // Ensure it's available on globalThis.Temporal
-    globalThis.Temporal = globalThis.Temporal || window.Temporal || window.temporal;
-    initializeApp();
-  };
-  document.head.appendChild(script);
 } else {
   // Native Temporal is available
   initializeApp();
