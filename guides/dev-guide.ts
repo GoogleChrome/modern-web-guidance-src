@@ -289,7 +289,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
   console.log(cCyan(`\n--- Running agent test ---`));
 
   const taskMap = getTaskMap();
-  const taskInfo = taskMap.get(guideName);
+  const taskInfo = taskMap.get(`${guideName}/task`);
   if (!taskInfo) {
     console.error(cRed(`Task info not found for ${guideName}, cannot run agent test.`));
     return;
