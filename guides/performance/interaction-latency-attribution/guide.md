@@ -36,7 +36,7 @@ const observer = new PerformanceObserver((list) => {
     const presentationDelay = Math.max(0, entry.duration - (entry.processingEnd - entry.startTime));
 
     // MANDATORY: Attribute the interaction using interactionId and target.
-    // The primary reason to use the raw Event Timing API over a library is to capture custom, application-specific context.
+    // The primary reason to use the raw Event Timing API over a library (like web-vitals) is to capture custom, application-specific context.
     // Go beyond basic DOM nodes by extracting dataset attributes (e.g., data-component, data-action).
     let componentName = 'unknown-component';
     if (entry.target && entry.target.closest) {
