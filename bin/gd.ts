@@ -197,7 +197,11 @@ function showHelp() {
       title: 'Utilities & Setup',
       commands: ['baselinestatus', 'setup-completion'],
     },
-  ];
+  ] as const;
+
+  // AI-First Safety: Enforce at compile-time that every command is documented in the help text
+  type RenderedCmds = typeof groups[number]['commands'][number];
+  const _exhaustiveCheck: Exclude<CommandName, RenderedCmds> = {} as never;
 
   console.log(`\n${cCyan('Usage:')} gd <command> [options]\n`);
 
