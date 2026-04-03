@@ -5,9 +5,6 @@ web-feature-ids:
   - customizable-select
 sources:
   - https://developer.chrome.com/en/blog/a-customizable-select
-  - https://developer.chrome.com/en/blog/new-in-web-ui-io-2025-recap
-  - https://developer.chrome.com/en/blog/rfc-customizable-select-findings
-  - https://developer.chrome.com/en/blog/rfc-customizable-select
 ---
 
 # Custom Select Picker Layouts

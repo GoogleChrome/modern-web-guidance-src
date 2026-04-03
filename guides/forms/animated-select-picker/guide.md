@@ -5,17 +5,6 @@ web-feature-ids:
   - customizable-select
 sources:
   - https://developer.chrome.com/en/blog/a-customizable-select
-  - https://developer.chrome.com/en/blog/missing-from-css
-  - https://developer.chrome.com/en/blog/new-in-web-ui-io-2025-recap
-  - https://developer.chrome.com/en/blog/rfc-customizable-select-findings
-  - https://developer.chrome.com/en/blog/rfc-customizable-select
-  - https://developer.chrome.com/en/docs/devtools/css/reference
-  - https://web.dev/en/articles/building/a-settings-component
-  - https://web.dev/en/blog/state-of-css-2022
-  - https://web.dev/en/learn/forms/fields
-  - https://web.dev/en/learn/forms/form-fields
-  - https://web.dev/en/patterns/components/multi-select
-  - https://web.dev/en/patterns/components/multi-select/pattern
 ---
 
 # Animated Select Picker
