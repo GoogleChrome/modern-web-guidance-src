@@ -1,0 +1,3 @@
+- Implement a text container that ensures text never wraps to a new line, even if it's longer than the container width. Use modern CSS properties.
+- I have a navigation bar where the links should stay on one line. How can I prevent them from wrapping?
+- How do I use `text-wrap` to stop text from breaking into multiple lines?
