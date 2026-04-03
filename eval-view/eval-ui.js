@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const launchForm = document.getElementById('launch-form');
 
   // Toggle button groups for Agent and Serving
-  // Toggle button groups for Agent and Serving
   document.querySelectorAll('#agent-group .btn-toggle').forEach(btn => {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('#agent-group .btn-toggle').forEach(b => b.classList.remove('active'));
@@ -148,8 +147,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Update row guide check!
         const rowCheckboxes = document.querySelectorAll(`.task-check[data-guide="${guideKey}"]`);
         const guideCheck = document.querySelector(`.guide-check-all[data-guide="${guideKey}"]`);
-        
-        // If NO tasks for row guide? Then it counts as allChecked (trivially!). Can checks if rowCheckboxes.length > 0!
         const allRowChecked = rowCheckboxes.length > 0 && Array.from(rowCheckboxes).every(c => c.checked);
         if (guideCheck) {
           guideCheck.checked = allRowChecked;

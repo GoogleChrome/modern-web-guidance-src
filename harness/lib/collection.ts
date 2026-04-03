@@ -47,11 +47,11 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       const relPath = path.relative(runPath, dir);
       const parts = relPath.split(path.sep);
       if (parts.length < 3) continue;
-      const [guide, taskNameDir, runType] = parts;
+      const [guide, taskName, runType] = parts;
       if (runType === 'base_app') continue; // Skip the base app setup folder
       const targetFile = path.join(dir, 'index.html');
 
-      const taskInfo = taskMap.get(`${guide}/${taskNameDir}`);
+      const taskInfo = taskMap.get(`${guide}/${taskName}`);
       if (!taskInfo) continue;
 
       const graderPath = path.join(taskInfo.guideDir, 'grader.ts');

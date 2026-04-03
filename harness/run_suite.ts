@@ -129,8 +129,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
       const taskMap = getTaskMap();
 
-      // Use configured tasks, or discover all tasks from the guide folders.
-      // Default to only tasks ending in '/task' if no tasks are specified.
+      // Use configured tasks, or discover all `task.md` from the guide folders.
       const tasksToRun = options.tasks && options.tasks.length > 0
         ? options.tasks
         : (suiteConfig.tasks.length > 0
@@ -202,6 +201,11 @@ export async function runSuite(options: RunSuiteOptions = {}) {
             agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
               'jetski-agent.ts');
 
+          // Generate runner script
+          // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
+          // we trick pnpm into thinking each test run is a package in a pnpm workspace.
+          // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
+          // This run.mjs wrapper executes the actual agent command via spawnSync.
           const runnerContent = `import { spawnSync } from 'child_process';
 const args = [
 '--experimental-strip-types',
@@ -219,6 +223,9 @@ process.exit(result.status ?? 0);
 
           fs.writeFileSync(path.join(targetDir, 'run.mjs'), runnerContent);
 
+          // Generate transient package.json
+          // This tells pnpm that this directory is a "package" that can be run
+          // via \`pnpm run-agent\`.
           fs.writeFileSync(path.join(targetDir, 'package.json'), JSON.stringify({
             name: `${taskName.substring(0, 30)}-${runType}`,
             type: "module",

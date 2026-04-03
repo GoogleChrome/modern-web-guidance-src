@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
-import { fileURLToPath } from 'url';
 
 const PORT = process.env.PORT || 8081;
 
