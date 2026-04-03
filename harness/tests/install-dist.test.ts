@@ -26,11 +26,19 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         // Claude Code uses --plugin-dir to load local plugins
         // We verify if we can run it and if it doesn't crash (or if it lists the plugin if we can find a way to list it)
         // Since we don't want to run an interactive session, we just check if it parses the flag and runs a prompt.
+        // Filter for Anthropic environment variables to pass through securely in-memory
+        const anthropicEnv: Record<string, string> = {};
+        for (const [key, value] of Object.entries(process.env)) {
+            if (key.startsWith('ANTHROPIC_') && value) {
+                anthropicEnv[key] = value;
+            }
+        }
+
         const cmd = `claude --plugin-dir ${distDir} -p "ping"`;
         const output = execSync(cmd, { 
             encoding: 'utf8', 
             timeout: 10000, 
-            env: { ...process.env, HOME: homeDir } 
+            env: { ...process.env, HOME: homeDir, ...anthropicEnv } 
         });
         assert.ok(output, 'Claude should return some output');
     } finally {
