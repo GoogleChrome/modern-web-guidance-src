@@ -3,6 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import matter from 'gray-matter';
 
 export function assertSearchResults(output: string) {
     const results = JSON.parse(output);
@@ -80,12 +81,24 @@ test('SKILL.md validations', async () => {
   await assert.doesNotReject(fs.access(skillPath), `Missing SKILL.md in modern-web-use-cases`);
 
   const content = await fs.readFile(skillPath, 'utf8');
-  const match = content.match(/^---\r?\n([\s\S]+?)\r?\n---/);
-  assert.ok(match, `Missing YAML frontmatter`);
-  
-  const nameMatch = match[1].match(/^name:\s*(.+)$/m);
-  assert.ok(nameMatch, `Missing 'name' field in frontmatter`);
-  assert.strictEqual(nameMatch[1].trim(), 'modern-web-use-cases', `Frontmatter name must match folder name`);
+  const { data } = matter(content);
+  assert.ok(data.name, `Missing 'name' field in frontmatter`);
+  assert.strictEqual(data.name, 'modern-web-use-cases', `Frontmatter name must match folder name`);
+});
+
+test('Generic skill validations (forms, performance)', async () => {
+  const checkSkill = async (skillName: string) => {
+    const skillPath = path.join(DIST_DIR, `skills/${skillName}/SKILL.md`);
+    await assert.doesNotReject(fs.access(skillPath), `Missing SKILL.md in ${skillName}`);
+
+    const content = await fs.readFile(skillPath, 'utf8');
+    const { data } = matter(content);
+    assert.ok(data.name, `Missing 'name' field in frontmatter for ${skillName}`);
+    assert.strictEqual(data.name, skillName, `Frontmatter name must match folder name for ${skillName}`);
+  };
+
+  await checkSkill('forms');
+  await checkSkill('performance');
 });
 
 test('Manifest source paths resolve relative to dist directory', async () => {
