@@ -13,5 +13,8 @@
     "allowImportingTsExtensions": true,
     "allowJs": true,
     "checkJs": false
-  }
+  },
+  "include": [
+    "bin/gd.ts"
+  ]
 }

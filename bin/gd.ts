@@ -201,7 +201,7 @@ function showHelp() {
   ] as const;
 
   // AI-First Safety: Enforce at compile-time that every command is documented in the help text
-  type AssertEmpty<T extends never> = true;
+  type AssertEmpty<_T extends never> = true;
   type _CheckAllCmdsRendered = AssertEmpty<Exclude<CommandName, typeof groups[number]['commands'][number]>>;
   
   // AI-First Safety: Enforce that every flag in ALL_OPTIONS is assigned to a command or rendered globally
