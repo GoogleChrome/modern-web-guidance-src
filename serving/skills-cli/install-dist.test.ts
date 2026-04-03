@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-import { createIsolatedHome, cleanupIsolatedHome } from '../lib/agent-shared.ts';
+import { createIsolatedHome, cleanupIsolatedHome } from '../../harness/lib/agent-shared.ts';
 
 // Assuming assertSearchResults is available or we duplicate it
 function assertSearchResults(output: string) {
@@ -54,7 +54,7 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
         homeDir = createIsolatedHome('test-install-gemini');
         const distDir = path.resolve(import.meta.dirname, '../../dist/skills-cli');
         
-        const geminiBin = path.resolve(import.meta.dirname, '../node_modules/.bin/gemini');
+        const geminiBin = path.resolve(import.meta.dirname, '../../harness/node_modules/.bin/gemini');
         if (!fs.existsSync(geminiBin)) {
             test.skip('Gemini binary not found, skipping');
             return;
