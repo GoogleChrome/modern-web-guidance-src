@@ -1,0 +1,6 @@
+---
+base_app: daily-grind
+---
+- add a script to the bottom of the page that uses a performanceobserver to track slow ui interactions. listen for 'event' entries with a 16ms duration threshold and buffered set to true. for each entry, calculate the input delay, processing time, and presentation delay, and console.log those values along with the total duration and the target element's tag and id. make sure to feature-detect performanceobserver and the 'event' entry type first so it degrades gracefully.
+- wire up performance monitoring to capture slow clicks on the 'order now' and 'view details' buttons. use the event timing api to log the breakdown of input delay, processing time, and presentation delay to the console. make sure it fails gracefully if the browser doesn't support it.
+- the marketing team says the site feels slow when they click around the seasonal favorites cards. write a script that tracks user interactions and logs exactly where the delay is happening—whether it's before the click handler runs, during it, or while the browser is painting the next frame.
