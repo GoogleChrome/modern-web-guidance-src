@@ -57,19 +57,30 @@ async function main() {
      groupedQueries[q.guideId].push(q);
   }
 
+  const isFullPool = args.includes('--full-pool');
+
   for (let iter = 1; iter <= runs; iter++) {
     console.log(`\n\n=== VARIANCE ITERATION ${iter} of ${runs} ===`);
     
-    // Sample exactly 5 random queries per guide for this specific test run iteration
     const subset = [];
-    for (const guideId in groupedQueries) {
-        const queries = groupedQueries[guideId];
-        const shuffled = shuffle(queries);
-        subset.push(...shuffled.slice(0, 5));
+    if (isFullPool) {
+      // Consume ALL 50 master pool queries per guide directly to guarantee 100% static comparability
+      for (const guideId in groupedQueries) {
+         subset.push(...groupedQueries[guideId]);
+      }
+      // Sort them stably by guide ID and query to prevent any chronological jitter
+      subset.sort((a, b) => a.guideId.localeCompare(b.guideId) || a.query.localeCompare(b.query));
+    } else {
+      // Sample exactly 5 random queries per guide for standard variance testing
+      for (const guideId in groupedQueries) {
+          const queries = groupedQueries[guideId];
+          const shuffled = shuffle(queries);
+          subset.push(...shuffled.slice(0, 5));
+      }
     }
 
     fs.writeFileSync(targetEvalsPath, JSON.stringify(subset, null, 2));
-    console.log(`Sampled ${subset.length} randomized queries to test against.`);
+    console.log(`Sampled ${subset.length} ${isFullPool ? 'DETERMINISTIC' : 'randomized'} queries to test against.`);
 
     for (const model of models) {
       console.log(`\nEvaluating ${model} (Iter ${iter})...`);
