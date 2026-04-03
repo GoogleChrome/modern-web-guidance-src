@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Duration Balancing (Temporal)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #111827;
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #10b981;
+      --border-color: #1f2937;
+      --danger-bg: rgba(239, 68, 68, 0.1);
+      --danger-border: rgba(239, 68, 68, 0.3);
+      --danger-text: #ef4444;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.description {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      margin: 0 auto;
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    .banner {
+      background-color: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      color: var(--danger-text);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      display: none;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    /* Controls Bar */
+    .controls-bar {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 1.5rem;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    label {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input,
+    select {
+      background: #1f2937;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .radio-group {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+
+    .radio-option input {
+      cursor: pointer;
+      accent-color: var(--accent-primary);
+    }
+
+    /* Output Grid */
+    .output-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .card-title {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+    }
+
+    .huge-value {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: var(--accent-secondary);
+    }
+
+    .code-block {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+
+    code {
+      color: #93c5fd;
+    }
+
+    .string-value {
+      font-family: monospace;
+      color: #f472b6;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Duration Balancing</h1>
+      <p class="description">
+        Manage how time spans are displayed by controlling "balancing" logic using <code>Temporal.Duration</code>.
+      </p>
+    </header>
+
+    <div id="unsupportedBanner" class="banner">
+      <div class="banner-icon">🚫</div>
+      <div>This demo requires a browser with native Temporal support</div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-bar">
+      <label>Enter Duration Components</label>
+      <div class="input-row">
+        <div class="control-group">
+          <label for="hoursInput">Hours</label>
+          <input type="number" id="hoursInput" value="0" min="0">
+        </div>
+        <div class="control-group">
+          <label for="minutesInput">Minutes</label>
+          <input type="number" id="minutesInput" value="90" min="0">
+        </div>
+        <div class="control-group">
+          <label for="secondsInput">Seconds</label>
+          <input type="number" id="secondsInput" value="0" min="0">
+        </div>
+      </div>
+
+      <div class="control-group" style="margin-top: 0.5rem;">
+        <label>Largest Unit (Balancing Strategy)</label>
+        <div class="radio-group">
+          <label class="radio-option">
+            <input type="radio" name="largestUnit" value="auto" checked>
+            <span>Auto (Creation)</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="largestUnit" value="hours">
+            <span>Hours</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="largestUnit" value="minutes">
+            <span>Minutes</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="largestUnit" value="seconds">
+            <span>Seconds</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Output Grid -->
+    <div class="output-grid">
+      <div class="card">
+        <div class="card-title">Human-Readable Format</div>
+        <div id="humanValue" class="huge-value">90 minutes</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Raw Duration String</div>
+        <div>
+          <span class="string-value"><code>Temporal.Duration</code>: </span>
+          <span id="rawString" class="string-value">PT1H30M</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Code Snippet</div>
+        <div id="codeSnippet" class="code-block"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const hoursInput = document.getElementById('hoursInput');
+    const minutesInput = document.getElementById('minutesInput');
+    const secondsInput = document.getElementById('secondsInput');
+    const radioButtons = document.getElementsByName('largestUnit');
+    const humanValue = document.getElementById('humanValue');
+    const rawString = document.getElementById('rawString');
+    const codeSnippet = document.getElementById('codeSnippet');
+    const unsupportedBanner = document.getElementById('unsupportedBanner');
+
+    // Check Support
+    if (typeof Temporal === 'undefined') {
+      unsupportedBanner.style.display = 'flex';
+      [hoursInput, minutesInput, secondsInput].forEach(el => el.disabled = true);
+      radioButtons.forEach(el => el.disabled = true);
+    } else {
+      initializeDemo();
+    }
+
+    function initializeDemo() {
+      const inputs = [hoursInput, minutesInput, secondsInput];
+      inputs.forEach(el => el.addEventListener('input', updateAll));
+      radioButtons.forEach(el => el.addEventListener('change', updateAll));
+      updateAll();
+    }
+
+    function updateAll() {
+      const hours = parseInt(hoursInput.value) || 0;
+      const minutes = parseInt(minutesInput.value) || 0;
+      const seconds = parseInt(secondsInput.value) || 0;
+
+      let selectedUnit = 'auto';
+      for (const radio of radioButtons) {
+        if (radio.checked) {
+          selectedUnit = radio.value;
+          break;
+        }
+      }
+
+      try {
+        // 1. Create original duration
+        const duration = Temporal.Duration.from({
+          hours: hours,
+          minutes: minutes,
+          seconds: seconds
+        });
+
+        let displayDuration = duration;
+        let code = `// 1. Create duration\n`;
+        code += `const duration = Temporal.Duration.from({\n`;
+        code += `  hours: ${hours},\n`;
+        code += `  minutes: ${minutes},\n`;
+        code += `  seconds: ${seconds}\n`;
+        code += `});\n\n`;
+
+        // 2. Apply Balancing with round()
+        if (selectedUnit !== 'auto') {
+          displayDuration = duration.round({ largestUnit: selectedUnit });
+          code += `// 2. Balance using .round()\n`;
+          code += `const balanced = duration.round({\n`;
+          code += `  largestUnit: '${selectedUnit}'\n`;
+          code += `});`;
+        } else {
+          code += `// No balancing applied (using original creation)`;
+        }
+
+        // 3. Update DOM
+        rawString.textContent = displayDuration.toString();
+        humanValue.textContent = formatDuration(displayDuration);
+        codeSnippet.textContent = code;
+
+      } catch (error) {
+        console.error(error);
+        humanValue.textContent = "Error";
+        rawString.textContent = error.message;
+      }
+    }
+
+    function formatDuration(dur) {
+      const parts = [];
+      if (dur.hours > 0) parts.push(`${dur.hours} hour${dur.hours > 1 ? 's' : ''}`);
+      if (dur.minutes > 0) parts.push(`${dur.minutes} minute${dur.minutes > 1 ? 's' : ''}`);
+      if (dur.seconds > 0) parts.push(`${dur.seconds} second${dur.seconds > 1 ? 's' : ''}`);
+
+      if (parts.length === 0) {
+        // Handle zero case
+        return "0 seconds";
+      }
+
+      // Join with commas and "and"
+      if (parts.length === 1) return parts[0];
+      if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+      return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+    }
+  </script>
+
+</body>
+
+</html>

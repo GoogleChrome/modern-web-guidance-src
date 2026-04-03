@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prevent Text Wrapping Negative Demo</title>
+    <style>
+        .container {
+            width: 100px;
+            border: 1px solid black;
+        }
+        .wraps {
+            /* This is the default, but explicitly setting it to something that wraps */
+            text-wrap: wrap;
+            background-color: lightpink;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="wraps" id="target">
+            This is a very long text that will wrap to multiple lines because it exceeds the container width.
+        </div>
+    </div>
+</body>
+</html>

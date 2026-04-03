@@ -16,6 +16,9 @@ updates:
       interval: "weekly"
       day: "sunday"
     open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     cooldown:
       default-days: 14
     groups:

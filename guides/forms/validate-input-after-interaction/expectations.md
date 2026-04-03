@@ -1,0 +1,6 @@
+- On page load, the required input field MUST have a neutral border (not red), even if it is empty.
+- Clicking into the required empty input field and clicking away (blur) MUST trigger the `:user-invalid` state (e.g. red border, visible error message) without writing custom JS event listeners.
+- Typing a valid value MUST remove the error state immediately (on input) or after blur.
+- Submitting the form with an empty required field MUST trigger the error state.
+- DO NOT assert the presence of a Password field, complexity lists, or specific labels unless explicitly asked for by the test prompt.
+- If "Force Fallback Mode" is active via a checkbox, the behavior across elements MUST be identical using the `.user-invalid-fallback` class.

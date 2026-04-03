@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Highlight Autofill Inputs</title>
+  <style>
+    input:autofill,
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus {
+      border-color: green;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Name Form</h1>
+  <form id="form" name="form">
+    <section>
+      <label for="name">Name</label>
+      <input id="name" name="name" type="text" autocomplete="name" maxlength="100" pattern="[\p{L} \-\.]+" required>
+    </section>
+    <button type="submit">Submit</button>
+  </form>
+</body>
+</html>

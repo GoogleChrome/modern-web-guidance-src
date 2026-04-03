@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -56,4 +56,5 @@ jobs:
         run: node --experimental-strip-types guides/sync-use-cases.ts
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          PROJECT_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           DRY_RUN: ${{ github.event.inputs.dry_run || (github.event_name == 'pull_request' && 'true') || 'false' }}

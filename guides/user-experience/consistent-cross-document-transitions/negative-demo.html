@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Negative Demo</title>
+  <script src="theme-applier.js" async></script>
+</head>
+<body>
+  <div id="layout-root">
+    <header class="main-header" style="view-transition-name: header-anim;">
+      <h1>Anti-Example</h1>
+    </header>
+    
+    <main>
+      <section class="hero-section" style="view-transition-name: section-fade;">
+        <div class="card" style="view-transition-name: card-morph;">
+          <img src="placeholder1.jpg" style="view-transition-name: image-shared;">
+          <h2>Item One</h2>
+        </div>
+        <div class="card" style="view-transition-name: card-morph;">
+          <img src="placeholder2.jpg" style="view-transition-name: image-shared;">
+          <h2>Item Two</h2>
+        </div>
+      </section>
+
+      <div id="content-area">
+        <p>This content is not protected by any render-blocking mechanisms.</p>
+      </div>
+    </main>
+
+    <footer>
+      <p style="view-transition-name: section-fade;">Footer Content</p>
+    </footer>
+  </div>
+
+  <link rel="stylesheet" href="styles.css">
+
+  <script>
+    window.addEventListener('pagereveal', (event) => {
+      if (event.viewTransition) {
+        const title = document.querySelector('h1');
+        title.style.viewTransitionName = 'header-anim';
+      }
+    });
+
+    window.addEventListener('pageswap', (event) => {
+      if (event.viewTransition) {
+        document.querySelectorAll('.card').forEach(card => {
+          card.style.viewTransitionName = 'card-morph';
+        });
+      }
+    });
+  </script>
+</body>
+</html>

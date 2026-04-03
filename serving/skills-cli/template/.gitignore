@@ -1,0 +1,3 @@
+# Exclude node_modules from publishing as we move to npx -y style
+node_modules/
+

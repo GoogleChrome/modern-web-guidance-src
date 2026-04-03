@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Identify Heavy Scripts Demo</title>
+</head>
+
+<body>
+  <h1>Identify Heavy Scripts</h1>
+  <button id="slow-button">Trigger Slow Script</button>
+
+  <script>
+    // Observe long animation frames to identify slow scripts
+    const observer = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        console.log('Long Animation Frame observed:', entry.duration, 'ms');
+
+        // Iterate through scripts to find the specific function responsible
+        // Note script entries will be empty when loading this demo from a
+        // local file, instead of from a server.
+        for (const script of entry.scripts) {
+          // Console log for now, but in a real application would want to beacon
+          // back to an anlytics endpoint
+          console.log(`Script execution time: ${script.duration} ms`);
+          console.log(`Function: ${script.sourceFunctionName || '(anonymous)'}`);
+          console.log(`URL: ${script.sourceURL}:${script.sourceCharPosition}`);
+        }
+      }
+    });
+
+    // Start observing long-animation-frame entries
+    observer.observe({ type: 'long-animation-frame', buffered: true });
+
+    // A intentionally slow function that blocks the main thread
+    function verySlowOperation() {
+      const start = performance.now();
+      while (performance.now() - start < 100) {
+        // block main thread for 100ms
+      }
+    }
+
+    document.getElementById('slow-button').addEventListener('click', () => {
+      verySlowOperation();
+    });
+  </script>
+</body>
+
+</html>
