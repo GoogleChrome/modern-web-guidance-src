@@ -4,6 +4,22 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
+export function assertSearchResults(output: string) {
+    const results = JSON.parse(output);
+    assert.ok(Array.isArray(results), 'Output should be a JSON array');
+    assert.ok(results.length > 0, 'Search should find some results');
+    
+    // Find if 'autofill-address-form' is in the results
+    const hasAddressForm = results.some((r: any) => r.id === 'autofill-address-form');
+    assert.ok(hasAddressForm, 'Results should contain autofill-address-form');
+    
+    // Verify structure of the first item
+    const topResult = results[0];
+    assert.ok(topResult.id, 'Top result should have an id');
+    assert.ok(topResult.description, 'Top result should have a description');
+    assert.ok(topResult.distance, 'Top result should have a distance');
+}
+
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
@@ -110,9 +126,7 @@ test('modern-web CLI search and retrieve', async () => {
   
   // 1. Validate search
   const searchOut = execSync(`node "${binaryPath}" --search "address form"`, { encoding: 'utf8' });
-  const searchResults = JSON.parse(searchOut);
-  assert.ok(Array.isArray(searchResults), 'Search output should be a JSON array');
-  assert.ok(searchResults.length > 0, 'Should return at least one search result for address form');
+  assertSearchResults(searchOut);
 
   // 2. Validate retrieve
   const retrieveOut = execSync(`node "${binaryPath}" --retrieve accessible-error-announcement`, { encoding: 'utf8' });
