@@ -417,5 +417,131 @@
     "top3HitRate": 0.9176,
     "top5HitRate": 0.9765,
     "meanReciprocalRank": 0.8088
+  },
+  {
+    "timestamp": "2026-04-03T20:00:03.979Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "totalQueries": 85,
+    "top1HitRate": 0.4941,
+    "top3HitRate": 0.8118,
+    "top5HitRate": 0.8824,
+    "meanReciprocalRank": 0.6571
+  },
+  {
+    "timestamp": "2026-04-03T20:01:10.933Z",
+    "model": "onnx-community/embeddinggemma-300m-ONNX@q8 (Chunked)",
+    "totalQueries": 85,
+    "top1HitRate": 0.4588,
+    "top3HitRate": 0.7765,
+    "top5HitRate": 0.8471,
+    "meanReciprocalRank": 0.6114
+  },
+  {
+    "timestamp": "2026-04-03T20:01:58.349Z",
+    "model": "onnx-community/embeddinggemma-300m-ONNX@q4 (Chunked)",
+    "totalQueries": 85,
+    "top1HitRate": 0.5059,
+    "top3HitRate": 0.7765,
+    "top5HitRate": 0.8471,
+    "meanReciprocalRank": 0.6427
+  },
+  {
+    "timestamp": "2026-04-03T21:47:08.818Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "totalQueries": 85,
+    "top1HitRate": 0.5412,
+    "top3HitRate": 0.8,
+    "top5HitRate": 0.9176,
+    "meanReciprocalRank": 0.6851
+  },
+  {
+    "timestamp": "2026-04-03T21:47:13.856Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "totalQueries": 85,
+    "top1HitRate": 0.5412,
+    "top3HitRate": 0.8706,
+    "top5HitRate": 0.9294,
+    "meanReciprocalRank": 0.7057
+  },
+  {
+    "timestamp": "2026-04-03T21:47:19.167Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "totalQueries": 85,
+    "top1HitRate": 0.5765,
+    "top3HitRate": 0.8941,
+    "top5HitRate": 0.9529,
+    "meanReciprocalRank": 0.7357
+  },
+  {
+    "timestamp": "2026-04-03T21:47:24.012Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "totalQueries": 85,
+    "top1HitRate": 0.6235,
+    "top3HitRate": 0.8941,
+    "top5HitRate": 0.9176,
+    "meanReciprocalRank": 0.749
+  },
+  {
+    "timestamp": "2026-04-03T21:47:28.589Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "totalQueries": 85,
+    "top1HitRate": 0.6588,
+    "top3HitRate": 0.8353,
+    "top5HitRate": 0.9294,
+    "meanReciprocalRank": 0.7635
+  },
+  {
+    "timestamp": "2026-04-03T21:47:33.220Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "totalQueries": 85,
+    "top1HitRate": 0.5294,
+    "top3HitRate": 0.8,
+    "top5HitRate": 0.9059,
+    "meanReciprocalRank": 0.6751
+  },
+  {
+    "timestamp": "2026-04-03T21:47:37.710Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "totalQueries": 85,
+    "top1HitRate": 0.5529,
+    "top3HitRate": 0.8588,
+    "top5HitRate": 0.9412,
+    "meanReciprocalRank": 0.7135
+  },
+  {
+    "timestamp": "2026-04-03T21:47:42.352Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "totalQueries": 85,
+    "top1HitRate": 0.5882,
+    "top3HitRate": 0.8471,
+    "top5HitRate": 0.9412,
+    "meanReciprocalRank": 0.7282
+  },
+  {
+    "timestamp": "2026-04-03T21:47:47.232Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "totalQueries": 85,
+    "top1HitRate": 0.5882,
+    "top3HitRate": 0.8,
+    "top5HitRate": 0.9176,
+    "meanReciprocalRank": 0.708
+  },
+  {
+    "timestamp": "2026-04-03T21:47:51.918Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "totalQueries": 85,
+    "top1HitRate": 0.4353,
+    "top3HitRate": 0.7765,
+    "top5HitRate": 0.8588,
+    "meanReciprocalRank": 0.6031
+  },
+  {
+    "timestamp": "2026-04-03T21:52:48.462Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974
   }
 ]
