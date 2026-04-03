@@ -80,7 +80,11 @@ async function main() {
     }
 
     fs.writeFileSync(targetEvalsPath, JSON.stringify(subset, null, 2));
-    console.log(`Sampled ${subset.length} ${isFullPool ? 'DETERMINISTIC' : 'randomized'} queries to test against.`);
+    if (isFullPool) {
+      console.log(`Loaded ALL ${subset.length} master queries sequentially for testing.`);
+    } else {
+      console.log(`Sampled ${subset.length} randomized queries to test against.`);
+    }
 
     for (const model of models) {
       console.log(`\nEvaluating ${model} (Iter ${iter})...`);
