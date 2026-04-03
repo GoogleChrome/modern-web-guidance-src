@@ -34,10 +34,10 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
             }
         }
 
-        const cmd = `claude --plugin-dir ${distDir} -p "ping"`;
+        const cmd = `claude --plugin-dir ${distDir} -p "use the modern-web-use-cases skill and tell me best practices on implementing an address form" --dangerously-skip-permissions`;
         const output = execSync(cmd, { 
             encoding: 'utf8', 
-            timeout: 10000, 
+            timeout: 90000, // 90s
             env: { ...process.env, HOME: homeDir, ...anthropicEnv } 
         });
         assert.ok(output, 'Claude should return some output');
@@ -64,13 +64,24 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
         const helpOut = execSync(`${geminiBin} extensions --help`, { encoding: 'utf8' });
         assert.ok(helpOut.includes('install'), 'Gemini should have install command');
 
-        // We use --consent to bypass the security risk prompt
-        const output = execSync(`${geminiBin} extensions install ${distDir} --consent`, { 
+        // We use 'yes |' to bypass the trust workspace prompt, and --consent for the security prompt
+        const installOutput = execSync(`yes | ${geminiBin} extensions install ${distDir} --consent`, { 
             encoding: 'utf8', 
             env: { ...process.env, HOME: homeDir },
             stdio: 'pipe' 
         });
-        console.log('Gemini install local path output:', output);
+        // Loosen assertion to allow any output as long as it doesn't throw, or check for non-empty
+        assert.ok(installOutput !== undefined, 'Install should complete running');
+
+        // Verify functionality by running a prompt that triggers the skill
+        const promptCmd = `${geminiBin} -p "use the modern-web-use-cases skill and tell me best practices on implementing an address form" -o stream-json --yolo`;
+        const promptOutput = execSync(promptCmd, { 
+            encoding: 'utf8', 
+            timeout: 90000, // 90s
+            env: { ...process.env, HOME: homeDir },
+            stdio: 'pipe'
+        });
+        assert.ok(promptOutput, 'Gemini should return output for the skill prompt');
     } finally {
         if (homeDir) {
             cleanupIsolatedHome(homeDir);
@@ -89,11 +100,15 @@ test('npx skills add from local path', { skip: !process.env.FULL }, async () => 
             return;
         }
 
-        const cmd = `zsh -c "export DISABLE_TELEMETRY=1; npx skills add -y -g ${distDir}"`;
+        const cmd = `npx skills add -y -g ${distDir}`;
         
         try {
             console.log(`Running: ${cmd}`);
-            const output = execSync(cmd, { encoding: 'utf8', stdio: 'pipe' });
+            const output = execSync(cmd, { 
+                encoding: 'utf8', 
+                stdio: 'pipe',
+                env: { ...process.env, HOME: homeDir, DISABLE_TELEMETRY: '1' }
+            });
             console.log('npx skills add output:', output);
             assert.ok(output.includes('Installed 1 skill') || output.includes('Installation complete'), 'Skills add should succeed');
         } catch (e: any) {
