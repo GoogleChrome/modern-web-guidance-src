@@ -18,6 +18,38 @@ try {
   // Ignore if file doesn't exist
 }
 
+// --- Single Source of Truth Metadata ---
+
+const ALL_OPTIONS = {
+  help: { type: 'boolean', short: 'h', desc: 'Show this help' },
+  version: { type: 'boolean', short: 'v', desc: 'Show version' },
+  grade: { type: 'boolean', desc: 'Run/calibrate grader' },
+  'test-grader': { type: 'boolean', desc: 'Check grader calibration (demo + negative-demo)' },
+  'gen-grader': { type: 'boolean', desc: 'Generate a new grader script' },
+  'gen-negative': { type: 'boolean', desc: 'Generate negative examples' },
+  guided: { type: 'boolean', desc: 'Skip calibration, run guided agent test only' },
+  verbose: { type: 'boolean', desc: 'Show additional output' },
+  usecases: { type: 'boolean', desc: '(Audit) Group by categories/usecases (default is features)' },
+  config: { type: 'string', desc: '(Eval) Path to a custom TS suite config file' },
+} as const;
+
+type OptionName = keyof typeof ALL_OPTIONS;
+
+const COMMAND_METADATA = {
+  audit: { desc: 'Show status of all guides', flags: ['usecases'] },
+  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'gen-negative', 'guided', 'verbose'] },
+  eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'verbose'] },
+  dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
+  run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config', 'verbose'] },
+  deploy: { desc: 'Deploy the dashboard to GitHub Pages', flags: [] },
+  upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
+  baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
+  'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
+} satisfies Record<string, { desc: string; flags: OptionName[] }>;
+
+const COMMANDS = Object.keys(COMMAND_METADATA);
+type CommandName = keyof typeof COMMAND_METADATA;
+
 // --- Shell Auto-Completion ---
 
 function listGuideDirs(): string[] {
@@ -36,51 +68,67 @@ function listGuideDirs(): string[] {
   return dirs;
 }
 
-const completion = omelette('gd <command> <arg1> <arg2>');
+function getFlagsForLine(line: string): string[] {
+  const parts = line.split(/\s+/).filter(Boolean);
+  const cmd = parts[1] as CommandName;
+  const meta = COMMAND_METADATA[cmd];
+  return meta ? meta.flags.map(f => '--' + f) : [];
+}
 
-completion.on('command', ({ reply }) => {
-  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'baselinestatus', 'setup-completion']);
-});
+const completion = omelette('gd <command> <arg1> <arg2> <arg3> <arg4> <arg5>');
 
-completion.on('arg1', ({ before, reply }) => {
+completion.on('command', ({ reply }) => reply(COMMANDS));
+
+completion.on('arg1', ({ before, line, reply }) => {
+  const flags = getFlagsForLine(line);
   if (before === 'eval') {
     const tasks = Array.from(getTaskMap().keys());
-    reply(['suite', ...tasks]);
+    reply(['suite', ...tasks, ...flags]);
   } else if (before === 'gen') {
     reply(['grader', 'negative']);
+  } else if (before === 'audit') {
+    reply(flags);
   } else if (['dev', 'test', 'grade'].includes(before)) {
-    reply(listGuideDirs());
+    reply([...listGuideDirs(), ...flags]);
+  } else {
+    reply(flags);
   }
 });
 
 completion.on('arg2', ({ before, line, reply }) => {
-  if (before === 'run') {
+  const flags = getFlagsForLine(line);
+  if (line.includes('gd eval')) {
+    reply(flags);
+  } else if (line.includes('gd dev') && before.startsWith('guides/')) {
+    reply(flags);
+  } else if (before === 'run') {
     if (fs.existsSync(baseAppsDir)) {
       reply(fs.readdirSync(baseAppsDir).filter(d => fs.statSync(path.join(baseAppsDir, d)).isDirectory()));
     }
   } else if (['grader', 'negative'].includes(before) && line.includes('gen')) {
     reply(listGuideDirs());
+  } else {
+    reply(flags);
   }
 });
+
+completion.on('arg3', ({ line, reply }) => reply(getFlagsForLine(line)));
+completion.on('arg4', ({ line, reply }) => reply(getFlagsForLine(line)));
+completion.on('arg5', ({ line, reply }) => reply(getFlagsForLine(line)));
 
 completion.init();
 
 // --- Argument Parsing ---
 
+const parseOptions: any = {};
+for (const [key, val] of Object.entries(ALL_OPTIONS)) {
+  parseOptions[key] = { type: val.type };
+  if ((val as any).short) parseOptions[key].short = (val as any).short;
+}
+
 const { positionals, values } = parseArgs({
   args: process.argv.slice(2),
-  options: {
-    help: { type: 'boolean', short: 'h' },
-    version: { type: 'boolean', short: 'v' },
-    grade: { type: 'boolean' },
-    'test-grader': { type: 'boolean' },
-    'gen-grader': { type: 'boolean' },
-    'gen-negative': { type: 'boolean' },
-    guided: { type: 'boolean' },
-    verbose: { type: 'boolean' },
-    usecases: { type: 'boolean' },
-    config: { type: 'string' },
-  },
+  options: parseOptions,
   allowPositionals: true,
   strict: false,
 });
