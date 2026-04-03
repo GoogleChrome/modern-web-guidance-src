@@ -2,6 +2,6 @@
   "name": "daily-grind",
   "version": "1.0.0",
   "scripts": {
-    "start": "pnpm dlx serve -p 8080"
+    "start": "pnpm dlx statikk --port 11222"
   }
 }
