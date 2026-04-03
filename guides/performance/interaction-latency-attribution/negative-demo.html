@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaction Latency Attribution Demo</title>
+    <style>
+        body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto; }
+        .card { border: 1px solid #ddd; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; }
+        button { background: #6c757d; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem; }
+        .metric-card { background: #f1f3f5; padding: 1rem; border-radius: 4px; text-align: center; border: 1px solid #dee2e6; }
+        .metric-val { font-size: 1.25rem; font-weight: bold; color: #007bff; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Interaction Latency Attribution</h1>
+        <p>Trigger a slow interaction. The metrics below show the breakdown of why the interaction was slow.</p>
+        <button id="slow-handler">Slow Event Handler (200ms)</button>
+        <button id="input-delay">Delayed Handler (Wait 500ms first)</button>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div>Input Delay</div>
+                <div id="input-delay-val" class="metric-val">0ms</div>
+            </div>
+            <div class="metric-card">
+                <div>Processing Time</div>
+                <div id="processing-time-val" class="metric-val">0ms</div>
+            </div>
+            <div class="metric-card">
+                <div>Presentation Delay</div>
+                <div id="presentation-delay-val" class="metric-val">0ms</div>
+            </div>
+        </div>
+        <p><small>Total Duration: <span id="total-duration-val">0</span>ms. Target element: <code id="target-element-val">none</code></small></p>
+    </div>
+
+    <script>
+        let clickTracker = Date.now();
+
+        function block(ms) {
+            const start = Date.now();
+            while (Date.now() - start < ms) {}
+        }
+
+        document.addEventListener('mousedown', function() {
+            clickTracker = Date.now();
+        });
+
+        document.getElementById('slow-handler').addEventListener('click', function(e) {
+            const start = Date.now();
+            block(200);
+            const end = Date.now();
+            renderMetrics(start, end, e.target);
+        });
+
+        document.getElementById('input-delay').addEventListener('click', function(e) {
+            const start = Date.now();
+            block(500);
+            const end = Date.now();
+            renderMetrics(start, end, e.target);
+        });
+
+        function renderMetrics(start, end, element) {
+            const inputDelay = start - clickTracker;
+            const processingTime = end - start;
+            const presentationDelay = 16;
+            
+            document.getElementById('input-delay-val').textContent = inputDelay + 'ms';
+            document.getElementById('processing-time-val').textContent = processingTime + 'ms';
+            document.getElementById('presentation-delay-val').textContent = presentationDelay + 'ms';
+            document.getElementById('total-duration-val').textContent = (inputDelay + processingTime + presentationDelay);
+            
+            if (element) {
+                let identifier = element.tagName.toLowerCase();
+                if (element.id) {
+                    identifier += '#' + element.id;
+                }
+                document.getElementById('target-element-val').textContent = identifier;
+            }
+        }
+    </script>
+</body>
+</html>
