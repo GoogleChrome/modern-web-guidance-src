@@ -11,7 +11,6 @@
       background: #f0f0f0;
     }
 
-    /* Base styles for the card */
     .article-card {
       display: flex;
       flex-direction: column;
@@ -24,13 +23,11 @@
       margin-bottom: 2rem;
     }
 
-    /* Layout override when an image is present */
-    .article-card:has(img) {
+    .article-card.has-image {
       flex-direction: row;
       align-items: center;
     }
 
-    /* Specific styling for the image when inside the card */
     .article-card img {
       width: 120px;
       height: 120px;
@@ -39,31 +36,9 @@
       flex-shrink: 0;
     }
 
-    /* Styles applied ONLY when the card DOES NOT have an image */
-    .article-card:not(:has(img)) {
+    .article-card.text-only {
       background-color: #fdfaf6;
       border-left: 4px solid #ff9800;
-    }
-
-    /* Fallback for browsers that do not support :has() */
-    @supports not selector(:has(*)) {
-      .article-card.has-image {
-        flex-direction: row;
-        align-items: center;
-      }
-
-      .article-card.has-image img {
-        width: 120px;
-        height: 120px;
-        object-fit: cover;
-        border-radius: 4px;
-        flex-shrink: 0;
-      }
-
-      .article-card:not(.has-image) {
-        background-color: #fdfaf6;
-        border-left: 4px solid #ff9800;
-      }
     }
 
     h2 { margin: 0 0 0.5rem 0; font-size: 1.25rem; }
@@ -72,7 +47,6 @@
 </head>
 <body>
 
-  <!-- Card WITH an image -->
   <article class="article-card">
     <img src="data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20fill%3D%22%23ddd%22%20width%3D%22120%22%20height%3D%22120%22%2F%3E%3Ctext%20fill%3D%22%23999%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dy%3D%22.3em%22%3EImg%3C%2Ftext%3E%3C%2Fsvg%3E" alt="Placeholder">
     <div>
@@ -81,25 +55,22 @@
     </div>
   </article>
 
-  <!-- Card WITHOUT an image -->
   <article class="article-card">
     <div>
       <h2>Text-Only Card</h2>
-      <p>Because this card does NOT contain an image, it defaults to a flex-column layout. It also has a distinct background and border color thanks to :not(:has(img)).</p>
+      <p>Because this card does NOT contain an image, it defaults to a flex-column layout. It also has a distinct background and border color.</p>
     </div>
   </article>
 
   <script>
-    // Fallback script for browsers that don't support :has()
-    // In a real application, this modifier class could also be added server-side.
-    if (!CSS.supports('selector(:has(*))')) {
-      const cards = document.querySelectorAll('.article-card');
-      cards.forEach(card => {
-        if (card.querySelector('img')) {
-          card.classList.add('has-image');
-        }
-      });
-    }
+    const cards = document.querySelectorAll('.article-card');
+    cards.forEach(card => {
+      if (card.querySelector('img')) {
+        card.classList.add('has-image');
+      } else {
+        card.classList.add('text-only');
+      }
+    });
   </script>
 </body>
 </html>
