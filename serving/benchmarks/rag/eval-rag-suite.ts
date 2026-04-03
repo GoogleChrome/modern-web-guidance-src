@@ -36,7 +36,8 @@ async function main() {
       ];
       
   const runsArg = args.find(a => a.startsWith('--runs='));
-  const runs = runsArg ? parseInt(runsArg.split('=')[1], 10) : 10;
+  // AI-First Safety: Optimize to a single evaluation run by default since deterministic full-pool mode guarantees 0% variance
+  const runs = runsArg ? parseInt(runsArg.split('=')[1], 10) : 1;
   
   const poolPath = path.join(ROOT, 'benchmarks/data/eval-queries-pool.json');
   const targetEvalsPath = path.join(ROOT, 'benchmarks/data/eval-queries.gen.json');
