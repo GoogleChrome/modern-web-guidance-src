@@ -36,8 +36,14 @@ const observer = new PerformanceObserver((list) => {
     const presentationDelay = Math.max(0, entry.duration - (entry.processingEnd - entry.startTime));
 
     // MANDATORY: Attribute the interaction using interactionId and target.
-    // target can be null if the element was detached from the DOM during the interaction.
-    const targetInfo = entry.target ? `${entry.target.tagName.toLowerCase()}${entry.target.id ? '#' + entry.target.id : ''}` : 'detached-element';
+    // The primary reason to use the raw Event Timing API over a library is to capture custom, application-specific context.
+    // Go beyond basic DOM nodes by extracting dataset attributes (e.g., data-component, data-action).
+    let componentName = 'unknown-component';
+    if (entry.target && entry.target.closest) {
+      const componentEl = entry.target.closest('[data-component]');
+      componentName = componentEl ? componentEl.dataset.component : entry.target.tagName.toLowerCase();
+    }
+    const targetInfo = entry.target ? `${componentName} (${entry.target.id ? '#' + entry.target.id : 'no-id'})` : 'detached-element';
 
     // In SPAs, the URL may have changed by the time the observer callback runs. 
     // Use `entry.processingStart` to map the interaction back to the correct route/state.
