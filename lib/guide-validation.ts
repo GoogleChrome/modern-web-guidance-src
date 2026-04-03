@@ -252,22 +252,46 @@ export function getTaskMap(): Map<string, TaskInfo> {
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       const guideName = entry.name;
-      const taskPath = path.join(categoryDir, guideName, 'tasks', TASK_FILE);
-      
-      const rawContent = readFileSafe(taskPath);
-      if (!rawContent) continue;
+      const tasksDir = path.join(categoryDir, guideName, 'tasks');
+      if (!fs.existsSync(tasksDir)) continue;
 
-      const { data, content } = matter(rawContent);
-      
-      // We take the first prompt from the list (which might be the first line that starts with - or just the first line)
-      const firstLine = content.split('\n').find((l: string) => l.trim().startsWith('- '));
-      const prompt = firstLine ? firstLine.replace(/^-\s*/, '').trim() : content.trim();
+      let defaultPrompt: string | null = null;
 
-      taskMap.set(guideName, {
-        baseApp: data?.base_app || 'daily-grind',
-        prompt: prompt,
-        guideDir: path.join(categoryDir, guideName)
-      });
+      for (const taskEntry of fs.readdirSync(tasksDir, { withFileTypes: true })) {
+        if (taskEntry.isDirectory() || !taskEntry.name.endsWith('.md')) continue;
+        const taskFileName = taskEntry.name;
+        const taskName = path.basename(taskFileName, '.md');
+        const taskPath = path.join(tasksDir, taskFileName);
+
+        const rawContent = readFileSafe(taskPath);
+        if (!rawContent) continue;
+
+        const { data, content } = matter(rawContent);
+
+        // We take the first prompt from the list (which might be the first line that starts with - or just the first line)
+        const firstLine = content.split('\n').find((l: string) => l.trim().startsWith('- '));
+        const prompt = firstLine ? firstLine.replace(/^-\s*/, '').trim() : content.trim();
+
+        const info: TaskInfo = {
+          baseApp: data?.base_app || 'daily-grind',
+          prompt: prompt,
+          guideDir: path.join(categoryDir, guideName),
+        };
+
+        if (taskName === 'task') {
+          defaultPrompt = prompt;
+        }
+
+        taskMap.set(`${guideName}/${taskName}`, info);
+      }
+
+      if (defaultPrompt) {
+        taskMap.set(`${guideName}/negative`, {
+          baseApp: NEGATIVE_DEMO_FILE,
+          prompt: defaultPrompt,
+          guideDir: path.join(categoryDir, guideName),
+        });
+      }
     }
   }
   return taskMap;
