@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+
 import path from 'path';
 import { Octokit } from '@octokit/rest';
 import { fileURLToPath } from 'url';
@@ -57,7 +57,11 @@ interface GitHubData {
 import { rootDir } from '../lib/paths.ts';
 
 const REPO_ROOT = rootDir;
-dotenv.config({ path: path.join(REPO_ROOT, '.env') });
+try {
+  process.loadEnvFile(path.join(REPO_ROOT, '.env'));
+} catch {
+  // Ignore if missing
+}
 
 const PRIORITY_LABEL_REGEX = /^P\d+$/;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
