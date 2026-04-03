@@ -1,6 +1,6 @@
 ---
 name: dynamic-sibling-styling
-description: Stagger animation or transition timing across sibling elements so each one starts after a computed delay based on its position in the sibling list.
+description: Compute visual properties like position, color, or size dynamically for each child element based on how many siblings are present and its position among them.
 web-feature-ids:
   - sibling-count
 sources:
