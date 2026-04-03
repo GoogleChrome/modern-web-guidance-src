@@ -72,6 +72,24 @@ test('SKILL.md validations', async () => {
   assert.strictEqual(nameMatch[1].trim(), 'modern-web-use-cases', `Frontmatter name must match folder name`);
 });
 
+test('Generic skill validations (forms, performance)', async () => {
+  const checkSkill = async (skillName: string) => {
+    const skillPath = path.join(DIST_DIR, `skills/${skillName}/SKILL.md`);
+    await assert.doesNotReject(fs.access(skillPath), `Missing SKILL.md in ${skillName}`);
+
+    const content = await fs.readFile(skillPath, 'utf8');
+    const match = content.match(/^---\r?\n([\s\S]+?)\r?\n---/);
+    assert.ok(match, `Missing YAML frontmatter in ${skillName}`);
+    
+    const nameMatch = match[1].match(/^name:\s*(.+)$/m);
+    assert.ok(nameMatch, `Missing 'name' field in frontmatter for ${skillName}`);
+    assert.strictEqual(nameMatch[1].trim(), skillName, `Frontmatter name must match folder name for ${skillName}`);
+  };
+
+  await checkSkill('forms');
+  await checkSkill('performance');
+});
+
 test('Manifest source paths resolve relative to dist directory', async () => {
   // Claude Code source
   const marketplaceJsonRaw = await fs.readFile(path.join(DIST_DIR, '.claude-plugin/marketplace.json'), 'utf8');
