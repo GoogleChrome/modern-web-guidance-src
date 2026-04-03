@@ -409,45 +409,10 @@
     "meanReciprocalRank": 0.9456463789350827,
     "totalQueries": 85
   },
-  {
-    "timestamp": "2026-03-26T19:32:57.418Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
-    "totalQueries": 85,
-    "top1HitRate": 0.6941,
-    "top3HitRate": 0.9176,
-    "top5HitRate": 0.9765,
-    "meanReciprocalRank": 0.8088
-  },
-  {
-    "timestamp": "2026-04-03T20:00:03.979Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
-    "totalQueries": 85,
-    "top1HitRate": 0.4941,
-    "top3HitRate": 0.8118,
-    "top5HitRate": 0.8824,
-    "meanReciprocalRank": 0.6571
-  },
-  {
-    "timestamp": "2026-04-03T20:01:10.933Z",
-    "model": "onnx-community/embeddinggemma-300m-ONNX@q8 (Chunked)",
-    "totalQueries": 85,
-    "top1HitRate": 0.4588,
-    "top3HitRate": 0.7765,
-    "top5HitRate": 0.8471,
-    "meanReciprocalRank": 0.6114
-  },
-  {
-    "timestamp": "2026-04-03T20:01:58.349Z",
-    "model": "onnx-community/embeddinggemma-300m-ONNX@q4 (Chunked)",
-    "totalQueries": 85,
-    "top1HitRate": 0.5059,
-    "top3HitRate": 0.7765,
-    "top5HitRate": 0.8471,
-    "meanReciprocalRank": 0.6427
-  },
+
   {
     "timestamp": "2026-04-03T21:47:08.818Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm-something)",
     "totalQueries": 85,
     "top1HitRate": 0.5412,
     "top3HitRate": 0.8,
@@ -456,7 +421,7 @@
   },
   {
     "timestamp": "2026-04-03T21:47:13.856Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm-something)",
     "totalQueries": 85,
     "top1HitRate": 0.5412,
     "top3HitRate": 0.8706,
@@ -465,7 +430,7 @@
   },
   {
     "timestamp": "2026-04-03T21:47:19.167Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm-something)",
     "totalQueries": 85,
     "top1HitRate": 0.5765,
     "top3HitRate": 0.8941,
@@ -474,7 +439,7 @@
   },
   {
     "timestamp": "2026-04-03T21:47:24.012Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm-something)",
     "totalQueries": 85,
     "top1HitRate": 0.6235,
     "top3HitRate": 0.8941,
@@ -483,7 +448,7 @@
   },
   {
     "timestamp": "2026-04-03T21:47:28.589Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm-something)",
     "totalQueries": 85,
     "top1HitRate": 0.6588,
     "top3HitRate": 0.8353,
@@ -492,7 +457,7 @@
   },
   {
     "timestamp": "2026-04-03T21:47:33.220Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm-something)",
     "totalQueries": 85,
     "top1HitRate": 0.5294,
     "top3HitRate": 0.8,
@@ -501,7 +466,7 @@
   },
   {
     "timestamp": "2026-04-03T21:47:37.710Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm-something)",
     "totalQueries": 85,
     "top1HitRate": 0.5529,
     "top3HitRate": 0.8588,
@@ -510,7 +475,7 @@
   },
   {
     "timestamp": "2026-04-03T21:47:42.352Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm-something)",
     "totalQueries": 85,
     "top1HitRate": 0.5882,
     "top3HitRate": 0.8471,
@@ -519,7 +484,7 @@
   },
   {
     "timestamp": "2026-04-03T21:47:47.232Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm-something)",
     "totalQueries": 85,
     "top1HitRate": 0.5882,
     "top3HitRate": 0.8,
@@ -528,7 +493,7 @@
   },
   {
     "timestamp": "2026-04-03T21:47:51.918Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm-something)",
     "totalQueries": 85,
     "top1HitRate": 0.4353,
     "top3HitRate": 0.7765,
@@ -537,7 +502,97 @@
   },
   {
     "timestamp": "2026-04-03T21:52:48.462Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (Chunked)",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm-something)",
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974
+  },
+  {
+    "timestamp": "2026-04-03T21:56:10.888Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974
+  },
+  {
+    "timestamp": "2026-04-03T21:56:25.541Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974
+  },
+  {
+    "timestamp": "2026-04-03T21:56:39.642Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974
+  },
+  {
+    "timestamp": "2026-04-03T21:56:53.706Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974
+  },
+  {
+    "timestamp": "2026-04-03T21:57:07.468Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974
+  },
+  {
+    "timestamp": "2026-04-03T21:57:27.548Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974
+  },
+  {
+    "timestamp": "2026-04-03T21:57:52.031Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974
+  },
+  {
+    "timestamp": "2026-04-03T21:58:16.614Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974
+  },
+  {
+    "timestamp": "2026-04-03T21:58:30.942Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "totalQueries": 848,
+    "top1HitRate": 0.5519,
+    "top3HitRate": 0.8384,
+    "top5HitRate": 0.9186,
+    "meanReciprocalRank": 0.6974
+  },
+  {
+    "timestamp": "2026-04-03T21:58:44.984Z",
+    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
     "totalQueries": 848,
     "top1HitRate": 0.5519,
     "top3HitRate": 0.8384,
