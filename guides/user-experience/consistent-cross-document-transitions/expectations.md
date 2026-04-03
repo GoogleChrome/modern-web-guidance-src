@@ -1,0 +1,9 @@
+- Both the source and destination pages include the `@view-transition { navigation: auto; }` CSS at-rule.
+- `<link rel="expect" href="#element-id" blocking="render">` is used in the `<head>` to block rendering until above-the-fold DOM elements have been parsed, ensuring the transition snapshot captures a visually complete page.
+- Scripts that must run before the transition (e.g., theme application) are marked with `blocking="render"` in the `<head>`.
+- The `media` attribute is used on `<link rel="expect">` when different viewport sizes require blocking on different DOM elements.
+- Render blocking is limited to resources and elements visible in the initial viewport. Non-critical or below-the-fold content is NOT render-blocked.
+- If `view-transition-name` values are assigned dynamically via `pagereveal`, the listener is registered in a `blocking="render"` script in the `<head>`.
+- Dynamically assigned `view-transition-name` values are removed after the transition finishes (using `event.viewTransition.finished`) to preserve bfcache compatibility.
+- No two elements on the same page share the same `view-transition-name` value.
+- In browsers that do not support `blocking="render"` or view transitions, the page loads normally without errors (graceful degradation).
