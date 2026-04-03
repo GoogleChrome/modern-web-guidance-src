@@ -73,6 +73,8 @@ To implement a pull-to-reveal pattern:
 
 ## Fallback Strategy
 
+{{ BASELINE_STATUS("scroll-initial-target") }}
+
 For browsers that do not yet support the API, use a JavaScript fallback. Note that for pulling content to reveal, you want the main content to be bound to the `start` (top) of the container.
 
 ```javascript

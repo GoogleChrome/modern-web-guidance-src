@@ -1,5 +1,4 @@
 ---
 base_app: daily-grind
-grader: scroll-target-on-load
 ---
-Can you help me turn the seasonal favorites grid into a vertical scroll container with media cards that contain images with defined dimensions? Make it into a scrollable feed that centers on target element in view on initial load, ensuring no JavaScript is used for the initial offset and no visible scrolling animation or flash occurs. Be sure to add necessary `CSS.supports` and `DOMContentLoaded` fallbacks for browsers that dont support the API or CSS property yet.
+Add a vertical scroll container with 5 media cards that contain images with defined dimensions. Make it so the 3rd element (give it a class of `target`) is already scrolled into view on the initial load, ensuring no visible scrolling animation or flash occurs.

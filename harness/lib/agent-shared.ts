@@ -130,7 +130,6 @@ export function updateMcpConfig(
    const mcpConfig: { mcpServers: Record<string, any> } = { mcpServers: {} };
 
   for (const serverName of serversToEnable) {
-
     if (serverName === 'modern-web') {
       if (!modernWebServerPath || !fs.existsSync(modernWebServerPath)) {
         throw new Error(`Example MCP server path not found: ${modernWebServerPath}`);

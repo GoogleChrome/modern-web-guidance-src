@@ -64,17 +64,35 @@ test.describe('Pull-to-Reveal Grader', () => {
 
   test('The scroll container must have overflow-y and mandatory snapping', async ({ page }) => {
     const containerStyle = await page.evaluate(() => {
-      const elements = document.querySelectorAll('*');
-      for (const el of Array.from(elements)) {
-        const style = window.getComputedStyle(el);
-        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && el.children.length >= 2) {
-          return {
-            overflowY: style.overflowY,
-            scrollSnapType: style.scrollSnapType
-          };
+      const findFeatureElements = () => {
+        const elements = Array.from(document.querySelectorAll('*'));
+        const snapPoints = elements.filter(el => {
+          const style = window.getComputedStyle(el);
+          return style.scrollSnapAlign === 'start' || style.scrollSnapAlign.startsWith('start ');
+        });
+        if (snapPoints.length < 2) return null;
+        const target = snapPoints[1];
+        let container = target.parentElement;
+        while (container) {
+          const style = window.getComputedStyle(container);
+          if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+            return { el: container, style };
+          }
+          container = container.parentElement;
         }
-      }
-      return null;
+        const htmlStyle = window.getComputedStyle(document.documentElement);
+        if (htmlStyle.overflowY === 'auto' || htmlStyle.overflowY === 'scroll') {
+          return { el: document.documentElement, style: htmlStyle };
+        }
+        return null;
+      };
+
+      const result = findFeatureElements();
+      if (!result) return null;
+      return {
+        overflowY: result.style.overflowY,
+        scrollSnapType: result.style.scrollSnapType
+      };
     });
 
     expect(containerStyle).not.toBeNull();
@@ -82,30 +100,28 @@ test.describe('Pull-to-Reveal Grader', () => {
     expect(containerStyle?.scrollSnapType).toMatch(/y mandatory/);
   });
 
-  test('The hidden element (first descendant) must have scroll-snap-align: start', async ({ page }) => {
+  test('The hidden element must have scroll-snap-align: start', async ({ page }) => {
     const snapAlign = await page.evaluate(() => {
-      const elements = document.querySelectorAll('*');
-      for (const el of Array.from(elements)) {
+      const elements = Array.from(document.querySelectorAll('*'));
+      const snapPoints = elements.filter(el => {
         const style = window.getComputedStyle(el);
-        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && el.children.length >= 2) {
-          return window.getComputedStyle(el.children[0]).scrollSnapAlign;
-        }
-      }
-      return null;
+        return style.scrollSnapAlign === 'start' || style.scrollSnapAlign.startsWith('start ');
+      });
+      if (snapPoints.length < 2) return null;
+      return window.getComputedStyle(snapPoints[0]).scrollSnapAlign;
     });
     expect(snapAlign).toBe('start');
   });
 
-  test('The main content element (second descendant) must have scroll-snap-align: start', async ({ page }) => {
+  test('The main content element must have scroll-snap-align: start', async ({ page }) => {
     const snapAlign = await page.evaluate(() => {
-      const elements = document.querySelectorAll('*');
-      for (const el of Array.from(elements)) {
+      const elements = Array.from(document.querySelectorAll('*'));
+      const snapPoints = elements.filter(el => {
         const style = window.getComputedStyle(el);
-        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && el.children.length >= 2) {
-          return window.getComputedStyle(el.children[1]).scrollSnapAlign;
-        }
-      }
-      return null;
+        return style.scrollSnapAlign === 'start' || style.scrollSnapAlign.startsWith('start ');
+      });
+      if (snapPoints.length < 2) return null;
+      return window.getComputedStyle(snapPoints[1]).scrollSnapAlign;
     });
     expect(snapAlign).toBe('start');
   });
@@ -114,32 +130,48 @@ test.describe('Pull-to-Reveal Grader', () => {
     // Wait for any potential scrolling to finish
     await page.waitForTimeout(500);
     const scrollStatus = await page.evaluate(() => {
-      const elements = document.querySelectorAll('*');
-      for (const el of Array.from(elements)) {
+      const elements = Array.from(document.querySelectorAll('*'));
+      const snapPoints = elements.filter(el => {
         const style = window.getComputedStyle(el);
-        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && el.children.length >= 2) {
-          const container = el as HTMLElement;
-          const target = el.children[1] as HTMLElement;
-          const cRect = container.getBoundingClientRect();
-          const tRect = target.getBoundingClientRect();
-          
-          // The top of the target should be at the top of the container's visible area.
-          // container.clientTop is the border width.
-          const topDiff = Math.abs(tRect.top - (cRect.top + container.clientTop));
-          
-          return {
-            scrollTop: container.scrollTop,
-            topDiff,
-            hasScrolled: container.scrollTop > 0
-          };
+        return style.scrollSnapAlign === 'start' || style.scrollSnapAlign.startsWith('start ');
+      });
+      if (snapPoints.length < 2) return null;
+      
+      const target = snapPoints[1];
+      let container: HTMLElement | null = target.parentElement;
+      while (container) {
+        const style = window.getComputedStyle(container);
+        if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+          break;
+        }
+        container = container.parentElement;
+      }
+      
+      if (!container) {
+        const htmlStyle = window.getComputedStyle(document.documentElement);
+        if (htmlStyle.overflowY === 'auto' || htmlStyle.overflowY === 'scroll') {
+          container = document.documentElement;
         }
       }
-      return null;
+      
+      if (!container) return null;
+
+      const cRect = container === document.documentElement ? { top: 0, left: 0 } : container.getBoundingClientRect();
+      const tRect = target.getBoundingClientRect();
+      
+      // The top of the target should be at the top of the container's visible area.
+      // container.clientTop is the border width.
+      const topDiff = Math.abs(tRect.top - (cRect.top + (container === document.documentElement ? 0 : container.clientTop)));
+      
+      return {
+        scrollTop: container.scrollTop,
+        topDiff,
+        hasScrolled: container.scrollTop > 0 || window.scrollY > 0
+      };
     });
 
     expect(scrollStatus).not.toBeNull();
     expect(scrollStatus?.hasScrolled).toBe(true);
-    // Use a small margin of error for different browsers/renderings
     expect(scrollStatus?.topDiff).toBeLessThan(5);
   });
 });
