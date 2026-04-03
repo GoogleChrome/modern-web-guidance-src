@@ -200,8 +200,8 @@ function showHelp() {
   ] as const;
 
   // AI-First Safety: Enforce at compile-time that every command is documented in the help text
-  type RenderedCmds = typeof groups[number]['commands'][number];
-  const _exhaustiveCheck: Exclude<CommandName, RenderedCmds> = {} as never;
+  type AssertEmpty<T extends never> = true;
+  type _CheckAllCmdsRendered = AssertEmpty<Exclude<CommandName, typeof groups[number]['commands'][number]>>;
 
   console.log(`\n${cCyan('Usage:')} gd <command> [options]\n`);
 
