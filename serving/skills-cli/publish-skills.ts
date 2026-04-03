@@ -69,7 +69,7 @@ async function main() {
   execSync('node --test skills-cli/test-dist.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
 
   console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
-  console.log(`   FULL=1 node --test skills-cli/test-dist.test.ts`);
+  console.log(`   FULL=1 pnpm run preflight`);
 
   if (isDryRun) {
     const files = await fs.readdir(publishCliDir, {recursive: true});
