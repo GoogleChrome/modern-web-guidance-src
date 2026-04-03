@@ -15,8 +15,23 @@ const PUBLISH_ROOT = path.join(ROOT_DIST_DIR, "skills-cli");
 const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases");
 
 async function main() {
-  console.log("Ensuring dist/ output directory exists...");
-  fs.mkdirSync(PUBLISH_ROOT, { recursive: true });
+  fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
+  const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
+
+  if (fs.existsSync(lockFilePath)) {
+    console.log(" Another build is in progress. Waiting for it to finish...");
+    while (fs.existsSync(lockFilePath)) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    console.log(" Previous build finished. Skipping rebuild.");
+    return; 
+  }
+
+  fs.writeFileSync(lockFilePath, process.pid.toString());
+
+  try {
+    console.log("Ensuring dist/ output directory exists...");
+    fs.mkdirSync(PUBLISH_ROOT, { recursive: true });
 
   console.log("Generating guides and updating vector store...");
   // 1. Run build-guides.ts to update .modern-web-data and build/guides
@@ -111,7 +126,17 @@ async function main() {
     }
   }
 
-  const forcePublish = process.argv.includes("--force-publish") || !nodeModulesValid;
+  const sourcePkgJson = path.join(SERVING_DIR, "skills-cli/template/package.json");
+  const destShrinkwrap = path.join(PUBLISH_ROOT, "npm-shrinkwrap.json");
+
+  let shrinkwrapUpToDate = false;
+  if (fs.existsSync(destShrinkwrap) && fs.existsSync(sourcePkgJson)) {
+    const sourceStat = fs.statSync(sourcePkgJson);
+    const destStat = fs.statSync(destShrinkwrap);
+    shrinkwrapUpToDate = destStat.mtime >= sourceStat.mtime;
+  }
+
+  const forcePublish = process.argv.includes("--force-publish") || !nodeModulesValid || !shrinkwrapUpToDate;
 
   if (!forcePublish) {
     console.log("Reusing valid node_modules in published root (npm ls passed). Pass --force-publish to overwrite.");
@@ -129,6 +154,11 @@ async function main() {
   }
 
   console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
+  } finally {
+    if (fs.existsSync(lockFilePath)) {
+      fs.unlinkSync(lockFilePath);
+    }
+  }
 }
 
 function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
