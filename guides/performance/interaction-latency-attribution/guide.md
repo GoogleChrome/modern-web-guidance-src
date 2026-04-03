@@ -69,12 +69,15 @@ observer.observe({ type: 'event', buffered: true, durationThreshold: 16 });
 
 Once you have attributed the latency to a specific phase, use the following strategies to optimize it:
 
-*   **High Input Delay:** This occurs when the main thread is busy with other work (like long tasks) when the user interacts. Ensure that background tasks or large data processing loops frequently yield to the main thread using `scheduler.yield()` or a `setTimeout` polyfill so the browser can respond to inputs.
+*   **High Input Delay:** This occurs when the main thread is busy with other work (like long tasks) when the user interacts. 
+    *   Ensure that background tasks or large data processing loops frequently yield to the main thread using `scheduler.yield()` or a `setTimeout` polyfill so the browser can respond to inputs.
+    *   **Mobile Tap Delay:** If the delay is exactly ~300ms on mobile devices, the browser may be waiting to see if the user is double-tapping. Eliminate this by applying `touch-action: manipulation` in CSS to interactive elements.
 *   **High Processing Duration:** The event handler itself is doing too much work. 
-    *   Defer secondary, non-critical work (like analytics tracking or tracking pixels) to a separate task using `setTimeout(..., 0)` or `scheduler.postTask()`.
+    *   Defer secondary, non-critical work (like analytics tracking) to a separate task. To guarantee the browser paints *before* the deferred work begins, use a "double-yield" pattern: wrap your `setTimeout(..., 0)` inside a `requestAnimationFrame()`.
     *   If a user triggers a new interaction while the previous one is still processing (e.g., rapid typing in an autocomplete field), use an `AbortController` to cancel the stale work eagerly rather than relying solely on debouncing.
 *   **High Presentation Delay:** The browser is taking too long to render the frame after your code finishes.
     *   **Avoid layout thrashing (forced synchronous layout):** Never read layout properties (like `offsetHeight` or `getComputedStyle`) immediately after modifying DOM styles. Always batch your DOM reads first, and then perform your DOM writes.
+    *   **Reduce DOM Size Impact:** For pages with large DOMs, apply `content-visibility: auto` to large, off-screen components. This allows the browser to skip styling and layout work for those elements, dramatically reducing presentation delay.
 
 ### Fallback strategies
 
