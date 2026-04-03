@@ -77,7 +77,7 @@ test.describe(`Flicker-Free Client-Side A/B Testing: ${demoName}`, () => {
   test(`The blocking="render" attribute is NOT applied to non-visual scripts`, async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const scriptsWithBlocking = html.match(/<script[^>]*blocking=["']render["'][^>]*>/gi) || [];
-    const hasNonVisualWithBlocking = scriptsWithBlocking.length > 0 && scriptsWithBlocking.some(s => isNonVisualScript(s));
+    const hasNonVisualWithBlocking = scriptsWithBlocking.some(s => isNonVisualScript(s));
     expect(hasNonVisualWithBlocking).toBe(false);
   });
 

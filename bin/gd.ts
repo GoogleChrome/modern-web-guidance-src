@@ -31,6 +31,7 @@ const ALL_OPTIONS = {
   verbose: { type: 'boolean', desc: 'Show additional output' },
   usecases: { type: 'boolean', desc: 'Group by usecases rather than features' },
   config: { type: 'string', desc: 'Custom config file (defaults to root config.ts)' },
+  ui: { type: 'boolean', desc: 'Start the evaluation review UI' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
@@ -38,7 +39,7 @@ type OptionName = keyof typeof ALL_OPTIONS;
 const COMMAND_METADATA = {
   audit: { desc: 'Show status of all guides', flags: ['usecases'] },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'gen-negative', 'guided'] },
-  eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config'] },
+  eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
   dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
   run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
   deploy: { desc: 'Deploy the dashboard to GitHub Pages', flags: [] },
@@ -84,7 +85,7 @@ completion.on('arg1', ({ before, line, reply }) => {
   const flags = getFlagsForLine(line);
   if (before === 'eval') {
     const tasks = Array.from(getTaskMap().keys());
-    reply(['suite', ...tasks, ...flags]);
+    reply(['suite', ...tasks, ...listGuideDirs(), ...flags]);
   } else if (before === 'gen') {
     reply(['grader', 'negative']);
   } else if (before === 'audit') {
@@ -306,6 +307,12 @@ async function main() {
 
     case 'eval': {
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
+      if (values['ui']) {
+        process.env.LAUNCH_UI = 'true';
+        process.chdir(evalViewDir);
+        await import('../eval-view/server.js');
+        break;
+      }
 
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
