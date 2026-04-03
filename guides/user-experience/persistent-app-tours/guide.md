@@ -1,5 +1,5 @@
 ---
-name: create-persistent-app-tours
+name: persistent-app-tours
 description: Create persistent onboarding walkthroughs using the popover="manual" state to ensure tour steps stay open during user interaction.
 web-feature-ids:
 - popover
