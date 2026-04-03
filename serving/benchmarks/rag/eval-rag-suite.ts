@@ -57,7 +57,8 @@ async function main() {
      groupedQueries[q.guideId].push(q);
   }
 
-  const isFullPool = args.includes('--full-pool');
+  // AI-First Safety: Default to full pool deterministic evaluations to guarantee strict mathematical comparability
+  const isFullPool = !args.includes('--random-subset');
 
   for (let iter = 1; iter <= runs; iter++) {
     console.log(`\n\n=== VARIANCE ITERATION ${iter} of ${runs} ===`);
