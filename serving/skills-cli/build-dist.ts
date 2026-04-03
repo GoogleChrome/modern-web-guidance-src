@@ -98,6 +98,21 @@ async function main() {
     process.exit(1);
   }
 
+  console.log("Copying forms SKILL.md...");
+  const formsSkillSource = path.join(rootDir, "guides/forms/SKILL.md");
+  const formsSkillDestDir = path.join(PUBLISH_ROOT, "skills/forms");
+  const formsSkillDest = path.join(formsSkillDestDir, "SKILL.md");
+
+  fs.mkdirSync(formsSkillDestDir, { recursive: true });
+
+  if (fs.existsSync(formsSkillSource)) {
+    fs.copyFileSync(formsSkillSource, formsSkillDest);
+    console.log(`Copied forms SKILL.md to ${formsSkillDest}`);
+  } else {
+    console.error(`Error: forms/SKILL.md source not found at ${formsSkillSource}`);
+    process.exit(1);
+  }
+
   updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
 
   let nodeModulesValid = false;
@@ -133,7 +148,7 @@ async function main() {
 
 function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   console.log("Generating dynamic README content around features and use cases...");
-  const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
+  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
   
   const useCaseGroupMap = new Map<string, { features: { id: string; name: string }[]; useCases: { id: string; description: string }[] }>();
   const allFeatureIds = new Set<string>();

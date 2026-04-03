@@ -25,7 +25,7 @@ async function processGuides() {
   const force = process.argv.includes("--force");
 
   // Scan guides first to see if we even need to run
-  const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
+  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
 
   const LANCE_DB_DIR = path.join(ROOT_DIR, "vector_store");
 
