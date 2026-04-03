@@ -30,7 +30,7 @@ const ALL_OPTIONS = {
   guided: { type: 'boolean', desc: 'Skip calibration, run guided agent test only' },
   verbose: { type: 'boolean', desc: 'Show additional output' },
   usecases: { type: 'boolean', desc: 'Group by usecases rather than features' },
-  config: { type: 'string', desc: 'Path to a custom TS suite config file' },
+  config: { type: 'string', desc: 'Custom config file (defaults to root config.ts)' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
