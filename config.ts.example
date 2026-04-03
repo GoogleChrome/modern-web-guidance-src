@@ -1,8 +1,7 @@
-import { Agents, Serving } from './harness/config.ts';
-import type { SuiteConfig } from './harness/config.ts';
+import { Agents, Serving, type SuiteConfig } from './harness/config.ts';
 
 const customConfig: Partial<SuiteConfig> = {
-  agent: Agents.CLAUDE_CODE,
+  agent: Agents.GEMINI_CLI,
   numRuns: 1,
   negative: false,
   serving: Serving.SKILLS_CLI

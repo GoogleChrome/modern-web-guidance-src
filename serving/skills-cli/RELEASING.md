@@ -28,7 +28,18 @@ When unauthenticated users attempt to hit the GitHub API to fetch a release, Git
 
 *(Note: Once the repository goes public, we should resume creating GitHub Releases for each version bump to ensure lightning-fast archive downloads for the Gemini CLI!).*
 
+## Local Development & Global Linking
+
+To install and test the compiled package locally as a CLI on your machine:
+```bash
+cd "$(git rev-parse --show-cdup)" && node serving/skills-cli/build-dist.ts && cd dist/skills-cli && npm install --global .
+```
+
+This registers the package globally and places the binaries (`modern-web`) in your PATH.
+
+
 ## Architecture Note: The "Single Bundle" Approach
+
 
 For Claude Code, the `skills-alpha` repository acts as a **single bundled plugin** (`googlechrome-skills`) rather than a marketplace catalog of individual plugins.
 

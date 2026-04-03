@@ -38,7 +38,6 @@ guidance/
     config.ts                 # Central configuration (agent selection, MCP servers, etc.)
     run_suite.ts              # Suite runner (discovers tasks, runs agents, grades output)
     evaluate.ts               # Evaluation and reporting
-    tasks/                    # Task files that define eval scenarios
     base_apps/                # Base applications that agents modify (e.g. daily-grind)
     agents/                   # Agent runner scripts (gemini_cli, claude_code, jetski)
     lib/                      # Shared utilities (isolation, file helpers)
@@ -65,19 +64,19 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 | `expectations.md` | SME (human) | Natural-language bulleted list of assertions that must be true if the guidance is followed correctly. Used as input for grader generation. |
 | `negative-demo.html` | Generated (Gemini CLI) | A deliberately incorrect implementation. Must score 0% against the grader. Used for grader calibration. |
 | `grader.ts` | Generated (Gemini CLI) | A Playwright test file that grades any HTML file against the expectations. May include both browser automation checks and static content checks. |
-| `prompts.md` | Generated (Gemini CLI) | Realistic developer prompts (1-2) that an AI coding assistant might receive. Used for agent testing. |
+| `task.md` | Generated (Gemini CLI) | Simulated developer prompts and base_app fed to the eval agent by the harness |
 
-Additionally, each guide that is ready for evaluation has a **task file** in `harness/tasks/`:
+The **task file** looks like:
 
 ```yaml
 ---
 base_app: daily-grind
-grader: batch-analytics-events
 ---
-Implement Core Web Vitals monitoring on a web page...
+- Implement Core Web Vitals monitoring on a web page...
+- Alternative prompt...
 ```
 
-The task file connects a grader (by guide directory name), a base application the agent will modify, and the prompt the agent receives.
+The task file connects a base application the agent will modify, and the prompt the agent receives (first prompt in the list). The grader is implicit (the same directory).
 
 ### Guide maturity stages
 
@@ -87,8 +86,8 @@ A guide progresses through these stages:
 2. **Incomplete**: Has `guide.md` content but is missing `demo.html` and/or `expectations.md`.
 3. **Needs expectations**: Has guide + demo but no `expectations.md` (or it's empty). Cannot proceed to automated generation without this.
 4. **Needs calibration**: Has all three human-authored files. Ready for `gd dev` to generate `negative-demo.html`, `grader.ts`, and calibrate.
-5. **Needs test**: Grader is calibrated but missing `prompts.md` or a task file. Agent tests haven't been run.
-6. **Eval-ready**: All artifacts exist. The guide is included in `gd eval suite` runs.
+5. **Needs test**: Grader is calibrated but missing `task.md`. Agent tests haven't been run.
+6. **Eval-ready**: All artifacts exist. The guide is included in `gd eval` runs.
 
 ---
 
@@ -122,7 +121,7 @@ pnpm link --global && gd setup-completion
 
 | Command | What it does |
 |---|---|
-| `gd eval` | Run the full evaluation suite (discovers all tasks in `harness/tasks/`) |
+| `gd eval` | Run the full evaluation suite (discovers all tasks in guide folders) |
 | `gd eval [task1] [task2]` | Run specific tasks only |
 | `gd eval --config <custom_config>` | Run with config overrides (`--config my_custom_config.ts`, defaults to `config.ts`, or falls back to defaults in `harness/config.ts`) |
 | `gd dashboard` | Start the eval results dashboard (eval-view) |
@@ -151,8 +150,7 @@ Runs the grader against both `demo.html` (should pass 100%) and `negative-demo.h
 
 ### Step 5: Agent test (runs by default)
 After successful calibration:
-1. Generates `prompts.md` if missing (via Gemini CLI, using the base app as context)
-2. Finds or creates a task file in `harness/tasks/`
+1. Generates `task.md` if missing (via Gemini CLI, using the base app as context)
 3. Grades the base app as-is (pre-score baseline)
 4. Runs the configured agent in both **unguided** (no MCP guide access) and **guided** (with MCP guide access) modes
 5. Grades both outputs and prints a comparison showing guide impact
@@ -171,12 +169,12 @@ The eval harness measures whether guides actually improve agent output.
 
 ### How a suite run works (`gd eval`)
 
-1. **Build MCP index**: Compiles all guides into the MCP server's searchable index.
-2. **Discover tasks**: Scans `harness/tasks/*.md` for task definitions (or uses explicitly configured tasks).
+1. **Build Guide Index**: Compiles all guides into a searchable index (RAG).
+2. **Discover tasks**: Scans guide directories for `task.md` definitions (or uses explicitly configured tasks).
 3. **For each task, for each run** (configurable `numRuns`, default 2):
    - Set up an isolated working directory with the base app
-   - Run the agent in **unguided mode** (no MCP servers)
-   - Run the agent in **guided mode** (with configured MCP servers)
+   - Run the agent in **unguided mode** (no guidance)
+   - Run the agent in **guided mode** (with configured guidance)
    - Grade both outputs using the task's grader
 4. **Generate reports**: JSON results + HTML report in the output directory.
 5. **Upload** (optional): `pnpm upload <suite-name>` pushes results to GCS for the dashboard.
@@ -365,7 +363,7 @@ MCP_API_KEY=...
 
 Suite configuration in `harness/config.ts`:
 - `numRuns`: Number of agent runs per task (default: 2)
-- `tasks`: Empty array = discover all tasks in `harness/tasks/`. Set explicitly to run a subset.
+- `tasks`: Empty array = discover all tasks by scanning guide folders. Set explicitly to run a subset.
 - `mcpServersToEnable`: Which MCP servers agents can access (`['modern-web']`, `['google-developer-knowledge']`, or both)
 - `serving`: The approach used to serve guidance (`skills_cli`, `skills`, or `mcp`)
 - `agent`: Which agent to use (`Agents.GEMINI_CLI`, `Agents.CLAUDE_CODE`, `Agents.JETSKI`)

@@ -1,2 +1,0 @@
-- can u make the scrollbar brown and thin? it looks ugly right now and doesnt match the theme. use #4e342e for the handle part and #d7ccc8 for the background
-- i want to style the scrollbars on this page to be thinner and use the brand colors #4e342e and #d7ccc8. make sure it works in safari and chrome, and i heard macs need some extra css to show the colors properly so include that too

@@ -1,6 +1,6 @@
 # RAG Benchmarks & Evaluation Suite
 
-This directory contains the offline evaluation framework used to rigorously benchmark the vector search accuracy of the `modern-web-mcp` guidance server. 
+This directory contains the offline evaluation framework used to rigorously benchmark the vector search accuracy of the `serving` guidance server. 
 
 Because embedding models and chunking strategies can be notoriously difficult to validate anecdotally, we actively maintain this isolated test suite to measure `Top-1 Hit Rate` and `Mean Reciprocal Rank` (MRR) dynamically over an 850-query dataset.
 

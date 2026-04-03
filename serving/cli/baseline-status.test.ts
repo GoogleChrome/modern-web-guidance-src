@@ -1,6 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { spawnSync } from 'child_process';
-import path from 'path';
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+
 const scriptPath = path.resolve(import.meta.dirname, './baseline-status.ts');
 
 describe('baseline-status CLI', () => {
@@ -14,39 +16,40 @@ describe('baseline-status CLI', () => {
 
   it('prints usage when no arguments provided', () => {
     const { stdout } = runCLI([]);
-    expect(stdout).toContain('Usage: pnpm baselinestatus');
+    assert.ok(stdout.includes('Usage: pnpm baselinestatus'));
   });
 
   it('filters by query and outputs markdown table', () => {
     const { stdout } = runCLI(['overflow']);
-    expect(stdout).toContain('| web-feature-id');
-    expect(stdout).toContain('| overflow ');
-    expect(stdout).toContain('| overflow-clip ');
+    assert.ok(stdout.includes('| web-feature-id'));
+    assert.ok(stdout.includes('| overflow '));
+    assert.ok(stdout.includes('| overflow-clip '));
   });
 
   it('outputs JSON when --json flag is provided', () => {
     const { stdout } = runCLI(['overflow', '--json']);
     const data = JSON.parse(stdout);
-    expect(Array.isArray(data)).toBe(true);
-    expect(data.length).toBeGreaterThan(0);
-    expect(data[0]).toHaveProperty('featureId');
-    expect(data[0]).toHaveProperty('baseline');
+    assert.ok(Array.isArray(data));
+    assert.ok(data.length > 0);
+    assert.ok('featureId' in data[0]);
+    assert.ok('baseline' in data[0]);
   });
 
   it('outputs empty array for no matches in JSON mode', () => {
     const { stdout } = runCLI(['nonexistentfeaturexyz', '--json']);
-    expect(stdout.trim()).toBe('[]');
+    assert.strictEqual(stdout.trim(), '[]');
   });
 
   it('omits Safari iOS column when versions match', () => {
     const { stdout } = runCLI(['overflow-clip']);
-    expect(stdout).toContain('Safari');
-    expect(stdout).not.toContain('Safari iOS');
+    assert.ok(stdout.includes('Safari'));
+    assert.ok(!stdout.includes('Safari iOS'));
   });
 
   it('includes Safari iOS column when versions differ', () => {
     const { stdout } = runCLI(['async-clipboard']);
-    expect(stdout).toContain('Safari');
-    expect(stdout).toContain('Safari iOS');
+    assert.ok(stdout.includes('Safari'));
+    assert.ok(stdout.includes('Safari iOS'));
   });
 });
+
