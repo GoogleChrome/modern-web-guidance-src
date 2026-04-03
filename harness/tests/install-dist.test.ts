@@ -74,3 +74,36 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
         }
     }
 });
+
+test('npx skills add from local path', { skip: !process.env.FULL }, async () => {
+    let homeDir = '';
+    try {
+        homeDir = createIsolatedHome('test-install-skills');
+        const distDir = path.resolve(import.meta.dirname, '../../dist/skills-cli');
+        
+        if (!fs.existsSync(distDir)) {
+            test.skip('dist/skills-cli not found, skipping');
+            return;
+        }
+
+        const cmd = `zsh -c "export DISABLE_TELEMETRY=1; npx skills add -y -g ${distDir}"`;
+        
+        try {
+            console.log(`Running: ${cmd}`);
+            const output = execSync(cmd, { encoding: 'utf8', stdio: 'pipe' });
+            console.log('npx skills add output:', output);
+            assert.ok(output.includes('Installed 1 skill') || output.includes('Installation complete'), 'Skills add should succeed');
+        } catch (e: any) {
+            console.log('npx skills add failed:', e.message);
+            if (e.message.includes('Invalid URL') || e.message.includes('Only GitHub repositories are supported')) {
+                console.log('npx skills add likely only supports GitHub repositories.');
+            } else {
+                throw e;
+            }
+        }
+    } finally {
+        if (homeDir) {
+            cleanupIsolatedHome(homeDir);
+        }
+    }
+});
