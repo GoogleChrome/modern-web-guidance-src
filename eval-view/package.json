@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node generate-mapping.js && node server.js",
     "test:e2e": "playwright test",
-    "typecheck": "pnpm --filter serving build && tsc",
+    "typecheck": "tsc",
     "deploy-pages": "node generate-mapping.js && gh-pages --nojekyll --add --dist ."
   },
   "devDependencies": {
