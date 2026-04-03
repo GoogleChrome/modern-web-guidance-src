@@ -1,0 +1,9 @@
+- The `<select>` element MUST have `appearance: base-select` applied to opt into the customizable state.
+- The `::picker(select)` pseudo-element MUST have `appearance: base-select` applied to opt into the customizable state.
+- The `<select>` element MUST contain a `<button>` tag as a direct child.
+- The `<button>` tag MUST contain a `<selectedcontent>` element to mirror selections.
+- The `<button>` tag MUST NOT contain legacy `<selectedoption>` element to mirror selections.
+- The `<option>` tags MUST contain rich HTML formatting (e.g., `<svg>`, `<div>`, or `<span>`) instead of plaintext only.
+- The `::picker(select)` popup MUST use the CSS Anchor Positioning API (e.g., `width: anchor-size(width)`) to align itself with the button trigger.
+- The implementation MUST NOT rely on heavy custom JavaScript to replicate keyboard focus or top-layer rendering if `appearance: base-select` is supported natively.
+- The `<select>` MUST have a `name` attribute and an associated `<label>`. This ensures that even with a custom UI, the component remains accessible to screen readers and works correctly with standard form submissions.
