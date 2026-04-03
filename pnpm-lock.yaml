@@ -65,9 +65,6 @@ importers:
       '@playwright/test':
         specifier: ^1.58.2
         version: 1.58.2
-      dotenv:
-        specifier: ^17.3.1
-        version: 17.3.1
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
@@ -98,9 +95,6 @@ importers:
       colors:
         specifier: ^1.4.0
         version: 1.4.0
-      dotenv:
-        specifier: ^17.3.1
-        version: 17.3.1
       glob:
         specifier: ^13.0.6
         version: 13.0.6
