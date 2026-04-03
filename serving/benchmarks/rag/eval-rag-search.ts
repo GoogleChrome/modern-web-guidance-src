@@ -9,7 +9,7 @@ import type { EvalQuery } from "./generate-eval-queries.ts";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "../..");
-const EVAL_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-queries.json");
+const EVAL_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-queries.gen.json");
 const RESULTS_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-results.json");
 
 interface EvalRun {

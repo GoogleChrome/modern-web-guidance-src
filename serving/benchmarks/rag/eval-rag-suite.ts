@@ -39,7 +39,7 @@ async function main() {
   const runs = runsArg ? parseInt(runsArg.split('=')[1], 10) : 10;
   
   const poolPath = path.join(ROOT, 'benchmarks/data/eval-queries-pool.json');
-  const targetEvalsPath = path.join(ROOT, 'benchmarks/data/eval-queries.json');
+  const targetEvalsPath = path.join(ROOT, 'benchmarks/data/eval-queries.gen.json');
   const resultsPath = path.join(ROOT, 'benchmarks/data', 'eval-results.json');
 
   // Generate the pool once if it doesn't exist
