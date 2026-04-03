@@ -43,10 +43,23 @@ export class Embedder {
     this.pipe = (await pipeline("feature-extraction", repo, { dtype: dtype as any })) as any as FeatureExtractionPipeline;
   }
 
-  public async embed(text: string): Promise<number[]> {
+  public async embed(text: string, isQuery = false): Promise<number[]> {
     if (!this.pipe) await this.init();
     if (!this.pipe) throw new Error("Failed to initialize embedding pipeline");
-    const output = await this.pipe(text, { pooling: "mean", normalize: true });
+
+    let input = text;
+    const isGemma = this.modelName.toLowerCase().includes("gemma");
+
+    if (isGemma) {
+        // Instruction-tuned architecture requirements explicitly define specialized task formatting prefixes
+        if (isQuery) {
+            input = `task: search result | query: ${text}`;
+        } else {
+            input = `title: none | text: ${text}`;
+        }
+    }
+
+    const output = await this.pipe(input, { pooling: "mean", normalize: true });
     return Array.from(output.data);
   }
 }

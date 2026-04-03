@@ -24,7 +24,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
 export async function searchUseCases(query: string, limit = 5, maxDistance = 1.5): Promise<UseCaseResult[]> {
   const embedder = Embedder.getInstance();
-  const queryVector = await embedder.embed(query);
+  const queryVector = await embedder.embed(query, true); // Pass isQuery = true
 
   // Load vectors from static storage
   const VECTORS_FILE = path.join(import.meta.dirname, "use-cases.vectors.gen.json");
