@@ -125,14 +125,13 @@ Agent test results:
 The agent is selected from the specified [config](../config.ts) if it exists, otherwise uses default in the [harness config](../harness/config.ts).
 The base app is selected from the generated `tasks/task.md` file (which defaults to `daily-grind`).
 
-### Negative Suite
+### Negative Evals
 
-To verify that guides improve agent performance starting from a "bad" implementation, you can run a **Negative Suite**. Simply set `negative: true` in your `config.ts`, and run `gd eval`. The harness will use `negative-demo.html` on the fly as the base app for each guide.
-   Ensure your local configuration (`guidance/config.ts`) has `negative: true`, then run:
-   ```bash
-   gd eval
-   ```
-   *(Alternatively, you can specify a custom config with `gd eval --config my_negative_config.ts`)*
+To verify that guides improve agent performance starting from a "bad" implementation, you can run against the `negative-demo.html`.
+
+```bash
+gd eval <guideName>/negative
+```
 
 ### Manual Steps
 
