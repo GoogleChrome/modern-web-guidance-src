@@ -14,10 +14,7 @@
     "allowJs": true,
     "checkJs": true
   },
-  "include": [
-    "**/*.ts",
-    "**/*.js"
-  ],
+
   "exclude": [
     "**/node_modules",
     "**/dist",
