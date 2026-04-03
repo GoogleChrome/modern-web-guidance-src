@@ -26,9 +26,9 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         
         console.log(`\nRunning Claude Code with local plugin...`);
         execSync(cmd, { 
-            stdio: 'inherit', 
+            stdio: ['ignore', 'inherit', 'inherit'], 
             timeout: 90000, 
-            env: { ...process.env, HOME: homeDir, ...anthropicEnv } 
+            env: { ...process.env, ...anthropicEnv } 
         });
         
     } finally {
