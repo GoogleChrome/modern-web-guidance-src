@@ -18,7 +18,7 @@ Interaction to Next Paint (INP) measures the time from a user interaction until 
 2.  **Processing Time:** The time spent executing the event handlers.
 3.  **Presentation Delay:** The time the browser takes to recalculate layout, paint, and composite the frame after the event handlers complete.
 
-The Event Timing API (`PerformanceEventTiming`) provides these metrics automatically.
+The Event Timing API (`PerformanceEventTiming`) provides these metrics automatically. Note that all timestamps and durations are rounded to the nearest 8ms (for security).
 
 ### Capturing Interaction Latency
 
@@ -29,28 +29,28 @@ Use a `PerformanceObserver` to capture interactions.
 const observer = new PerformanceObserver((list) => {
   // list.getEntries() returns PerformanceEventTiming objects
   for (const entry of list.getEntries()) {
-    // Only capture events with a target element (ignores some synthetic events)
-    if (!entry.target) continue;
-
     // MANDATORY: Calculate the three phases using the event timing timestamps.
-    const inputDelay = entry.processingStart - entry.startTime;
-    const processingTime = entry.processingEnd - entry.processingStart;
-    const presentationDelay = entry.duration - (entry.processingEnd - entry.startTime);
+    // Use Math.max to avoid negative values due to rounding or edge cases.
+    const inputDelay = Math.max(0, entry.processingStart - entry.startTime);
+    const processingTime = Math.max(0, entry.processingEnd - entry.processingStart);
+    const presentationDelay = Math.max(0, entry.duration - (entry.processingEnd - entry.startTime));
 
-    // Provide the target element to understand which component caused the interaction
-    const elementTag = entry.target.tagName.toLowerCase();
-    const elementId = entry.target.id ? `#${entry.target.id}` : '';
+    // MANDATORY: Attribute the interaction using interactionId and target.
+    // target can be null if the element was detached from the DOM.
+    const targetInfo = entry.target ? `${entry.target.tagName.toLowerCase()}${entry.target.id ? '#' + entry.target.id : ''}` : 'detached-element';
 
-    console.log(`Slow interaction on ${elementTag}${elementId}`);
+    console.group(`Interaction Attribution: ${entry.name} (${entry.interactionId})`);
+    console.log(`Target: ${targetInfo}`);
     console.log(`Total duration: ${entry.duration}ms`);
     console.log(`Input delay: ${inputDelay}ms`);
     console.log(`Processing time: ${processingTime}ms`);
     console.log(`Presentation delay: ${presentationDelay}ms`);
+    console.groupEnd();
   }
 });
 
 // MANDATORY: buffered: true ensures you get events that happened before the observer started.
-// durationThreshold filters out fast events. The default is 104ms, but lower values like 16ms are useful for detailed debugging.
+// durationThreshold filters out fast events. The default is 104ms, but 16ms is recommended for development.
 observer.observe({ type: 'event', buffered: true, durationThreshold: 16 });
 ```
 

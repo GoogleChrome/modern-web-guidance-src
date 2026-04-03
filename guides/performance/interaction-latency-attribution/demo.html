@@ -34,7 +34,7 @@
                 <div id="presentation-delay-val" class="metric-val">0ms</div>
             </div>
         </div>
-        <p><small>Total Duration: <span id="total-duration-val">0</span>ms. Target element: <code id="target-element-val">none</code></small></p>
+        <p><small>Total Duration: <span id="total-duration-val">0</span>ms. Interaction ID: <span id="interaction-id-val">none</span>. Target element: <code id="target-element-val">none</code></small></p>
     </div>
 
     <script>
@@ -54,23 +54,42 @@
             console.log('Delayed handler executed');
         });
 
-        const observer = new PerformanceObserver((list) => {
-            const entry = list.getEntries()[list.getEntries().length - 1]; // Use the most recent entry
-            const inputDelay = entry.processingStart - entry.startTime;
-            const processingTime = entry.processingEnd - entry.processingStart;
-            const presentationDelay = entry.duration - (entry.processingEnd - entry.startTime);
+        // Feature detection for PerformanceObserver and 'event' type
+        if (typeof PerformanceObserver !== 'undefined' && 
+            PerformanceObserver.supportedEntryTypes && 
+            PerformanceObserver.supportedEntryTypes.includes('event')) {
 
-            document.getElementById('input-delay-val').textContent = `${inputDelay.toFixed(0)}ms`;
-            document.getElementById('processing-time-val').textContent = `${processingTime.toFixed(0)}ms`;
-            document.getElementById('presentation-delay-val').textContent = `${presentationDelay.toFixed(0)}ms`;
-            document.getElementById('total-duration-val').textContent = entry.duration.toFixed(0);
+            const observer = new PerformanceObserver((list) => {
+                const entry = list.getEntries()[list.getEntries().length - 1]; // Use the most recent entry
+                
+                // Calculate the three phases using Math.max to be safe
+                const inputDelay = Math.max(0, entry.processingStart - entry.startTime);
+                const processingTime = Math.max(0, entry.processingEnd - entry.processingStart);
+                const presentationDelay = Math.max(0, entry.duration - (entry.processingEnd - entry.startTime));
 
-            if (entry.target) {
-                document.getElementById('target-element-val').textContent = entry.target.tagName.toLowerCase() + (entry.target.id ? '#' + entry.target.id : '');
-            }
-        });
+                document.getElementById('input-delay-val').textContent = `${inputDelay.toFixed(0)}ms`;
+                document.getElementById('processing-time-val').textContent = `${processingTime.toFixed(0)}ms`;
+                document.getElementById('presentation-delay-val').textContent = `${presentationDelay.toFixed(0)}ms`;
+                document.getElementById('total-duration-val').textContent = entry.duration.toFixed(0);
+                document.getElementById('interaction-id-val').textContent = entry.interactionId || 'n/a';
 
-        observer.observe({ type: 'event', buffered: true, durationThreshold: 16 });
+                if (entry.target) {
+                    document.getElementById('target-element-val').textContent = entry.target.tagName.toLowerCase() + (entry.target.id ? '#' + entry.target.id : '');
+                } else {
+                    document.getElementById('target-element-val').textContent = 'detached-element';
+                }
+                
+                console.log(`Interaction (${entry.interactionId}):`, {
+                    totalDuration: entry.duration,
+                    inputDelay,
+                    processingTime,
+                    presentationDelay,
+                    target: entry.target ? entry.target.tagName.toLowerCase() : "detached"
+                });
+            });
+
+            observer.observe({ type: 'event', buffered: true, durationThreshold: 16 });
+        }
     </script>
 </body>
 </html>
