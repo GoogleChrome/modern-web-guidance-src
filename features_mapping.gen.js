@@ -3,6 +3,9 @@ window.__featuresMapping = {
   "accessible-error-announcement": [
     "user-pseudos"
   ],
+  "language-detection": [
+    "languagedetector"
+  ],
   "animated-select-picker": [
     "customizable-select"
   ],
