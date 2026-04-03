@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { Embedder } from "../../mcp-server/lib/embedder.ts";
-import { Store } from "../../lib/store.ts";
+import { searchUseCases } from "../../lib/search.ts";
 import { Gpt4AllEmbedder } from "./gpt4all-embedder.ts";
 import type { EvalQuery } from "./generate-eval-queries.ts";
 
@@ -54,8 +54,6 @@ async function main() {
   
   await embedder.init();
 
-  const store = new Store();
-
   let hitsTop1 = 0;
   let hitsTop3 = 0;
   let hitsTop5 = 0;
@@ -65,9 +63,8 @@ async function main() {
 
   for (let i = 0; i < queries.length; i++) {
     const q = queries[i];
-    const vector = await embedder.embed(q.query);
     // Ask for top 5 so we can calculate MRR and top-k effectively
-    const results = await store.search(vector, 5, 2.0); // maxDistance slightly higher to capture top 5
+    const results = await searchUseCases(q.query, 5, 2.0); 
 
     // Find the rank (1-indexed) of the correct guideId
     const rankIndex = results.findIndex((r) => r.id === q.guideId);

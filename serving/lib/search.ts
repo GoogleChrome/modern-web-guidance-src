@@ -27,7 +27,7 @@ export async function searchUseCases(query: string, limit = 5, maxDistance = 1.5
   const queryVector = await embedder.embed(query);
 
   // Load vectors from static storage
-  const VECTORS_FILE = path.join(import.meta.dirname, "use-cases.vectors.json");
+  const VECTORS_FILE = path.join(import.meta.dirname, "use-cases.vectors.gen.json");
   if (!fs.existsSync(VECTORS_FILE)) {
     return [];
   }

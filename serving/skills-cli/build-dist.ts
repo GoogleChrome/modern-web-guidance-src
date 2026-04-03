@@ -75,8 +75,8 @@ async function main() {
   }
 
   console.log("Copying pure JS vector file...");
-  const vectorsFile = path.join(SERVING_DIR, "lib/use-cases.vectors.json");
-  const destVectorsFile = path.join(DIST_DIR, "use-cases.vectors.json");
+  const vectorsFile = path.join(SERVING_DIR, "lib/use-cases.vectors.gen.json");
+  const destVectorsFile = path.join(DIST_DIR, "use-cases.vectors.gen.json");
   if (fs.existsSync(vectorsFile)) {
     fs.cpSync(vectorsFile, destVectorsFile);
     console.log(`Copied ${vectorsFile} to ${destVectorsFile}`);
