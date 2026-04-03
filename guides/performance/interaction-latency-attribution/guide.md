@@ -8,6 +8,8 @@ sources:
   - https://web.dev/articles/find-slow-interactions-in-the-field
   - https://developer.chrome.com/docs/performance/insights/inp-breakdown
   - https://web.dev/blog/better-responsiveness-metric#capture_the_full_event_duration
+  - https://www.youtube.com/watch?v=bDJB-AQDciE
+  - https://www.speedcurve.com/blog/debugging-interaction-to-next-paint-inp/
 ---
 
 ### Overview
