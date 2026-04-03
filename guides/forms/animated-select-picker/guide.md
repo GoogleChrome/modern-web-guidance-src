@@ -27,6 +27,41 @@ To implement an animated select picker:
 
 The following example demonstrates a custom select styled with standard page animations for the picker container.
 
+```html
+<!-- Always use a <label> linked via 'for' to the select for accessibility -->
+<label for="theme-select">Visual Theme</label>
+<select id="theme-select" class="animated-select" name="theme">
+  <!-- The <button> inside <select> becomes the visible trigger when appearance: base-select is used -->
+  <button>
+    <!-- <selectedcontent> automatically displays the content of the chosen <option> -->
+    <selectedcontent></selectedcontent>
+  </button>
+  <option value="system">
+    <!-- SVGs are allowed inside options when appearance: base-select is active -->
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+      <line x1="8" y1="21" x2="16" y2="21"></line>
+      <line x1="12" y1="17" x2="12" y2="21"></line>
+    </svg>
+    System Default
+  </option>
+  <option value="light">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+    Light UI
+  </option>
+</select>
+```
+
 ```css
 /* Opt-in to customizable select */
 .animated-select,
@@ -95,6 +130,14 @@ The following example demonstrates a custom select styled with standard page ani
     opacity: 0;
     height: 0;
   }
+}
+
+/* Support for SVG inside Options and Selected Content */
+.animated-select option svg,
+.animated-select selectedcontent svg {
+  flex-shrink: 0; /* Prevent icons from shrinking */
+  width: 1.25rem;
+  height: 1.25rem;
 }
 ```
 
