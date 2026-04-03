@@ -53,6 +53,20 @@ export function createIsolatedHome(prefix: string): string {
   const originalHome = process.env.HOME || process.cwd();
   copyFileIfExists(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
 
+  // Pre-populate projects.json to prevent JetSki concurrent write race conditions
+  try {
+    const geminiDir = path.join(tempHome, '.gemini');
+    fs.mkdirSync(geminiDir, { recursive: true });
+    const mockProjects = {
+      projects: {
+        [path.join(tempHome, 'work')]: 'work'
+      }
+    };
+    fs.writeFileSync(path.join(geminiDir, 'projects.json'), JSON.stringify(mockProjects, null, 2));
+  } catch (err) {
+    console.warn('Warning: Failed to pre-populate projects.json:', err);
+  }
+
   console.log(`Setting up isolated HOME at ${tempHome}...`);
   return tempHome;
 }
