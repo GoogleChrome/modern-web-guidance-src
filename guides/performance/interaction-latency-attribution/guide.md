@@ -39,6 +39,9 @@ const observer = new PerformanceObserver((list) => {
     // target can be null if the element was detached from the DOM during the interaction.
     const targetInfo = entry.target ? `${entry.target.tagName.toLowerCase()}${entry.target.id ? '#' + entry.target.id : ''}` : 'detached-element';
 
+    // In SPAs, the URL may have changed by the time the observer callback runs. 
+    // Use `entry.processingStart` to map the interaction back to the correct route/state.
+    
     console.group(`Interaction Attribution: ${entry.name} (${entry.interactionId})`);
     console.log(`Target: ${targetInfo}`);
     console.log(`Total duration: ${entry.duration}ms`);
@@ -55,6 +58,17 @@ const observer = new PerformanceObserver((list) => {
 // durationThreshold filters out fast events. The default is 104ms, but 16ms is recommended for development to observe a wider range of interactions.
 observer.observe({ type: 'event', buffered: true, durationThreshold: 16 });
 ```
+
+### Mitigating Phase Bottlenecks
+
+Once you have attributed the latency to a specific phase, use the following strategies to optimize it:
+
+*   **High Input Delay:** This occurs when the main thread is busy with other work (like long tasks) when the user interacts. Ensure that background tasks or large data processing loops frequently yield to the main thread using `scheduler.yield()` or a `setTimeout` polyfill so the browser can respond to inputs.
+*   **High Processing Duration:** The event handler itself is doing too much work. 
+    *   Defer secondary, non-critical work (like analytics tracking or tracking pixels) to a separate task using `setTimeout(..., 0)` or `scheduler.postTask()`.
+    *   If a user triggers a new interaction while the previous one is still processing (e.g., rapid typing in an autocomplete field), use an `AbortController` to cancel the stale work eagerly rather than relying solely on debouncing.
+*   **High Presentation Delay:** The browser is taking too long to render the frame after your code finishes.
+    *   **Avoid layout thrashing (forced synchronous layout):** Never read layout properties (like `offsetHeight` or `getComputedStyle`) immediately after modifying DOM styles. Always batch your DOM reads first, and then perform your DOM writes.
 
 ### Fallback strategies
 
