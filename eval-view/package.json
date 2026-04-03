@@ -9,6 +9,7 @@
     "deploy-pages": "node generate-mapping.js && gh-pages --nojekyll --add --dist ."
   },
   "devDependencies": {
+    "serving": "workspace:*",
     "@playwright/test": "^1.58.2",
     "@types/node": "^25.5.0",
     "gh-pages": "^6.3.0",
