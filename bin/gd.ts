@@ -142,13 +142,19 @@ async function resolveSuiteConfig(configPath?: string): Promise<SuiteConfig> {
     : path.resolve(rootDir, 'config.ts');
 
   let overrides: any = {};
-  if (fs.existsSync(resolvedConfigPath)) {
+  try {
     const fileUrl = pathToFileURL(resolvedConfigPath).href;
     const customConfig = await import(fileUrl);
     overrides = customConfig.default || customConfig;
-  } else if (configPath) {
-    console.error(cRed('⚠️ Specified config file not found: ' + resolvedConfigPath));
-    process.exit(1);
+  } catch (err: any) {
+    if (err.code === 'ERR_MODULE_NOT_FOUND') {
+      if (configPath) {
+        console.error(cRed('⚠️ Specified config file not found: ' + resolvedConfigPath));
+        process.exit(1);
+      }
+    } else {
+      throw err;
+    }
   }
 
   return mergeSuiteConfig(overrides);
