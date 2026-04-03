@@ -198,7 +198,9 @@ window.__featuresMapping = {
     "light-dark"
   ],
   "consistent-cross-document-transitions": [
-    "blocking-render"
+    "blocking-render",
+    "link-rel-expect",
+    "cross-document-view-transitions"
   ],
   "content-based-styling": [
     "has",
