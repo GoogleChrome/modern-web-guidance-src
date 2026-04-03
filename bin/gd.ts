@@ -45,6 +45,7 @@ const COMMAND_METADATA = {
   deploy: { desc: 'Deploy the dashboard to GitHub Pages', flags: [] },
   upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
+
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
 } satisfies Record<string, { desc: string; flags: OptionName[] }>;
 
@@ -202,6 +203,11 @@ function showHelp() {
   // AI-First Safety: Enforce at compile-time that every command is documented in the help text
   type AssertEmpty<T extends never> = true;
   type _CheckAllCmdsRendered = AssertEmpty<Exclude<CommandName, typeof groups[number]['commands'][number]>>;
+  
+  // AI-First Safety: Enforce that every flag in ALL_OPTIONS is assigned to a command or rendered globally
+  type GlobalFlags = 'help' | 'version' | 'verbose';
+  type CmdFlags = typeof COMMAND_METADATA[keyof typeof COMMAND_METADATA]['flags'][number];
+  type _CheckAllFlagsRendered = AssertEmpty<Exclude<OptionName, GlobalFlags | CmdFlags>>;
 
   console.log(`\n${cCyan('Usage:')} gd <command> [options]\n`);
 
