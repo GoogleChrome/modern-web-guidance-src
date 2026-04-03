@@ -51,7 +51,7 @@ export async function searchUseCases(query: string, limit = 5, maxDistance = 1.5
       description: item.description,
       category: item.category,
       featuresUsed: item.featuresUsed || [],
-      distance: distance.toFixed(2),
+      distance: distance.toString(), // Retain raw float precision for accurate sorting
     });
   }
 
