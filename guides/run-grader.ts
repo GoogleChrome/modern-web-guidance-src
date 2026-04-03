@@ -5,9 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+import { guidesDir } from '../lib/paths.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold } from '../lib/colors.ts';
 
 export function findGrader(startDir: string): string | null {
@@ -32,7 +30,7 @@ export interface PlaywrightOptions {
 }
 
 export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
-  const playwrightConfig = path.join(__dirname, 'playwright.config.ts');
+  const playwrightConfig = path.join(guidesDir, 'playwright.config.ts');
   const reporterArgs = opts.reporters.length > 0 ? ['--reporter=' + opts.reporters.join(',')] : [];
 
   const env: NodeJS.ProcessEnv = { ...process.env, TARGET_FILE: opts.targetFileAbs };
@@ -45,7 +43,7 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
     env.PLAYWRIGHT_JSON_OUTPUT_NAME = opts.jsonOutputName;
   }
 
-  const playwrightBin = path.join(__dirname, 'node_modules', '.bin', 'playwright');
+  const playwrightBin = path.join(guidesDir, 'node_modules', '.bin', 'playwright');
 
   return spawn(playwrightBin, ['test', '-c', playwrightConfig, opts.graderPath, ...reporterArgs], {
     stdio: opts.stdio || 'inherit',
@@ -76,7 +74,7 @@ export async function gradeFile(targetFileAbs: string): Promise<void> {
   const [code] = await once(child, 'close');
 
   console.log(`\nTests finished with code ${code}. Opening HTML report...`);
-  const playwrightBin = path.join(__dirname, 'node_modules', '.bin', 'playwright');
+  const playwrightBin = path.join(guidesDir, 'node_modules', '.bin', 'playwright');
   const showReportChild = spawn(playwrightBin, ['show-report', outputDirPath], {
     stdio: 'inherit'
   });

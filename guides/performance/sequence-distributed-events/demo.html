@@ -309,9 +309,9 @@
       </button>
     </div>
 
-    <div id="unsupportedBanner" class="banner" style="background-color: #7f1d1d; border-color: #dc2626; display: none;">
-      <div class="banner-icon">🚫</div>
-      <div>This demo requires a browser with native Temporal support</div>
+    <div id="unsupportedBanner" class="banner" style="background-color: #1e3a5f; border-color: #3b82f6; display: none;">
+      <div class="banner-icon">ℹ️</div>
+      <div id="unsupportedBannerText">Native Temporal API not found. Loading polyfill fallback...</div>
     </div>
 
     <div id="collisionBanner" class="banner">
@@ -369,13 +369,34 @@
     const collisionBanner = document.getElementById('collisionBanner');
     const dateCollisionsStatus = document.getElementById('dateCollisions');
 
-    if (typeof Temporal === 'undefined') {
-      const unsupportedBanner = document.getElementById('unsupportedBanner');
-      if (unsupportedBanner) unsupportedBanner.style.display = 'flex';
-      simulateBtn.disabled = true;
-      simulateBtn.style.opacity = '0.5';
-      simulateBtn.style.cursor = 'not-allowed';
-    }
+    (async () => {
+      if (typeof Temporal === 'undefined') {
+        const unsupportedBanner = document.getElementById('unsupportedBanner');
+        const bannerText = document.getElementById('unsupportedBannerText');
+        if (unsupportedBanner) unsupportedBanner.style.display = 'flex';
+        
+        simulateBtn.disabled = true;
+        simulateBtn.style.opacity = '0.5';
+        simulateBtn.style.cursor = 'not-allowed';
+
+        try {
+          const module = await import('https://esm.sh/@js-temporal/polyfill');
+          globalThis.Temporal = module.Temporal;
+          
+          if (unsupportedBanner) unsupportedBanner.style.display = 'none';
+          simulateBtn.disabled = false;
+          simulateBtn.style.opacity = '1';
+          simulateBtn.style.cursor = 'pointer';
+        } catch (e) {
+          console.error('Failed to load Temporal polyfill:', e);
+          if (bannerText) bannerText.innerHTML = '🚫 Failed to load Temporal polyfill. This demo requires Temporal support.';
+          if (unsupportedBanner) {
+            unsupportedBanner.style.backgroundColor = '#7f1d1d';
+            unsupportedBanner.style.borderColor = '#dc2626';
+          }
+        }
+      }
+    })();
 
     eventCountSlider.addEventListener('input', (e) => {
       countDisplay.textContent = e.target.value;

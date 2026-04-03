@@ -1,0 +1,15 @@
+- The document contains a button with the `commandfor` attribute targeting the ID of a popover element.
+- A button used to toggle a popover has a `command` attribute set to `toggle-popover`.
+- A button used to explicitly open a popover has a `command` attribute set to `show-popover`.
+- A button used to explicitly close a popover has a `command` attribute set to `hide-popover`.
+- The target element for the popover has the `popover` attribute.
+- The document contains a button with the `commandfor` attribute targeting the ID of a `<dialog>` element.
+- The button targeting the dialog has a `command` attribute set to `show-modal`.
+- The target element for the dialog is a `<dialog>` element.
+- There is a button, typically inside the `<dialog>` element, with the `commandfor` attribute targeting the dialog's ID.
+- The button to close the dialog has a `command` attribute set to `close`.
+- The document includes a fallback script that conditionally loads the `invokers-polyfill`.
+- The `invokers-polyfill` is only loaded if `'commandForElement' in HTMLButtonElement.prototype` is false.
+- The document includes a fallback script that conditionally loads a `popover` polyfill.
+- The `popover` polyfill is only loaded if `'popover' in HTMLElement.prototype` is false.
+- If the open state of a popover is styled, there are separate CSS rules for `:popover-open` and the polyfill class `.\:popover-open`.
