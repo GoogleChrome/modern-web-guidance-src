@@ -74,6 +74,28 @@ async function main() {
     console.warn(`Warning: ${buildGuidesDir} does not exist.`);
   }
 
+  console.log("Copying pure JS vector file...");
+  const vectorsFile = path.join(SERVING_DIR, "lib/use-cases.vectors.json");
+  const destVectorsFile = path.join(DIST_DIR, "use-cases.vectors.json");
+  if (fs.existsSync(vectorsFile)) {
+    fs.cpSync(vectorsFile, destVectorsFile);
+    console.log(`Copied ${vectorsFile} to ${destVectorsFile}`);
+  }
+
+  console.log("Copying onnxruntime-web WASM files...");
+  const wasmSrcDir = path.join(SERVING_DIR, "node_modules/onnxruntime-web/dist");
+  const wasmDestDir = path.join(DIST_DIR, "wasm");
+  if (fs.existsSync(wasmSrcDir)) {
+    fs.mkdirSync(wasmDestDir, { recursive: true });
+    const files = fs.readdirSync(wasmSrcDir);
+    for (const f of files) {
+      if (f.endsWith(".wasm")) {
+        fs.copyFileSync(path.join(wasmSrcDir, f), path.join(wasmDestDir, f));
+      }
+    }
+    console.log(`Copied WASM binaries to ${wasmDestDir}`);
+  }
+
   console.log("Bundling modern-web.ts with esbuild...");
   // 5. Bundle modern-web.ts
   const entryPoint = path.join(SERVING_DIR, "bin/modern-web.ts");
@@ -81,14 +103,13 @@ async function main() {
   
   try {
     console.time("⏳ esbuild bundle");
-    // We emit pure ESM (.mjs) using esbuild! Node 20+ handles import.meta.dirname & url natively!
     await esbuild.build({
       entryPoints: [entryPoint],
       bundle: true,
       platform: "node",
       format: "esm",
       loader: { ".node": "file" },
-      external: ["@lancedb/lancedb", "@huggingface/transformers"],
+      external: ["@huggingface/transformers", "onnxruntime-web"],
       outfile: outFile,
     });
     console.timeEnd("⏳ esbuild bundle");
@@ -141,14 +162,13 @@ async function main() {
   if (!forcePublish) {
     console.log("Reusing valid node_modules in published root (npm ls passed). Pass --force-publish to overwrite.");
   } else {
-    console.log("Installing dependencies and generating npm shrinkwrap in published root (so local dev matches publish)...");
+    console.log("Installing dependencies in published root using pnpm...");
     try {
-      console.time("⏳ npm install & shrinkwrap");
-      execSync("npm install --omit=dev", { cwd: PUBLISH_ROOT, stdio: "inherit" });
-      execSync("npm shrinkwrap", { cwd: PUBLISH_ROOT, stdio: "inherit" });
-      console.timeEnd("⏳ npm install & shrinkwrap");
+      console.time("⏳ pnpm install");
+      execSync("pnpm install --config.node-linker=hoisted", { cwd: PUBLISH_ROOT, stdio: "inherit" });
+      console.timeEnd("⏳ pnpm install");
     } catch (error) {
-      console.error("Failed to run npm install or shrinkwrap:", error);
+      console.error("Failed to run pnpm install:", error);
       process.exit(1);
     }
   }

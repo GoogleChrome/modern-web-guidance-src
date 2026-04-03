@@ -3,7 +3,15 @@ import path from "path";
 import matter from "gray-matter";
 import { marked } from "marked";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
-import { Store, type UseCase as StoreUseCase } from "../lib/store.ts";
+export interface StoreUseCase {
+  id: string;
+  description: string;
+  category: string;
+  featuresUsed: string[];
+  chunkContent?: string;
+  vector?: number[];
+  distance?: number;
+}
 import { Gpt4AllEmbedder } from "../benchmarks/rag/gpt4all-embedder.ts";
 import { replaceMacros } from "../mcp-server/lib/macros.ts";
 import { classifyGuide, scanAllGuides } from "../../lib/guide-validation.ts";
@@ -76,8 +84,7 @@ async function processGuides() {
   }
   await embedder.init();
 
-  console.log("Initializing Store...");
-  const store = new Store();
+  console.log("Processing guides (pure JS store mode)...");
 
 
 
@@ -126,9 +133,10 @@ export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
   fs.writeFileSync(OUTPUT_FILE, tsContent);
   console.log(`Generated ${useCases.length} use cases to ${OUTPUT_FILE}`);
 
-  console.log("Upserting to LanceDB...");
-  await store.upsert(storeUseCases);
-  console.log("Vector store updated.");
+  console.log("Writing vectors to pure JS storage...");
+  const VECTORS_FILE = path.join(ROOT_DIR, "lib/use-cases.vectors.json");
+  fs.writeFileSync(VECTORS_FILE, JSON.stringify(storeUseCases, null, 2));
+  console.log(`Vector storage updated at ${VECTORS_FILE}`);
 
 }
 

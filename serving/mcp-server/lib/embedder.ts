@@ -1,4 +1,14 @@
-import { pipeline, type FeatureExtractionPipeline } from "@huggingface/transformers";
+import { pipeline, env, type FeatureExtractionPipeline } from "@huggingface/transformers";
+import * as ort from "onnxruntime-web";
+import path from "path";
+
+// Force the WebAssembly runtime instead of native node binaries for lightweight CLI dist
+globalThis[Symbol.for("onnxruntime")] = ort;
+
+// Configure Transformers environment for local WASM execution
+env.backends.onnx.wasm.numThreads = 1;
+// The dist pipeline will copy WASM files to a sibling 'wasm' folder
+env.backends.onnx.wasm.wasmPaths = path.join(import.meta.dirname, "../wasm/");
 
 export class Embedder {
   private static instance: Embedder;
