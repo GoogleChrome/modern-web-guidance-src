@@ -6,7 +6,7 @@ import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type UseCase as StoreUseCase } from "../lib/store.ts";
 import { Gpt4AllEmbedder } from "../benchmarks/rag/gpt4all-embedder.ts";
 import { replaceMacros } from "../mcp-server/lib/macros.ts";
-import { classifyGuide, scanAllGuides } from "../../lib/guide-validation.ts";
+import { scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");

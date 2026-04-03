@@ -4,7 +4,7 @@ import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import matter from "gray-matter";
 import * as esbuild from "esbuild";
-import { classifyGuide, scanAllGuides } from "../../lib/guide-validation.ts";
+import { scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
 
