@@ -22,7 +22,7 @@ When a developer asks an AI coding assistant to implement something, the assista
 | `negative-demo.html` | Incorrect implementation used to verify the grader catches failures | ❌ No |
 | `expectations.md` | Source used to generate `grader.ts` | ❌ No |
 | `grader.ts` | Playwright tests run against the eval agent's output | ❌ No |
-| `prompts.md` | Simulated developer prompts used only by the eval harness | ❌ No |
+| `tasks/task.md` | Simulated developer prompts and base application name fed to the eval agent by the harness | ❌ No |
 
 **Implication for `demo.html`:** Because real agents never see `demo.html`, it does not need to be a polished, production-ready example. It just needs to be a correct, minimal implementation that the grader can pass against. Do not over-engineer it.
 

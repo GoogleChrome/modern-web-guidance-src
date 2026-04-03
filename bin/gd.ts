@@ -8,7 +8,8 @@ import omelette from 'omelette';
 import { pathToFileURL } from 'url';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
 import { Serving, mergeSuiteConfig, type SuiteConfig } from '../harness/config.ts';
-import { rootDir, guidesDir, tasksDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
+import { rootDir, guidesDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
+import { getTaskMap } from '../lib/guide-validation.ts';
 
 // Load environment variables (Node 20.12+)
 try {
@@ -38,13 +39,13 @@ function listGuideDirs(): string[] {
 const completion = omelette('gd <command> <arg1> <arg2>');
 
 completion.on('command', ({ reply }) => {
-  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'baselinestatus', 'setup-completion', 'gen-negative-suite']);
+  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'baselinestatus', 'setup-completion']);
 });
 
 completion.on('arg1', ({ before, reply }) => {
   if (before === 'eval') {
-    const tasks = fs.existsSync(tasksDir) ? fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).map(f => f.replace('.md', '')) : [];
-    reply(['suite', ...tasks]);
+    const tasks = Array.from(getTaskMap().keys());
+    reply(['suite', ...tasks, ...listGuideDirs()]);
   } else if (before === 'gen') {
     reply(['grader', 'negative']);
   } else if (['dev', 'test', 'grade'].includes(before)) {
@@ -79,6 +80,7 @@ const { positionals, values } = parseArgs({
     verbose: { type: 'boolean' },
     usecases: { type: 'boolean' },
     config: { type: 'string' },
+    ui: { type: 'boolean' },
   },
   allowPositionals: true,
   strict: false,
@@ -154,7 +156,6 @@ ${cBold('Evaluation:')}
   ${cCyan('run')} <tmpl> <prompt>    Run an ad-hoc agent test against a template
   ${cCyan('deploy')}                 Deploy the dashboard to GitHub Pages
   ${cCyan('upload')} <suite>         Upload generated evaluation suite to GCS
-  ${cCyan('gen-negative-suite')}     Generate resources for negative suite
 
 ${cBold('Other:')}
   ${cCyan('baselinestatus')} <query>      Check browser support and Baseline status
@@ -241,6 +242,12 @@ ${cBold('Options:')}
 
     case 'eval': {
       const tasks = positionals.slice(1).filter(a => a !== 'suite');
+      if (values['ui']) {
+        process.env.LAUNCH_UI = 'true';
+        process.chdir(evalViewDir);
+        await import('../eval-view/server.js');
+        break;
+      }
 
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
 
@@ -248,7 +255,7 @@ ${cBold('Options:')}
       if (mergedSuiteConfig.serving === Serving.MCP) {
         buildCode = await runNpm(['build:mcp']);
       } else if (mergedSuiteConfig.serving === Serving.SKILLS_CLI) {
-        buildCode = await runNpm(['--filter', 'modern-web-mcp', 'build-dist']);
+        buildCode = await runNpm(['--filter', 'serving', 'build-dist']);
       }
 
       if (buildCode !== 0) process.exit(buildCode);
@@ -279,11 +286,6 @@ ${cBold('Options:')}
       process.exit(code);
     }
 
-    case 'gen-negative-suite': {
-      const { generateNegativeSuite } = await import('../guides/negative-suite-gen.ts');
-      await generateNegativeSuite();
-      break;
-    }
 
     default: {
       // Legacy fallbacks — guide namespace was flattened

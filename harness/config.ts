@@ -58,7 +58,6 @@ export const defaultSuiteConfig: SuiteConfig = {
   mcpServersToEnable: ['modern-web'],
   serving: Serving.SKILLS_CLI,
   agent: Agents.GEMINI_CLI,
-  negative: false, // When `true`, runs the suite on all tasks in `tasks/negative/`
 };
 
 export function mergeSuiteConfig(overrides: Partial<SuiteConfig>): SuiteConfig {
@@ -86,7 +85,6 @@ export interface SuiteConfig {
   mcpServersToEnable: string[];
   serving: Serving;
   agent: string;
-  negative: boolean;
 }
 
 export const config = {
