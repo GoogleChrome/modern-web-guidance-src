@@ -191,10 +191,10 @@ function showHelp() {
     },
   ];
 
-  console.log(`\n${cBold('Guidance CLI')}\n\n${cCyan('Usage:')} gd <command> [options]\n`);
+  console.log(`\n${cCyan('Usage:')} gd <command> [options]\n`);
 
   for (const group of groups) {
-    console.log(cBold(group.title + ':'));
+    console.log(cBold(group.title));
     for (const cmd of group.commands) {
       const meta = COMMAND_METADATA[cmd as CommandName];
       if (!meta) continue;
