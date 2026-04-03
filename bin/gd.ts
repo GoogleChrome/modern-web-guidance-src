@@ -29,7 +29,7 @@ const ALL_OPTIONS = {
   'gen-negative': { type: 'boolean', desc: 'Generate negative examples' },
   guided: { type: 'boolean', desc: 'Skip calibration, run guided agent test only' },
   verbose: { type: 'boolean', desc: 'Show additional output' },
-  usecases: { type: 'boolean', desc: '(Audit) Group by categories/usecases (default is features)' },
+  usecases: { type: 'boolean', desc: 'Group by usecases rather than features' },
   config: { type: 'string', desc: '(Eval) Path to a custom TS suite config file' },
 } as const;
 
@@ -176,41 +176,46 @@ function requireArg(arg: string | undefined, usage: string): string {
 // --- Command Routing ---
 
 function showHelp() {
-  console.log(`
-${cBold('Guidance CLI')}
+  const groups = [
+    {
+      title: 'Guide Development',
+      commands: ['dev', 'audit'],
+    },
+    {
+      title: 'Evaluation & Dashboard',
+      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload'],
+    },
+    {
+      title: 'Utilities & Setup',
+      commands: ['baselinestatus', 'setup-completion'],
+    },
+  ];
 
-${cCyan('Usage:')} gd <command> [options]
+  console.log(`\n${cBold('Guidance CLI')}\n\n${cCyan('Usage:')} gd <command> [options]\n`);
 
-${cBold('Guide Development:')}
-  ${cCyan('audit')}                  Show status of all guides
-  ${cCyan('dev')} <dir> [options]    Auto-generate and calibrate guide artifacts
+  for (const group of groups) {
+    console.log(cBold(group.title + ':'));
+    for (const cmd of group.commands) {
+      const meta = COMMAND_METADATA[cmd as CommandName];
+      if (!meta) continue;
 
-${"Piece-wise options for `dev`:"}
-    ${cDim('--grade')}              Run/calibrate grader
-    ${cDim('--test-grader')}        Check grader calibration (demo + negative-demo)
-    ${cDim('--gen-grader')}         Generate a new grader script
-    ${cDim('--gen-negative')}       Generate negative examples
-    ${cDim('--guided')}             Skip calibration, run guided agent test only
-    ${cDim('--no-test')}            Skip agent tests after calibration
-    ${cDim('--verbose')}            Show additional output
+      const args = cmd === 'dev' ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : '';
+      console.log(`  ${cCyan(cmd + args).padEnd(35)} ${meta.desc}`);
 
-${cBold('Evaluation:')}
-  ${cCyan('eval')} [suite|tasks...]  Run the full evaluation suite, or specific tasks
-  ${cCyan('dashboard')}              Start the evaluation dashboard
-  ${cCyan('run')} <tmpl> <prompt>    Run an ad-hoc agent test against a template
-  ${cCyan('deploy')}                 Deploy the dashboard to GitHub Pages
-  ${cCyan('upload')} <suite>         Upload generated evaluation suite to GCS
+      if (meta.flags.length > 0) {
+        for (const flagName of meta.flags) {
+          const optVal = ALL_OPTIONS[flagName];
+          const arg = flagName === 'config' ? ' <path>' : '';
+          console.log(`    ${cDim(('--' + flagName + arg).padEnd(22))} ${optVal.desc}`);
+        }
+      }
+    }
+    console.log('');
+  }
 
-${cBold('Other:')}
-  ${cCyan('baselinestatus')} <query>      Check browser support and Baseline status
-  ${cCyan('setup-completion')}            Install shell auto-completion
-
-${cBold('Options:')}
-  ${cDim('-h, --help')}                 Show this help
-  ${cDim('--verbose')}                  Show additional output
-  ${cDim('--usecases')}                 (Audit) Group by categories/usecases (default is features)
-  ${cDim('--config <custom_config>')}   (Eval) Path to a custom TS suite config file (defaults to config.ts, or falls back to defaults in harness/config.ts)
-    `);
+  console.log(cBold('Global Options:'));
+  console.log(`  ${cDim('-h, --help'.padEnd(24))} Show this help`);
+  console.log(`  ${cDim('-v, --version'.padEnd(24))} Show version\n`);
 }
 
 async function main() {
