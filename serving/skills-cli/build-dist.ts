@@ -111,7 +111,17 @@ async function main() {
     }
   }
 
-  const forcePublish = process.argv.includes("--force-publish") || !nodeModulesValid;
+  const sourcePkgJson = path.join(SERVING_DIR, "skills-cli/template/package.json");
+  const destShrinkwrap = path.join(PUBLISH_ROOT, "npm-shrinkwrap.json");
+
+  let shrinkwrapUpToDate = false;
+  if (fs.existsSync(destShrinkwrap) && fs.existsSync(sourcePkgJson)) {
+    const sourceStat = fs.statSync(sourcePkgJson);
+    const destStat = fs.statSync(destShrinkwrap);
+    shrinkwrapUpToDate = destStat.mtime >= sourceStat.mtime;
+  }
+
+  const forcePublish = process.argv.includes("--force-publish") || !nodeModulesValid || !shrinkwrapUpToDate;
 
   if (!forcePublish) {
     console.log("Reusing valid node_modules in published root (npm ls passed). Pass --force-publish to overwrite.");
