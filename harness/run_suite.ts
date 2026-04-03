@@ -5,7 +5,7 @@ import { spawn } from 'child_process';
 import { Agents, defaultSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
-import { getTaskMap } from '../lib/guide-validation.ts';
+import { getTaskMap, type TaskInfo } from '../lib/guide-validation.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -109,7 +109,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
   try {
     let hasErrors = false;
-    const numRuns = options.numRuns || suiteConfig.numRuns;
+    const numRuns = options.numRuns ?? suiteConfig.numRuns;
     const endRun = 1 + numRuns;
 
     console.log(`\nStarting execution for ${numRuns} runs`);
@@ -137,22 +137,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           : Array.from(taskMap.keys()).filter(key => key.endsWith('/task')));
 
       for (const task of tasksToRun) {
-        let resolvedTask = task;
-        if (task.startsWith('guides/')) {
-          const segments = task.split('/');
-          if (segments.length >= 3) {
-            const guideName = segments[2];
-            let taskName = 'task';
-            const lastSegment = segments[segments.length - 1];
-            if (lastSegment.endsWith('.md')) {
-              taskName = lastSegment.replace('.md', '');
-            }
-            resolvedTask = `${guideName}/${taskName}`;
-          }
-        } else if (!task.includes('/')) {
-          resolvedTask = `${task}/task`;
-        }
-
+        const resolvedTask = resolveTaskName(task);
         const taskInfo = taskMap.get(resolvedTask);
         if (!taskInfo) {
           console.warn(`Skipping task ${task}: Not found in task map`);
@@ -160,78 +145,22 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         }
 
         const [guideName, taskName] = resolvedTask.split('/');
-        const baseApp = taskInfo.baseApp;
+        const workspaceBaseAppDir = setupWorkspaceBaseApp(taskInfo, runDir, guideName, taskName);
+        if (!workspaceBaseAppDir) {
+          continue;
+        }
+
         let promptContent = taskInfo.prompt;
         promptContent += COMMON_APPEND_PROMPT;
-
-        // Copy the base app to the run directory (for tracking purposes)
-        const guideFolder = path.join(runDir, guideName);
-        const taskFolder = path.join(guideFolder, taskName);
-        const workspaceBaseAppDir = path.join(taskFolder, 'base_app');
-        if (!fs.existsSync(workspaceBaseAppDir)) {
-          fs.mkdirSync(workspaceBaseAppDir, { recursive: true });
-        }
-
-        if (taskName === 'negative') {
-          const negativeDemoPath = path.join(taskInfo.guideDir, 'negative-demo.html');
-          if (fs.existsSync(negativeDemoPath)) {
-            fs.copyFileSync(negativeDemoPath, path.join(workspaceBaseAppDir, 'index.html'));
-          } else {
-            console.warn(`Skipping negative run for ${task}: Missing negative-demo.html`);
-            continue;
-          }
-        } else {
-          const sourceBaseAppDir = path.join(baseAppsDir, baseApp);
-          if (fs.existsSync(sourceBaseAppDir)) {
-            for (const file of fs.readdirSync(sourceBaseAppDir)) {
-              fs.copyFileSync(path.join(sourceBaseAppDir, file), path.join(workspaceBaseAppDir, file));
-            }
-          }
-        }
+        const agentScript = getAgentScript(agent);
 
         const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
+        const guideFolder = path.join(runDir, guideName);
+        const taskFolder = path.join(guideFolder, taskName);
+        
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
-          if (!fs.existsSync(targetDir)) {
-            fs.mkdirSync(targetDir, { recursive: true });
-          }
-
-          const agentScript = path.join(harnessDir, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
-            agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
-            agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
-              'jetski-agent.ts');
-
-          // Generate runner script
-          // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
-          // we trick pnpm into thinking each test run is a package in a pnpm workspace.
-          // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
-          // This run.mjs wrapper executes the actual agent command via spawnSync.
-          const runnerContent = `import { spawnSync } from 'child_process';
-const args = [
-'--experimental-strip-types',
-...${JSON.stringify([
-  agentScript,
-  promptContent,
-  runType,
-  targetDir,
-  workspaceBaseAppDir
-])}
-];
-const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
-process.exit(result.status ?? 0);
-`.trim();
-
-          fs.writeFileSync(path.join(targetDir, 'run.mjs'), runnerContent);
-
-          // Generate transient package.json
-          // This tells pnpm that this directory is a "package" that can be run
-          // via \`pnpm run-agent\`.
-          fs.writeFileSync(path.join(targetDir, 'package.json'), JSON.stringify({
-            name: `${taskName.substring(0, 30)}-${runType}`,
-            type: "module",
-            scripts: { "run-agent": "node run.mjs" }
-          }, null, 2));
-
+          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName);
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
       }
@@ -362,6 +291,106 @@ async function runCommand(command: string, args: string[] = [], envOverrides?: R
       reject(err);
     });
   });
+}
+
+
+function resolveTaskName(task: string): string {
+  let resolvedTask = task;
+  if (task.startsWith('guides/')) {
+    const segments = task.split('/');
+    if (segments.length >= 3) {
+      const guideName = segments[2];
+      let taskName = 'task';
+      const lastSegment = segments[segments.length - 1];
+      if (lastSegment.endsWith('.md')) {
+        taskName = lastSegment.replace('.md', '');
+      }
+      resolvedTask = `${guideName}/${taskName}`;
+    }
+  } else if (!task.includes('/')) {
+    resolvedTask = `${task}/task`;
+  }
+  return resolvedTask;
+}
+
+function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): string | null {
+  // Copy the base app to the run directory (for tracking purposes)
+  const guideFolder = path.join(runDir, guideName);
+  const taskFolder = path.join(guideFolder, taskName);
+  const workspaceBaseAppDir = path.join(taskFolder, 'base_app');
+  if (!fs.existsSync(workspaceBaseAppDir)) {
+    fs.mkdirSync(workspaceBaseAppDir, { recursive: true });
+  }
+
+  if (taskName === 'negative') {
+    const negativeDemoPath = path.join(taskInfo.guideDir, 'negative-demo.html');
+    if (fs.existsSync(negativeDemoPath)) {
+      fs.copyFileSync(negativeDemoPath, path.join(workspaceBaseAppDir, 'index.html'));
+    } else {
+      console.warn(`Skipping negative run for ${guideName}/${taskName}: Missing negative-demo.html`);
+      return null;
+    }
+  } else {
+    const sourceBaseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
+    if (fs.existsSync(sourceBaseAppDir)) {
+      for (const file of fs.readdirSync(sourceBaseAppDir)) {
+        fs.copyFileSync(path.join(sourceBaseAppDir, file), path.join(workspaceBaseAppDir, file));
+      }
+    }
+  }
+
+  return workspaceBaseAppDir;
+}
+
+function generateTransientPackage(
+  targetDir: string,
+  agentScript: string,
+  promptContent: string,
+  runType: string,
+  workspaceBaseAppDir: string,
+  taskName: string
+) {
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
+  }
+
+  // Generate runner script
+  // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
+  // we trick pnpm into thinking each test run is a package in a pnpm workspace.
+  // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
+  // This run.mjs wrapper executes the actual agent command via spawnSync.
+  const runnerContent = `import { spawnSync } from 'child_process';
+const args = [
+'--experimental-strip-types',
+...${JSON.stringify([
+  agentScript,
+  promptContent,
+  runType,
+  targetDir,
+  workspaceBaseAppDir
+])}
+];
+const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
+process.exit(result.status ?? 0);
+`.trim();
+
+  fs.writeFileSync(path.join(targetDir, 'run.mjs'), runnerContent);
+
+  // Generate transient package.json
+  // This tells pnpm that this directory is a "package" that can be run
+  // via \`pnpm run-agent\`.
+  fs.writeFileSync(path.join(targetDir, 'package.json'), JSON.stringify({
+    name: `${taskName.substring(0, 30)}-${runType}`,
+    type: "module",
+    scripts: { "run-agent": "node run.mjs" }
+  }, null, 2));
+}
+
+function getAgentScript(agent: string): string {
+  return path.join(harnessDir, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
+    agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
+    agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
+      'jetski-agent.ts');
 }
 
 // If invoked directly, retain legacy fallback logic if strictly required (optional).
