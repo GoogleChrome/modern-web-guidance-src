@@ -175,11 +175,8 @@ function requireArg(arg: string | undefined, usage: string): string {
 
 // --- Command Routing ---
 
-async function main() {
-  const command = positionals[0];
-
-  if (values.help || !command) {
-    console.log(`
+function showHelp() {
+  console.log(`
 ${cBold('Guidance CLI')}
 
 ${cCyan('Usage:')} gd <command> [options]
@@ -214,6 +211,13 @@ ${cBold('Options:')}
   ${cDim('--usecases')}                 (Audit) Group by categories/usecases (default is features)
   ${cDim('--config <custom_config>')}   (Eval) Path to a custom TS suite config file (defaults to config.ts, or falls back to defaults in harness/config.ts)
     `);
+}
+
+async function main() {
+  const command = positionals[0];
+
+  if (values.help || !command) {
+    showHelp();
     process.exit(0);
   }
 
