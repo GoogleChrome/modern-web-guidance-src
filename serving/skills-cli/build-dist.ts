@@ -85,33 +85,25 @@ async function main() {
 
 
 
-  console.log("Copying SKILL.md...");
-  const skillMdSource = path.join(rootDir, "guides/modern-web-use-cases/SKILL.md");
+  console.log("Scanning for skills (SKILL.md) in guides/...");
+  const guidesDirInRoot = path.join(rootDir, "guides");
+  const candidates = fs.readdirSync(guidesDirInRoot, { withFileTypes: true })
+    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+    .map(d => d.name);
 
-  const skillMdDest = path.join(DIST_DIR, "SKILL.md");
-
-  if (fs.existsSync(skillMdSource)) {
-    fs.copyFileSync(skillMdSource, skillMdDest);
-    console.log(`Copied SKILL.md to ${skillMdDest}`);
-  } else {
-    console.error(`Error: SKILL.md source not found at ${skillMdSource}`);
-    process.exit(1);
+  let skillsCount = 0;
+  for (const candidate of candidates) {
+    const skillSource = path.join(guidesDirInRoot, candidate, "SKILL.md");
+    if (fs.existsSync(skillSource)) {
+      const skillDestDir = path.join(PUBLISH_ROOT, "skills", candidate);
+      const skillDest = path.join(skillDestDir, "SKILL.md");
+      fs.mkdirSync(skillDestDir, { recursive: true });
+      fs.copyFileSync(skillSource, skillDest);
+      console.log(`Copied skill ${candidate} (SKILL.md) to ${skillDestDir}`);
+      skillsCount++;
+    }
   }
-
-  console.log("Copying forms SKILL.md...");
-  const formsSkillSource = path.join(rootDir, "guides/forms/SKILL.md");
-  const formsSkillDestDir = path.join(PUBLISH_ROOT, "skills/forms");
-  const formsSkillDest = path.join(formsSkillDestDir, "SKILL.md");
-
-  fs.mkdirSync(formsSkillDestDir, { recursive: true });
-
-  if (fs.existsSync(formsSkillSource)) {
-    fs.copyFileSync(formsSkillSource, formsSkillDest);
-    console.log(`Copied forms SKILL.md to ${formsSkillDest}`);
-  } else {
-    console.error(`Error: forms/SKILL.md source not found at ${formsSkillSource}`);
-    process.exit(1);
-  }
+  console.log(`Successfully copied ${skillsCount} skills to distribution.`);
 
   updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
 
