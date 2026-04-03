@@ -68,6 +68,9 @@ async function main() {
   console.log(`\nVerifying built distribution with test-dist.test.ts suite...`);
   execSync('node --test skills-cli/test-dist.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
 
+  console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
+  console.log(`   FULL=1 node --test skills-cli/test-dist.test.ts`);
+
   if (isDryRun) {
     const files = await fs.readdir(publishCliDir, {recursive: true});
     console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${files.filter(f => !f.includes('node_modules')).sort((a,b) => a.localeCompare(b)).join('\n - ')}`);
