@@ -30,17 +30,17 @@ const ALL_OPTIONS = {
   guided: { type: 'boolean', desc: 'Skip calibration, run guided agent test only' },
   verbose: { type: 'boolean', desc: 'Show additional output' },
   usecases: { type: 'boolean', desc: 'Group by usecases rather than features' },
-  config: { type: 'string', desc: '(Eval) Path to a custom TS suite config file' },
+  config: { type: 'string', desc: 'Path to a custom TS suite config file' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
   audit: { desc: 'Show status of all guides', flags: ['usecases'] },
-  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'gen-negative', 'guided', 'verbose'] },
-  eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'verbose'] },
+  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'gen-negative', 'guided'] },
+  eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config'] },
   dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
-  run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config', 'verbose'] },
+  run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
   deploy: { desc: 'Deploy the dashboard to GitHub Pages', flags: [] },
   upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
@@ -72,7 +72,8 @@ function getFlagsForLine(line: string): string[] {
   const parts = line.split(/\s+/).filter(Boolean);
   const cmd = parts[1] as CommandName;
   const meta = COMMAND_METADATA[cmd];
-  return meta ? meta.flags.map(f => '--' + f) : [];
+  const baseFlags = meta ? meta.flags : [];
+  return [...new Set([...baseFlags, 'verbose'])].map(f => '--' + f);
 }
 
 const completion = omelette('gd <command> <arg1> <arg2> <arg3> <arg4> <arg5>');
@@ -200,13 +201,13 @@ function showHelp() {
       if (!meta) continue;
 
       const args = cmd === 'dev' ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : '';
-      console.log(`  ${cCyan(cmd + args).padEnd(35)} ${meta.desc}`);
+      console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
 
       if (meta.flags.length > 0) {
         for (const flagName of meta.flags) {
           const optVal = ALL_OPTIONS[flagName];
           const arg = flagName === 'config' ? ' <path>' : '';
-          console.log(`    ${cDim(('--' + flagName + arg).padEnd(22))} ${optVal.desc}`);
+          console.log(`    ${cDim(('--' + flagName + arg).padEnd(26))} ${optVal.desc}`);
         }
       }
     }
@@ -214,8 +215,9 @@ function showHelp() {
   }
 
   console.log(cBold('Global Options:'));
-  console.log(`  ${cDim('-h, --help'.padEnd(24))} Show this help`);
-  console.log(`  ${cDim('-v, --version'.padEnd(24))} Show version\n`);
+  console.log(`  ${cDim('-h, --help'.padEnd(28))} Show this help`);
+  console.log(`  ${cDim('-v, --version'.padEnd(28))} Show version`);
+  console.log(`  ${cDim('    --verbose'.padEnd(28))} ${ALL_OPTIONS.verbose.desc}\n`);
 }
 
 async function main() {
