@@ -2,13 +2,13 @@
 name: light-dismiss-content-overlay
 description: Create swipeable layered navigation menus using the Popover API and Scroll Snap. This approach combines the Top Layer benefits of popovers with the gesture capabilities of scroll containers. The page is inert when the menu is open.
 web-feature-ids:
-- popover
-- scroll-snap
-- inert
+  - popover
+  - scroll-snap
+  - inert
 sources:
-- https://web.dev/blog/popover-api
-- https://codepen.io/una/pen/ZYOeQaR
-- https://github.com/WICG/inert
+  - https://web.dev/blog/popover-api
+  - https://codepen.io/una/pen/ZYOeQaR
+  - https://github.com/WICG/inert
 ---
 
 # Creating Swipeable Layered Navigation

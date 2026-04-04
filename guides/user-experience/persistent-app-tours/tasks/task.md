@@ -1,0 +1,6 @@
+---
+base_app: daily-grind
+---
+- add an onboarding tour step for the rewards link in the top nav. Give the rewards link the ID `feature` and the popover element the ID `tour-step`. Use a manual popover anchored to the link so it doesn't auto-close when users click around the page. The tour step must be open by default when the page loads. include a short message about earning points and a button that closes the popover.
+- can you build a persistent tooltip pointing to the 'order now' button in the hero section? Give the 'order now' button the ID `feature` and the tooltip element the ID `tour-step`. The tooltip must be open by default when the page loads. It should say 'skip the line, order ahead' and it must stay open on the screen until the user explicitly dismisses it with a close button.
+- we need a new feature callout next to the seasonal favorites grid. Give the maple oat latte card the ID `feature` and the callout popover the ID `tour-step`. Hook up a manual popover that's tethered to the maple oat latte card. The callout must be open by default when the page loads. make sure to include a 'got it' button to hide it, and it shouldn't disappear if i click on the background.
