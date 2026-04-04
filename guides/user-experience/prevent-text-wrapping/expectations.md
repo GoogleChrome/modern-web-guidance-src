@@ -1,0 +1,4 @@
+- The text inside the target element does not wrap to a new line even if it exceeds the container width.
+- The `text-wrap` property is used with the value `nowrap` on the target element.
+- A fallback using `white-space: nowrap` is provided for older browsers.
+- If `text-overflow: ellipsis` is used, the element also has `overflow: hidden` applied.

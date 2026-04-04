@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Navigation Menu</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      background: #f4f4f9;
+      color: #333;
+    }
+    main {
+      padding: 4rem 2rem;
+    }
+    .menu-btn {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #side-nav {
+      width: 280px;
+      height: 100vh;
+      margin: 0;
+      border: none;
+      background: white;
+      box-shadow: 5px 0 15px rgba(0,0,0,0.1);
+      padding: 1.5rem;
+      left: 0;
+    }
+    #side-nav::backdrop {
+      background: rgba(0, 0, 0, 0.4);
+    }
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      float: right;
+    }
+    .nav-links {
+      list-style: none;
+      padding: 0;
+      margin-top: 3rem;
+    }
+    .nav-links li a {
+      display: block;
+      padding: 0.75rem 0;
+      color: #444;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <button class="menu-btn" popovertarget="side-nav">Menu</button>
+  
+  <nav id="side-nav" popover="auto">
+    <button class="close-btn" popovertarget="side-nav" popovertargetaction="hide">&times;</button>
+    <ul class="nav-links">
+      <li><a href="#">Home</a></li>
+      <li><a href="#">Profile</a></li>
+      <li><a href="#">Settings</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <h1>Basic Navigation</h1>
+    <p>This is a navigation menu.</p>
+    <button>Interactive element</button>
+  </main>
+</body>
+</html>

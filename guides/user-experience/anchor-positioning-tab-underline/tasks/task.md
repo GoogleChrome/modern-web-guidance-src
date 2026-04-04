@@ -1,0 +1,7 @@
+---
+base_app: daily-grind
+---
+- update the main nav menu to include a sliding underline for the active tab. use css anchor positioning to tether a ul::before pseudo-element to the li with the active class. set the line's background to the var(--accent) color. animate the inset properties so it glides smoothly between tabs, but make sure to respect prefers-reduced-motion. also include a basic border-bottom fallback for unsupported browsers. use the guidance from anchor-positioning-tab-underline.
+- can you make an animated underline for the nav links? set it up so when the 'active' class moves to a different li, the orange line smoothly slides over to it. try using css anchor positioning for the effect.
+- add a slick sliding indicator to the header menu that shows the current page. just make a line under the active item that moves to the new item when the active class updates. make sure the animation is disabled for users who prefer reduced motion.
+- style the nav list so there's an active tab indicator that transitions across the menu. use a pseudo-element on the ul and tether it to the active li. use the orange accent color and make sure it has a fallback for older browsers that don't support the newest css features.
