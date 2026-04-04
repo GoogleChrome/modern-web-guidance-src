@@ -35,7 +35,7 @@ test.describe(`Swipeable Layered Navigation Expectations: ${demoName}`, () => {
   async function openMenu(page: Page) {
     const menuBtn = page.locator('button', { hasText: /Menu/i }).first();
     if (await menuBtn.isVisible()) {
-      await menuBtn.click();
+      await menuBtn.evaluate((btn: HTMLElement) => btn.click());
       await page.waitForTimeout(500); // Wait for transition
     } else {
       // Fallback

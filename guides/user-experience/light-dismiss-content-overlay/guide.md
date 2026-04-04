@@ -100,6 +100,26 @@ Here is a minimal example showing how to combine Popover and Scroll Snap for swi
 const overlay = document.getElementById('swipe-overlay');
 const nav = document.getElementById('side-nav');
 const main = document.getElementById('main-content');
+let isAnimating = false;
+
+function openMenu() {
+  overlay.showPopover();
+  // Snap to ghost spacer initially to animate in
+  overlay.scrollTo({ left: nav.offsetWidth, behavior: 'instant' });
+  main.setAttribute('inert', '');
+  isAnimating = true;
+  
+  // Force layout and animate to drawer open position
+  requestAnimationFrame(() => {
+    overlay.scrollTo({ left: 0, behavior: 'smooth' });
+    setTimeout(() => isAnimating = false, 500);
+  });
+}
+
+function closeMenu() {
+  // Animate to ghost spacer, triggering scrollend to hide popover
+  overlay.scrollTo({ left: nav.offsetWidth, behavior: 'smooth' });
+}
 
 // Live Backdrop Update (Immediate feedback during swipe)
 overlay.addEventListener('scroll', () => {
@@ -112,10 +132,15 @@ overlay.addEventListener('scroll', () => {
 
 // Handle gestures completing
 overlay.addEventListener('scrollend', () => {
+  if (isAnimating) return; // Prevent early closure during opening animation
+  
   const width = nav.offsetWidth;
   // If we scrolled past half the width, close the menu
   if (overlay.scrollLeft > (width / 2)) {
-    overlay.hidePopover();
+    if (overlay.matches(':popover-open')) {
+      overlay.hidePopover();
+    }
+    main.removeAttribute('inert');
   } else {
     // Otherwise keep it open and ensure main content is inert
     main.setAttribute('inert', '');
