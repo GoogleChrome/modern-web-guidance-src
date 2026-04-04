@@ -288,7 +288,9 @@ window.__featuresMapping = {
     "light-dark"
   ],
   "light-dismiss-content-overlay": [
-    "popover"
+    "popover",
+    "scroll-snap",
+    "inert"
   ],
   "light-dismiss-dialog": [
     "dialog-closedby"
@@ -309,8 +311,15 @@ window.__featuresMapping = {
   "parallax-scroll-effects": [
     "scroll-driven-animations"
   ],
+  "persistent-app-tours": [
+    "popover",
+    "anchor-positioning"
+  ],
   "persistent-toast-notifications": [
-    "popover"
+    "popover",
+    "anchor-positioning",
+    "sibling-count",
+    "transition-behavior"
   ],
   "persistent-top-layer": [
     "move-before"
