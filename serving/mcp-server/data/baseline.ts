@@ -194,7 +194,7 @@ export function validateFeature(id: string): FeatureValidationResult {
     return {
       isValid: false,
       error: 'not_found',
-      errorMessage: `Web feature ID "${id}" not found in web-features package`
+      errorMessage: `Web feature ID "${id}" not found in web-features package. Use "gd baselinestatus <keyword>" to find the correct ID.`
     };
   }
   if (feature.kind !== 'feature') {

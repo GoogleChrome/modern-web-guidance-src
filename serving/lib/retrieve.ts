@@ -1,4 +1,4 @@
-import { getGuide } from "../mcp-server/data/modern-practices.ts";
+import { getGuide } from "./practices.ts";
 import { logToolResult } from "./logger.ts";
 
 export async function retrieveUseCase(useCaseId: string) {

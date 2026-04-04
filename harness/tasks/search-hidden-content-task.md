@@ -1,5 +1,0 @@
----
-base_app: daily-grind
-grader: search-hidden-content
----
-hey, i need to add two features to our product page. first, can you add a tabbed section for wholesale and catering info at the bottom? the tabs need to be mutually exclusive so only one shows at a time, and it's critical that the native browser search can still find the content inside the closed tabs. please add the class `wholesale-tab` to these tabs. second, we need a "reveal coupon" button in the sidebar. when clicked, it should show a discount code panel in the main content area with the ID `coupon-panel`. once revealed, it shouldn't be hideable again. importantly, the hidden coupon code must be natively searchable using the browser's find-in-page before the user even clicks the button, but we need full control over the styling of the button so it matches our custom theme.`
