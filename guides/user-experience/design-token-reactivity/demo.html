@@ -1,339 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:GRAD,opsz,wght@0,20,300;0,24,300;200,20,300;200,24,300&icon_names=density_large,density_medium,density_small,favorite,repeat,reply,share&display=block" />
   <style>
-    .material-symbols-rounded {
-      font-family: 'Material Symbols Rounded';
-      font-weight: 300;
-      font-style: normal;
-      font-size: 1.5rem;
-      line-height: 1;
-      letter-spacing: normal;
-      text-transform: none;
-      display: inline-block;
-      white-space: nowrap;
-      word-wrap: normal;
-      direction: ltr;
-      -webkit-font-feature-settings: 'liga';
-      -webkit-font-smoothing: antialiased;
-      font-variation-settings: 'opsz' 24, 'GRAD' 0;
-    }
-
-    .density-toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: .5rem;
-      padding: 0;
-      margin: 0;
-      font-family: system-ui, -apple-system, sans-serif;
-      font-size: 1rem;
-      color: #333;
-      background-color: transparent;
-      border: none;
-      border-radius: .25rem;
-      cursor: pointer;
-      user-select: none;
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-    }
-
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      margin: 0;
-      background-color: #f9f9f9;
-    }
-
     .container {
-      --density: small;
-      container-type: inline-size;
+      --density: compact;
+      /* No container-type required for style queries! */
     }
 
-    .feed {
-      
-      max-width: 600px;
-      margin: 4rem auto;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-      padding: 0 1rem;
-      
+    .item {
+      padding: 1rem;
+      border: 1px solid #ccc;
     }
 
-    .post {
-      background-color: #fff;
-      border: 1px solid #e0e0e0;
-      border-radius: 0.75rem;
-      padding: 1.25rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-      display: grid;
-    }
-
-    
-
-    .post-header {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      font-size: 1rem;
-    }
-
-    .profile-pic {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background-color: #e0e0e0;
-      flex-shrink: 0;
-    }
-
-    .username {
-      font-weight: 600;
-      color: #333;
-      margin: 0;
-    }
-
-    .post-body {
-      font-size: 1rem;
-      line-height: 1.5;
-      color: #444;
-      margin: 0;
-    }
-
-    .post-image {
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      background-color: #e0e0e0;
-      border-radius: 0.5rem;
-      border: 1px solid #d0d0d0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #888;
-    }
-
-    .post-footer {
-      display: flex;
-      justify-content: space-between;
-
-    }
-
-    .action-btn {
-      background: transparent;
-      border: none;
-      color: #757575;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.5rem;
-      border-radius: 50%;
-      transition: background-color 0.2s;
-    }
-
-    .action-btn:hover {
-      background-color: #f5f5f5;
-      color: #333;
-    }
-
-    @container style(--density: small) {
-      .feed .material-symbols-rounded {
-        font-size: 1rem;
-        font-variation-settings: 'opsz' 20, 'GRAD' 0;
-      }
-
-      .post-footer {
-        justify-content: flex-end;
-        gap: .5rem;
-      }
-      .post-body {
-        font-size: .835rem;
-      }
-      .post {
-        gap: .5rem;
-        display: grid;
-        padding: 1rem;
-      }
-      .profile-pic {
-        height: 1.5rem;
-        width: 1.5rem;
-      }
-      .username {
-        font-size: 1rem;
+    @container style(--density: compact) {
+      .item {
+        padding: 0.5rem;
       }
     }
 
-    @container style(--density: large) {
-      .feed {
-        gap: 3rem;
-      }
-      .post {
-        column-gap: 1.5rem;
-        row-gap: 1rem;
-        display: grid;
-        grid-template-columns: 3rem 1fr;
-        padding: 1.5rem;
-      }
-      .post-header,
-      .post-footer
-       {
-        grid-column: 1 / -1;
-      }
-
-      .post-body,
-      .post-image
-       {
-        grid-column: 2 / -1;
-      }
-
-      .post-body {
-        font-size: 1.25rem;
-      }
-
-      .post-header {
-        display: grid;
-        grid-template-columns: subgrid;
-        gap: 1.5rem;
-      }
-
-      .post-footer {
-        border-top: 1px solid #e0e0e0;
-        padding-top: .5rem;
-        margin-bottom: -.5rem;
+    @container style(--density: spacious) {
+      .item {
+        padding: 2.5rem;
       }
     }
   </style>
 </head>
 <body>
-  <button type="button" class="density-toggle" id="density-toggle" role="checkbox" aria-checked="false" aria-live="polite" aria-label="Density: Small">
-    <span class="toggle-text">Small</span>
-    <span class="material-symbols-rounded" aria-hidden="true">density_small</span>
-  </button>
-
-  <div class="container">
-    <main class="feed">
-      <article class="post">
-        <header class="post-header">
-          <img src="./cosmic.jpeg" alt="" class="profile-pic">
-          <h2 class="username">@TheCosmicCaterpillar</h2>
-        </header>
-        <p class="post-body">
-          Is there anything better than the first sip of coffee in the morning? ☕️ Literally the only thing getting me through this week. Tell me your go-to coffee order below! #coffee #morningroutine #caffeine
-        </p>
-        <footer class="post-footer">
-          <button class="action-btn" aria-label="Reply"><span class="material-symbols-rounded">reply</span></button>
-          <button class="action-btn" aria-label="Repost"><span class="material-symbols-rounded">repeat</span></button>
-          <button class="action-btn" aria-label="Favorite"><span class="material-symbols-rounded">favorite</span></button>
-          <button class="action-btn" aria-label="Share"><span class="material-symbols-rounded">share</span></button>
-        </footer>
-      </article>
-    
-      <article class="post">
-        <header class="post-header">
-          <img src="./bubblegum.jpeg" alt="" class="profile-pic">
-          <h2 class="username">@BubblegumCloud</h2>
-        </header>
-        <p class="post-body">
-          Nothing beats the smell of fresh chocolate chip cookies right out of the oven. 🍪✨ A little mid-week treat to brighten the day. Who wants one? #baking #cookies #comfortfood
-        </p>
-        <img src="./cookies.jpg" alt="5 golden brown chocolate chip cookies are stacked and cascading of a wire cooling rack on a wooden countertop next to a short glass of cold milk." class="post-image">
-        <footer class="post-footer">
-          <button class="action-btn" aria-label="Reply"><span class="material-symbols-rounded">reply</span></button>
-          <button class="action-btn" aria-label="Repost"><span class="material-symbols-rounded">repeat</span></button>
-          <button class="action-btn" aria-label="Favorite"><span class="material-symbols-rounded">favorite</span></button>
-          <button class="action-btn" aria-label="Share"><span class="material-symbols-rounded">share</span></button>
-        </footer>
-      </article>
-    
-      <article class="post">
-        <header class="post-header">
-          <img src="./narwhal.jpeg" alt="" class="profile-pic">
-          <h2 class="username">@NeonNarwhal</h2>
-        </header>
-        <p class="post-body">
-          Proud plant parent moment: my monstera just pushed out a brand new leaf! 🌱✨ I'm irrationally excited about this. Who else talks to their plants to help them grow? #plantparenthood #houseplants #greenthumb
-        </p>
-        <footer class="post-footer">
-          <button class="action-btn" aria-label="Reply"><span class="material-symbols-rounded">reply</span></button>
-          <button class="action-btn" aria-label="Repost"><span class="material-symbols-rounded">repeat</span></button>
-          <button class="action-btn" aria-label="Favorite"><span class="material-symbols-rounded">favorite</span></button>
-          <button class="action-btn" aria-label="Share"><span class="material-symbols-rounded">share</span></button>
-        </footer>
-      </article>
-    
-      <article class="post">
-        <header class="post-header">
-          <img src="./dragon.jpeg" class="profile-pic">
-          <h2 class="username">@AmethystDragon</h2>
-        </header>
-        <p class="post-body">
-          Building my first snowman of the season! Look at that grin. He needs a name! ⛄️ Any ideas? #winterfun #firstsnow #cozyvibes
-        </p>
-        <img src="./snowman.jpg" alt="A snowman with a blue plaid scarf, red and white striped mittens, a carrow nose, and a red wool beanie hat is seen from the 'waist' up in front of a blurred snowy winter scene." class="post-image">
-        <footer class="post-footer">
-          <button class="action-btn" aria-label="Reply"><span class="material-symbols-rounded">reply</span></button>
-          <button class="action-btn" aria-label="Repost"><span class="material-symbols-rounded">repeat</span></button>
-          <button class="action-btn" aria-label="Favorite"><span class="material-symbols-rounded">favorite</span></button>
-          <button class="action-btn" aria-label="Share"><span class="material-symbols-rounded">share</span></button>
-        </footer>
-      </article>
-    
-      <!-- Post 5: Text Only -->
-      <article class="post">
-        <div class="post-header">
-          <img src="./nebula.jpeg" class="profile-pic">
-          <h2 class="username">@NebulaJellyfish</h2>
-        </div>
-        <div class="post-body">
-          Finally getting to curl up with a good book after a long day. 📚 Adding a fluffy blanket and some tea for maximum coziness. What is everyone currently reading? Drop your recommendations! #bookworm #readingtime
-        </div>
-        <footer class="post-footer">
-          <button class="action-btn" aria-label="Reply"><span class="material-symbols-rounded">reply</span></button>
-          <button class="action-btn" aria-label="Repost"><span class="material-symbols-rounded">repeat</span></button>
-          <button class="action-btn" aria-label="Favorite"><span class="material-symbols-rounded">favorite</span></button>
-          <button class="action-btn" aria-label="Share"><span class="material-symbols-rounded">share</span></button>
-        </footer>
-      </article>
-    </main>
+  <div class="container" id="target-container">
+    <div class="item" id="target-item">I react to density</div>
   </div>
 
+  <button id="toggle-spacious">Toggle Spacious</button>
+
   <script>
-    const toggle = document.getElementById('density-toggle');
-    const icon = toggle.querySelector('.material-symbols-rounded');
-    const text = toggle.querySelector('.toggle-text');
-    const container = document.querySelector('.container');
-    
-    const states = [
-      { label: 'Small', icon: 'density_small', checked: 'false' },
-      // { label: 'Medium', icon: 'density_medium', checked: 'mixed' },
-      { label: 'Large', icon: 'density_large', checked: 'true' }
-    ];
-    
-    let currentStateIndex = 0;
-    let direction = 1;
-
-    toggle.addEventListener('click', () => {
-      currentStateIndex += direction;
-      
-      if (currentStateIndex >= states.length - 1) {
-        currentStateIndex = states.length - 1;
-        direction = -1;
-      } else if (currentStateIndex <= 0) {
-        currentStateIndex = 0;
-        direction = 1;
-      }
-      
-      const state = states[currentStateIndex];
-      
-      icon.textContent = state.icon;
-      text.textContent = state.label;
-      toggle.setAttribute('aria-label', `Density: ${state.label}`);
-      toggle.setAttribute('aria-checked', state.checked);
-
-      container.style.setProperty('--density', state.label.toLowerCase())
+      document.getElementById('toggle-spacious').addEventListener('click', () => {
+        const c = document.getElementById('target-container');
+        const current = getComputedStyle(c).getPropertyValue('--density').trim();
+        c.style.setProperty('--density', current === 'spacious' ? 'compact' : 'spacious');
     });
   </script>
 </body>
