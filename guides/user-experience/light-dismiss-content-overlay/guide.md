@@ -1,6 +1,6 @@
 ---
 name: light-dismiss-content-overlay
-description: Create swipeable layered navigation menus using the Popover API and Scroll Snap. This approach combines the Top Layer benefits of popovers with the gesture capabilities of scroll containers. The page is inert when the menu is open.
+description: Create swipeable layered navigation menus using native overlays and scroll gestures.
 web-feature-ids:
   - popover
   - scroll-snap
@@ -149,9 +149,10 @@ overlay.addEventListener('scrollend', () => {
 ```
 
 ### Fallback strategies
-{{ BASELINE_STATUS("popover") }}
 
 #### popover
+
+{{ BASELINE_STATUS("popover") }}
 
 The Popover API is not supported in older browsers. Without it, the menu cannot be promoted to the Top Layer, which means it won't naturally sit above all other page content and won't receive the `::backdrop` pseudo-element.
 
@@ -159,11 +160,15 @@ The Popover API is not supported in older browsers. Without it, the menu cannot 
 
 #### scroll-snap
 
+{{ BASELINE_STATUS("scroll-snap") }}
+
 CSS Scroll Snap is widely supported, but in environments where it is absent, the scroll container will still function — the drawer will open and close — but the snap-to-position physics will be missing, leaving the menu in an indeterminate in-between position after a swipe.
 
 * **Guidance:** Listen for the `scrollend` event and programmatically snap the container to the nearest position (0 or the full drawer width) using `scrollTo({ left: targetX, behavior: 'smooth' })` if `scroll-snap-type` is not supported. Detect support with `CSS.supports('scroll-snap-type', 'x mandatory')`.
 
 #### inert
+
+{{ BASELINE_STATUS("inert") }}
 
 The `inert` attribute is broadly supported in modern browsers. In browsers that do not support it, the main page content will remain interactive while the menu is open, creating a keyboard trap and accessibility issue.
 

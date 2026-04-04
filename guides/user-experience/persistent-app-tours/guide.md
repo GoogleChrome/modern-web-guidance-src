@@ -1,6 +1,6 @@
 ---
 name: persistent-app-tours
-description: Create persistent onboarding walkthroughs using the popover="manual" state to ensure tour steps stay open during user interaction.
+description: Create persistent onboarding walkthroughs using tethered native overlays that stay open during user interaction.
 web-feature-ids:
   - popover
   - anchor-positioning
@@ -58,9 +58,10 @@ document.getElementById('tour-step').showPopover();
 
 ### Fallback strategies
 
+#### popover
+
 {{ BASELINE_STATUS("popover") }}
 
-#### popover
 If the browser does not support Popover, use the `@oddbird/popover-polyfill`:
 
 ```html
@@ -74,6 +75,7 @@ If the browser does not support Popover, use the `@oddbird/popover-polyfill`:
 Alternatively, for legacy support without a polyfill, use `position: fixed` and manually calculate coordinates via JavaScript `getBoundingClientRect()`.
 
 #### anchor-positioning
+
 {{ BASELINE_STATUS("anchor-positioning") }}
 
 To support browsers without anchor positioning, you can choose between using a polyfill or a pure CSS fallback.

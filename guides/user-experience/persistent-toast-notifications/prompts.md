@@ -1,5 +1,0 @@
-- Build a toast notification component
-- Create a non-blocking alert message
-- Implement stackable toast notifications
-- Send a system response in a toast popover
-- When a user submits the form, notify the user with a standalone, dismissible notice
