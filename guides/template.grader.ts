@@ -15,13 +15,6 @@ const demoUrl = `http://localhost/${demoName}`;
 
 // Tests
 test.describe(`<guide-name> Expectations: ${demoName}`, () => {
-  // Static assertions
-  test(`<test-case-name>`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    // ... expect ...
-  });
-
-  // ...
 
   // Setup browser testing
   test.beforeEach(async ({ page }) => {

@@ -3,16 +3,15 @@ import path from "path";
 import matter from "gray-matter";
 import { marked } from "marked";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
-import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
+import { Store, type UseCase as StoreUseCase } from "../lib/store.ts";
 import { Gpt4AllEmbedder } from "../benchmarks/rag/gpt4all-embedder.ts";
 import { replaceMacros } from "../mcp-server/lib/macros.ts";
-import { classifyGuide, scanAllGuides } from "../../lib/guide-validation.ts";
+import { scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
 const BUILD_GUIDES_DIR = path.join(ROOT_DIR, "build/guides");
-const DATA_DIR = path.join(ROOT_DIR, "mcp-server/data");
-const OUTPUT_FILE = path.join(DATA_DIR, "use-cases.gen.ts");
+const OUTPUT_FILE = path.join(ROOT_DIR, "lib/use-cases.gen.ts");
 
 interface UseCase {
   id: string;
@@ -26,9 +25,9 @@ async function processGuides() {
   const force = process.argv.includes("--force");
 
   // Scan guides first to see if we even need to run
-  const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
+  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
 
-  const LANCE_DB_DIR = path.join(ROOT_DIR, ".modern-web-data");
+  const LANCE_DB_DIR = path.join(ROOT_DIR, "vector_store");
 
   if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(LANCE_DB_DIR) && fs.readdirSync(LANCE_DB_DIR).length > 0) {
     const outputFileMTime = fs.statSync(OUTPUT_FILE).mtimeMs;

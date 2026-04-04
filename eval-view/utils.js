@@ -61,9 +61,12 @@ export function calculateChartData(results) {
     const taskNames = {};
     
     Object.keys(results).forEach(key => {
-        const [appName, guide, runType] = key.split(' - ');
-        if (!runType) return;
-        const scenario = `${appName} (${guide})`;
+        const parts = key.split(' - ');
+        if (parts.length < 3) return;
+        const [taskName, guide, runType] = parts;
+
+        if (!['guided', 'unguided'].includes(runType)) return;
+        const scenario = `${taskName} (${guide})`;
         if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [] };
         
         const runs = results[key];
@@ -87,6 +90,7 @@ export function calculateChartData(results) {
     };
     return { labels, guided: labels.map(l => getAvg(l, 'guided')), unguided: labels.map(l => getAvg(l, 'unguided')) };
 }
+
 
 export function formatTestName(name) {
     if (!name) return name;

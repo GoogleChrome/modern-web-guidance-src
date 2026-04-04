@@ -242,10 +242,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
             if (!currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
 
-            const parts = currentDetails.testName.split(' - ');
-            if (parts.length !== 3) return;
-            const [appName, guide, runType] = parts;
-            const currentScenario = `${appName} - ${guide}`;
+            const [taskName, guide, runType] = currentDetails.testName.split(' - ');
+            const currentScenario = `${taskName} - ${guide}`;
 
             let sIdx = sortedScenarios.indexOf(currentScenario);
             let rIdx = currentRunTypes.indexOf(runType);
@@ -389,31 +387,39 @@ function renderGrid(data, testId) {
 
     // Extract dimensions dynamically from data keys
     const keys = Object.keys(results);
-    const partsMap = keys.map(k => k.split(' - '));
+    const validParts = keys.map(k => {
+        const parts = k.split(' - ');
+        if (parts.length === 3) {
+            return { raw: k, taskName: parts[0], guide: parts[1], runType: parts[2] };
+        }
+        return null;
+    }).filter(p => p !== null);
 
-    // Assume 3 parts: [appName, guide, runType]
-    const validParts = partsMap.filter(p => p.length === 3);
-
-    const sortedAppNames = [...new Set(validParts.map(p => p[0]))].sort();
-    const sortedGuides = [...new Set(validParts.map(p => p[1]))].sort();
-
-    // Sort runTypes: unguided first, then guided, then alphabetical
-    const sortedRunTypes = [...new Set(validParts.map(p => p[2]))].sort((a, b) => {
+    const sortedRunTypes = [...new Set(validParts.map(p => p.runType))].sort((a, b) => {
         if (a === 'unguided' && b === 'guided') return -1;
         if (a === 'guided' && b === 'unguided') return 1;
         return a.localeCompare(b);
     });
     currentRunTypes = sortedRunTypes;
 
-    sortedAppNames.forEach(appName => {
-        sortedGuides.forEach(guide => {
-            sortedScenarios.push(`${appName} - ${guide}`);
+    const sortedTasks = [...new Set(validParts.map(p => p.taskName))].sort();
+    const sortedGuides = [...new Set(validParts.map(p => p.guide))].sort();
+
+    sortedGuides.forEach(guide => {
+        sortedTasks.forEach(taskName => {
+            // Check if this pair actually has any run data before rendering a row
+            const hasData = sortedRunTypes.some(rt => results[`${taskName} - ${guide} - ${rt}`]);
+            if (!hasData) return;
+
+            const scenarioKey = `${taskName} - ${guide}`;
+            sortedScenarios.push(scenarioKey);
+
             sortedRunTypes.forEach(runType => {
-                const testName = `${appName} - ${guide} - ${runType}`;
+                const testName = `${taskName} - ${guide} - ${runType}`;
                 const runData = results[testName];
                 const testStats = stats[testName];
 
-                if (!runData) return; // Skip combinations that don't exist
+                if (!runData) return;
 
                 const card = document.createElement('div');
                 card.className = 'test-card';
@@ -503,7 +509,7 @@ async function showDetails(testName, runs, stats, testId) {
     const title = document.getElementById('modal-title');
     const contentDiv = document.querySelector('.modal-content');
     const body = document.getElementById('modal-body');
-    const [, guide, runType] = testName.split(' - ');
+    const [taskName, guide, runType] = testName.split(' - ');
 
     // Reset modifier classes
     modal.classList.remove('diff-modal');
@@ -530,35 +536,30 @@ async function showDetails(testName, runs, stats, testId) {
             console.log('Error checking run files:', e);
         }
 
-        // Fetch prompt text from the task definition
         if (run === runs[0]) {
             try {
-                const isNegative = run.taskName && run.taskName.endsWith('-negative');
-                const taskPath = `tasks/${isNegative ? 'negative/' : ''}${run.taskName}.md`;
-                const text = await api.getFileText(taskPath);
+                let prompt = run.prompt || '';
+                const baseApp = run.baseApp || 'n/a';
 
-                // Extract base_app from YAML frontmatter
-                const frontmatterMatch = text.match(/^---([\s\S]+?)---/);
-                let baseApp = 'n/a';
-                if (frontmatterMatch) {
-                    const yaml = frontmatterMatch[1];
-                    const baseAppMatch = yaml.match(/base_app:\s*([^\n\r]+)/);
-                    if (baseAppMatch) {
-                        baseApp = baseAppMatch[1].trim();
+                if (!prompt) {
+                    try {
+                        const isNegative = taskName && taskName.endsWith('-negative');
+                        const taskPath = `tasks/${isNegative ? 'negative/' : ''}${taskName}.md`;
+                        const taskMd = await api.getFileText(taskPath);
+                        prompt = taskMd.replace(/^---[\s\S]+?---\n+/, '').trim();
+                    } catch {
+                        console.log(`Fallback failed: Could not resolve task file for ${run.taskName}`);
                     }
                 }
-
-                // Strip YAML frontmatter from the markdown task file
-                const cleanedText = text.replace(/^---[\s\S]+?---\n+/, '');
 
                 promptHtml = `
                     <div class="prompt-section" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--text-secondary);">
                         <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px;">Base App: <strong style="color: var(--text-primary);">${escapeHtml(baseApp)}</strong></div>
-                        <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px;">Prompt: <strong style="color: var(--text-primary); white-space: pre-wrap; font-family: inherit;">${escapeHtml(cleanedText)}</strong></div>
+                        <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px;">Prompt: <strong style="color: var(--text-primary); white-space: pre-wrap; font-family: inherit;">${escapeHtml(prompt)}</strong></div>
                     </div>
                 `;
             } catch (e) {
-                console.log('Task prompt file not found:', e.message);
+                console.log('Failed to render prompt:', e.message);
             }
         }
 
@@ -571,7 +572,7 @@ async function showDetails(testName, runs, stats, testId) {
                (run.guideUsed !== undefined ? 
                (typeof run.guideUsed === 'object' && run.guideUsed !== null ? run.guideUsed.guidesUsed : []) 
                : []);
-        const expectedGuide = run.expectedGuide || guide;
+        const expectedGuide = run.guideName || run.expectedGuide || guide;
         const hasGuideData = run.guidesUsed !== undefined || run.guideUsed !== undefined;
 
         const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : 'modern-web.log';
@@ -882,7 +883,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 
 function renderDashboardDumbbellChart(data, testId) {
     const { labels, guided, unguided } = calculateChartData(data.results);
-    
+
     if (labels.length < 1) {
         document.getElementById('chart-section').classList.add('hidden');
         return;

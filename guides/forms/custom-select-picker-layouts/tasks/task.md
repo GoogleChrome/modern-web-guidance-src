@@ -1,0 +1,5 @@
+---
+base_app: daily-grind
+---
+
+Add a select dropdown above the "Order Now" button in the hero for choosing a roast (light, medium, dark). MANDATORY: Style the dropdown's options menu as a rich-media 3-column grid picker layout instead of a normal vertical list so the choices are side-by-side.

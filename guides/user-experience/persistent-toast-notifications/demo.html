@@ -1,174 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Persistent Toast Notifications</title>
   <style>
-    body {
-      font: 1em/1.5 system-ui, sans-serif;
-      margin: 2rem;
-      color: #333;
+    .toast-container {
+      anchor-name: --toast-container;
+      position: fixed;
+      width: 100cqi;
+      height: 4rem;
+      bottom: 1rem;
     }
 
-    h1 {
-      font-size: 1.25rem;
-    }
-
-    .controls {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      margin: 1rem 0;
-    }
-
-    button {
+    [popover="manual"] {
+      position-anchor: --toast-container;
+      position-area: bottom;
+      margin-bottom: calc(sibling-index() * 1rem);
       padding: 0.5rem 1rem;
-      font-size: 0.875rem;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      background: white;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #f0f0f0;
-    }
-
-    /* Toast container in the bottom-right corner */
-    #toast-container {
-      /* Override default popover centering */
-      margin: 0;
-      padding: 0;
-      border: none;
-      background: none;
-      inset: auto 1rem 1rem auto;
-      width: 300px;
-      display: flex;
-      flex-direction: column-reverse;
-      gap: 0.5rem;
-    }
-
-    .toast {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.75rem 1rem;
+      background: lightgreen;
+      border: 1px solid green;
       border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      font-size: 0.875rem;
-      animation: slide-in 0.2s ease-out;
+      transition: opacity 0.3s, transform 0.3s, display 0.3s, overlay 0.3s;
+      transition-behavior: allow-discrete;
+      opacity: 0;
+      transform: translateY(20px);
     }
 
-    .toast-info {
-      background: #e8f4fd;
-      border: 1px solid #b3d7f2;
-    }
-
-    .toast-success {
-      background: #e6f7e9;
-      border: 1px solid #a3d9a5;
-    }
-
-    .toast-error {
-      background: #fdecea;
-      border: 1px solid #f5c6cb;
-    }
-
-    .toast button {
-      margin-left: auto;
-      padding: 0.25rem 0.5rem;
-      font-size: 0.75rem;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      opacity: 0.6;
-    }
-
-    .toast button:hover {
+    [popover="manual"]:popover-open {
       opacity: 1;
+      transform: translateY(0);
     }
 
-    @keyframes slide-in {
-      from {
-        opacity: 0;
-        transform: translateX(1rem);
+    @starting-style {
+      [popover="manual"]:popover-open { 
+        opacity: 0; 
+        transform: translateY(20px);
       }
+    }
+
+    button[popovertargetaction="hide"] {
+      background:none;
+      border:none;
+      cursor:pointer;
+    }
+
+    body {
+      min-height: 100dvh;
+      min-width: 100dvw;
+      padding: 0;
+      margin: 0;
     }
   </style>
 </head>
-
 <body>
-  <h1>Persistent Toast Notifications</h1>
-  <p>Click buttons to show notifications. They stack and persist until dismissed.</p>
-
-  <div class="controls">
-    <button id="btn-info">Show Info</button>
-    <button id="btn-success">Show Success</button>
-    <button id="btn-error">Show Error</button>
-    <button id="btn-clear">Clear All</button>
+  <button id="toast-trigger" onclick="showToast()">Trigger Toast</button>
+  <div class="toast-container">
+    <div id="toast" popover="manual">
+      Success!
+      <button popovertarget="toast" popovertargetaction="hide" aria-label="close">x</button>
+    </div>
   </div>
-
-  <!--
-    Manual popover: does not light-dismiss on outside click or Escape.
-    Multiple manual popovers can be shown simultaneously.
-    The container holds all toasts and stays open until explicitly hidden.
-  -->
-  <div id="toast-container" popover="manual" role="status" aria-live="polite"></div>
-
   <script>
-    const container = document.getElementById('toast-container');
-    let toastCount = 0;
-
-    function showToast(message, type = 'info') {
-      // Ensure the container is visible
-      if (!container.matches(':popover-open')) {
-        container.showPopover();
-      }
-
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-      toast.id = `toast-${++toastCount}`;
-
-      const text = document.createElement('span');
-      text.textContent = message;
-      toast.appendChild(text);
-
-      const dismissBtn = document.createElement('button');
-      dismissBtn.textContent = '\u2715';
-      dismissBtn.setAttribute('aria-label', 'Dismiss notification');
-      dismissBtn.addEventListener('click', () => {
-        toast.remove();
-        // Hide container when all toasts are dismissed
-        if (container.children.length === 0) {
-          container.hidePopover();
-        }
-      });
-      toast.appendChild(dismissBtn);
-
-      container.appendChild(toast);
+    function showToast() {
+      const t = document.getElementById('toast');
+      t.showPopover();
+      setTimeout(() => { if (t.matches(':popover-open')) t.hidePopover(); }, 3000);
     }
-
-    document.getElementById('btn-info').addEventListener('click', () => {
-      showToast('New message received.', 'info');
-    });
-
-    document.getElementById('btn-success').addEventListener('click', () => {
-      showToast('Changes saved successfully.', 'success');
-    });
-
-    document.getElementById('btn-error').addEventListener('click', () => {
-      showToast('Failed to connect to server.', 'error');
-    });
-
-    document.getElementById('btn-clear').addEventListener('click', () => {
-      container.innerHTML = '';
-      if (container.matches(':popover-open')) {
-        container.hidePopover();
-      }
-    });
   </script>
 </body>
-
 </html>
