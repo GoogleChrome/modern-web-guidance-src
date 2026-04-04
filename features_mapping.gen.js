@@ -242,7 +242,8 @@ window.__featuresMapping = {
     "sibling-count"
   ],
   "dynamic-sibling-styling": [
-    "sibling-count"
+    "sibling-count",
+    "trig-functions"
   ],
   "flicker-free-client-side-ab-testing": [
     "blocking-render"
