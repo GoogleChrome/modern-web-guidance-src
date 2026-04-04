@@ -1,8 +1,9 @@
 ---
 name: dynamic-sibling-styling
-description: Compute visual properties like position, color, or size dynamically for each child element based on how many siblings are present and its position among them.
+description: Create dynamic visual spectrums or layout arrangements that automatically adapt to the number of elements in a group.
 web-feature-ids:
   - sibling-count
+  - trig-functions
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/sibling-count
   - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/sibling-index
@@ -94,13 +95,15 @@ In your CSS, use these variables as a base and override them with native functio
   --index: var(--sibling-index);
   --count: var(--sibling-count);
 
-  /* 2. Override with native functions ONLY if supported */
-  @supports (top: calc(sibling-index() * 1px)) {
+  /* 2. Use the computed variables - replace this with your implementation-specific styles */
+  background-color: hsl(calc(360deg / var(--count) * var(--index)), 70%, 50%);
+}
+
+@supports (top: calc(sibling-index() * 1px)) {
+  .item {
+    /* 3. Override with native functions ONLY if supported */
     --index: sibling-index();
     --count: sibling-count();
   }
-
-  /* 3. Use the computed variables */
-  background-color: hsl(calc(360deg / var(--count) * var(--index)), 70%, 50%);
 }
 ```

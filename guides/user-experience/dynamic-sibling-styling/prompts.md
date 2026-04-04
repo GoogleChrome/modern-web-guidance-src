@@ -1,3 +1,0 @@
-- Can you style these swatches so each one has a unique hue based on its position in the list? Use the modern CSS sibling-index() and sibling-count() functions and provide a JS fallback for older browsers.
-- Make these cards fan out symmetrically from the center of the grid. Use sibling functions to calculate the rotation dynamically and include feature detection for the fallback script.
-- Style these circular buttons to be placed evenly around a 150px radius using sin/cos and sibling-count. Make sure to use the recommended native functions and provide a conditional polyfill-like fallback.

@@ -2,7 +2,6 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Setup
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
   throw new Error('TARGET_FILE environment variable not set.');
@@ -14,7 +13,11 @@ const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
 test.describe(`Dynamic Sibling Styling Expectations: ${demoName}`, () => {
-  const html = fs.readFileSync(filePath, 'utf-8');
+  let fileContent: string;
+
+  test.beforeAll(() => {
+    fileContent = fs.readFileSync(filePath, 'utf-8');
+  });
 
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
@@ -27,109 +30,107 @@ test.describe(`Dynamic Sibling Styling Expectations: ${demoName}`, () => {
         await route.continue();
       }
     });
-
-    await page.goto(demoUrl);
   });
 
-  test('The implementation uses sibling-index() and sibling-count() in CSS', async () => {
-    expect(html).toContain('sibling-index()');
-    expect(html).toContain('sibling-count()');
+  test('Implementation uses sibling-index() and sibling-count() native functions', async () => {
+    expect(fileContent).toMatch(/sibling-index\s*\(/);
+    expect(fileContent).toMatch(/sibling-count\s*\(/);
   });
 
-  test('A fallback strategy is provided with CSS variables and CSS.supports() check', async () => {
-    // Check for variables usage in CSS (either --index/--count or --sibling-index/--sibling-count)
-    expect(html).toMatch(/var\(--(sibling-)?index\)/);
-    expect(html).toMatch(/var\(--(sibling-)?count\)/);
-    // Check for JS fallback with CSS.supports (flexible regex)
-    expect(html).toContain('CSS.supports');
-    expect(html).toMatch(/CSS\.supports\([^)]*sibling-(index|count)/);
-  });
-
-  test('The JavaScript fallback injects 1-based index and correct count', async ({ page }) => {
-    // Force the fallback to run by mocking CSS.supports to return false for sibling-index
+  test('Provides a JavaScript fallback strategy that injects 1-based --sibling-index and --sibling-count', async ({ page }) => {
     await page.addInitScript(() => {
-      const originalSupports = window.CSS.supports;
-      (window as any).CSS.supports = function(condition: any, value: any) {
-        const conditionString = String(condition);
-        const valueString = String(value);
-        // Robust check: if any argument contains sibling-index or sibling-count, return false to force fallback
-        if (/sibling-(index|count)/.test(conditionString) || /sibling-(index|count)/.test(valueString)) {
-          return false;
-        }
-        return originalSupports.apply(this, [condition, value] as any);
-      };
-    });
-
-    await page.reload();
-
-    const result = await page.evaluate(() => {
-      // Find elements that should have variables (e.g., .swatch or list items)
-      const items = Array.from(document.querySelectorAll('li, .swatch, .item, .dynamic-list > *, .swatch-container > *, .swatch-item'));
-      if (items.length === 0) return { error: 'No items found' };
-
-      // Find an item that actually has the inline styles
-      const itemWithStyles = items.find(el => (el as HTMLElement).style.getPropertyValue('--sibling-index') || (el as HTMLElement).style.getPropertyValue('--index'));
-      if (!itemWithStyles) return { error: 'No item with inline styles found' };
-
-      const item = itemWithStyles as HTMLElement;
-      const index = item.style.getPropertyValue('--sibling-index').trim() || item.style.getPropertyValue('--index').trim();
-      const count = item.style.getPropertyValue('--sibling-count').trim() || item.style.getPropertyValue('--count').trim();
-      
-      return {
-        firstIndex: parseInt(index),
-        firstCount: parseInt(count),
-        totalItems: items.length
-      };
-    });
-
-    expect(result.firstIndex).toBe(1); // Expect 1-based indexing
-    expect(result.firstCount).toBeGreaterThan(0);
-  });
-
-  test('The JavaScript fallback is conditional and does NOT run if native support exists', async ({ page }) => {
-    // Force CSS.supports to return true
-    await page.addInitScript(() => {
-      const originalSupports = window.CSS.supports;
-      (window as any).CSS.supports = function(conditionString: string, value: any) {
-        const cond = String(conditionString);
-        const val = String(value);
-        if (/sibling-(index|count)/.test(cond) || /sibling-(index|count)/.test(val)) {
-          return true;
-        }
+      const originalSupports = CSS.supports;
+      CSS.supports = function(condition) {
+        if (condition.includes('sibling-index')) return false;
         return originalSupports.apply(this, arguments as any);
       };
     });
+    
+    await page.goto(demoUrl);
+    
+    const checkFallback = async (selector: string) => {
+      const properties = await page.evaluate((sel) => {
+        const items = document.querySelectorAll(sel);
+        return Array.from(items).map(item => ({
+          jsIndex: (item as HTMLElement).style.getPropertyValue('--sibling-index').trim(),
+          jsCount: (item as HTMLElement).style.getPropertyValue('--sibling-count').trim()
+        }));
+      }, selector);
+      
+      expect(properties.length).toBeGreaterThan(0);
+      expect(properties[0].jsIndex).toBe('1');
+      expect(properties[0].jsCount).toBe(properties.length.toString());
+    };
 
-    await page.reload();
+    await checkFallback('.spectrum-card');
+    await checkFallback('.fan-card');
+    await checkFallback('.circle-orb');
+  });
 
-    const hasVariable = await page.evaluate(() => {
-      const items = Array.from(document.querySelectorAll('li, .swatch, .item, .dynamic-list > *, .swatch-container > *, .swatch-item'));
-      return items.some(el => (el as HTMLElement).style.getPropertyValue('--sibling-index').trim() || (el as HTMLElement).style.getPropertyValue('--index').trim());
+  test('JavaScript fallback is conditionally executed using CSS.supports() feature detection', async ({ page }) => {
+    await page.goto(demoUrl);
+    
+    const properties = await page.evaluate(() => {
+      const items = document.querySelectorAll('.spectrum-card, .fan-card, .circle-orb');
+      return Array.from(items).map(item => (item as HTMLElement).style.getPropertyValue('--sibling-index').trim());
     });
-
-    expect(hasVariable).toBe(false); // Expect NO inline variable when native support exists
+    
+    expect(properties.length).toBeGreaterThan(0);
+    expect(properties[0]).toBe('');
   });
 
-  test('CSS structure overrides variables with native functions inside @supports', async () => {
-    // Strictly require @supports check for the override pattern
-    const minifiedHtml = html.replace(/\s+/g, ' ');
-    const hasSupportsOverride = /@supports[^{]*sibling-(index|count)\(\)[^{]*\{[^}]*--[a-z-]+\s*:\s*sibling-(index|count)\(\)/.test(minifiedHtml);
-    expect(hasSupportsOverride).toBe(true);
+  test('CSS overrides custom properties with native functions inside @supports block', async ({ page }) => {
+    await page.goto(demoUrl);
+    const computed = await page.evaluate(() => {
+      const item = document.querySelector('.spectrum-card');
+      if (!item) return null;
+      return window.getComputedStyle(item).getPropertyValue('--index').trim();
+    });
+    
+    expect(computed).toContain('sibling-index');
   });
 
-  test('Conditional: Symmetrical effects use midpoint calculation', async () => {
-    // Only check if rotation or fanning is implemented
-    if (html.includes('rotate') || html.includes('skew')) {
-      const hasMidpoint = /sibling-count\(\)\s*\+\s*1\s*\)\s*\/\s*2/.test(html);
-      expect(hasMidpoint).toBe(true);
-    }
+  test('Calculates proportions or distributions dynamically', async ({ page }) => {
+    await page.goto(demoUrl);
+    
+    const getStyles = () => page.evaluate(() => {
+      const item = document.querySelector('.spectrum-card');
+      if (!item) return null;
+      const style = window.getComputedStyle(item);
+      return {
+        width: style.width,
+        backgroundColor: style.backgroundColor,
+        transform: style.transform
+      };
+    });
+    
+    const before = await getStyles();
+    expect(before).not.toBeNull();
+    
+    await page.evaluate(() => {
+      const item = document.querySelector('.spectrum-card');
+      if (item && item.parentElement) {
+        item.parentElement.appendChild(item.cloneNode(true));
+      }
+    });
+    
+    await page.waitForTimeout(100);
+    
+    const after = await getStyles();
+    
+    const hasDynamicChange = 
+      before!.width !== after!.width ||
+      before!.backgroundColor !== after!.backgroundColor ||
+      before!.transform !== after!.transform;
+      
+    expect(hasDynamicChange).toBe(true);
   });
 
-  test('Conditional: Circular positioning uses trigonometry', async () => {
-    // Only check if circular positioning is suggested (e.g., using sin/cos)
-    if (html.includes('sin(') || html.includes('cos(')) {
-      const usesSiblingFunctions = /sin\([^)]*sibling-(count|index)/.test(html) || /cos\([^)]*sibling-(count|index)/.test(html);
-      expect(usesSiblingFunctions).toBe(true);
-    }
+  test('Implements symmetrical midpoint calculation AND circular trigonometry', async () => {
+    const hasMidpoint = /\+\s*1/.test(fileContent) && /\/\s*2/.test(fileContent);
+    const hasTrig = /sin\s*\(/.test(fileContent) && /cos\s*\(/.test(fileContent);
+    
+    expect(hasMidpoint).toBe(true);
+    expect(hasTrig).toBe(true);
   });
 });
