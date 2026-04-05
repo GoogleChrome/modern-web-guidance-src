@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customizable Select: Grid Picker Layout</title>
+  <style>
+    :root {
+      --primary-color: #007bff;
+      --bg-color: #f8f9fa;
+      --text-color: #212529;
+      --border-color: #ced4da;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+    }
+
+    .container {
+      text-align: center;
+      max-width: 600px;
+      padding: 2rem;
+    }
+
+    h1 {
+      margin-bottom: 2rem;
+    }
+
+    /* The magic starts here */
+    select,
+    select::picker(select) {
+      appearance: base-select;
+    }
+
+    select {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background: white;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 200px;
+    }
+
+    /* Styling the picker (the dropdown) */
+    select::picker(select) {
+      /* Default hidden state is handled by base-select, 
+         but we ensure it's grid only when open */
+      display: none;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      padding: 15px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      background: white;
+      margin-top: 5px;
+    }
+
+    select:open::picker(select) {
+      display: grid;
+    }
+
+    /* Styling each option */
+    option {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 15px;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      transition: background-color 0.2s;
+    }
+
+    option:hover,
+    option:checked {
+      background-color: #e9ecef;
+      outline: none;
+    }
+
+    option:checked {
+      border-color: var(--primary-color);
+      background-color: #f0f7ff;
+    }
+
+    .icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .label {
+      font-weight: 500;
+    }
+
+    /* The trigger button content */
+    selectedcontent {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    selectedcontent .icon {
+      font-size: 1.2rem;
+      margin: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Custom Grid Picker</h1>
+    <p>This demo uses <code>appearance: base-select</code> to style the <code>&lt;select&gt;</code> element's dropdown
+      as a grid.</p>
+      
+    <label for="weather-picker">Select weather</label>
+    <select name="weather" id="weather-picker">
+      <button>
+        <selectedcontent></selectedcontent>
+      </button>
+      <option value="sunny">
+        <span class="icon" aria-hidden="true">☀️</span>
+        <span class="label">Sunny</span>
+      </option>
+      <option value="cloudy">
+        <span class="icon" aria-hidden="true">☁️</span>
+        <span class="label">Cloudy</span>
+      </option>
+      <option value="rainy">
+        <span class="icon" aria-hidden="true">🌧️</span>
+        <span class="label">Rainy</span>
+      </option>
+      <option value="stormy">
+        <span class="icon" aria-hidden="true">⛈️</span>
+        <span class="label">Stormy</span>
+      </option>
+      <option value="snowy">
+        <span class="icon" aria-hidden="true">❄️</span>
+        <span class="label">Snowy</span>
+      </option>
+      <option value="windy">
+        <span class="icon" aria-hidden="true">🌬️</span>
+        <span class="label">Windy</span>
+      </option>
+    </select>
+  </div>
+</body>
+
+</html>

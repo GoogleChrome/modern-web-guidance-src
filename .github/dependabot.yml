@@ -19,6 +19,9 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+    allow:
+      - dependency-name: "web-features"
+      - dependency-name: "*"
     cooldown:
       default-days: 14
     groups:

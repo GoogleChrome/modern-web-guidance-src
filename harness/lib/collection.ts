@@ -2,24 +2,12 @@ import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
-import matter from 'gray-matter';
-import { config, Serving, Agents } from '../config.ts';
-import { guidesDir, tasksDir } from '../../lib/paths.ts';
-
+import { Serving, Agents, type SuiteConfig } from '../config.ts';
+import { guidesDir } from '../../lib/paths.ts';
+import { getTaskMap } from '../../lib/guide-validation.ts';
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
-
-export function getGuideCategory(guideName: string): string | null {
-  const categories = fs.readdirSync(guidesDir).filter(f => fs.statSync(path.join(guidesDir, f)).isDirectory());
-  
-  for (const cat of categories) {
-    if (fs.existsSync(path.join(guidesDir, cat, guideName))) {
-      return cat;
-    }
-  }
-  return null;
-}
 
 export function extractModelFromResults(resultsDir: string, agent: string): string {
   if (agent === Agents.GEMINI_CLI) {
@@ -33,7 +21,9 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   return 'unknown';
 }
 
-export async function collectResults(resultsDir: string) {
+export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
+  const taskMap = getTaskMap();
+
   const runDirs = fs.readdirSync(resultsDir)
     .filter(name => {
       const fullPath = path.join(resultsDir, name);
@@ -51,27 +41,20 @@ export async function collectResults(resultsDir: string) {
 
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
-    const directories = glob.sync('*/*/', { cwd: runPath, absolute: true });
+    const directories = glob.sync('*/*/*/', { cwd: runPath, absolute: true });
 
     for (const dir of directories) {
       const relPath = path.relative(runPath, dir);
       const parts = relPath.split(path.sep);
-      if (parts.length < 2) continue;
-
-      const [taskName, runType] = parts;
+      if (parts.length < 3) continue;
+      const [guide, taskName, runType] = parts;
+      if (runType === 'base_app') continue; // Skip the base app setup folder
       const targetFile = path.join(dir, 'index.html');
-      const isNegative = config.suite.negative === true;
-      const taskPath = path.join(tasksDir, isNegative ? 'negative' : '', `${taskName}.md`);
 
-      if (!fs.existsSync(taskPath)) continue;
+      const taskInfo = taskMap.get(`${guide}/${taskName}`);
+      if (!taskInfo) continue;
 
-      const fileContent = fs.readFileSync(taskPath, 'utf8');
-      const { data } = matter(fileContent);
-      if (!data || !data.grader) continue;
-
-      const guide = data.grader.trim();
-      const graderMatches = glob.sync(`**/${guide}/grader.ts`, { cwd: guidesDir, absolute: true });
-      const graderPath = graderMatches.length > 0 ? graderMatches[0] : path.join(guidesDir, guide, `grader.ts`);
+      const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
       const graderResults = path.join(dir, `${guide}_results.json`);
 
       // If grader is missing, target file is missing, or results already exist, skip generating a runner.
@@ -102,12 +85,11 @@ async function run() {
 }
 
 run();
-      `.trim();
-
-      const relativeId = path.relative(resultsDir, dir);
+`.trim();
+      const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
       fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
       fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
-        name: `${taskName.substring(0, 30)}-${runType}-grader`,
+        name: `${guide.substring(0, 30)}-${runType}-grader`,
         type: "module",
         scripts: {
           // The --id flag is not used by grade.mjs, it is purely added here 
@@ -116,7 +98,6 @@ run();
         }
       }, null, 2));
 
-      // path.relative(resultsDir, dir) gives e.g. "1/taskName/guided"
       pnpmWorkspacePackages.push(relativeId);
     }
   }
@@ -142,8 +123,8 @@ run();
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
 
-    // Structure: results/{suiteName}/{runNumber}/{taskName}/{runType}
-    const directories = glob.sync('*/*/', {
+    // Structure: results/{suiteName}/{runNumber}/{guideName}/{taskName}/{runType}
+    const directories = glob.sync('*/*/*/', {
       cwd: runPath,
       absolute: true
     });
@@ -151,43 +132,31 @@ run();
     for (const dir of directories) {
       const relPath = path.relative(runPath, dir);
       const parts = relPath.split(path.sep);
+      if (parts.length < 3) continue;
 
-      if (parts.length < 2) continue;
-
-      const [taskName, runType] = parts;
-
+      const [guide, taskName, runType] = parts;
+      if (runType === 'base_app') continue; // Skip the base app setup folder
       let guidesUsedResult: string[] = [];
       let guidanceToolsUsedResult: string[] = [];
 
       if (runType === 'guided') {
-        const serving = config.suite.serving;
-        guidesUsedResult = await collectGuidesUsed(dir, serving, config.suite.agent);
-        guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir, serving, config.suite.agent);
+        const serving = suiteConfig.serving;
+        guidesUsedResult = await collectGuidesUsed(dir, serving, suiteConfig.agent);
+        guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir, serving, suiteConfig.agent);
       }
 
       const targetFile = path.join(dir, 'index.html');
-      const isNegative = config.suite.negative === true;
-      const taskPath = path.join(tasksDir, isNegative ? 'negative' : '', `${taskName}.md`);
-
-      if (!fs.existsSync(taskPath)) {
-        console.warn(`Skipping grading: Task ${taskName} not found at ${taskPath}`);
+      const taskInfo = taskMap.get(`${guide}/${taskName}`);
+      if (!taskInfo) {
+        console.warn(`Skipping grading: Task ${guide} not found in task map`);
         continue;
       }
 
-      const fileContent = fs.readFileSync(taskPath, 'utf8');
-      const { data } = matter(fileContent);
-
-      if (!data || !data.grader) {
-        continue;
-      }
-
-      const guide = data.grader.trim();
-      const taskCategory = getGuideCategory(guide);
-
+      const taskCategory = path.basename(path.dirname(taskInfo.guideDir));
       let expectedGuidanceTool: string | undefined;
-      const serving = config.suite.serving;
-      if (serving === Serving.MCP || config.suite.agent === Agents.JETSKI) {
-        // JETSKI impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in SKILLS runs)
+      const serving = suiteConfig.serving;
+
+      if (serving === Serving.MCP || suiteConfig.agent === Agents.JETSKI) {
         expectedGuidanceTool = 'modern-web';
       } else if (serving === Serving.SKILLS_CLI) {
         expectedGuidanceTool = 'modern-web-use-cases';
@@ -195,13 +164,7 @@ run();
         expectedGuidanceTool = taskCategory || undefined;
       }
 
-      const actualBaseApp = data.base_app ? data.base_app.trim() : taskName;
-      const testName = `${taskName} - ${guide} - ${runType}`;
-      const graderMatches = glob.sync(`**/${guide}/grader.ts`, {
-        cwd: guidesDir,
-        absolute: true
-      });
-      const graderPath = graderMatches.length > 0 ? graderMatches[0] : path.join(guidesDir, guide, `grader.ts`);
+      const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
 
       let scenarioResults: any[] = [];
       const graderResults = path.join(dir, `${guide}_results.json`);
@@ -247,6 +210,9 @@ run();
         }
       }
 
+      const testName = `${taskName} - ${guide} - ${runType}`;
+      const actualBaseApp = taskInfo.baseApp;
+
       if (!allResults[testName]) {
         allResults[testName] = [];
       }
@@ -256,9 +222,10 @@ run();
         guidesUsed: guidesUsedResult,
         guidanceToolsUsed: guidanceToolsUsedResult,
         expectedGuidanceTool: expectedGuidanceTool,
-        expectedGuide: guide,
+        guideName: guide,
+        taskName: taskName,
         baseApp: actualBaseApp,
-        taskName: taskName
+        prompt: taskInfo.prompt
       });
     }
   }

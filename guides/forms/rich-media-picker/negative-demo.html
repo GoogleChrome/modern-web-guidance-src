@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --text-color: #f1f5f9;
+    }
+
+    body {
+      font-family: sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      padding: 20px;
+    }
+
+    select.custom-select {
+      appearance: none;
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background-color: #1e293b;
+      border: 1px solid #334155;
+      color: #f1f5f9;
+    }
+
+    select.custom-select::picker(select) {
+      width: 100%;
+      position: absolute;
+      left: 0;
+      top: 50px;
+    }
+
+    .custom-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #0f172a;
+      z-index: 10000;
+      display: none;
+      width: 300px;
+    }
+
+    .custom-popup.open {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <select id="tech-stack" class="custom-select">
+    <button>
+      <selectedoption></selectedoption>
+    </button>
+    <option value="frontend">Frontend Developer</option>
+    <option value="backend">Backend Developer</option>
+    <option value="design">UX/UI Designer</option>
+    <option value="devops">DevOps Engineer</option>
+  </select>
+
+  <div id="js-dropdown" class="custom-popup">
+    <div tabindex="0">Frontend Developer</div>
+    <div tabindex="0">Backend Developer</div>
+    <div tabindex="0">UX/UI Designer</div>
+    <div tabindex="0">DevOps Engineer</div>
+  </div>
+
+  <script>
+    const selectEl = document.getElementById('tech-stack');
+    const popup = document.getElementById('js-dropdown');
+
+    selectEl.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      popup.classList.toggle('open');
+      popup.children[0].focus();
+    });
+
+    popup.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (document.activeElement.nextElementSibling) {
+          document.activeElement.nextElementSibling.focus();
+        }
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (document.activeElement.previousElementSibling) {
+          document.activeElement.previousElementSibling.focus();
+        }
+      }
+      if (e.key === 'Enter') {
+        selectEl.value = 'selected';
+        popup.classList.remove('open');
+      }
+    });
+  </script>
+</body>
+</html>

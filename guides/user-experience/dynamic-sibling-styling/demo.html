@@ -1,53 +1,194 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dynamic Sibling Styling Demo</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        padding: 20px;
+        background: #f5f5f7;
+      }
 
-<head>
-  <meta charset="UTF-8">
-  <title>Dynamic Sibling Styling Demo</title>
-  <style>
-    .circle-layout {
-      position: relative;
-      width: 300px;
-      height: 300px;
-    }
+      section {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      }
 
-    .circle-layout > .item {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      border-radius: 50%;
+      .dynamic-list {
+        display: flex;
+        gap: 10px;
+        padding: 20px;
+        list-style: none;
+        justify-content: center;
+        align-items: center;
+        min-height: 120px;
+      }
 
-      /* Size: shrinks with each sibling index */
-      --size: calc(20px + (sibling-count() - sibling-index()) * 5px);
-      width: var(--size);
-      height: var(--size);
-      margin-top: calc(-0.5 * var(--size));
-      margin-left: calc(-0.5 * var(--size));
+      /* 1. Spectrum Effect */
+      .spectrum-card {
+        height: 80px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
 
-      /* Color: starts red, distributed around the hue wheel */
-      background: hsl(calc((sibling-index() - 1) * (360 / sibling-count())), 70%, 50%);
+        --index: var(--sibling-index);
+        --count: var(--sibling-count);
 
-      /* Position: arranged in a circle */
-      --angle: calc(360deg / sibling-count() * (sibling-index() - 1));
-      --radius: 120px;
-      transform: rotate(var(--angle)) translateY(calc(-1 * var(--radius)));
-    }
-  </style>
-</head>
+        width: calc(100% / var(--count));
+        background-color: hsl(
+          calc(360deg / var(--count) * var(--index)),
+          70%,
+          50%
+        );
+      }
 
-<body>
-  <h1>Dynamic Sibling Styling</h1>
-  <p>Each item's position, color, and size are all dynamically computed from
-    <code>sibling-count()</code> and <code>sibling-index()</code>.</p>
+      @supports (top: calc(sibling-index() * 1px)) {
+        .spectrum-card {
+          --index: sibling-index();
+          --count: sibling-count();
+        }
+      }
 
-  <div class="circle-layout">
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-    <div class="item"></div>
-  </div>
-</body>
+      /* 2. Fan Effect */
+      .fan-container {
+        display: flex;
+        justify-content: center;
+        padding: 40px;
+        min-height: 150px;
+      }
 
+      .fan-card {
+        width: 60px;
+        height: 90px;
+        background: #007aff;
+        border-radius: 6px;
+        margin-left: -20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+
+        --index: var(--sibling-index);
+        --count: var(--sibling-count);
+
+        --center: calc((var(--count) + 1) / 2);
+        transform: rotate(calc(10deg * (var(--index) - var(--center))));
+        transform-origin: bottom center;
+      }
+
+      @supports (top: calc(sibling-index() * 1px)) {
+        .fan-card {
+          --index: sibling-index();
+          --count: sibling-count();
+        }
+      }
+
+      /* 3. Circular Positioning */
+      .circle-container {
+        position: relative;
+        width: 300px;
+        height: 300px;
+        margin: 0 auto;
+        display: grid;
+        place-items: center;
+        border: 2px dashed #ccc;
+        border-radius: 50%;
+      }
+
+      .circle-orb {
+        width: 40px;
+        height: 40px;
+        background: #ff9500;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        position: absolute;
+        place-self: center;
+
+        --index: var(--sibling-index);
+        --count: var(--sibling-count);
+
+        --angle: calc(360deg / var(--count) * var(--index));
+        --radius: 120px;
+
+        transform: translate(
+          calc(cos(var(--angle)) * var(--radius)),
+          calc(sin(var(--angle)) * var(--radius))
+        );
+      }
+
+      @supports (top: calc(sibling-index() * 1px)) {
+        .circle-orb {
+          --index: sibling-index();
+          --count: sibling-count();
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Dynamic Sibling Styling Demo</h1>
+
+    <section>
+      <h2>1. Spectrum Effect</h2>
+      <ul class="dynamic-list">
+        <li class="spectrum-card">1</li>
+        <li class="spectrum-card">2</li>
+        <li class="spectrum-card">3</li>
+        <li class="spectrum-card">4</li>
+        <li class="spectrum-card">5</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>2. Fan Effect</h2>
+      <div class="fan-container">
+        <div class="fan-card">1</div>
+        <div class="fan-card">2</div>
+        <div class="fan-card">3</div>
+        <div class="fan-card">4</div>
+        <div class="fan-card">5</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Circular Positioning</h2>
+      <div class="circle-container">
+        <div class="circle-orb">1</div>
+        <div class="circle-orb">2</div>
+        <div class="circle-orb">3</div>
+        <div class="circle-orb">4</div>
+        <div class="circle-orb">5</div>
+        <div class="circle-orb">6</div>
+      </div>
+    </section>
+
+    <script type="module">
+      if (!CSS.supports("top: calc(sibling-index() * 1px)")) {
+        const applyFallback = (selector) => {
+          const items = document.querySelectorAll(selector);
+          const count = items.length;
+          items.forEach((item, index) => {
+            item.style.setProperty("--sibling-index", index + 1);
+            item.style.setProperty("--sibling-count", count);
+          });
+        };
+
+        applyFallback(".spectrum-card");
+        applyFallback(".fan-card");
+        applyFallback(".circle-orb");
+      }
+    </script>
+  </body>
 </html>

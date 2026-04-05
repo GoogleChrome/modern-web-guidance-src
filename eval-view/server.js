@@ -1,7 +1,8 @@
 import * as http from "http";
 import fs from 'fs';
 import path from 'path';
-import { exec } from 'child_process';
+import os from 'os';
+import { exec, spawn } from 'child_process';
 
 const PORT = process.env.PORT || 8081;
 
@@ -99,6 +100,81 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // --- /api/grouped-tasks : lists tasks grouped per guide ---
+  if (decodedPath === '/api/grouped-tasks') {
+    try {
+      const { getTaskMap } = await import('../lib/guide-validation.ts');
+      const { USE_CASES } = await import('../serving/lib/practices.ts');
+      const taskMap = getTaskMap();
+      const grouped = {}; // categoryName -> guideName -> [tasks]
+      
+      for (const [key, _] of taskMap.entries()) {
+        const [guide, task] = key.split('/');
+        const useCase = USE_CASES.find(u => u.id === guide);
+        const category = useCase ? useCase.category : 'Uncategorized';
+        if (!grouped[category]) grouped[category] = {};
+        if (!grouped[category][guide]) grouped[category][guide] = [];
+        grouped[category][guide].push(task);
+      }
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ guides: grouped }));
+    } catch (e) {
+      console.error('Error fetching grouped tasks:', e);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
+  // --- /api/eval-launch : spawns an evaluation run in background ---
+  if (decodedPath === '/api/eval-launch' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const options = JSON.parse(body);
+        const testId = options.name || `full-${new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-')}`;
+        
+        // Return 200 immediately so UI can track the testId
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, testId }));
+
+        const tempConfigPath = path.join(os.tmpdir(), `.ui_eval_config_${testId}.ts`);
+        fs.writeFileSync(tempConfigPath, `export default ${body};`);
+
+        console.log(`\n>>> Launching UI Eval Suite for ${testId} in background...`);
+
+        const p = spawn('pnpm', [
+          'gd',
+          'eval',
+          '--config',
+          tempConfigPath,
+          '--no-ui',
+          ...options.tasks
+        ], {
+          stdio: 'inherit',
+          cwd: path.resolve('..'), // Run from root to resolve paths correctly
+          detached: false
+        });
+
+        p.on('close', () => {
+          try {
+            if (fs.existsSync(tempConfigPath)) fs.unlinkSync(tempConfigPath);
+            console.log(`🗑️ Cleaned up temporary UI config for ${testId}.`);
+          } catch (e) {
+            console.error(`Failed to delete temporary config for ${testId}:`, e);
+          }
+        });
+
+        p.unref(); // Avoid holding parent open if terminating event context
+      } catch (e) {
+        console.error('Launch failure:', e);
+      }
+    });
+    return;
+  }
+
   if (decodedPath === '/api/run-files') {
     const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
     const relativePath = parsedUrl.searchParams.get('dir');
@@ -177,6 +253,8 @@ const server = http.createServer(async (req, res) => {
     filePath = path.join('../harness/base_apps', decodedPath.substring(11));
   } else if (decodedPath.startsWith('/tasks/')) {
     filePath = path.join('../harness/tasks', decodedPath.substring(7));
+  } else if (decodedPath.startsWith('/guides/')) {
+    filePath = path.join('../guides', decodedPath.substring(8));
   } else {
     const relativePath = decodedPath.startsWith('/') ? decodedPath.substring(1) : decodedPath;
     let localEvalViewPath = path.join('.', relativePath);
@@ -230,12 +308,14 @@ const server = http.createServer(async (req, res) => {
   const absolutePath = path.resolve(filePath);
   const evalViewRoot = path.resolve('.');
   const harnessRoot = path.resolve('../harness');
+  const guidesRoot = path.resolve('../guides');
 
   // Use path.sep to ensure we match whole directory names
   const isInsideEvalView = absolutePath === evalViewRoot || absolutePath.startsWith(evalViewRoot + path.sep);
   const isInsideHarness = absolutePath === harnessRoot || absolutePath.startsWith(harnessRoot + path.sep);
+  const isInsideGuides = absolutePath === guidesRoot || absolutePath.startsWith(guidesRoot + path.sep);
 
-  if (!isInsideEvalView && !isInsideHarness) {
+  if (!isInsideEvalView && !isInsideHarness && !isInsideGuides) {
     console.log(`403 Forbidden: Access outside allowed directories - ${req.method} ${reqUrl} -> ${absolutePath}`);
     res.writeHead(403);
     res.end('403 Forbidden: Access outside allowed directories is not allowed');
@@ -295,7 +375,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  const url = `http://localhost:${PORT}/`;
+  const isLaunchUi = process.env.LAUNCH_UI === 'true';
+  const url = isLaunchUi ? `http://localhost:${PORT}/eval-ui.html` : `http://localhost:${PORT}/`;
   console.log(`Server running at ${url}`);
 
   // Try to open the browser if not disabled
