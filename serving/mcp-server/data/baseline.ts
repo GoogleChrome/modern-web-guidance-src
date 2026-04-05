@@ -107,17 +107,34 @@ export function getBaselineStatus(featureId: string): BaselineStatus | undefined
  * @param featureId - The ID of the feature to check
  * @returns true if the feature meets the target criteria
  */
-export function checkBaseline(target: string, featureId: string): boolean {
+export function isValidTarget(target: string): boolean {
   const normalizedTarget = target.toLowerCase();
+  return (
+    normalizedTarget.includes('limited') ||
+    /^baseline \d{4}$/i.test(target) ||
+    /^baseline widely available on \d{4}-\d{2}-\d{2}$/i.test(target) ||
+    normalizedTarget.includes('widely') ||
+    normalizedTarget.includes('newly') ||
+    normalizedTarget === 'baseline' ||
+    normalizedTarget === 'baseline newly available'
+  );
+}
+
+export function checkBaseline(target: string, featureId: string): boolean {
+  if (!isValidTarget(target)) {
+    throw new Error(`Invalid target '${target}'.`);
+  }
+  
+  const normalizedTarget = target.toLowerCase();
+
+  const baselineStatus = getFeatureStatus(featureId);
+  if (!baselineStatus) {
+    throw new Error(`Feature '${featureId}' not found.`);
+  }
 
   // 1. Handle "Limited" - matches everything
   if (normalizedTarget.includes('limited')) {
     return true;
-  }
-
-  const baselineStatus = getFeatureStatus(featureId);
-  if (!baselineStatus) {
-    return false;
   }
 
   // 2. Handle specific historical checks first (Yearly or specific "Widely available on" dates)
@@ -150,7 +167,7 @@ export function checkBaseline(target: string, featureId: string): boolean {
     return baselineStatus.baseline === 'low' || baselineStatus.baseline === 'high';
   }
 
-  return false;
+  throw new Error(`Invalid target '${target}'.`);
 }
 
 /**
@@ -254,7 +271,7 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
   const baselineStatus = getFeatureStatus(featureId);
   if (!baselineStatus) return;
 
-  const subject = feature.kind === 'feature' ? feature.name : featureId;
+  const subject = feature.kind === 'feature' ? `${feature.name} (${featureId})` : featureId;
 
   if (baselineStatus.baseline === false) {
     return formatStatusMessage(subject, { baseline: false });
