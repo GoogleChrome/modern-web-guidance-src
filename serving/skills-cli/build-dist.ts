@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { createRequire } from "module";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import matter from "gray-matter";
@@ -54,6 +55,20 @@ async function main() {
 
 
   console.log("Copying data files...");
+  
+  // Copy web-features/data.json
+  const require = createRequire(import.meta.url);
+  const webFeaturesPath = require.resolve('web-features');
+  const dataJsonPath = path.join(path.dirname(webFeaturesPath), 'data.json');
+  const destDataJsonPath = path.join(DIST_DIR, 'data.json');
+  
+  if (fs.existsSync(dataJsonPath)) {
+    fs.copyFileSync(dataJsonPath, destDataJsonPath);
+    console.log(`Copied ${dataJsonPath} to ${destDataJsonPath}`);
+  } else {
+    console.warn(`Warning: ${dataJsonPath} does not exist.`);
+  }
+
   // 3. Copy vector_store
   const mcpDataDir = path.join(SERVING_DIR, "vector_store");
   const destMcpDataDir = path.join(DIST_DIR, "vector_store");
