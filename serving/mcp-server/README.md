@@ -21,7 +21,7 @@ pnpm install
 
 ### 2. Build & Initialize Database
 
-This project uses a local **LanceDB** vector database to power its semantic search capabilities. The database is built from the source markdown guides located in `mcp-server/guides/`. The `build` script generates the vector embeddings and populates `.modern-web-data/`.
+This project uses a local **LanceDB** vector database to power its semantic search capabilities. The database is built from the source markdown guides located in `mcp-server/guides/`. The `build` script generates the vector embeddings and populates `vector_store/`.
 
 You can run `pnpm build` explicitly or it'll happen when you do `pnpm dev` (below).
 
@@ -103,6 +103,6 @@ node scripts/demo-search.ts "showing a tooltip when hovering over a button"
 
 - **`mcp-server/guides/` (flattened to `mcp-server/guides/`)**: Source markdown files containing web development patterns.
 - **`scripts/build-guides.ts`**: The build script that parses guides, generates embeddings, and updates the LanceDB instance.
-- **`.modern-web-data/`**: The local directory where the LanceDB vector store is persisted (gitignored but published to npm).
+- **`vector_store/`**: The local directory where the LanceDB vector store is persisted (gitignored but published to npm).
 - **`build/`**: The directory where the compiled code is stored (gitignored but published to npm).
 - **`AGENTS.md`**: Operational instruction file for AI agents.

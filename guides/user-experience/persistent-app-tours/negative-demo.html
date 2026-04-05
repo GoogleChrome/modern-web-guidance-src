@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <style>
+    #feature { 
+      margin: 100px; 
+      padding: 20px; 
+      background: #eee; 
+      display: inline-block; 
+    }
+
+    #tour-step {
+      position: absolute;
+      top: 120px;
+      left: 200px;
+      margin: 1rem;
+      padding: 1rem;
+      border: 1px solid blue;
+      border-radius: 0.5rem;
+      background: aliceblue;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+  <div id="feature">New Feature</div>
+  <div id="tour-step">
+    <h3>Step 1</h3>
+    <p>Interact with this feature!</p>
+    <button id="close-btn">Got it</button>
+  </div>
+  <script>
+    document.addEventListener('click', (e) => {
+      const tour = document.getElementById('tour-step');
+      if (e.target.id === 'close-btn' || !tour.contains(e.target)) {
+        tour.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "node --test */*.test.ts",
+    "test": "node --test --test-reporter ${TEST_REPORTER:-dot} */*.test.ts",
     "report": "node evaluate.ts",
     "suite": "node run_suite.ts",
     "qsmoke": "node quick-smoke.ts",
@@ -14,13 +14,13 @@
   },
   "packageManager": "pnpm@10.28.1",
   "dependencies": {
-    "@anthropic-ai/claude-code": "^2.1.75",
+    "@anthropic-ai/claude-code": "^2.1.76",
     "@anthropic-ai/vertex-sdk": "^0.14.4",
     "@google-cloud/storage": "^7.19.0",
     "@google/gemini-cli": "^0.33.1",
+    "@openai/codex": "0.114.0",
     "cheerio": "^1.2.0",
     "colors": "^1.4.0",
-    "dotenv": "^17.3.1",
     "glob": "^13.0.6",
     "gray-matter": "^4.0.3",
     "puppeteer-core": "^24.39.1"
