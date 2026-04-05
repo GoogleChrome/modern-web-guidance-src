@@ -17,7 +17,7 @@ async function main() {
   // 2. Search
   console.log("Querying LanceDB...");
   const startSearch = performance.now();
-  const store = new Store();
+  const store = new Store("use_cases");
   const results = await store.search(vector, 3);
   const endSearch = performance.now();
   console.log(`  ↳ Took ${(endSearch - startSearch).toFixed(2)}ms`);

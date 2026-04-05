@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-strip-types
 
 import { parseArgs } from "util";
-import { searchUseCases } from "../lib/search.ts";
+import { searchUseCases, searchBaseline } from "../lib/search.ts";
 import { retrieveUseCase } from "../lib/retrieve.ts";
 import { getFeatureStatus, checkBaseline } from "../mcp-server/data/baseline.ts";
 
@@ -15,6 +15,8 @@ const { values } = parseArgs({
     feature: { type: "string" },
     'baseline-lookup': { type: "boolean" },
     'baseline-satisfies': { type: "boolean" },
+    'baseline-search': { type: "string" },
+    limit: { type: "string", short: "l" },
   },
   allowPositionals: false,
 });
@@ -28,6 +30,8 @@ Options:
   -r, --retrieve <ids>          Retrieve use case(s) by ID(s), comma-separated
   --baseline-lookup             Look up Baseline status (requires --feature)
   --baseline-satisfies          Check if feature meets target (requires --feature and --target)
+  --baseline-search <query>     Search web features by description
+  -l, --limit <number>          Limit the number of results (default: 5)
   -h, --help                    Show this help
 `);
 }
@@ -37,6 +41,8 @@ async function main() {
     printUsage();
     process.exit(0);
   }
+
+  const limit = values.limit ? parseInt(values.limit, 10) : undefined;
 
   if (values['baseline-lookup']) {
     const featureId = values.feature;
@@ -73,10 +79,18 @@ async function main() {
 
   if (values.search) {
     try {
-      const results = await searchUseCases(values.search);
+      const results = await searchUseCases(values.search, limit);
       console.log(JSON.stringify(results, null, 2));
     } catch (error) {
       console.error("Search failed:", error);
+      process.exit(1);
+    }
+  } else if (values['baseline-search']) {
+    try {
+      const results = await searchBaseline(values['baseline-search'], limit);
+      console.log(JSON.stringify(results, null, 2));
+    } catch (error) {
+      console.error("Baseline search failed:", error);
       process.exit(1);
     }
   } else if (values.retrieve) {

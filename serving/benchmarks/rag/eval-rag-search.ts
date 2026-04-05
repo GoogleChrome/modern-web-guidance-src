@@ -54,7 +54,7 @@ async function main() {
   
   await embedder.init();
 
-  const store = new Store();
+  const store = new Store("use_cases");
 
   let hitsTop1 = 0;
   let hitsTop3 = 0;

@@ -16,14 +16,27 @@ export interface UseCase {
   featuresUsed: string[];
   chunkContent?: string;
   vector?: number[];
-  distance?: number;
+  distance?: string;
 }
+
+export interface WebFeature {
+  id: string;
+  name: string;
+  description: string;
+  vector?: number[];
+  distance?: string;
+}
+
+
+export type StoreItem = UseCase | WebFeature;
 
 export class Store {
   private dbUrl: string;
+  private tableName: string;
 
-  constructor() {
+  constructor(tableName: string) {
     this.dbUrl = DATA_DIR;
+    this.tableName = tableName;
     // Ensure data directory exists
     if (!fs.existsSync(this.dbUrl)) {
       fs.mkdirSync(this.dbUrl, { recursive: true });
@@ -33,25 +46,25 @@ export class Store {
   private async getTable() {
     const db = await lancedb.connect(this.dbUrl);
     try {
-      return await db.openTable("use_cases");
+      return await db.openTable(this.tableName);
     } catch {
       return null;
     }
   }
 
-  public async upsert(data: UseCase[]) {
+  public async upsert(data: StoreItem[]) {
     const db = await lancedb.connect(this.dbUrl);
 
     // Check if table exists
     const tableNames = await db.tableNames();
-    if (tableNames.includes("use_cases")) {
-      await db.dropTable("use_cases");
+    if (tableNames.includes(this.tableName)) {
+      await db.dropTable(this.tableName);
     }
 
-    await db.createTable("use_cases", data as any);
+    await db.createTable(this.tableName, data as any);
   }
 
-  public async search(queryVector: number[], limit = 5, maxDistance = 1.5): Promise<UseCase[]> {
+  public async search(queryVector: number[], limit = 5, maxDistance = 1.5): Promise<StoreItem[]> {
     const table = await this.getTable();
     if (!table) {
       return [];
@@ -65,7 +78,7 @@ export class Store {
       .toArray();
 
     const seenIds = new Set<string>();
-    const uniqueResults: UseCase[] = [];
+    const uniqueResults: StoreItem[] = [];
 
     for (const r of results) {
       const dist = r._distance;
@@ -74,13 +87,12 @@ export class Store {
       if (seenIds.has(r.id)) continue;
 
       seenIds.add(r.id);
+
+      const { vector, _distance, ...rest } = r;
       uniqueResults.push({
-        id: r.id as string,
-        description: r.description as string,
-        category: r.category as string,
-        featuresUsed: Array.from(r.featuresUsed as Iterable<string>),
+        ...rest,
         distance: dist.toFixed(2),
-      });
+      } as StoreItem);
 
       if (uniqueResults.length >= limit) break;
     }

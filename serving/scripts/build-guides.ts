@@ -77,7 +77,7 @@ async function processGuides() {
   await embedder.init();
 
   console.log("Initializing Store...");
-  const store = new Store();
+  const store = new Store("use_cases");
 
 
 

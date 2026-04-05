@@ -22,7 +22,7 @@ export function registerModernWebTools(server: McpServer) {
       const { Store } = await import("../../lib/store.ts");
       const { Embedder } = await import("../lib/embedder.ts");
 
-      const store = new Store();
+      const store = new Store("use_cases");
       const embedder = Embedder.getInstance();
 
       const vector = await embedder.embed(query);

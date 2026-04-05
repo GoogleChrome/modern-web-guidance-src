@@ -81,11 +81,19 @@ modern-web --baseline-lookup --feature <feature-id>
 modern-web --baseline-satisfies --target <target> --feature <feature-id>
 ```
 
+If needed, perform a semantic search to find features by their descriptions:
+
+```sh
+modern-web --baseline-search "<query>" [--limit <number>]
+```
+
 ### Decision Matrix for Fallbacks
 
-Use this matrix to determine the action to take based on target satisfaction and fallback availability.
+Use this decision matrix to determine the action to take based on target satisfaction and fallback availability.
 
 To determine whether to automatically add Baseline TODOs, check `"enable_baseline_todos"` in `baseline.config.json`. If set to `false`, do not add `TODO(baseline/...)` comments. The default value is `true`.
+
+When adding `TODO(baseline/...)` comments, place them as close as possible to where the final implementation will live and/or where existing implementations will need to change.
 
 | Target Satisfied | Fallback Required | TODOs Enabled | Action | Rationale |
 | :---: | :---: | :---: | --- | --- |
