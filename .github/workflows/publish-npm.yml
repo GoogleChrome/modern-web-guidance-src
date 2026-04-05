@@ -15,7 +15,7 @@ jobs:
       contents: read  # Required for actions/checkout
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js (Node 22.14.0+ required for tokenless OIDC)
         uses: actions/setup-node@v4
