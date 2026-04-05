@@ -1,10 +1,8 @@
-import fs from "fs";
-import path from "path";
 import { features } from "web-features";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
 import { Store, type WebFeature } from "../lib/store.ts";
 
-const ROOT_DIR = path.resolve(import.meta.dirname, "..");
+
 
 async function buildBaseline() {
   console.log("Initializing Embedder...");
@@ -18,14 +16,14 @@ async function buildBaseline() {
 
   console.log("Processing web features...");
   const keys = Object.keys(features);
-  
+
   for (const id of keys) {
     const feature = features[id];
     if (feature.kind !== 'feature') continue;
 
     const name = feature.name;
     const description = feature.description || "";
-    
+
     const embeddingText = `${name} (${id})\n\n${description}`;
     const vector = await embedder.embed(embeddingText);
 

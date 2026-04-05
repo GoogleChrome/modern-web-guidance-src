@@ -88,7 +88,7 @@ export class Store {
 
       seenIds.add(r.id);
 
-      const { vector, _distance, ...rest } = r;
+      const { vector: _vector, _distance, ...rest } = r;
       uniqueResults.push({
         ...rest,
         distance: dist.toFixed(2),
