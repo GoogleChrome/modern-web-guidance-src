@@ -143,18 +143,17 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', async () => {
       try {
-        const options = JSON.parse(body);
-        const testId = options.name || `ui-${Math.random().toString(36).substring(2, 10)}`;
-        
-        // Return 200 immediately so UI can track the testId
+        // Return 200 immediately so UI can track the run
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, testId }));
+        res.end(JSON.stringify({ success: true }));
 
-        const tempConfigPath = path.join(os.tmpdir(), `.ui_eval_config_${testId}.ts`);
-        const configWithId = { ...options, name: testId };
+        const tempConfigPath = path.join(os.tmpdir(), `.ui_eval_config_${Math.random().toString(36).substring(2, 10)}.ts`);
+        const options = JSON.parse(body);
+        const configWithId = { ...options };
+
         fs.writeFileSync(tempConfigPath, `export default ${JSON.stringify(configWithId, null, 2)};`);
 
-        console.log(`\n>>> Launching UI Eval Suite for ${testId} in background...`);
+        console.log(`\n>>> Launching UI Eval Suite in background...`);
 
         const p = spawn('pnpm', [
           'gd',
@@ -172,9 +171,9 @@ const server = http.createServer(async (req, res) => {
         p.on('close', () => {
           try {
             if (fs.existsSync(tempConfigPath)) fs.unlinkSync(tempConfigPath);
-            console.log(`🗑️ Cleaned up temporary UI config for ${testId}.`);
+            console.log(`🗑️ Cleaned up temporary UI config for ${tempConfigPath}.`);
           } catch (e) {
-            console.error(`Failed to delete temporary config for ${testId}:`, e);
+            console.error(`Failed to delete temporary config for ${tempConfigPath}:`, e);
           }
         });
 

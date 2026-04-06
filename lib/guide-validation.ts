@@ -281,28 +281,28 @@ export function getTaskMap(): Map<string, TaskInfo> {
     }
   }
 
-  const categories = fs.readdirSync(guidesDir, { withFileTypes: true })
+  const disciplines = fs.readdirSync(guidesDir, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
     .map(d => d.name);
 
-  for (const category of categories) {
-    const categoryDir = path.join(guidesDir, category);
-    if (!fs.existsSync(categoryDir)) continue;
+  for (const discipline of disciplines) {
+    const disciplineDir = path.join(guidesDir, discipline);
+    if (!fs.existsSync(disciplineDir)) continue;
 
-    // Check if the category itself is a skill with tasks
-    const skillTasksDir = path.join(categoryDir, 'tasks');
-    if (fs.existsSync(skillTasksDir)) {
-      processTasks(category, skillTasksDir, categoryDir);
+    // Check if the discipline itself is a skill with tasks
+    const disciplineTasksDir = path.join(disciplineDir, 'tasks');
+    if (fs.existsSync(disciplineTasksDir)) {
+      processTasks(discipline, disciplineTasksDir, disciplineDir);
     }
 
     // Check subdirectories (guides)
-    for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
+    for (const entry of fs.readdirSync(disciplineDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       const guideName = entry.name;
-      const tasksDir = path.join(categoryDir, guideName, 'tasks');
+      const tasksDir = path.join(disciplineDir, guideName, 'tasks');
       if (!fs.existsSync(tasksDir)) continue;
 
-      processTasks(guideName, tasksDir, path.join(categoryDir, guideName));
+      processTasks(guideName, tasksDir, path.join(disciplineDir, guideName));
     }
   }
   return taskMap;

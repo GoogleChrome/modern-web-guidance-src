@@ -43,7 +43,7 @@ test.describe(`Performance Expectations: ${demoName}`, () => {
   test('Critical CSS is inlined in the <head>', async ({ page }) => {
     const hasInlineStyle = await page.evaluate(() => {
       const styles = Array.from(document.querySelectorAll('head style'));
-      return styles.length > 0 && styles.some(s => s.textContent && s.textContent.trim().length > 0 && !s.textContent.includes('@import'));
+      return styles.some(s => s.textContent && s.textContent.trim().length > 0 && !s.textContent.includes('@import'));
     });
     expect(hasInlineStyle).toBe(true);
   });
