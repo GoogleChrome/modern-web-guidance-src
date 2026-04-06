@@ -79,12 +79,12 @@ function main(): void {
   }
 
   const guidesDir = path.join(repoRoot, 'guides');
-  const distDir = path.join(repoRoot, 'dist', 'links-based-skill');
+  const distDir = path.join(repoRoot, 'dist', 'megaskill');
   const distRefsDir = path.join(distDir, 'references');
   const existingSkillPath = path.join(guidesDir, 'modern-web-dev.md');
 
   // Create fresh dist directory
-  safeRmSync(distDir, 'dist/links-based-skill');
+  safeRmSync(distDir, 'dist/megaskill');
   fs.mkdirSync(distRefsDir, {recursive: true});
 
   if (!fs.existsSync(existingSkillPath)) {
@@ -98,7 +98,7 @@ function main(): void {
   const finalContent = `${existingSkillContent.trim()}\n\n${taxonomyMarkdown}`;
 
   fs.writeFileSync(path.join(distDir, 'SKILL.md'), finalContent);
-  console.log(`Generated links-based skill successfully in ${distDir}`);
+  console.log(`Generated megaskill successfully in ${distDir}`);
 }
 
 main();
