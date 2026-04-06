@@ -79,12 +79,9 @@ async function main() {
     console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
 
     console.log(`\n[Dry Run] Summary:`);
-    console.log(` - Features: ${featuresCount}`);
     console.log(` - Use cases: ${useCasesCount}`);
+    console.log(` - Features: ${featuresCount}`);
     console.log(` - Skills: ${skillsCount} (${skillNames.join(', ')})`);
-
-    console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
-    console.log(`   FULL=1 pnpm run preflight`);
 
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
     console.log(`   FULL=1 pnpm run preflight`);
@@ -106,9 +103,9 @@ async function main() {
 
     console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/skills-alpha!`);
 
-    console.log(`\nv${newVersion} published.  https://github.com/GoogleChrome/skills-alpha  and GoB repo`);
-    console.log(`${featuresCount} features`);
+    console.log(`\nv${newVersion} published.  https://github.com/GoogleChrome/skills-alpha  and [GoB repo](https://user.git.corp.google.com/rviscomi/modern-web-guidance/)`);
     console.log(`${useCasesCount} usecases.`);
+    console.log(`${featuresCount} features`);
     console.log(`${skillsCount} skills (${skillNames.join(', ')})`);
 
     console.log('\nPerhaps also:\n    pushd ~/code/skills-alpha && git pull gh && git push gob && popd');
