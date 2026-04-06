@@ -378,12 +378,12 @@ function generateTransientPackage(
   // Generate runner script
   // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
   // we trick pnpm into thinking each test run is a package in a pnpm workspace.
-  // This way we get \`pnpm -r\`'s great parallel scheduler and log interleaving for free.
+  // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
   // This run.mjs wrapper executes the actual agent command via spawnSync.
-  const runnerContent = \`import { spawnSync } from 'child_process';
+  const runnerContent = `import { spawnSync } from 'child_process';
 const args = [
 '--experimental-strip-types',
-...\${JSON.stringify([
+...${JSON.stringify([
   agentScript,
   promptContent,
   runType,
@@ -391,19 +391,19 @@ const args = [
   workspaceBaseAppDir
 ])}
 ];
-const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: \${JSON.stringify(process.cwd())} });
+const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
 process.exit(result.status ?? 0);
-\`.trim();
+`.trim();
 
   fs.writeFileSync(path.join(targetDir, 'run.mjs'), runnerContent);
 
-  const scriptStr = \`node run.mjs -- [\${taskIndex}/\${totalTasks}] \${taskName} [\${runType}] [r\${runNumber}]\`;
+  const scriptStr = `node run.mjs -- [${taskIndex}/${totalTasks}] ${taskName} [${runType}] [r${runNumber}]`;
 
   // Generate transient package.json
   // This tells pnpm that this directory is a "package" that can be run
-  // via \\\`pnpm run-agent\\\`.
+  // via \`pnpm run-agent\`.
   fs.writeFileSync(path.join(targetDir, 'package.json'), JSON.stringify({
-    name: \`${taskName.substring(0, 30)}-\${runType}\`,
+    name: `${taskName.substring(0, 30)}-${runType}`,
     type: "module",
     scripts: { "run-agent": scriptStr }
   }, null, 2));
