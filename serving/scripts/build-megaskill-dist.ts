@@ -35,36 +35,44 @@ function buildTaxonomyMarkdown(guidesDir: string, distRefsDir: string): string {
 
     if (usecases.length === 0) continue;
 
-    taxonomyMarkdown += `### ${toTitleCase(category)}\n\n`;
-
+    const categoryGuides: string[] = [];
     const distCategoryDir = path.join(distRefsDir, category);
-    fs.mkdirSync(distCategoryDir, {recursive: true});
 
     for (const usecase of usecases) {
       const guidePath = path.join(categoryPath, usecase, 'guide.md');
       if (!fs.existsSync(guidePath)) continue;
 
       const guideContent = fs.readFileSync(guidePath, 'utf-8');
-      const { content: parsedContent } = matter(guideContent);
+      const { data, content: parsedContent } = matter(guideContent);
 
       const contentWithoutFrontmatter = parsedContent.trim();
       if (contentWithoutFrontmatter.length === 0) continue;
 
-      let title: string;
-      const titleMatch = guideContent.match(/^#\s+(.+)$/m);
-      if (titleMatch) {
-        title = titleMatch[1].trim();
-      } else {
-        title = toTitleCase(usecase);
+      // Use description for link text, fallback to title or usecase
+      let linkText = data.description;
+      if (!linkText) {
+        const titleMatch = guideContent.match(/^#\s+(.+)$/m);
+        if (titleMatch) {
+          linkText = titleMatch[1].trim();
+        } else {
+          linkText = toTitleCase(usecase);
+        }
       }
 
-      const destFilePath = path.posix.join(category, `${usecase}.md`);
-      fs.writeFileSync(path.join(distRefsDir, destFilePath), guideContent);
+      // Ensure directory exists
+      fs.mkdirSync(distCategoryDir, {recursive: true});
 
-      taxonomyMarkdown += `- [${title}](./references/${destFilePath})\n`;
+      const destFilePath = path.posix.join(category, `${usecase}.md`);
+      // Write content WITHOUT frontmatter
+      fs.writeFileSync(path.join(distRefsDir, destFilePath), parsedContent.trim());
+
+      categoryGuides.push(`- [${linkText}](./references/${destFilePath})`);
     }
 
-    taxonomyMarkdown += `\n`;
+    if (categoryGuides.length > 0) {
+      taxonomyMarkdown += `### ${toTitleCase(category)}\n\n`;
+      taxonomyMarkdown += categoryGuides.join('\n') + '\n\n';
+    }
   }
 
   return taxonomyMarkdown;
