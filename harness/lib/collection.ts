@@ -21,7 +21,7 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   return 'unknown';
 }
 
-export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
+export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig, skipGrading = false) {
   const taskMap = getTaskMap();
   const tasksToRun = suiteConfig.tasks.length > 0 
     ? suiteConfig.tasks 
@@ -39,36 +39,37 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
   }
 
   // --- PASS 1: Generate parallel grader scripts for missing results ---
-  const pnpmWorkspacePackages: string[] = [];
-  const { spawnSync } = await import('child_process');
+  if (!skipGrading) {
+    const pnpmWorkspacePackages: string[] = [];
+    const { spawnSync } = await import('child_process');
 
-  for (const runDir of runDirs) {
-    const runPath = path.join(resultsDir, runDir);
-    const directories = glob.sync('*/*/*/', { cwd: runPath, absolute: true });
+    for (const runDir of runDirs) {
+      const runPath = path.join(resultsDir, runDir);
+      const directories = glob.sync('*/*/*/', { cwd: runPath, absolute: true });
 
-    for (const dir of directories) {
-      const relPath = path.relative(runPath, dir);
-      const parts = relPath.split(path.sep);
-      if (parts.length < 3) continue;
-      const [guide, taskName, runType] = parts;
-      if (runType === 'base_app') continue; // Skip the base app setup folder
-      const targetFile = path.join(dir, 'index.html');
+      for (const dir of directories) {
+        const relPath = path.relative(runPath, dir);
+        const parts = relPath.split(path.sep);
+        if (parts.length < 3) continue;
+        const [guide, taskName, runType] = parts;
+        if (runType === 'base_app') continue; // Skip the base app setup folder
+        const targetFile = path.join(dir, 'index.html');
 
-      const taskInfo = taskMap.get(`${guide}/${taskName}`);
-      if (!taskInfo) continue;
+        const taskInfo = taskMap.get(`${guide}/${taskName}`);
+        if (!taskInfo) continue;
 
-      const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
-      const graderResults = path.join(dir, `${guide}_results.json`);
+        const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
+        const graderResults = path.join(dir, `${guide}_results.json`);
 
-      // If grader is missing, target file is missing, or results already exist, skip generating a runner.
-      if (!fs.existsSync(graderPath) || !fs.existsSync(targetFile) || fs.existsSync(graderResults)) {
-        continue;
-      }
+        // If grader is missing, target file is missing, or results already exist, skip generating a runner.
+        if (!fs.existsSync(graderPath) || !fs.existsSync(targetFile) || fs.existsSync(graderResults)) {
+          continue;
+        }
 
-      // Generate a runner script to be picked up by pnpm -r run-grader
-      // We import runPlaywright directly from the guides code to leverage existing test execution logic
-      const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
-      const gradeScript = `
+        // Generate a runner script to be picked up by pnpm -r run-grader
+        // We import runPlaywright directly from the guides code to leverage existing test execution logic
+        const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
+        const gradeScript = `
 import fs from 'fs';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
@@ -89,45 +90,46 @@ async function run() {
 
 run();
 `.trim();
-      const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
-      fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
+        const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
+        fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
 
-      const taskKey = `${guide}/${taskName}`;
-      let taskIndex = tasksToRun.indexOf(taskKey) + 1;
-      if (taskIndex === 0) {
-        // Fallback if not found in suite config
-        taskIndex = tasksToRun.indexOf(`${guide}/task`) + 1;
-      }
-      const totalTasks = tasksToRun.length;
-      const progressStr = taskIndex > 0 ? `[${taskIndex}/${totalTasks}] ` : '';
-
-      fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
-        name: `${guide.substring(0, 30)}-${runType}-grader`,
-        type: "module",
-        scripts: {
-          // The dummy arguments are not used by grade.mjs, they are purely added here 
-          // so that the pnpm log output clearly identifies which test is running.
-          "run-grader": `node grade.mjs -- ${progressStr}${taskName} [${runType}] [r${runDir}]`
+        const taskKey = `${guide}/${taskName}`;
+        let taskIndex = tasksToRun.indexOf(taskKey) + 1;
+        if (taskIndex === 0) {
+          // Fallback if not found in suite config
+          taskIndex = tasksToRun.indexOf(`${guide}/task`) + 1;
         }
-      }, null, 2));
+        const totalTasks = tasksToRun.length;
+        const progressStr = taskIndex > 0 ? `[${taskIndex}/${totalTasks}] ` : '';
 
-      pnpmWorkspacePackages.push(relativeId);
-    }
-  }
+        fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+          name: `${guide.substring(0, 30)}-${runType}-grader`,
+          type: "module",
+          scripts: {
+            // The dummy arguments are not used by grade.mjs, they are purely added here 
+            // so that the pnpm log output clearly identifies which test is running.
+            "run-grader": `node grade.mjs -- ${progressStr}${taskName} [${runType}] [r${runDir}]`
+          }
+        }, null, 2));
 
-  // --- PASS 1.5: Execute the accumulated grading runs in parallel ---
-  if (pnpmWorkspacePackages.length > 0) {
-    console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
-    const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
-    fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
-    try {
-      spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit' });
-    } finally {
-      if (fs.existsSync(pnpmWorkspacePath)) {
-        fs.unlinkSync(pnpmWorkspacePath);
+        pnpmWorkspacePackages.push(relativeId);
       }
     }
-    console.log(`✅ Completed parallel grading pass\n`);
+
+    // --- PASS 1.5: Execute the accumulated grading runs in parallel ---
+    if (pnpmWorkspacePackages.length > 0) {
+      console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
+      const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
+      fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
+      try {
+        spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit' });
+      } finally {
+        if (fs.existsSync(pnpmWorkspacePath)) {
+          fs.unlinkSync(pnpmWorkspacePath);
+        }
+      }
+      console.log(`✅ Completed parallel grading pass\n`);
+    }
   }
 
   // --- PASS 2: Collect all results and formulate the report ---
@@ -199,6 +201,7 @@ run();
             }
           } else {
             console.error(`Missing grader results JSON for ${guide} in ${dir}`);
+            scenarioResults.push({ passed: false, message: 'Grading pending or running...' });
           }
 
           if (json && json.suites && json.suites.length > 0) {
