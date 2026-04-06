@@ -109,6 +109,7 @@ const server = http.createServer(async (req, res) => {
       const taskMap = getTaskMap();
       /** @type {Record<string, Record<string, string[]>>} */
       const grouped = {}; // categoryName -> guideName -> [tasks]
+      /** @type {Record<string, string[]>} */
       const disciplines = {}; // disciplineName -> [tasks]
       
       for (const [key, info] of taskMap.entries()) {
