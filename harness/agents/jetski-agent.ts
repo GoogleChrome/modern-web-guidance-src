@@ -83,8 +83,8 @@ function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir: s
     const suiteConfig = getSuiteConfig();
     const approach = suiteConfig.serving;
 
-    if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
-      copySkills(tempHome, Agents.JETSKI, approach === Serving.SKILLS_CLI);
+    if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS || approach === Serving.MEGASKILL) {
+      copySkills(tempHome, Agents.JETSKI, approach);
     } else if (approach === Serving.MCP) {
       updateMcpConfig(
         path.join(jetskiDest, 'mcp_config.json'),

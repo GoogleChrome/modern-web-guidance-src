@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { createIsolatedHome, copySkills, cleanupIsolatedHome } from '../lib/agent-shared.ts';
-import { Agents } from '../config.ts';
+import { Agents, Serving } from '../config.ts';
 function assertSearchResults(output: string) {
     const results = JSON.parse(output);
     assert.ok(Array.isArray(results), 'Output should be a JSON array');
@@ -28,7 +28,7 @@ test('copySkills sets up the isolated environment with the skill and its data', 
         homeDir = createIsolatedHome('test-copy-skills');
         
         // 2. Run copySkills (cli = true). This might trigger a build if dist is missing
-        const success = copySkills(homeDir, Agents.JETSKI, true);
+        const success = copySkills(homeDir, Agents.JETSKI, Serving.SKILLS_CLI);
         assert.ok(success, 'copySkills should succeed');
 
         const skillDir = path.join(homeDir, '.gemini', 'jetski', 'skills', 'modern-web-use-cases');
