@@ -127,8 +127,8 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
 
       if (session.messages) {
         for (const msg of session.messages as MessageRecord[]) {
-          if (msg.toolCalls) {
-            for (const tc of msg.toolCalls as ToolCallRecord[]) {
+          if (msg.type === 'gemini' && msg.toolCalls) {
+            for (const tc of msg.toolCalls) {
               if ((serving === Serving.SKILLS || serving === Serving.MEGASKILL) && tc.name === 'read_file' && tc.args && (tc.args as any).file_path) {
                 const filePath = (tc.args as any).file_path;
                 if (filePath.includes('/skills/')) {
