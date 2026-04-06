@@ -77,4 +77,4 @@ observer.observe({type: 'long-animation-frame', buffered: true});
 
 {{ BASELINE_STATUS("long-animation-frames") }}.
 
-The Long Animation Frames API is not supported in all browsers, but other browsers do not have alternative APIs with similar functionality. Therefore, it should be used in supporting browsers without a fallback strategy. In most cases the performance opportunities it identifies will apply to other browsers as well.
+The Long Animation Frames API is ignored by browsers that do not support it, so it can be safely used without fallbacks. In most cases the performance opportunities it identifies will apply to other browsers as well.

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getGuide } from "../data/modern-practices.ts";
+import { getGuide } from "../../lib/practices.ts";
 import { logToolResult } from "../../lib/logger.ts";
 
 export function registerModernWebTools(server: McpServer) {
@@ -19,7 +19,7 @@ export function registerModernWebTools(server: McpServer) {
       },
     },
     async ({ query }) => {
-      const { Store } = await import("../lib/store.ts");
+      const { Store } = await import("../../lib/store.ts");
       const { Embedder } = await import("../lib/embedder.ts");
 
       const store = new Store();

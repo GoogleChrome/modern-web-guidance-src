@@ -19,6 +19,19 @@ test.describe('Eval View Dashboard', () => {
     const data = await response.json();
     expect(data).toHaveProperty('suites');
   });
+  
+  test('should show dumbbell chart tooltip on rate-cell hover', async ({ page }) => {
+    await page.goto('/');
+    
+    await page.waitForSelector('.rate-cell');
+    await page.locator('.rate-cell').first().hover();
+    
+    const tooltip = page.locator('.tooltip-container');
+    await expect(tooltip).toBeVisible();
+    
+    const svg = page.locator('#tooltip-chart svg');
+    await expect(svg).toBeVisible();
+  });
 
 
   test('should load specific test dashboard', async ({ page }) => {

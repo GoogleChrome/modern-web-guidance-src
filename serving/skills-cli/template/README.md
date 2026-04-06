@@ -25,14 +25,12 @@ gemini extensions install https://github.com/GoogleChrome/skills-alpha --auto-up
 
 ### 🌐 VSCode Extension
 
-Compatible with Antigravity, Cursor, etc.
 
-*Note: We'll publish to a markplace soon; In the meantime, install the slow way:*
+*Note: We'll publish to a markplace soon; In the meantime, install the slow way (which won't auto-update):*
 
 * Clone this repo
 * In VSCode, open the Command Palette (`Cmd+Shift+P` or `Ctrl+Shift+P`)
 * Select "Extensions: Install from Location..."
 * Navigate to the `skills-alpha` directory and select it.
 
-*Note: This is a local extension and will not be automatically updated.*
-
+Compatibility with VSCode forks: unknown.

@@ -1,0 +1,4 @@
+---
+base_app: empty-app
+---
+- Create an extremely minimal video landing page that optimizes for LCP. This includes a video poster image 'poster.jpg' (the LCP element), a custom web font 'brand-font.woff2' that is critical for the header rendering, and a secondary font 'secondary-font.woff2' for less critical UI elements. Write the page to index.html.
