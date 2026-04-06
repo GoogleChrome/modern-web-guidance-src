@@ -65,6 +65,8 @@ gcloud storage cp gs://guidance-evals/{suite_id}/evals.json .
         - **DO NOT** tell the agent how to solve the problem by naming specific web features.
         - **DO** give the agent validation constraints like IDs and class names.
         - **ONLY WHEN NEEDED** tell the agent that a critical part of the problem statement is mandatory, ideally not one that violates the first rule.
+-   **Overly Rigid Graders vs Valid Alternatives**: The grader fails a valid implementation because it assumes a specific DOM structure or property usage not strictly required.
+    -   *Solution*: Compare the agent's generated solution against the grader file. If the agent's solution is valid but fails the grader, update the grader to be more flexible (e.g., using descendant selectors instead of direct children, or checking for computed styles rather than exact string matches).
 -   **JS Fallback for CSS Tasks**: Agent uses JS listeners instead of CSS scroll-driven animations because it lacks guidance on modern browser support.
     -   *Solution*: Ensure MCP guidance tools are available and suggest the optimal tech stack.
 

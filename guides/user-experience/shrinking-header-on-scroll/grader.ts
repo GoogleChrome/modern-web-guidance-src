@@ -70,9 +70,10 @@ test.describe(`Shrinking Header Expectations: ${demoName}`, () => {
     expect(position).toBe('sticky'); // or fixed, but we just check it found at least one
   });
 
-  test(`MANDATORY: The implementation includes feature detection using @supports for scroll-driven animations.`, async () => {
+  test(`MANDATORY: The implementation includes feature detection using @supports or CSS.supports for scroll-driven animations.`, async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toContain('@supports');
+    const hasSupports = html.includes('@supports') || html.includes('CSS.supports');
+    expect(hasSupports).toBe(true);
   });
 
   test(`MANDATORY: The implementation respects user preferences for reduced motion or provides valid fallback.`, async () => {
