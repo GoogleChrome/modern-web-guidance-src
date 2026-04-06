@@ -151,6 +151,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         taskIndex++;
 
         const [guideName, taskName] = resolvedTask.split('/');
+        const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
         const workspaceBaseAppDir = setupWorkspaceBaseApp(taskInfo, runDir, guideName, taskName);
         if (!workspaceBaseAppDir) {
           continue;
@@ -173,6 +174,8 @@ export async function runSuite(options: RunSuiteOptions = {}) {
             runType, 
             workspaceBaseAppDir, 
             taskName,
+            guideName,
+            graderPath,
             taskIndex,
             totalTasks,
             runNumber
@@ -365,6 +368,8 @@ function generateTransientPackage(
   runType: string,
   workspaceBaseAppDir: string,
   taskName: string,
+  guideName: string,
+  graderPath: string,
   taskIndex: number,
   totalTasks: number,
   runNumber: number
@@ -373,10 +378,37 @@ function generateTransientPackage(
     fs.mkdirSync(targetDir, { recursive: true });
   }
 
+  const targetFile = path.join(targetDir, 'index.html');
+  const graderResults = path.join(targetDir, `${guideName}_results.json`);
+  
+  const gradeScript = `
+import fs from 'fs';
+import { runPlaywright } from ${JSON.stringify(path.join(process.cwd(), 'serving/guides/run-grader.ts'))};
+
+async function run() {
+  try {
+    const json = await runPlaywright(
+      ${JSON.stringify(targetFile)},
+      ${JSON.stringify(graderPath)},
+      ${JSON.stringify(path.join(targetDir, 'grade-report'))},
+      'inherit'
+    );
+    fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
+    console.log("✅ Graded successfully");
+  } catch (err) {
+    console.error("Playwright test execution failed:", err);
+  }
+}
+
+run();
+`.trim();
+
+  fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
+
   // Generate runner script
   // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
   // we trick pnpm into thinking each test run is a package in a pnpm workspace.
-  // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
+  // This way we get \`pnpm -r\`'s great parallel scheduler and log interleaving for free.
   // This run.mjs wrapper executes the actual agent command via spawnSync.
   const runnerContent = `import { spawnSync } from 'child_process';
 const args = [
@@ -390,6 +422,13 @@ const args = [
 ])}
 ];
 const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
+
+// Run grader immediately after agent finishes!
+if (result.status === 0) {
+  console.log("Agent finished successfully. Running grader...");
+  spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
+}
+
 process.exit(result.status ?? 0);
 `.trim();
 
