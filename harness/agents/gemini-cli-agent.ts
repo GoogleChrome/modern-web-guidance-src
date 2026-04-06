@@ -6,9 +6,6 @@ import { fileURLToPath } from 'url';
 import config, { Agents, Serving } from '../config.ts';
 import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
 
-import type { ConversationRecord as BaseConversationRecord, MessageRecord as BaseMessageRecord, ToolCallRecord as BaseToolCallRecord } from '@google/gemini-cli-core';
-import type { CoreToolCallStatus } from '@google/gemini-cli-core/dist/src/scheduler/types.js';
-
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
@@ -123,12 +120,12 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
     for (const file of sessionFiles) {
       const sessionPath = path.join(dirPath, file);
       const sessionContent = fs.readFileSync(sessionPath, 'utf8');
-      const session = JSON.parse(sessionContent) as BaseConversationRecord;
+      const session = JSON.parse(sessionContent);
 
       if (session.messages) {
-        for (const msg of session.messages as BaseMessageRecord[]) {
+        for (const msg of session.messages) {
           if (msg.toolCalls) {
-            for (const tc of msg.toolCalls as BaseToolCallRecord[]) {
+            for (const tc of msg.toolCalls) {
               if ((serving === Serving.SKILLS || serving === Serving.MEGASKILL) && tc.name === 'read_file' && tc.args && (tc.args as any).file_path) {
                 const filePath = (tc.args as any).file_path;
                 if (filePath.includes('/skills/')) {
