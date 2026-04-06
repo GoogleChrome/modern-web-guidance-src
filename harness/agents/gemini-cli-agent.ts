@@ -6,6 +6,9 @@ import { fileURLToPath } from 'url';
 import config, { Agents, Serving } from '../config.ts';
 import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
 
+import type { ConversationRecord as BaseConversationRecord, MessageRecord as BaseMessageRecord, ToolCallRecord as BaseToolCallRecord } from '@google/gemini-cli-core';
+import type { CoreToolCallStatus } from '@google/gemini-cli-core/dist/src/scheduler/types.js';
+
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
@@ -120,22 +123,29 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
     for (const file of sessionFiles) {
       const sessionPath = path.join(dirPath, file);
       const sessionContent = fs.readFileSync(sessionPath, 'utf8');
-      const session = JSON.parse(sessionContent);
+      const session = JSON.parse(sessionContent) as BaseConversationRecord;
 
       if (session.messages) {
-        for (const msg of session.messages) {
+        for (const msg of session.messages as BaseMessageRecord[]) {
           if (msg.toolCalls) {
-            for (const tc of msg.toolCalls) {
-              if (serving === Serving.SKILLS && tc.name === 'read_file' && tc.args && tc.args.file_path) {
-                const filePath = tc.args.file_path;
-                if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
-                  const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
-                  if (match) {
-                    guidesFromSkills.push(match[1]);
+            for (const tc of msg.toolCalls as BaseToolCallRecord[]) {
+              if ((serving === Serving.SKILLS || serving === Serving.MEGASKILL) && tc.name === 'read_file' && tc.args && (tc.args as any).file_path) {
+                const filePath = (tc.args as any).file_path;
+                if (filePath.includes('/skills/')) {
+                  if (filePath.endsWith('/guide.md')) {
+                    const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+                    if (match) {
+                      guidesFromSkills.push(match[1]);
+                    }
+                  } else if (filePath.endsWith('.md')) {
+                    const match = filePath.match(/\/skills\/[^/]+\/(?:references\/)?(?:[^/]+\/)*([^/]+)\.md$/);
+                    if (match) {
+                      guidesFromSkills.push(match[1]);
+                    }
                   }
                 }
-              } else if (serving === Serving.SKILLS_CLI && tc.name === 'run_shell_command' && tc.args && tc.args.command) {
-                const command = tc.args.command;
+              } else if (serving === Serving.SKILLS_CLI && tc.name === 'run_shell_command' && tc.args && (tc.args as any).command) {
+                const command = (tc.args as any).command;
                 if (command.includes('modern-web') && command.includes('--retrieve')) {
                   const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
                   if (match) {
