@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Performance Skill Demo</title>
+  
+  <!-- Critical CSS Inlined -->
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background: #f4f4f4;
+    }
+    .hero {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 { margin-top: 0; }
+  </style>
+
+  <!-- Resource Hints -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  
+  <!-- Non-critical scripts deferred -->
+  <script defer src="app.js"></script>
+</head>
+<body>
+
+  <div class="hero">
+    <h1>Optimized Page</h1>
+    <p>This page demonstrates performance best practices.</p>
+    
+    <!-- LCP Image with high priority and dimensions -->
+    <img 
+      src="https://picsum.photos/800/400" 
+      alt="Hero Image" 
+      width="800" 
+      height="400"
+      fetchpriority="high"
+    >
+  </div>
+
+  <div class="content">
+    <h2>Below the Fold Content</h2>
+    <p>More content here...</p>
+    
+    <!-- Below the fold image with lazy loading and dimensions -->
+    <img 
+      src="https://picsum.photos/400/300?random=1" 
+      alt="Lazy Image" 
+      width="400" 
+      height="300"
+      loading="lazy"
+    >
+
+    <!-- Video with dimensions and poster -->
+    <video 
+      width="640" 
+      height="360" 
+      poster="https://picsum.photos/640/360"
+      controls
+      preload="none"
+    >
+      <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+  </div>
+
+  <!-- Mock app.js content -->
+  <script>
+    // Simulate a long task yielding to main thread
+    async function longTask() {
+      console.log('Starting heavy task...');
+      for (let i = 0; i < 1000; i++) {
+        // Do some work
+        Math.sqrt(i);
+        
+        // Yield every 100 iterations
+        if (i % 100 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+      console.log('Heavy task finished.');
+    }
+    
+    window.addEventListener('load', longTask);
+  </script>
+</body>
+</html>

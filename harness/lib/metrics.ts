@@ -11,6 +11,7 @@ export interface RunResult {
   guidanceToolsUsed?: string[];
   expectedGuidanceTool?: string;
   guideName?: string;
+  isSkill?: boolean;
 }
 
 export interface Metrics {
@@ -104,7 +105,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       runs.forEach(run => {
         const guidesUsed = run.guidesUsed || [];
         const expectedGuide = run.guideName;
-        if (expectedGuide && guidesUsed.includes(expectedGuide)) {
+        // For skills, we track guides used but there is no expected guide
+        if (!run.isSkill && expectedGuide && guidesUsed.includes(expectedGuide)) {
           guideUsageCount++;
         }
 

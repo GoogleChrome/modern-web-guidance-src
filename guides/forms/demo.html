@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forms Skill Demo</title>
+  <style>
+    :root {
+      --font-size: 16px;
+      --tap-target: 48px;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 2rem;
+      font-size: var(--font-size);
+    }
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+    input {
+      font-size: var(--font-size);
+      padding: 0.75rem;
+      min-height: var(--tap-target);
+      width: 100%;
+      box-sizing: border-box;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+    }
+    input:focus {
+      outline: 3px solid #0b57d0;
+      outline-offset: 2px;
+    }
+    .error-message {
+      color: #da3633;
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+      display: none;
+    }
+    button {
+      min-height: var(--tap-target);
+      padding: 0 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      background: #0b57d0;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Sign Up</h1>
+  
+  <form id="demo-form" action="/submit" method="POST" novalidate>
+    
+    <div class="form-group">
+      <label for="email">Email Address</label>
+      <input type="email" id="email" name="email" autocomplete="username" required>
+      <div id="email-error" class="error-message">Please enter a valid email address.</div>
+    </div>
+
+    <div class="form-group">
+      <label for="pin">Security PIN (4 digits)</label>
+      <input type="text" id="pin" name="pin" inputmode="numeric" pattern="\d{4}" required autocomplete="off">
+      <div id="pin-error" class="error-message">Please enter exactly 4 digits.</div>
+    </div>
+
+    <button type="submit" id="submit-btn">Save changes</button>
+  </form>
+
+  <script>
+    const form = document.getElementById('demo-form');
+    const emailInput = document.getElementById('email');
+    const pinInput = document.getElementById('pin');
+    const submitBtn = document.getElementById('submit-btn');
+
+    function validateField(input) {
+      const errorDiv = document.getElementById(`${input.id}-error`);
+      if (!input.checkValidity()) {
+        errorDiv.style.display = 'block';
+        input.style.borderColor = '#da3633';
+      } else {
+        errorDiv.style.display = 'none';
+        input.style.borderColor = '#ccc';
+      }
+    }
+
+    function clearError(input) {
+      const errorDiv = document.getElementById(`${input.id}-error`);
+      errorDiv.style.display = 'none';
+      input.style.borderColor = '#ccc';
+    }
+
+    emailInput.addEventListener('blur', () => validateField(emailInput));
+    pinInput.addEventListener('blur', () => validateField(pinInput));
+
+    emailInput.addEventListener('input', () => clearError(emailInput));
+    pinInput.addEventListener('input', () => clearError(pinInput));
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      validateField(emailInput);
+      validateField(pinInput);
+
+      if (form.checkValidity()) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+        // Simulate submission
+        setTimeout(() => {
+          alert('Form submitted successfully!');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Save changes';
+        }, 1000);
+      }
+    });
+  </script>
+</body>
+</html>

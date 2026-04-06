@@ -1,0 +1,10 @@
+- Critical CSS necessary for above-the-fold content is inlined in the `<head>`.
+- Non-critical stylesheets are deferred or loaded conditionally via media queries.
+- Non-critical scripts use `async` or `defer` attributes to avoid blocking the parser.
+- Resource hints like `preconnect` are used for known third-party API domains.
+- The Largest Contentful Paint (LCP) image has `fetchpriority="high"` specified.
+- The LCP image does NOT use `loading="lazy"`.
+- Images below the fold use `loading="lazy"`.
+- All `<img>` tags have explicit `width` and `height` attributes to prevent layout shifts.
+- Videos have explicit `width`, `height`, and a `poster` image specified.
+- Long-running JavaScript tasks (>50ms) yield to the main thread using `scheduler.yield()` or a fallback.

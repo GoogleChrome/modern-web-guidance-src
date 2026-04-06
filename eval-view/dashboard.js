@@ -343,6 +343,24 @@ function renderSummary(data) {
     const unguidedRate = summary.unguidedPassRate;
     const guidedRate = summary.guidedPassRate;
 
+    // Recalculate guide usage to exclude disciplines
+    let totalGuidedRuns = 0;
+    let guideUsageCount = 0;
+    
+    for (const [testName, testStats] of Object.entries(data.stats)) {
+        const parts = testName.split(' - ');
+        if (parts.length === 3 && parts[2] === 'guided') {
+            const runData = data.results[testName];
+            const isSkill = runData && runData[0] && runData[0].isSkill;
+            if (!isSkill) {
+                totalGuidedRuns += testStats.runCount || 0;
+                guideUsageCount += testStats.runsUsingGuide || 0;
+            }
+        }
+    }
+    
+    const guideUsageRate = totalGuidedRuns > 0 ? Math.round((guideUsageCount / totalGuidedRuns) * 100) : 0;
+
     container.innerHTML = `
         <div class="stat-card">
             <span class="stat-value" style="color: ${getColor(unguidedRate)}">
@@ -367,10 +385,10 @@ function renderSummary(data) {
                 <span style="opacity: 0.8; color: ${getColor(summary.toolActivationRate)}">(${summary.toolActivationCount}/${summary.totalGuidedRuns} runs)</span>
             </div>
             ` : ''}
-            ${summary.guideUsageRate !== undefined ? `
+            ${totalGuidedRuns > 0 ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
-                Guide Usage: <span style="font-weight: bold; color: ${getColor(summary.guideUsageRate)}">${summary.guideUsageRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${summary.totalGuidedRuns} runs)</span>
+                Guide Usage: <span style="font-weight: bold; color: ${getColor(guideUsageRate)}">${guideUsageRate}%</span>
+                <span style="opacity: 0.8; color: ${getColor(guideUsageRate)}">(${guideUsageCount}/${totalGuidedRuns} runs)</span>
             </div>
             ` : ''}
         </div>
@@ -378,7 +396,10 @@ function renderSummary(data) {
 }
 
 function renderGrid(data, testId) {
-    const grid = document.getElementById('dashboard-grid');
+    const disciplineGrid = document.getElementById('discipline-grid');
+    const guideGrid = document.getElementById('guide-grid');
+    const disciplineSection = document.getElementById('discipline-section');
+    const guideSection = document.getElementById('guide-section');
     const results = data.results;
     const stats = data.stats;
 
@@ -424,6 +445,8 @@ function renderGrid(data, testId) {
                 const card = document.createElement('div');
                 card.className = 'test-card';
 
+                const isSkill = runData[0] && runData[0].isSkill;
+
                 // Calculate Total/Average Pass Rate for this specific test configuration
                 const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
                 const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
@@ -443,7 +466,7 @@ function renderGrid(data, testId) {
                 }
 
                 let guideUsageHtml = '';
-                if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined) {
+                if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined && !isSkill) {
                     const count = testStats.runsUsingGuide;
                     const total = testStats.runCount;
                     const usageRate = total > 0 ? Math.round((count / total) * 100) : 0;
@@ -469,10 +492,22 @@ function renderGrid(data, testId) {
                     ${guideUsageHtml}
                 `;
 
-                grid.appendChild(card);
+                if (isSkill) {
+                    disciplineGrid.appendChild(card);
+                    disciplineSection.style.display = 'block';
+                } else {
+                    guideGrid.appendChild(card);
+                }
             });
         });
     });
+
+    // Hide Guide section if empty
+    if (guideGrid.children.length === 0) {
+        guideSection.style.display = 'none';
+    } else {
+        guideSection.style.display = 'block';
+    }
 }
 
 function openTrajectory(usedBasePath, sessionFile) {
@@ -588,7 +623,17 @@ async function showDetails(testName, runs, stats, testId) {
                             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                                 ${toolsUsed.length > 0 ? toolsUsed.map(t => {
                                     const isExpected = t === expectedTool;
-                                    return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(t)}</code>`;
+                                    const discipline = run.discipline;
+                                    const matchesDiscipline = t === discipline;
+                                    
+                                    let style = '';
+                                    if (matchesDiscipline || isExpected) {
+                                        style = 'background: rgba(0, 200, 0, 0.1); border: 1px solid var(--accent-success); color: var(--accent-success);';
+                                    } else {
+                                        style = 'background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-primary);';
+                                    }
+                                    
+                                    return `<code style="${style} padding: 3px 6px; border-radius: 4px; font-size: 0.85em;">${escapeHtml(t)}</code>`;
                                 }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
                             </div>
                         </div>` : ''}

@@ -152,11 +152,17 @@ run();
         continue;
       }
 
-      const taskCategory = path.basename(path.dirname(taskInfo.guideDir));
+      let taskCategory = path.basename(path.dirname(taskInfo.guideDir));
+      const isSkill = taskCategory === 'guides';
+      if (isSkill) {
+        taskCategory = path.basename(taskInfo.guideDir);
+      }
       let expectedGuidanceTool: string | undefined;
       const serving = suiteConfig.serving;
 
-      if (serving === Serving.MCP || suiteConfig.agent === Agents.JETSKI) {
+      if (isSkill) {
+        expectedGuidanceTool = taskCategory || undefined;
+      } else if (serving === Serving.MCP || suiteConfig.agent === Agents.JETSKI) {
         expectedGuidanceTool = 'modern-web';
       } else if (serving === Serving.SKILLS_CLI) {
         expectedGuidanceTool = 'modern-web-use-cases';
@@ -222,6 +228,8 @@ run();
         guidesUsed: guidesUsedResult,
         guidanceToolsUsed: guidanceToolsUsedResult,
         expectedGuidanceTool: expectedGuidanceTool,
+        discipline: taskCategory,
+        isSkill: isSkill,
         guideName: guide,
         taskName: taskName,
         baseApp: actualBaseApp,

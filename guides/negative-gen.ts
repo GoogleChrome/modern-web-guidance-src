@@ -15,21 +15,24 @@ export async function generateNegative(targetDirRaw: string) {
   }
   
   // Read input files
-  const guidePath = path.join(targetDir, 'guide.md');
+  let guidePath = path.join(targetDir, 'guide.md');
+  if (!fs.existsSync(guidePath)) {
+    guidePath = path.join(targetDir, 'SKILL.md');
+  }
   const demoPath = path.join(targetDir, 'demo.html');
   const expectationsPath = path.join(targetDir, 'expectations.md');
   
   if (!fs.existsSync(guidePath) || !fs.existsSync(demoPath) || !fs.existsSync(expectationsPath)) {
-    console.error(`Error: Missing required files in ${targetDir}. Need guide.md, demo.html, and expectations.md.`);
+    console.error(`Error: Missing required files in ${targetDir}. Need guide.md or SKILL.md, demo.html, and expectations.md.`);
     process.exit(1);
   }
   
   // Formulate prompt
   const userPrompt = `
-Read the guide.md and expectations.md files to understand the guidance and expectations.
+Read the guide file (${path.basename(guidePath)}) and expectations.md files to understand the guidance and expectations.
 Then read the demo.html file, which represents a perfect working example of the guides and expectations.
 
-With this information, create another example file that represents an anti-example of what is outlined in guide.md and expectations.md.
+With this information, create another example file that represents an anti-example of what is outlined in the guide and expectations.
 Make sure that it does not fulfill anything that the expectations and guide suggest.
 
 Within the generated code, do not include any comments, and do not indicate in any way that this is a negative example.

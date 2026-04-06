@@ -107,18 +107,28 @@ const server = http.createServer(async (req, res) => {
       const { USE_CASES } = await import('../serving/lib/practices.ts');
       const taskMap = getTaskMap();
       const grouped = {}; // categoryName -> guideName -> [tasks]
+      const disciplines = {}; // disciplineName -> [tasks]
       
-      for (const [key, _] of taskMap.entries()) {
+      for (const [key, info] of taskMap.entries()) {
         const [guide, task] = key.split('/');
-        const useCase = USE_CASES.find(u => u.id === guide);
-        const category = useCase ? useCase.category : 'Uncategorized';
-        if (!grouped[category]) grouped[category] = {};
-        if (!grouped[category][guide]) grouped[category][guide] = [];
-        grouped[category][guide].push(task);
+        
+        const parentDir = path.basename(path.dirname(info.guideDir));
+        const isSkill = parentDir === 'guides';
+        
+        if (isSkill) {
+          if (!disciplines[guide]) disciplines[guide] = [];
+          disciplines[guide].push(task);
+        } else {
+          const useCase = USE_CASES.find(u => u.id === guide);
+          const category = useCase ? useCase.category : 'Uncategorized';
+          if (!grouped[category]) grouped[category] = {};
+          if (!grouped[category][guide]) grouped[category][guide] = [];
+          grouped[category][guide].push(task);
+        }
       }
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ guides: grouped }));
+      res.end(JSON.stringify({ guides: grouped, disciplines: disciplines }));
     } catch (e) {
       console.error('Error fetching grouped tasks:', e);
       res.writeHead(500);
@@ -134,14 +144,15 @@ const server = http.createServer(async (req, res) => {
     req.on('end', async () => {
       try {
         const options = JSON.parse(body);
-        const testId = options.name || `full-${new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-')}`;
+        const testId = options.name || `ui-${Math.random().toString(36).substring(2, 10)}`;
         
         // Return 200 immediately so UI can track the testId
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, testId }));
 
         const tempConfigPath = path.join(os.tmpdir(), `.ui_eval_config_${testId}.ts`);
-        fs.writeFileSync(tempConfigPath, `export default ${body};`);
+        const configWithId = { ...options, name: testId };
+        fs.writeFileSync(tempConfigPath, `export default ${JSON.stringify(configWithId, null, 2)};`);
 
         console.log(`\n>>> Launching UI Eval Suite for ${testId} in background...`);
 
