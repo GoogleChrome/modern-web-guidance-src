@@ -5,9 +5,8 @@ import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
-import { pathToFileURL } from 'url';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
-import { Serving, mergeSuiteConfig, resolveSuiteConfig, type SuiteConfig } from '../harness/config.ts';
+import { Serving, resolveSuiteConfig } from '../harness/config.ts';
 import { rootDir, guidesDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
 import { getTaskMap } from '../lib/guide-validation.ts';
 

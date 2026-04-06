@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
-import { Agents, defaultSuiteConfig, resolveSuiteConfig, type SuiteConfig } from './config.ts';
+import { Agents, resolveSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
 import { getTaskMap, type TaskInfo } from '../lib/guide-validation.ts';
@@ -175,8 +175,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
             taskName,
             taskIndex,
             totalTasks,
-            runNumber,
-            numRuns
+            runNumber
           );
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
@@ -368,8 +367,7 @@ function generateTransientPackage(
   taskName: string,
   taskIndex: number,
   totalTasks: number,
-  runNumber: number,
-  totalRuns: number
+  runNumber: number
 ) {
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
