@@ -27,8 +27,6 @@ serving/mcp-server/data/use-cases.gen.ts
 # OS Junk
 .DS_Store
 
-# Generated Skills (temporary. This can't be ignored when publishing the repo/skill)
-skills/modern-web/
 
 # team context repo
 project-gleam/
