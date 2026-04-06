@@ -120,38 +120,47 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
     const files = fs.readdirSync(dirPath);
     const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
 
+    interface ReadFileArgs { file_path?: string; }
+    interface RunShellCommandArgs { command?: string; }
+
     for (const file of sessionFiles) {
       const sessionPath = path.join(dirPath, file);
       const sessionContent = fs.readFileSync(sessionPath, 'utf8');
       const session = JSON.parse(sessionContent) as ConversationRecord;
 
       if (session.messages) {
-        for (const msg of session.messages as MessageRecord[]) {
+        for (const msg of session.messages) {
           if (msg.type === 'gemini' && msg.toolCalls) {
             for (const tc of msg.toolCalls) {
-              if ((serving === Serving.SKILLS || serving === Serving.MEGASKILL) && tc.name === 'read_file' && tc.args && (tc.args as any).file_path) {
-                const filePath = (tc.args as any).file_path;
-                if (filePath.includes('/skills/')) {
-                  if (filePath.endsWith('/guide.md')) {
-                    const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
-                    if (match) {
-                      guidesFromSkills.push(match[1]);
-                    }
-                  } else if (filePath.endsWith('.md')) {
-                    const match = filePath.match(/\/skills\/[^/]+\/(?:references\/)?(?:[^/]+\/)*([^/]+)\.md$/);
-                    if (match) {
-                      guidesFromSkills.push(match[1]);
+              if ((serving === Serving.SKILLS || serving === Serving.MEGASKILL) && tc.name === 'read_file' && tc.args) {
+                const args = tc.args as unknown as ReadFileArgs;
+                if (args.file_path) {
+                  const filePath = args.file_path;
+                  if (filePath.includes('/skills/')) {
+                    if (filePath.endsWith('/guide.md')) {
+                      const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+                      if (match) {
+                        guidesFromSkills.push(match[1]);
+                      }
+                    } else if (filePath.endsWith('.md')) {
+                      const match = filePath.match(/\/skills\/[^/]+\/(?:references\/)?(?:[^/]+\/)*([^/]+)\.md$/);
+                      if (match) {
+                        guidesFromSkills.push(match[1]);
+                      }
                     }
                   }
                 }
-              } else if (serving === Serving.SKILLS_CLI && tc.name === 'run_shell_command' && tc.args && (tc.args as any).command) {
-                const command = (tc.args as any).command;
-                if (command.includes('modern-web') && command.includes('--retrieve')) {
-                  const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
-                  if (match) {
-                    const ids = match[1].split(',');
-                    for (const id of ids) {
-                      guidesFromSkills.push(id.trim());
+              } else if (serving === Serving.SKILLS_CLI && tc.name === 'run_shell_command' && tc.args) {
+                const args = tc.args as unknown as RunShellCommandArgs;
+                if (args.command) {
+                  const command = args.command;
+                  if (command.includes('modern-web') && command.includes('--retrieve')) {
+                    const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
+                    if (match) {
+                      const ids = match[1].split(',');
+                      for (const id of ids) {
+                        guidesFromSkills.push(id.trim());
+                      }
                     }
                   }
                 }
@@ -176,7 +185,7 @@ export function extractGeminiCliModel(resultsDir: string): string {
     const sessionPath = path.join(resultsDir, relativePath);
     try {
       const content = fs.readFileSync(sessionPath, 'utf8');
-      const session = JSON.parse(content);
+      const session = JSON.parse(content) as ConversationRecord;
       if (session.messages) {
         for (const m of session.messages) {
           if (m.type === 'gemini' && m.model) {
@@ -204,13 +213,16 @@ export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   try {
     const sessionPath = path.join(dir, firstSession);
     const content = fs.readFileSync(sessionPath, 'utf8');
-    const session = JSON.parse(content);
-    if (Array.isArray(session.messages)) {
+    const session = JSON.parse(content) as ConversationRecord;
+    if (session.messages) {
       for (const msg of session.messages) {
-        if (Array.isArray(msg.toolCalls)) {
+        if (msg.type === 'gemini' && msg.toolCalls) {
           for (const tc of msg.toolCalls) {
-            if (tc.name === 'activate_skill' && tc.args?.name) {
-              toolsUsed.push(tc.args.name);
+            if (tc.name === 'activate_skill' && tc.args) {
+              const args = tc.args as unknown as { name?: string };
+              if (args.name) {
+                toolsUsed.push(args.name);
+              }
             }
           }
         }
