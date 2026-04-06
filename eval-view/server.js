@@ -330,7 +330,7 @@ const server = http.createServer(async (req, res) => {
   const extname = path.extname(filePath);
   const contentType = MIME_TYPES[extname] || 'application/octet-stream';
 
-  fs.readFile(filePath, (err, content) => {
+  fs.readFile(filePath, async (err, content) => {
     if (err) {
       if (err.code === 'EISDIR') {
         // It's a directory, try serving index.html
