@@ -3,7 +3,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
 import { Project, SyntaxKind } from 'ts-morph';
-import * as csstree from 'css-tree';
+import postcss from 'postcss';
+import selectorParser from 'postcss-selector-parser';
+import valueParser from 'postcss-value-parser';
+import nested from 'postcss-nested';
+import shorthandExpand from 'postcss-shorthand-expand';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -42,15 +46,40 @@ test.describe(`<guide-name> Expectations: ${demoName}`, () => {
   // Example for CSS parsing
   // test(`CSS <test-case-name>`, () => {
   //   const cssContent = document.querySelector('style')?.textContent || '';
-  //   const ast = csstree.parse(cssContent);
+  //   const root = postcss([nested(), shorthandExpand()]).processSync(cssContent).root;
   //   let found = false;
-  //   csstree.walk(ast, {
-  //     visit: 'Atrule',
-  //     enter(node) {
-  //       if (node.name === 'supports') found = true;
-  //     }
+  //   root.walkAtRules('supports', () => {
+  //     found = true;
   //   });
   //   expect(found).toBe(true);
+  // });
+
+  // Example for CSS Selector parsing
+  // test(`Selector <test-case-name>`, () => {
+  //   const cssContent = document.querySelector('style')?.textContent || '';
+  //   const root = postcss([nested(), shorthandExpand()]).processSync(cssContent).root;
+  //   let hasAutofill = false;
+  //   root.walkRules(rule => {
+  //     selectorParser((selectors) => {
+  //       selectors.walkPseudos((pseudo) => {
+  //         if (pseudo.value === ':autofill') hasAutofill = true;
+  //       });
+  //     }).processSync(rule.selector);
+  //   });
+  //   expect(hasAutofill).toBe(true);
+  // });
+
+  // Example for CSS Value parsing
+  // test(`Value <test-case-name>`, () => {
+  //   const cssContent = document.querySelector('style')?.textContent || '';
+  //   const root = postcss([nested(), shorthandExpand()]).processSync(cssContent).root;
+  //   let hasVar = false;
+  //   root.walkDecls(decl => {
+  //     valueParser(decl.value).walk(node => {
+  //       if (node.type === 'function' && node.value === 'var') hasVar = true;
+  //     });
+  //   });
+  //   expect(hasVar).toBe(true);
   // });
 
   // --- BROWSER ASSERTIONS ---

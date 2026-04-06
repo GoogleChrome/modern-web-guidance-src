@@ -2,7 +2,10 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
-import * as csstree from 'css-tree';
+import postcss from 'postcss';
+import selectorParser from 'postcss-selector-parser';
+import nested from 'postcss-nested';
+import shorthandExpand from 'postcss-shorthand-expand';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -17,44 +20,32 @@ const htmlStr = fs.readFileSync(filePath, 'utf-8');
 // Initialize a static parser
 const { document } = parseHTML(htmlStr);
 
-// Extract CSS
+// Extract CSS and parse with PostCSS (including nesting and shorthand expansion)
 const styles = Array.from(document.querySelectorAll('style')).map(s => s.textContent).join('\n');
-const ast = csstree.parse(styles);
+const root = postcss([nested(), shorthandExpand()]).processSync(styles).root;
 
 test.describe(`Scrollbar Customization Expectations: ${demoName}`, () => {
   // Static assertions
   test('Standard scrollbar-width property is used in CSS', () => {
     let hasWidth = false;
-    csstree.walk(ast, {
-      visit: 'Declaration',
-      enter(node) {
-        if (node.property === 'scrollbar-width') hasWidth = true;
-      }
+    root.walkDecls('scrollbar-width', () => {
+      hasWidth = true;
     });
     expect(hasWidth).toBe(true);
   });
 
   test('Standard scrollbar-color property is used in CSS', () => {
     let hasColor = false;
-    csstree.walk(ast, {
-      visit: 'Declaration',
-      enter(node) {
-        if (node.property === 'scrollbar-color') hasColor = true;
-      }
+    root.walkDecls('scrollbar-color', () => {
+      hasColor = true;
     });
     expect(hasColor).toBe(true);
   });
 
   test('scrollbar-gutter: stable is used in CSS', () => {
     let hasGutterStable = false;
-    csstree.walk(ast, {
-      visit: 'Declaration',
-      enter(node) {
-        if (node.property === 'scrollbar-gutter') {
-          const valueText = csstree.generate(node.value);
-          if (valueText.includes('stable')) hasGutterStable = true;
-        }
-      }
+    root.walkDecls('scrollbar-gutter', (decl) => {
+      if (decl.value.includes('stable')) hasGutterStable = true;
     });
     expect(hasGutterStable).toBe(true);
   });
@@ -64,69 +55,53 @@ test.describe(`Scrollbar Customization Expectations: ${demoName}`, () => {
     let protectedWebkits = false;
     
     // First figure out if there's any webkit scrollbar at all
-    csstree.walk(ast, {
-      visit: 'PseudoElementSelector',
-      enter(node) {
-        if (node.name.includes('-webkit-scrollbar')) hasWebkits = true;
-      }
+    root.walkRules(rule => {
+      selectorParser(selectors => {
+        selectors.walkPseudos(pseudo => {
+          if (pseudo.value.includes('-webkit-scrollbar')) hasWebkits = true;
+        });
+      }).processSync(rule.selector);
     });
 
     if (hasWebkits) {
-      csstree.walk(ast, {
-        visit: 'Atrule',
-        enter(node) {
-          if (node.name === 'supports' && node.prelude?.type === 'AtrulePrelude') {
-            const preludeText = csstree.generate(node.prelude);
-            if (preludeText.includes('not') && preludeText.includes('scrollbar-color') && preludeText.includes('auto')) {
-              // Found the protected block, see if webkit scrollbar is inside
-              csstree.walk(node.block!, {
-                visit: 'PseudoElementSelector',
-                enter(pseudoNode) {
-                  if (pseudoNode.name.includes('-webkit-scrollbar')) {
-                    protectedWebkits = true;
-                  }
-                }
+      root.walkAtRules('supports', atRule => {
+        if (atRule.params.includes('not') && atRule.params.includes('scrollbar-color') && atRule.params.includes('auto')) {
+          atRule.walkRules(rule => {
+            selectorParser(selectors => {
+              selectors.walkPseudos(pseudo => {
+                if (pseudo.value.includes('-webkit-scrollbar')) protectedWebkits = true;
               });
-            }
-          }
+            }).processSync(rule.selector);
+          });
         }
       });
       expect(protectedWebkits).toBe(true);
     } else {
-      expect(hasWebkits).toBe(false); // Assume if checking for legacy webkit rules, they exist in fallback
+      expect(hasWebkits).toBe(false);
     }
   });
 
   test('Legacy ::-webkit-scrollbar has width or height defined for visibility', () => {
     let hasSizingInFallback = false;
     
-    csstree.walk(ast, {
-      visit: 'Atrule',
-      enter(node) {
-        if (node.name === 'supports' && node.prelude?.type === 'AtrulePrelude') {
-          const preludeText = csstree.generate(node.prelude);
-          if (preludeText.includes('not') && preludeText.includes('scrollbar-color') && preludeText.includes('auto')) {
-            csstree.walk(node.block!, {
-              visit: 'Rule',
-              enter(ruleNode) {
-                const selectorText = csstree.generate(ruleNode.prelude);
-                if (selectorText.includes('::-webkit-scrollbar')) {
-                  csstree.walk(ruleNode.block, {
-                    visit: 'Declaration',
-                    enter(declNode) {
-                      if (declNode.property === 'width' || declNode.property === 'height') {
-                        hasSizingInFallback = true;
-                      }
-                    }
-                  });
-                }
-              }
+    root.walkAtRules('supports', atRule => {
+      if (atRule.params.includes('not') && atRule.params.includes('scrollbar-color') && atRule.params.includes('auto')) {
+        atRule.walkRules(rule => {
+          let isWebkitScrollbar = false;
+          selectorParser(selectors => {
+            selectors.walkPseudos(pseudo => {
+              if (pseudo.value === '::-webkit-scrollbar') isWebkitScrollbar = true;
+            });
+          }).processSync(rule.selector);
+
+          if (isWebkitScrollbar) {
+            rule.walkDecls(decl => {
+              if (decl.prop === 'width' || decl.prop === 'height') hasSizingInFallback = true;
             });
           }
-        }
+        });
       }
     });
-    // This is tested strictly inside the at-supports block
     expect(hasSizingInFallback).toBe(true);
   });
 

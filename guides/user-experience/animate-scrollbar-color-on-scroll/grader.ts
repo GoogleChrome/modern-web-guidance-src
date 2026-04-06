@@ -2,7 +2,11 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
-import * as csstree from 'css-tree';
+import postcss from 'postcss';
+import selectorParser from 'postcss-selector-parser';
+import valueParser from 'postcss-value-parser';
+import nested from 'postcss-nested';
+import shorthandExpand from 'postcss-shorthand-expand';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -19,66 +23,43 @@ const htmlStr = fs.readFileSync(filePath, 'utf-8');
 // Initialize a static parser
 const { document } = parseHTML(htmlStr);
 
-// Extract CSS
+// Extract CSS and parse with PostCSS (including nesting and shorthand expansion)
 const styles = Array.from(document.querySelectorAll('style')).map(s => s.textContent).join('\n');
-const ast = csstree.parse(styles);
+const root = postcss([nested(), shorthandExpand()]).processSync(styles).root;
 
 test.describe(`Animate Scrollbar Color Expectations: ${demoName}`, () => {
   
   test('MANDATORY: Define a CSS @property with syntax: "<color>"', () => {
     let hasColorSyntax = false;
-    csstree.walk(ast, {
-      visit: 'Atrule',
-      enter(node) {
-        if (node.name === 'property') {
-          csstree.walk(node.block!, {
-            visit: 'Declaration',
-            enter(decl) {
-              if (decl.property === 'syntax') {
-                const syntaxValue = csstree.generate(decl.value);
-                if (syntaxValue.includes('<color>')) hasColorSyntax = true;
-              }
-            }
-          });
-        }
-      }
+    root.walkAtRules('property', atRule => {
+      atRule.walkDecls('syntax', decl => {
+        if (decl.value.includes('<color>')) hasColorSyntax = true;
+      });
     });
     expect(hasColorSyntax).toBe(true);
   });
 
   test('MANDATORY: Define an @keyframes block that animates a custom property', () => {
     let animatesCustomProp = false;
-    csstree.walk(ast, {
-      visit: 'Atrule',
-      enter(node) {
-        if (node.name === 'keyframes') {
-          csstree.walk(node.block!, {
-            visit: 'Declaration',
-            enter(decl) {
-              if (decl.property.startsWith('--')) {
-                animatesCustomProp = true;
-              }
-            }
-          });
-        }
-      }
+    root.walkAtRules('keyframes', atRule => {
+      atRule.walkDecls(decl => {
+        if (decl.prop.startsWith('--')) animatesCustomProp = true;
+      });
     });
     expect(animatesCustomProp).toBe(true);
   });
 
   test('MANDATORY: The scrollable element uses scrollbar-color with a var() and a fallback color', () => {
     let hasVarWithFallback = false;
-    csstree.walk(ast, {
-      visit: 'Declaration',
-      enter(node) {
-        if (node.property === 'scrollbar-color') {
-          const val = csstree.generate(node.value);
-          // A var() with a fallback looks like var(--name, fallback)
-          if (val.includes('var(--') && val.includes(',')) {
-            hasVarWithFallback = true;
-          }
+    root.walkDecls('scrollbar-color', decl => {
+      const parsed = valueParser(decl.value);
+      parsed.walk(node => {
+        if (node.type === 'function' && node.value === 'var') {
+          // var() has children: the first is the variable name, then potentially a comma and the fallback
+          const hasComma = node.nodes.some(n => n.type === 'div' && n.value === ',');
+          if (hasComma) hasVarWithFallback = true;
         }
-      }
+      });
     });
     expect(hasVarWithFallback).toBe(true);
   });
@@ -87,31 +68,34 @@ test.describe(`Animate Scrollbar Color Expectations: ${demoName}`, () => {
     let hasWebkitThumb = false;
     let hasVarFallback = false;
 
-    csstree.walk(ast, {
-      visit: 'Rule',
-      enter(ruleNode) {
-        const selectorText = csstree.generate(ruleNode.prelude);
-        if (selectorText.includes('::-webkit-scrollbar-thumb')) {
-          hasWebkitThumb = true;
-          csstree.walk(ruleNode.block, {
-            visit: 'Declaration',
-            enter(decl) {
-              if (decl.property.includes('background')) {
-                const val = csstree.generate(decl.value);
-                if (val.includes('var(--') && val.includes(',')) {
-                  hasVarFallback = true;
-                }
+    root.walkRules(rule => {
+      let isWebkitThumb = false;
+      selectorParser(selectors => {
+        selectors.walkPseudos(pseudo => {
+          if (pseudo.value === '::-webkit-scrollbar-thumb') isWebkitThumb = true;
+        });
+      }).processSync(rule.selector);
+
+      if (isWebkitThumb) {
+        hasWebkitThumb = true;
+        rule.walkDecls(decl => {
+          if (decl.prop.includes('background')) {
+            const parsed = valueParser(decl.value);
+            parsed.walk(node => {
+              if (node.type === 'function' && node.value === 'var') {
+                const hasComma = node.nodes.some(n => n.type === 'div' && n.value === ',');
+                if (hasComma) hasVarFallback = true;
               }
-            }
-          });
-        }
+            });
+          }
+        });
       }
     });
 
     if (hasWebkitThumb) {
       expect(hasVarFallback).toBe(true);
     } else {
-      expect(hasWebkitThumb).toBe(false); // Fails for negative demo without the thumb
+      expect(hasWebkitThumb).toBe(false);
     }
   });
 

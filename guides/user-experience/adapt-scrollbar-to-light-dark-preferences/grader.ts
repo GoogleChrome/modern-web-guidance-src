@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { parseHTML } from 'linkedom';
+import postcss from 'postcss';
+import selectorParser from 'postcss-selector-parser';
+import nested from 'postcss-nested';
+import shorthandExpand from 'postcss-shorthand-expand';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -12,51 +17,108 @@ const filePath = path.resolve(targetFile);
 const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
+const htmlStr = fs.readFileSync(filePath, 'utf-8');
+
+// Initialize static parsers
+const { document } = parseHTML(htmlStr);
+const styles = Array.from(document.querySelectorAll('style')).map(s => s.textContent).join('\n');
+const root = postcss([nested(), shorthandExpand()]).processSync(styles).root;
 
 // Tests
 test.describe(`Adapt Scrollbar Expectations: ${demoName}`, () => {
-  const html = fs.readFileSync(filePath, 'utf-8');
 
   // 1. Root element defines color-scheme: light dark
   test('The :root element must define color-scheme: light dark', async () => {
-    // MANDATORY: Define color-scheme on the :root pseudo-class.
-    expect(html).toMatch(/:root\s*{[^}]*color-scheme:\s*light\s+dark/);
+    let hasColorScheme = false;
+    root.walkRules(rule => {
+      if (rule.selector === ':root') {
+        rule.walkDecls('color-scheme', decl => {
+          if (decl.value.includes('light') && decl.value.includes('dark')) hasColorScheme = true;
+        });
+      }
+    });
+    expect(hasColorScheme).toBe(true);
   });
 
   // 2. CSS variables are used for scrollbar colors
   test('CSS custom properties must be used for scrollbar colors', async () => {
-    // MANDATORY: Use CSS custom properties (variables) to define your colors.
-    expect(html).toMatch(/--[a-zA-Z0-9-]*scrollbar[a-zA-Z0-9-]*\s*:/);
+    let hasScrollbarVars = false;
+    root.walkDecls(decl => {
+      if (decl.prop.startsWith('--') && decl.prop.includes('scrollbar')) hasScrollbarVars = true;
+    });
+    expect(hasScrollbarVars).toBe(true);
   });
 
   // 3. prefers-color-scheme: dark updates variables
   test('A prefers-color-scheme: dark media query must update the scrollbar variables', async () => {
-    // MANDATORY: ...and update them within a prefers-color-scheme media query.
-    expect(html).toMatch(/@media\s*\(\s*prefers-color-scheme\s*:\s*dark\s*\)\s*{[^}]*--/);
+    let updatesInMedia = false;
+    root.walkAtRules('media', atRule => {
+      if (atRule.params.includes('prefers-color-scheme') && atRule.params.includes('dark')) {
+        atRule.walkDecls(decl => {
+          if (decl.prop.startsWith('--')) updatesInMedia = true;
+        });
+      }
+    });
+    expect(updatesInMedia).toBe(true);
   });
 
   // 4. scrollbar-color property uses var()
   test('The scrollbar-color property must utilize the defined CSS variables', async () => {
-    // The explicit scrollbar colors use the standard scrollbar-color: var(--thumb) var(--track) property.
-    expect(html).toMatch(/scrollbar-color\s*:\s*var\(/);
+    let usesVars = false;
+    root.walkDecls('scrollbar-color', decl => {
+      if (decl.value.includes('var(--')) usesVars = true;
+    });
+    expect(usesVars).toBe(true);
   });
 
   // 5. scrollbar-width is explicitly applied
   test('The scrollbar-width property must be explicitly applied for macOS support', async () => {
-    // MANDATORY: You MUST pair custom colors with scrollbar-width to force macOS to render them.
-    expect(html).toMatch(/scrollbar-width\s*:/);
+    let hasWidth = false;
+    root.walkDecls('scrollbar-width', () => {
+      hasWidth = true;
+    });
+    expect(hasWidth).toBe(true);
   });
 
   // 6. Legacy WebKit styling is isolated with @supports
   test('Legacy WebKit scrollbar styling must be isolated within an @supports block', async () => {
-    // MANDATORY: You MUST wrap legacy WebKit fallbacks in an @supports not (scrollbar-color: auto) block.
-    expect(html).toMatch(/@supports\s+not\s*\(\s*scrollbar-color\s*:\s*auto\s*\)\s*{[^}]*::-webkit-scrollbar/);
+    let hasProtectedWebkit = false;
+    root.walkAtRules('supports', atRule => {
+      if (atRule.params.includes('not') && atRule.params.includes('scrollbar-color') && atRule.params.includes('auto')) {
+        atRule.walkRules(rule => {
+          selectorParser(selectors => {
+            selectors.walkPseudos(pseudo => {
+              if (pseudo.value.includes('-webkit-scrollbar')) hasProtectedWebkit = true;
+            });
+          }).processSync(rule.selector);
+        });
+      }
+    });
+    expect(hasProtectedWebkit).toBe(true);
   });
 
   // 7. WebKit fallback includes dimension properties
   test('The legacy WebKit fallback must include basic scrollbar dimensions', async () => {
-    // MANDATORY: The fallback includes basic ::-webkit-scrollbar dimensions (e.g., width or height).
-    expect(html).toMatch(/@supports\s+not\s*\(\s*scrollbar-color\s*:\s*auto\s*\)\s*{[^}]*::-webkit-scrollbar[^}]*(width|height)\s*:/);
+    let hasDimensions = false;
+    root.walkAtRules('supports', atRule => {
+      if (atRule.params.includes('not') && atRule.params.includes('scrollbar-color') && atRule.params.includes('auto')) {
+        atRule.walkRules(rule => {
+          let isWebkit = false;
+          selectorParser(selectors => {
+            selectors.walkPseudos(pseudo => {
+              if (pseudo.value === '::-webkit-scrollbar') isWebkit = true;
+            });
+          }).processSync(rule.selector);
+
+          if (isWebkit) {
+            rule.walkDecls(decl => {
+              if (decl.prop === 'width' || decl.prop === 'height') hasDimensions = true;
+            });
+          }
+        });
+      }
+    });
+    expect(hasDimensions).toBe(true);
   });
 
   // Setup browser testing
