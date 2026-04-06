@@ -26,12 +26,12 @@ The CSS `@function` at-rule allows developers to define custom, reusable functio
 -   **DO** invoke the function using the definition's name-dashed form (e.g., `font-size: --my-func(arg1, arg2)`).
 -   **DO NOT** omit parameters or provide invalid types, as this will result in an invalid computed value.
 
-### 3. Code Snippets
+## Code Snippets
 
 ```css
 /* Definition */
 @function --fluid-size(--min, --max, --vw-min, --vw-max) {
-  /* DO: Calculate fluid size with clamp/calc */
+  /* DO: Use clamp() and calc() to create a fluid value that scales proportionally between the min and max viewport widths. This ensures the output scales smoothly across device sizes without complex media queries. */
   result: clamp(
     var(--min),
     calc(var(--min) + (var(--max) - var(--min)) * ((100vw - var(--vw-min)) / (var(--vw-max) - var(--vw-min)))),
@@ -41,15 +41,14 @@ The CSS `@function` at-rule allows developers to define custom, reusable functio
 
 /* Usage */
 .element {
-  /* DO: Call custom fluid function */
+  /* DO: Call the custom fluid function. This reduces boilerplate by centralizing the complex calculation logic. */
   font-size: --fluid-size(16px, 24px, 320px, 1200px);
 }
 ```
 
-### 4. Fallback Strategies
+## Fallback Strategies
 
-> [!IMPORTANT]
-> CSS Custom Functions (`@function`) are an experimental feature and are **NOT Baseline Widely Available**.
+{{ BASELINE_STATUS("function") }}
 
 To maintain compatibility with browsers that do not support custom functions, always provide a standard value or calculation *before* invoking the custom function. The browser will ignore the subsequent declaration if it fails to parse the function call.
 
@@ -62,5 +61,3 @@ To maintain compatibility with browsers that do not support custom functions, al
   font-size: --fluid-size(16px, 24px, 320px, 1200px);
 }
 ```
-
-{{ BASELINE_STATUS("function") }}
