@@ -348,6 +348,37 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (err.code === 'ENOENT') {
+        if (filePath.endsWith('evals.json')) {
+          const suiteResultsDir = path.dirname(filePath);
+          const suiteName = path.basename(suiteResultsDir);
+          console.log(`Generating synthetic evals.json for ${suiteName}...`);
+          
+          try {
+            const { collectResults } = await import('../harness/lib/collection.ts');
+            const { calculateMetrics } = await import('../harness/lib/metrics.ts');
+            const { generateJsonReport } = await import('../harness/lib/reporting.ts');
+            
+            const configPath = path.join(suiteResultsDir, 'suite_config.json');
+            let suiteConfig = null;
+            if (fs.existsSync(configPath)) {
+              suiteConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            }
+            
+            if (suiteConfig) {
+              const { allResults, numRuns } = await collectResults(suiteResultsDir, suiteConfig, true); // skipGrading!
+              const metrics = calculateMetrics(allResults, numRuns);
+              const timestamp = new Date().toISOString();
+              const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, 'unknown');
+              
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(jsonReport, null, 2));
+              return;
+            }
+          } catch (e) {
+            console.error('Failed to generate synthetic evals.json:', e);
+          }
+        }
+
         // SPA Fallback: If it's a structural route (no extension or .html) that 404s,
         // try to serve the index.html from the same base run directory instead.
         if (!extname || extname === '.html') {
