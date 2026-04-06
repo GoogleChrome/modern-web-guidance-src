@@ -63,7 +63,11 @@ async function main() {
   await fs.rm(publishCliDir, { recursive: true, force: true });
 
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  const { featuresCount, useCasesCount, skillsCount, skillNames } = await buildDist();
+  const result = await buildDist();
+  if (!result) {
+    throw new Error("Build failed or was already in progress.");
+  }
+  const { featuresCount, useCasesCount, skillsCount, skillNames } = result;
   
   console.log(`\nVerifying built distribution with test-dist.test.ts suite...`);
   execSync('node --test skills-cli/*.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' ,  env: { ...process.env, TEST_REPORTER: 'spec'}});

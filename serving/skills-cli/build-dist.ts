@@ -14,7 +14,14 @@ const PUBLISH_ROOT = path.join(ROOT_DIST_DIR, "skills-cli");
 
 const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases");
 
-async function main() {
+interface BuildResult {
+  featuresCount: number;
+  useCasesCount: number;
+  skillsCount: number;
+  skillNames: string[];
+}
+
+async function main(): Promise<BuildResult | undefined> {
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
   const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
 
