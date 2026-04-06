@@ -35,7 +35,7 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
       if (sections.length === 0) return false;
       return Array.from(sections).some(el => {
         const style = window.getComputedStyle(el);
-        return style.viewTimelineName !== 'none';
+        return style.getPropertyValue('view-timeline-name') !== 'none';
       });
     });
     expect(hasViewTimeline).toBe(true);
@@ -46,7 +46,8 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
       const elements = document.querySelectorAll('*');
       return Array.from(elements).some(el => {
         const style = window.getComputedStyle(el);
-        return style.timelineScope !== 'none' && style.timelineScope !== '' && style.timelineScope !== 'none none';
+        const timelineScope = style.getPropertyValue('timeline-scope');
+        return timelineScope !== 'none' && timelineScope !== '' && timelineScope !== 'none none';
       });
     });
 
@@ -59,7 +60,8 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
       if (sections.length === 0) return false;
       return Array.from(sections).some(el => {
         const style = window.getComputedStyle(el);
-        return style.animationTimeline !== 'auto' && style.animationTimeline !== 'none' && style.animationTimeline !== '';
+        const animationTimeline = style.getPropertyValue('animation-timeline');
+        return animationTimeline !== 'auto' && animationTimeline !== 'none' && animationTimeline !== '';
       });
     });
     expect(hasAnimationTimeline).toBe(true);
@@ -71,7 +73,7 @@ test.describe(`Scrollytelling Expectations: ${demoName}`, () => {
       if (sections.length === 0) return false;
       return Array.from(sections).some(el => {
         const style = window.getComputedStyle(el);
-        return style.animationRangeStart !== 'normal' || style.animationRangeEnd !== 'normal';
+        return style.getPropertyValue('animation-range-start') !== 'normal' || style.getPropertyValue('animation-range-end') !== 'normal';
       });
     });
     expect(hasAnimationRange).toBe(true);

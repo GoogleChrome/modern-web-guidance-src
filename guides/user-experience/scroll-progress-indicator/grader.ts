@@ -71,7 +71,8 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
       const elements = Array.from(document.querySelectorAll('*'));
       for (const el of elements) {
         const comp = window.getComputedStyle(el);
-        if (comp.animationTimeline && comp.animationTimeline !== 'auto' && comp.animationName !== 'none') {
+        const animationTimeline = comp.getPropertyValue('animation-timeline');
+        if (animationTimeline && animationTimeline !== 'auto' && comp.animationName !== 'none') {
           return true;
         }
       }
@@ -84,7 +85,8 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     const isFixedOrAbsolute = await page.evaluate(() => {
       const progressElements = Array.from(document.querySelectorAll('*')).filter(el => {
         const comp = window.getComputedStyle(el);
-        return comp.animationName !== 'none' && (comp.animationTimeline !== 'auto' || el.id.includes('progress') || comp.animationName.includes('progress'));
+        const animationTimeline = comp.getPropertyValue('animation-timeline');
+        return comp.animationName !== 'none' && (animationTimeline !== 'auto' || el.id.includes('progress') || comp.animationName.includes('progress'));
       });
       
       if (progressElements.length === 0) return false;
@@ -100,7 +102,8 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     const hasCorrectOrigin = await page.evaluate(() => {
       const progressElements = Array.from(document.querySelectorAll('*')).filter(el => {
         const comp = window.getComputedStyle(el);
-        return comp.animationName !== 'none' && (comp.animationTimeline !== 'auto' || el.id.includes('progress') || comp.animationName.includes('progress'));
+        const animationTimeline = comp.getPropertyValue('animation-timeline');
+        return comp.animationName !== 'none' && (animationTimeline !== 'auto' || el.id.includes('progress') || comp.animationName.includes('progress'));
       });
       
       if (progressElements.length === 0) return false;

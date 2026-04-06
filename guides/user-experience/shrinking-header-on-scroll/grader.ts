@@ -29,24 +29,7 @@ test.describe(`Shrinking Header Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  // Helper function to find the header or nav element that is intended to shrink
-  async function getTargetElement(page: any) {
-    return await page.evaluate(() => {
-      const elements = Array.from(document.querySelectorAll('header, nav'));
-      // Find the one that is fixed or sticky
-      const stickyEl = elements.find(el => {
-        const pos = window.getComputedStyle(el).position;
-        return pos === 'fixed' || pos === 'sticky';
-      });
-      if (stickyEl) return stickyEl;
-      
-      // Fallback to the first one that has animation applied
-      const animEl = elements.find(el => {
-        return window.getComputedStyle(el).animationName !== 'none';
-      });
-      return animEl || elements[0] || null;
-    });
-  }
+
 
   test(`MANDATORY: The agent has defined an @keyframes block that animates the header or nav.`, async ({ page }) => {
     const animationName = await page.evaluate(() => {
@@ -63,7 +46,7 @@ test.describe(`Shrinking Header Expectations: ${demoName}`, () => {
       const elements = Array.from(document.querySelectorAll('header, nav'));
       const el = elements.find(e => window.getComputedStyle(e).animationName !== 'none') || elements[0];
       if (!el) return 'none';
-      return window.getComputedStyle(el).animationTimeline;
+      return window.getComputedStyle(el).getPropertyValue('animation-timeline');
     });
     expect(animationTimeline).toContain('scroll');
   });
@@ -73,7 +56,7 @@ test.describe(`Shrinking Header Expectations: ${demoName}`, () => {
       const elements = Array.from(document.querySelectorAll('header, nav'));
       const el = elements.find(e => window.getComputedStyle(e).animationName !== 'none') || elements[0];
       if (!el) return 'normal';
-      return window.getComputedStyle(el).animationRange;
+      return window.getComputedStyle(el).getPropertyValue('animation-range');
     });
     expect(animationRange).not.toBe('normal');
   });
