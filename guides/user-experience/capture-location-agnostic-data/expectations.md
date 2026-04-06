@@ -1,0 +1,8 @@
+- The implementation MUST feature-detect the `Temporal` API using `typeof Temporal === 'undefined'` before usage.
+- The implementation MUST conditionally load a Temporal polyfill (e.g., `@js-temporal/polyfill`) only if native support is absent.
+- The implementation MUST manually assign the loaded polyfill to `globalThis.Temporal` to ensure it is globally accessible if the application logic relies on the global name.
+- The implementation MUST use `Temporal.PlainDate` for capturing calendar dates (such as birthdates, anniversaries, or holidays) where the specific time of day or time zone is irrelevant.
+- The implementation MUST use `Temporal.PlainTime` for capturing wall-clock times (such as a daily alarm or reminder) where the time should remain constant regardless of the user's time zone.
+- The implementation MUST NOT use `Temporal.PlainDate` or `Temporal.PlainTime` for data that represents a specific moment in physical time (an instant).
+- The implementation MUST NOT attempt to modify `Temporal` instances directly, as they are immutable.
+- The implementation MUST NOT use the legacy `Date` object for capturing or displaying location-agnostic calendar dates to avoid time zone drift bugs.
