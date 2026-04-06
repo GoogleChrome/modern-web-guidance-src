@@ -136,13 +136,19 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           ? suiteConfig.tasks
           : Array.from(taskMap.keys()).filter(key => key.endsWith('/task')));
 
-      for (const task of tasksToRun) {
+      // Filter valid tasks to get accurate count
+      const validTasksToRun = tasksToRun.filter(task => {
         const resolvedTask = resolveTaskName(task);
-        const taskInfo = taskMap.get(resolvedTask);
-        if (!taskInfo) {
-          console.warn(`Skipping task ${task}: Not found in task map`);
-          continue;
-        }
+        return taskMap.has(resolvedTask);
+      });
+
+      let taskIndex = 0;
+      const totalTasks = validTasksToRun.length;
+
+      for (const task of validTasksToRun) {
+        const resolvedTask = resolveTaskName(task);
+        const taskInfo = taskMap.get(resolvedTask)!;
+        taskIndex++;
 
         const [guideName, taskName] = resolvedTask.split('/');
         const workspaceBaseAppDir = setupWorkspaceBaseApp(taskInfo, runDir, guideName, taskName);
@@ -160,7 +166,18 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
-          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName);
+          generateTransientPackage(
+            targetDir, 
+            agentScript, 
+            promptContent, 
+            runType, 
+            workspaceBaseAppDir, 
+            taskName,
+            taskIndex,
+            totalTasks,
+            runNumber,
+            numRuns
+          );
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
       }
@@ -348,7 +365,11 @@ function generateTransientPackage(
   promptContent: string,
   runType: string,
   workspaceBaseAppDir: string,
-  taskName: string
+  taskName: string,
+  taskIndex: number,
+  totalTasks: number,
+  runNumber: number,
+  totalRuns: number
 ) {
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
@@ -357,12 +378,12 @@ function generateTransientPackage(
   // Generate runner script
   // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
   // we trick pnpm into thinking each test run is a package in a pnpm workspace.
-  // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
+  // This way we get \`pnpm -r\`'s great parallel scheduler and log interleaving for free.
   // This run.mjs wrapper executes the actual agent command via spawnSync.
-  const runnerContent = `import { spawnSync } from 'child_process';
+  const runnerContent = \`import { spawnSync } from 'child_process';
 const args = [
 '--experimental-strip-types',
-...${JSON.stringify([
+...\${JSON.stringify([
   agentScript,
   promptContent,
   runType,
@@ -370,19 +391,21 @@ const args = [
   workspaceBaseAppDir
 ])}
 ];
-const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
+const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: \${JSON.stringify(process.cwd())} });
 process.exit(result.status ?? 0);
-`.trim();
+\`.trim();
 
   fs.writeFileSync(path.join(targetDir, 'run.mjs'), runnerContent);
 
+  const scriptStr = \`node run.mjs -- [\${taskIndex}/\${totalTasks}] \${taskName} [\${runType}] [r\${runNumber}]\`;
+
   // Generate transient package.json
   // This tells pnpm that this directory is a "package" that can be run
-  // via \`pnpm run-agent\`.
+  // via \\\`pnpm run-agent\\\`.
   fs.writeFileSync(path.join(targetDir, 'package.json'), JSON.stringify({
-    name: `${taskName.substring(0, 30)}-${runType}`,
+    name: \`${taskName.substring(0, 30)}-\${runType}\`,
     type: "module",
-    scripts: { "run-agent": "node run.mjs" }
+    scripts: { "run-agent": scriptStr }
   }, null, 2));
 }
 
