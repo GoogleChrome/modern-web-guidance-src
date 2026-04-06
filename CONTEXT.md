@@ -314,7 +314,7 @@ Grader and negative-demo generation use Gemini CLI (not API calls) because the g
 Graders are Playwright test files because many expectations require browser rendering to verify (CSS properties, layout, visibility, animation behavior). However, graders can also include non-browser checks (string matching on file contents, DOM structure analysis on raw HTML) for simpler assertions.
 
 ### Why both MCP and skills modes?
-Different agents have different integration capabilities. MCP provides dynamic, search-based access. Skills provides static, file-based access. Supporting both ensures the guidance can reach agents regardless of their integration model.
+Different agents have different integration capabilities. MCP provides dynamic, search-based access. Skills provides static, file-based access. Supporting both ensures the guidance can reach agents regardless of their integration model, though **Skills via CLI (`skills_cli`) is the current primary serving mechanism** for evaluation stability and ease of distribution.
 
 ### Why a retry loop for calibration?
 Gemini-generated graders frequently fail calibration on the first attempt — tests may be too strict, too lenient, or check the wrong thing. Feeding failure context back into regeneration significantly improves success rates. The retry loop (up to 3 total attempts) automates what was previously a tedious manual cycle.

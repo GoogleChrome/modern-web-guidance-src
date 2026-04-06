@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Custom Select Grid</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding-top: 50px;
+    background-color: #f8f9fa;
+  }
+  .custom-dropdown {
+    position: relative;
+    width: 250px;
+  }
+  .trigger {
+    padding: 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .picker {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: white;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-top: 5px;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+  .picker.active {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .option-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .option-card:hover {
+    background-color: #e9ecef;
+  }
+  .icon {
+    font-size: 24px;
+  }
+  select {
+    display: none;
+  }
+</style>
+</head>
+<body>
+<div>
+  <div>Select weather</div>
+  <div class="custom-dropdown">
+    <div class="trigger" id="dropdownTrigger">
+      <span class="icon">☀️</span>
+      <span>Sunny</span>
+    </div>
+    <div class="picker" id="dropdownPicker">
+      <div class="option-card" data-val="sunny">
+        <span class="icon">☀️</span>
+        <span>Sunny</span>
+      </div>
+      <div class="option-card" data-val="cloudy">
+        <span class="icon">☁️</span>
+        <span>Cloudy</span>
+      </div>
+      <div class="option-card" data-val="rainy">
+        <span class="icon">🌧️</span>
+        <span>Rainy</span>
+      </div>
+      <div class="option-card" data-val="stormy">
+        <span class="icon">⛈️</span>
+        <span>Stormy</span>
+      </div>
+    </div>
+    <select id="hiddenSelect">
+      <option value="sunny">Sunny</option>
+      <option value="cloudy">Cloudy</option>
+      <option value="rainy">Rainy</option>
+      <option value="stormy">Stormy</option>
+    </select>
+  </div>
+</div>
+<script>
+  const trigger = document.getElementById('dropdownTrigger');
+  const picker = document.getElementById('dropdownPicker');
+  const hiddenSelect = document.getElementById('hiddenSelect');
+  const optionCards = document.querySelectorAll('.option-card');
+
+  trigger.addEventListener('click', () => {
+    picker.classList.toggle('active');
+  });
+
+  optionCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const val = card.getAttribute('data-val');
+      const text = card.querySelector('span:last-child').innerText;
+      const icon = card.querySelector('.icon').innerText;
+      
+      trigger.innerHTML = `<span class="icon">${icon}</span><span>${text}</span>`;
+      hiddenSelect.value = val;
+      picker.classList.remove('active');
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.custom-dropdown')) {
+      picker.classList.remove('active');
+    }
+  });
+</script>
+</body>
+</html>

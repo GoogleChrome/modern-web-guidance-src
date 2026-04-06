@@ -1,5 +1,5 @@
 ---
 base_app: daily-grind
+grader: branded-select-styling
 ---
-- can u make the scrollbar brown and thin? it looks ugly right now and doesnt match the theme. use #4e342e for the handle part and #d7ccc8 for the background
-- i want to style the scrollbars on this page to be thinner and use the brand colors #4e342e and #d7ccc8. make sure it works in safari and chrome, and i heard macs need some extra css to show the colors properly so include that too
+add a coffee roast selector (light, medium, dark) to the hero section. use the new customizable select features so the dropdown list, the arrow, and the checkmark all match the site's dark brown (#4e342e) and orange (#ffab40) palette.

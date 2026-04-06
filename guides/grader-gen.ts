@@ -12,9 +12,10 @@ const BASE_PROMPT = `
 Read the guide.md and expectations.md files to understand the guidance and expectations.
 Then, read the demo.html file, which represents a perfect working example of the guides and expectations, and the negative-demo.html file, which represents an anti-example that fails the expectations.
 
-Using template.grader.ts as a framework, write a Playwright test script that directly models the expectations.md requirements.
-You should generate both functional and browser tests, with each test containing only one assertion.
-Design it so that the demo.html passes all tests (100% success rate), and the negative-demo.html fails all tests (0% success rate).
+Using template.grader.ts as a framework, write a Playwright test script that directly models the expectations.md requirements. Design it so that the demo.html passes all tests (100% success rate), and the negative-demo.html fails all tests (0% success rate).
+
+You should generate browser tests, with each test containing only one assertion. Avoid using static assertions (like regex or str.includes()) to test CSS or HTML syntax whenever possible. These are extremely brittle and will fail if the agent uses a different class name, semantic element, or formatting. Instead, prefer using Playwright's browser APIs to test computed styles and actual DOM layout. For example, use window.getComputedStyle(el) to robustly verify that the browser is rendering the feature correctly, regardless of how the agent authored the code.
+
 
 The grader can be run with the following commands:
 
