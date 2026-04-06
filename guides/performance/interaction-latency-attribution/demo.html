@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaction Latency Attribution Demo</title>
+    <style>
+        body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto; }
+        .card { border: 1px solid #ddd; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; }
+        button { background: #6c757d; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem; }
+        .metric-card { background: #f1f3f5; padding: 1rem; border-radius: 4px; text-align: center; border: 1px solid #dee2e6; }
+        .metric-val { font-size: 1.25rem; font-weight: bold; color: #007bff; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Interaction Latency Attribution</h1>
+        <p>Trigger a slow interaction. The metrics below show the breakdown of why the interaction was slow.</p>
+        <button id="slow-handler">Slow Event Handler (200ms)</button>
+        <button id="input-delay">Delayed Handler (Wait 500ms first)</button>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div>Input Delay</div>
+                <div id="input-delay-val" class="metric-val">0ms</div>
+            </div>
+            <div class="metric-card">
+                <div>Processing Time</div>
+                <div id="processing-time-val" class="metric-val">0ms</div>
+            </div>
+            <div class="metric-card">
+                <div>Presentation Delay</div>
+                <div id="presentation-delay-val" class="metric-val">0ms</div>
+            </div>
+        </div>
+        <p><small>Total Duration: <span id="total-duration-val">0</span>ms. Target element: <code id="target-element-val">none</code></small></p>
+    </div>
+
+    <script>
+        function block(ms) {
+            const start = performance.now();
+            while (performance.now() - start < ms) {}
+        }
+
+        document.getElementById('slow-handler').addEventListener('click', () => {
+            block(200); // 200ms in the handler
+        });
+
+        document.getElementById('input-delay').addEventListener('click', () => {
+            // This button's handler is already scheduled.
+            // If we block the main thread *right now*, the click handler will wait.
+            block(500);
+            console.log('Delayed handler executed');
+        });
+
+        const observer = new PerformanceObserver((list) => {
+            const entry = list.getEntries()[list.getEntries().length - 1]; // Use the most recent entry
+            const inputDelay = entry.processingStart - entry.startTime;
+            const processingTime = entry.processingEnd - entry.processingStart;
+            const presentationDelay = entry.duration - (entry.processingEnd - entry.startTime);
+
+            document.getElementById('input-delay-val').textContent = `${inputDelay.toFixed(0)}ms`;
+            document.getElementById('processing-time-val').textContent = `${processingTime.toFixed(0)}ms`;
+            document.getElementById('presentation-delay-val').textContent = `${presentationDelay.toFixed(0)}ms`;
+            document.getElementById('total-duration-val').textContent = entry.duration.toFixed(0);
+
+            if (entry.target) {
+                document.getElementById('target-element-val').textContent = entry.target.tagName.toLowerCase() + (entry.target.id ? '#' + entry.target.id : '');
+            }
+        });
+
+        observer.observe({ type: 'event', buffered: true, durationThreshold: 16 });
+    </script>
+</body>
+</html>

@@ -1,4 +1,0 @@
-- can you build me a shipping address form for the checkout page?
-- add a form to collect the user's name and full address
-- update the address form to use all the right html attributes for better data entry
-- create a simple address form for the checkout delivery step

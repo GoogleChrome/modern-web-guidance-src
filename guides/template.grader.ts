@@ -55,7 +55,9 @@ test.describe(`<guide-name> Expectations: ${demoName}`, () => {
 
   // --- BROWSER ASSERTIONS ---
   // Use browser assertions ONLY when you need to compute real layout boxes, evaluate dynamic page scripts, interact with elements, or verify rendered visibility.
-  test.describe('Browser tests', () => {
+  
+test.describe('Browser tests', () => {
+
     test.beforeEach(async ({ page }) => {
       await page.route('http://localhost/*', async (route) => {
         const requestPath = new URL(route.request().url()).pathname;

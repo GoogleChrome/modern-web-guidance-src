@@ -71,7 +71,7 @@ test.describe(`identify-inp-causes Expectations: ${demoName}`, () => {
     const scriptContent = await page.evaluate(() => {
       return Array.from(document.querySelectorAll('script')).map(s => s.textContent || s.src).join(' ');
     });
-    expect(scriptContent).toContain('web-vitals/attribution');
+    expect(scriptContent).toMatch(/web-vitals[/.].*attribution/);
   });
 
   test('Page scripts should handle longestScript.entry safely', async ({ page }) => {

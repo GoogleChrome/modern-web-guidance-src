@@ -1,0 +1,9 @@
+- The implementation MUST include `appearance: base-select` on both the `<select>` element and its internal picker pseudo-element `select::picker(select)` to unlock customizable styling.
+- The picker container (`select::picker(select)`) MUST use a non-traditional layout (such as `display: grid` or `display: flex`) to arrange options in columns or rows, rather than a simple vertical list.
+- The `<select>` element MUST contain a `<button>` tag directly inside it to serve as the custom trigger.
+- The custom trigger `<button>` MUST contain a `<selectedcontent>` element to automatically render the content of the selected option and MUST NOT contain legacy `<selectedoption>` element to mirror selections.
+- The `<option>` elements MUST be styled to fit the chosen layout (e.g., using flexbox or padding to act as grid cards).
+- The implementation MUST NOT rely on JavaScript to position the options in a grid or flex layout if the browser supports `appearance: base-select`. The styling must be achieved primarily through CSS.
+- The implementation MUST include a progressive enhancement fallback for browsers that do not support `appearance: base-select`. This fallback MUST use `CSS.supports("appearance", "base-select")` to detect support before applying fallback logic.
+- If the layout is critical, the fallback script MAY use a minimal JavaScript solution or toggle classes to ensure functionality, but graceful degradation to a standard OS select is preferred if acceptable.
+- The `<select>` MUST have a `name` attribute and an associated `<label>`. This ensures that even with a custom UI, the component remains accessible to screen readers and works correctly with standard form submissions.

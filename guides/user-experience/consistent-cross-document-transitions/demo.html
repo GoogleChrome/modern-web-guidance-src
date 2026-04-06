@@ -1,1 +1,236 @@
-<!-- TODO -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consistent Cross-Document Transitions Demo</title>
+
+  <!-- Block rendering until the main content area has been parsed,
+       ensuring the transition snapshot captures a complete page -->
+  <link rel="expect" href="#main-content" blocking="render">
+
+  <!-- Register pagereveal before the page renders so the event
+       is not missed. Assigns view-transition-name values on the
+       incoming page based on which card was clicked. -->
+  <script blocking="render">
+    window.addEventListener('pagereveal', async (event) => {
+      if (!event.viewTransition) return;
+
+      const from = navigation.activation?.from;
+      if (!from) return;
+
+      const fromUrl = new URL(from.url);
+      const selectedId = new URLSearchParams(fromUrl.search).get('selected');
+
+      // If navigating back from a "selected" state, morph the
+      // corresponding card back into position.
+      if (selectedId) {
+        const card = document.querySelector(`.card[href="?selected=${selectedId}"]`);
+        if (card) {
+          card.querySelector('.thumbnail').style.viewTransitionName = 'card-banner';
+        }
+      }
+
+      // If navigating to a "selected" state, morph the banner.
+      const currentUrl = new URL(navigation.activation.entry.url);
+      if (currentUrl.searchParams.has('selected')) {
+        const banner = document.querySelector('.banner');
+        if (banner) banner.style.viewTransitionName = 'card-banner';
+      }
+
+      // Clean up after the transition to preserve bfcache compatibility.
+      await event.viewTransition.finished;
+      document.querySelectorAll('[style*="view-transition-name"]').forEach((el) => {
+        el.style.viewTransitionName = '';
+      });
+    });
+
+    // On the outgoing page, assign view-transition-name to the
+    // clicked card's title so the browser can snapshot it for morphing.
+    window.addEventListener('pageswap', async (event) => {
+      if (!event.viewTransition) return;
+
+      const targetUrl = new URL(event.activation.entry.url);
+      const selectedId = targetUrl.searchParams.get('selected');
+
+      if (selectedId) {
+        // Navigating to a "selected" state — name the clicked card.
+        const card = document.querySelector(`.card[href="?selected=${selectedId}"]`);
+        if (card) {
+          card.querySelector('.thumbnail').style.viewTransitionName = 'card-banner';
+        }
+      } else {
+        // Navigating back to the list — name the banner.
+        const banner = document.querySelector('.banner');
+        if (banner) banner.style.viewTransitionName = 'card-banner';
+      }
+
+      await event.viewTransition.finished;
+      document.querySelectorAll('[style*="view-transition-name"]').forEach((el) => {
+        el.style.viewTransitionName = '';
+      });
+    });
+  </script>
+
+  <style>
+    @view-transition {
+      navigation: auto;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    header {
+      background: #1a73e8;
+      color: #fff;
+      padding: 1rem 2rem;
+      view-transition-name: site-header;
+    }
+
+    header a {
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    #main-content {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+    }
+
+    #main-content h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    #main-content > p {
+      font-size: 1.125rem;
+      line-height: 1.6;
+      color: #555;
+      margin-bottom: 2rem;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+      text-decoration: none;
+      color: inherit;
+      transition: box-shadow 0.2s;
+    }
+
+    .card:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .card .thumbnail {
+      height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .card h2 {
+      padding: 1rem;
+      font-size: 1.125rem;
+    }
+
+    .detail {
+      background: #fff;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .detail .banner {
+      height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 2rem;
+      font-weight: 600;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+
+    .detail p {
+      font-size: 1.125rem;
+      line-height: 1.6;
+      color: #555;
+      margin-bottom: 1rem;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 1rem;
+      color: #1a73e8;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="#">Demo Site</a>
+  </header>
+
+  <div id="main-content">
+    <script>
+      const params = new URLSearchParams(location.search);
+      const selected = params.get('selected');
+
+      const cards = [
+        { id: '1', title: 'Card One', color: '#e8453c' },
+        { id: '2', title: 'Card Two', color: '#188038' },
+        { id: '3', title: 'Card Three', color: '#f9ab00' },
+      ];
+
+      if (selected) {
+        const card = cards.find(c => c.id === selected) || cards[0];
+        document.write(`
+          <a class="back-link" href="${location.pathname}">&larr; Back to list</a>
+          <h1>${card.title}</h1>
+          <div class="detail">
+            <div class="banner" style="background: ${card.color}">${card.title}</div>
+            <p>This is the detail view for ${card.title}. The transition from the list used <code>pageswap</code> and <code>pagereveal</code> to morph the card title into this heading.</p>
+          </div>
+        `);
+      } else {
+        document.write(`
+          <h1>All Cards</h1>
+          <p>Click a card to see a morph transition powered by <code>&lt;link rel="expect"&gt;</code> and <code>blocking="render"</code>.</p>
+          <div class="card-grid">
+            ${cards.map(c => `
+              <a class="card" href="?selected=${c.id}">
+                <div class="thumbnail" style="background: ${c.color}">${c.title}</div>
+                <h2>${c.title}</h2>
+              </a>
+            `).join('')}
+          </div>
+        `);
+      }
+    </script>
+  </div>
+</body>
+</html>

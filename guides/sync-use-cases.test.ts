@@ -1,13 +1,10 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
-import { validateGuide, getStatusName, getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, processGuideInventory, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
-import type { GuideInventory } from '../harness/lib/utils.ts';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
+import { ProjectStatus, validateGuide, getStatusName, processGuideInventory, type GuideInventory } from '../lib/guide-validation.ts';
 
 function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'sync-use-cases-test-'));
@@ -54,7 +51,7 @@ web-feature-ids:
 Body content.
 `);
     const result = validateGuide(filePath);
-    assert.ok(result.errors.some(e => /Missing "name"/.test(e)));
+    assert.ok(result.errors.some((e: string) => /Missing "name"/.test(e)));
   });
 
   test('returns error for missing description field', () => {
@@ -66,7 +63,7 @@ web-feature-ids:
 Body content.
 `);
     const result = validateGuide(filePath);
-    assert.ok(result.errors.some(e => /Missing "description"/.test(e)));
+    assert.ok(result.errors.some((e: string) => /Missing "description"/.test(e)));
   });
 
   test('returns error for missing web-feature-ids', () => {
@@ -77,7 +74,7 @@ description: A description
 Body content.
 `);
     const result = validateGuide(filePath);
-    assert.ok(result.errors.some(e => /Missing "web-feature-ids"/.test(e)));
+    assert.ok(result.errors.some((e: string) => /Missing "web-feature-ids"/.test(e)));
   });
 
   test('returns error when web-feature-ids is not an array', () => {
@@ -89,7 +86,7 @@ web-feature-ids: not-an-array
 Body content.
 `);
     const result = validateGuide(filePath);
-    assert.ok(result.errors.some(e => /"web-feature-ids" must be an array/.test(e)));
+    assert.ok(result.errors.some((e: string) => /"web-feature-ids" must be an array/.test(e)));
   });
 
   test('returns error for unknown feature ID', () => {
@@ -152,9 +149,9 @@ web-feature-ids:
 ---
 `);
     const result = validateGuide(filePath);
-    assert.ok(result.errors.some(e => /Missing "name"/.test(e)));
-    assert.ok(result.errors.some(e => /Missing "description"/.test(e)));
-    assert.ok(result.errors.some(e => /Missing "web-feature-ids"/.test(e)));
+    assert.ok(result.errors.some((e: string) => /Missing "name"/.test(e)));
+    assert.ok(result.errors.some((e: string) => /Missing "description"/.test(e)));
+    assert.ok(result.errors.some((e: string) => /Missing "web-feature-ids"/.test(e)));
   });
 
   test('returns error for BASELINE_STATUS macro with invalid feature ID', () => {
@@ -193,7 +190,7 @@ web-feature-ids:
 {{ BASELINE_STATUS() }}
 `);
     const result = validateGuide(filePath);
-    assert.ok(result.errors.some(e => /BASELINE_STATUS/.test(e)));
+    assert.ok(result.errors.some((e: string) => /BASELINE_STATUS/.test(e)));
   });
 
   test('supports multiple feature IDs', () => {
@@ -228,23 +225,23 @@ Body content.
 
 describe('getStatusName', () => {
   test('returns "Needs guidance" when guide body is empty', () => {
-    assert.strictEqual(getStatusName('', true, true), 'Needs guidance');
+    assert.strictEqual(getStatusName('', true, true), ProjectStatus.NeedsGuidance);
   });
 
   test('returns "Needs guidance" when guide body is only whitespace', () => {
-    assert.strictEqual(getStatusName('   \n\t  ', true, true), 'Needs guidance');
+    assert.strictEqual(getStatusName('   \n\t  ', true, true), ProjectStatus.NeedsGuidance);
   });
 
   test('returns "Needs evals" when grader is missing', () => {
-    assert.strictEqual(getStatusName('Some content.', false, true), 'Needs evals');
+    assert.strictEqual(getStatusName('Some content.', false, true), ProjectStatus.NeedsEvals);
   });
 
   test('returns "Needs evals" when prompts are missing', () => {
-    assert.strictEqual(getStatusName('Some content.', true, false), 'Needs evals');
+    assert.strictEqual(getStatusName('Some content.', true, false), ProjectStatus.NeedsEvals);
   });
 
   test('returns "Needs evals" when both grader and prompts are missing', () => {
-    assert.strictEqual(getStatusName('Some content.', false, false), 'Needs evals');
+    assert.strictEqual(getStatusName('Some content.', false, false), ProjectStatus.NeedsEvals);
   });
 
   test('returns null when guide is complete', () => {
@@ -252,13 +249,13 @@ describe('getStatusName', () => {
   });
 
   test('returns "Needs guidance" before "Needs evals" since guidance must come first', () => {
-    assert.strictEqual(getStatusName('', false, false), 'Needs guidance');
+    assert.strictEqual(getStatusName('', false, false), ProjectStatus.NeedsGuidance);
   });
 });
 
 describe('getIssueStateChanges', () => {
   test('open issue stays open when incomplete', () => {
-    const result = getIssueStateChanges('open', 'Needs guidance');
+    const result = getIssueStateChanges('open', ProjectStatus.NeedsGuidance);
     assert.strictEqual(result.needsClose, false);
     assert.strictEqual(result.needsReopen, false);
   });
@@ -270,7 +267,7 @@ describe('getIssueStateChanges', () => {
   });
 
   test('closed issue is reopened when incomplete', () => {
-    const result = getIssueStateChanges('closed', 'Needs evals');
+    const result = getIssueStateChanges('closed', ProjectStatus.NeedsEvals);
     assert.strictEqual(result.needsClose, false);
     assert.strictEqual(result.needsReopen, true);
   });
@@ -279,6 +276,18 @@ describe('getIssueStateChanges', () => {
     const result = getIssueStateChanges('closed', null);
     assert.strictEqual(result.needsClose, false);
     assert.strictEqual(result.needsReopen, false);
+  });
+
+  test('open issue stays open when complete but status is Needs investigation', () => {
+    const result = getIssueStateChanges('open', null, ProjectStatus.NeedsInvestigation);
+    assert.strictEqual(result.needsClose, false);
+    assert.strictEqual(result.needsReopen, false);
+  });
+
+  test('closed issue reopens when complete but status is Needs investigation', () => {
+    const result = getIssueStateChanges('closed', null, ProjectStatus.NeedsInvestigation);
+    assert.strictEqual(result.needsClose, false);
+    assert.strictEqual(result.needsReopen, true);
   });
 });
 
@@ -541,6 +550,13 @@ describe('getFeaturesNeedingSync', () => {
     assert.strictEqual(result[0].featureId, 'view-transitions');
     assert.strictEqual(result[0].targetStatus, 'Needs use cases');
   });
+
+  test('sets "Needs investigation" for feature with use cases needing investigation', () => {
+    const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
+    const result = getFeaturesNeedingSync(featureMap, new Set(['autofill']), new Set(['autofill']), new Set(['autofill']));
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsInvestigation);
+  });
 });
 
 describe('buildUseCaseChecklist', () => {
@@ -630,7 +646,6 @@ describe('processGuideInventory', () => {
       expectationsEmpty: false,
       hasNegativeDemo: false,
       hasGrader: false,
-      hasPrompts: false,
       hasTask: false,
       featureIds: [],
       ...overrides,
