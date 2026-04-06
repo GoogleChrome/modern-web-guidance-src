@@ -3,6 +3,9 @@ import path from "path";
 import { MODERN_WEB_LOG_FILE } from "../../constants.ts";
 
 export function logToolResult(toolName: string, result: { id: string; distance?: string | number }[]) {
+  if (process.env.ENABLE_FILE_LOGGING !== 'true') {
+    return;
+  }
   try {
     const logDir = process.env.MODERN_WEB_LOG_DIR || process.cwd();
     const logPath = path.join(logDir, MODERN_WEB_LOG_FILE);
