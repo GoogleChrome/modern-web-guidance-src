@@ -12,17 +12,19 @@ sources:
   - https://londonwebstandards.org/talks/everything-you-need-to-know-about-invoker-commands/
 ---
 
+# Declarative Button Actions
+
 The Invoker Commands API allows buttons to trigger actions on target elements declaratively using HTML attributes. This approach reduces the need for manual event listeners and ensures interactivity as soon as the HTML is parsed.
 
 For custom, application-specific actions, you can define your own command names. Custom commands must be prefixed with a double dash (`--`) to avoid collisions with future built-in browser commands.
 
-### Implementation steps
+## Implementation steps
 
 1.  **Define the target element**: Identify the element that will respond to the action. It must have a unique `id`.
 2.  **Configure the invoker button**: Use the `commandfor` attribute to point to the target's `id`, and the `command` attribute to specify the custom command name (prefixed with `--`).
-3.  **Handle the command event**: Attach a `command` event listener to the target element. The event object contains a `command` property matching the value defined in HTML.
+3.  **Handle the command event**: Attach a `command` event listener to the `document` (or a common parent). This ensures that the event is captured even if it is dispatched by a polyfill or from a child element. The event object contains a `command` property and a `target` property (referring to the element identified by `commandfor`).
 
-### Example: Custom Animation Controls
+## Example: Custom Animation Controls
 
 ```html
 <!-- The target element that will respond to custom commands -->
@@ -45,12 +47,14 @@ For custom, application-specific actions, you can define your own command names.
 </button>
 
 <script>
-  const target = document.getElementById('action-target');
-
-  // Logic is centralized on the target element using the 'command' event
-  target.addEventListener('command', (event) => {
+  // Listen for the 'command' event globally (or on a stable parent)
+  document.addEventListener('command', (event) => {
     // Robustly handle both native API and manual/polyfill fallbacks
     const command = event.command || event.detail?.command;
+    const target = event.target;
+
+    // Only process commands for our specific target
+    if (target.id !== 'action-target') return;
 
     // Custom commands are checked to identify the requested action
     if (command === '--spin') {
@@ -65,13 +69,12 @@ For custom, application-specific actions, you can define your own command names.
 </script>
 ```
 
-
-### Key constraints
+## Key constraints
 
 *   **Prefix custom commands**: MANDATORY: All custom command names must start with `--` (e.g., `command="--my-action"`).
 *   **Targeting**: The `commandfor` attribute must match the `id` of an element in the same document tree.
 
-### Fallback strategies
+## Fallback strategies
 
 {{ BASELINE_STATUS("invoker-commands") }}
 
@@ -85,7 +88,7 @@ This polyfill fully supports custom actions (starting with `--`) and dispatches 
 // <script type="module" src="https://cdn.jsdelivr.net/npm/invokers-polyfill@latest/dist/index.min.js"></script>
 ```
 
-#### Manual fallback (Traditional pattern)
+### Manual fallback (Traditional pattern)
 
 If you prefer not to use a polyfill, you can use a combination of **event delegation** to dispatch events and a **command registry** to handle the actions. This is a common architectural pattern in traditional JavaScript development that remains highly efficient and scalable.
 
@@ -118,11 +121,12 @@ if (!supportsInvokers) {
 }
 
 // 3. The unified listener: Uses the registry to execute the requested action
-target.addEventListener('command', (event) => {
+document.addEventListener('command', (event) => {
   const command = event.command || event.detail?.command;
+  const target = event.target;
   const action = commandRegistry[command];
 
-  if (action) {
+  if (action && target.id === 'action-target') {
     action(target);
   }
 });
