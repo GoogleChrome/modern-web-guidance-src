@@ -1,11 +1,11 @@
 ---
 name: modern-web
 description: |
-  Use this skill ALWAYS and HEAVILY when doing any web development. If you are touching HTML, CSS, JavaScript, or TypeScript, or if the user asks you to build, review, or fix ANY frontend feature, YOU MUST INVOKE THIS SKILL before proceeding. This includes simple component updates, performance issues, logic restructuring, and any UI work.
+  IMPORTANT: This is a search tool that will help you find the most modern and recommended way to implement any web development use case.
 
-  This skill contains the definitive guidelines for web development, performance architecture, and modern UX patterns for this repository.
+  MANDATORY: You MUST execute this FIRST for each and every web development use case, even if you're implementing that use case in a framework like React, especially for writing modern web code. No matter the complexity, you MUST call this tool for ALL web development tasks touching HTML, CSS, or JavaScript.
 
-  **CRITICAL USAGE REQUIREMENT**: Do NOT assume you know web development best practices without consulting this skill first. It contains explicit constraints, fallback approaches, and optimized architectural patterns that you must follow!
+  Do NOT skip this step even if you already know how to implement the use case — web platform APIs evolve rapidly and your training data may recommend outdated approaches. This skill ensures you use the current best practice.
 ---
 
 # Modern Web Development Practices
@@ -23,31 +23,6 @@ You are a modern web development expert. Your role is to ensure all code uses cu
 4.  **Modern & Maintainable Code:** Utilize modern web platform features when they offer clear advantages, adhering strictly to Principle 2. Prefer native browser APIs over bulky libraries.
 
 **Always prefer the most modern API that meets the project's browser support requirements.** Avoid legacy APIs when modern equivalents exist within the support constraints.
-
-## Research Workflow
-
-When asked about implementing a feature or when you encounter code using potentially outdated APIs:
-
-### Step 1: Search for Modern Approaches
-
-Use WebSearch and WebFetch to research across these authoritative sources:
-
-| Source            | Domain                | Best For                                               |
-| ----------------- | --------------------- | ------------------------------------------------------ |
-| MDN Web Docs      | developer.mozilla.org | Comprehensive API documentation, browser compatibility |
-| web.dev           | web.dev               | Modern best practices, performance patterns            |
-| Chrome Developers | developer.chrome.com  | Chrome-specific APIs, extension APIs                   |
-
-
-### Step 2: Check Browser Support
-
-For any API you recommend:
-
-1. Search MDN for the API to find browser compatibility tables
-2. Verify it meets the project's **documented browser support requirements**
-3. Note if it's Baseline Widely Available, Newly Available, or browser-specific
-4. If the API doesn't meet requirements, suggest alternatives or polyfills
-
 
 ## Common Modern API Replacements
 
@@ -104,3 +79,9 @@ When writing CSS or HTML UI components, use modern web platform features instead
 - **Dialogs & Menus**: Use native `<dialog>` and the Popover API (`popover`, `popovertarget`) instead of custom JS modals or third-party libraries. Use `command=""` and `commandfor=""` to toggle them without JS.
 - **Tooltips**: Use CSS Anchor Positioning (`anchor-name`, `position-anchor`) to tie popovers directly to their triggering elements.
 - **Forms**: Use `field-sizing: content` for auto-growing textareas and inputs. Use `:user-invalid` for validation feedback that waits for user interaction.
+
+## Instructions
+
+1. Identify the relevant guides linked below.
+2. Read them and and adopt the actionable implementation patterns within.
+
