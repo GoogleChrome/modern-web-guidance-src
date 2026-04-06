@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
-import { Agents, defaultSuiteConfig, type SuiteConfig } from './config.ts';
+import { Agents, defaultSuiteConfig, resolveSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
 import { getTaskMap, type TaskInfo } from '../lib/guide-validation.ts';
@@ -16,7 +16,7 @@ let logStream: fs.WriteStream | null = null;
 const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
 export async function runAgent(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
-  const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
+  const suiteConfig = providedSuiteConfig || await resolveSuiteConfig();
   const agent = suiteConfig.agent;
   let templateDir = templateDirRaw;
   if (!path.isAbsolute(templateDir)) {
@@ -78,7 +78,7 @@ export interface RunSuiteOptions {
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
-  const suiteConfig = options.suiteConfig || defaultSuiteConfig;
+  const suiteConfig = options.suiteConfig || await resolveSuiteConfig();
 
   // Create results directory if it doesn't exist
   if (!fs.existsSync(resultsDir)) {
