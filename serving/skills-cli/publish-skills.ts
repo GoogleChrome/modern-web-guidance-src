@@ -63,7 +63,7 @@ async function main() {
   await fs.rm(publishCliDir, { recursive: true, force: true });
 
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  await buildDist({ forPublish: true });
+  await buildDist();
   
   console.log(`\nVerifying built distribution with test-dist.test.ts suite...`);
   execSync('node --test skills-cli/*.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' ,  env: { ...process.env, TEST_REPORTER: 'spec'}});

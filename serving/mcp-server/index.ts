@@ -3,7 +3,7 @@ import path from 'path';
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { MODERN_WEB_LOG_FILE } from "../../constants.ts";
 
-if (process.env.ENABLE_FILE_LOGGING !== 'false') {
+if (process.env.ENABLE_FILE_LOGGING === 'true') {
   const logDir = process.env.MODERN_WEB_LOG_DIR || process.cwd();
   const logPath = path.join(logDir, MODERN_WEB_LOG_FILE);
 

@@ -3,7 +3,7 @@ import path from "path";
 import { MODERN_WEB_LOG_FILE } from "../../constants.ts";
 
 export function logToolResult(toolName: string, result: { id: string; distance?: string | number }[]) {
-  if (process.env.ENABLE_FILE_LOGGING === 'false') {
+  if (process.env.ENABLE_FILE_LOGGING !== 'true') {
     return;
   }
   try {
