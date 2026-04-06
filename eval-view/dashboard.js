@@ -627,7 +627,9 @@ async function showDetails(testName, runs, stats, testId) {
                                     const matchesDiscipline = t === discipline;
                                     
                                     let style = '';
-                                    if (matchesDiscipline || isExpected) {
+                                    if (matchesDiscipline) {
+                                        style = 'background: rgba(255, 204, 0, 0.2); border: 1px solid #ffcc00; color: #ffcc00;';
+                                    } else if (isExpected) {
                                         style = 'background: rgba(0, 200, 0, 0.1); border: 1px solid var(--accent-success); color: var(--accent-success);';
                                     } else {
                                         style = 'background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-primary);';
