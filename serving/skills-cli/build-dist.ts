@@ -14,7 +14,7 @@ const PUBLISH_ROOT = path.join(ROOT_DIST_DIR, "skills-cli");
 
 const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases");
 
-async function main() {
+async function main(options: { forPublish?: boolean } = {}) {
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
   const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
 
@@ -90,6 +90,9 @@ async function main() {
       loader: { ".node": "file" },
       external: ["@lancedb/lancedb", "@huggingface/transformers"],
       outfile: outFile,
+      define: {
+        'process.env.ENABLE_FILE_LOGGING': options.forPublish ? '"false"' : '"true"'
+      }
     });
     console.timeEnd("⏳ esbuild bundle");
 
@@ -237,7 +240,8 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  main().catch(console.error);
+  const forPublish = process.argv.includes("--for-publish");
+  main({ forPublish }).catch(console.error);
 }
 
 export { main as buildDist };
