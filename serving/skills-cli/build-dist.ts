@@ -107,6 +107,7 @@ async function main() {
     .map(d => d.name);
 
   let skillsCount = 0;
+  const skillNames: string[] = [];
   for (const candidate of candidates) {
     const skillSource = path.join(guidesDirInRoot, candidate, "SKILL.md");
     if (fs.existsSync(skillSource)) {
@@ -116,11 +117,12 @@ async function main() {
       fs.copyFileSync(skillSource, skillDest);
       console.log(`Copied skill ${candidate} (SKILL.md) to ${skillDestDir}`);
       skillsCount++;
+      skillNames.push(candidate);
     }
   }
   console.log(`Successfully copied ${skillsCount} skills to distribution.`);
 
-  updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
+  const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
 
   let nodeModulesValid = false;
   if (fs.existsSync(path.join(PUBLISH_ROOT, "node_modules"))) {
@@ -161,6 +163,7 @@ async function main() {
   }
 
   console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
+  return { featuresCount, useCasesCount, skillsCount, skillNames };
   } finally {
     if (fs.existsSync(lockFilePath)) {
       fs.unlinkSync(lockFilePath);
@@ -234,6 +237,8 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     fs.writeFileSync(readmePath, readmeContent);
     console.log("README dynamically updated with features and use cases.");
   }
+
+  return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
