@@ -8,3 +8,5 @@ const customConfig: Partial<SuiteConfig> = {
 };
 
 export default customConfig;
+
+/** To use: cp config.ts.example config.ts  */
