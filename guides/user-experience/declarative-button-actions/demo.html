@@ -62,7 +62,6 @@
 
     .target.is-spun {
       transform: rotate(180deg);
-      background-color: #4dd0e1;
     }
 
     .target.is-grown {
@@ -111,14 +110,17 @@
     
     // Listen for the command event on the target element
     targetEl.addEventListener('command', (event) => {
+      // Robustly handle both native API and manual/polyfill fallbacks
+      const command = event.command || event.detail?.command;
+
       // Check which custom command was dispatched
-      if (event.command === '--spin') {
+      if (command === '--spin') {
         targetEl.classList.toggle('is-spun');
-      } else if (event.command === '--grow') {
+      } else if (command === '--grow') {
         targetEl.classList.toggle('is-grown');
-      } else if (event.command === '--round') {
+      } else if (command === '--round') {
         targetEl.classList.toggle('is-rounded');
-      } else if (event.command === '--reset') {
+      } else if (command === '--reset') {
         // Reset to initial state
         targetEl.className = 'target';
       }
