@@ -204,16 +204,15 @@ run();
         let errorMessage = 'Generation failed';
         if (fs.existsSync(stderrPath)) {
           const stderrContent = fs.readFileSync(stderrPath, 'utf8');
-          if (stderrContent.includes('RESOURCE_EXHAUSTED')) {
-            errorMessage = 'Quota exceeded (429)';
-          } else if (stderrContent.includes('Please set an Auth method')) {
-            errorMessage = 'Auth method missing';
+          const lines = stderrContent.split('\n')
+            .map(l => l.trim())
+            .filter(l => l && !l.includes('YOLO mode'));
+          
+          const lastLine = lines[lines.length - 1];
+          if (lastLine) {
+            errorMessage = lastLine.length > 100 ? lastLine.substring(0, 100) + '...' : lastLine;
           } else {
-            const lines = stderrContent.trim().split('\n');
-            const lastLine = lines[lines.length - 1];
-            if (lastLine) {
-              errorMessage = lastLine.length > 100 ? lastLine.substring(0, 100) + '...' : lastLine;
-            }
+            errorMessage = 'Generation mysteriously failed';
           }
         } else if (!fs.existsSync(targetFile)) {
           errorMessage = 'index.html not found';
