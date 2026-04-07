@@ -125,14 +125,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
 
         const toolsUsed = run.guidanceToolsUsed || [];
         const expectedTool = run.expectedGuidanceTool;
-        if (expectedTool) {
-          const isActivated = toolsUsed.some(t => 
-            t === expectedTool || 
-            (expectedTool === 'modern-web' && t.startsWith('modern-web'))
-          );
-          if (isActivated) {
-            toolActivationCount++;
-          }
+        if (expectedTool && toolsUsed.some(t => t.startsWith(expectedTool))) {
+          toolActivationCount++;
         }
       });
     }

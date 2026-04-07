@@ -615,7 +615,7 @@ async function showDetails(testName, runs, stats, testId) {
                             <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 90px;">Tools Used:</strong>
                             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                                 ${toolsUsed.length > 0 ? toolsUsed.map(t => {
-                                    const isExpected = t === expectedTool;
+                                    const isExpected = expectedTool && t.startsWith(expectedTool);
                                     return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(t)}</code>`;
                                 }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
                             </div>
