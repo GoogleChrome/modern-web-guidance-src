@@ -133,12 +133,12 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
         for (const msg of session.messages) {
           if (msg.toolCalls) {
             for (const tc of msg.toolCalls) {
-              if (tc.name === 'mcp_modern-web_get_best_practices' || tc.name === 'get_best_practices') {
+              if (tc.name.includes('get_best_practices')) {
                 const args = tc.args as any;
                 if (args && args.use_case_id) {
                   retrievedGuides.push(args.use_case_id);
                 }
-              } else if ((serving === Serving.SKILLS || serving === Serving.MEGASKILL) && tc.name === 'read_file' && tc.args && (tc.args as any).file_path) {
+              } else if (tc.name === 'read_file' && tc.args && (tc.args as any).file_path) {
                 const filePath = (tc.args as any).file_path;
                   if (filePath.includes('/skills/')) {
                     if (filePath.endsWith('/guide.md')) {
@@ -153,7 +153,7 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
                       }
                     }
                   }
-              } else if (serving === Serving.SKILLS_CLI && tc.name === 'run_shell_command' && tc.args && (tc.args as any).command) {
+              } else if (tc.name === 'run_shell_command' && tc.args && (tc.args as any).command) {
                 const command = (tc.args as any).command;
                   if (command.includes('modern-web') && command.includes('--retrieve')) {
                     const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
@@ -222,7 +222,7 @@ export function collectGeminiToolsFromTrajectory(dir: string): string[] {
       for (const msg of session.messages) {
         if (Array.isArray(msg.toolCalls)) {
           for (const tc of msg.toolCalls) {
-            if (tc.name === 'mcp_modern-web_get_best_practices' || tc.name === 'get_best_practices') {
+            if (tc.name.includes('get_best_practices')) {
               toolsUsed.push('modern-web');
             } else if (tc.name === 'activate_skill' && tc.args?.name) {
               toolsUsed.push(tc.args.name);
