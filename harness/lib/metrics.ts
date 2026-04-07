@@ -2,6 +2,7 @@ export interface ScenarioCheck {
   id: string;
   passed: boolean;
   message: string;
+  isEarlyFailure?: boolean;
 }
 
 export interface RunResult {
@@ -24,6 +25,7 @@ export interface Metrics {
     guidedPassed: number;
     guidedTotal: number;
     runsPerTest: number;
+    expectedTotalRuns?: number;
     guideUsageRate?: number;
     guideUsageCount?: number;
     totalGuidedRuns?: number;
@@ -90,7 +92,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let earlyFailures = 0;
     const passRates = runs.map(run => {
       const checks = run.results;
-      const isEarlyFailure = checks.some(c => c.message === 'index.html not found');
+      const isEarlyFailure = checks.some(c => c.isEarlyFailure);
       if (isEarlyFailure) {
         earlyFailures++;
       }
@@ -193,6 +195,14 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
   const uStats = calcSummary(sortedKeys.filter(k => k.includes(' - unguided')));
   const gStats = calcSummary(sortedKeys.filter(k => k.includes(' - guided')));
 
+  const uniqueTasks = new Set<string>();
+  Object.keys(allResults).forEach(key => {
+    const [taskName, guideName] = key.split(' - ');
+    uniqueTasks.add(`${taskName} - ${guideName}`);
+  });
+  const numberOfTasks = uniqueTasks.size;
+  const expectedTotalRuns = numberOfTasks * runsPerTest;
+
   return {
     summary: {
       unguidedMedian: uStats.median,
@@ -204,6 +214,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       guidedPassed: gStats.passed,
       guidedTotal: gStats.total,
       runsPerTest,
+      expectedTotalRuns,
       guideUsageRate: gStats.guideUsageRate,
       guideUsageCount: gStats.guideUsageCount,
       totalGuidedRuns: gStats.totalGuidedRuns,

@@ -356,6 +356,11 @@ function renderSummary(data) {
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
                 ${summary.unguidedPassed}/${summary.unguidedTotal} checks passed
             </div>
+            ${summary.expectedTotalRuns !== undefined ? `
+            <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-secondary);">
+                Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}</span>
+            </div>
+            ` : ''}
             ${summary.unguidedEarlyFailures !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 File Not Found: <span style="font-weight: bold; color: ${getColor(100 - unguidedEarlyFailureRate)}">${unguidedEarlyFailureRate}%</span>
@@ -371,6 +376,11 @@ function renderSummary(data) {
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
                 ${summary.guidedPassed}/${summary.guidedTotal} checks passed
             </div>
+            ${summary.expectedTotalRuns !== undefined ? `
+            <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-secondary);">
+                Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}</span>
+            </div>
+            ` : ''}
             ${summary.guidedEarlyFailures !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 File Not Found: <span style="font-weight: bold; color: ${getColor(100 - guidedEarlyFailureRate)}">${guidedEarlyFailureRate}%</span>
