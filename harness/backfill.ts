@@ -1,3 +1,19 @@
+/**
+ * @file backfill.ts
+ * @description Backfills evaluation metrics for all suites in a results directory.
+ * 
+ * Rationale:
+ * When reporting logic changes (e.g., adding split guide metrics or handling new directory structures),
+ * we need to re-evaluate historical test runs to update their `evals.json` and `evals.md` reports.
+ * This script iterates over all suite directories in the results folder and delegates to `evaluateSuite`
+ * to re-process results, running grading only if missing, and updating the summary files.
+ * 
+ * Usage:
+ * node harness/backfill.ts [custom_results_dir]
+ * 
+ * If no argument is provided, it defaults to the project's standard results directory.
+ */
+
 import path from 'path';
 import fs from 'fs';
 import 'colors';
