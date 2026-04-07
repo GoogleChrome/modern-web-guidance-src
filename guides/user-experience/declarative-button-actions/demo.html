@@ -82,6 +82,26 @@
       gap: 1rem;
       justify-content: center;
     }
+
+    .status {
+      margin-top: 1rem;
+      font-size: 0.875rem;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+
+    .status.supported {
+      background: #e8f5e9;
+      color: #2e7d32;
+      border-color: #c8e6c9;
+    }
+
+    .status.fallback {
+      background: #fff3e0;
+      color: #ef6c00;
+      border-color: #ffe0b2;
+    }
   </style>
 </head>
 <body>
@@ -103,12 +123,41 @@
     <div id="action-target" class="target">
       Action Target
     </div>
+
+    <!-- Indicator to show if the browser is using native support or a fallback -->
+    <div id="support-status" class="status">Checking support...</div>
   </div>
 
-  <script>
+  <script type="module">
     const targetEl = document.getElementById('action-target');
+    const statusEl = document.getElementById('support-status');
     
-    // Listen for the command event on the target element
+    // Check for native Invoker Commands support
+    const hasNativeSupport = 'commandForElement' in HTMLButtonElement.prototype;
+
+    if (hasNativeSupport) {
+      statusEl.textContent = 'Native Invoker Commands supported';
+      statusEl.classList.add('supported');
+    } else {
+      statusEl.textContent = 'Invoker Commands not supported; loading invokers-polyfill...';
+      statusEl.classList.add('fallback');
+
+      /**
+       * DYNAMIC FALLBACK STRATEGY: 
+       * We only load the polyfill if the browser doesn't support the API natively.
+       * This saves bandwidth for users on modern browsers.
+       */
+      try {
+        await import('https://cdn.jsdelivr.net/npm/invokers-polyfill@latest/dist/index.min.js');
+        statusEl.textContent = 'Invoker Commands not supported; invokers-polyfill loaded';
+      } catch (err) {
+        statusEl.textContent = 'Error loading fallback strategy';
+        console.error('Polyfill load failed:', err);
+      }
+    }
+    
+    // Unified listener for the command event on the target element.
+    // This works identically whether triggered natively or via the polyfill.
     targetEl.addEventListener('command', (event) => {
       // Robustly handle both native API and manual/polyfill fallbacks
       const command = event.command || event.detail?.command;
