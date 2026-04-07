@@ -332,73 +332,22 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
         guideUsageRate: parsed.summary?.guideUsageRate || 0
     };
     
-    updateModelFilterOptions();
-    updateServingFilterOptions();
-    updateAgentFilterOptions();
+    updateFilterOptions('filter-model-group', 'model');
+    updateFilterOptions('filter-serving-group', 'serving');
+    updateFilterOptions('filter-agent-group', 'agent');
 }
 
-function updateAgentFilterOptions() {
-    const agentGroup = document.getElementById('filter-agent-group');
-    if (!agentGroup) return;
+function updateFilterOptions(groupId, key) {
+    const group = document.getElementById(groupId);
+    if (!group) return;
 
-    const agents = new Set();
-    Object.values(allTestData).forEach(test => {
-        if (test.agent) agents.add(test.agent);
-    });
-
-    const sortedAgents = Array.from(agents).sort();
+    const values = [...new Set(Object.values(allTestData).map(t => t[key]).filter(Boolean))].sort();
     
-    const currentOptions = Array.from(agentGroup.querySelectorAll('option')).map(o => o.value);
-    if (JSON.stringify(currentOptions) === JSON.stringify(sortedAgents)) return;
+    const currentOptions = Array.from(group.querySelectorAll('option')).map(o => o.value);
+    if (JSON.stringify(currentOptions) === JSON.stringify(values)) return;
 
-    agentGroup.innerHTML = sortedAgents.map(agent => 
-        `<option value="${escapeHtml(agent)}">${escapeHtml(agent)}</option>`
-    ).join('');
-}
-
-function updateServingFilterOptions() {
-    const servingGroup = document.getElementById('filter-serving-group');
-    if (!servingGroup) return;
-
-    const servings = new Set();
-    Object.values(allTestData).forEach(test => {
-        if (test.serving) servings.add(test.serving);
-    });
-
-    const sortedServings = Array.from(servings).sort();
-    
-    const servingDisplayNames = {
-        'skills': 'Skills',
-        'skills_cli': 'Skills (CLI)',
-        'mcp': 'MCP',
-        'megaskill': 'Megaskill'
-    };
-
-    const currentOptions = Array.from(servingGroup.querySelectorAll('option')).map(o => o.value);
-    if (JSON.stringify(currentOptions) === JSON.stringify(sortedServings)) return;
-
-    servingGroup.innerHTML = sortedServings.map(serving => 
-        `<option value="${escapeHtml(serving)}">${escapeHtml(servingDisplayNames[serving] || serving)}</option>`
-    ).join('');
-}
-
-function updateModelFilterOptions() {
-    const modelGroup = document.getElementById('filter-model-group');
-    if (!modelGroup) return;
-
-    const models = new Set();
-    Object.values(allTestData).forEach(test => {
-        if (test.model) models.add(test.model);
-    });
-
-    const sortedModels = Array.from(models).sort();
-    
-    // Only update if changed to avoid unnecessary re-renders or losing selection
-    const currentOptions = Array.from(modelGroup.querySelectorAll('option')).map(o => o.value);
-    if (JSON.stringify(currentOptions) === JSON.stringify(sortedModels)) return;
-
-    modelGroup.innerHTML = sortedModels.map(model => 
-        `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`
+    group.innerHTML = values.map(val => 
+        `<option value="${escapeHtml(val)}">${escapeHtml(val)}</option>`
     ).join('');
 }
 
