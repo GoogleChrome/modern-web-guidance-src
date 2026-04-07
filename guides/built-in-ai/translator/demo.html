@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Translator Demo</title>
+</head>
+
+<body>
+  <h1>Translator</h1>
+  <p id="source" lang="en">The quick brown fox jumps over the lazy dog.</p>
+  <p id="translation"></p>
+
+  <script type="module">
+    const options = {
+      sourceLanguage: 'en',
+      targetLanguage: 'es',
+    };
+
+    try {
+      if (!('Translator' in window)) {
+        throw new Error('Translator not found');
+      }
+      const availability = await Translator.availability(options);
+      if (availability === 'unavailable') {
+        throw new Error('Translator is not available');
+      }
+      const translator = await Translator.create({
+        ...options,
+        monitor(m) {
+          m.addEventListener('downloadprogress', (e) => {
+            console.log(`Downloaded ${e.loaded * 100}%`);
+          });
+        },
+      });
+      const text = document.getElementById('source').textContent;
+      const stream = translator.translateStreaming(text);
+      let translation = '';
+      for await (const chunk of stream) {
+        translation += chunk;
+        document.getElementById('translation').textContent = translation;
+      }
+      console.log('Translation:', translation);
+    } catch (e) {
+      console.error(e);
+    }
+  </script>
+</body>
+
+</html>

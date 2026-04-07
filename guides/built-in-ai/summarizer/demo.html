@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Summarizer Demo</title>
+</head>
+
+<body>
+  <h1>Summarizer</h1>
+  <article id="article">
+    <p>The James Webb Space Telescope (JWST) has revolutionized our understanding of the early universe since its
+      launch in December 2021. Orbiting at the second Lagrange point, 1.5 million kilometers from Earth, it captures
+      infrared light with unprecedented clarity. Its first deep field image, released in July 2022, showed thousands
+      of galaxies as they appeared over 13 billion years ago. Scientists have used Webb to study the atmospheres of
+      exoplanets, detect water vapor on distant worlds, and observe the formation of stars within nebulae in stunning
+      detail. The telescope's 6.5-meter primary mirror and advanced instruments have enabled discoveries that would
+      have been impossible with previous generations of space observatories. Researchers around the world continue to
+      analyze its data, expecting many more groundbreaking revelations in the years to come.</p>
+  </article>
+  <div id="summary"></div>
+
+  <script type="module">
+    const options = {
+      type: 'tldr',
+      format: 'plain-text',
+      length: 'short',
+    };
+
+    try {
+      if (!('Summarizer' in window)) {
+        throw new Error('Summarizer not found');
+      }
+      const availability = await Summarizer.availability(options);
+      if (availability === 'unavailable') {
+        throw new Error('Summarizer is not available');
+      }
+      const summarizer = await Summarizer.create({
+        ...options,
+        monitor(m) {
+          m.addEventListener('downloadprogress', (e) => {
+            console.log(`Downloaded ${e.loaded * 100}%`);
+          });
+        },
+      });
+      const text = document.getElementById('article').textContent.trim();
+      const stream = summarizer.summarizeStreaming(text);
+      let summary = '';
+      for await (const chunk of stream) {
+        summary += chunk;
+        document.getElementById('summary').textContent = summary;
+      }
+      console.log('Summary:', summary);
+    } catch (e) {
+      console.error(e);
+    }
+  </script>
+</body>
+
+</html>
