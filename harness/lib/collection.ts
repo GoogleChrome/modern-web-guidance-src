@@ -21,6 +21,24 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   return 'unknown';
 }
 
+function extractErrorMessage(dir: string, targetFile: string): string {
+  const stderrPath = path.join(dir, 'agent_stderr.log');
+  
+  if (!fs.existsSync(stderrPath)) {
+    return fs.existsSync(targetFile) ? 'Generation failed' : 'index.html not found';
+  }
+
+  const lines = fs.readFileSync(stderrPath, 'utf8')
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l && !l.includes('YOLO mode'));
+
+  const lastLine = lines.pop();
+  if (!lastLine) return 'Generation mysteriously failed';
+
+  return lastLine.length > 100 ? lastLine.substring(0, 100) + '...' : lastLine;
+}
+
 export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
   const taskMap = getTaskMap();
 
@@ -200,23 +218,7 @@ run();
         console.warn(`Grader not found for ${guide} at ${graderPath}`);
         scenarioResults.push({ name: 'Configuration', status: 'fail', message: 'Grader not found' });
       } else if (!fs.existsSync(graderResults)) {
-        const stderrPath = path.join(dir, 'agent_stderr.log');
-        let errorMessage = 'Generation failed';
-        if (fs.existsSync(stderrPath)) {
-          const stderrContent = fs.readFileSync(stderrPath, 'utf8');
-          const lines = stderrContent.split('\n')
-            .map(l => l.trim())
-            .filter(l => l && !l.includes('YOLO mode'));
-          
-          const lastLine = lines[lines.length - 1];
-          if (lastLine) {
-            errorMessage = lastLine.length > 100 ? lastLine.substring(0, 100) + '...' : lastLine;
-          } else {
-            errorMessage = 'Generation mysteriously failed';
-          }
-        } else if (!fs.existsSync(targetFile)) {
-          errorMessage = 'index.html not found';
-        }
+        const errorMessage = extractErrorMessage(dir, targetFile);
         scenarioResults.push({ passed: false, message: errorMessage, isEarlyFailure: true });
       } else {
         try {
