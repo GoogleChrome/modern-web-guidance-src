@@ -599,25 +599,19 @@ async function showDetails(testName, runs, stats, testId) {
                           <div style="display: flex; align-items: center; gap: 8px;">
                               <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 120px;">Retrieved Guides:</strong>
                               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                  ${run.retrievedGuides && run.retrievedGuides.length > 0 ? run.retrievedGuides.map(g => {
-                                      const isExpected = g === expectedGuide;
-                                      return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
-                                  }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
+                                  ${(() => {
+                                      const retrieved = run.fileReadGuides === undefined ? (run.retrievedGuides || run.guidesUsed) : run.retrievedGuides;
+                                      return retrieved && retrieved.length > 0 ? retrieved.map(g => {
+                                          const isExpected = g === expectedGuide;
+                                          return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
+                                      }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>';
+                                  })()}
                               </div>
                           </div>
                           <div style="display: flex; align-items: center; gap: 8px;">
                               <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 120px;">File Read Guides:</strong>
                               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                                   ${run.fileReadGuides && run.fileReadGuides.length > 0 ? run.fileReadGuides.map(g => {
-                                      const isExpected = g === expectedGuide;
-                                      return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
-                                  }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
-                              </div>
-                          </div>
-                          <div style="display: flex; align-items: center; gap: 8px;">
-                              <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 120px;">Combined Guides:</strong>
-                              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                  ${guidesUsed.length > 0 ? guidesUsed.map(g => {
                                       const isExpected = g === expectedGuide;
                                       return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
                                   }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
