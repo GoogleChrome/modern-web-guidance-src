@@ -56,16 +56,10 @@ test.describe(`Temporal Duration Expectations: ${demoName}`, () => {
   });
 
   test('MUST extract individual unit properties from the Temporal.Duration instance', async () => {
-    // Should match .hours, .minutes, .seconds but NOT followed by an assignment operator
     expect(fileContent).toMatch(/\.(hours|minutes|seconds)(?!\s*=)/);
   });
 
   test('MUST NOT rely on Temporal.Duration.prototype.toString() for user-facing text', async ({ page }) => {
-    // Let's assert that the positive demo contains a custom format function, and negative does not.
-    // We check that the source code does not only use toString for formatting.
-    // Actually, let's just make the test check that there is logic extracting properties to a string literal:
-    // Positive demo uses `${dur.hours} hour`, negative demo does not.
-    // So we can check for string interpolation of properties or concatenation.
     expect(fileContent).toMatch(/\$\{[^}]*\.(hours|minutes|seconds)[^}]*\}|\+\s*[^+\n]*\.(hours|minutes|seconds)/);
   });
 
