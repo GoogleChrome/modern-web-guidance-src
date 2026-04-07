@@ -144,7 +144,6 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
                       }
                     }
                   }
-                }
               } else if (serving === Serving.SKILLS_CLI && tc.name === 'run_shell_command' && tc.args && (tc.args as any).command) {
                 const command = (tc.args as any).command;
                   if (command.includes('modern-web') && command.includes('--retrieve')) {
