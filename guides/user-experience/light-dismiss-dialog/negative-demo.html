@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Light Dismiss Dialog Negative Demo</title>
+</head>
+<body>
+  <h1>Super Broken Dialog</h1>
+  <!-- ERROR: No closedby, no aria, no id that matches labels -->
+  <dialog id="wrongDialog">
+    <p>I am a broken dialog.</p>
+    <!-- ERROR: Button that doesn't close anything -->
+    <button id="uselessButton">Close (Not really)</button>
+  </dialog>
+
+  <button id="openButton">Open (Wrongly)</button>
+
+  <script>
+    const dialog = document.getElementById('wrongDialog');
+    const openButton = document.getElementById('openButton');
+
+    openButton.addEventListener('click', () => {
+      // ERROR: Using show() instead of showModal()
+      dialog.show();
+    });
+
+    // ERROR: No close logic for the button
+    // ERROR: No fallback logic
+  </script>
+</body>
+</html>
