@@ -288,9 +288,15 @@
 
     // Check Support
     if (typeof Temporal === 'undefined') {
-      unsupportedBanner.style.display = 'flex';
-      [hoursInput, minutesInput, secondsInput].forEach(el => el.disabled = true);
-      radioButtons.forEach(el => el.disabled = true);
+      import('@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill }) => {
+        globalThis.Temporal = TemporalPolyfill;
+        initializeDemo();
+      }).catch(err => {
+        console.error('Failed to load Temporal polyfill:', err);
+        unsupportedBanner.style.display = 'flex';
+        [hoursInput, minutesInput, secondsInput].forEach(el => el.disabled = true);
+        radioButtons.forEach(el => el.disabled = true);
+      });
     } else {
       initializeDemo();
     }
