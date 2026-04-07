@@ -564,7 +564,6 @@ export async function runCliAgentCommand(
     throw err; // Re-throw to propagate failure
   }
 }
-}
 
 /**
  * Generates an HTML file that can load and display a trajectory file (JSON/PB) 
