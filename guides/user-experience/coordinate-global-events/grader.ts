@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -8,12 +7,6 @@ const filePath = path.resolve(targetFile);
 const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
-
-declare global {
-  interface Window {
-    Temporal: any;
-  }
-}
 
 test.describe(`Temporal Event Planner Expectations: ${demoName}`, () => {
   let content = '';
@@ -50,12 +43,11 @@ test.describe(`Temporal Event Planner Expectations: ${demoName}`, () => {
 
     // Mock native Temporal before scripts execute
     await page.addInitScript(() => {
-      window.Temporal = { ZonedDateTime: { from: () => ({}) } };
+      (window as any).Temporal = { ZonedDateTime: { from: () => ({}) } };
     });
 
     await page.goto(demoUrl);
     
-    // Wait for the demo initialization or some time
     await page.waitForTimeout(500);
 
     expect(polyfillRequested).toBe(false);
