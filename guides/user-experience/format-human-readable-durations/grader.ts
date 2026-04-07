@@ -59,7 +59,7 @@ test.describe(`Temporal Duration Expectations: ${demoName}`, () => {
     expect(fileContent).toMatch(/\.(hours|minutes|seconds)(?!\s*=)/);
   });
 
-  test('MUST NOT rely on Temporal.Duration.prototype.toString() for user-facing text', async ({ page }) => {
+  test('MUST NOT rely on Temporal.Duration.prototype.toString() for user-facing text', async () => {
     expect(fileContent).toMatch(/\$\{[^}]*\.(hours|minutes|seconds)[^}]*\}|\+\s*[^+\n]*\.(hours|minutes|seconds)/);
   });
 
