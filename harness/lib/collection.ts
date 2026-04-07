@@ -177,9 +177,9 @@ run();
       if (!fs.existsSync(graderPath)) {
         console.warn(`Grader not found for ${guide} at ${graderPath}`);
         scenarioResults.push({ name: 'Configuration', status: 'fail', message: 'Grader not found' });
-      } else if (!fs.existsSync(targetFile)) {
+      } else if (!fs.existsSync(graderResults)) {
         const stderrPath = path.join(dir, 'agent_stderr.log');
-        let errorMessage = 'index.html not found';
+        let errorMessage = 'Generation failed';
         if (fs.existsSync(stderrPath)) {
           const stderrContent = fs.readFileSync(stderrPath, 'utf8');
           if (stderrContent.includes('RESOURCE_EXHAUSTED')) {
@@ -193,6 +193,8 @@ run();
               errorMessage = lastLine.length > 100 ? lastLine.substring(0, 100) + '...' : lastLine;
             }
           }
+        } else if (!fs.existsSync(targetFile)) {
+          errorMessage = 'index.html not found';
         }
         scenarioResults.push({ passed: false, message: errorMessage, isEarlyFailure: true });
       } else {
