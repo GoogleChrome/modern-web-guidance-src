@@ -33,31 +33,24 @@
   </div>
 
   <script>
+    let totalForegroundTime = 0;
+    let lastVisibleTime = performance.now();
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        totalForegroundTime += performance.now() - lastVisibleTime;
+      } else {
+        lastVisibleTime = performance.now();
+      }
+    });
+
     function getTotalForegroundTime() {
-      const entries = performance.getEntriesByType('visibility-state');
-      
-      // Empty array means unsupported
-      if (entries.length === 0) {
-        return performance.now(); // Fallback
+      if (document.visibilityState === 'visible') {
+        return totalForegroundTime + (performance.now() - lastVisibleTime);
       }
-
-      let totalForegroundTime = 0;
-
-      for (let i = 0; i < entries.length; i++) {
-        if (entries[i].name === 'visible') {
-          const start = entries[i].startTime;
-          const end = i + 1 < entries.length
-              ? entries[i + 1].startTime
-              : performance.now();
-              
-          totalForegroundTime += (end - start);
-        }
-      }
-
       return totalForegroundTime;
     }
 
-    // Update the UI periodically to demonstrate the live calculation
     setInterval(() => {
       const ms = getTotalForegroundTime();
       document.getElementById('foreground-time').textContent = (ms / 1000).toFixed(1) + 's';
