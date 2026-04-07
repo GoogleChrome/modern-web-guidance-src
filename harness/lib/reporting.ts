@@ -2,6 +2,17 @@ import fs from 'fs';
 import path from 'path';
 import type { Metrics, RunResult, ScenarioCheck } from './metrics.ts';
 
+export interface EvalsReport {
+  summary: Metrics['summary'];
+  results: Record<string, RunResult[]>;
+  stats: Metrics['testStats'];
+  timestamp: string;
+  runCount: number;
+  agent: string;
+  serving: string;
+  model: string;
+}
+
 export function generateMarkdownReport(metrics: Metrics, allResults: Record<string, RunResult[]>): string {
   const { summary, testStats, sortedKeys } = metrics;
   let md = '# Evaluation Results\n\n';
@@ -57,7 +68,7 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
   return md;
 }
 
-export function generateJsonReport(metrics: Metrics, allResults: Record<string, RunResult[]>, timestamp: string, runCount: number, agent: string, serving: string, model: string) {
+export function generateJsonReport(metrics: Metrics, allResults: Record<string, RunResult[]>, timestamp: string, runCount: number, agent: string, serving: string, model: string): EvalsReport {
   return {
     summary: metrics.summary,
     results: allResults,
@@ -70,7 +81,7 @@ export function generateJsonReport(metrics: Metrics, allResults: Record<string, 
   };
 }
 
-export function saveReports(resultsDir: string, markdown: string, json: any) {
+export function saveReports(resultsDir: string, markdown: string, json: EvalsReport) {
   fs.mkdirSync(resultsDir, { recursive: true });
   fs.writeFileSync(path.join(resultsDir, 'evals.md'), markdown);
   fs.writeFileSync(path.join(resultsDir, 'evals.json'), JSON.stringify(json, null, 2));
