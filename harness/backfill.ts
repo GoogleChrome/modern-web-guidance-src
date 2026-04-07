@@ -5,7 +5,7 @@ import { collectResults, extractModelFromResults } from './lib/collection.ts';
 import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
 import { resultsDir } from '../lib/paths.ts';
-import type { SuiteConfig } from './config.ts';
+import { Serving, type SuiteConfig } from './config.ts';
 
 async function backfillSuite(suiteResultsDir: string, suiteName: string) {
   console.log(`Backfilling suite: ${suiteName}`.cyan);
@@ -24,7 +24,7 @@ async function backfillSuite(suiteResultsDir: string, suiteName: string) {
     console.warn(`⚠️ No suite_config.json found in ${suiteResultsDir}. Inferring config...`.yellow);
     
     let agent = 'gemini-cli';
-    let serving = 'mcp';
+    let serving: Serving = 'mcp';
 
     const evalsPath = path.join(suiteResultsDir, 'evals.json');
     if (fs.existsSync(evalsPath)) {
@@ -40,8 +40,13 @@ async function backfillSuite(suiteResultsDir: string, suiteName: string) {
       }
     }
 
-    suiteConfig = { agent, serving, tasks: [] };
+    suiteConfig = { agent, serving, tasks: [], name: null, numRuns: 1, mcpServersToEnable: [] };
     console.log(`Inferred: agent=${agent}, serving=${serving}`.cyan);
+  }
+
+  if (!suiteConfig) {
+    console.error(`Failed to infer suite config`.red);
+    return;
   }
 
   try {

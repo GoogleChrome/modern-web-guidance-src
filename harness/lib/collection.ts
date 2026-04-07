@@ -21,7 +21,7 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   return 'unknown';
 }
 
-export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
+export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig, skipGrading = false) {
   const taskMap = getTaskMap();
 
   const runDirs = fs.readdirSync(resultsDir)
@@ -103,7 +103,7 @@ run();
   }
 
   // --- PASS 1.5: Execute the accumulated grading runs in parallel ---
-  if (pnpmWorkspacePackages.length > 0) {
+  if (pnpmWorkspacePackages.length > 0 && !skipGrading) {
     console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
     const pnpmWorkspacePath = path.join(resultsDir, 'pnpm-workspace.yaml');
     fs.writeFileSync(pnpmWorkspacePath, 'packages:\n  - \'**\'\n');
