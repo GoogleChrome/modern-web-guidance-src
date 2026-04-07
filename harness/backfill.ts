@@ -21,8 +21,27 @@ async function backfillSuite(suiteResultsDir: string, suiteName: string) {
   }
 
   if (!suiteConfig) {
-    console.warn(`⚠️ Skipping ${suiteName}: No suite_config.json found or failed to parse.`.yellow);
-    return;
+    console.warn(`⚠️ No suite_config.json found in ${suiteResultsDir}. Inferring config...`.yellow);
+    
+    let agent = 'gemini-cli';
+    let serving = 'mcp';
+
+    const evalsPath = path.join(suiteResultsDir, 'evals.json');
+    if (fs.existsSync(evalsPath)) {
+      try {
+        const oldEvals = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+        if (oldEvals.agent) agent = oldEvals.agent;
+        if (oldEvals.serving) serving = oldEvals.serving;
+        else if (oldEvals.enableSkills !== undefined) {
+          serving = oldEvals.enableSkills ? 'skills' : 'mcp';
+        }
+      } catch {
+        // Ignore parse error
+      }
+    }
+
+    suiteConfig = { agent, serving, tasks: [] };
+    console.log(`Inferred: agent=${agent}, serving=${serving}`.cyan);
   }
 
   try {
