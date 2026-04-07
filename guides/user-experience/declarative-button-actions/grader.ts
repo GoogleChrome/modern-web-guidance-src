@@ -30,44 +30,46 @@ test.describe(`Invoker Commands API Expectations: ${demoName}`, () => {
     });
 
     await page.goto(demoUrl);
+  });
 
-    // Inject a minimal polyfill to ensure the declarative API works even if the browser 
-    // version in the test environment hasn't fully implemented custom commands yet.
-    // This allows us to test the declarative intent even in older Playwright environments,
-    // though Playwright 1.59+ should be very recent.
-    await page.addInitScript(() => {
-      if (!('commandForElement' in HTMLButtonElement.prototype)) {
-        document.addEventListener('click', (event: MouseEvent) => {
-          const button = (event.target as Element).closest('button[commandfor][command]');
-          if (!button) return;
-          const targetId = button.getAttribute('commandfor');
-          const command = button.getAttribute('command');
-          if (targetId && command) {
-            const target = document.getElementById(targetId);
-            if (target) {
-              const cmdEvent = new CustomEvent('command', {
-                bubbles: true,
-                cancelable: true,
-                detail: { command }
-              });
-              // Custom commands should also be available on the event object itself
-              Object.defineProperty(cmdEvent, 'command', { value: command, enumerable: true });
-              target.dispatchEvent(cmdEvent);
-            }
-          }
-        });
-      }
+  test('Buttons use commandfor and command attributes', async ({ page }) => {
+    const buttons = page.locator('button[commandfor][command]');
+    const count = await buttons.count();
+    // Verify we have at least the required 4 buttons (Spin, Grow, Round, Reset)
+    expect(count).toBeGreaterThanOrEqual(4);
+    
+    for (let i = 0; i < count; i++) {
+      const cmd = await buttons.nth(i).getAttribute('command');
+      expect(cmd).toMatch(/^--/);
+    }
+  });
+
+  test('Status indicator reflects the support state', async ({ page }) => {
+    const status = page.locator('#support-status');
+    await expect(status).toBeVisible();
+    
+    // Wait for the text to settle (in case the dynamic import takes a moment)
+    await page.waitForFunction(() => {
+      const text = document.getElementById('support-status')?.textContent || '';
+      return text.includes('supported') || text.includes('loaded');
     });
+
+    const text = await status.textContent();
+    expect(text).toMatch(/Native Invoker Commands supported|invokers-polyfill/i);
   });
 
-  test('Spin button uses commandfor attribute to link to target', async ({ page }) => {
-    const btn = page.getByRole('button', { name: /Spin/i });
-    await expect(btn).toHaveAttribute('commandfor');
-  });
+  test('Invoker Commands API is available (natively or via polyfill)', async ({ page }) => {
+    // Wait for either native support or the polyfill to be ready
+    await page.waitForFunction(() => 'commandForElement' in HTMLButtonElement.prototype);
+    
+    const isAvailable = await page.evaluate(() => 'commandForElement' in HTMLButtonElement.prototype);
+    expect(isAvailable).toBe(true);
 
-  test('Spin button uses a custom command starting with --', async ({ page }) => {
-    const btn = page.getByRole('button', { name: /Spin/i });
-    await expect(btn).toHaveAttribute('command', /^--/);
+    // Additionally check that at least one button is using the API to avoid 
+    // false positives in environments where the browser supports it natively 
+    // but the page doesn't actually use it (like in the negative-demo).
+    const invokerButton = page.locator('button[commandfor]');
+    await expect(invokerButton.first()).toBeVisible();
   });
 
   test('Clicking Spin toggles is-spun class on target element', async ({ page }) => {

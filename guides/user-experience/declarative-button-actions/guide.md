@@ -82,10 +82,23 @@ If the Invoker Commands API is not supported, the `command` event will not fire.
 
 This polyfill fully supports custom actions (starting with `--`) and dispatches the `command` event exactly like the native API.
 
+### Dynamic Import (Performance Optimization)
+
+For the best performance, you should only load the polyfill if the browser doesn't support the API natively. This saves bandwidth and reduces script execution time for users on modern browsers.
+
 ```javascript
-// Install via npm: npm install invokers-polyfill
-// Or include via CDN:
-// <script type="module" src="https://cdn.jsdelivr.net/npm/invokers-polyfill@latest/dist/index.min.js"></script>
+// Check for native support first
+const hasNativeSupport = 'commandForElement' in HTMLButtonElement.prototype;
+
+if (!hasNativeSupport) {
+  // Dynamically import the polyfill only when needed
+  try {
+    await import('https://cdn.jsdelivr.net/npm/invokers-polyfill@latest/dist/index.min.js');
+    console.log('Invoker Commands polyfill loaded');
+  } catch (err) {
+    console.error('Error loading fallback:', err);
+  }
+}
 ```
 
 ### Manual fallback (Traditional pattern)
