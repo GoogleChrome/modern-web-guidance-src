@@ -6,7 +6,6 @@ web-feature-ids:
 sources:
   - https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Temporal
   - https://www.npmjs.com/package/@js-temporal/polyfill
-  - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal/ZonedDateTime/from
 ---
 
 # Coordinating Global Events with Temporal

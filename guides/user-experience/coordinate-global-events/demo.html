@@ -318,8 +318,7 @@
 
     // Check Support
     if (typeof Temporal === 'undefined') {
-      // Load the polyfill conditionally from a CDN
-      import('https://esm.sh/@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill }) => {
+      import('@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill }) => {
         globalThis.Temporal = TemporalPolyfill;
         initializeDemo();
       }).catch(err => {
