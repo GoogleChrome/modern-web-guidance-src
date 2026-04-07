@@ -69,7 +69,6 @@ test.describe(`Foreground Time Expectations: ${demoName}`, () => {
   test(`gracefully falls back to total time if visibility-state is unsupported`, async ({ page }) => {
     await page.addInitScript(() => {
       window.__visibilityStateMockReturn = [];
-      const originalNow = performance.now;
       performance.now = function() {
         return 50000; // Force it to return a high static value
       };
