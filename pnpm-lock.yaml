@@ -79,16 +79,13 @@ importers:
         version: 2.1.76
       '@anthropic-ai/vertex-sdk':
         specifier: ^0.14.4
-        version: 0.14.4(encoding@0.1.13)(zod@4.3.6)
+        version: 0.14.4(encoding@0.1.13)(zod@3.25.76)
       '@google-cloud/storage':
         specifier: ^7.19.0
         version: 7.19.0(encoding@0.1.13)
       '@google/gemini-cli':
         specifier: latest
         version: 0.36.0
-      '@google/gemini-cli-core':
-        specifier: latest
-        version: 0.36.0(encoding@0.1.13)(express@5.2.1)
       '@openai/codex':
         specifier: 0.114.0
         version: 0.114.0
@@ -107,6 +104,10 @@ importers:
       puppeteer-core:
         specifier: ^24.39.1
         version: 24.39.1
+    devDependencies:
+      '@google/gemini-cli-core':
+        specifier: latest
+        version: 0.36.0(encoding@0.1.13)(express@5.2.1)
 
   serving:
     dependencies:
@@ -3406,15 +3407,15 @@ snapshots:
       '@img/sharp-win32-arm64': 0.34.5
       '@img/sharp-win32-x64': 0.34.5
 
-  '@anthropic-ai/sdk@0.78.0(zod@4.3.6)':
+  '@anthropic-ai/sdk@0.78.0(zod@3.25.76)':
     dependencies:
       json-schema-to-ts: 3.1.1
     optionalDependencies:
-      zod: 4.3.6
+      zod: 3.25.76
 
-  '@anthropic-ai/vertex-sdk@0.14.4(encoding@0.1.13)(zod@4.3.6)':
+  '@anthropic-ai/vertex-sdk@0.14.4(encoding@0.1.13)(zod@3.25.76)':
     dependencies:
-      '@anthropic-ai/sdk': 0.78.0(zod@4.3.6)
+      '@anthropic-ai/sdk': 0.78.0(zod@3.25.76)
       google-auth-library: 9.15.1(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -3634,7 +3635,7 @@ snapshots:
       '@grpc/grpc-js': 1.14.3
       '@iarna/toml': 2.2.5
       '@joshua.litt/get-ripgrep': 0.0.3
-      '@modelcontextprotocol/sdk': 1.27.1(zod@4.3.6)
+      '@modelcontextprotocol/sdk': 1.27.1(zod@3.25.76)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/api-logs': 0.211.0
       '@opentelemetry/core': 2.6.0(@opentelemetry/api@1.9.0)
@@ -3731,7 +3732,7 @@ snapshots:
       google-auth-library: 10.6.1
       ws: 8.19.0
     optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.27.1(zod@4.3.6)
+      '@modelcontextprotocol/sdk': 1.27.1(zod@3.25.76)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -3970,6 +3971,28 @@ snapshots:
       '@lydell/node-pty-win32-x64': 1.1.0
     optional: true
 
+  '@modelcontextprotocol/sdk@1.27.1(zod@3.25.76)':
+    dependencies:
+      '@hono/node-server': 1.19.9(hono@4.12.2)
+      ajv: 8.18.0
+      ajv-formats: 3.0.1(ajv@8.18.0)
+      content-type: 1.0.5
+      cors: 2.8.6
+      cross-spawn: 7.0.6
+      eventsource: 3.0.7
+      eventsource-parser: 3.0.6
+      express: 5.2.1
+      express-rate-limit: 8.2.1(express@5.2.1)
+      hono: 4.12.2
+      jose: 6.1.3
+      json-schema-typed: 8.0.2
+      pkce-challenge: 5.0.1
+      raw-body: 3.0.2
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.1(zod@3.25.76)
+    transitivePeerDependencies:
+      - supports-color
+
   '@modelcontextprotocol/sdk@1.27.1(zod@4.3.6)':
     dependencies:
       '@hono/node-server': 1.19.9(hono@4.12.2)
@@ -3988,7 +4011,7 @@ snapshots:
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
       zod: 4.3.6
-      zod-to-json-schema: 3.25.1(zod@3.25.76)
+      zod-to-json-schema: 3.25.1(zod@4.3.6)
     transitivePeerDependencies:
       - supports-color
 
@@ -6820,6 +6843,10 @@ snapshots:
   zod-to-json-schema@3.25.1(zod@3.25.76):
     dependencies:
       zod: 3.25.76
+
+  zod-to-json-schema@3.25.1(zod@4.3.6):
+    dependencies:
+      zod: 4.3.6
 
   zod@3.25.76: {}
 
