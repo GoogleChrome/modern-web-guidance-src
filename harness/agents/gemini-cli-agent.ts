@@ -161,7 +161,6 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
                     }
                   }
               }
-              }
             }
           }
         }
