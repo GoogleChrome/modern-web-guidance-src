@@ -26,14 +26,26 @@ async function main(): Promise<BuildResult | undefined> {
   const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
 
   if (fs.existsSync(lockFilePath)) {
-    console.log(" Another build is in progress. Waiting for it to finish...");
-    while (fs.existsSync(lockFilePath)) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    const existingPid = parseInt(fs.readFileSync(lockFilePath, "utf8"), 10);
+    let isStale = false;
+    try {
+      process.kill(existingPid, 0);
+    } catch (e) {
+      isStale = true;
     }
-    console.log(" Previous build finished. Skipping rebuild.");
-    return; 
-  }
 
+    if (isStale) {
+      console.log(` Stale lock file found (PID ${existingPid} not running). Removing...`);
+      fs.unlinkSync(lockFilePath);
+    } else {
+      console.log(` Another build is in progress (PID ${existingPid}). Waiting for it to finish...`);
+      while (fs.existsSync(lockFilePath)) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      console.log(" Previous build finished. Skipping rebuild.");
+      return;
+    }
+  }
   fs.writeFileSync(lockFilePath, process.pid.toString());
 
   try {
