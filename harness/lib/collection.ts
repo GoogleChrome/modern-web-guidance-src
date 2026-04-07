@@ -28,15 +28,11 @@ function extractErrorMessage(dir: string, targetFile: string): string {
     return fs.existsSync(targetFile) ? 'Generation failed' : 'index.html not found';
   }
 
-  const lines = fs.readFileSync(stderrPath, 'utf8')
+  return fs.readFileSync(stderrPath, 'utf8')
     .split('\n')
     .map(l => l.trim())
-    .filter(l => l && !l.includes('YOLO mode'));
-
-  const lastLine = lines.pop();
-  if (!lastLine) return 'Generation mysteriously failed';
-
-  return lastLine.length > 100 ? lastLine.substring(0, 100) + '...' : lastLine;
+    .filter(l => l && !l.includes('YOLO mode'))
+    .pop()?.slice(0, 100) || 'Generation mysteriously failed';
 }
 
 export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
