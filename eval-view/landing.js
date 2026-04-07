@@ -387,6 +387,7 @@ function renderSuites() {
         if (currentModelFilter !== 'all' && testInfo.model !== currentModelFilter) return;
 
         const data = testInfo.data;
+        const results = data.results || data.allResults;
         const _date = new Date(testInfo.timestamp);
 
         // Custom format to match "March 5, 2:25PM"
@@ -398,8 +399,8 @@ function renderSuites() {
             hour12: true
         }).replace(' at ', ', ');
 
-        const gStats = calculateGroupTotalStats(data.results, 'guided');
-        const uStats = calculateGroupTotalStats(data.results, 'unguided');
+        const gStats = calculateGroupTotalStats(results, 'guided');
+        const uStats = calculateGroupTotalStats(results, 'unguided');
 
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
@@ -477,7 +478,8 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
         `;
     }
 
-    const { labels, guided, unguided } = calculateChartData(testInfo.data.results);
+    const results = testInfo.data.results || testInfo.data.allResults;
+    const { labels, guided, unguided } = calculateChartData(results);
     if (labels.length < 1) return;
 
     tooltipContainer.classList.remove('hidden');

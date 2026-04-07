@@ -82,7 +82,7 @@ async function loadDashboardData(testId) {
         const checkId = params.get('checkId');
 
         if (testName) {
-            const results = data.results;
+            const results = data.results || data.allResults;
             const stats = data.stats;
             const runData = results[testName];
             const testStats = stats[testName];
@@ -268,11 +268,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const nextRunType = currentRunTypes[rIdx];
             const nextTestName = `${nextScenario} - ${nextRunType}`;
 
-            if (nextTestName !== currentDetails.testName && allTestData.results[nextTestName]) {
+            const results = allTestData.results || allTestData.allResults;
+            if (nextTestName !== currentDetails.testName && results[nextTestName]) {
                 e.preventDefault();
                 showDetails(
                     nextTestName,
-                    allTestData.results[nextTestName],
+                    results[nextTestName],
                     allTestData.stats[nextTestName],
                     currentTestID
                 );
@@ -379,7 +380,7 @@ function renderSummary(data) {
 
 function renderGrid(data, testId) {
     const grid = document.getElementById('dashboard-grid');
-    const results = data.results;
+    const results = data.results || data.allResults;
     const stats = data.stats;
 
     sortedScenarios = [];
@@ -902,7 +903,8 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 }
 
 function renderDashboardDumbbellChart(data, testId) {
-    const { labels, guided, unguided } = calculateChartData(data.results);
+    const results = data.results || data.allResults;
+    const { labels, guided, unguided } = calculateChartData(results);
 
     if (labels.length < 1) {
         document.getElementById('chart-section').classList.add('hidden');
@@ -915,14 +917,14 @@ function renderDashboardDumbbellChart(data, testId) {
         const runType = type.toLowerCase(); // "guided" or "unguided"
 
         // Find the original key in the results
-        const originalKey = Object.keys(data.results).find(key => {
+        const originalKey = Object.keys(results).find(key => {
             const parts = key.split(' - ');
             return `${parts[0]} (${parts[1]})` === scenarioName && parts[2] === runType;
         });
 
         if (originalKey) {
             const testName = originalKey;
-            const runData = data.results[testName];
+            const runData = results[testName];
             const testStats = data.stats[testName];
             showDetails(testName, runData, testStats, testId);
         }
