@@ -363,7 +363,7 @@ function renderSummary(data) {
             ` : ''}
             ${summary.unguidedEarlyFailures !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
-                File Not Found: <span style="font-weight: bold; color: ${getColor(100 - unguidedEarlyFailureRate)}">${unguidedEarlyFailureRate}%</span>
+                Generation Errors: <span style="font-weight: bold; color: ${getColor(100 - unguidedEarlyFailureRate)}">${unguidedEarlyFailureRate}%</span>
                 <span style="opacity: 0.8; color: ${getColor(100 - unguidedEarlyFailureRate)}">(${summary.unguidedEarlyFailures} runs)</span>
             </div>
             ` : ''}
@@ -383,7 +383,7 @@ function renderSummary(data) {
             ` : ''}
             ${summary.guidedEarlyFailures !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
-                File Not Found: <span style="font-weight: bold; color: ${getColor(100 - guidedEarlyFailureRate)}">${guidedEarlyFailureRate}%</span>
+                Generation Errors: <span style="font-weight: bold; color: ${getColor(100 - guidedEarlyFailureRate)}">${guidedEarlyFailureRate}%</span>
                 <span style="opacity: 0.8; color: ${getColor(100 - guidedEarlyFailureRate)}">(${summary.guidedEarlyFailures} runs)</span>
             </div>
             ` : ''}
