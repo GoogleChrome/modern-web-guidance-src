@@ -133,7 +133,12 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
         for (const msg of session.messages) {
           if (msg.toolCalls) {
             for (const tc of msg.toolCalls) {
-              if ((serving === Serving.SKILLS || serving === Serving.MEGASKILL) && tc.name === 'read_file' && tc.args && (tc.args as any).file_path) {
+              if (tc.name === 'mcp_modern-web_get_best_practices' || tc.name === 'get_best_practices') {
+                const args = tc.args as any;
+                if (args && args.use_case_id) {
+                  retrievedGuides.push(args.use_case_id);
+                }
+              } else if ((serving === Serving.SKILLS || serving === Serving.MEGASKILL) && tc.name === 'read_file' && tc.args && (tc.args as any).file_path) {
                 const filePath = (tc.args as any).file_path;
                   if (filePath.includes('/skills/')) {
                     if (filePath.endsWith('/guide.md')) {

@@ -70,7 +70,6 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         taskName = 'task'; // Old suites always had a single task
         runType = parts[1];
         guide = parts[0].replace(/-task$/, ''); // Infer guide name by removing suffix
-        console.log(`[Legacy Fallback] Inferred guide=${guide}, task=${taskName} from path ${relPath}`.yellow);
       } else if (parts.length >= 3) {
         [guide, taskName, runType] = parts;
       } else {

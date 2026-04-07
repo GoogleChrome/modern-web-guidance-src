@@ -10,6 +10,11 @@ import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory } fro
 export async function collectGuidesUsed(dirPath: string, serving: Serving, agent: string): Promise<GuidedUsage> {
   const result: GuidedUsage = { retrievedGuides: [], fileReadGuides: [] };
 
+  // For GEMINI_CLI, ALWAYS collect guide usage from trajectory files if present
+  if (agent === Agents.GEMINI_CLI) {
+    return collectGeminiGuidesFromTrajectory(dirPath, serving);
+  }
+
   // For MCP and Jetski runs, collect guide usage from modern-web log if present
   // Jetski impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in Skills runs)
   if (serving === Serving.MCP || agent === Agents.JETSKI) {
@@ -47,9 +52,7 @@ export async function collectGuidesUsed(dirPath: string, serving: Serving, agent
   }
 
   // For SKILLS and SKILLS_CLI approaches, collect guide usage from trajectory files
-  if (agent === Agents.GEMINI_CLI) {
-    return collectGeminiGuidesFromTrajectory(dirPath, serving);
-  } else if (agent === Agents.CLAUDE_CODE) {
+  if (agent === Agents.CLAUDE_CODE) {
     return collectClaudeGuidesFromTrajectory(dirPath, serving);
   } else if (agent === Agents.CODEX_CLI) {
     const guides = await collectCodexGuidesFromTrajectory(dirPath, serving);
