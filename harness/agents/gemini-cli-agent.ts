@@ -6,8 +6,7 @@ import { fileURLToPath } from 'url';
 import config, { Agents, Serving } from '../config.ts';
 import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
 
-import type { ConversationRecord, MessageRecord, ToolCallRecord } from '@google/gemini-cli-core';
-import type { CoreToolCallStatus } from '@google/gemini-cli-core/dist/src/scheduler/types.js';
+
 
 export interface GuidedUsage {
   retrievedGuides: string[];

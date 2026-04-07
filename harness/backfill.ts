@@ -71,7 +71,7 @@ async function backfillSuite(suiteResultsDir: string, suiteName: string) {
 async function main() {
   console.log('Starting Backfill of all results...'.cyan.bold);
 
-  let mainResultsDir = '/Users/paulirish/code/guidance/harness/results';
+  let mainResultsDir = resultsDir;
   
   // Allow passing a custom results directory as an argument!
   if (process.argv[2]) {

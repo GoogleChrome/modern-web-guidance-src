@@ -29,6 +29,10 @@ export interface Metrics {
     totalGuidedRuns?: number;
     toolActivationRate?: number;
     toolActivationCount?: number;
+    unguidedEarlyFailures?: number;
+    unguidedEarlyFailureRate?: number;
+    guidedEarlyFailures?: number;
+    guidedEarlyFailureRate?: number;
   };
   testStats: Record<string, {
     medianPassRate: number;
@@ -38,6 +42,7 @@ export interface Metrics {
     runCount?: number;
     passedChecks: number;
     totalChecks: number;
+    earlyFailures?: number;
   }>;
   sortedKeys: string[];
 }
@@ -82,8 +87,13 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let passedChecks = 0;
     let totalChecks = 0;
 
+    let earlyFailures = 0;
     const passRates = runs.map(run => {
       const checks = run.results;
+      const isEarlyFailure = checks.some(c => c.message === 'index.html not found');
+      if (isEarlyFailure) {
+        earlyFailures++;
+      }
       const passCount = checks.filter(c => c.passed).length;
       const totalCount = checks.length;
       passedChecks += passCount;
@@ -123,7 +133,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       runsWithToolActivation: runType === 'guided' ? toolActivationCount : undefined,
       runCount: runs.length,
       passedChecks,
-      totalChecks
+      totalChecks,
+      earlyFailures
     };
   }
 
@@ -142,6 +153,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let guideUsageCount = 0;
     let toolActivationCount = 0;
     let totalGuidedRuns = 0;
+    let earlyFailures = 0;
+    let totalRuns = 0;
 
     keys.forEach(k => {
       const [, , runType] = k.split(' - ');
@@ -150,6 +163,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       if (stats) {
         passed += stats.passedChecks;
         total += stats.totalChecks;
+        earlyFailures += stats.earlyFailures || 0;
+        totalRuns += stats.runCount || 0;
 
         if (runType === 'guided') {
           guideUsageCount += stats.runsUsingGuide || 0;
@@ -167,6 +182,9 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       guideUsageCount,
       totalGuidedRuns,
       toolActivationCount,
+      earlyFailures,
+      totalRuns,
+      earlyFailureRate: totalRuns ? Math.round((earlyFailures / totalRuns) * 100) : 0,
       toolActivationRate: totalGuidedRuns ? Math.round((toolActivationCount / totalGuidedRuns) * 100) : 0,
       guideUsageRate: totalGuidedRuns ? Math.round((guideUsageCount / totalGuidedRuns) * 100) : 0
     };
@@ -190,7 +208,11 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       guideUsageCount: gStats.guideUsageCount,
       totalGuidedRuns: gStats.totalGuidedRuns,
       toolActivationRate: gStats.toolActivationRate,
-      toolActivationCount: gStats.toolActivationCount
+      toolActivationCount: gStats.toolActivationCount,
+      unguidedEarlyFailures: uStats.earlyFailures,
+      unguidedEarlyFailureRate: uStats.earlyFailureRate,
+      guidedEarlyFailures: gStats.earlyFailures,
+      guidedEarlyFailureRate: gStats.earlyFailureRate
     },
     testStats,
     sortedKeys

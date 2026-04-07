@@ -344,6 +344,9 @@ function renderSummary(data) {
     const unguidedRate = summary.unguidedPassRate;
     const guidedRate = summary.guidedPassRate;
 
+    const unguidedEarlyFailureRate = summary.unguidedEarlyFailureRate || 0;
+    const guidedEarlyFailureRate = summary.guidedEarlyFailureRate || 0;
+
     container.innerHTML = `
         <div class="stat-card">
             <span class="stat-value" style="color: ${getColor(unguidedRate)}">
@@ -353,6 +356,12 @@ function renderSummary(data) {
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
                 ${summary.unguidedPassed}/${summary.unguidedTotal} checks passed
             </div>
+            ${summary.unguidedEarlyFailures !== undefined ? `
+            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
+                File Not Found: <span style="font-weight: bold; color: ${getColor(100 - unguidedEarlyFailureRate)}">${unguidedEarlyFailureRate}%</span>
+                <span style="opacity: 0.8; color: ${getColor(100 - unguidedEarlyFailureRate)}">(${summary.unguidedEarlyFailures} runs)</span>
+            </div>
+            ` : ''}
         </div>
         <div class="stat-card">
             <span class="stat-value" style="color: ${getColor(guidedRate)}">
@@ -362,6 +371,12 @@ function renderSummary(data) {
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
                 ${summary.guidedPassed}/${summary.guidedTotal} checks passed
             </div>
+            ${summary.guidedEarlyFailures !== undefined ? `
+            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
+                File Not Found: <span style="font-weight: bold; color: ${getColor(100 - guidedEarlyFailureRate)}">${guidedEarlyFailureRate}%</span>
+                <span style="opacity: 0.8; color: ${getColor(100 - guidedEarlyFailureRate)}">(${summary.guidedEarlyFailures} runs)</span>
+            </div>
+            ` : ''}
             ${summary.toolActivationRate !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Tool Activation: <span style="font-weight: bold; color: ${getColor(summary.toolActivationRate)}">${summary.toolActivationRate}%</span>
@@ -464,7 +479,7 @@ function renderGrid(data, testId) {
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 0.9em; color: var(--text-secondary);">
                         <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
-                        <span>Runs: ${runData.length}</span>
+                        <span>Runs: ${runData.length}${testStats && testStats.earlyFailures ? ` (<span style="color: var(--accent-failure); font-weight: bold;">${testStats.earlyFailures} failed</span>)` : ''}</span>
                     </div>
                     ${toolActivationHtml}
                     ${guideUsageHtml}
@@ -600,7 +615,7 @@ async function showDetails(testName, runs, stats, testId) {
                               <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 120px;">Retrieved Guides:</strong>
                               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                                   ${(() => {
-                                      const retrieved = run.fileReadGuides === undefined ? (run.retrievedGuides || run.guidesUsed) : run.retrievedGuides;
+                                      const retrieved = run.fileReadGuides === undefined ? (run.retrievedGuides || guidesUsed) : run.retrievedGuides;
                                       return retrieved && retrieved.length > 0 ? retrieved.map(g => {
                                           const isExpected = g === expectedGuide;
                                           return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
