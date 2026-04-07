@@ -161,7 +161,6 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
           }
         }
       }
-    }
   } catch (e) {
     console.error(`Error reading session files in ${dirPath}:`, e);
   }
