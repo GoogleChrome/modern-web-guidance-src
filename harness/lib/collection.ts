@@ -46,8 +46,19 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
     for (const dir of directories) {
       const relPath = path.relative(runPath, dir);
       const parts = relPath.split(path.sep);
-      if (parts.length < 3) continue;
-      const [guide, taskName, runType] = parts;
+      
+      let guide: string, taskName: string, runType: string;
+      if (parts.length === 2) {
+        // [Legacy Fallback] Old structure: {taskName}/{runType}
+        taskName = 'task'; // Old suites always had a single task
+        runType = parts[1];
+        guide = parts[0].replace(/-task$/, ''); // Infer guide name by removing suffix
+        console.log(`[Legacy Fallback] Inferred guide=${guide}, task=${taskName} from path ${relPath}`.yellow);
+      } else if (parts.length >= 3) {
+        [guide, taskName, runType] = parts;
+      } else {
+        continue;
+      }
       if (runType === 'base_app') continue; // Skip the base app setup folder
       const targetFile = path.join(dir, 'index.html');
 
@@ -132,9 +143,18 @@ run();
     for (const dir of directories) {
       const relPath = path.relative(runPath, dir);
       const parts = relPath.split(path.sep);
-      if (parts.length < 3) continue;
-
-      const [guide, taskName, runType] = parts;
+      
+      let guide: string, taskName: string, runType: string;
+      if (parts.length === 2) {
+        // [Legacy Fallback] Old structure: {taskName}/{runType}
+        taskName = 'task';
+        runType = parts[1];
+        guide = parts[0].replace(/-task$/, '');
+      } else if (parts.length >= 3) {
+        [guide, taskName, runType] = parts;
+      } else {
+        continue;
+      }
       if (runType === 'base_app') continue; // Skip the base app setup folder
       let guidesUsedResult: string[] = [];
       let retrievedGuides: string[] = [];
