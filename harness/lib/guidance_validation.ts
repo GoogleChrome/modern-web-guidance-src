@@ -67,6 +67,12 @@ export async function collectGuidesUsed(dirPath: string, serving: Serving, agent
 }
 
 export async function collectGuidanceToolsUsed(dir: string, serving: Serving, agent: string): Promise<string[]> {
+  
+  // For GEMINI_CLI, ALWAYS collect tool usage from trajectory files if present
+  if (agent === Agents.GEMINI_CLI) {
+    return collectGeminiToolsFromTrajectory(dir);
+  }
+
   // For MCP and JETSKI runs, collect tool usage from modern-web log presence
   // JETSKI impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in SKILLS runs)
   if (serving === Serving.MCP || agent === Agents.JETSKI) {
@@ -77,9 +83,7 @@ export async function collectGuidanceToolsUsed(dir: string, serving: Serving, ag
   }
 
   // For SKILLS and SKILLS_CLI approaches, collect tool usage from trajectory files
-  if (agent === Agents.GEMINI_CLI) {
-    return collectGeminiToolsFromTrajectory(dir);
-  } else if (agent === Agents.CLAUDE_CODE) {
+  if (agent === Agents.CLAUDE_CODE) {
     return collectClaudeToolsFromTrajectory(dir);
   } else if (agent === Agents.CODEX_CLI) {
     return collectCodexToolsFromTrajectory(dir);
