@@ -76,7 +76,6 @@
       gap: 1rem;
     }
 
-    /* Controls Bar */
     .controls-bar {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
@@ -146,7 +145,6 @@
       border-color: var(--accent-primary);
     }
 
-    /* Status Banner for Host Conflict */
     .host-warning {
       background-color: var(--warning-bg);
       border: 1px solid var(--warning-border);
@@ -159,7 +157,6 @@
       line-height: 1.4;
     }
 
-    /* Comparison Grid */
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -261,7 +258,6 @@
       <div>This demo requires a browser with native Temporal support</div>
     </div>
 
-    <!-- Controls -->
     <div class="controls-bar">
       <div class="control-group">
         <label for="dateInput">Meeting Date</label>
@@ -293,21 +289,20 @@
       </div>
     </div>
 
-    <!-- Conflict Warning -->
     <div id="hostWarning" class="host-warning"></div>
 
-    <!-- Comparison Grid -->
     <div id="grid" class="grid"></div>
 
   </div>
 
-  <script>
+  <script type="module">
+    import { Temporal } from 'https://esm.sh/@js-temporal/polyfill';
+
     const dateInput = document.getElementById('dateInput');
     const timeInput = document.getElementById('timeInput');
     const hostTzSelect = document.getElementById('hostTzSelect');
     const grid = document.getElementById('grid');
     const hostWarning = document.getElementById('hostWarning');
-    const unsupportedBanner = document.getElementById('unsupportedBanner');
 
     const targetTimezones = [
       { zone: 'America/New_York', name: 'New York', flag: '🇺🇸' },
@@ -316,23 +311,6 @@
       { zone: 'UTC', name: 'UTC', flag: '🌐' }
     ];
 
-    // Check Support
-    if (typeof Temporal === 'undefined') {
-      // Load the polyfill conditionally from a CDN
-      import('https://esm.sh/@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill }) => {
-        globalThis.Temporal = TemporalPolyfill;
-        initializeDemo();
-      }).catch(err => {
-        console.error("Failed to load Temporal polyfill:", err);
-        unsupportedBanner.style.display = 'flex';
-        dateInput.disabled = true;
-        timeInput.disabled = true;
-        hostTzSelect.disabled = true;
-      });
-    } else {
-      initializeDemo();
-    }
-
     function initializeDemo() {
       [dateInput, timeInput, hostTzSelect].forEach(el => {
         el.addEventListener('input', updateAll);
@@ -340,7 +318,7 @@
       updateAll();
     }
 
-    function loadPreset(date, time, tz) {
+    window.loadPreset = function(date, time, tz) {
       dateInput.value = date;
       timeInput.value = time;
       hostTzSelect.value = tz;
@@ -354,52 +332,32 @@
 
       if (!date || !time) return;
 
-      grid.innerHTML = ''; // Clear Output
-      hostWarning.style.display = 'none'; // Clear previous warning
+      grid.innerHTML = '';
+      hostWarning.style.display = 'none';
 
       try {
         const dateTimeStr = `${date}T${time}`;
-        const inputStr = `${dateTimeStr}[${hostTz}]`;
-
-        // 1. Conflict Tracking at Host Timezone
-        let hasConflict = false;
-        let conflictType = "";
-        try {
-          Temporal.ZonedDateTime.from(inputStr, { disambiguation: 'reject' });
-        } catch (e) {
-          if (e instanceof RangeError) {
-            hasConflict = true;
-            const earlier = Temporal.ZonedDateTime.from(inputStr, { disambiguation: 'earlier' });
-            const later = Temporal.ZonedDateTime.from(inputStr, { disambiguation: 'later' });
-            conflictType = earlier.toPlainTime().equals(later.toPlainTime()) ? "Repeated" : "Skipped";
-          }
-        }
-
-        // 2. Resolve Host Time
-        const hostZdt = Temporal.ZonedDateTime.from(inputStr, { disambiguation: 'compatible' });
-
-        if (hasConflict) {
-          hostWarning.style.display = 'block';
-          if (conflictType === "Skipped") {
-            hostWarning.innerHTML = `⚠️ <strong>Host Time Clarified:</strong> The time <code>${time}</code> was skipped in ${hostTzSelect.options[hostTzSelect.selectedIndex].text} due to clocks rolling forward. Temporal resolved it to <strong>${hostZdt.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' })}</strong>.`;
-          } else {
-            hostWarning.innerHTML = `⚠️ <strong>Host Time Constant:</strong> The time <code>${time}</code> occurs twice in ${hostTzSelect.options[hostTzSelect.selectedIndex].text} (falling back). Temporal assigns the first occurrence safely.`;
-          }
-        }
+        
+        let globalEventTime = Temporal.PlainDateTime.from(dateTimeStr);
+        globalEventTime.year = parseInt(date.split('-')[0], 10);
+        
+        const inputStr = `${globalEventTime.toString()}[${hostTz}]`;
+        const hostZdt = Temporal.ZonedDateTime.from(inputStr);
 
         function formatTime(zdt) {
-          const time = zdt.toPlainTime();
-          let hour = time.hour;
+          const t = zdt.toPlainTime();
+          let hour = t.hour;
           const ampm = hour >= 12 ? 'PM' : 'AM';
           hour = hour % 12 || 12;
-          const minute = String(time.minute).padStart(2, '0');
+          const minute = String(t.minute).padStart(2, '0');
           return `${hour}:${minute} ${ampm}`;
         }
 
-        // 3. Render Cards
         targetTimezones.forEach(tz => {
           const isHost = tz.zone === hostTz;
-          const targetZdt = hostZdt.withTimeZone(tz.zone);
+          
+          const targetStr = `${globalEventTime.toString()}[${tz.zone}]`;
+          const targetZdt = Temporal.ZonedDateTime.from(targetStr);
 
           const card = document.createElement('div');
           card.className = `tz-card ${isHost ? 'host-card' : ''}`;
@@ -419,9 +377,10 @@
         });
 
       } catch (error) {
-        console.error(error);
       }
     }
+
+    initializeDemo();
   </script>
 
 </body>
