@@ -47,15 +47,6 @@ jobs:
       #     git config user.name "github-actions[bot]"
       #     git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       #     git add guides/features-and-use-cases.md
-      - name: Deploy Dashboard
-        if: github.ref == 'refs/heads/main'
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
-          pnpm run deploy:dashboard
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   browser:
     runs-on: ubuntu-latest
