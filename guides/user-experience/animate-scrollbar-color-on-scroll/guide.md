@@ -61,7 +61,8 @@ MANDATORY: Create a standard `@keyframes` animation block that alters the regist
 {{ BASELINE_STATUS("scroll-driven-animations") }}
 {{ BASELINE_STATUS("registered-custom-properties") }}
 
-MANDATORY: This feature relies on the `registered-custom-properties` and `scroll-driven-animations` Web Features. These are modern standards without polyfills. If they are not available in the user's Baseline target (e.g., they target "Baseline Widely Available"), you MUST NOT use this animated feature and let the user know it cannot be supported on their target.
+This feature relies on the `registered-custom-properties` and `scroll-driven-animations` Web Features. These are modern standards without polyfills. If they are not available in the user's Baseline target (e.g., they target "Baseline Widely Available"), you SHOULD implement them as a progressive enhancement and MUST provide the fallback strategies described below to ensure a functional experience on unsupported browsers.
+
 MANDATORY: Pass the animated variable into the `::-webkit-scrollbar-thumb` background color securely isolated behind an `@supports not` block. You MUST include a static fallback color inside the `var()` function (e.g., `var(--thumb-color, hotpink)`) so the scrollbar remains visible on legacy WebKit browsers that do not support `@property`.
 
 ```css

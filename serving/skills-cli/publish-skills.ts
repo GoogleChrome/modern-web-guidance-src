@@ -66,16 +66,20 @@ async function main() {
   await buildDist();
   
   console.log(`\nVerifying built distribution with test-dist.test.ts suite...`);
-  execSync('node --test skills-cli/test-dist.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' });
-
-  console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
-  console.log(`   FULL=1 pnpm run preflight`);
+  execSync('node --test skills-cli/*.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' ,  env: { ...process.env, TEST_REPORTER: 'spec'}});
+  
 
   if (isDryRun) {
     const files = await fs.readdir(publishCliDir, {recursive: true});
     console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${files.filter(f => !f.includes('node_modules')).sort((a,b) => a.localeCompare(b)).join('\n - ')}`);
     console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
+
+    console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
+    console.log(`   FULL=1 pnpm run preflight`);
   } else {
+    console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
+    console.log(`   FULL=1 pnpm run preflight`);
+
     console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/skills-alpha (main branch)...`);
     
     await ghpages.publish(publishCliDir, {
