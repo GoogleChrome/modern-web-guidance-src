@@ -1,0 +1,10 @@
+- The implementation MUST feature-detect the `Temporal` API using `typeof Temporal === 'undefined'` before usage.
+- The implementation MUST conditionally load a Temporal polyfill (e.g., `@js-temporal/polyfill`) only if native support is absent.
+- The implementation MUST manually assign the loaded polyfill to `globalThis.Temporal` to ensure it is globally accessible if the application logic relies on the global name.
+- The implementation MUST use `Temporal.ZonedDateTime` as the primary type for calculating differences between real-world events that occur in specific time zones.
+- The implementation MUST calculate the time elapsed since a start event using the `.since()` method on a `Temporal.ZonedDateTime` instance.
+- The implementation MUST calculate the time remaining until an end event using the `.until()` method on a `Temporal.ZonedDateTime` instance.
+- The implementation MUST specify a `largestUnit` (such as `'year'`, `'month'`, or `'day'`) in the options object passed to `.since()` or `.until()` to ensure balanced, human-readable durations.
+- The implementation MUST use `Temporal.ZonedDateTime.compare` to compare two date-time points (e.g., determining if a current time is past an expiration time).
+- The implementation MUST NOT attempt to modify `Temporal` instances directly, as they are immutable. It MUST use the new instances returned by operations like `add()` or `subtract()`.
+- The implementation MUST NOT use the legacy `Date` object for the core event differential calculations.

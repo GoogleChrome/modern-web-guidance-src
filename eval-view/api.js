@@ -147,17 +147,40 @@ export class ApiClient {
 
     /** Resolves the correct base path for specific run details, parsing legacy logic. */
     async getResultInfo(testId, run, testName) {
-        const [appName, _, runType] = testName.split(' - ');
-        const actualBaseApp = run.baseApp || appName;
+        const [taskName, guideName, runType] = testName.split(' - ');
+        const actualBaseApp = run.baseApp;
+        let logicalBasePath = `${testId}/${run.runNumber}/${guideName}/${taskName}/${runType}`;
+        let entryPointPath = await this._findBestEntryPoint(logicalBasePath);
 
-        const logicalBasePath = `${testId}/${run.runNumber}/${appName}/${runType}`;
-        const entryPointPath = await this._findBestEntryPoint(logicalBasePath);
+        // Fallback for older results stored in a depth-2 folder structure (runDir/taskName/runType)
+        if (!entryPointPath) {
+            const legacyPath = `${testId}/${run.runNumber}/${taskName}/${runType}`;
+            const legacyEntryPoint = await this._findBestEntryPoint(legacyPath);
+            if (legacyEntryPoint) {
+                logicalBasePath = legacyPath;
+                entryPointPath = legacyEntryPoint;
+            } else {
+                entryPointPath = `${logicalBasePath}/index.html`; // default fallback
+            }
+        }
 
         // Calculate relative sub-path to build the setup apps correlation
         const relativePath = entryPointPath.replace(logicalBasePath + '/', '');
 
+        // Try run-local base_app first (at the appName level, not inside guided/unguided), fallback to centralized base_apps for older runs
+        const localBaseAppPath = `${testId}/${run.runNumber}/${guideName}/${taskName}/base_app/${relativePath}`;
+        let exists = false;
+
+        if (this.source === 'remote') {
+            exists = await this._checkRemoteFileExists(localBaseAppPath);
+        } else {
+            exists = await this._checkLocalFileExists(localBaseAppPath);
+        }
+
+        const setupPath = exists ? localBaseAppPath : `base_apps/${actualBaseApp}/${relativePath}`;
+
         return {
-            setupPath: `base_apps/${actualBaseApp}/${relativePath}`,
+            setupPath,
             resultPath: entryPointPath,
             usedBasePath: logicalBasePath
         };
@@ -205,7 +228,7 @@ export class ApiClient {
             bestCandidate = results.find(result => result !== null);
         }
 
-        return bestCandidate || `${basePath}/index.html`; // strict default fallback
+        return bestCandidate;
     }
 
     /** Lists relevant metadata files (like raw results or trajectories) for a specific test execution dir. */

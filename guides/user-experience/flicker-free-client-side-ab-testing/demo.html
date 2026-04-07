@@ -1,1 +1,135 @@
-<!-- TODO -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flicker-Free Client-Side A/B Testing Demo</title>
+
+  <!--
+    This inline module script simulates an experiment SDK.
+    blocking="render" ensures the browser does not paint until
+    the variant has been applied via a data attribute on <html>.
+  -->
+  <script type="module" blocking="render">
+    // Simulate fetching an experiment configuration.
+    // In production, this would be a fetch() to your testing platform.
+    const variants = ['a', 'b'];
+    const variant = variants[Math.floor(Math.random() * variants.length)];
+
+    // Apply the variant as a data attribute so CSS can style it.
+    document.documentElement.dataset.variant = variant;
+  </script>
+
+  <!--
+    Fallback for browsers that do not support blocking="render".
+    Hides the page with opacity:0 until the experiment runs.
+  -->
+  <script>
+    if (!Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) {
+      document.documentElement.classList.add('ab-loading');
+      // Remove the class after experiment script executes (module scripts
+      // are deferred, so this inline classic script runs first).
+      // A MutationObserver watches for the data-variant attribute.
+      var observer = new MutationObserver(function () {
+        if (document.documentElement.dataset.variant) {
+          document.documentElement.classList.remove('ab-loading');
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-variant']
+      });
+      // Safety timeout to avoid indefinite blank page.
+      setTimeout(function () {
+        document.documentElement.classList.remove('ab-loading');
+        observer.disconnect();
+      }, 4000);
+    }
+  </script>
+
+  <style>
+    .ab-loading {
+      opacity: 0 !important;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #f5f5f5;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 3rem 2rem;
+      max-width: 600px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      font-size: 1.125rem;
+      color: #555;
+      margin-bottom: 2rem;
+    }
+
+    .cta-button {
+      display: inline-block;
+      padding: 1rem 2rem;
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    /* Control (Variant A): Blue button */
+    .cta-button {
+      background-color: #1a73e8;
+    }
+
+    /* Variant B: Green button with different text size */
+    [data-variant="b"] .cta-button {
+      background-color: #188038;
+      font-size: 1.25rem;
+      padding: 1.25rem 2.5rem;
+    }
+
+    .variant-label {
+      margin-top: 1.5rem;
+      font-size: 0.875rem;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <h1>Welcome to Our Product</h1>
+    <p>The best solution for your needs. Try it today.</p>
+    <button class="cta-button">Get Started</button>
+    <p class="variant-label">
+      Active variant: <code id="variant-display">loading...</code>
+    </p>
+  </div>
+
+  <script type="module">
+    // Display which variant is active for demonstration purposes.
+    const variant = document.documentElement.dataset.variant || 'unknown';
+    document.getElementById('variant-display').textContent = variant;
+  </script>
+</body>
+</html>

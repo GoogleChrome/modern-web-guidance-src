@@ -3,9 +3,27 @@
   <head>
     <meta charset="utf-8" />
     <title>Interest-Triggered Tooltips</title>
+    <script type="module">
+      if(!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")){
+        await import("https://unpkg.com/interestfor@latest");
+      }
+    </script>
+    <script type="module">
+      if(!HTMLElement.prototype.hasOwnProperty("popover")){
+        await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
+      }
+    </script>
+    <script type="module">
+      if (!("anchorName" in document.documentElement.style)) {
+        await import("https://unpkg.com/@oddbird/css-anchor-positioning");
+      }
+    </script>
     <style>
+
       body {
-        font: 1rem/1.5 system-ui, sans-serif;
+        font:
+          1rem/1.5 system-ui,
+          sans-serif;
         margin: 2rem;
       }
 
@@ -31,31 +49,44 @@
         color: #fff;
         font-size: 0.875rem;
         max-width: 20rem;
-        position: fixed;
-        position-anchor: auto;
-        position-area: top;
-        position-try-fallbacks: flip-block;
-        margin-bottom: 0.5rem;
+        /* Use `anchor()` functions rather than `position-area`, as the anchor positioning polyfill doesn't support `position-area` on popovers. */
+        inset-block-start: anchor(end);
+        inset-inline-start: anchor(end);
+        position-try: flip-inline;
+        margin: unset;
+      }
+      /* These tooltips adds an explicit anchor-name, as the anchor positioning polyfill does not support implicit anchors. */
+      button[interestfor="tooltip-dom"] {
+        anchor-name: --tooltip-dom;
+      }
+      #tooltip-dom {
+        position-anchor: --tooltip-dom;
+      }
+      button[interestfor="tooltip-attrs"] {
+        anchor-name: --tooltip-attrs;
+      }
+      #tooltip-attrs {
+        position-anchor: --tooltip-attrs;
       }
     </style>
   </head>
   <body>
     <h1>Interest-Triggered Tooltips</h1>
     <p>
-      The document <button interestfor="tooltip-dom">DOM</button> is a
-      tree structure that represents the content of a web page. Each node
-      in the tree corresponds to an element, and nodes can have
+      The document <button interestfor="tooltip-dom">DOM</button> is a tree
+      structure that represents the content of a web page. Each node in the tree
+      corresponds to an element, and nodes can have
       <button interestfor="tooltip-attrs">attributes</button> that provide
       additional information about the element.
     </p>
 
     <div id="tooltip-dom" popover="hint">
-      Document Object Model — the browser's in-memory representation
-      of a web page's structure.
+      Document Object Model — the browser's in-memory representation of a web
+      page's structure.
     </div>
     <div id="tooltip-attrs" popover="hint">
-      Key-value pairs on HTML elements that configure behavior or
-      provide metadata, such as <code>class</code> or <code>id</code>.
+      Key-value pairs on HTML elements that configure behavior or provide
+      metadata, such as <code>class</code> or <code>id</code>.
     </div>
   </body>
 </html>

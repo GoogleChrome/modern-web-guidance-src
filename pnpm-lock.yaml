@@ -65,15 +65,12 @@ importers:
       '@playwright/test':
         specifier: ^1.58.2
         version: 1.58.2
-      dotenv:
-        specifier: ^17.3.1
-        version: 17.3.1
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
       web-features:
         specifier: latest
-        version: 3.22.0
+        version: 3.22.1
 
   harness:
     dependencies:
@@ -98,9 +95,6 @@ importers:
       colors:
         specifier: ^1.4.0
         version: 1.4.0
-      dotenv:
-        specifier: ^17.3.1
-        version: 17.3.1
       glob:
         specifier: ^13.0.6
         version: 13.0.6
@@ -129,8 +123,8 @@ importers:
         specifier: ^17.0.4
         version: 17.0.4
       web-features:
-        specifier: ^3.20.0
-        version: 3.20.0
+        specifier: latest
+        version: 3.22.1
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -3593,11 +3587,8 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  web-features@3.20.0:
-    resolution: {integrity: sha512-OJ9hudTNGxDxYeVqaKd6Yel4TTKW3qd2Yeo8kVA49WsX1N9gLmtj6AUhol3uP7yakrfYdrM2PoXEhGId/bI53w==}
-
-  web-features@3.22.0:
-    resolution: {integrity: sha512-dXmJqCAF5031BA4Z8XMC41O6w4ZhKQ7zXFXeZoq71Rue4zD2l2xbzYvo71Pkh36tjKW02TuEzVOt4u4b/21Sxw==}
+  web-features@3.22.1:
+    resolution: {integrity: sha512-aHlGO8NhNf19aQH5yWd6gFMEWZZh0W91bRMBlNLTaEASF0Ko1Rm4KnY/9rV69lYd9LyQTaJQBVae4PtDxfFJdg==}
 
   web-streams-polyfill@3.3.3:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
@@ -7433,9 +7424,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  web-features@3.20.0: {}
-
-  web-features@3.22.0: {}
+  web-features@3.22.1: {}
 
   web-streams-polyfill@3.3.3: {}
 

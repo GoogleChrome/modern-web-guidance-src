@@ -53,6 +53,20 @@ export function createIsolatedHome(prefix: string): string {
   const originalHome = process.env.HOME || process.cwd();
   copyFileIfExists(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
 
+  // Pre-populate projects.json to prevent concurrent write race conditions in geminicli. https://github.com/GoogleChrome/guidance/pull/479
+  try {
+    const geminiDir = path.join(tempHome, '.gemini');
+    fs.mkdirSync(geminiDir, { recursive: true });
+    const mockProjects = {
+      projects: {
+        [path.join(tempHome, 'work')]: 'work'
+      }
+    };
+    fs.writeFileSync(path.join(geminiDir, 'projects.json'), JSON.stringify(mockProjects, null, 2));
+  } catch (err) {
+    console.warn('Warning: Failed to pre-populate projects.json:', err);
+  }
+
   console.log(`Setting up isolated HOME at ${tempHome}...`);
   return tempHome;
 }
@@ -230,9 +244,9 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
     if (cli) { // Add modern-web-use-cases Skill (& resources) from skills-cli dist
       const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web-use-cases');
       if (!fs.existsSync(distSource)) {
-        console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter modern-web-mcp build-dist' automatically...`);
+        console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter serving build-dist' automatically...`);
         try {
-          execSync('pnpm --filter modern-web-mcp build-dist', {
+          execSync('pnpm --filter serving build-dist', {
             cwd: rootDir,
             stdio: 'inherit'
           });

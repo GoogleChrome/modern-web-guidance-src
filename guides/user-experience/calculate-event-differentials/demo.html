@@ -290,13 +290,20 @@
     const statusValue = document.getElementById('statusValue');
     const unsupportedBanner = document.getElementById('unsupportedBanner');
 
-    // Check Support
+    // Check Support and load polyfill if needed
     if (typeof Temporal === 'undefined') {
-      unsupportedBanner.style.display = 'flex';
-      startDateInput.disabled = true;
-      startTimeInput.disabled = true;
-      endDateInput.disabled = true;
-      endTimeInput.disabled = true;
+      import('https://unpkg.com/@js-temporal/polyfill').then(({ Temporal: polyfill }) => {
+        globalThis.Temporal = polyfill;
+        initializeDemo();
+      }).catch(err => {
+        console.error('Failed to load Temporal polyfill:', err);
+        unsupportedBanner.style.display = 'flex';
+        unsupportedBanner.querySelector('div:last-child').textContent = 'Failed to load Temporal polyfill. Some features may be disabled.';
+        startDateInput.disabled = true;
+        startTimeInput.disabled = true;
+        endDateInput.disabled = true;
+        endTimeInput.disabled = true;
+      });
     } else {
       initializeDemo();
     }

@@ -11,7 +11,6 @@
   "devDependencies": {
     "@octokit/rest": "^22.0.1",
     "@playwright/test": "^1.58.2",
-    "dotenv": "^17.3.1",
     "gray-matter": "^4.0.3",
     "web-features": "latest"
   }

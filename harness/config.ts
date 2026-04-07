@@ -1,13 +1,13 @@
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
-import "dotenv/config";
-
 import { rootDir, harnessDir } from '../lib/paths.ts';
 
-// Explicitly load .env from the project root
-import dotenv from 'dotenv';
-dotenv.config({ path: path.join(rootDir, '.env') });
+try {
+  process.loadEnvFile(path.join(rootDir, '.env'));
+} catch {
+  // Ignore if missing
+}
 
 export const Agents = {
   JETSKI: 'jetski',
@@ -58,7 +58,6 @@ export const defaultSuiteConfig: SuiteConfig = {
   mcpServersToEnable: ['modern-web'],
   serving: Serving.SKILLS_CLI,
   agent: Agents.GEMINI_CLI,
-  negative: false, // When `true`, runs the suite on all tasks in `tasks/negative/`
 };
 
 export function mergeSuiteConfig(overrides: Partial<SuiteConfig>): SuiteConfig {
@@ -86,7 +85,6 @@ export interface SuiteConfig {
   mcpServersToEnable: string[];
   serving: Serving;
   agent: string;
-  negative: boolean;
 }
 
 export const config = {
