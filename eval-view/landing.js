@@ -387,7 +387,7 @@ function renderSuites() {
         if (currentModelFilter !== 'all' && testInfo.model !== currentModelFilter) return;
 
         const data = testInfo.data;
-        const results = data.results || data.allResults;
+        const results = data.results;
         const _date = new Date(testInfo.timestamp);
 
         // Custom format to match "March 5, 2:25PM"
@@ -478,7 +478,7 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
         `;
     }
 
-    const results = testInfo.data.results || testInfo.data.allResults;
+    const results = testInfo.data.results;
     const { labels, guided, unguided } = calculateChartData(results);
     if (labels.length < 1) return;
 

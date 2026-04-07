@@ -82,7 +82,7 @@ async function loadDashboardData(testId) {
         const checkId = params.get('checkId');
 
         if (testName) {
-            const results = data.results || data.allResults;
+            const results = data.results;
             const stats = data.stats;
             const runData = results[testName];
             const testStats = stats[testName];
@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const nextRunType = currentRunTypes[rIdx];
             const nextTestName = `${nextScenario} - ${nextRunType}`;
 
-            const results = allTestData.results || allTestData.allResults;
+            const results = allTestData.results;
             if (nextTestName !== currentDetails.testName && results[nextTestName]) {
                 e.preventDefault();
                 showDetails(
@@ -380,7 +380,7 @@ function renderSummary(data) {
 
 function renderGrid(data, testId) {
     const grid = document.getElementById('dashboard-grid');
-    const results = data.results || data.allResults;
+    const results = data.results;
     const stats = data.stats;
 
     sortedScenarios = [];
@@ -903,7 +903,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 }
 
 function renderDashboardDumbbellChart(data, testId) {
-    const results = data.results || data.allResults;
+    const results = data.results;
     const { labels, guided, unguided } = calculateChartData(results);
 
     if (labels.length < 1) {
