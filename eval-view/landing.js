@@ -333,6 +333,53 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
     };
     
     updateModelFilterOptions();
+    updateServingFilterOptions();
+    updateAgentFilterOptions();
+}
+
+function updateAgentFilterOptions() {
+    const agentGroup = document.getElementById('filter-agent-group');
+    if (!agentGroup) return;
+
+    const agents = new Set();
+    Object.values(allTestData).forEach(test => {
+        if (test.agent) agents.add(test.agent);
+    });
+
+    const sortedAgents = Array.from(agents).sort();
+    
+    const currentOptions = Array.from(agentGroup.querySelectorAll('option')).map(o => o.value);
+    if (JSON.stringify(currentOptions) === JSON.stringify(sortedAgents)) return;
+
+    agentGroup.innerHTML = sortedAgents.map(agent => 
+        `<option value="${escapeHtml(agent)}">${escapeHtml(agent)}</option>`
+    ).join('');
+}
+
+function updateServingFilterOptions() {
+    const servingGroup = document.getElementById('filter-serving-group');
+    if (!servingGroup) return;
+
+    const servings = new Set();
+    Object.values(allTestData).forEach(test => {
+        if (test.serving) servings.add(test.serving);
+    });
+
+    const sortedServings = Array.from(servings).sort();
+    
+    const servingDisplayNames = {
+        'skills': 'Skills',
+        'skills_cli': 'Skills (CLI)',
+        'mcp': 'MCP',
+        'megaskill': 'Megaskill'
+    };
+
+    const currentOptions = Array.from(servingGroup.querySelectorAll('option')).map(o => o.value);
+    if (JSON.stringify(currentOptions) === JSON.stringify(sortedServings)) return;
+
+    servingGroup.innerHTML = sortedServings.map(serving => 
+        `<option value="${escapeHtml(serving)}">${escapeHtml(servingDisplayNames[serving] || serving)}</option>`
+    ).join('');
 }
 
 function updateModelFilterOptions() {
