@@ -35,10 +35,11 @@
       });
       const text = document.getElementById('source').textContent;
       const stream = translator.translateStreaming(text);
+      const div = document.getElementById('translation');
       let translation = '';
       for await (const chunk of stream) {
         translation += chunk;
-        document.getElementById('translation').textContent = translation;
+        div.append(chunk);
       }
       console.log('Translation:', translation);
     } catch (e) {

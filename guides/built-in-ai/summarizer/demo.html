@@ -45,10 +45,11 @@
       });
       const text = document.getElementById('article').textContent.trim();
       const stream = summarizer.summarizeStreaming(text);
+      const div = document.getElementById('summary');
       let summary = '';
       for await (const chunk of stream) {
         summary += chunk;
-        document.getElementById('summary').textContent = summary;
+        div.append(chunk);
       }
       console.log('Summary:', summary);
     } catch (e) {
