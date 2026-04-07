@@ -191,6 +191,9 @@ run();
         console.warn(`Skipping grading: Task ${guide} not found in task map`);
         continue;
       }
+      const taskCategory = path.basename(path.dirname(taskInfo.guideDir));
+      let expectedGuidanceTool: string | undefined;
+      const serving = suiteConfig.serving;
 
       if (serving === Serving.MCP || serving === Serving.MEGASKILL || suiteConfig.agent === Agents.JETSKI) {
         expectedGuidanceTool = 'modern-web';
