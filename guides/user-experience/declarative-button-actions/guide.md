@@ -78,7 +78,7 @@ For custom, application-specific actions, you can define your own command names.
 
 {{ BASELINE_STATUS("invoker-commands") }}
 
-If the Invoker Commands API is not supported, the `command` event will not fire. For full support across all modern browsers, it is recommended to use the [invokers-polyfill](https://github.com/keithamus/invokers-polyfill).
+If the Invoker Commands API is not supported, the `command` event will not fire. For full support across all modern browsers, it is recommended to use the invokers-polyfill from https://github.com/keithamus/invokers-polyfill via `npm install` or CDN.
 
 This polyfill fully supports custom actions (starting with `--`) and dispatches the `command` event exactly like the native API.
 
