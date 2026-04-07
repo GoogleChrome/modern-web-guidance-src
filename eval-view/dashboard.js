@@ -358,7 +358,7 @@ function renderSummary(data) {
             </div>
             ${summary.expectedTotalRuns !== undefined ? `
             <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-secondary);">
-                Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}</span>
+                Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} tasks x ${summary.runCountPerTask} runs)` : ''}</span>
             </div>
             ` : ''}
             ${summary.unguidedEarlyFailures !== undefined ? `
@@ -378,7 +378,7 @@ function renderSummary(data) {
             </div>
             ${summary.expectedTotalRuns !== undefined ? `
             <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-secondary);">
-                Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}</span>
+                Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} tasks x ${summary.runCountPerTask} runs)` : ''}</span>
             </div>
             ` : ''}
             ${summary.guidedEarlyFailures !== undefined ? `
