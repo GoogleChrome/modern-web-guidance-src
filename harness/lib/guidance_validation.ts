@@ -3,17 +3,20 @@ import path from 'path';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { Agents, Serving } from '../config.ts';
 import { collectGeminiGuidesFromTrajectory, collectGeminiToolsFromTrajectory } from '../agents/gemini-cli-agent.ts';
+import type { GuidedUsage } from '../agents/gemini-cli-agent.ts';
 import { collectClaudeGuidesFromTrajectory, collectClaudeToolsFromTrajectory } from '../agents/claude-code-agent.ts';
 import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory } from '../agents/codex-cli-agent.ts';
 
-export async function collectGuidesUsed(dirPath: string, serving: Serving, agent: string): Promise<string[]> {
+export async function collectGuidesUsed(dirPath: string, serving: Serving, agent: string): Promise<GuidedUsage> {
+  const result: GuidedUsage = { retrievedGuides: [], fileReadGuides: [] };
+
   // For MCP and Jetski runs, collect guide usage from modern-web log if present
   // Jetski impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in Skills runs)
   if (serving === Serving.MCP || agent === Agents.JETSKI) {
     const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
 
     if (!fs.existsSync(logPath)) {
-      return [];
+      return result;
     }
 
     const logContent = fs.readFileSync(logPath, 'utf8').trim();
@@ -37,19 +40,24 @@ export async function collectGuidesUsed(dirPath: string, serving: Serving, agent
       .flatMap(call => call.result.map((r: any) => r.id || ''))
       .filter(Boolean);
 
-    return [...new Set(guidesFromLog)];
+    result.retrievedGuides = [...new Set(guidesFromLog)];
+    return result;
   }
 
   // For SKILLS and SKILLS_CLI approaches, collect guide usage from trajectory files
   if (agent === Agents.GEMINI_CLI) {
     return collectGeminiGuidesFromTrajectory(dirPath, serving);
   } else if (agent === Agents.CLAUDE_CODE) {
-    return collectClaudeGuidesFromTrajectory(dirPath, serving);
+    const guides = await collectClaudeGuidesFromTrajectory(dirPath, serving);
+    result.retrievedGuides = guides;
+    return result;
   } else if (agent === Agents.CODEX_CLI) {
-    return collectCodexGuidesFromTrajectory(dirPath, serving);
+    const guides = await collectCodexGuidesFromTrajectory(dirPath, serving);
+    result.retrievedGuides = guides;
+    return result;
   }
   console.warn(`Unknown agent ${agent} for skills collection`);
-  return [];
+  return result;
 }
 
 export async function collectGuidanceToolsUsed(dir: string, serving: Serving, agent: string): Promise<string[]> {

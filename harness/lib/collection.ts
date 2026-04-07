@@ -152,11 +152,16 @@ run();
       const [guide, taskName, runType] = parts;
       if (runType === 'base_app') continue; // Skip the base app setup folder
       let guidesUsedResult: string[] = [];
+      let retrievedGuides: string[] = [];
+      let fileReadGuides: string[] = [];
       let guidanceToolsUsedResult: string[] = [];
 
       if (runType === 'guided') {
         const serving = suiteConfig.serving;
-        guidesUsedResult = await collectGuidesUsed(dir, serving, suiteConfig.agent);
+        const usage = await collectGuidesUsed(dir, serving, suiteConfig.agent);
+        retrievedGuides = usage.retrievedGuides;
+        fileReadGuides = usage.fileReadGuides;
+        guidesUsedResult = [...new Set([...retrievedGuides, ...fileReadGuides])];
         guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir, serving, suiteConfig.agent);
       }
 
@@ -236,6 +241,8 @@ run();
         runNumber: parseInt(runDir),
         results: scenarioResults,
         guidesUsed: guidesUsedResult,
+        retrievedGuides: retrievedGuides,
+        fileReadGuides: fileReadGuides,
         guidanceToolsUsed: guidanceToolsUsedResult,
         expectedGuidanceTool: expectedGuidanceTool,
         guideName: guide,

@@ -9,6 +9,10 @@ import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHom
 import type { ConversationRecord, MessageRecord, ToolCallRecord } from '@google/gemini-cli-core';
 import type { CoreToolCallStatus } from '@google/gemini-cli-core/dist/src/scheduler/types.js';
 
+export interface GuidedUsage {
+  retrievedGuides: string[];
+  fileReadGuides: string[];
+}
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
@@ -114,8 +118,9 @@ async function run() {
   }
 }
 
-export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving: string): Promise<string[]> {
-  const guidesFromSkills: string[] = [];
+export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving: string): Promise<GuidedUsage> {
+  const retrievedGuides: string[] = [];
+  const fileReadGuides: string[] = [];
   try {
     const files = fs.readdirSync(dirPath);
     const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
@@ -135,12 +140,12 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
                     if (filePath.endsWith('/guide.md')) {
                       const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
                       if (match) {
-                        guidesFromSkills.push(match[1]);
+                        fileReadGuides.push(match[1]);
                       }
                     } else if (filePath.endsWith('.md')) {
                       const match = filePath.match(/\/skills\/[^/]+\/(?:references\/)?(?:[^/]+\/)*([^/]+)\.md$/);
                       if (match) {
-                        guidesFromSkills.push(match[1]);
+                        fileReadGuides.push(match[1]);
                       }
                     }
                   }
@@ -151,7 +156,7 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
                     if (match) {
                       const ids = match[1].split(',');
                       for (const id of ids) {
-                        guidesFromSkills.push(id.trim());
+                        retrievedGuides.push(id.trim());
                       }
                     }
                   }
@@ -164,7 +169,10 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
   } catch (e) {
     console.error(`Error reading session files in ${dirPath}:`, e);
   }
-  return [...new Set(guidesFromSkills)];
+  return {
+    retrievedGuides: [...new Set(retrievedGuides)],
+    fileReadGuides: [...new Set(fileReadGuides)]
+  };
 }
 
 export function extractGeminiCliModel(resultsDir: string): string {
