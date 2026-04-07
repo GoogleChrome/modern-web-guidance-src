@@ -16,7 +16,7 @@ export async function collectGuidesUsed(dirPath: string, serving: Serving, agent
     const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
 
     if (!fs.existsSync(logPath)) {
-      return result;
+      return { retrievedGuides: ['unknown'], fileReadGuides: ['unknown'] };
     }
 
     const logContent = fs.readFileSync(logPath, 'utf8').trim();
@@ -40,24 +40,27 @@ export async function collectGuidesUsed(dirPath: string, serving: Serving, agent
       .flatMap(call => call.result.map((r: any) => r.id || ''))
       .filter(Boolean);
 
-    result.retrievedGuides = [...new Set(guidesFromLog)];
-    return result;
+    return {
+      retrievedGuides: [...new Set(guidesFromLog)],
+      fileReadGuides: ['unknown']
+    };
   }
 
   // For SKILLS and SKILLS_CLI approaches, collect guide usage from trajectory files
   if (agent === Agents.GEMINI_CLI) {
     return collectGeminiGuidesFromTrajectory(dirPath, serving);
   } else if (agent === Agents.CLAUDE_CODE) {
-    const guides = await collectClaudeGuidesFromTrajectory(dirPath, serving);
-    result.retrievedGuides = guides;
-    return result;
+    return collectClaudeGuidesFromTrajectory(dirPath, serving);
   } else if (agent === Agents.CODEX_CLI) {
     const guides = await collectCodexGuidesFromTrajectory(dirPath, serving);
-    result.retrievedGuides = guides;
-    return result;
+    return {
+      retrievedGuides: guides,
+      fileReadGuides: ['unknown']
+    };
   }
+  
   console.warn(`Unknown agent ${agent} for skills collection`);
-  return result;
+  return { retrievedGuides: ['unknown'], fileReadGuides: ['unknown'] };
 }
 
 export async function collectGuidanceToolsUsed(dir: string, serving: Serving, agent: string): Promise<string[]> {
