@@ -41,16 +41,14 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
 
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
-    const indexFiles = [
-      ...glob.sync('*/*/index.html', { cwd: runPath, absolute: true }),
-      ...glob.sync('*/*/*/index.html', { cwd: runPath, absolute: true })
+    const runTypeDirs = [
+      ...glob.sync('**/guided', { cwd: runPath, absolute: true }),
+      ...glob.sync('**/unguided', { cwd: runPath, absolute: true })
     ];
 
-    for (const indexFile of indexFiles) {
-      const dir = path.dirname(indexFile);
+    for (const dir of runTypeDirs) {
       const relPath = path.relative(runPath, dir);
       const parts = relPath.split(path.sep);
-      if (parts.includes('grade-report')) continue; // Skip grader reports
       
       let guide: string, taskName: string, runType: string;
       if (parts.length === 2) {
@@ -139,17 +137,14 @@ run();
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
 
-    // Structure: results/{suiteName}/{runNumber}/{guideName}/{taskName}/{runType}
-    const indexFiles = [
-      ...glob.sync('*/*/index.html', { cwd: runPath, absolute: true }),
-      ...glob.sync('*/*/*/index.html', { cwd: runPath, absolute: true })
+    const runTypeDirs = [
+      ...glob.sync('**/guided', { cwd: runPath, absolute: true }),
+      ...glob.sync('**/unguided', { cwd: runPath, absolute: true })
     ];
 
-    for (const indexFile of indexFiles) {
-      const dir = path.dirname(indexFile);
+    for (const dir of runTypeDirs) {
       const relPath = path.relative(runPath, dir);
       const parts = relPath.split(path.sep);
-      if (parts.includes('grade-report')) continue; // Skip grader reports
       
       let guide: string, taskName: string, runType: string;
       if (parts.length === 2) {
