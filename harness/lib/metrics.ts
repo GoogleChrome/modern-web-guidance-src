@@ -158,6 +158,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let guideUsageCount = 0;
     let toolActivationCount = 0;
     let totalGuidedRuns = 0;
+    let guidedEarlyFailures = 0;
     let earlyFailures = 0;
     let totalRuns = 0;
 
@@ -175,9 +176,12 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
           guideUsageCount += stats.runsUsingGuide || 0;
           toolActivationCount += stats.runsWithToolActivation || 0;
           totalGuidedRuns += stats.runCount || 0;
+          guidedEarlyFailures += stats.earlyFailures || 0;
         }
       }
     });
+
+    const completedGuidedRuns = totalGuidedRuns - guidedEarlyFailures;
 
     return {
       median: Math.round(median),
@@ -190,8 +194,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       earlyFailures,
       totalRuns,
       earlyFailureRate: totalRuns ? Math.round((earlyFailures / totalRuns) * 100) : 0,
-      toolActivationRate: totalGuidedRuns ? Math.round((toolActivationCount / totalGuidedRuns) * 100) : 0,
-      guideUsageRate: totalGuidedRuns ? Math.round((guideUsageCount / totalGuidedRuns) * 100) : 0
+      toolActivationRate: completedGuidedRuns ? Math.round((toolActivationCount / completedGuidedRuns) * 100) : 0,
+      guideUsageRate: completedGuidedRuns ? Math.round((guideUsageCount / completedGuidedRuns) * 100) : 0
     };
   };
 

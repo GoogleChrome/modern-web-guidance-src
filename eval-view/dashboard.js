@@ -347,6 +347,8 @@ function renderSummary(data) {
     const unguidedEarlyFailureRate = summary.unguidedEarlyFailureRate || 0;
     const guidedEarlyFailureRate = summary.guidedEarlyFailureRate || 0;
 
+    const completedGuidedRuns = summary.totalGuidedRuns - (summary.guidedEarlyFailures || 0);
+
     container.innerHTML = `
         <div class="stat-card">
             <span class="stat-value" style="color: ${getColor(unguidedRate)}">
@@ -390,13 +392,13 @@ function renderSummary(data) {
             ${summary.toolActivationRate !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Tool Activation: <span style="font-weight: bold; color: ${getColor(summary.toolActivationRate)}">${summary.toolActivationRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(summary.toolActivationRate)}">(${summary.toolActivationCount}/${summary.totalGuidedRuns} runs)</span>
+                <span style="opacity: 0.8; color: ${getColor(summary.toolActivationRate)}">(${summary.toolActivationCount}/${completedGuidedRuns} completed runs)</span>
             </div>
             ` : ''}
             ${summary.guideUsageRate !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Guide Usage: <span style="font-weight: bold; color: ${getColor(summary.guideUsageRate)}">${summary.guideUsageRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${summary.totalGuidedRuns} runs)</span>
+                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${completedGuidedRuns} completed runs)</span>
             </div>
             ` : ''}
         </div>
