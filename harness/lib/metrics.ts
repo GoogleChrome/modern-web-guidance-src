@@ -26,6 +26,8 @@ export interface Metrics {
     guidedTotal: number;
     runsPerTest: number;
     expectedTotalRuns?: number;
+    taskCount?: number;
+    runCountPerTask?: number;
     guideUsageRate?: number;
     guideUsageCount?: number;
     totalGuidedRuns?: number;
@@ -216,6 +218,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       guidedTotal: gStats.total,
       runsPerTest,
       expectedTotalRuns,
+      taskCount: numberOfTasks,
+      runCountPerTask: runsPerTest,
       guideUsageRate: gStats.guideUsageRate,
       guideUsageCount: gStats.guideUsageCount,
       totalGuidedRuns: gStats.totalGuidedRuns,
