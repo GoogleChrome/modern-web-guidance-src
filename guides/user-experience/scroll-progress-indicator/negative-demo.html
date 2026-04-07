@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll Progress Indicator</title>
+  <script src="https://flackr.github.io/scroll-timeline/dist/scroll-timeline.js"></script>
+  <style>
+    @keyframes grow-progress {
+      from { width: 0%; }
+      to { width: 100%; }
+    }
+
+    #progress {
+      position: relative;
+      height: 1em;
+      background: red;
+      transform-origin: center;
+      animation: grow-progress auto linear;
+    }
+
+    body {
+      height: 400dvh;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="progress"></div>
+  <script>
+    window.addEventListener('scroll', () => {
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+      const scrolled = window.scrollY;
+      const progressPercentage = (scrolled / scrollable) * 100;
+      document.querySelector('#progress').style.width = progressPercentage + '%';
+    });
+  </script>
+</body>
+</html>
