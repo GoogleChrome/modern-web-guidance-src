@@ -67,10 +67,10 @@ jobs:
           git add serving/skills-cli/template/
           if ! git diff --quiet --exit-code --cached; then
             git commit -m "chore: bump version [skip ci]"
-            
+
             # Fetch latest changes and rebase our commit on top of them
             git fetch origin main
             git rebase origin/main
-            
+
             git push origin main
           fi
