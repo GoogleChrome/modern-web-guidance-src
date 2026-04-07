@@ -221,7 +221,9 @@ export function collectGeminiToolsFromTrajectory(dir: string): string[] {
       for (const msg of session.messages) {
         if (Array.isArray(msg.toolCalls)) {
           for (const tc of msg.toolCalls) {
-            if (tc.name === 'activate_skill' && tc.args?.name) {
+            if (tc.name === 'mcp_modern-web_get_best_practices' || tc.name === 'get_best_practices') {
+              toolsUsed.push('modern-web');
+            } else if (tc.name === 'activate_skill' && tc.args?.name) {
               toolsUsed.push(tc.args.name);
             }
           }
