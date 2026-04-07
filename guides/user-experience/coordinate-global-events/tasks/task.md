@@ -2,4 +2,4 @@
 base_app: daily-grind
 ---
 
-- Add a new feature that schedules a live virtual coffee tasting event for '2026-03-08T02:30' in the 'America/New_York' timezone. Use the new Temporal API with disambiguation set to 'reject' to detect if this time falls in a daylight savings gap, and log a warning if it does. If there's a DST conflict for the tasting event, use the compatible mode to find a valid time, and then convert it to 'Asia/Tokyo' and print it to the site.
+- Add an interactive event scheduler feature to index.html that allows users to input a date, time, and host time zone, and displays the resolved time for that event and the corresponding time for attendees in Tokyo. Ensure it handles potential Daylight Saving Time conflicts safely and displays a warning containing the word 'skip' if the selected time is invalid.

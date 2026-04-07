@@ -1,6 +1,6 @@
-- The implementation MUST feature-detect the `Temporal` API using `typeof Temporal === 'undefined'` before usage.
-- The implementation MUST conditionally load the `@js-temporal/polyfill` only if native support is absent.
-- The implementation MUST manually assign the loaded polyfill to `globalThis.Temporal` if loaded.
+- The implementation MUST feature-detect the `Temporal` API before usage to ensure compatibility.
+- The implementation MUST conditionally load the Temporal polyfill only if native support is absent.
+- The implementation MUST ensure the Temporal API is available globally if the application logic relies on the global `Temporal` object.
 - The implementation MUST use `Temporal.ZonedDateTime` as the primary type for scheduling and managing events bound to a specific geographical IANA time zone.
 - The implementation MUST use the `disambiguation` option in `Temporal.ZonedDateTime.from()` to handle potential DST transition conflicts (skipped or repeated hours).
 - The implementation MUST use `disambiguation: 'reject'` when conflict detection is required to throw an error for ambiguous or non-existent times.
