@@ -120,9 +120,6 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
     const files = fs.readdirSync(dirPath);
     const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
 
-    interface ReadFileArgs { file_path?: string; }
-    interface RunShellCommandArgs { command?: string; }
-
     for (const file of sessionFiles) {
       const sessionPath = path.join(dirPath, file);
       const sessionContent = fs.readFileSync(sessionPath, 'utf8');
@@ -132,10 +129,8 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
         for (const msg of session.messages) {
           if (msg.type === 'gemini' && msg.toolCalls) {
             for (const tc of msg.toolCalls) {
-              if ((serving === Serving.SKILLS || serving === Serving.MEGASKILL) && tc.name === 'read_file' && tc.args) {
-                const args = tc.args as unknown as ReadFileArgs;
-                if (args.file_path) {
-                  const filePath = args.file_path;
+              if ((serving === Serving.SKILLS || serving === Serving.MEGASKILL) && tc.name === 'read_file' && tc.args && (tc.args as any).file_path) {
+                const filePath = (tc.args as any).file_path;
                   if (filePath.includes('/skills/')) {
                     if (filePath.endsWith('/guide.md')) {
                       const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
@@ -150,10 +145,8 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving
                     }
                   }
                 }
-              } else if (serving === Serving.SKILLS_CLI && tc.name === 'run_shell_command' && tc.args) {
-                const args = tc.args as unknown as RunShellCommandArgs;
-                if (args.command) {
-                  const command = args.command;
+              } else if (serving === Serving.SKILLS_CLI && tc.name === 'run_shell_command' && tc.args && (tc.args as any).command) {
+                const command = (tc.args as any).command;
                   if (command.includes('modern-web') && command.includes('--retrieve')) {
                     const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
                     if (match) {
