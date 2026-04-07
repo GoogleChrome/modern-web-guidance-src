@@ -192,11 +192,7 @@ run();
         continue;
       }
 
-      const taskCategory = path.basename(path.dirname(taskInfo.guideDir));
-      let expectedGuidanceTool: string | undefined;
-      const serving = suiteConfig.serving;
-
-      if (serving === Serving.MCP || suiteConfig.agent === Agents.JETSKI) {
+      if (serving === Serving.MCP || serving === Serving.MEGASKILL || suiteConfig.agent === Agents.JETSKI) {
         expectedGuidanceTool = 'modern-web';
       } else if (serving === Serving.SKILLS_CLI) {
         expectedGuidanceTool = 'modern-web-use-cases';
