@@ -82,6 +82,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     runCount?: number;
     passedChecks: number;
     totalChecks: number;
+    earlyFailures?: number;
   }> = {};
 
   for (const name of sortedKeys) {
