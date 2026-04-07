@@ -242,8 +242,12 @@ export function collectClaudeToolsFromTrajectory(dir: string): string[] {
         const obj = JSON.parse(line);
         if (obj.message && Array.isArray(obj.message.content)) {
           for (const item of obj.message.content) {
-            if (item.type === 'tool_use' && item.name === 'Skill' && item.input?.skill) {
-              toolsUsed.push(item.input.skill);
+            if (item.type === 'tool_use') {
+              if (item.name === 'Skill' && item.input?.skill) {
+                toolsUsed.push(item.input.skill);
+              } else if (item.name === 'activate_skill' && item.input?.name) {
+                toolsUsed.push(item.input.name);
+              }
             }
           }
         }
