@@ -528,12 +528,6 @@ export async function runCliAgentCommand(
     child.on('close', resolve);
   });
 
-  if (exitCode !== 0) {
-    throw new Error(`${agentName} exited with code ${exitCode}`);
-  }
-
-  copyResultsToTarget(workDir, targetDir);
-
   // Save output to chat_log.txt
   const chatLogPath = path.join(targetDir, 'chat_log.txt');
   fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
@@ -544,6 +538,16 @@ export async function runCliAgentCommand(
     const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
     fs.writeFileSync(stderrLogPath, stderrData, 'utf8');
     console.log(`Saved stderr to: ${stderrLogPath}`);
+  }
+
+  try {
+    copyResultsToTarget(workDir, targetDir);
+  } catch (e) {
+    console.error(`Failed to copy results from ${workDir} to ${targetDir}:`, e);
+  }
+
+  if (exitCode !== 0) {
+    throw new Error(`${agentName} exited with code ${exitCode}`);
   }
 }
 
