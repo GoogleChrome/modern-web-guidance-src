@@ -231,7 +231,7 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
     destDir = path.join(homeDir, '.claude', 'skills');
   } else if (agent === Agents.CODEX_CLI) {
     destDir = path.join(homeDir, '.agents', 'skills');
-  } else if (agent === Agents.JETSKI) {
+  } else if (agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
     destDir = path.join(homeDir, '.gemini', 'jetski', 'skills');
   } else {
     destDir = path.join(homeDir, '.gemini', 'skills');

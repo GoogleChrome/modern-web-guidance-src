@@ -11,6 +11,7 @@ try {
 
 export const Agents = {
   JETSKI: 'jetski',
+  JETSKI_CLI: 'jetski_cli',
   GEMINI_CLI: 'gemini_cli',
   CLAUDE_CODE: 'claude_code',
   CODEX_CLI: 'codex_cli'
@@ -32,6 +33,7 @@ export const environmentConfig: EnvironmentConfig = {
   // Jetski Configuration
   jetskiDir: process.env.JETSKI_DIR || path.join(os.homedir(), '.gemini/jetski'),
   jetskiBin: process.env.JETSKI_BIN || '/Applications/Jetski.app/Contents/Resources/app/bin/jetski',
+  jetskiCliBin: process.env.JETSKI_CLI_BIN || '/google/bin/releases/jetski-devs/tools/cli',
   jetskiDebugPort: parseInt(process.env.JETSKI_DEBUG_PORT || '9226'),
   jetskiProfileDir: process.env.JETSKI_PROFILE_DIR || path.join(os.homedir(), '.gemini/jetski-profile'),
 
@@ -57,7 +59,7 @@ export const defaultSuiteConfig: SuiteConfig = {
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
   mcpServersToEnable: ['modern-web'],
   serving: Serving.SKILLS_CLI,
-  agent: Agents.GEMINI_CLI,
+  agent: Agents.JETSKI_CLI,
 };
 
 export function mergeSuiteConfig(overrides: Partial<SuiteConfig>): SuiteConfig {
@@ -67,6 +69,7 @@ export function mergeSuiteConfig(overrides: Partial<SuiteConfig>): SuiteConfig {
 export interface EnvironmentConfig {
   jetskiDir: string;
   jetskiBin: string;
+  jetskiCliBin: string;
   jetskiDebugPort: number;
   jetskiProfileDir: string;
   geminiCliBin: string;

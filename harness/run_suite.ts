@@ -49,7 +49,8 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string,
       agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
         agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
           agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
-            'jetski-agent.ts'
+            agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
+              'jetski-agent.ts'
     );
 
     const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
@@ -390,6 +391,7 @@ function getAgentScript(agent: string): string {
   return path.join(harnessDir, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
     agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
     agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
+    agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
       'jetski-agent.ts');
 }
 

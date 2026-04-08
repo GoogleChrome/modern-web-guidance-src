@@ -9,7 +9,7 @@ import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory } fro
 export async function collectGuidesUsed(dirPath: string, serving: Serving, agent: string): Promise<string[]> {
   // For MCP and Jetski runs, collect guide usage from modern-web log if present
   // Jetski impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in Skills runs)
-  if (serving === Serving.MCP || agent === Agents.JETSKI) {
+  if (serving === Serving.MCP || agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
     const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
 
     if (!fs.existsSync(logPath)) {
@@ -55,7 +55,7 @@ export async function collectGuidesUsed(dirPath: string, serving: Serving, agent
 export async function collectGuidanceToolsUsed(dir: string, serving: Serving, agent: string): Promise<string[]> {
   // For MCP and JETSKI runs, collect tool usage from modern-web log presence
   // JETSKI impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in SKILLS runs)
-  if (serving === Serving.MCP || agent === Agents.JETSKI) {
+  if (serving === Serving.MCP || agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
     if (fs.existsSync(path.join(dir, MODERN_WEB_LOG_FILE))) {
       return ['modern-web'];
     }
