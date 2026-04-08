@@ -84,10 +84,8 @@ To align a heading perfectly with the top of an adjacent image or decorative ele
 }
 
 h1 {
-  /* Only trim the top to the cap-height */
-  text-box-trim: trim-start;
-  /* The bottom edge must also be defined, even though `text-box-trim` is set to `trim-start` */
-  text-box-edge: cap alphabetic;
+  /* MANDATORY: The bottom edge must also be defined, even though only the top is trimmed. */
+  text-box: trim-start cap alphabetic;
 }
 ```
 
@@ -98,7 +96,7 @@ h1 {
 - **DO** combine with `line-height` for controlled spacing. Trimming removes the leading before the first and last line of text, but `line-height` still affects the distance between lines in multi-line text.
 - **DO NOT** apply to every element. Use it only where precision alignment is a requirement.
 
-## Fallback Strategies
+### Fallback strategies
 
 {{ BASELINE_STATUS("text-box") }}
 
