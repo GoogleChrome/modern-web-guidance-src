@@ -3,6 +3,7 @@
 import { parseArgs } from "util";
 import { searchUseCases } from "../lib/search.ts";
 import { retrieveUseCase } from "../lib/retrieve.ts";
+import { TfjsEmbedder } from "../mcp-server/lib/tfjs-embedder.ts";
 
 const { values } = parseArgs({
   args: process.argv.slice(2),
@@ -33,7 +34,7 @@ async function main() {
 
   if (values.search) {
     try {
-      const results = await searchUseCases(values.search);
+      const results = await searchUseCases(values.search, undefined, undefined, TfjsEmbedder.getInstance());
       console.log(JSON.stringify(results, null, 2));
     } catch (error) {
       console.error("Search failed:", error);

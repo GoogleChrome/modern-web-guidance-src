@@ -1,5 +1,5 @@
 import { Embedder } from "../../mcp-server/lib/embedder.ts";
-import { TfjsEmbedder } from "./tfjs-embedder.ts";
+import { TfjsEmbedder } from "../../mcp-server/lib/tfjs-embedder.ts";
 import fs from "fs";
 import path from "path";
 

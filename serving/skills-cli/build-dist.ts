@@ -89,18 +89,12 @@ async function main(): Promise<BuildResult | undefined> {
     console.log(`Copied ${vectorsFile} to ${destVectorsFile}`);
   }
 
-  console.log("Copying onnxruntime-web WASM files...");
-  const wasmSrcDir = path.join(SERVING_DIR, "node_modules/onnxruntime-web/dist");
-  const wasmDestDir = path.join(DIST_DIR, "wasm");
-  if (fs.existsSync(wasmSrcDir)) {
-    fs.mkdirSync(wasmDestDir, { recursive: true });
-    const files = fs.readdirSync(wasmSrcDir);
-    for (const f of files) {
-      if (f.endsWith(".wasm")) {
-        fs.copyFileSync(path.join(wasmSrcDir, f), path.join(wasmDestDir, f));
-      }
-    }
-    console.log(`Copied WASM binaries to ${wasmDestDir}`);
+  console.log("Copying TFJS model files...");
+  const tfjsModelDir = path.join(SERVING_DIR, "mcp-server/lib/tfjs_model_minilm");
+  const destTfjsModelDir = path.join(DIST_DIR, "tfjs_model_minilm");
+  if (fs.existsSync(tfjsModelDir)) {
+    fs.cpSync(tfjsModelDir, destTfjsModelDir, { recursive: true });
+    console.log(`Copied ${tfjsModelDir} to ${destTfjsModelDir}`);
   }
 
   console.log("Bundling modern-web.ts with esbuild...");
@@ -116,7 +110,7 @@ async function main(): Promise<BuildResult | undefined> {
       platform: "node",
       format: "esm",
       loader: { ".node": "file" },
-      external: ["@huggingface/transformers", "onnxruntime-web"],
+      external: [],
       outfile: outFile,
     });
     console.timeEnd("⏳ esbuild bundle");
@@ -151,43 +145,6 @@ async function main(): Promise<BuildResult | undefined> {
   console.log(`Successfully copied ${skillsCount} skills to distribution.`);
 
   const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
-
-  let nodeModulesValid = false;
-  if (fs.existsSync(path.join(PUBLISH_ROOT, "node_modules"))) {
-    try {
-      // npm ls will exit with code 0 if all dependencies are satisfied according to package.json!
-      execSync("npm ls --depth=0", { cwd: PUBLISH_ROOT, stdio: "ignore" });
-      nodeModulesValid = true;
-    } catch {
-      nodeModulesValid = false;
-    }
-  }
-
-  const sourcePkgJson = path.join(SERVING_DIR, "skills-cli/template/package.json");
-  const destShrinkwrap = path.join(PUBLISH_ROOT, "npm-shrinkwrap.json");
-
-  let shrinkwrapUpToDate = false;
-  if (fs.existsSync(destShrinkwrap) && fs.existsSync(sourcePkgJson)) {
-    const sourceStat = fs.statSync(sourcePkgJson);
-    const destStat = fs.statSync(destShrinkwrap);
-    shrinkwrapUpToDate = destStat.mtime >= sourceStat.mtime;
-  }
-
-  const forcePublish = process.argv.includes("--force-publish") || !nodeModulesValid || !shrinkwrapUpToDate;
-
-  if (!forcePublish) {
-    console.log("Reusing valid node_modules in published root (npm ls passed). Pass --force-publish to overwrite.");
-  } else {
-    console.log("Installing dependencies in published root using pnpm...");
-    try {
-      console.time("⏳ pnpm install");
-      execSync("pnpm install --config.node-linker=hoisted", { cwd: PUBLISH_ROOT, stdio: "inherit" });
-      console.timeEnd("⏳ pnpm install");
-    } catch (error) {
-      console.error("Failed to run pnpm install:", error);
-      process.exit(1);
-    }
-  }
 
   console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
   return { featuresCount, useCasesCount, skillsCount, skillNames };
