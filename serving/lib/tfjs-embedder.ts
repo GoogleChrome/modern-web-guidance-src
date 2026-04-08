@@ -1,8 +1,8 @@
 import * as tf from "@tensorflow/tfjs-core";
-import { loadGraphModel } from "@tensorflow/tfjs-converter";
+import { loadGraphModel } from "@tensorflow/tfjs-converter/dist/executor/graph_model.js";
 import { MathBackendCPU } from "@tensorflow/tfjs-backend-cpu/dist/base.js";
 import "@tensorflow/tfjs-backend-cpu/dist/register_all_kernels.js";
-import { AutoTokenizer } from "@huggingface/transformers";
+import { BertTokenizer } from "@huggingface/transformers/src/tokenizers.js";
 import path from "path";
 import fs from "fs";
 
@@ -82,9 +82,9 @@ export class TfjsEmbedder {
         console.warn = oldWarn;
 
         try {
-            this.tokenizer = await AutoTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2", { local_files_only: true });
+            this.tokenizer = await BertTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2", { local_files_only: true });
         } catch (e) {
-            this.tokenizer = await AutoTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2");
+            this.tokenizer = await BertTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2");
         }
     } catch (e) {
         console.error("Failed to load TFJS model:", e);
