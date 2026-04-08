@@ -1,6 +1,7 @@
 import * as tf from "@tensorflow/tfjs-core";
 import { loadGraphModel } from "@tensorflow/tfjs-converter";
 import { MathBackendCPU } from "@tensorflow/tfjs-backend-cpu/dist/base.js";
+import "@tensorflow/tfjs-backend-cpu/dist/register_all_kernels.js";
 import { AutoTokenizer } from "@huggingface/transformers";
 import path from "path";
 import fs from "fs";
