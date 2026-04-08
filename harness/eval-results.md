@@ -5,7 +5,7 @@ This document covers how evaluation results are stored, uploaded to Google Cloud
 ## Storage Location
 Evaluation results are stored locally in:
 - `harness/results/` (default within the repo).
-- Or a custom external directory (e.g., `~/guidance-results`).
+- Or a custom external directory (e.g., `~/guidance-evals`).
 
 Each suite has its own directory containing:
 - `evals.json`: Summary of all runs and assertions.
@@ -36,7 +36,7 @@ pnpm upload <suite-name>
 If you need to pull down suites from GCS that you don't have locally (e.g., to run backfill on them):
 
 ```bash
-gcloud storage rsync gs://guidance-evals ~/guidance-results --recursive
+gcloud storage rsync gs://guidance-evals ~/guidance-evals --recursive
 ```
 
 *   **Recursive**: You **MUST** pass `--recursive` (or `-r`), otherwise it will not copy files inside the suite folders!
@@ -46,7 +46,7 @@ gcloud storage rsync gs://guidance-evals ~/guidance-results --recursive
     > If you use this flag when pulling from GCS to local, **it WILL delete your `.git` folder** (because `.git` is not on GCS). Move your `.git` folder out of the target directory before running it with this flag!
 *   **Dry Run**: To see what it would do without touching files:
     ```bash
-    gcloud storage rsync gs://guidance-evals ~/guidance-results --recursive --dry-run
+    gcloud storage rsync gs://guidance-evals ~/guidance-evals --recursive --dry-run
     ```
 
 ### 2. Backfilling Metrics
@@ -57,7 +57,7 @@ When metrics reporting logic changes, you can backfill all suites in a directory
 node harness/backfill.ts
 
 # Backfill a custom directory (e.g., synced from GCS)
-node harness/backfill.ts ~/guidance-results
+node harness/backfill.ts ~/guidance-evals
 ```
 This updates `evals.json` and `evals.md` in each suite directory.
 
