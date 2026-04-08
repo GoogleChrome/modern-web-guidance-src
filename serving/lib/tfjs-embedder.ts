@@ -1,6 +1,6 @@
 import * as tf from "@tensorflow/tfjs-core";
 import { loadGraphModel } from "@tensorflow/tfjs-converter";
-import "@tensorflow/tfjs-backend-cpu";
+import { MathBackendCPU } from "@tensorflow/tfjs-backend-cpu/dist/base.js";
 import { AutoTokenizer } from "@huggingface/transformers";
 import path from "path";
 import fs from "fs";
@@ -73,6 +73,8 @@ export class TfjsEmbedder {
         console.warn = () => {};
         
         await tf.setBackend('cpu');
+        // Force MathBackendCPU to be included
+        const _unused = MathBackendCPU;
         this.model = await loadGraphModel(ioHandler as any);
         
         console.log = oldLog;
