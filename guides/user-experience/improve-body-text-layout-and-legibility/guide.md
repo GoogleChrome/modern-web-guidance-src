@@ -3,7 +3,6 @@ name: improve-body-text-layout-and-legibility
 description: Improve the layout and legibility of long text content by enabling the browser to manage line breaks to reduce line rag, orphaned text, and other visual artifacts.
 web-feature-ids:
   - text-wrap
-  - text-wrap-balance
   - text-wrap-pretty
 sources:
   - https://developer.chrome.com/blog/css-text-wrap-pretty/
@@ -28,11 +27,13 @@ The `text-wrap: pretty` CSS property allows you to improve the typographic quali
 ```css
 /* Apply to paragraphs to prevent orphaned words */
 p {
+  /* MANDATORY: Enables pretty line-breaking logic */
   text-wrap: pretty; /* Prioritizes typographic beauty for body copy */
 }
 
 /* Also effective for other multi-line text elements */
-blockquote, li {
+blockquote, li, .pretty-text {
+   /* MANDATORY: Enables pretty line-breaking logic */
   text-wrap: pretty;
 }
 ```
@@ -47,13 +48,11 @@ blockquote, li {
 
 {{ BASELINE_STATUS("text-wrap-pretty") }}
 
-`text-wrap: pretty` is a progressive enhancement. If a browser does not support it, the text will fall back to the default `wrap` behavior. This is functional and fast, meaning the content remains perfectly readable even without the typographic optimization.
+`text-wrap: pretty` is a progressive enhancement. Browsers that do not support the property will simply ignore it and fall back to the default wrapping behavior. This ensures that your content remains perfectly readable across all browsers while providing a superior experience to those that support it.
 
 ```css
-/* Progressive Enhancement check */
-@supports (text-wrap: pretty) {
-  .article-body p {
-    text-wrap: pretty;
-  }
+/* No @supports block is needed for progressive enhancement */
+p {
+  text-wrap: pretty; /* Supported browsers will prevent orphans; others will ignore this line */
 }
 ```
