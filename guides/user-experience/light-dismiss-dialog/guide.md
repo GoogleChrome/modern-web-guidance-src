@@ -72,8 +72,12 @@ const dialog = document.querySelector('dialog');
 // Fallback for browsers without closedby support
 if (!('closedBy' in HTMLDialogElement.prototype)) {
   dialog.addEventListener('click', (event) => {
+    // 1. When clicking the backdrop, the event target is the dialog element itself.
+    // Ignore clicks where the target is a child element inside the dialog.
     if (event.target !== dialog) return;
 
+    // 2. Check if the click coordinates fall within the dialog's content box.
+    // This distinguishes between a click on the backdrop vs a click on the dialog's background/padding.
     const rect = dialog.getBoundingClientRect();
     const isDialogContent = (
       rect.top <= event.clientY &&
@@ -84,7 +88,7 @@ if (!('closedBy' in HTMLDialogElement.prototype)) {
 
     if (isDialogContent) return;
 
-    // Only close if the click was outside the dialog's content area
+    // 3. Since the click was outside the content area (on the backdrop), manually close the dialog.
     dialog.close();
   });
 }
