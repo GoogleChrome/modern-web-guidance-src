@@ -5,8 +5,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5519,
@@ -21,8 +21,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5519,
@@ -37,8 +37,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5519,
@@ -53,8 +53,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5519,
@@ -69,8 +69,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5519,
@@ -85,8 +85,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "native",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.6981,
@@ -101,8 +101,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "native",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.6981,
@@ -117,8 +117,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5519,
@@ -133,8 +133,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "native",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.6981,
@@ -149,8 +149,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "native",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.6981,
@@ -165,8 +165,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "native",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.6981,
@@ -181,8 +181,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "native",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.6981,
@@ -197,8 +197,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5519,
@@ -213,8 +213,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "native",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.6981,
@@ -229,8 +229,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "native",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.6981,
@@ -245,8 +245,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "native",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.6981,
@@ -261,8 +261,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "native",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.6981,
@@ -277,8 +277,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5519,
@@ -293,8 +293,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5519,
@@ -309,8 +309,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5519,
@@ -325,8 +325,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5483,
@@ -341,8 +341,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5483,
@@ -357,8 +357,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5483,
@@ -373,8 +373,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5483,
@@ -389,8 +389,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5483,
@@ -405,8 +405,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5483,
@@ -421,8 +421,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5483,
@@ -437,8 +437,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5483,
@@ -453,8 +453,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5483,
@@ -469,8 +469,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5483,
@@ -485,8 +485,8 @@
       "name": "minilm",
       "quantization": "fp32",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5483,
@@ -501,8 +501,8 @@
       "name": "minilm",
       "quantization": "fp32",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5483,
@@ -517,8 +517,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "no-maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "no-maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.5483,
@@ -533,8 +533,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.7028,
@@ -549,8 +549,8 @@
       "name": "minilm",
       "quantization": "fp32",
       "runtime": "wasm",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.7064,
@@ -565,8 +565,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.7028,
@@ -581,8 +581,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "native",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.7028,
@@ -597,8 +597,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "native",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.7028,
@@ -613,8 +613,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "native",
-      "strategy": "maxsim",
-      "chunking": "chunked"
+      "chunking": "chunked",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.7028,
@@ -629,8 +629,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "maxsim",
-      "chunking": "nochunk"
+      "chunking": "nochunk",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.6993,
@@ -645,8 +645,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "maxsim",
-      "chunking": "nochunk"
+      "chunking": "nochunk",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.6993,
@@ -661,8 +661,8 @@
       "name": "minilm",
       "quantization": "q8",
       "runtime": "wasm",
-      "strategy": "maxsim",
-      "chunking": "nochunk"
+      "chunking": "nochunk",
+      "search": "maxsim"
     },
     "totalQueries": 848,
     "top1HitRate": 0.6993,
@@ -670,5 +670,38 @@
     "top5HitRate": 0.9741,
     "meanReciprocalRank": 0.8075,
     "runId": "2026-04-08T20:45:01.890Z"
+  },
+  {
+    "timestamp": "2026-04-08T21:04:33.886Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "nochunk",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.684,
+    "top3HitRate": 0.9151,
+    "top5HitRate": 0.9776,
+    "meanReciprocalRank": 0.8002,
+    "runId": "2026-04-08T21:04:30.520Z"
+  },
+  {
+    "timestamp": "2026-04-08T21:07:05.604Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "wasm",
+      "chunking": "nochunk",
+      "variant": "boost3x",
+      "search": "maxsim"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.684,
+    "top3HitRate": 0.9151,
+    "top5HitRate": 0.9776,
+    "meanReciprocalRank": 0.8002,
+    "runId": "2026-04-08T21:07:02.270Z"
   }
 ]
