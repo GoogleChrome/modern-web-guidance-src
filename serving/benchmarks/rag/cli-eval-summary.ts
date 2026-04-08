@@ -28,14 +28,20 @@ interface LatencyRun {
 
 function run() {
     console.log("\n=== Glossary ===");
-    console.log("trjs        : Transformers.js");
-    console.log("onnx        : ONNX Runtime");
-    console.log("tfjs        : TensorFlow.js");
-    console.log("wasm        : WebAssembly (onnxruntime-web)");
-    console.log("native      : Native OS bindings (onnxruntime-node)");
-    console.log("singlechunk : Early deduplication (only evaluates one chunk per guide)");
-    console.log("q8          : 8-bit Quantized");
-    console.log("fp32        : 32-bit Float precision");
+    const glossary = [
+        ["trjs", "Transformers.js"],
+        ["onnx", "ONNX Runtime"],
+        ["TFJS", "TensorFlow.js"],
+        ["wasm", "WebAssembly (onnxruntime-web)"],
+        ["native", "Native OS bindings (onnxruntime-node)"],
+        ["maxsim", "Max-similarity chunk aggregation"],
+        ["singlechunk", "Early deduplication (evaluates only one chunk per guide)"],
+        ["q8", "8-bit Quantized"],
+        ["fp32", "32-bit Float precision"]
+    ];
+    glossary.forEach(([term, desc]) => {
+        console.log(`${term.padEnd(12)} : ${desc}`);
+    });
     console.log("================\n");
 
     // --- 1. Accuracy Summary ---

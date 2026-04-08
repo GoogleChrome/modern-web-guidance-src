@@ -104,7 +104,7 @@ async function run() {
         
         results.push({
             timestamp,
-            model: "Xenova/all-MiniLM-L6-v2 (wasm)",
+            model: "minilm q8 - trjs onnx wasm - maxsim",
             type: "e2e-latency-1-query",
             avgLatencyMs: parseFloat(wasmAvg.toFixed(2)),
             runs: wasmRuns
@@ -113,7 +113,7 @@ async function run() {
         if (nativeAvg !== null) {
             results.push({
                 timestamp,
-                model: "Xenova/all-MiniLM-L6-v2 (native)",
+                model: "minilm q8 - trjs onnx native - maxsim",
                 type: "e2e-latency-1-query",
                 avgLatencyMs: parseFloat(nativeAvg.toFixed(2)),
                 runs: nativeRuns
@@ -122,7 +122,7 @@ async function run() {
         
         results.push({
             timestamp,
-            model: "tfjs:all-MiniLM-L6-v2 (pure-js-custom-io)",
+            model: "minilm fp32 - TFJS - maxsim",
             type: "e2e-latency-1-query",
             avgLatencyMs: parseFloat(tfjsAvg.toFixed(2)),
             runs: tfjsRuns
