@@ -6,6 +6,7 @@
 #   "torch",
 #   "numpy==1.26.4",
 #   "tf-keras",
+#   "typing-extensions>=4.10.0",
 # ]
 # ///
 
@@ -47,6 +48,12 @@ def create_model():
     return model
 
 def main():
+    import numpy as np
+    import tensorflow as tf
+    
+    print(f"NumPy version: {np.__version__}")
+    print(f"TensorFlow version: {tf.__version__}")
+    
     current_dir = os.path.dirname(os.path.abspath(__file__))
     saved_model_path = os.path.join(current_dir, "saved_model_q8")
     output_path = os.path.join(current_dir, "tfjs_model_q8")
@@ -61,15 +68,19 @@ def main():
     model.save(saved_model_path)
     
     print(f"Converting to TFJS (Q8)...")
-    # Convert to TFJS
-    subprocess.run([
-        "tensorflowjs_converter",
-        "--input_format=tf_saved_model",
-        "--output_format=tfjs_graph_model",
-        "--quantization_bytes=1", # 8-bit quantization
+    # Monkey patch np.object and np.bool which were removed in NumPy 2.0
+    import numpy as np
+    np.object = object
+    np.bool = bool
+    
+    import tensorflowjs as tfjs
+    
+    # Convert to TFJS using Python API
+    tfjs.converters.convert_tf_saved_model(
         saved_model_path,
-        output_path
-    ], check=True)
+        output_path,
+        quantization_bytes=1
+    )
     
     print("Done! Model saved to tfjs_model_q8")
 

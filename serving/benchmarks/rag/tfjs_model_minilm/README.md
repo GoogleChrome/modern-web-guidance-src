@@ -31,3 +31,18 @@ The `convert.py` script:
 3. Saves it as a TensorFlow `SavedModel`.
 4. Converts the `SavedModel` to a TF.js Graph Model using `tensorflowjs_converter`.
 5. Cleans up intermediate files.
+
+## Quantized (Q8) Attempt
+
+We attempted to create an 8-bit quantized version of this model using `--quantization_bytes=1` in `tensorflowjs_converter`. 
+
+The script is available as `convert_q8_broken.py`.
+
+### Why it failed in our environment:
+We hit intense **Python dependency conflicts** on our environment (Mac Apple Silicon):
+1. **NumPy 2.0 Incompatibility**: `tensorflowjs` uses deprecated aliases `np.object` and `np.bool` which were removed in NumPy 2.0. We worked around this by monkey patching them in the script.
+2. **TensorFlow Hub vs TF 2.x**: `tensorflow_hub` (needed by the converter) expects `tf.compat.v1.estimator`, which has been completely removed in the latest TensorFlow (2.21.0).
+3. **Mac ARM Wheel Limits**: We couldn't easily downgrade TensorFlow to an older version (like 2.12 or 2.13) because those versions lack native wheels for **Apple Silicon (Mac ARM)**.
+
+### Potential Fix:
+This script **should work on Intel Macs or Linux machines** where older versions of TensorFlow (e.g., 2.12.0) are readily installable via `pip`. If run on those platforms, it should produce a functional Q8 model.
