@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel & Delivery Duration Display</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --text: #1e293b;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: grid;
+            place-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+        }
+        .container {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
+        }
+        h1 {
+            margin: 0 0 1.5rem 0;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+        section {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+        }
+        section:last-of-type {
+            margin-bottom: 0;
+        }
+        h2 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin: 0 0 0.5rem 0;
+        }
+        .result {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        .unsupported {
+            color: #dc2626;
+            background: #fee2e2;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            display: none;
+            font-size: 0.875rem;
+        }
+        code {
+            background: rgba(0,0,0,0.05);
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Estimated Arrival</h1>
+    
+    <div id="unsupported-msg" class="unsupported">
+        <strong>Feature Not Supported:</strong> Your browser does not yet support <code>Intl.DurationFormat</code>. 
+        Please use a recent version of Chrome (114+), Safari (16.4+), or Firefox (128+).
+    </div>
+
+    <section>
+        <h2>📦 Package Delivery</h2>
+        <div id="delivery" class="result">Calculating...</div>
+    </section>
+
+    <section>
+        <h2>🚗 Travel Time</h2>
+        <div id="travel" class="result">Calculating...</div>
+    </section>
+</div>
+
+<script>
+    const deliveryTarget = document.getElementById('delivery');
+    const travelTarget = document.getElementById('travel');
+    const errorMsg = document.getElementById('unsupported-msg');
+
+    // Check for Intl.DurationFormat support
+    if (typeof Intl.DurationFormat !== 'undefined') {
+        // Mock data for the use case
+        const deliveryDuration = { 
+            days: 2, 
+            hours: 5, 
+            minutes: 30 
+        };
+        
+        const travelDuration = { 
+            hours: 4, 
+            minutes: 12 
+        };
+
+        try {
+            // 1. Long style for formal delivery estimates (e.g., "2 days, 5 hours, 30 minutes")
+            const longFormatter = new Intl.DurationFormat(navigator.language, { 
+                style: 'long' 
+            });
+            
+            // 2. Short style for travel info (e.g., "4 hr, 12 min")
+            const shortFormatter = new Intl.DurationFormat(navigator.language, { 
+                style: 'short' 
+            });
+
+            deliveryTarget.textContent = longFormatter.format(deliveryDuration);
+            travelTarget.textContent = shortFormatter.format(travelDuration);
+        } catch (e) {
+            console.error(e);
+            deliveryTarget.textContent = 'Error formatting duration.';
+        }
+    } else {
+        // Fallback for unsupported browsers
+        deliveryTarget.textContent = '—';
+        travelTarget.textContent = '—';
+        errorMsg.style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
