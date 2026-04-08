@@ -150,11 +150,13 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
 
+        server.close(() => {
+          console.log(`Server closed to release port ${PORT}`);
+        });
+
         const tempConfigPath = path.join(os.tmpdir(), `.ui_eval_config_${Math.random().toString(36).substring(2, 10)}.ts`);
         const options = JSON.parse(body);
-        const configWithId = { ...options };
-
-        fs.writeFileSync(tempConfigPath, `export default ${JSON.stringify(configWithId, null, 2)};`);
+        fs.writeFileSync(tempConfigPath, `export default ${JSON.stringify(options, null, 2)};`);
 
         console.log(`\n>>> Launching UI Eval Suite in background...`);
 

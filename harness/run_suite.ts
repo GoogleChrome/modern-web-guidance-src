@@ -176,9 +176,9 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           ...pnpmWorkspacePackages.map(pkg => `  - '${pkg}'`)
         ].join('\n') + '\n';
         fs.writeFileSync(pnpmWorkspacePath, yamlContent);
-        
+
         try {
-          const pnpmArgs = ['-r'];
+          const pnpmArgs = ['-r', '--no-bail'];
           if (agent === Agents.JETSKI) {
             pnpmArgs.push('--workspace-concurrency', '1');
           }
