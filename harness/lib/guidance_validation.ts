@@ -8,8 +8,6 @@ import { collectClaudeGuidesFromTrajectory, collectClaudeToolsFromTrajectory } f
 import { collectCodexGuidesFromTrajectory, collectCodexToolsFromTrajectory } from '../agents/codex-cli-agent.ts';
 
 export async function collectGuidesUsed(dirPath: string, serving: Serving, agent: string): Promise<GuidedUsage> {
-  const result: GuidedUsage = { retrievedGuides: [], fileReadGuides: [] };
-
   // For GEMINI_CLI, ALWAYS collect guide usage from trajectory files if present
   if (agent === Agents.GEMINI_CLI) {
     return collectGeminiGuidesFromTrajectory(dirPath, serving);

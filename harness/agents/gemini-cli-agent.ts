@@ -117,7 +117,7 @@ async function run() {
   }
 }
 
-export async function collectGeminiGuidesFromTrajectory(dirPath: string, serving: string): Promise<GuidedUsage> {
+export async function collectGeminiGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuidedUsage> {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
   try {

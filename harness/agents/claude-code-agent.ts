@@ -140,7 +140,7 @@ async function run() {
   }
 }
 
-export async function collectClaudeGuidesFromTrajectory(dirPath: string, serving: string): Promise<{ retrievedGuides: string[]; fileReadGuides: string[] }> {
+export async function collectClaudeGuidesFromTrajectory(dirPath: string, _serving: string): Promise<{ retrievedGuides: string[]; fileReadGuides: string[] }> {
   const result = { retrievedGuides: [] as string[], fileReadGuides: [] as string[] };
   try {
     const files = fs.readdirSync(dirPath);
