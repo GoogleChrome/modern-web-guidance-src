@@ -703,5 +703,22 @@
     "top5HitRate": 0.9776,
     "meanReciprocalRank": 0.8002,
     "runId": "2026-04-08T21:07:02.270Z"
+  },
+  {
+    "timestamp": "2026-04-08T21:13:18.410Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "fp32",
+      "runtime": "tfjs",
+      "search": "maxsim",
+      "chunking": "nochunk",
+      "variant": "nochunk"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6958,
+    "top3HitRate": 0.9127,
+    "top5HitRate": 0.9741,
+    "meanReciprocalRank": 0.8062,
+    "runId": "2026-04-08T21:11:15.914Z"
   }
 ]

@@ -9,13 +9,13 @@ function createNodeFileSystemIOHandler(modelJsonPath: string) {
     load: async () => {
       const dir = path.dirname(modelJsonPath);
       const modelJson = JSON.parse(await fs.promises.readFile(modelJsonPath, "utf-8"));
-      
+
       const modelTopology = modelJson.modelTopology;
       const weightsManifest = modelJson.weightsManifest;
-      
+
       const weightSpecs: any[] = [];
       const shardPromises: Promise<Buffer>[] = [];
-      
+
       for (const manifest of weightsManifest) {
         weightSpecs.push(...manifest.weights);
         for (const shardPath of manifest.paths) {
@@ -23,10 +23,10 @@ function createNodeFileSystemIOHandler(modelJsonPath: string) {
           shardPromises.push(fs.promises.readFile(fullPath));
         }
       }
-      
+
       const buffers = await Promise.all(shardPromises);
       const weightData = Buffer.concat(buffers).buffer;
-      
+
       return {
         modelTopology,
         weightSpecs,
@@ -66,7 +66,7 @@ export class TfjsEmbedder {
         const ioHandler = createNodeFileSystemIOHandler(modelPath);
         this.model = await tf.loadGraphModel(ioHandler as any);
         console.log("TFJS Model loaded successfully!");
-        
+
         console.log("Loading tokenizer...");
         try {
             this.tokenizer = await AutoTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2", { local_files_only: true });
@@ -81,6 +81,7 @@ export class TfjsEmbedder {
   }
 
   public async embed(text: string, isQuery = false): Promise<number[]> {
+    console.log('embed called with text:', text, isQuery);
     if (!this.model || !this.tokenizer) {
         await this.init();
     }
@@ -89,35 +90,35 @@ export class TfjsEmbedder {
     }
 
     const tokenized = await this.tokenizer(text, { padding: true, truncation: true });
-    
+
     // Extract data and convert to numbers (handling BigInt if present)
     const extractData = (tensor: any) => {
         const data = tensor.data || tensor.ort_tensor?.cpuData || tensor;
         return Array.from(data).map((x: any) => Number(x));
     };
-    
+
     const inputIdsData = extractData(tokenized.input_ids);
     const attentionMaskData = extractData(tokenized.attention_mask);
     const tokenTypeIdsData = extractData(tokenized.token_type_ids);
-    
+
     const inputIds = tf.tensor2d([inputIdsData], undefined, 'int32');
     const attentionMask = tf.tensor2d([attentionMaskData], undefined, 'int32');
     const tokenTypeIds = tf.tensor2d([tokenTypeIdsData], undefined, 'int32');
-    
+
     const result = this.model.predict({
         "input_ids": inputIds,
         "attention_mask": attentionMask,
         "token_type_ids": tokenTypeIds
     }) as tf.Tensor;
-    
+
     const data = await result.data();
-    
+
     // Cleanup tensors
     inputIds.dispose();
     attentionMask.dispose();
     tokenTypeIds.dispose();
     result.dispose();
-    
+
     return Array.from(data);
   }
 
