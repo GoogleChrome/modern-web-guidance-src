@@ -117,6 +117,11 @@ async function run() {
   }
 }
 
+function readTrajectory(filePath: string): ConversationRecord {
+  const content = fs.readFileSync(filePath, 'utf8');
+  return JSON.parse(content) as ConversationRecord;
+}
+
 export async function collectGeminiGuidesFromTrajectory(dirPath: string, _serving: string): Promise<GuidedUsage> {
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
@@ -126,8 +131,7 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, _servin
 
     for (const file of sessionFiles) {
       const sessionPath = path.join(dirPath, file);
-      const sessionContent = fs.readFileSync(sessionPath, 'utf8');
-      const session = JSON.parse(sessionContent) as ConversationRecord;
+      const session = readTrajectory(sessionPath);
 
       if (session.messages) {
         for (const msg of session.messages) {
@@ -187,8 +191,7 @@ export function extractGeminiCliModel(resultsDir: string): string {
   for (const relativePath of sessionFiles as string[]) {
     const sessionPath = path.join(resultsDir, relativePath);
     try {
-      const content = fs.readFileSync(sessionPath, 'utf8');
-      const session = JSON.parse(content);
+      const session = readTrajectory(sessionPath);
       if (session.messages) {
         for (const m of session.messages) {
           if (m.type === 'gemini' && m.model) {
@@ -216,8 +219,7 @@ export function collectGeminiToolsFromTrajectory(dir: string): string[] {
 
   try {
     const sessionPath = path.join(dir, firstSession);
-    const content = fs.readFileSync(sessionPath, 'utf8');
-    const session = JSON.parse(content) as ConversationRecord;
+    const session = readTrajectory(sessionPath);
     if (Array.isArray(session.messages)) {
       for (const msg of session.messages) {
         if (msg.type === 'gemini' && Array.isArray(msg.toolCalls)) {
