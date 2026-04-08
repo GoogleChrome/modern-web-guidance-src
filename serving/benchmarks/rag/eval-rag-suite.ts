@@ -22,7 +22,7 @@ function shuffle<T>(array: T[]): T[] {
   return arr;
 }
 
-function getModelObj(modelStr: string, isNoChunking: boolean) {
+function getModelObj(modelStr: string, isNoChunking: boolean, variant: string) {
   let name = "minilm";
   let quantization = "q8";
   let runtime = "wasm";
@@ -40,13 +40,22 @@ function getModelObj(modelStr: string, isNoChunking: boolean) {
     quantization,
     runtime,
     strategy: "maxsim",
-    chunking: isNoChunking ? "nochunk" : "chunked"
+    chunking: isNoChunking ? "nochunk" : "chunked",
+    variant
   };
 }
 
 async function main() {
   const args = process.argv.slice(2);
   const runId = new Date().toISOString();
+  
+  const idArg = args.find(a => a.startsWith('--id='));
+  if (!idArg) {
+    console.error("Error: --id flag is required to identify this experiment variant!");
+    process.exit(1);
+  }
+  const variant = idArg.split('=')[1];
+  
   const isNoChunking = args.includes('--no-chunking');
 
   const modelsArg = args.find(a => a.startsWith('--models='));
@@ -121,7 +130,7 @@ async function main() {
       if (fs.existsSync(resultsPath)) {
         const results = JSON.parse(fs.readFileSync(resultsPath, 'utf-8'));
         
-        results[results.length - 1].model = getModelObj(model, isNoChunking);
+        results[results.length - 1].model = getModelObj(model, isNoChunking, variant);
         results[results.length - 1].runId = runId;
         fs.writeFileSync(resultsPath, JSON.stringify(results, null, 2));
       }
@@ -133,7 +142,7 @@ async function main() {
   
   console.log('\n\n=== FINAL VARIANCE ANALYSIS ===');
   for (const model of models) {
-    const targetModelObj = getModelObj(model, isNoChunking);
+    const targetModelObj = getModelObj(model, isNoChunking, variant);
     const targetModelStr = `${targetModelObj.name} ${targetModelObj.quantization} - trjs onnx ${targetModelObj.runtime} - ${targetModelObj.strategy}${targetModelObj.chunking === "nochunk" ? " nochunk" : ""}`;
     
     const modelRuns = results.filter((r: any) => {
