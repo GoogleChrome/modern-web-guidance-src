@@ -56,7 +56,7 @@ function run() {
         ["wasm", "WebAssembly (onnxruntime-web)"],
         ["native", "Native OS bindings (onnxruntime-node)"],
         ["maxsim", "Max-similarity chunk aggregation"],
-        ["singlechunk", "Early deduplication (evaluates only one chunk per guide)"],
+        ["no-maxsim", "Early deduplication (evaluates only one chunk per guide)"],
         ["server", "Used local HTTP server to load model files"],
         ["parsefloat", "Keep float precision in search (see commit c910113)"],
         ["q8", "8-bit Quantized"],
@@ -74,51 +74,63 @@ function run() {
     } else {
         const history: EvalRun[] = JSON.parse(fs.readFileSync(RESULTS_FILE, "utf-8"));
         
-        // Group by model
-        const groups: Record<string, EvalRun[]> = {};
+        // Group by runId
+        const runGroups: Record<string, Record<string, EvalRun[]>> = {};
         for (const entry of history) {
+            const runId = entry.runId || entry.timestamp;
             let modelStr = "";
             if (typeof entry.model === "object") {
                 const m = entry.model as any;
-                modelStr = `${m.name} ${m.quantization} - trjs onnx ${m.runtime} - ${m.chunking}`;
+                modelStr = `${m.name} ${m.quantization} - trjs onnx ${m.runtime} - ${m.strategy}${m.chunking === "nochunk" ? " nochunk" : ""}`;
             } else {
-                modelStr = entry.model;
+                modelStr = entry.model as string;
             }
             
-            if (!groups[modelStr]) {
-                groups[modelStr] = [];
+            if (!runGroups[runId]) {
+                runGroups[runId] = {};
             }
-            groups[modelStr].push(entry);
+            if (!runGroups[runId][modelStr]) {
+                runGroups[runId][modelStr] = [];
+            }
+            runGroups[runId][modelStr].push(entry);
         }
 
-        console.log("\n=== Model Performance Summary (Accuracy) ===");
+        console.log("\n=== Model Performance Summary (Grouped by Run) ===");
         
-        const allModels = Object.keys(groups);
-        const colWidths = calculateColWidths(allModels);
+        // Sort runs chronologically
+        const sortedRunIds = Object.keys(runGroups).sort();
         
-        const summaryData = Object.entries(groups).map(([model, runs]) => {
-            const top1Rates = runs.map(r => r.top1HitRate);
-            const mrrRates = runs.map(r => r.meanReciprocalRank);
+        for (const runId of sortedRunIds) {
+            console.log(`\nRun: ${runId}`);
+            const modelsInRun = runGroups[runId];
             
-            const avgTop1 = top1Rates.reduce((a, b) => a + b, 0) / runs.length;
-            const maxTop1 = Math.max(...top1Rates);
-            const minTop1 = Math.min(...top1Rates);
+            // Calculate col widths for this run to align hyphens
+            const allModels = Object.keys(modelsInRun);
+            const colWidths = calculateColWidths(allModels);
             
-            const avgMrr = mrrRates.reduce((a, b) => a + b, 0) / runs.length;
+            const tableData = Object.entries(modelsInRun).map(([modelStr, runs]) => {
+                const top1 = runs.map(r => r.top1HitRate);
+                const mrr = runs.map(r => r.meanReciprocalRank);
+                
+                const avgTop1 = top1.reduce((a, b) => a + b, 0) / runs.length;
+                const maxTop1 = Math.max(...top1);
+                const minTop1 = Math.min(...top1);
+                const avgMrr = mrr.reduce((a, b) => a + b, 0) / runs.length;
+                
+                const formattedModel = alignModelString(modelStr, colWidths);
+                
+                return {
+                    Model: formattedModel,
+                    Runs: runs.length,
+                    "Avg Top-1": `${(avgTop1 * 100).toFixed(1)}%`,
+                    "Max Top-1": `${(maxTop1 * 100).toFixed(1)}%`,
+                    "Min Top-1": `${(minTop1 * 100).toFixed(1)}%`,
+                    "Avg MRR": avgMrr.toFixed(3)
+                };
+            });
             
-            const formattedModel = alignModelString(model, colWidths);
-            
-            return {
-                Model: formattedModel,
-                Runs: runs.length,
-                "Avg Top-1": (avgTop1 * 100).toFixed(1) + "%",
-                "Max Top-1": (maxTop1 * 100).toFixed(1) + "%",
-                "Min Top-1": (minTop1 * 100).toFixed(1) + "%",
-                "Avg MRR": avgMrr.toFixed(3)
-            };
-        });
-
-        console.table(summaryData);
+            console.table(tableData);
+        }
     }
 
     // --- 2. Latency Summary ---

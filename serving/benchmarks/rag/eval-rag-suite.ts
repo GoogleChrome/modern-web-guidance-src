@@ -39,12 +39,14 @@ function getModelObj(modelStr: string, isNoChunking: boolean) {
     name,
     quantization,
     runtime,
-    chunking: isNoChunking ? "singlechunk" : "chunked"
+    strategy: "maxsim",
+    chunking: isNoChunking ? "nochunk" : "chunked"
   };
 }
 
 async function main() {
   const args = process.argv.slice(2);
+  const runId = new Date().toISOString();
   const isNoChunking = args.includes('--no-chunking');
 
   const modelsArg = args.find(a => a.startsWith('--models='));
@@ -120,6 +122,7 @@ async function main() {
         const results = JSON.parse(fs.readFileSync(resultsPath, 'utf-8'));
         
         results[results.length - 1].model = getModelObj(model, isNoChunking);
+        results[results.length - 1].runId = runId;
         fs.writeFileSync(resultsPath, JSON.stringify(results, null, 2));
       }
     }
