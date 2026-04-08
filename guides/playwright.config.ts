@@ -5,6 +5,8 @@ import * as os from 'os';
 export default defineConfig({
   timeout: 10000,
   expect: { timeout: 3000 },
+  // Forces Playwright to always search relative to this config file (the guides directory),
+  // regardless of where you run it from (e.g., when run from within a specific results folder).
   testDir: __dirname,
   testMatch: '**/grader.ts',
   fullyParallel: false,
