@@ -60,18 +60,24 @@ export class TfjsEmbedder {
 
     const benchmarkDir = path.resolve(import.meta.dirname);
     const modelPath = path.resolve(benchmarkDir, "tfjs_model_minilm/model.json");
-    console.log(`Loading TFJS model from disk: ${modelPath}`);
 
     try {
         const ioHandler = createNodeFileSystemIOHandler(modelPath);
+        
+        // Silence TFJS console warning about node backend
+        const oldLog = console.log;
+        const oldWarn = console.warn;
+        console.log = () => {};
+        console.warn = () => {};
+        
         this.model = await tf.loadGraphModel(ioHandler as any);
-        console.log("TFJS Model loaded successfully!");
+        
+        console.log = oldLog;
+        console.warn = oldWarn;
 
-        console.log("Loading tokenizer...");
         try {
             this.tokenizer = await AutoTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2", { local_files_only: true });
         } catch (e) {
-            console.log("Failed to load tokenizer locally, falling back to network...");
             this.tokenizer = await AutoTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2");
         }
     } catch (e) {
@@ -81,7 +87,6 @@ export class TfjsEmbedder {
   }
 
   public async embed(text: string, isQuery = false): Promise<number[]> {
-    console.log('embed called with text:', text, isQuery);
     if (!this.model || !this.tokenizer) {
         await this.init();
     }
