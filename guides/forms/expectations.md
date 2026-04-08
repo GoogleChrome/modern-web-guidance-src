@@ -1,9 +1,0 @@
-- Every form control has a associated `<label>` using `for` and `id` attributes.
-- Autocomplete attributes are specified for sensitive or standard data fields (e.g., `email`, `current-password`).
-- Fields requiring numeric input (like PINs or ZIP codes) use `inputmode="numeric"`.
-- Form validation errors are NOT displayed while the user is actively typing in a field (on `input`).
-- Form validation errors are displayed after the user leaves the field (on `blur` or `focusout`).
-- Pressing the submit button triggers validation and blocks submission if any field is invalid.
-- The submit button is disabled after a valid submission to prevent double posts.
-- All interactive tap targets (inputs, buttons, labels) are at least 48px in height/width.
-- Font size for inputs is at least 16px (1rem) to prevent automatic iOS zoom on focus.
