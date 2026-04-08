@@ -484,7 +484,7 @@
     "model": {
       "name": "minilm",
       "quantization": "fp32",
-      "runtime": "wasm",
+      "runtime": "tfjs",
       "chunking": "chunked",
       "search": "no-maxsim"
     },
@@ -500,7 +500,7 @@
     "model": {
       "name": "minilm",
       "quantization": "fp32",
-      "runtime": "wasm",
+      "runtime": "tfjs",
       "chunking": "chunked",
       "search": "no-maxsim"
     },
@@ -548,7 +548,7 @@
     "model": {
       "name": "minilm",
       "quantization": "fp32",
-      "runtime": "wasm",
+      "runtime": "tfjs",
       "chunking": "chunked",
       "search": "maxsim"
     },

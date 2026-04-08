@@ -94,7 +94,8 @@ function run() {
             let modelStr = "";
             if (typeof entry.model === "object") {
                 const m = entry.model as any;
-                modelStr = `${m.name} ${m.quantization} - trjs onnx ${m.runtime} - ${m.search}${m.chunking === "nochunk" ? " nochunk" : ""}${m.variant ? ` (${m.variant})` : ""}`;
+                const runtimeStr = m.runtime === "tfjs" ? "TFJS" : `trjs onnx ${m.runtime}`;
+                modelStr = `${m.name} ${m.quantization} - ${runtimeStr} - ${m.search}${m.chunking === "nochunk" ? " nochunk" : ""}${m.variant ? ` (${m.variant})` : ""}`;
             } else {
                 modelStr = entry.model as string;
             }
@@ -109,7 +110,8 @@ function run() {
             let modelStr = "";
             if (typeof entry.model === "object") {
                 const m = entry.model as any;
-                modelStr = `${m.name} ${m.quantization} - trjs onnx ${m.runtime} - ${m.search}${m.chunking === "nochunk" ? " nochunk" : ""}${m.variant ? ` (${m.variant})` : ""}`;
+                const runtimeStr = m.runtime === "tfjs" ? "TFJS" : `trjs onnx ${m.runtime}`;
+                modelStr = `${m.name} ${m.quantization} - ${runtimeStr} - ${m.search}${m.chunking === "nochunk" ? " nochunk" : ""}${m.variant ? ` (${m.variant})` : ""}`;
             } else {
                 modelStr = entry.model as string;
             }

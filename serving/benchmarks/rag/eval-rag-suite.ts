@@ -149,7 +149,8 @@ async function main() {
       let modelStr = "";
       if (typeof r.model === "object") {
         const m = r.model as any;
-        modelStr = `${m.name} ${m.quantization} - trjs onnx ${m.runtime} - ${m.search}${m.chunking === "nochunk" ? " nochunk" : ""}`;
+        const runtimeStr = m.runtime === "tfjs" ? "TFJS" : `trjs onnx ${m.runtime}`;
+        modelStr = `${m.name} ${m.quantization} - ${runtimeStr} - ${m.search}${m.chunking === "nochunk" ? " nochunk" : ""}`;
       } else {
         modelStr = r.model;
       }
