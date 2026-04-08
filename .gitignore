@@ -50,9 +50,11 @@ skills-drafts/.research/
 # Generated vector and benchmark evaluation files
 serving/lib/use-cases.vectors.gen.json
 serving/benchmarks/data/eval-queries.gen.json
-
 # ML Models
 serving/benchmarks/rag/tfjs_model_minilm/*.bin
 serving/benchmarks/rag/tfjs_model_minilm/model.json
 serving/benchmarks/rag/tfjs_model_minilm/tfjs_model*/
 serving/benchmarks/rag/tfjs_model_minilm/saved_model*/
+
+# Caches
+**/.cache/
