@@ -13,6 +13,7 @@ export interface StoreUseCase {
   distance?: number;
 }
 import { Gpt4AllEmbedder } from "../benchmarks/rag/gpt4all-embedder.ts";
+import { TfjsEmbedder } from "../benchmarks/rag/tfjs-embedder.ts";
 import { replaceMacros } from "../mcp-server/lib/macros.ts";
 import { classifyGuide, scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
@@ -77,7 +78,9 @@ async function processGuides() {
   }
   
   let embedder: any;
-  if (modelName && (modelName.includes(".gguf") || modelName.includes("nomic"))) {
+  if (modelName === "tfjs") {
+    embedder = TfjsEmbedder.getInstance();
+  } else if (modelName && (modelName.includes(".gguf") || modelName.includes("nomic"))) {
     embedder = Gpt4AllEmbedder.getInstance(modelName);
   } else {
     embedder = Embedder.getInstance(modelName);
@@ -203,13 +206,7 @@ async function processSingleGuideFile(
   const embedder = Embedder.getInstance(); // Singleton, already init
 
   for (const chunk of chunks) {
-    let embeddingText = `${id} (${category})\n\n${chunk}`;
-    
-    if (isNoChunking) {
-      const metadataBlock = `${id} (${category})\n\n${frontmatter}`;
-      embeddingText = `${metadataBlock}\n\n${metadataBlock}\n\n${metadataBlock}\n\n${processedMarkdown}`;
-    }
-    
+    const embeddingText = `${id} (${category})\n\n${chunk}`;
     const vector = await embedder.embed(embeddingText);
 
     storeUseCases.push({

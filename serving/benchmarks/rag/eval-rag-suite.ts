@@ -27,7 +27,10 @@ function getModelObj(modelStr: string, isNoChunking: boolean, variant: string) {
   let quantization = "q8";
   let runtime = "wasm";
   
-  if (modelStr.includes("gemma")) {
+  if (modelStr === "tfjs") {
+    quantization = "fp32";
+    runtime = "tfjs";
+  } else if (modelStr.includes("gemma")) {
     name = "gemma";
   }
   
