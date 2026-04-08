@@ -268,5 +268,14 @@
     "top3HitRate": 0.8396,
     "top5HitRate": 0.9127,
     "meanReciprocalRank": 0.6951
+  },
+  {
+    "timestamp": "2026-04-08T16:55:06.450Z",
+    "model": "tfjs",
+    "totalQueries": 848,
+    "top1HitRate": 0.5483,
+    "top3HitRate": 0.8314,
+    "top5HitRate": 0.9139,
+    "meanReciprocalRank": 0.6943
   }
 ]
