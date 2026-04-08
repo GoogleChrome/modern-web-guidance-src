@@ -257,72 +257,7 @@ ${cBold('Guide Development:')}
   ${cCyan('audit')}                  Show status of all guides
   ${cCyan('dev')} <dir> [options]    Auto-generate and calibrate guide artifacts
 
-${"Piece-wise options for `dev`:"}
-    ${cDim('--grade')}              Run/calibrate grader
-    ${cDim('--test-grader')}        Check grader calibration (demo + negative-demo)
-    ${cDim('--cross-app')}          Also check grader on an unmodified base app (advisory)
-    ${cDim('--gen-grader')}         Generate a new grader script
-    ${cDim('--gen-negative')}       Generate negative examples
-    ${cDim('--guided')}             Skip calibration, run guided agent test only
-    ${cDim('--no-test')}            Skip agent tests after calibration
-    ${cDim('--verbose')}            Show additional output
-
-${cBold('Evaluation:')}
-  ${cCyan('eval')} [suite|tasks...]  Run the full evaluation suite, or specific tasks
-  ${cCyan('dashboard')}              Start the evaluation dashboard
-  ${cCyan('run')} <tmpl> <prompt>    Run an ad-hoc agent test against a template
-  ${cCyan('deploy')}                 Deploy the dashboard to GitHub Pages
-  ${cCyan('upload')} <suite>         Upload generated evaluation suite to GCS
-  ${cCyan('gen-negative-suite')}     Generate resources for negative suite
-
-${cBold('Other:')}
-  ${cCyan('baselinestatus')} <query>      Check browser support and Baseline status
-  ${cCyan('setup-completion')}       Install shell auto-completion
-
-${cBold('Options:')}
-  ${cDim('-h, --help')}             Show this help
-  ${cDim('--verbose')}              Show additional output
-  ${cDim('--usecases')}             (Audit) Group by categories/usecases (default is features)
-    `);
-||||||| e1660947
-    console.log(`
-${cBold('Guidance CLI')}
-
-${cCyan('Usage:')} gd <command> [options]
-
-${cBold('Guide Development:')}
-  ${cCyan('audit')}                  Show status of all guides
-  ${cCyan('dev')} <dir> [options]    Auto-generate and calibrate guide artifacts
-
-${"Piece-wise options for `dev`:"}
-    ${cDim('--grade')}              Run/calibrate grader
-    ${cDim('--test-grader')}        Check grader calibration (demo + negative-demo)
-    ${cDim('--gen-grader')}         Generate a new grader script
-    ${cDim('--gen-negative')}       Generate negative examples
-    ${cDim('--guided')}             Skip calibration, run guided agent test only
-    ${cDim('--no-test')}            Skip agent tests after calibration
-    ${cDim('--verbose')}            Show additional output
-
-${cBold('Evaluation:')}
-  ${cCyan('eval')} [suite|tasks...]  Run the full evaluation suite, or specific tasks
-  ${cCyan('dashboard')}              Start the evaluation dashboard
-  ${cCyan('run')} <tmpl> <prompt>    Run an ad-hoc agent test against a template
-  ${cCyan('deploy')}                 Deploy the dashboard to GitHub Pages
-  ${cCyan('upload')} <suite>         Upload generated evaluation suite to GCS
-  ${cCyan('gen-negative-suite')}     Generate resources for negative suite
-
-${cBold('Other:')}
-  ${cCyan('baselinestatus')} <query>      Check browser support and Baseline status
-  ${cCyan('setup-completion')}       Install shell auto-completion
-
-${cBold('Options:')}
-  ${cDim('-h, --help')}             Show this help
-  ${cDim('--verbose')}              Show additional output
-  ${cDim('--usecases')}             (Audit) Group by categories/usecases (default is features)
-    `);
-=======
     showHelp();
->>>>>>> origin/main
     process.exit(0);
   }
 
@@ -369,11 +304,8 @@ ${cBold('Options:')}
 
     case 'gen-guide': {
       const featureId = requireArg(positionals[1], 'gd gen-guide <web-feature-id> [--category <cat>] [--slug <slug>]');
-      const { generateGuide } = await import('../guides/guide-gen.ts');
-      await generateGuide(featureId, {
-        category: values.category as string | undefined,
-        slug: values.slug as string | undefined,
-      });
+      const { generateUseCases } = await import('../guides/guide-gen.ts');
+      await generateUseCases(featureId);
       break;
     }
 
