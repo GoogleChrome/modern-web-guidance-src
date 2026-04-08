@@ -2,8 +2,6 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { marked } from "marked";
-import { TfjsEmbedder } from "../lib/tfjs-embedder.ts";
-import { Embedder as TransformersEmbedder } from "../lib/transformers-embedder.ts";
 export interface StoreUseCase {
   id: string;
   description: string;
@@ -79,13 +77,16 @@ async function processGuides() {
   
   let embedder: any;
   if (!modelName || modelName === "transformers") {
-    embedder = TransformersEmbedder.getInstance(modelName);
+    const { Embedder } = await import("../lib/transformers-embedder.ts");
+    embedder = Embedder.getInstance(modelName);
   } else if (modelName === "tfjs") {
+    const { TfjsEmbedder } = await import("../lib/tfjs-embedder.ts");
     embedder = TfjsEmbedder.getInstance();
   } else if (modelName && (modelName.includes(".gguf") || modelName.includes("nomic"))) {
     embedder = Gpt4AllEmbedder.getInstance(modelName);
   } else {
-    embedder = TransformersEmbedder.getInstance(modelName);
+    const { Embedder } = await import("../lib/transformers-embedder.ts");
+    embedder = Embedder.getInstance(modelName);
   }
   await embedder.init();
 
