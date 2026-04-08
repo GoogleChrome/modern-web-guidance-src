@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Translation Tool</title>
+</head>
+<body>
+  <textarea id="input"></textarea>
+  <button id="run">Detect</button>
+  <div id="out"></div>
+
+  <script>
+    document.getElementById('run').onclick = async () => {
+      const text = document.getElementById('input').value;
+      const detector = await window.ai.languageDetector.create();
+      const lang = await detector.detect(text);
+      document.getElementById('out').innerText = lang;
+    };
+  </script>
+</body>
+</html>

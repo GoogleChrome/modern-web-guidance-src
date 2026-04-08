@@ -1,0 +1,30 @@
+{
+  "name": "modern-web",
+  "displayName": "Chrome Web Development Skills",
+  "private": true,
+  "description": "Curated collection of agent skills for modern web development.",
+  "version": "0.0.12",
+  "publisher": "GoogleChrome",
+  "engines": {
+    "vscode": "^1.90.0",
+    "node": ">=20.0.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "contributes": {
+    "chatSkills": [
+      {
+        "path": "./skills/modern-web-use-cases/SKILL.md"
+      }
+    ]
+  },
+  "bin": {
+    "modern-web": "./skills/modern-web-use-cases/modern-web.mjs"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
+    "@lancedb/lancedb": "^0.26.2"
+  }
+}

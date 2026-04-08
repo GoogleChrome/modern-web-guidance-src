@@ -47,7 +47,9 @@ In this example, a feed starts scrolled to a specific "featured" item rather tha
 
 ## Fallback Strategy
 
-For browsers that do not yet support the API, use a JavaScript fallback. Use the `DOMContentLoaded` event to ensure the browser scrolls the element into view as soon as the HTML parsing completes, providing a faster experience than waiting for all images and resources to load.
+{{ BASELINE_STATUS("scroll-initial-target") }}
+
+For browsers that do not yet support the API, use a JavaScript fallback. Use the `DOMContentLoaded` event to ensure the browser scrolls the element into view as soon as the HTML parsing completes, providing a faster experience than waiting for all images and resources to load. Alternatively, placing the script at the end of the `<body>` element is also acceptable and avoids the need for an event listener.
 
 ```javascript
 /**

@@ -7,7 +7,7 @@ import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
 import { resultsDir } from '../lib/paths.ts';
 
-import { config } from './config.ts';
+import type { SuiteConfig } from './config.ts';
 
 export async function evaluateSuite(suiteResultsDir: string, suiteName: string) {
   console.log(`Evaluating suite: ${suiteName}`.cyan);
@@ -18,15 +18,30 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string) 
     return;
   }
 
+  const configPath = path.join(suiteResultsDir, 'suite_config.json');
+  let suiteConfig: SuiteConfig | null = null;
+  if (fs.existsSync(configPath)) {
+    try {
+      suiteConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch {
+      console.warn(`⚠️ Failed to parse suite_config.json in ${suiteResultsDir}`.yellow);
+    }
+  }
+
+  if (!suiteConfig) {
+    console.error(`⚠️ No suite_config.json found or failed to parse in ${suiteResultsDir}. Aborting evaluation.`.red);
+    return;
+  }
+
   try {
-    const { allResults, numRuns } = await collectResults(suiteResultsDir);
+    const { allResults, numRuns } = await collectResults(suiteResultsDir, suiteConfig);
     console.log(`Found ${numRuns} test run(s)`.cyan);
 
     const metrics = calculateMetrics(allResults, numRuns);
     const mdReport = generateMarkdownReport(metrics, allResults);
     const timestamp = new Date().toISOString();
-    const model = extractModelFromResults(suiteResultsDir, config.suite.agent);
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, config.suite.agent, config.suite.serving, model);
+    const model = extractModelFromResults(suiteResultsDir, suiteConfig.agent);
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model);
 
     saveReports(suiteResultsDir, mdReport, jsonReport);
 
@@ -42,11 +57,10 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string) 
 export async function evaluate() {
   console.log('Starting Evaluation...'.cyan.bold);
 
-
-  let suiteName = process.argv[2] || config.suite?.name;
+  let suiteName = process.argv[2];
 
   if (!suiteName) {
-    console.error('❌ No suite name provided and no previous tests found!'.red);
+    console.error('❌ No suite name provided!'.red);
     process.exit(1);
   }
 

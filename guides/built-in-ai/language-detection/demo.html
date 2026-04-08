@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Language Detection Demo</title>
+</head>
+
+<body>
+  <h1>Language Detection</h1>
+  <p lang="es">Hola, ¿cómo estás?</p>
+  <p lang="de">Hallo, wie geht's?</p>
+
+  <script type="module">
+    try {
+      if (!('LanguageDetector' in window)) {
+        throw new Error('LanguageDetector not found');
+      }
+      const availability = await LanguageDetector.availability();
+      if (availability === 'available' || availability === 'downloadable' || availability === 'downloading') {
+        console.log('LanguageDetector is available');
+      }
+      if (availability === 'unavailable') {
+        throw new Error('LanguageDetector is not available');
+      }
+      const languageDetector = await LanguageDetector.create({
+        monitor(m) {
+          m.addEventListener('downloadprogress', (e) => {
+            console.log(`Downloaded ${e.loaded * 100}%`);
+          });
+        },
+      });
+      for (const p of document.querySelectorAll('p')) {
+        const result = await languageDetector.detect(p.textContent);
+        const mostLikely = result[0];
+        console.log(p.textContent, mostLikely.detectedLanguage, mostLikely.confidence);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  </script>
+</body>
+
+</html>

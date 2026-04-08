@@ -1,1 +1,67 @@
-<!-- TODO -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prevent Text Wrapping Demo</title>
+    <style>
+        .container {
+            width: 150px;
+            border: 1px solid black;
+            margin-bottom: 40px;
+            overflow: visible; /* Default behavior, explicitly set here to ensure overflow is visible */
+        }
+        
+        .prevent-wrap {
+            /* Fallback for older browsers */
+            white-space: nowrap;
+            /* Modern standard */
+            text-wrap: nowrap;
+            
+            background-color: lightblue;
+        }
+
+        .truncate {
+            /* Basic nowrap setup */
+            text-wrap: nowrap;
+            white-space: nowrap;
+
+            /* Mandatory: Ellipsis requires overflow: hidden */
+            overflow: hidden;
+            text-overflow: ellipsis;
+
+            background-color: lightgreen;
+        }
+
+        section {
+            margin-bottom: 20px;
+        }
+        
+        h2 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Prevent Text Wrapping Demo</h1>
+
+    <section>
+        <h2>1. Standard Overflow (overflow: visible)</h2>
+        <div class="container">
+            <div class="prevent-wrap" id="target">
+                This long text overflows its container visually.
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2>2. Truncation with Ellipsis (overflow: hidden)</h2>
+        <div class="container" style="overflow: hidden;">
+            <div class="truncate" id="target-truncated">
+                This long text is truncated with an ellipsis.
+            </div>
+        </div>
+    </section>
+</body>
+</html>

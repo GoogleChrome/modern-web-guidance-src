@@ -1,0 +1,10 @@
+import { Agents, Serving, type SuiteConfig } from './harness/config.ts';
+
+const customConfig: Partial<SuiteConfig> = {
+  agent: Agents.GEMINI_CLI,
+  numRuns: 1,
+  serving: Serving.SKILLS_CLI,
+  tasks: ['batch-analytics-events/task', 'batch-analytics-events/negative'],
+};
+
+export default customConfig;

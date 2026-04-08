@@ -549,9 +549,10 @@
   border-color: var(--text-secondary);
 }
 
-.radar-tooltip-container {
+.tooltip-container {
   position: fixed;
   z-index: 2000;
+  max-width: 300px;
   background: rgba(13, 17, 23, 0.95);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border-color);
@@ -563,18 +564,18 @@
   transform: translateY(10px);
 }
 
-.radar-tooltip-container.hidden {
+.tooltip-container.hidden {
   opacity: 0;
   display: none;
 }
 
-.radar-tooltip-container:not(.hidden) {
+.tooltip-container:not(.hidden) {
   opacity: 1;
   transform: translateY(0);
   display: block;
 }
 
-.radar-tooltip-title {
+.tooltip-title {
   font-size: 0.9em;
   font-weight: 700;
   color: var(--text-primary);
@@ -585,7 +586,7 @@
   max-width: 300px;
 }
 
-.radar-tooltip-subtitle {
+.tooltip-subtitle {
   font-size: 0.75em;
   color: var(--text-secondary);
   margin-bottom: 10px;

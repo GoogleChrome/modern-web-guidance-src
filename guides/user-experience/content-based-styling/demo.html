@@ -1,332 +1,105 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Content-Based Styling Demo</title>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content-Based Styling Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      background: #f0f0f0;
+    }
 
-      :root {
-        --bg-body: #f1f5f9;
-        --bg-card: #ffffff;
-        --text-heading: #1e293b;
-        --text-body: #64748b;
-        --accent: #3b82f6;
-        --accent-hover: #2563eb;
-        --border-color: #e2e8f0;
-        --radius-main: 1.5rem;
-        --radius-inner: 1rem;
-        --shadow-sm:
-          0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-        --shadow-md:
-          0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-        --shadow-lg:
-          0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-      }
+    /* Base styles for the card */
+    .article-card {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1.5rem;
+      background-color: #ffffff;
+      border: 1px solid #cccccc;
+      border-radius: 8px;
+      max-width: 500px;
+      margin-bottom: 2rem;
+    }
 
-      body {
-        font-family:
-          'Inter',
-          system-ui,
-          -apple-system,
-          sans-serif;
-        background-color: var(--bg-body);
-        color: var(--text-body);
-        margin: 0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        padding: 3rem 1rem;
-        box-sizing: border-box;
-      }
+    /* Layout override when an image is present */
+    .article-card:has(img) {
+      flex-direction: row;
+      align-items: center;
+    }
 
-      .header-content {
-        text-align: center;
-        max-width: 600px;
-        margin-bottom: 3rem;
-      }
+    /* Specific styling for the image when inside the card */
+    .article-card img {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
 
-      .header-content h1 {
-        color: var(--text-heading);
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-top: 0;
-        margin-bottom: 1rem;
-        letter-spacing: -0.025em;
-      }
+    /* Styles applied ONLY when the card DOES NOT have an image */
+    .article-card:not(:has(img)) {
+      background-color: #fdfaf6;
+      border-left: 4px solid #ff9800;
+    }
 
-      .header-content p {
-        font-size: 1.125rem;
-        line-height: 1.6;
-        margin: 0;
-      }
-
-      .toggle-btn {
-        background: var(--accent);
-        color: white;
-        border: none;
-        padding: 0.875rem 1.75rem;
-        border-radius: 999px;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        margin-top: 2rem;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39);
-      }
-
-      .toggle-btn:hover {
-        transform: translateY(-2px);
-        background: var(--accent-hover);
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-      }
-
-      .toggle-btn:active {
-        transform: translateY(0);
-      }
-
-      .demo-container {
-        width: 100%;
-        max-width: 800px;
-        display: flex;
-        flex-direction: column;
-        gap: 2.5rem;
-      }
-
-      /*
-         * THE COMPONENT
-         * Base layout is single column.
-         */
-      .content-card {
-        background-color: var(--bg-card);
-        border-radius: var(--radius-main);
-        box-shadow: var(--shadow-md);
-        border: 1px solid var(--border-color);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column; /* Default single column */
-        position: relative;
-      }
-
-      /*
-         * CONDITIONAL LAYOUT LOGIC USING :has()
-         */
-
-      /* 1. When the component DOES contain an image */
-      .content-card:has(img) {
+    /* Fallback for browsers that do not support :has() */
+    @supports not selector(:has(*)) {
+      .article-card.has-image {
         flex-direction: row;
-        align-items: stretch;
+        align-items: center;
       }
 
-      /* Responsive stack for smaller screens */
-      @media (max-width: 640px) {
-        .content-card:has(img) {
-          flex-direction: column;
-        }
-      }
-
-      /* 2. When the component DOES NOT contain an image */
-      .content-card:not(:has(img)) {
-        text-align: center;
-      }
-
-      .media-container {
-        display: none; /* Hidden by default if no image */
-        width: 100%;
-        overflow: hidden;
-        position: relative;
-      }
-
-      /* Show the media container and set its column width only when there is an image */
-      .content-card:has(img) .media-container {
-        display: block;
-        flex: 0 0 45%;
-        min-width: 320px;
-      }
-
-      @media (max-width: 640px) {
-        .content-card:has(img) .media-container {
-          width: 100%;
-          flex: none;
-          height: 280px;
-        }
-      }
-
-      .media-image {
-        width: 100%;
-        height: 100%;
+      .article-card.has-image img {
+        width: 120px;
+        height: 120px;
         object-fit: cover;
+        border-radius: 4px;
+        flex-shrink: 0;
       }
 
-      /* Inner text container */
-      .text-container {
-        padding: 2.5rem;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        flex: 1; /* Takes up remaining space */
+      .article-card:not(.has-image) {
+        background-color: #fdfaf6;
+        border-left: 4px solid #ff9800;
       }
+    }
 
-      /* Adjust padding slightly for multi-column to balance whitespace */
-      .content-card:has(img) .text-container {
-        padding: 3rem;
-        align-items: flex-start;
-      }
+    h2 { margin: 0 0 0.5rem 0; font-size: 1.25rem; }
+    p { margin: 0; color: #555; line-height: 1.5; }
+  </style>
+</head>
+<body>
 
-      .content-card:not(:has(img)) .text-container {
-        align-items: center;
-        padding: 4rem 2.5rem;
-      }
-
-      @media (max-width: 640px) {
-        .content-card:has(img) .text-container {
-          padding: 2.5rem;
-        }
-      }
-
-      .badge {
-        display: inline-block;
-        padding: 0.35rem 0.75rem;
-        background-color: #e0f2fe;
-        color: #0369a1;
-        border-radius: 999px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        margin-bottom: 1.25rem;
-        align-self: flex-start;
-      }
-
-      .content-card:not(:has(img)) .badge {
-        align-self: center;
-        margin-bottom: 1.5rem;
-      }
-
-      .card-heading {
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: var(--text-heading);
-        margin: 0 0 1rem 0;
-        line-height: 1.2;
-      }
-
-      .card-body {
-        font-size: 1.0625rem;
-        line-height: 1.65;
-        margin: 0 0 2rem 0;
-      }
-
-      .content-card:not(:has(img)) .card-body {
-        font-size: 1.125rem;
-        max-width: 600px;
-        color: #0c4a6e;
-      }
-
-      .card-footer {
-        margin-top: auto;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-      }
-
-      .content-card:not(:has(img)) .card-footer {
-        flex-direction: column;
-        gap: 0.5rem;
-        margin-top: 2.5rem;
-      }
-
-      .author-pic {
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #fbbf24, #f59e0b);
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-      }
-
-      .author-info {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .author-name {
-        font-weight: 600;
-        color: var(--text-heading);
-        font-size: 0.9375rem;
-      }
-
-      .publish-date {
-        font-size: 0.8125rem;
-      }
-    </style>
-  </head>
-
-  <body>
-    <div class="header-content">
-      <h1>Content-Based Styling with <code>:has()</code></h1>
-      <p>
-        This component checks if it contains an image using
-        <code>:has(img)</code>. When an image is present, it uses a standard
-        multi-column layout. Without an image, it transforms into a prominent,
-        centered single-column announcement.
-      </p>
-      <button id="toggleBtn" class="toggle-btn">Remove Image Content</button>
+  <!-- Card WITH an image -->
+  <article class="article-card">
+    <img src="data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20fill%3D%22%23ddd%22%20width%3D%22120%22%20height%3D%22120%22%2F%3E%3Ctext%20fill%3D%22%23999%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dy%3D%22.3em%22%3EImg%3C%2Ftext%3E%3C%2Fsvg%3E" alt="Placeholder">
+    <div>
+      <h2>Card With Image</h2>
+      <p>Because this card contains an image element, it uses a flex-row layout to display the image beside this text.</p>
     </div>
+  </article>
 
-    <div class="demo-container">
-      <!-- The Component Element -->
-      <article class="content-card" id="dynamicCard">
-        <div class="media-container" id="mediaWrapper">
-          <!-- Image gets injected/removed here -->
-          <img
-            src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80"
-            alt="Code on screen"
-            class="media-image"
-          />
-        </div>
-
-        <div class="text-container">
-          <span class="badge">Architecture</span>
-          <h2 class="card-heading">CSS is Becoming a Logic Language</h2>
-          <p class="card-body">
-            With robust support for relational pseudo-classes like :has(),
-            developers can build highly complex, self-aware UI components. By
-            letting CSS handle conditional rendering instead of JavaScript,
-            layouts become smoother, cleaner, and radically easier to maintain
-            across multiple breakpoints.
-          </p>
-          <div class="card-footer">
-            <div class="author-pic"></div>
-            <div class="author-info">
-              <span class="author-name">Taylor Ray</span>
-              <span class="publish-date">October 14, 2026</span>
-            </div>
-          </div>
-        </div>
-      </article>
+  <!-- Card WITHOUT an image -->
+  <article class="article-card">
+    <div>
+      <h2>Text-Only Card</h2>
+      <p>Because this card does NOT contain an image, it defaults to a flex-column layout. It also has a distinct background and border color thanks to :not(:has(img)).</p>
     </div>
+  </article>
 
-    <script>
-      const btn = document.getElementById('toggleBtn');
-      const mediaWrapper = document.getElementById('mediaWrapper');
-      let hasImage = true;
-
-      const imgHTML =
-        '<img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="Code on screen" class="media-image">';
-
-      btn.addEventListener('click', () => {
-        if (hasImage) {
-          // Remove the image from the DOM entirely
-          mediaWrapper.innerHTML = '';
-          btn.textContent = 'Add Image Content';
-        } else {
-          // Inject the image back into the DOM
-          mediaWrapper.innerHTML = imgHTML;
-          btn.textContent = 'Remove Image Content';
+  <script>
+    // Fallback script for browsers that don't support :has()
+    // In a real application, this modifier class could also be added server-side.
+    if (!CSS.supports('selector(:has(*))')) {
+      const cards = document.querySelectorAll('.article-card');
+      cards.forEach(card => {
+        if (card.querySelector('img')) {
+          card.classList.add('has-image');
         }
-        hasImage = !hasImage;
       });
-    </script>
-  </body>
+    }
+  </script>
+</body>
 </html>

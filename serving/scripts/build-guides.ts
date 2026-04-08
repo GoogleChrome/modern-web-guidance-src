@@ -3,17 +3,15 @@ import path from "path";
 import matter from "gray-matter";
 import { marked } from "marked";
 import { Embedder } from "../mcp-server/lib/embedder.ts";
-import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
+import { Store, type UseCase as StoreUseCase } from "../lib/store.ts";
 import { Gpt4AllEmbedder } from "../benchmarks/rag/gpt4all-embedder.ts";
 import { replaceMacros } from "../mcp-server/lib/macros.ts";
-import { classifyGuide, scanAllGuides } from "../../harness/lib/utils.ts";
+import { scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
-const GUIDES_DIR = path.resolve(ROOT_DIR, "../guides");
 const BUILD_GUIDES_DIR = path.join(ROOT_DIR, "build/guides");
-const DATA_DIR = path.join(ROOT_DIR, "mcp-server/data");
-const OUTPUT_FILE = path.join(DATA_DIR, "use-cases.gen.ts");
+const OUTPUT_FILE = path.join(ROOT_DIR, "lib/use-cases.gen.ts");
 
 interface UseCase {
   id: string;
@@ -23,6 +21,36 @@ interface UseCase {
 }
 
 async function processGuides() {
+  const targetGuidePath = process.argv.slice(2).find(arg => !arg.startsWith("--"));
+  const force = process.argv.includes("--force");
+
+  // Scan guides first to see if we even need to run
+  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
+
+  const LANCE_DB_DIR = path.join(ROOT_DIR, "vector_store");
+
+  if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(LANCE_DB_DIR) && fs.readdirSync(LANCE_DB_DIR).length > 0) {
+    const outputFileMTime = fs.statSync(OUTPUT_FILE).mtimeMs;
+    let anyGuideNewer = false;
+
+    if (fs.statSync(import.meta.filename).mtimeMs > outputFileMTime) {
+      anyGuideNewer = true;
+    } else {
+      for (const inv of readyGuides) {
+        const guidePath = path.join(inv.dir, "guide.md");
+        if (fs.existsSync(guidePath) && fs.statSync(guidePath).mtimeMs > outputFileMTime) {
+          anyGuideNewer = true;
+          break;
+        }
+      }
+    }
+
+    if (!anyGuideNewer) {
+      console.log("No guides or script modified since last build. Skipping guide build.");
+      return;
+    }
+  }
+
   // Ensure clean build/guides exists
   if (fs.existsSync(BUILD_GUIDES_DIR)) {
     fs.rmSync(BUILD_GUIDES_DIR, { recursive: true, force: true });
@@ -51,8 +79,7 @@ async function processGuides() {
   console.log("Initializing Store...");
   const store = new Store();
 
-  // Check for target guide argument, ignoring flags
-  const targetGuidePath = process.argv.slice(2).find(arg => !arg.startsWith("--"));
+
 
   if (targetGuidePath) {
     // Single guide mode
@@ -69,8 +96,6 @@ async function processGuides() {
     await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
   } else {
     // Batch process all guides
-    console.log(`Scanning for guides in: ${GUIDES_DIR}`);
-    const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
 
     if (readyGuides.length === 0) {
       console.log("No guides found.");

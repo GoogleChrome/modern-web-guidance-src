@@ -1,5 +1,5 @@
 import { Embedder } from "../mcp-server/lib/embedder.ts";
-import { Store } from "../mcp-server/lib/store.ts";
+import { Store } from "../lib/store.ts";
 
 async function main() {
   const query = process.argv[2] || "how to optimize images";
