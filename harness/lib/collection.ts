@@ -9,6 +9,10 @@ import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
 
+function isTargetAppPresent(targetFile: string, targetPkgJson: string): boolean {
+  return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson);
+}
+
 export function extractModelFromResults(resultsDir: string, agent: string): string {
   if (agent === Agents.GEMINI_CLI) {
     return extractGeminiCliModel(resultsDir);
@@ -50,6 +54,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       const [guide, taskName, runType] = parts;
       if (runType === 'base_app') continue; // Skip the base app setup folder
       const targetFile = path.join(dir, 'index.html');
+      const targetPkgJson = path.join(dir, 'package.json');
 
       const taskInfo = taskMap.get(`${guide}/${taskName}`);
       if (!taskInfo) continue;
@@ -57,8 +62,10 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
       const graderResults = path.join(dir, `${guide}_results.json`);
 
+      const targetExists = isTargetAppPresent(targetFile, targetPkgJson);
+
       // If grader is missing, target file is missing, or results already exist, skip generating a runner.
-      if (!fs.existsSync(graderPath) || !fs.existsSync(targetFile) || fs.existsSync(graderResults)) {
+      if (!fs.existsSync(graderPath) || !targetExists || fs.existsSync(graderResults)) {
         continue;
       }
 
@@ -67,10 +74,25 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
       const gradeScript = `
 import fs from 'fs';
+import { spawnSync } from 'child_process';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
 async function run() {
   try {
+    const pkgJsonPath = ${JSON.stringify(targetPkgJson)};
+    if (fs.existsSync(pkgJsonPath)) {
+      const installResult = spawnSync('pnpm', ['install', '--frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
+        cwd: ${JSON.stringify(dir)},
+        stdio: 'inherit',
+        shell: true,
+        env: { ...process.env, CI: 'true' }
+      });
+      if (installResult.status !== 0) {
+        console.error("pnpm install failed");
+        process.exit(1);
+      }
+    }
+
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},
@@ -88,15 +110,21 @@ run();
 `.trim();
       const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
       fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
-      fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      let pkgJsonObj: any = {
         name: `${guide.substring(0, 30)}-${runType}-grader`,
         type: "module",
-        scripts: {
-          // The --id flag is not used by grade.mjs, it is purely added here 
-          // so that the pnpm log output clearly identifies which test is running.
-          "run-grader": `node grade.mjs --id ${relativeId}`
+        scripts: {}
+      };
+      if (fs.existsSync(targetPkgJson)) {
+        try {
+          pkgJsonObj = JSON.parse(fs.readFileSync(targetPkgJson, 'utf-8'));
+          if (!pkgJsonObj.scripts) pkgJsonObj.scripts = {};
+        } catch (e) {
+          console.warn("Failed to parse existing package.json, overwriting...");
         }
-      }, null, 2));
+      }
+      pkgJsonObj.scripts["run-grader"] = `node grade.mjs --id ${relativeId}`;
+      fs.writeFileSync(targetPkgJson, JSON.stringify(pkgJsonObj, null, 2));
 
       pnpmWorkspacePackages.push(relativeId);
     }
@@ -146,6 +174,7 @@ run();
       }
 
       const targetFile = path.join(dir, 'index.html');
+      const targetPkgJson = path.join(dir, 'package.json');
       const taskInfo = taskMap.get(`${guide}/${taskName}`);
       if (!taskInfo) {
         console.warn(`Skipping grading: Task ${guide} not found in task map`);
@@ -169,11 +198,13 @@ run();
       let scenarioResults: any[] = [];
       const graderResults = path.join(dir, `${guide}_results.json`);
 
+      const targetExists = isTargetAppPresent(targetFile, targetPkgJson);
+
       if (!fs.existsSync(graderPath)) {
         console.warn(`Grader not found for ${guide} at ${graderPath}`);
         scenarioResults.push({ name: 'Configuration', status: 'fail', message: 'Grader not found' });
-      } else if (!fs.existsSync(targetFile)) {
-        scenarioResults.push({ name: 'File Check', status: 'fail', message: 'index.html not found' });
+      } else if (!targetExists) {
+        scenarioResults.push({ name: 'File Check', status: 'fail', message: 'Target app missing' });
       } else {
         try {
           let json: any = null;

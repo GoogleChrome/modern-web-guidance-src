@@ -22,6 +22,6 @@
     "harness/results/",
     "**/eval-view",
     "**/eval-view/**/*",
-    "base_apps/devtools-times/"
+    "harness/base_apps/devtools-times/"
   ]
 }

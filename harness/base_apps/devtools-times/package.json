@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
-    "start": "HOST=0.0.0.0 PORT=8080 ASTRO_DB_REMOTE_URL=file://db.file node ./dist/server/entry.mjs",
+    "start": "HOST=0.0.0.0 PORT=${PORT:-11224} ASTRO_DB_REMOTE_URL=file://db.file node ./dist/server/entry.mjs",
     "build": "ASTRO_DATABASE_FILE=db.file astro build",
     "preview": "astro preview",
     "astro": "astro"
@@ -34,5 +34,12 @@
     "express": "^5.1.0",
     "http-proxy-middleware": "^3.0.5",
     "sass": "^1.92.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "@libsql/client"
+    ]
   }
 }

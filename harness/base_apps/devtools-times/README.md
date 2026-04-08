@@ -7,7 +7,7 @@ This project is a sample news application built with Astro, designed to serve as
 pnpm install && pnpm run start
 ```
 
-The application will now be running on `http://localhost:8080`.
+The application will now be running on `http://localhost:11224`.
 
 ## Tech Stack
 
