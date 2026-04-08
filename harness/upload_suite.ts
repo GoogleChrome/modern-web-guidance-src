@@ -17,6 +17,8 @@ async function uploadDirectory(bucket: any, dirPath: string, gcsPrefix: string) 
       const fullPath = path.join(currentDir, file.name);
       const destinationPath = path.join(currentPrefix, file.name);
 
+      if (file.name === 'node_modules') continue;
+
       if (file.isDirectory()) {
         collectFiles(fullPath, destinationPath);
       } else {
