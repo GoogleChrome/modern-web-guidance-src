@@ -181,7 +181,7 @@
   },
   {
     "timestamp": "2026-04-03T22:08:30.297Z",
-    "model": "minilm q8 - trjs onnx wasm - singlechunk",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk parsefloat",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -190,7 +190,7 @@
   },
   {
     "timestamp": "2026-04-03T22:08:45.798Z",
-    "model": "minilm q8 - trjs onnx wasm - singlechunk",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk parsefloat",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -199,7 +199,7 @@
   },
   {
     "timestamp": "2026-04-03T22:09:00.796Z",
-    "model": "minilm q8 - trjs onnx wasm - singlechunk",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk parsefloat",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -208,7 +208,7 @@
   },
   {
     "timestamp": "2026-04-03T22:09:15.152Z",
-    "model": "minilm q8 - trjs onnx wasm - singlechunk",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk parsefloat",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -217,7 +217,7 @@
   },
   {
     "timestamp": "2026-04-03T22:09:31.323Z",
-    "model": "minilm q8 - trjs onnx wasm - singlechunk",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk parsefloat",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -226,7 +226,7 @@
   },
   {
     "timestamp": "2026-04-03T22:09:46.974Z",
-    "model": "minilm q8 - trjs onnx wasm - singlechunk",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk parsefloat",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -235,7 +235,7 @@
   },
   {
     "timestamp": "2026-04-03T22:10:19.604Z",
-    "model": "minilm q8 - trjs onnx wasm - singlechunk",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk parsefloat",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -244,7 +244,7 @@
   },
   {
     "timestamp": "2026-04-03T22:10:37.224Z",
-    "model": "minilm q8 - trjs onnx wasm - singlechunk",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk parsefloat",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -253,7 +253,7 @@
   },
   {
     "timestamp": "2026-04-03T22:10:55.700Z",
-    "model": "minilm q8 - trjs onnx wasm - singlechunk",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk parsefloat",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -262,7 +262,7 @@
   },
   {
     "timestamp": "2026-04-03T22:11:19.142Z",
-    "model": "minilm q8 - trjs onnx wasm - singlechunk",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk parsefloat",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
