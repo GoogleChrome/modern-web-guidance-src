@@ -1,4 +1,4 @@
-import { Embedder } from "../lib/embedder.ts";
+import { TfjsEmbedder } from "../lib/tfjs-embedder.ts";
 import { Store } from "../lib/store.ts";
 
 async function main() {
@@ -9,7 +9,7 @@ async function main() {
   // 1. Embed
   console.log("Vectorizing query...");
   const startEmbed = performance.now();
-  const embedder = Embedder.getInstance();
+  const embedder = TfjsEmbedder.getInstance();
   const vector = await embedder.embed(query);
   const endEmbed = performance.now();
   console.log(`  ↳ Took ${(endEmbed - startEmbed).toFixed(2)}ms`);

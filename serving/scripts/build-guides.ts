@@ -2,7 +2,8 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { marked } from "marked";
-import { Embedder } from "../lib/embedder.ts";
+import { TfjsEmbedder } from "../lib/tfjs-embedder.ts";
+import { Embedder as TransformersEmbedder } from "../lib/transformers-embedder.ts";
 export interface StoreUseCase {
   id: string;
   description: string;
@@ -13,7 +14,6 @@ export interface StoreUseCase {
   distance?: number;
 }
 import { Gpt4AllEmbedder } from "../benchmarks/rag/gpt4all-embedder.ts";
-import { TfjsEmbedder } from "../lib/tfjs-embedder.ts";
 import { replaceMacros } from "../lib/macros.ts";
 import { scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
@@ -78,12 +78,12 @@ async function processGuides() {
   }
   
   let embedder: any;
-  if (modelName === "tfjs") {
+  if (!modelName || modelName === "tfjs") {
     embedder = TfjsEmbedder.getInstance();
   } else if (modelName && (modelName.includes(".gguf") || modelName.includes("nomic"))) {
     embedder = Gpt4AllEmbedder.getInstance(modelName);
   } else {
-    embedder = Embedder.getInstance(modelName);
+    embedder = TransformersEmbedder.getInstance(modelName);
   }
   await embedder.init();
 
@@ -203,7 +203,7 @@ async function processSingleGuideFile(
     ? [`${frontmatter}\n\n${processedMarkdown}`] 
     : [...chunkMarkdown(processedMarkdown), frontmatter];
 
-  const embedder = Embedder.getInstance(); // Singleton, already init
+  const embedder = TfjsEmbedder.getInstance();
 
   for (const chunk of chunks) {
     const embeddingText = `${id} (${category})\n\n${chunk}`;

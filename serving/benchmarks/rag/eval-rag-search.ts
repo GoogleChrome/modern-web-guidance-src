@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { Embedder } from "../../mcp-server/lib/embedder.ts";
+import { Embedder } from "../../lib/transformers-embedder.ts";
 import { searchUseCases } from "../../lib/search.ts";
 import { Gpt4AllEmbedder } from "./gpt4all-embedder.ts";
 import type { EvalQuery } from "./generate-eval-queries.ts";

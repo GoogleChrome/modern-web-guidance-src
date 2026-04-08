@@ -1,4 +1,4 @@
-import { Embedder } from "../../lib/embedder.ts";
+import { Embedder } from "../../lib/transformers-embedder.ts";
 import { TfjsEmbedder } from "../../lib/tfjs-embedder.ts";
 import fs from "fs";
 import path from "path";

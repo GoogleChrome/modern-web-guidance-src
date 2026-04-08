@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { Embedder } from "./embedder.ts";
+import { TfjsEmbedder } from "./tfjs-embedder.ts";
 import { logToolResult } from "./logger.ts";
 
 export interface UseCaseResult {
@@ -23,7 +23,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 export async function searchUseCases(query: string, limit = 5, maxDistance = 1.5, embedder?: any): Promise<UseCaseResult[]> {
-  const actualEmbedder = embedder || Embedder.getInstance();
+  const actualEmbedder = embedder || TfjsEmbedder.getInstance();
   const queryVector = await actualEmbedder.embed(query, true); // Pass isQuery = true
 
   // Load vectors from static storage
