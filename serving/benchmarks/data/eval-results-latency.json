@@ -1,0 +1,68 @@
+[
+  {
+    "timestamp": "2026-04-08T18:39:45Z",
+    "model": "Xenova/all-MiniLM-L6-v2 (wasm)",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 60,
+    "runs": [
+      104,
+      38,
+      38
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T18:39:45Z",
+    "model": "Xenova/all-MiniLM-L6-v2 (native)",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 44.33,
+    "runs": [
+      42,
+      47,
+      44
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T18:39:45Z",
+    "model": "tfjs:all-MiniLM-L6-v2 (pure-js-server)",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 1066.33,
+    "runs": [
+      2507,
+      365,
+      327
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T19:01:00.664Z",
+    "model": "Xenova/all-MiniLM-L6-v2 (wasm)",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 62,
+    "runs": [
+      87,
+      50,
+      49
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T19:01:00.664Z",
+    "model": "Xenova/all-MiniLM-L6-v2 (native)",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 41,
+    "runs": [
+      42,
+      42,
+      39
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T19:01:00.664Z",
+    "model": "tfjs:all-MiniLM-L6-v2 (pure-js-custom-io)",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 295.33,
+    "runs": [
+      363,
+      260,
+      263
+    ]
+  }
+]

@@ -1,16 +1,45 @@
 import * as tf from "@tensorflow/tfjs";
 import { AutoTokenizer } from "./dist/tokenizer.js";
-import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import fs from "fs";
+
+// Custom IOHandler for loading TFJS models from disk in Node without fetch
+function createNodeFileSystemIOHandler(modelJsonPath: string) {
+  return {
+    load: async () => {
+      const dir = path.dirname(modelJsonPath);
+      const modelJson = JSON.parse(fs.readFileSync(modelJsonPath, "utf-8"));
+      
+      const modelTopology = modelJson.modelTopology;
+      const weightsManifest = modelJson.weightsManifest;
+      
+      const buffers: Buffer[] = [];
+      const weightSpecs: any[] = [];
+      
+      for (const manifest of weightsManifest) {
+        weightSpecs.push(...manifest.weights);
+        for (const shardPath of manifest.paths) {
+          const fullPath = path.resolve(dir, shardPath);
+          buffers.push(fs.readFileSync(fullPath));
+        }
+      }
+      
+      const weightData = Buffer.concat(buffers).buffer;
+      
+      return {
+        modelTopology,
+        weightSpecs,
+        weightData
+      };
+    }
+  };
+}
 
 export class TfjsEmbedder {
   private static instance: TfjsEmbedder;
   private model: tf.GraphModel | null = null;
   private tokenizer: any = null;
-  private static serverProcess: ChildProcess | null = null;
   public modelName = "tfjs:all-MiniLM-L6-v2";
-  private port = 8085;
 
   private constructor() {}
 
@@ -29,22 +58,12 @@ export class TfjsEmbedder {
     if (this.model) return;
 
     const benchmarkDir = path.resolve(import.meta.dirname);
-    
-    if (!TfjsEmbedder.serverProcess) {
-        console.log("Starting local HTTP server for model files...");
-        TfjsEmbedder.serverProcess = spawn("python3", ["-m", "http.server", this.port.toString()], {
-            cwd: benchmarkDir,
-            stdio: "ignore"
-        });
-        // Wait a bit for the server to start
-        await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-
-    const modelUrl = `http://localhost:${this.port}/tfjs_model_minilm/model.json`;
-    console.log(`Loading TFJS model from ${modelUrl}...`);
+    const modelPath = path.resolve(benchmarkDir, "tfjs_model_minilm/model.json");
+    console.log(`Loading TFJS model from disk: ${modelPath}`);
 
     try {
-        this.model = await tf.loadGraphModel(modelUrl);
+        const ioHandler = createNodeFileSystemIOHandler(modelPath);
+        this.model = await tf.loadGraphModel(ioHandler as any);
         console.log("TFJS Model loaded successfully!");
         
         console.log("Loading tokenizer...");

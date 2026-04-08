@@ -17,6 +17,7 @@ async function run() {
     
     // --- 1. Baseline (Transformers.js / WASM) ---
     console.log("\n=== Benchmarking Baseline (Transformers.js / WASM) ===");
+    const wasmRuns: number[] = [];
     let wasmTotal = 0;
     for (let i = 0; i < RUNS; i++) {
         console.log(`Run ${i + 1}/${RUNS}...`);
@@ -29,6 +30,7 @@ async function run() {
         await embedder.embed(query, true);
         const duration = Date.now() - start;
         wasmTotal += duration;
+        wasmRuns.push(duration);
         console.log(`  Duration: ${duration}ms`);
     }
     const wasmAvg = wasmTotal / RUNS;
@@ -36,6 +38,7 @@ async function run() {
     
     // --- 2. Native ONNX (Transformers.js / Native) ---
     console.log("\n=== Benchmarking Native ONNX (Transformers.js / Native) ===");
+    const nativeRuns: number[] = [];
     let nativeTotal = 0;
     let nativeFailed = false;
     for (let i = 0; i < RUNS; i++) {
@@ -50,6 +53,7 @@ async function run() {
             await embedder.embed(query, true);
             const duration = Date.now() - start;
             nativeTotal += duration;
+            nativeRuns.push(duration);
             console.log(`  Duration: ${duration}ms`);
         } catch (e) {
             console.error("  Failed to run Native ONNX:", e);
@@ -64,6 +68,7 @@ async function run() {
     
     // --- 3. TensorFlow.js (Pure JS) ---
     console.log("\n=== Benchmarking TensorFlow.js (Pure JS) ===");
+    const tfjsRuns: number[] = [];
     let tfjsTotal = 0;
     for (let i = 0; i < RUNS; i++) {
         console.log(`Run ${i + 1}/${RUNS}...`);
@@ -75,6 +80,7 @@ async function run() {
         await embedder.embed(query, true);
         const duration = Date.now() - start;
         tfjsTotal += duration;
+        tfjsRuns.push(duration);
         console.log(`  Duration: ${duration}ms`);
     }
     const tfjsAvg = tfjsTotal / RUNS;
@@ -88,6 +94,45 @@ async function run() {
         console.log(`Native Avg E2E Latency: FAILED`);
     }
     console.log(`TFJS Avg E2E Latency: ${tfjsAvg.toFixed(2)}ms`);
+    
+    // Record results
+    const resultsFile = path.resolve(currentDir, "../../benchmarks/data/eval-results-latency.json");
+    if (fs.existsSync(resultsFile)) {
+        console.log(`\nRecording results to ${resultsFile}...`);
+        const results = JSON.parse(fs.readFileSync(resultsFile, "utf-8"));
+        const timestamp = new Date().toISOString();
+        
+        results.push({
+            timestamp,
+            model: "Xenova/all-MiniLM-L6-v2 (wasm)",
+            type: "e2e-latency-1-query",
+            avgLatencyMs: parseFloat(wasmAvg.toFixed(2)),
+            runs: wasmRuns
+        });
+        
+        if (nativeAvg !== null) {
+            results.push({
+                timestamp,
+                model: "Xenova/all-MiniLM-L6-v2 (native)",
+                type: "e2e-latency-1-query",
+                avgLatencyMs: parseFloat(nativeAvg.toFixed(2)),
+                runs: nativeRuns
+            });
+        }
+        
+        results.push({
+            timestamp,
+            model: "tfjs:all-MiniLM-L6-v2 (pure-js-custom-io)",
+            type: "e2e-latency-1-query",
+            avgLatencyMs: parseFloat(tfjsAvg.toFixed(2)),
+            runs: tfjsRuns
+        });
+        
+        fs.writeFileSync(resultsFile, JSON.stringify(results, null, 2));
+        console.log("Results recorded.");
+    } else {
+        console.log(`\nResults file not found: ${resultsFile}. Skipping recording.`);
+    }
 }
 
 run().catch(console.error);
