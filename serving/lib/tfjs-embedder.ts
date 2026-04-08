@@ -1,4 +1,6 @@
-import * as tf from "@tensorflow/tfjs";
+import * as tf from "@tensorflow/tfjs-core";
+import { loadGraphModel } from "@tensorflow/tfjs-converter";
+import "@tensorflow/tfjs-backend-cpu";
 import { AutoTokenizer } from "@huggingface/transformers";
 import path from "path";
 import fs from "fs";
@@ -70,7 +72,8 @@ export class TfjsEmbedder {
         console.log = () => {};
         console.warn = () => {};
         
-        this.model = await tf.loadGraphModel(ioHandler as any);
+        await tf.setBackend('cpu');
+        this.model = await loadGraphModel(ioHandler as any);
         
         console.log = oldLog;
         console.warn = oldWarn;
