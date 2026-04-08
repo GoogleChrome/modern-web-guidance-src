@@ -4,7 +4,6 @@ import fs from "fs";
 import path from "path";
 
 async function run() {
-    // In ESM, __dirname is not available, use import.meta.dirname
     const currentDir = import.meta.dirname;
     const queriesFile = path.resolve(currentDir, "../../benchmarks/data/eval-queries-pool.json");
     console.log(`Loading queries from ${queriesFile}...`);
@@ -14,26 +13,53 @@ async function run() {
     
     console.log(`Loaded ${queries.length} queries for benchmark.`);
     
-    // --- Baseline (Transformers.js) ---
-    console.log("\n=== Benchmarking Baseline (Transformers.js) ===");
-    const baselineEmbedder = Embedder.getInstance();
+    // --- 1. Baseline (Transformers.js / WASM) ---
+    console.log("\n=== Benchmarking Baseline (Transformers.js / WASM) ===");
+    Embedder.configureRuntime('wasm');
+    Embedder.clearInstance();
+    const wasmEmbedder = Embedder.getInstance();
     
     // Warmup
-    console.log("Warming up baseline...");
-    await baselineEmbedder.embed(queries[0], true);
+    console.log("Warming up WASM...");
+    await wasmEmbedder.embed(queries[0], true);
     
     console.log("Running latency benchmark...");
-    const baselineStart = Date.now();
+    const wasmStart = Date.now();
     for (const q of queries) {
-        await baselineEmbedder.embed(q, true);
+        await wasmEmbedder.embed(q, true);
     }
-    const baselineDuration = Date.now() - baselineStart;
-    const baselineAvg = baselineDuration / queries.length;
-    console.log(`Baseline Total Time: ${baselineDuration}ms`);
-    console.log(`Baseline Avg Latency: ${baselineAvg.toFixed(2)}ms`);
+    const wasmDuration = Date.now() - wasmStart;
+    const wasmAvg = wasmDuration / queries.length;
+    console.log(`WASM Total Time: ${wasmDuration}ms`);
+    console.log(`WASM Avg Latency: ${wasmAvg.toFixed(2)}ms`);
     
-    // --- TensorFlow.js ---
-    console.log("\n=== Benchmarking TensorFlow.js ===");
+    // --- 2. Native ONNX (Transformers.js / Native) ---
+    console.log("\n=== Benchmarking Native ONNX (Transformers.js / Native) ===");
+    Embedder.configureRuntime('native');
+    Embedder.clearInstance();
+    const nativeEmbedder = Embedder.getInstance();
+    
+    // Warmup
+    console.log("Warming up Native...");
+    try {
+        await nativeEmbedder.embed(queries[0], true);
+        
+        console.log("Running latency benchmark...");
+        const nativeStart = Date.now();
+        for (const q of queries) {
+            await nativeEmbedder.embed(q, true);
+        }
+        const nativeDuration = Date.now() - nativeStart;
+        var nativeAvg: number | null = nativeDuration / queries.length;
+        console.log(`Native Total Time: ${nativeDuration}ms`);
+        console.log(`Native Avg Latency: ${nativeAvg.toFixed(2)}ms`);
+    } catch (e) {
+        console.error("Failed to run Native ONNX:", e);
+        var nativeAvg: number | null = null;
+    }
+    
+    // --- 3. TensorFlow.js (Pure JS) ---
+    console.log("\n=== Benchmarking TensorFlow.js (Pure JS) ===");
     const tfjsEmbedder = TfjsEmbedder.getInstance();
     
     // Warmup
@@ -51,9 +77,13 @@ async function run() {
     console.log(`TFJS Avg Latency: ${tfjsAvg.toFixed(2)}ms`);
     
     console.log("\n=== Summary ===");
-    console.log(`Baseline Avg Latency: ${baselineAvg.toFixed(2)}ms`);
+    console.log(`WASM Avg Latency: ${wasmAvg.toFixed(2)}ms`);
+    if (nativeAvg !== null) {
+        console.log(`Native Avg Latency: ${nativeAvg.toFixed(2)}ms`);
+    } else {
+        console.log(`Native Avg Latency: FAILED`);
+    }
     console.log(`TFJS Avg Latency: ${tfjsAvg.toFixed(2)}ms`);
-    console.log(`Ratio (TFJS / Baseline): ${(tfjsAvg / baselineAvg).toFixed(2)}x`);
     
     // Cleanup TFJS server
     tfjsEmbedder.shutdown();

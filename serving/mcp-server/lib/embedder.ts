@@ -2,15 +2,19 @@ import { pipeline, env, type FeatureExtractionPipeline } from "@huggingface/tran
 import * as ort from "onnxruntime-web";
 import path from "path";
 
-// Force the WebAssembly runtime instead of native node binaries for lightweight CLI dist
-globalThis[Symbol.for("onnxruntime")] = ort;
-
-// Configure Transformers environment for local WASM execution
-env.backends.onnx.wasm.numThreads = 1;
-// The dist pipeline will copy WASM files to a sibling 'wasm' folder
-env.backends.onnx.wasm.wasmPaths = path.join(import.meta.dirname, "../wasm/");
-
 export class Embedder {
+  public static configureRuntime(runtime: 'wasm' | 'native') {
+    if (runtime === 'wasm') {
+      // Force the WebAssembly runtime instead of native node binaries for lightweight CLI dist
+      globalThis[Symbol.for("onnxruntime")] = ort;
+      env.backends.onnx.wasm.numThreads = 1;
+      env.backends.onnx.wasm.wasmPaths = path.join(import.meta.dirname, "../wasm/");
+    } else {
+      // Use native node binaries if available
+      delete (globalThis as any)[Symbol.for("onnxruntime")];
+    }
+  }
+
   private static instance: Embedder;
   private pipe: FeatureExtractionPipeline | null = null;
   public modelName = "Xenova/all-MiniLM-L6-v2";
@@ -26,6 +30,10 @@ export class Embedder {
       Embedder.instance = new Embedder(modelName);
     }
     return Embedder.instance;
+  }
+
+  public static clearInstance() {
+    Embedder.instance = null as any;
   }
 
   public async init() {
@@ -63,3 +71,6 @@ export class Embedder {
     return Array.from(output.data);
   }
 }
+
+// Default to WASM runtime
+Embedder.configureRuntime('wasm');
