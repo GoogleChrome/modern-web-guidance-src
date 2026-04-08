@@ -47,6 +47,17 @@ function calculateColWidths(models: string[]): number[] {
     return colWidths;
 }
 
+// Helper to format date
+function formatDate(isoString: string): string {
+    const date = new Date(isoString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
 function run() {
     console.log("\n=== Glossary ===");
     const glossary = [
@@ -65,69 +76,51 @@ function run() {
     });
     console.log("================\n");
 
-    // --- 1. Accuracy Summary ---
+    // --- 1. Accuracy Timeline ---
     if (!fs.existsSync(RESULTS_FILE)) {
         console.error(`Results file not found: ${RESULTS_FILE}`);
     } else {
         const history: EvalRun[] = JSON.parse(fs.readFileSync(RESULTS_FILE, "utf-8"));
         
-        // Group by model
-        const groups: Record<string, EvalRun[]> = {};
-        for (const entry of history) {
-            if (!groups[entry.model]) {
-                groups[entry.model] = [];
-            }
-            groups[entry.model].push(entry);
-        }
-
-        console.log("\n=== Model Performance Summary (Accuracy) ===");
+        // Sort by timestamp
+        history.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
         
-        const allModels = Object.keys(groups);
+        console.log("\n=== Model Performance Timeline (Accuracy) ===");
+        
+        const allModels = history.map(m => m.model);
         const colWidths = calculateColWidths(allModels);
         
-        const summaryData = Object.entries(groups).map(([model, runs]) => {
-            const top1Rates = runs.map(r => r.top1HitRate);
-            const mrrRates = runs.map(r => r.meanReciprocalRank);
-            
-            const avgTop1 = top1Rates.reduce((a, b) => a + b, 0) / runs.length;
-            const maxTop1 = Math.max(...top1Rates);
-            const minTop1 = Math.min(...top1Rates);
-            
-            const avgMrr = mrrRates.reduce((a, b) => a + b, 0) / runs.length;
-            
-            const formattedModel = alignModelString(model, colWidths);
+        const summaryData = history.map((run, index) => {
+            const formattedModel = alignModelString(run.model, colWidths);
             
             return {
+                "#": index + 1,
+                "Date/Time": formatDate(run.timestamp),
                 Model: formattedModel,
-                Runs: runs.length,
-                "Avg Top-1": (avgTop1 * 100).toFixed(1) + "%",
-                "Max Top-1": (maxTop1 * 100).toFixed(1) + "%",
-                "Min Top-1": (minTop1 * 100).toFixed(1) + "%",
-                "Avg MRR": avgMrr.toFixed(3)
+                "Top-1": (run.top1HitRate * 100).toFixed(1) + "%",
+                "Top-3": (run.top3HitRate * 100).toFixed(1) + "%",
+                "MRR": run.meanReciprocalRank.toFixed(3)
             };
         });
 
         console.table(summaryData);
     }
 
-    // --- 2. Latency Summary ---
+    // --- 2. Latency Timeline ---
     if (!fs.existsSync(LATENCY_FILE)) {
         console.log(`\nLatency results file not found: ${LATENCY_FILE}`);
     } else {
         const latencyHistory: LatencyRun[] = JSON.parse(fs.readFileSync(LATENCY_FILE, "utf-8"));
         
-        // Group by model, take the LATEST run for each model
-        const latestRuns: Record<string, LatencyRun> = {};
-        for (const entry of latencyHistory) {
-            latestRuns[entry.model] = entry; // Overwrites older runs, keeping the latest
-        }
+        // Sort by timestamp
+        latencyHistory.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-        console.log("\n=== Model Latency Summary (E2E for 1 Query) ===");
+        console.log("\n=== Model Latency Timeline (E2E for 1 Query) ===");
         
-        const allLatencyModels = Object.keys(latestRuns);
+        const allLatencyModels = latencyHistory.map(m => m.model);
         const latencyColWidths = calculateColWidths(allLatencyModels);
         
-        const latencyData = Object.entries(latestRuns).map(([model, run]) => {
+        const latencyData = latencyHistory.map((run, index) => {
             const coldStart = run.runs.length > 0 ? `${run.runs[0]} ms` : "N/A";
             
             let warmAvg = "N/A";
@@ -137,13 +130,15 @@ function run() {
                 warmAvg = `${avg.toFixed(1)} ms`;
             }
             
-            const formattedModel = alignModelString(model, latencyColWidths);
+            const formattedModel = alignModelString(run.model, latencyColWidths);
             
             return {
+                "#": index + 1,
+                "Date/Time": formatDate(run.timestamp),
                 Model: formattedModel,
-                "Cold Start (Run 1)": coldStart,
-                "Warm Avg (Runs 2+)": warmAvg,
-                "E2E Average": `${run.avgLatencyMs.toFixed(1)} ms`
+                "Cold Start": coldStart,
+                "Warm Avg": warmAvg,
+                "E2E Avg": `${run.avgLatencyMs.toFixed(1)} ms`
             };
         });
 
