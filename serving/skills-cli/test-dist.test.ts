@@ -25,7 +25,6 @@ const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
 console.log("Running build-dist to ensure fresh build...");
-await fs.writeFile('i-reached-this-point.log', 'YES');
 execSync('node --experimental-strip-types skills-cli/build-dist.ts', { 
   cwd: path.resolve(import.meta.dirname, '..'), 
   stdio: 'pipe' 
