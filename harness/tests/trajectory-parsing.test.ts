@@ -20,6 +20,7 @@ test('collectGemini metrics from a single trajectory file', async () => {
     const sessionData = {
       messages: [
         {
+          type: 'gemini',
           toolCalls: [
             {
               name: 'mcp_modern-web_get_best_practices',
@@ -32,6 +33,7 @@ test('collectGemini metrics from a single trajectory file', async () => {
           ]
         },
         {
+          type: 'gemini',
           toolCalls: [
             {
               name: 'run_shell_command',
