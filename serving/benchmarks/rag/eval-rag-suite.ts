@@ -133,13 +133,22 @@ async function main() {
   
   console.log('\n\n=== FINAL VARIANCE ANALYSIS ===');
   for (const model of models) {
-    const suffix = isNoChunking ? ' (No-Chunk)' : ' (Chunked)';
-    const targetModel = `${model}${suffix}`;
+    const targetModelObj = getModelObj(model, isNoChunking);
+    const targetModelStr = `${targetModelObj.name} ${targetModelObj.quantization} - trjs onnx ${targetModelObj.runtime} - ${targetModelObj.strategy}${targetModelObj.chunking === "nochunk" ? " nochunk" : ""}`;
     
-    const modelRuns = results.filter((r: any) => r.model === targetModel);
+    const modelRuns = results.filter((r: any) => {
+      let modelStr = "";
+      if (typeof r.model === "object") {
+        const m = r.model as any;
+        modelStr = `${m.name} ${m.quantization} - trjs onnx ${m.runtime} - ${m.strategy}${m.chunking === "nochunk" ? " nochunk" : ""}`;
+      } else {
+        modelStr = r.model;
+      }
+      return modelStr === targetModelStr;
+    });
     
     if (modelRuns.length === 0) {
-      console.log(`\nModel: ${targetModel}\nNo data found.`);
+      console.log(`\nModel: ${targetModelStr}\nNo data found.`);
       continue;
     }
 
@@ -152,7 +161,7 @@ async function main() {
     const mrrVar = mrrValues.reduce((a:number, b:number) => a + Math.pow(b - mrrAvg, 2), 0) / mrrValues.length;
     const top1Var = top1Values.reduce((a:number, b:number) => a + Math.pow(b - top1Avg, 2), 0) / top1Values.length;
 
-    console.log(`\nModel: ${targetModel}`);
+    console.log(`\nModel: ${targetModelStr}`);
     console.log(`Sample size: ${modelRuns.length} runs`);
     console.log(`Top-1 Hit Rate:  ${(top1Avg * 100).toFixed(2)}% (StdDev: ±${(Math.sqrt(top1Var) * 100).toFixed(2)}%)`);
     console.log(`MRR:             ${mrrAvg.toFixed(4)} (StdDev: ±${Math.sqrt(mrrVar).toFixed(4)})`);
