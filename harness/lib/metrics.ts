@@ -10,7 +10,7 @@ export interface RunResult {
   results: ScenarioCheck[];
   guidesUsed?: string[];
   guidanceToolsUsed?: string[];
-  expectedGuidanceTool?: string;
+  expectedToolPrefixes?: string[];
   guideName?: string;
 }
 
@@ -124,8 +124,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
         }
 
         const toolsUsed = run.guidanceToolsUsed || [];
-        const expectedTool = run.expectedGuidanceTool;
-        if (expectedTool && toolsUsed.some(t => t.startsWith(expectedTool))) {
+        const prefixes = run.expectedToolPrefixes || [];
+        if (prefixes.length > 0 && toolsUsed.some(t => prefixes.some(p => t.startsWith(p)))) {
           toolActivationCount++;
         }
       });

@@ -192,14 +192,7 @@ run();
         continue;
       }
       const taskCategory = path.basename(path.dirname(taskInfo.guideDir));
-      let expectedGuidanceTool: string | undefined;
-      const serving = suiteConfig.serving;
-
-      if (serving === Serving.MCP || serving === Serving.MEGASKILL || serving === Serving.SKILLS_CLI || suiteConfig.agent === Agents.JETSKI) {
-        expectedGuidanceTool = 'modern-web';
-      } else if (serving === Serving.SKILLS) {
-        expectedGuidanceTool = taskCategory || undefined;
-      }
+      const expectedToolPrefixes = ['modern-web', taskCategory].filter(Boolean);
 
       const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
 
@@ -261,7 +254,7 @@ run();
         retrievedGuides: retrievedGuides,
         fileReadGuides: fileReadGuides,
         guidanceToolsUsed: guidanceToolsUsedResult,
-        expectedGuidanceTool: expectedGuidanceTool,
+        expectedToolPrefixes: expectedToolPrefixes,
         guideName: guide,
         taskName: taskName,
         baseApp: actualBaseApp,
