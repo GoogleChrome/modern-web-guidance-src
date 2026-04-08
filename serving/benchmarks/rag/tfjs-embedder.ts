@@ -8,7 +8,7 @@ export class TfjsEmbedder {
   private static instance: TfjsEmbedder;
   private model: tf.GraphModel | null = null;
   private tokenizer: any = null;
-  private serverProcess: ChildProcess | null = null;
+  private static serverProcess: ChildProcess | null = null;
   public modelName = "tfjs:all-MiniLM-L6-v2";
   private port = 8085;
 
@@ -21,20 +21,24 @@ export class TfjsEmbedder {
     return TfjsEmbedder.instance;
   }
 
+  public static clearInstance() {
+    TfjsEmbedder.instance = null as any;
+  }
+
   public async init() {
     if (this.model) return;
 
-    console.log("Starting local HTTP server for model files...");
     const benchmarkDir = path.resolve(import.meta.dirname);
     
-    // Start Python HTTP server in the benchmark directory
-    this.serverProcess = spawn("python3", ["-m", "http.server", this.port.toString()], {
-      cwd: benchmarkDir,
-      stdio: "ignore"
-    });
-
-    // Wait a bit for the server to start
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (!TfjsEmbedder.serverProcess) {
+        console.log("Starting local HTTP server for model files...");
+        TfjsEmbedder.serverProcess = spawn("python3", ["-m", "http.server", this.port.toString()], {
+            cwd: benchmarkDir,
+            stdio: "ignore"
+        });
+        // Wait a bit for the server to start
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
 
     const modelUrl = `http://localhost:${this.port}/tfjs_model_minilm/model.json`;
     console.log(`Loading TFJS model from ${modelUrl}...`);
@@ -47,7 +51,6 @@ export class TfjsEmbedder {
         this.tokenizer = await AutoTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2");
     } catch (e) {
         console.error("Failed to load TFJS model:", e);
-        this.shutdown();
         throw e;
     }
   }
@@ -94,10 +97,10 @@ export class TfjsEmbedder {
   }
 
   public shutdown() {
-    if (this.serverProcess) {
+    if (TfjsEmbedder.serverProcess) {
         console.log("Stopping local HTTP server...");
-        this.serverProcess.kill();
-        this.serverProcess = null;
+        TfjsEmbedder.serverProcess.kill();
+        TfjsEmbedder.serverProcess = null;
     }
   }
 }

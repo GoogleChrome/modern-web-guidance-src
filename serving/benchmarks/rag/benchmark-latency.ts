@@ -9,84 +9,85 @@ async function run() {
     console.log(`Loading queries from ${queriesFile}...`);
     
     const allQueries = JSON.parse(fs.readFileSync(queriesFile, "utf-8"));
-    const queries = allQueries.slice(0, 50).map((x: any) => x.query);
+    const query = allQueries[0].query;
     
-    console.log(`Loaded ${queries.length} queries for benchmark.`);
+    console.log(`Using query: "${query}" for end-to-end benchmark.`);
+    
+    const RUNS = 3;
     
     // --- 1. Baseline (Transformers.js / WASM) ---
     console.log("\n=== Benchmarking Baseline (Transformers.js / WASM) ===");
-    Embedder.configureRuntime('wasm');
-    Embedder.clearInstance();
-    const wasmEmbedder = Embedder.getInstance();
-    
-    // Warmup
-    console.log("Warming up WASM...");
-    await wasmEmbedder.embed(queries[0], true);
-    
-    console.log("Running latency benchmark...");
-    const wasmStart = Date.now();
-    for (const q of queries) {
-        await wasmEmbedder.embed(q, true);
+    let wasmTotal = 0;
+    for (let i = 0; i < RUNS; i++) {
+        console.log(`Run ${i + 1}/${RUNS}...`);
+        Embedder.configureRuntime('wasm');
+        Embedder.clearInstance();
+        
+        const start = Date.now();
+        const embedder = Embedder.getInstance();
+        await embedder.init();
+        await embedder.embed(query, true);
+        const duration = Date.now() - start;
+        wasmTotal += duration;
+        console.log(`  Duration: ${duration}ms`);
     }
-    const wasmDuration = Date.now() - wasmStart;
-    const wasmAvg = wasmDuration / queries.length;
-    console.log(`WASM Total Time: ${wasmDuration}ms`);
-    console.log(`WASM Avg Latency: ${wasmAvg.toFixed(2)}ms`);
+    const wasmAvg = wasmTotal / RUNS;
+    console.log(`WASM Avg E2E Latency: ${wasmAvg.toFixed(2)}ms`);
     
     // --- 2. Native ONNX (Transformers.js / Native) ---
     console.log("\n=== Benchmarking Native ONNX (Transformers.js / Native) ===");
-    Embedder.configureRuntime('native');
-    Embedder.clearInstance();
-    const nativeEmbedder = Embedder.getInstance();
-    
-    // Warmup
-    console.log("Warming up Native...");
-    try {
-        await nativeEmbedder.embed(queries[0], true);
+    let nativeTotal = 0;
+    let nativeFailed = false;
+    for (let i = 0; i < RUNS; i++) {
+        console.log(`Run ${i + 1}/${RUNS}...`);
+        Embedder.configureRuntime('native');
+        Embedder.clearInstance();
         
-        console.log("Running latency benchmark...");
-        const nativeStart = Date.now();
-        for (const q of queries) {
-            await nativeEmbedder.embed(q, true);
+        const start = Date.now();
+        try {
+            const embedder = Embedder.getInstance();
+            await embedder.init();
+            await embedder.embed(query, true);
+            const duration = Date.now() - start;
+            nativeTotal += duration;
+            console.log(`  Duration: ${duration}ms`);
+        } catch (e) {
+            console.error("  Failed to run Native ONNX:", e);
+            nativeFailed = true;
+            break;
         }
-        const nativeDuration = Date.now() - nativeStart;
-        var nativeAvg: number | null = nativeDuration / queries.length;
-        console.log(`Native Total Time: ${nativeDuration}ms`);
-        console.log(`Native Avg Latency: ${nativeAvg.toFixed(2)}ms`);
-    } catch (e) {
-        console.error("Failed to run Native ONNX:", e);
-        var nativeAvg: number | null = null;
+    }
+    const nativeAvg = nativeFailed ? null : nativeTotal / RUNS;
+    if (nativeAvg !== null) {
+        console.log(`Native Avg E2E Latency: ${nativeAvg.toFixed(2)}ms`);
     }
     
     // --- 3. TensorFlow.js (Pure JS) ---
     console.log("\n=== Benchmarking TensorFlow.js (Pure JS) ===");
-    const tfjsEmbedder = TfjsEmbedder.getInstance();
-    
-    // Warmup
-    console.log("Warming up TFJS...");
-    await tfjsEmbedder.embed(queries[0], true);
-    
-    console.log("Running latency benchmark...");
-    const tfjsStart = Date.now();
-    for (const q of queries) {
-        await tfjsEmbedder.embed(q, true);
+    let tfjsTotal = 0;
+    for (let i = 0; i < RUNS; i++) {
+        console.log(`Run ${i + 1}/${RUNS}...`);
+        TfjsEmbedder.clearInstance();
+        
+        const start = Date.now();
+        const embedder = TfjsEmbedder.getInstance();
+        await embedder.init();
+        await embedder.embed(query, true);
+        const duration = Date.now() - start;
+        tfjsTotal += duration;
+        console.log(`  Duration: ${duration}ms`);
     }
-    const tfjsDuration = Date.now() - tfjsStart;
-    const tfjsAvg = tfjsDuration / queries.length;
-    console.log(`TFJS Total Time: ${tfjsDuration}ms`);
-    console.log(`TFJS Avg Latency: ${tfjsAvg.toFixed(2)}ms`);
+    const tfjsAvg = tfjsTotal / RUNS;
+    console.log(`TFJS Avg E2E Latency: ${tfjsAvg.toFixed(2)}ms`);
     
-    console.log("\n=== Summary ===");
-    console.log(`WASM Avg Latency: ${wasmAvg.toFixed(2)}ms`);
+    console.log("\n=== Summary (End-to-End Latency for 1 Query) ===");
+    console.log(`WASM Avg E2E Latency: ${wasmAvg.toFixed(2)}ms`);
     if (nativeAvg !== null) {
-        console.log(`Native Avg Latency: ${nativeAvg.toFixed(2)}ms`);
+        console.log(`Native Avg E2E Latency: ${nativeAvg.toFixed(2)}ms`);
     } else {
-        console.log(`Native Avg Latency: FAILED`);
+        console.log(`Native Avg E2E Latency: FAILED`);
     }
-    console.log(`TFJS Avg Latency: ${tfjsAvg.toFixed(2)}ms`);
-    
-    // Cleanup TFJS server
-    tfjsEmbedder.shutdown();
+    console.log(`TFJS Avg E2E Latency: ${tfjsAvg.toFixed(2)}ms`);
 }
 
 run().catch(console.error);
