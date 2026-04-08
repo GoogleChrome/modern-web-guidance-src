@@ -100,13 +100,13 @@ async function main(): Promise<BuildResult | undefined> {
   // TODO: We are going to iterate on the module splitting stuff some more.
   // We want to avoid dynamic chunk names but still share heavy dependencies if possible.
   try {
-    console.log("Bundling embedder.mjs...");
+    console.log("Bundling search.mjs...");
     await esbuild.build({
-      entryPoints: [path.join(SERVING_DIR, "lib/tfjs-embedder.ts")],
+      entryPoints: [path.join(SERVING_DIR, "lib/search.ts")],
       bundle: true,
       platform: "node",
       format: "esm",
-      outfile: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/embedder.mjs"),
+      outfile: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/search.mjs"),
       banner: {
         js: `import { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
       },
@@ -122,10 +122,10 @@ async function main(): Promise<BuildResult | undefined> {
       format: "esm",
       outfile: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/modern-web.mjs"),
       plugins: [{
-        name: 'rewrite-embedder',
+        name: 'rewrite-search',
         setup(build) {
-          build.onResolve({ filter: /tfjs-embedder/ }, args => {
-            return { path: './embedder.mjs', external: true }
+          build.onResolve({ filter: /search\.ts$/ }, args => {
+            return { path: './search.mjs', external: true }
           })
         },
       }],

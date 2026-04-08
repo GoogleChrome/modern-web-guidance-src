@@ -1,9 +1,7 @@
 #!/usr/bin/env node --experimental-strip-types
 
 import { parseArgs } from "util";
-import { searchUseCases } from "../lib/search.ts";
 import { retrieveUseCase } from "../lib/retrieve.ts";
-import { TfjsEmbedder } from "../lib/tfjs-embedder.ts";
 
 const { values } = parseArgs({
   args: process.argv.slice(2),
@@ -34,7 +32,8 @@ async function main() {
 
   if (values.search) {
     try {
-      const results = await searchUseCases(values.search, undefined, undefined, TfjsEmbedder.getInstance());
+      const { searchUseCases } = await import("../lib/search.ts");
+      const results = await searchUseCases(values.search);
       console.log(JSON.stringify(results, null, 2));
     } catch (error) {
       console.error("Search failed:", error);
