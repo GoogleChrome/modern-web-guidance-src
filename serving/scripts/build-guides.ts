@@ -78,7 +78,9 @@ async function processGuides() {
   }
   
   let embedder: any;
-  if (!modelName || modelName === "tfjs") {
+  if (!modelName || modelName === "transformers") {
+    embedder = TransformersEmbedder.getInstance(modelName);
+  } else if (modelName === "tfjs") {
     embedder = TfjsEmbedder.getInstance();
   } else if (modelName && (modelName.includes(".gguf") || modelName.includes("nomic"))) {
     embedder = Gpt4AllEmbedder.getInstance(modelName);
@@ -103,7 +105,7 @@ async function processGuides() {
 
     const category = path.basename(path.dirname(absoluteTargetPath));
     const id = path.basename(absoluteTargetPath);
-    await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
+    await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases, embedder);
   } else {
     // Batch process all guides
 
@@ -117,7 +119,7 @@ async function processGuides() {
       const id = inv.name;
       const category = inv.category;
 
-      await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
+      await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases, embedder);
     }
   }
 
@@ -172,7 +174,8 @@ async function processSingleGuideFile(
   category: string,
   id: string,
   useCases: UseCase[],
-  storeUseCases: StoreUseCase[]
+  storeUseCases: StoreUseCase[],
+  embedder: any
 ) {
   const content = fs.readFileSync(filePath, "utf-8");
   const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
@@ -202,8 +205,6 @@ async function processSingleGuideFile(
   const chunks = isNoChunking 
     ? [`${frontmatter}\n\n${processedMarkdown}`] 
     : [...chunkMarkdown(processedMarkdown), frontmatter];
-
-  const embedder = TfjsEmbedder.getInstance();
 
   for (const chunk of chunks) {
     const embeddingText = `${id} (${category})\n\n${chunk}`;
