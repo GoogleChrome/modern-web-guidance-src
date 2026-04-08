@@ -57,11 +57,14 @@ function run() {
         ["native", "Native OS bindings (onnxruntime-node)"],
         ["maxsim", "Max-similarity chunk aggregation"],
         ["singlechunk", "Early deduplication (evaluates only one chunk per guide)"],
+        ["server", "Used local HTTP server to load model files"],
+        ["parsefloat", "Keep float precision in search (see commit c910113)"],
         ["q8", "8-bit Quantized"],
         ["fp32", "32-bit Float precision"]
     ];
+    const maxTermLen = Math.max(...glossary.map(([term]) => term.length));
     glossary.forEach(([term, desc]) => {
-        console.log(`${term.padEnd(12)} : ${desc}`);
+        console.log(`${term.padEnd(maxTermLen)} : ${desc}`);
     });
     console.log("================\n");
 
