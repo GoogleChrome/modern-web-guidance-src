@@ -1,0 +1,10 @@
+{
+  "name": "tfjs-experiment",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@tensorflow/tfjs": "^4.17.0",
+    "@tensorflow/tfjs-node": "^4.17.0",
+    "@huggingface/transformers": "^3.3.3"
+  }
+}

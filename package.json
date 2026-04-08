@@ -65,6 +65,8 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-node": "^4.22.0",
     "glob": "^13.0.6",
     "omelette": "^0.4.17"
   }
