@@ -295,5 +295,23 @@
     "top3HitRate": 0.8396,
     "top5HitRate": 0.9127,
     "meanReciprocalRank": 0.6951
+  },
+  {
+    "timestamp": "2026-04-08T17:12:13.157Z",
+    "model": "Xenova/all-MiniLM-L6-v2 (chunk-agg-baseline)",
+    "totalQueries": 848,
+    "top1HitRate": 0.7028,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9811,
+    "meanReciprocalRank": 0.8208
+  },
+  {
+    "timestamp": "2026-04-08T17:14:30.530Z",
+    "model": "tfjs (chunk-agg-tfjs)",
+    "totalQueries": 848,
+    "top1HitRate": 0.7064,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9741,
+    "meanReciprocalRank": 0.8208
   }
 ]
