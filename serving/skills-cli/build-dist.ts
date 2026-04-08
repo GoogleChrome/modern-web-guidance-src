@@ -98,21 +98,37 @@ async function main(): Promise<BuildResult | undefined> {
   }
 
   try {
-    console.time("⏳ esbuild bundle");
+    console.log("Bundling embedder.mjs...");
     await esbuild.build({
-      entryPoints: {
-        "modern-web": path.join(SERVING_DIR, "bin/modern-web.ts"),
-        "embedder": path.join(SERVING_DIR, "lib/tfjs-embedder.ts")
-      },
+      entryPoints: [path.join(SERVING_DIR, "lib/tfjs-embedder.ts")],
       bundle: true,
       platform: "node",
       format: "esm",
-      splitting: true,
-      outExtension: { ".js": ".mjs" },
+      outfile: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/embedder.mjs"),
+      banner: {
+        js: `import { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
+      },
+      external: ["onnxruntime-node"],
       loader: { ".node": "file" },
-      outdir: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases"),
     });
-    console.timeEnd("⏳ esbuild bundle");
+
+    console.log("Bundling modern-web.mjs...");
+    await esbuild.build({
+      entryPoints: [path.join(SERVING_DIR, "bin/modern-web.ts")],
+      bundle: true,
+      platform: "node",
+      format: "esm",
+      outfile: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/modern-web.mjs"),
+      plugins: [{
+        name: 'rewrite-embedder',
+        setup(build) {
+          build.onResolve({ filter: /tfjs-embedder/ }, args => {
+            return { path: './embedder.mjs', external: true }
+          })
+        },
+      }],
+      loader: { ".node": "file" },
+    });
 
   } catch (error) {
     console.error("Failed to bundle with esbuild:", error);
