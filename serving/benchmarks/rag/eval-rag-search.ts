@@ -34,6 +34,11 @@ function getIdArg(): string | undefined {
   return idArg ? idArg.split("=")[1] : undefined;
 }
 
+function getRuntimeArg(): 'wasm' | 'native' {
+  const runtimeArg = process.argv.find((arg) => arg.startsWith("--runtime="));
+  return runtimeArg ? (runtimeArg.split("=")[1] as 'wasm' | 'native') : 'wasm';
+}
+
 async function main() {
   if (!fs.existsSync(EVAL_FILE)) {
     console.error(`Evaluation file not found: ${EVAL_FILE}`);
@@ -50,11 +55,12 @@ async function main() {
 
   const modelArg = getModelArg();
   const idArg = getIdArg();
+  const runtimeArg = getRuntimeArg();
   let modelName = modelArg || "Xenova/all-MiniLM-L6-v2";
   if (idArg) {
     modelName = `${modelName} (${idArg})`;
   }
-  console.log(`Initializing Embedder with model: ${modelArg || "default"} (Name: ${modelName})`);
+  console.log(`Initializing Embedder with model: ${modelArg || "default"} (Name: ${modelName}, Runtime: ${runtimeArg})`);
   
   let embedder: any;
   if (modelArg === "tfjs") {
@@ -62,6 +68,7 @@ async function main() {
   } else if (modelArg && (modelArg.includes(".gguf") || modelArg.includes("nomic"))) {
     embedder = Gpt4AllEmbedder.getInstance(modelArg);
   } else {
+    Embedder.configureRuntime(runtimeArg);
     embedder = Embedder.getInstance(modelArg);
   }
   

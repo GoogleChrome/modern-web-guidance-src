@@ -313,5 +313,32 @@
     "top3HitRate": 0.941,
     "top5HitRate": 0.9741,
     "meanReciprocalRank": 0.8208
+  },
+  {
+    "timestamp": "2026-04-08T17:20:54.558Z",
+    "model": "Xenova/all-MiniLM-L6-v2 (test-wasm)",
+    "totalQueries": 848,
+    "top1HitRate": 0.7028,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9811,
+    "meanReciprocalRank": 0.8208
+  },
+  {
+    "timestamp": "2026-04-08T17:21:06.120Z",
+    "model": "Xenova/all-MiniLM-L6-v2 (test-native)",
+    "totalQueries": 848,
+    "top1HitRate": 0.7028,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9811,
+    "meanReciprocalRank": 0.8208
+  },
+  {
+    "timestamp": "2026-04-08T17:21:25.145Z",
+    "model": "Xenova/all-MiniLM-L6-v2 (native-onnx)",
+    "totalQueries": 848,
+    "top1HitRate": 0.7028,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9811,
+    "meanReciprocalRank": 0.8208
   }
 ]
