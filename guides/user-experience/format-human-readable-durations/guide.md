@@ -45,7 +45,7 @@ console.log(`${balancedToMinutes.minutes} minutes`);
 *   **DO NOT** rely on `Temporal.Duration.prototype.toString()` for user-facing text; it returns ISO 8601 strings (e.g., `PT1H30M`).
 *   **DO** use feature detection and a polyfill for environments lacking native support.
 
-## Fallback Strategy
+## Fallback strategies
 
 {{ BASELINE_STATUS("temporal") }}
 
