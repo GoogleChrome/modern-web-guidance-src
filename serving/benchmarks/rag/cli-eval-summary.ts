@@ -168,18 +168,15 @@ function run() {
     } else {
         const latencyHistory: LatencyRun[] = JSON.parse(fs.readFileSync(LATENCY_FILE, "utf-8"));
         
-        // Group by model, take the LATEST run for each model
-        const latestRuns: Record<string, LatencyRun> = {};
-        for (const entry of latencyHistory) {
-            latestRuns[entry.model] = entry; // Overwrites older runs, keeping the latest
-        }
-
         console.log("\n=== Model Latency Summary (E2E for 1 Query) ===");
         
-        const allLatencyModels = Object.keys(latestRuns);
-        const latencyColWidths = calculateColWidths(allLatencyModels);
+        // Sort chronologically
+        const sortedLatencyHistory = latencyHistory.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
         
-        const latencyData = Object.entries(latestRuns).map(([model, run]) => {
+        const allModelStrings = sortedLatencyHistory.map(r => r.model);
+        const latencyColWidths = calculateColWidths(allModelStrings);
+        
+        const latencyData = sortedLatencyHistory.map(run => {
             const coldStart = run.runs.length > 0 ? `${run.runs[0]} ms` : "N/A";
             
             let warmAvg = "N/A";
@@ -189,12 +186,14 @@ function run() {
                 warmAvg = `${avg.toFixed(1)} ms`;
             }
             
-            const formattedModel = alignModelString(model, latencyColWidths);
+            const formattedModel = alignModelString(run.model, latencyColWidths);
+            const formattedRun = formatDate(run.timestamp);
             
             return {
-                Model: formattedModel,
-                "Cold Start (Run 1)": coldStart,
-                "Warm Avg (Runs 2+)": warmAvg,
+                "Run": formattedRun,
+                "Model": formattedModel,
+                "Cold Start": coldStart,
+                "Warm Avg": warmAvg,
                 "E2E Average": `${run.avgLatencyMs.toFixed(1)} ms`
             };
         });
