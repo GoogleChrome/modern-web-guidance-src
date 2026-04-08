@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subgrid Card Alignment Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.5;
+            padding: 2rem;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .description {
+            text-align: center;
+            margin-bottom: 3rem;
+            color: #64748b;
+        }
+
+        /* 
+           The Parent Grid 
+           We define the row structure here that all cards will share.
+        */
+        .grid-container {
+            display: grid;
+            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            /* Define 3 rows: header, content, and footer */
+            grid-template-rows: auto 1fr auto;
+        }
+
+        /* 
+           The Subgrid Card 
+           Each card spans all 3 rows of the parent grid.
+        */
+        .card {
+            display: grid;
+            /* This is the feature: inherit row definitions from parent */
+            grid-template-rows: subgrid;
+            /* Span exactly 3 rows in the parent grid */
+            grid-row: span 3;
+            
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .card-header {
+            padding: 1.5rem;
+            background-color: #f1f5f9;
+            font-weight: 700;
+            font-size: 1.25rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .card-footer {
+            padding: 1rem 1.5rem;
+            background-color: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        /* Visual highlighting to show alignment */
+        .card-header, .card-footer {
+            display: flex;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Subgrid Alignment</h1>
+    <p class="description">Headers and footers remain aligned across the row regardless of varying content lengths.</p>
+
+    <div class="grid-container">
+        <!-- Card 1 -->
+        <div class="card">
+            <div class="card-header">Basic Plan</div>
+            <div class="card-body">
+                <p>Minimal content here.</p>
+            </div>
+            <div class="card-footer">Update weekly</div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="card">
+            <div class="card-header">Professional Growth Strategy</div>
+            <div class="card-body">
+                <p>This card has significantly more content. Because the parent grid row expands to fit this content, the middle rows of the other cards also expand.</p>
+                <p>However, the <strong>headers</strong> and <strong>footers</strong> remain perfectly locked in alignment because they all reference the same parent grid rows.</p>
+            </div>
+            <div class="card-footer">Updated daily</div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="card">
+            <div class="card-header">Enterprise</div>
+            <div class="card-body">
+                <p>Medium amount of text to demonstrate flexibility.</p>
+            </div>
+            <div class="card-footer">
+                Priority Support Included<br>
+                24/7 Monitoring
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

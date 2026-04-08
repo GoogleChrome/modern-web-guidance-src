@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subgrid Demo</title>
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: sans-serif;
+  }
+  
+  .main-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    grid-template-rows: auto 1fr auto;
+    min-height: 100vh;
+    gap: 16px;
+    padding: 16px;
+    background-color: #e9ecef;
+    box-sizing: border-box;
+  }
+
+  .header {
+    grid-column: 1 / -1;
+    background: #007bff;
+    color: white;
+    padding: 20px;
+    text-align: center;
+    border-radius: 4px;
+  }
+
+  .footer {
+    grid-column: 1 / -1;
+    background: #343a40;
+    color: white;
+    padding: 20px;
+    text-align: center;
+    border-radius: 4px;
+  }
+
+  .nested-component {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: subgrid;
+    gap: inherit;
+  }
+
+  .sidebar {
+    grid-column: 1 / 2;
+    background: #28a745;
+    padding: 20px;
+    color: white;
+    border-radius: 4px;
+  }
+
+  .content {
+    grid-column: 2 / 3;
+    background: white;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border-radius: 4px;
+  }
+
+  .aside {
+    grid-column: 3 / 4;
+    background: #ffc107;
+    padding: 20px;
+    color: #333;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="main-layout">
+  <div class="header">Main Layout Header (Spans all columns)</div>
+  
+  <div class="nested-component">
+    <div class="sidebar">
+      <h3>Sidebar</h3>
+      <p>Snaps to the first 200px column.</p>
+    </div>
+    <div class="content">
+      <h2>Nested Component Core</h2>
+      <p>This content is inside a nested wrapper div (<code>.nested-component</code>). Instead of flattening the HTML to make these siblings of the header and footer, we maintain a logical DOM structure.</p>
+      <p>By using <code>grid-template-columns: subgrid;</code> on the wrapper, these child elements snap perfectly to the <code>.main-layout</code> parent's grid tracks.</p>
+    </div>
+    <div class="aside">
+      <h3>Aside</h3>
+      <p>Snaps to the last 200px column.</p>
+    </div>
+  </div>
+
+  <div class="footer">Main Layout Footer (Spans all columns)</div>
+</div>
+
+</body>
+</html>

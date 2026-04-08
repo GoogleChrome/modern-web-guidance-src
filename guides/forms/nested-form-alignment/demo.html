@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSS Subgrid Form Layout Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      background-color: #f0f0f0;
+    }
+
+    .form-container {
+      display: grid;
+      /* Main grid: 2 columns, auto width for labels, remaining space for inputs */
+      grid-template-columns: max-content 1fr;
+      gap: 1rem;
+      max-width: 500px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-container > label {
+      align-self: center;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .form-container > input {
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+
+    /* 
+      Nested wrappers (fieldset, div) that need their children 
+      to participate in the main form's grid alignment.
+    */
+    .nested-fieldset, 
+    .component-wrapper {
+      display: grid;
+      /* Span the entire row of the parent grid (both columns) */
+      grid-column: 1 / -1;
+      /* Opt into the parent's grid tracks using subgrid */
+      grid-template-columns: subgrid;
+      /* Inherit the gap for consistent spacing between rows */
+      gap: inherit; 
+    }
+
+    .nested-fieldset {
+      margin: 0.5rem 0;
+      padding: 1.5rem 1rem 1rem;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      background-color: #fafafa;
+    }
+
+    .nested-fieldset legend {
+      /* Span across the subgrid columns so it doesn't break the layout */
+      grid-column: 1 / -1;
+      font-weight: bold;
+      color: #555;
+      padding: 0 0.5rem;
+    }
+
+    .component-wrapper {
+      /* No border or background for a seamless wrapper component */
+      margin: 0;
+      padding: 0;
+      border: none;
+    }
+
+    /* Target inputs and labels inside subgrids to ensure consistent styling */
+    .nested-fieldset > label,
+    .component-wrapper > label {
+      align-self: center;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .nested-fieldset > input,
+    .component-wrapper > input {
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+
+    .submit-btn {
+      grid-column: 1 / -1;
+      padding: 0.75rem;
+      background: #0056b3;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+
+    .submit-btn:hover {
+      background: #004494;
+    }
+  </style>
+</head>
+<body>
+
+  <form class="form-container">
+    <!-- Direct children of the main grid -->
+    <label for="first-name">First Name</label>
+    <input type="text" id="first-name" name="first-name" placeholder="Jane">
+
+    <label for="last-name">Last Name</label>
+    <input type="text" id="last-name" name="last-name" placeholder="Doe">
+
+    <!-- Nested Fieldset: Children align perfectly with "First Name" and "Last Name" using subgrid -->
+    <fieldset class="nested-fieldset">
+      <legend>Contact Information (Nested Fieldset)</legend>
+      
+      <label for="email">Email Address</label>
+      <input type="email" id="email" name="email" placeholder="jane@example.com">
+
+      <label for="phone">Phone Number</label>
+      <input type="tel" id="phone" name="phone" placeholder="(555) 123-4567">
+    </fieldset>
+
+    <!-- Arbitrary div wrapper (e.g., from a web component or JS framework): Children still align perfectly using subgrid -->
+    <div class="component-wrapper">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" placeholder="janedoe99">
+    </div>
+
+    <!-- Full-width element -->
+    <button type="submit" class="submit-btn">
+      Submit Registration
+    </button>
+  </form>
+
+</body>
+</html>
