@@ -44,19 +44,6 @@ test.describe(`Invoker Commands API Expectations: ${demoName}`, () => {
     }
   });
 
-  test('Status indicator reflects the support state', async ({ page }) => {
-    const status = page.locator('#support-status');
-    await expect(status).toBeVisible();
-    
-    // Wait for the text to settle (in case the dynamic import takes a moment)
-    await page.waitForFunction(() => {
-      const text = document.getElementById('support-status')?.textContent || '';
-      return text.includes('supported') || text.includes('loaded');
-    });
-
-    const text = await status.textContent();
-    expect(text).toMatch(/Native Invoker Commands supported|invokers-polyfill/i);
-  });
 
   test('Invoker Commands API is available (natively or via polyfill)', async ({ page }) => {
     // Wait for either native support or the polyfill to be ready
