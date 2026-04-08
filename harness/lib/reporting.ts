@@ -1,17 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { Metrics, RunResult, ScenarioCheck } from './metrics.ts';
-
-export interface EvalsReport {
-  summary: Metrics['summary'];
-  results: Record<string, RunResult[]>;
-  stats: Metrics['testStats'];
-  timestamp: string;
-  runCount: number;
-  agent: string;
-  serving: string;
-  model: string;
-}
+import type { Metrics, RunResult, ScenarioCheck, EvalsReport } from './metrics.ts';
 
 export function generateMarkdownReport(metrics: Metrics, allResults: Record<string, RunResult[]>): string {
   const { summary, testStats, sortedKeys } = metrics;

@@ -12,6 +12,9 @@ export interface RunResult {
   guidanceToolsUsed?: string[];
   expectedToolPrefixes?: string[];
   guideName?: string;
+  taskName?: string;
+  baseApp?: string;
+  prompt?: string;
 }
 
 export interface Metrics {
@@ -49,6 +52,17 @@ export interface Metrics {
     earlyFailures?: number;
   }>;
   sortedKeys: string[];
+}
+
+export interface EvalsReport {
+  summary: Metrics['summary'];
+  results: Record<string, RunResult[]>;
+  stats: Metrics['testStats'];
+  timestamp: string;
+  runCount: number;
+  agent: string;
+  serving: string;
+  model: string;
 }
 
 export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPerTest: number): Metrics {
