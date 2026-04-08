@@ -146,7 +146,8 @@ async function main() {
   console.log('\n\n=== FINAL VARIANCE ANALYSIS ===');
   for (const model of models) {
     const targetModelObj = getModelObj(model, isNoChunking, variant);
-    const targetModelStr = `${targetModelObj.name} ${targetModelObj.quantization} - trjs onnx ${targetModelObj.runtime} - ${targetModelObj.search}${targetModelObj.chunking === "nochunk" ? " nochunk" : ""}`;
+    const targetRuntimeStr = targetModelObj.runtime === "tfjs" ? "TFJS" : `trjs onnx ${targetModelObj.runtime}`;
+    const targetModelStr = `${targetModelObj.name} ${targetModelObj.quantization} - ${targetRuntimeStr} - ${targetModelObj.search}${targetModelObj.chunking === "nochunk" ? " nochunk" : ""}`;
     
     const modelRuns = results.filter((r: any) => {
       let modelStr = "";
