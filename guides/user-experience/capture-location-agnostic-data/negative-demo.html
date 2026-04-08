@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Temporal API: Location-Agnostic Data</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #10b981;
+      --border-color: #334155;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.description {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--accent-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    input, select {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+    }
+
+    .result-label {
+      color: var(--text-secondary);
+      font-weight: 500;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .result-value {
+      font-family: monospace;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent-secondary);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>Location-Agnostic Data</h1>
+      <p class="description">
+        Demonstrate how to record chronological data that remains identical regardless of the viewer's location.
+      </p>
+    </header>
+
+    <div class="card">
+      <div class="section-title">📅 Birthdate Simulation</div>
+      <div class="controls">
+        <div class="control-group">
+          <label for="birthdateInput">Enter Birthdate</label>
+          <input type="date" id="birthdateInput" value="1990-01-01">
+        </div>
+        <div class="control-group">
+          <label for="timezoneSelect">Viewer Timezone</label>
+          <select id="timezoneSelect">
+            <option value="UTC">UTC (Center)</option>
+            <option value="America/New_York">New York (UTC-5)</option>
+            <option value="Europe/Paris">Paris (UTC+1)</option>
+            <option value="Asia/Tokyo">Tokyo (UTC+9)</option>
+            <option value="Pacific/Honolulu">Honolulu (UTC-10)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="result-item">
+        <div class="result-label">
+          <span>Birthdate</span>
+        </div>
+        <div class="result-value">
+          <span id="birthdateValue">-</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="section-title">⏰ Daily Alarm</div>
+      <div class="controls">
+        <div class="control-group">
+          <label for="alarmTimeInput">Enter Alarm Time</label>
+          <input type="time" id="alarmTimeInput" value="09:00">
+        </div>
+      </div>
+
+      <div class="result-item">
+        <div class="result-label">
+          <span>Alarm</span>
+        </div>
+        <div class="result-value">
+          <span id="alarmValue">-</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📡 Server Log Timestamp</div>
+      <div class="result-item">
+        <div class="result-label">
+          <span>Current Instant</span>
+        </div>
+        <div class="result-value">
+          <span id="logValue">-</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { Temporal } from 'https://esm.sh/@js-temporal/polyfill';
+
+    const birthdateInput = document.getElementById('birthdateInput');
+    const timezoneSelect = document.getElementById('timezoneSelect');
+    const birthdateValue = document.getElementById('birthdateValue');
+    
+    const alarmTimeInput = document.getElementById('alarmTimeInput');
+    const alarmValue = document.getElementById('alarmValue');
+    
+    const logValue = document.getElementById('logValue');
+
+    function initializeDemo() {
+      birthdateInput.addEventListener('input', updateData);
+      timezoneSelect.addEventListener('change', updateData);
+      alarmTimeInput.addEventListener('input', updateData);
+
+      updateData();
+    }
+
+    function updateData() {
+      const selectedDate = birthdateInput.value;
+      const selectedTz = timezoneSelect.value;
+      const dateObj = new Date(selectedDate);
+      
+      const formatter = new Intl.DateTimeFormat('en-GB', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        timeZone: selectedTz
+      });
+
+      birthdateValue.textContent = formatter.format(dateObj);
+
+      const alarmTime = alarmTimeInput.value;
+      const [hours, minutes] = alarmTime.split(':');
+      const alarmObj = new Date();
+      alarmObj.setHours(hours, minutes, 0, 0);
+      alarmValue.textContent = alarmObj.toLocaleTimeString('en-US');
+
+      const logTimestamp = Temporal.PlainDate.from("2023-11-20");
+      logTimestamp.year = 2025;
+      logValue.textContent = logTimestamp.toString();
+    }
+
+    initializeDemo();
+  </script>
+</body>
+
+</html>

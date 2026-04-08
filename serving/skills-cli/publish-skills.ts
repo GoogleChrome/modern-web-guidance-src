@@ -63,7 +63,11 @@ async function main() {
   await fs.rm(publishCliDir, { recursive: true, force: true });
 
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  await buildDist();
+  const result = await buildDist();
+  if (!result) {
+    throw new Error("Build failed or was already in progress.");
+  }
+  const { featuresCount, useCasesCount, skillsCount, skillNames } = result;
   
   console.log(`\nVerifying built distribution with test-dist.test.ts suite...`);
   execSync('node --test skills-cli/*.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' ,  env: { ...process.env, TEST_REPORTER: 'spec'}});
@@ -73,6 +77,11 @@ async function main() {
     const files = await fs.readdir(publishCliDir, {recursive: true});
     console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${files.filter(f => !f.includes('node_modules')).sort((a,b) => a.localeCompare(b)).join('\n - ')}`);
     console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
+
+    console.log(`\n[Dry Run] Summary:`);
+    console.log(` - Use cases: ${useCasesCount}`);
+    console.log(` - Features: ${featuresCount}`);
+    console.log(` - Skills: ${skillsCount} (${skillNames.join(', ')})`);
 
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
     console.log(`   FULL=1 pnpm run preflight`);
@@ -94,7 +103,12 @@ async function main() {
 
     console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/skills-alpha!`);
 
-    console.log('Perhaps also:\n    pushd ~/code/skills-alpha && git pull gh && git push gob && popd');
+    console.log(`\nv${newVersion} published.  https://github.com/GoogleChrome/skills-alpha  and [GoB repo](https://user.git.corp.google.com/rviscomi/modern-web-guidance/)`);
+    console.log(`${useCasesCount} usecases.`);
+    console.log(`${featuresCount} features`);
+    console.log(`${skillsCount} skills (${skillNames.join(', ')})`);
+
+    console.log('\nPerhaps also:\n    pushd ~/code/skills-alpha && git pull gh && git push gob && popd');
   }
 }
 
