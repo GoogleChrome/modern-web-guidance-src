@@ -22,6 +22,7 @@ interface BuildResult {
 }
 
 async function main(): Promise<BuildResult | undefined> {
+  fs.writeFileSync('build-probe-1.log', 'YES');
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
   const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
 
@@ -38,17 +39,20 @@ async function main(): Promise<BuildResult | undefined> {
 
   try {
     console.log("Ensuring dist/ output directory exists...");
+    fs.writeFileSync('build-probe-2.log', 'YES');
     fs.mkdirSync(PUBLISH_ROOT, { recursive: true });
 
   console.log("Generating guides and updating vector store...");
   // 1. Run build-guides.ts to update .modern-web-data and build/guides
   try {
     console.time("⏳ build-guides.ts");
+    fs.writeFileSync('build-probe-3.log', 'YES');
     execSync("node --experimental-strip-types scripts/build-guides.ts", {
       cwd: SERVING_DIR,
       stdio: "inherit",
     });
     console.timeEnd("⏳ build-guides.ts");
+    fs.writeFileSync('build-probe-4.log', 'YES');
   } catch (error) {
     console.error("Failed to build guides:", error);
     process.exit(1);
@@ -88,6 +92,7 @@ async function main(): Promise<BuildResult | undefined> {
   
   try {
     console.time("⏳ esbuild bundle");
+    fs.writeFileSync('build-probe-5.log', 'YES');
     // We emit pure ESM (.mjs) using esbuild! Node 20+ handles import.meta.dirname & url natively!
     await esbuild.build({
       entryPoints: [entryPoint],
@@ -99,6 +104,7 @@ async function main(): Promise<BuildResult | undefined> {
       outfile: outFile,
     });
     console.timeEnd("⏳ esbuild bundle");
+    fs.writeFileSync('build-probe-6.log', 'YES');
 
   } catch (error) {
     console.error("Failed to bundle with esbuild:", error);
@@ -135,6 +141,7 @@ async function main(): Promise<BuildResult | undefined> {
   if (fs.existsSync(path.join(PUBLISH_ROOT, "node_modules"))) {
     try {
       // npm ls will exit with code 0 if all dependencies are satisfied according to package.json!
+      fs.writeFileSync('build-probe-7.log', 'YES');
       execSync("npm ls --depth=0", { cwd: PUBLISH_ROOT, stdio: "ignore" });
       nodeModulesValid = true;
     } catch {
