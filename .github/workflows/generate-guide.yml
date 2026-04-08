@@ -134,7 +134,9 @@ jobs:
           git push "https://x-access-token:${APP_TOKEN}@github.com/${{ github.repository }}.git" "${BRANCH}" --force
 
           # Use default GITHUB_TOKEN for PR creation
+          # TODO: Remove --draft once we are confident in full automation
           gh pr create \
+            --draft \
             --head "${BRANCH}" \
             --title "Guide: ${FEATURE_ID}" \
             --body "$(cat <<'EOF'
