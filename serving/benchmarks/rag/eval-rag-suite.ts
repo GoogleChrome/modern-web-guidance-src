@@ -22,6 +22,27 @@ function shuffle<T>(array: T[]): T[] {
   return arr;
 }
 
+function getModelObj(modelStr: string, isNoChunking: boolean) {
+  let name = "minilm";
+  let quantization = "q8";
+  let runtime = "wasm";
+  
+  if (modelStr.includes("gemma")) {
+    name = "gemma";
+  }
+  
+  if (modelStr.includes("@q4")) {
+    quantization = "q4";
+  }
+  
+  return {
+    name,
+    quantization,
+    runtime,
+    chunking: isNoChunking ? "singlechunk" : "chunked"
+  };
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const isNoChunking = args.includes('--no-chunking');
@@ -97,12 +118,9 @@ async function main() {
       
       if (fs.existsSync(resultsPath)) {
         const results = JSON.parse(fs.readFileSync(resultsPath, 'utf-8'));
-        const suffix = isNoChunking ? ' (No-Chunk)' : ' (Chunked)';
-        // Only append suffix if it's not already aggressively bound
-        if (!results[results.length - 1].model.includes(suffix)) {
-            results[results.length - 1].model = `${model}${suffix}`;
-            fs.writeFileSync(resultsPath, JSON.stringify(results, null, 2));
-        }
+        
+        results[results.length - 1].model = getModelObj(model, isNoChunking);
+        fs.writeFileSync(resultsPath, JSON.stringify(results, null, 2));
       }
     }
   }

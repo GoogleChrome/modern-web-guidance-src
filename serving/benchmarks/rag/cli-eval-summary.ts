@@ -10,7 +10,7 @@ const LATENCY_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-results-latency.j
 
 interface EvalRun {
   timestamp: string;
-  model: string;
+  model: string | { name: string; quantization: string; runtime: string; chunking: string; };
   totalQueries: number;
   top1HitRate: number;
   top3HitRate: number;
@@ -77,10 +77,18 @@ function run() {
         // Group by model
         const groups: Record<string, EvalRun[]> = {};
         for (const entry of history) {
-            if (!groups[entry.model]) {
-                groups[entry.model] = [];
+            let modelStr = "";
+            if (typeof entry.model === "object") {
+                const m = entry.model as any;
+                modelStr = `${m.name} ${m.quantization} - trjs onnx ${m.runtime} - ${m.chunking}`;
+            } else {
+                modelStr = entry.model;
             }
-            groups[entry.model].push(entry);
+            
+            if (!groups[modelStr]) {
+                groups[modelStr] = [];
+            }
+            groups[modelStr].push(entry);
         }
 
         console.log("\n=== Model Performance Summary (Accuracy) ===");
