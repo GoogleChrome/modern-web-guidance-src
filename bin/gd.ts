@@ -246,17 +246,6 @@ async function main() {
   const command = positionals[0];
 
   if (values.help || !command) {
-<<<<<<< HEAD
-    console.log(`
-${cBold('Guidance CLI')}
-
-${cCyan('Usage:')} gd <command> [options]
-
-${cBold('Guide Development:')}
-  ${cCyan('gen-guide')} <id>         Generate guide.md, demo.html, expectations.md from a web-feature-id
-  ${cCyan('audit')}                  Show status of all guides
-  ${cCyan('dev')} <dir> [options]    Auto-generate and calibrate guide artifacts
-
     showHelp();
     process.exit(0);
   }
@@ -396,22 +385,22 @@ ${cBold('Guide Development:')}
         };
         if (remap[action]) {
           const rest = positionals.slice(2).join(' ');
-          console.error(`${cRed(`'gd guide ${action}' has moved.`)}  Run: ${cCyan(`gd ${remap[action]}${rest ? ' ' + rest : ''}`)}\n`);
+          console.error(cRed("gd guide " + action + " has moved.") + "  Run: " + cCyan("gd " + remap[action] + (rest ? " " + rest : "")) + "\n");
         } else {
-          console.error(`${cRed(`The 'guide' namespace has been removed.`)} Run ${cCyan('gd --help')} for the new commands.\n`);
+          console.error(cRed("The 'guide' namespace has been removed.") + " Run " + cCyan("gd --help") + " for the new commands.\n");
         }
       } else if (['suite', 'task', 'smoke', 'report'].includes(command)) {
-        console.error(`${cRed(`'gd ${command}' has moved.`)}  Run: ${cCyan(`gd eval ${command}`)}\n`);
+        console.error(cRed("'gd " + command + "' has moved.") + "  Run: " + cCyan("gd eval " + command) + "\n");
       } else if (command === 'agent') {
-        console.error(`${cRed(`'gd agent' has moved.`)}  Run: ${cCyan(`gd run <template> <prompt>`)}\n`);
+        console.error(cRed("'gd agent' has moved.") + "  Run: " + cCyan("gd run <template> <prompt>") + "\n");
       } else if (['grade'].includes(command)) {
-        console.error(`${cRed(`'gd grade' has moved.`)}  Run: ${cCyan(`gd dev <guide_dir> --grade`)}\n`);
+        console.error(cRed("'gd grade' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --grade") + "\n");
       } else if (['test', 'test-grader'].includes(command)) {
-        console.error(`${cRed(`'gd test' has moved.`)}  Run: ${cCyan(`gd dev <guide_dir> --test-grader`)}\n`);
+        console.error(cRed("'gd test' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --test-grader") + "\n");
       } else if (['gen', 'gen-grader', 'gen-negative', 'gen:grader', 'gen:negative'].includes(command)) {
-        console.error(`${cRed(`'gd ${command}' has moved.`)}  Run: ${cCyan(`gd dev <guide_dir> --gen-grader`)} or ${cCyan(`--gen-negative`)}\n`);
+        console.error(cRed("'gd " + command + "' has moved.") + "  Run: " + cCyan("gd dev <guide_dir> --gen-grader") + " or " + cCyan("--gen-negative") + "\n");
       } else {
-        console.error(`${cRed(`Unknown command: ${command}.`)} Run ${cCyan('gd --help')} for usage.`);
+        console.error(cRed("Unknown command: " + command + ".") + " Run " + cCyan("gd --help") + " for usage.");
       }
       process.exit(1);
     }
