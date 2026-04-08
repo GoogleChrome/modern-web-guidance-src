@@ -148,7 +148,7 @@ function setupIsolatedWorkDir(): string {
   const geminiDest = path.join(tempHome, '.gemini');
   fs.mkdirSync(geminiDest, { recursive: true });
 
-  for (const file of ['oauth_creds.json', 'google_accounts.json', 'installation_id']) {
+  for (const file of ['oauth_creds.json', 'google_accounts.json', 'installation_id', 'settings.json']) {
     copyFileIfExists(path.join(geminiSource, file), path.join(geminiDest, file));
   }
 
