@@ -26,6 +26,27 @@ interface LatencyRun {
   runs: number[];
 }
 
+// Helper to align hyphens in model strings
+function alignModelString(model: string, colWidths: number[]): string {
+    const parts = model.split(" - ");
+    const paddedParts = parts.map((p, i) => p.padEnd(colWidths[i] || 0));
+    return paddedParts.join(" - ");
+}
+
+// Helper to calculate max widths for each part of the model string
+function calculateColWidths(models: string[]): number[] {
+    const maxParts = Math.max(...models.map(m => m.split(" - ").length));
+    const colWidths = Array(maxParts).fill(0);
+    
+    for (const model of models) {
+        const parts = model.split(" - ");
+        parts.forEach((p, i) => {
+            colWidths[i] = Math.max(colWidths[i], p.length);
+        });
+    }
+    return colWidths;
+}
+
 function run() {
     console.log("\n=== Glossary ===");
     const glossary = [
@@ -61,6 +82,9 @@ function run() {
 
         console.log("\n=== Model Performance Summary (Accuracy) ===");
         
+        const allModels = Object.keys(groups);
+        const colWidths = calculateColWidths(allModels);
+        
         const summaryData = Object.entries(groups).map(([model, runs]) => {
             const top1Rates = runs.map(r => r.top1HitRate);
             const mrrRates = runs.map(r => r.meanReciprocalRank);
@@ -71,8 +95,10 @@ function run() {
             
             const avgMrr = mrrRates.reduce((a, b) => a + b, 0) / runs.length;
             
+            const formattedModel = alignModelString(model, colWidths);
+            
             return {
-                Model: model,
+                Model: formattedModel,
                 Runs: runs.length,
                 "Avg Top-1": (avgTop1 * 100).toFixed(1) + "%",
                 "Max Top-1": (maxTop1 * 100).toFixed(1) + "%",
@@ -98,6 +124,9 @@ function run() {
 
         console.log("\n=== Model Latency Summary (E2E for 1 Query) ===");
         
+        const allLatencyModels = Object.keys(latestRuns);
+        const latencyColWidths = calculateColWidths(allLatencyModels);
+        
         const latencyData = Object.entries(latestRuns).map(([model, run]) => {
             const coldStart = run.runs.length > 0 ? `${run.runs[0]} ms` : "N/A";
             
@@ -108,8 +137,10 @@ function run() {
                 warmAvg = `${avg.toFixed(1)} ms`;
             }
             
+            const formattedModel = alignModelString(model, latencyColWidths);
+            
             return {
-                Model: model,
+                Model: formattedModel,
                 "Cold Start (Run 1)": coldStart,
                 "Warm Avg (Runs 2+)": warmAvg,
                 "E2E Average": `${run.avgLatencyMs.toFixed(1)} ms`
