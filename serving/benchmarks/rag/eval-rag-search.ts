@@ -5,6 +5,7 @@ import { Embedder } from "../../mcp-server/lib/embedder.ts";
 import { searchUseCases } from "../../lib/search.ts";
 import { Gpt4AllEmbedder } from "./gpt4all-embedder.ts";
 import type { EvalQuery } from "./generate-eval-queries.ts";
+import { TfjsEmbedder } from "./tfjs-embedder.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,7 +47,9 @@ async function main() {
   console.log(`Initializing Embedder with model: ${modelArg || "default"}`);
   
   let embedder: any;
-  if (modelArg && (modelArg.includes(".gguf") || modelArg.includes("nomic"))) {
+  if (modelArg === "tfjs") {
+    embedder = TfjsEmbedder.getInstance();
+  } else if (modelArg && (modelArg.includes(".gguf") || modelArg.includes("nomic"))) {
     embedder = Gpt4AllEmbedder.getInstance(modelArg);
   } else {
     embedder = Embedder.getInstance(modelArg);
@@ -64,7 +67,7 @@ async function main() {
   for (let i = 0; i < queries.length; i++) {
     const q = queries[i];
     // Ask for top 5 so we can calculate MRR and top-k effectively
-    const results = await searchUseCases(q.query, 5, 2.0); 
+    const results = await searchUseCases(q.query, 5, 2.0, embedder); 
 
     // Find the rank (1-indexed) of the correct guideId
     const rankIndex = results.findIndex((r) => r.id === q.guideId);
@@ -109,6 +112,10 @@ async function main() {
   fs.writeFileSync(RESULTS_FILE, JSON.stringify(history, null, 2));
 
   console.log(`\nEvaluation complete. Results appended to ${RESULTS_FILE}`);
+  
+  if (embedder && typeof embedder.shutdown === "function") {
+    embedder.shutdown();
+  }
 }
 
 if (process.argv[1] === __filename) {
