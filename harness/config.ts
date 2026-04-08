@@ -1,13 +1,13 @@
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
-import "dotenv/config";
-
 import { rootDir, harnessDir } from '../lib/paths.ts';
 
-// Explicitly load .env from the project root
-import dotenv from 'dotenv';
-dotenv.config({ path: path.join(rootDir, '.env') });
+try {
+  process.loadEnvFile(path.join(rootDir, '.env'));
+} catch {
+  // Ignore if missing
+}
 
 export const Agents = {
   JETSKI: 'jetski',

@@ -60,7 +60,7 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string,
       'guided', // Default to guided for ad-hoc tool execution
       targetDir,
       templateDir
-    ], { GD_SUITE_CONFIG: suiteConfigPath });
+    ], { GD_SUITE_CONFIG: suiteConfigPath, ENABLE_FILE_LOGGING: 'true' });
     console.log(`\n✅ ${taskNameLabel} complete! Results in ${targetDir}`);
   } catch (error) {
     console.error(`❌ ${taskNameLabel} failed:`, error);
@@ -184,7 +184,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           }
           pnpmArgs.push('run-agent');
           const suiteConfigPath = path.resolve(testDir, 'suite_config.json');
-          await runCommand('pnpm', pnpmArgs, { GD_SUITE_CONFIG: suiteConfigPath }, runDir);
+          await runCommand('pnpm', pnpmArgs, { GD_SUITE_CONFIG: suiteConfigPath, ENABLE_FILE_LOGGING: 'true' }, runDir);
           console.log(`✅ Completed Run ${runNumber} test executions`);
         } catch (error) {
           console.error(`❌ Failed during Run ${runNumber} test execution`, error);

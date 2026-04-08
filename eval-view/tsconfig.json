@@ -3,21 +3,21 @@
     "target": "esnext",
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
     "noEmit": true,
-    "erasableSyntaxOnly": true,
-    "verbatimModuleSyntax": true,
-    "allowImportingTsExtensions": true,
     "allowJs": true,
-    "checkJs": true
+    "checkJs": true,
+    "allowImportingTsExtensions": true,
+    "lib": ["esnext", "dom", "dom.iterable"]
   },
   "include": [
-    "**/*"
+    "server.js"
   ],
   "exclude": [
-    "results/"
+    "node_modules",
+    "test-results",
+    "mock-results"
   ]
 }

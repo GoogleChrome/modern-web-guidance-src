@@ -4,7 +4,7 @@ import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import matter from "gray-matter";
 import * as esbuild from "esbuild";
-import { classifyGuide, scanAllGuides } from "../../lib/guide-validation.ts";
+import { scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
 
@@ -14,7 +14,14 @@ const PUBLISH_ROOT = path.join(ROOT_DIST_DIR, "skills-cli");
 
 const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases");
 
-async function main() {
+interface BuildResult {
+  featuresCount: number;
+  useCasesCount: number;
+  skillsCount: number;
+  skillNames: string[];
+}
+
+async function main(): Promise<BuildResult | undefined> {
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
   const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
 
@@ -121,20 +128,29 @@ async function main() {
 
 
 
-  console.log("Copying SKILL.md...");
-  const skillMdSource = path.join(rootDir, "guides/modern-web-use-cases/SKILL.md");
+  console.log("Scanning for skills (SKILL.md) in guides/...");
+  const guidesDirInRoot = path.join(rootDir, "guides");
+  const candidates = fs.readdirSync(guidesDirInRoot, { withFileTypes: true })
+    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+    .map(d => d.name);
 
-  const skillMdDest = path.join(DIST_DIR, "SKILL.md");
-
-  if (fs.existsSync(skillMdSource)) {
-    fs.copyFileSync(skillMdSource, skillMdDest);
-    console.log(`Copied SKILL.md to ${skillMdDest}`);
-  } else {
-    console.error(`Error: SKILL.md source not found at ${skillMdSource}`);
-    process.exit(1);
+  let skillsCount = 0;
+  const skillNames: string[] = [];
+  for (const candidate of candidates) {
+    const skillSource = path.join(guidesDirInRoot, candidate, "SKILL.md");
+    if (fs.existsSync(skillSource)) {
+      const skillDestDir = path.join(PUBLISH_ROOT, "skills", candidate);
+      const skillDest = path.join(skillDestDir, "SKILL.md");
+      fs.mkdirSync(skillDestDir, { recursive: true });
+      fs.copyFileSync(skillSource, skillDest);
+      console.log(`Copied skill ${candidate} (SKILL.md) to ${skillDestDir}`);
+      skillsCount++;
+      skillNames.push(candidate);
+    }
   }
+  console.log(`Successfully copied ${skillsCount} skills to distribution.`);
 
-  updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
+  const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
 
   let nodeModulesValid = false;
   if (fs.existsSync(path.join(PUBLISH_ROOT, "node_modules"))) {
@@ -174,6 +190,7 @@ async function main() {
   }
 
   console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
+  return { featuresCount, useCasesCount, skillsCount, skillNames };
   } finally {
     if (fs.existsSync(lockFilePath)) {
       fs.unlinkSync(lockFilePath);
@@ -183,7 +200,7 @@ async function main() {
 
 function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   console.log("Generating dynamic README content around features and use cases...");
-  const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
+  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
   
   const useCaseGroupMap = new Map<string, { features: { id: string; name: string }[]; useCases: { id: string; description: string }[] }>();
   const allFeatureIds = new Set<string>();
@@ -247,6 +264,8 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     fs.writeFileSync(readmePath, readmeContent);
     console.log("README dynamically updated with features and use cases.");
   }
+
+  return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

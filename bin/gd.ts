@@ -18,6 +18,40 @@ try {
   // Ignore if file doesn't exist
 }
 
+// --- Single Source of Truth Metadata ---
+
+const ALL_OPTIONS = {
+  help: { type: 'boolean', short: 'h', desc: 'Show this help' },
+  version: { type: 'boolean', short: 'v', desc: 'Show version' },
+  grade: { type: 'boolean', desc: 'Run/calibrate grader' },
+  'test-grader': { type: 'boolean', desc: 'Check grader calibration (demo + negative-demo)' },
+  'gen-grader': { type: 'boolean', desc: 'Generate a new grader script' },
+  'gen-negative': { type: 'boolean', desc: 'Generate negative examples' },
+  guided: { type: 'boolean', desc: 'Skip calibration, run guided agent test only' },
+  verbose: { type: 'boolean', desc: 'Show additional output' },
+  usecases: { type: 'boolean', desc: 'Group by usecases rather than features' },
+  config: { type: 'string', desc: 'Custom config file (defaults to root config.ts)' },
+  ui: { type: 'boolean', desc: 'Start the evaluation review UI' },
+} as const;
+
+type OptionName = keyof typeof ALL_OPTIONS;
+
+const COMMAND_METADATA = {
+  audit: { desc: 'Show status of all guides', flags: ['usecases'] },
+  dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'gen-negative', 'guided'] },
+  eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
+  dashboard: { desc: 'Start the evaluation dashboard', flags: [] },
+  run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
+  deploy: { desc: 'Deploy the dashboard to GitHub Pages', flags: [] },
+  upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
+  baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
+
+  'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
+} satisfies Record<string, { desc: string; flags: OptionName[] }>;
+
+const COMMANDS = Object.keys(COMMAND_METADATA);
+type CommandName = keyof typeof COMMAND_METADATA;
+
 // --- Shell Auto-Completion ---
 
 function listGuideDirs(): string[] {
@@ -36,52 +70,68 @@ function listGuideDirs(): string[] {
   return dirs;
 }
 
-const completion = omelette('gd <command> <arg1> <arg2>');
+function getFlagsForLine(line: string): string[] {
+  const parts = line.split(/\s+/).filter(Boolean);
+  const cmd = parts[1] as CommandName;
+  const meta = COMMAND_METADATA[cmd];
+  const baseFlags = meta ? meta.flags : [];
+  return [...new Set([...baseFlags, 'verbose'])].map(f => '--' + f);
+}
 
-completion.on('command', ({ reply }) => {
-  reply(['dev', 'dev-all', 'grade', 'test', 'gen', 'audit', 'eval', 'run', 'dashboard', 'deploy', 'upload', 'baselinestatus', 'setup-completion']);
-});
+const completion = omelette('gd <command> <arg1> <arg2> <arg3> <arg4> <arg5>');
 
-completion.on('arg1', ({ before, reply }) => {
+completion.on('command', ({ reply }) => reply(COMMANDS));
+
+completion.on('arg1', ({ before, line, reply }) => {
+  const flags = getFlagsForLine(line);
   if (before === 'eval') {
     const tasks = Array.from(getTaskMap().keys());
-    reply(['suite', ...tasks, ...listGuideDirs()]);
+    reply(['suite', ...tasks, ...listGuideDirs(), ...flags]);
   } else if (before === 'gen') {
     reply(['grader', 'negative']);
+  } else if (before === 'audit') {
+    reply(flags);
   } else if (['dev', 'test', 'grade'].includes(before)) {
-    reply(listGuideDirs());
+    reply([...listGuideDirs(), ...flags]);
+  } else {
+    reply(flags);
   }
 });
 
 completion.on('arg2', ({ before, line, reply }) => {
-  if (before === 'run') {
+  const flags = getFlagsForLine(line);
+  if (line.includes('gd eval')) {
+    reply(flags);
+  } else if (line.includes('gd dev') && before.startsWith('guides/')) {
+    reply(flags);
+  } else if (before === 'run') {
     if (fs.existsSync(baseAppsDir)) {
       reply(fs.readdirSync(baseAppsDir).filter(d => fs.statSync(path.join(baseAppsDir, d)).isDirectory()));
     }
   } else if (['grader', 'negative'].includes(before) && line.includes('gen')) {
     reply(listGuideDirs());
+  } else {
+    reply(flags);
   }
 });
+
+completion.on('arg3', ({ line, reply }) => reply(getFlagsForLine(line)));
+completion.on('arg4', ({ line, reply }) => reply(getFlagsForLine(line)));
+completion.on('arg5', ({ line, reply }) => reply(getFlagsForLine(line)));
 
 completion.init();
 
 // --- Argument Parsing ---
 
+const parseOptions: any = {};
+for (const [key, val] of Object.entries(ALL_OPTIONS)) {
+  parseOptions[key] = { type: val.type };
+  if ((val as any).short) parseOptions[key].short = (val as any).short;
+}
+
 const { positionals, values } = parseArgs({
   args: process.argv.slice(2),
-  options: {
-    help: { type: 'boolean', short: 'h' },
-    version: { type: 'boolean', short: 'v' },
-    grade: { type: 'boolean' },
-    'test-grader': { type: 'boolean' },
-    'gen-grader': { type: 'boolean' },
-    'gen-negative': { type: 'boolean' },
-    guided: { type: 'boolean' },
-    verbose: { type: 'boolean' },
-    usecases: { type: 'boolean' },
-    config: { type: 'string' },
-    ui: { type: 'boolean' },
-  },
+  options: parseOptions,
   allowPositionals: true,
   strict: false,
 });
@@ -94,13 +144,19 @@ async function resolveSuiteConfig(configPath?: string): Promise<SuiteConfig> {
     : path.resolve(rootDir, 'config.ts');
 
   let overrides: any = {};
-  if (fs.existsSync(resolvedConfigPath)) {
+  try {
     const fileUrl = pathToFileURL(resolvedConfigPath).href;
     const customConfig = await import(fileUrl);
     overrides = customConfig.default || customConfig;
-  } else if (configPath) {
-    console.error(cRed('⚠️ Specified config file not found: ' + resolvedConfigPath));
-    process.exit(1);
+  } catch (err: any) {
+    if (err.code === 'ERR_MODULE_NOT_FOUND') {
+      if (configPath) {
+        console.error(cRed('⚠️ Specified config file not found: ' + resolvedConfigPath));
+        process.exit(1);
+      }
+    } else {
+      throw err;
+    }
   }
 
   return mergeSuiteConfig(overrides);
@@ -128,45 +184,64 @@ function requireArg(arg: string | undefined, usage: string): string {
 
 // --- Command Routing ---
 
+function showHelp() {
+  const groups = [
+    {
+      title: 'Guide Development',
+      commands: ['dev', 'audit'],
+    },
+    {
+      title: 'Evaluation & Dashboard',
+      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload'],
+    },
+    {
+      title: 'Utilities & Setup',
+      commands: ['baselinestatus', 'setup-completion'],
+    },
+  ] as const;
+
+  // AI-First Safety: Enforce at compile-time that every command is documented in the help text
+  type AssertEmpty<_T extends never> = true;
+  type _CheckAllCmdsRendered = AssertEmpty<Exclude<CommandName, typeof groups[number]['commands'][number]>>;
+  
+  // AI-First Safety: Enforce that every flag in ALL_OPTIONS is assigned to a command or rendered globally
+  type GlobalFlags = 'help' | 'version' | 'verbose';
+  type CmdFlags = typeof COMMAND_METADATA[keyof typeof COMMAND_METADATA]['flags'][number];
+  type _CheckAllFlagsRendered = AssertEmpty<Exclude<OptionName, GlobalFlags | CmdFlags>>;
+
+  console.log(`\n${cCyan('Usage:')} gd <command> [options]\n`);
+
+  for (const group of groups) {
+    console.log(cBold(group.title));
+    for (const cmd of group.commands) {
+      const meta = COMMAND_METADATA[cmd as CommandName];
+      if (!meta) continue;
+
+      const args = cmd === 'dev' ? ' <dir>' : cmd === 'run' ? ' <tmpl> <prompt>' : cmd === 'eval' ? ' [suite|tasks...]' : cmd === 'baselinestatus' ? ' <query>' : '';
+      console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
+
+      if (meta.flags.length > 0) {
+        for (const flagName of meta.flags) {
+          const optVal = ALL_OPTIONS[flagName];
+          const arg = flagName === 'config' ? ' <path>' : '';
+          console.log(`    ${cDim(('--' + flagName + arg).padEnd(26))} ${optVal.desc}`);
+        }
+      }
+    }
+    console.log('');
+  }
+
+  console.log(cBold('Global Options:'));
+  console.log(`  ${cDim('-h, --help'.padEnd(28))} Show this help`);
+  console.log(`  ${cDim('-v, --version'.padEnd(28))} Show version`);
+  console.log(`  ${cDim('    --verbose'.padEnd(28))} ${ALL_OPTIONS.verbose.desc}\n`);
+}
+
 async function main() {
   const command = positionals[0];
 
   if (values.help || !command) {
-    console.log(`
-${cBold('Guidance CLI')}
-
-${cCyan('Usage:')} gd <command> [options]
-
-${cBold('Guide Development:')}
-  ${cCyan('audit')}                  Show status of all guides
-  ${cCyan('dev')} <dir> [options]    Auto-generate and calibrate guide artifacts
-
-${"Piece-wise options for `dev`:"}
-    ${cDim('--grade')}              Run/calibrate grader
-    ${cDim('--test-grader')}        Check grader calibration (demo + negative-demo)
-    ${cDim('--gen-grader')}         Generate a new grader script
-    ${cDim('--gen-negative')}       Generate negative examples
-    ${cDim('--guided')}             Skip calibration, run guided agent test only
-    ${cDim('--no-test')}            Skip agent tests after calibration
-    ${cDim('--verbose')}            Show additional output
-
-${cBold('Evaluation:')}
-  ${cCyan('eval')} [suite|tasks...]  Run the full evaluation suite, or specific tasks
-  ${cCyan('dashboard')}              Start the evaluation dashboard
-  ${cCyan('run')} <tmpl> <prompt>    Run an ad-hoc agent test against a template
-  ${cCyan('deploy')}                 Deploy the dashboard to GitHub Pages
-  ${cCyan('upload')} <suite>         Upload generated evaluation suite to GCS
-
-${cBold('Other:')}
-  ${cCyan('baselinestatus')} <query>      Check browser support and Baseline status
-  ${cCyan('setup-completion')}            Install shell auto-completion
-
-${cBold('Options:')}
-  ${cDim('-h, --help')}                 Show this help
-  ${cDim('--verbose')}                  Show additional output
-  ${cDim('--usecases')}                 (Audit) Group by categories/usecases (default is features)
-  ${cDim('--config <custom_config>')}   (Eval) Path to a custom TS suite config file (defaults to config.ts, or falls back to defaults in harness/config.ts)
-    `);
+    showHelp();
     process.exit(0);
   }
 

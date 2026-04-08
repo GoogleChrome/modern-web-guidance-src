@@ -15,7 +15,7 @@ export interface StoreUseCase {
 import { Gpt4AllEmbedder } from "../benchmarks/rag/gpt4all-embedder.ts";
 import { TfjsEmbedder } from "../benchmarks/rag/tfjs-embedder.ts";
 import { replaceMacros } from "../mcp-server/lib/macros.ts";
-import { classifyGuide, scanAllGuides } from "../../lib/guide-validation.ts";
+import { scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
@@ -34,7 +34,7 @@ async function processGuides() {
   const force = process.argv.includes("--force");
 
   // Scan guides first to see if we even need to run
-  const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
+  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
 
   const LANCE_DB_DIR = path.join(ROOT_DIR, "vector_store");
 
