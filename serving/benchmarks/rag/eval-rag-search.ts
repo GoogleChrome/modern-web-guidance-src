@@ -29,6 +29,11 @@ function getModelArg(): string | undefined {
   return modelArg ? modelArg.split("=")[1] : undefined;
 }
 
+function getIdArg(): string | undefined {
+  const idArg = process.argv.find((arg) => arg.startsWith("--id="));
+  return idArg ? idArg.split("=")[1] : undefined;
+}
+
 async function main() {
   if (!fs.existsSync(EVAL_FILE)) {
     console.error(`Evaluation file not found: ${EVAL_FILE}`);
@@ -44,7 +49,12 @@ async function main() {
   }
 
   const modelArg = getModelArg();
-  console.log(`Initializing Embedder with model: ${modelArg || "default"}`);
+  const idArg = getIdArg();
+  let modelName = modelArg || "Xenova/all-MiniLM-L6-v2";
+  if (idArg) {
+    modelName = `${modelName} (${idArg})`;
+  }
+  console.log(`Initializing Embedder with model: ${modelArg || "default"} (Name: ${modelName})`);
   
   let embedder: any;
   if (modelArg === "tfjs") {
@@ -82,7 +92,7 @@ async function main() {
   const total = queries.length;
   const metrics: EvalRun = {
     timestamp: new Date().toISOString(),
-    model: modelArg || "Xenova/all-MiniLM-L6-v2", // Fallback default name
+    model: modelName,
     totalQueries: total,
     top1HitRate: +(hitsTop1 / total).toFixed(4),
     top3HitRate: +(hitsTop3 / total).toFixed(4),
