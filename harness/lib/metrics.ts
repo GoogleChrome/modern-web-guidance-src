@@ -28,6 +28,7 @@ export interface Metrics {
     guideUsageRate?: number;
     guideUsageCount?: number;
     totalGuidedRuns?: number;
+    totalGuideSpecificRuns?: number;
     toolActivationRate?: number;
     toolActivationCount?: number;
   };
@@ -39,6 +40,7 @@ export interface Metrics {
     runCount?: number;
     passedChecks: number;
     totalChecks: number;
+    isSkill?: boolean;
   }>;
   sortedKeys: string[];
 }
@@ -76,6 +78,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     runCount?: number;
     passedChecks: number;
     totalChecks: number;
+    isSkill?: boolean;
   }> = {};
 
   for (const name of sortedKeys) {
@@ -125,7 +128,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       runsWithToolActivation: runType === 'guided' ? toolActivationCount : undefined,
       runCount: runs.length,
       passedChecks,
-      totalChecks
+      totalChecks,
+      isSkill: runs[0]?.isSkill
     };
   }
 
@@ -144,6 +148,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let guideUsageCount = 0;
     let toolActivationCount = 0;
     let totalGuidedRuns = 0;
+    let totalGuideSpecificRuns = 0;
 
     keys.forEach(k => {
       const [, , runType] = k.split(' - ');
@@ -157,6 +162,10 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
           guideUsageCount += stats.runsUsingGuide || 0;
           toolActivationCount += stats.runsWithToolActivation || 0;
           totalGuidedRuns += stats.runCount || 0;
+          
+          if (!stats.isSkill) {
+            totalGuideSpecificRuns += stats.runCount || 0;
+          }
         }
       }
     });
@@ -168,9 +177,10 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       rate: total ? Math.round((passed / total) * 100) : 0,
       guideUsageCount,
       totalGuidedRuns,
+      totalGuideSpecificRuns,
       toolActivationCount,
       toolActivationRate: totalGuidedRuns ? Math.round((toolActivationCount / totalGuidedRuns) * 100) : 0,
-      guideUsageRate: totalGuidedRuns ? Math.round((guideUsageCount / totalGuidedRuns) * 100) : 0
+      guideUsageRate: totalGuideSpecificRuns ? Math.round((guideUsageCount / totalGuideSpecificRuns) * 100) : 0
     };
   };
 
@@ -191,6 +201,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       guideUsageRate: gStats.guideUsageRate,
       guideUsageCount: gStats.guideUsageCount,
       totalGuidedRuns: gStats.totalGuidedRuns,
+      totalGuideSpecificRuns: gStats.totalGuideSpecificRuns,
       toolActivationRate: gStats.toolActivationRate,
       toolActivationCount: gStats.toolActivationCount
     },

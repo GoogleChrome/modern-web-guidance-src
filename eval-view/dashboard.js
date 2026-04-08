@@ -343,23 +343,9 @@ function renderSummary(data) {
     const unguidedRate = summary.unguidedPassRate;
     const guidedRate = summary.guidedPassRate;
 
-    // Recalculate guide usage to exclude disciplines
-    let totalGuidedRuns = 0;
-    let guideUsageCount = 0;
-    
-    for (const [testName, testStats] of Object.entries(data.stats)) {
-        const parts = testName.split(' - ');
-        if (parts.length === 3 && parts[2] === 'guided') {
-            const runData = data.results[testName];
-            const isSkill = runData && runData[0] && runData[0].isSkill;
-            if (!isSkill) {
-                totalGuidedRuns += testStats.runCount || 0;
-                guideUsageCount += testStats.runsUsingGuide || 0;
-            }
-        }
-    }
-    
-    const guideUsageRate = totalGuidedRuns > 0 ? Math.round((guideUsageCount / totalGuidedRuns) * 100) : 0;
+    const guideUsageRate = summary.guideUsageRate || 0;
+    const guideUsageCount = summary.guideUsageCount || 0;
+    const totalGuideSpecificRuns = summary.totalGuideSpecificRuns !== undefined ? summary.totalGuideSpecificRuns : (summary.totalGuidedRuns || 0);
 
     container.innerHTML = `
         <div class="stat-card">
@@ -385,10 +371,10 @@ function renderSummary(data) {
                 <span style="opacity: 0.8; color: ${getColor(summary.toolActivationRate)}">(${summary.toolActivationCount}/${summary.totalGuidedRuns} runs)</span>
             </div>
             ` : ''}
-            ${totalGuidedRuns > 0 ? `
+            ${totalGuideSpecificRuns > 0 ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Guide Usage: <span style="font-weight: bold; color: ${getColor(guideUsageRate)}">${guideUsageRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(guideUsageRate)}">(${guideUsageCount}/${totalGuidedRuns} runs)</span>
+                <span style="opacity: 0.8; color: ${getColor(guideUsageRate)}">(${guideUsageCount}/${totalGuideSpecificRuns} runs)</span>
             </div>
             ` : ''}
         </div>
