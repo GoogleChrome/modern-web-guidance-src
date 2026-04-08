@@ -1,5 +1,5 @@
 import * as tf from "@tensorflow/tfjs";
-import { AutoTokenizer } from "./dist/tokenizer.js";
+import { AutoTokenizer } from "@huggingface/transformers";
 import path from "path";
 import fs from "fs";
 
