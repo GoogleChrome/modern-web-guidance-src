@@ -340,5 +340,14 @@
     "top3HitRate": 0.941,
     "top5HitRate": 0.9811,
     "meanReciprocalRank": 0.8208
+  },
+  {
+    "timestamp": "2026-04-08T18:41:09.797Z",
+    "model": "Xenova/all-MiniLM-L6-v2 (native-agg)",
+    "totalQueries": 848,
+    "top1HitRate": 0.7028,
+    "top3HitRate": 0.941,
+    "top5HitRate": 0.9811,
+    "meanReciprocalRank": 0.8208
   }
 ]
