@@ -151,7 +151,8 @@ jobs:
           EOF
           )" \
             --reviewer "${REVIEWER}" \
-            --base main
+            --base pipelinev2
+
         shell: bash
 
   # ── SME feedback: re-run affected pipeline stages on guidance-bot/* branches ─

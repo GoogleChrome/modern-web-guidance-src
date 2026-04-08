@@ -122,7 +122,36 @@ Example output:
 `.trim();
 }
 
+function buildExpectationsPrompt(feature: FeatureInfo, useCase: { slug: string; description: string }): string {
+  return `
+You are generating structured expectations for the use case: "${useCase.description}".
+This use case relies on the feature "${feature.name}" (ID: ${feature.id}).
+
+Your task is to create an \`expectations.md\` file that defines how to verify a solution for this use case.
+
+Follow this EXACT format with three sections:
+
+\`\`\`markdown
+## Must pass
+- <assertion that a correct implementation must satisfy>
+- <one assertion per bullet>
+
+## Must fail
+- <assertion that an incorrect implementation using a legacy/anti-pattern approach would violate>
+- <focus on the most likely incorrect alternative to this feature>
+
+## App-agnostic rules
+- Do not assert specific variable names, function names, or filenames
+- Assert API usage patterns and outcomes, not specific code structure
+- <add any other app-agnostic constraints relevant to this feature>
+\`\`\`
+
+Output ONLY the raw markdown content, with no outer code blocks or other text.
+`.trim();
+}
+
 function buildDemoPrompt(feature: FeatureInfo, useCase: { slug: string; description: string }): string {
+
   return `
 You are generating a minimal demo for the use case: "${useCase.description}".
 This use case relies on the feature "${feature.name}" (ID: ${feature.id}).
@@ -241,8 +270,20 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
     fs.writeFileSync(path.join(outputDir, 'demo.html'), cleanHtml);
     console.log(`✅ Generated demo.html`);
 
+    // 3. Generate expectations.md
+    console.log(`Generating expectations.md for ${uc.slug}...`);
+    const expectationsPrompt = buildExpectationsPrompt(feature, uc);
+    const expectationsMd = await runGemini(expectationsPrompt, workDir);
+    
+    // Strip markdown code blocks if present
+    const cleanExpectations = expectationsMd.replace(/^```markdown\n?/, '').replace(/\n?```$/, '').trim();
+    
+    fs.writeFileSync(path.join(outputDir, 'expectations.md'), cleanExpectations);
+    console.log(`✅ Generated expectations.md`);
+
     console.log(`Running gd dev for ${uc.slug}...`);
     await devGuide(outputDir, { noTest: true });
+
   }
 
 
