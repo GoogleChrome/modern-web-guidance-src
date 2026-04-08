@@ -98,8 +98,11 @@ function setupTestFilters() {
 
     // Close menu when clicking outside
     document.addEventListener('click', (e) => {
-        if (!filterMenu.contains(e.target) && !filterBtn.contains(e.target)) {
-            filterMenu.classList.add('hidden');
+        const target = e.target;
+        if (target instanceof Node && filterMenu && filterBtn) {
+            if (!filterMenu.contains(target) && !filterBtn.contains(target)) {
+                filterMenu.classList.add('hidden');
+            }
         }
     });
 
@@ -121,11 +124,16 @@ function setupTestFilters() {
 
     // Search functionality
     searchInput.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
+        const target = e.target;
+        if (!(target instanceof HTMLInputElement)) return;
+        const term = target.value.toLowerCase();
         const items = list.querySelectorAll('.filter-item');
         items.forEach(item => {
-            const label = item.querySelector('.filter-item-label').textContent.toLowerCase();
-            item.style.display = label.includes(term) ? 'flex' : 'none';
+            if (item instanceof HTMLElement) {
+                const labelEl = item.querySelector('.filter-item-label');
+                const label = labelEl ? labelEl.textContent.toLowerCase() : '';
+                item.style.display = label.includes(term) ? 'flex' : 'none';
+            }
         });
     });
 
@@ -144,9 +152,12 @@ function setupTableFilters() {
         const el = document.getElementById(id);
         if (!el) return;
         el.addEventListener('change', (e) => {
-            updateFn(e.target.value);
-            syncSelectStyles(e.target);
-            renderSuites();
+            const target = e.target;
+            if (target instanceof HTMLSelectElement || target instanceof HTMLInputElement) {
+                updateFn(target.value);
+                syncSelectStyles(target);
+                renderSuites();
+            }
         });
         syncSelectStyles(el);
     });
@@ -163,7 +174,7 @@ function renderFilterMenuItems() {
 
     // Get all tests sorted by date
     const sortedIds = Object.keys(allTestData).sort((a, b) => {
-        return new Date(allTestData[b].timestamp) - new Date(allTestData[a].timestamp);
+        return new Date(allTestData[b].timestamp).getTime() - new Date(allTestData[a].timestamp).getTime();
     });
 
     sortedIds.forEach(compoundKey => {
@@ -176,13 +187,16 @@ function renderFilterMenuItems() {
         checkbox.value = compoundKey;
 
         checkbox.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                selectedTestIds.add(compoundKey);
-            } else {
-                selectedTestIds.delete(compoundKey);
+            const target = e.target;
+            if (target instanceof HTMLInputElement) {
+                if (target.checked) {
+                    selectedTestIds.add(compoundKey);
+                } else {
+                    selectedTestIds.delete(compoundKey);
+                }
+                updateUrlParams();
+                renderAll();
             }
-            updateUrlParams();
-            renderAll();
         });
 
         const labelContent = document.createElement('div');
@@ -215,7 +229,7 @@ function renderFilterMenuItems() {
 }
 
 function updateUrlParams() {
-    const url = new URL(window.location);
+    const url = new URL(window.location.href);
     const allIds = Object.keys(allTestData);
 
     // If all are selected, remove param
@@ -440,7 +454,9 @@ function setupRateCellHovers() {
     const rateCells = document.querySelectorAll('.rate-cell');
     rateCells.forEach(cell => {
         cell.addEventListener('mouseenter', (e) => {
+            if (!(cell instanceof HTMLElement)) return;
             const compoundKey = cell.dataset.compoundKey;
+            if (!compoundKey) return;
             const testInfo = allTestData[compoundKey];
             if (!testInfo) return;
 
@@ -449,10 +465,16 @@ function setupRateCellHovers() {
                 hideTimeout = null;
             }
 
-            showTooltipChart(testInfo, e.clientX, e.clientY, compoundKey);
+            if (e instanceof MouseEvent) {
+                showTooltipChart(testInfo, e.clientX, e.clientY, compoundKey);
+            }
         });
 
-        cell.addEventListener('mousemove', (e) => updateTooltipPosition(e.clientX, e.clientY));
+        cell.addEventListener('mousemove', (e) => {
+            if (e instanceof MouseEvent) {
+                updateTooltipPosition(e.clientX, e.clientY);
+            }
+        });
 
         cell.addEventListener('mouseleave', () => hideTooltipChart());
     });
@@ -554,6 +576,6 @@ function getSortedTestIds() {
     return Array.from(selectedTestIds).sort((a, b) => {
         // Safety check if id not in allTestData (shouldn't happen but good practice)
         if (!allTestData[a] || !allTestData[b]) return 0;
-        return new Date(allTestData[b].timestamp) - new Date(allTestData[a].timestamp);
+        return new Date(allTestData[b].timestamp).getTime() - new Date(allTestData[a].timestamp).getTime();
     });
 }

@@ -38,7 +38,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadDashboardData(testId) {
     // Prevent double loading
+    // @ts-expect-error global property
     if (window.dashboardLoaded) return;
+    // @ts-expect-error global property
     window.dashboardLoaded = true;
 
     try {
@@ -114,9 +116,11 @@ async function loadDashboardData(testId) {
                         const checkItems = document.querySelectorAll('.check-item');
                         for (const item of checkItems) {
                             if (item.textContent.includes(checkId)) {
-                                item.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                item.style.backgroundColor = 'rgba(255, 255, 0, 0.2)'; // Highlight
-                                item.style.transition = 'background-color 0.5s';
+                                if (item instanceof HTMLElement) {
+                                    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    item.style.backgroundColor = 'rgba(255, 255, 0, 0.2)'; // Highlight
+                                    item.style.transition = 'background-color 0.5s';
+                                }
                                 break;
                             }
                         }
@@ -126,6 +130,7 @@ async function loadDashboardData(testId) {
         }
     } catch (error) {
         console.error('Error:', error);
+        // @ts-expect-error global property
         window.dashboardLoaded = false;
 
         let errorHtml = `<div style="text-align:center; padding: 50px; color: red;">
@@ -157,10 +162,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Close function that also cleans up URL
     const closeModal = () => {
-        if (modal.open) modal.close();
+        if (modal instanceof HTMLDialogElement && modal.open) modal.close();
     };
 
-    if (closeBtn) closeBtn.onclick = closeModal;
+    if (closeBtn instanceof HTMLElement) closeBtn.onclick = closeModal;
 
     // Close on backdrop click
     modal.addEventListener('click', (event) => event.target === modal && closeModal());
@@ -214,7 +219,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             title.textContent = 'Test Suite Run Log';
                             body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading log...</div>';
                             modal.dataset.view = 'log';
-                            modal.showModal();
+                            if (modal instanceof HTMLDialogElement) {
+                                modal.showModal();
+                            }
 
                             try {
                                 const text = await api.getFileText(`${testId}/test_suite.log`);
@@ -237,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Arrow key navigation
     document.addEventListener('keydown', (e) => {
         const modal = document.getElementById('modal');
-        if (!modal || !modal.open || modal.dataset.view !== 'details') return;
+        if (!modal || !(modal instanceof HTMLDialogElement) || !modal.open || modal.dataset.view !== 'details') return;
 
         if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
             if (!currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
@@ -675,7 +682,7 @@ async function showDetails(testName, runs, stats, testId) {
         `;
 
         const viewResourcesLink = runDetail.querySelector('.view-resources-link');
-        if (viewResourcesLink) {
+        if (viewResourcesLink instanceof HTMLElement) {
             viewResourcesLink.onclick = (e) => {
                 e.preventDefault();
                 if (shouldUseTrajectory) {
@@ -724,8 +731,10 @@ async function showDetails(testName, runs, stats, testId) {
         }
 
         dropdown.onchange = (e) => {
-            const val = e.target.value;
-            e.target.value = ''; // reset selection
+            const target = e.target;
+            if (!(target instanceof HTMLSelectElement)) return;
+            const val = target.value;
+            target.value = ''; // reset selection
             if (val === 'source') {
                 if (api.source === 'remote') {
                     // Open directly via the mTLS domain which handles auth and serves raw HTML
@@ -750,7 +759,9 @@ async function showDetails(testName, runs, stats, testId) {
     const runDetails = await Promise.all(runDetailsPromises);
     body.innerHTML = promptHtml; // Insert promptHtml first
     runDetails.forEach(detail => body.appendChild(detail));
-    modal.showModal();
+    if (modal instanceof HTMLDialogElement) {
+        modal.showModal();
+    }
 }
 
 function renderBackButton() {
@@ -844,6 +855,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
             </div>`;
             diffHtml += `<pre style="white-space: pre-wrap; margin: 0; color: var(--text-primary); font-family: monospace;">${escapeHtml(resultText)}</pre>`;
         } else {
+            // @ts-expect-error global library
             const diff = Diff.diffLines(setupText, resultText);
 
             diff.forEach((part, index) => {
@@ -965,12 +977,15 @@ function renderDashboardDumbbellChart(data, testId) {
     ];
 
     // Render the Dumbbell Chart
+    // @ts-expect-error global property
     if (window.dumbbellChart) window.dumbbellChart.container.innerHTML = '';
+    // @ts-expect-error global property
     window.dumbbellChart = new DumbbellChart('dumbbell-chart', {
         size: 700,
         rowHeight: 30,
         margin: { top: 20, right: 200, bottom: 20, left: 30 }
     });
+    // @ts-expect-error global property
     window.dumbbellChart.render({ labels, datasets });
 }
 
