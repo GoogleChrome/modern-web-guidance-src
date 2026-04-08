@@ -112,8 +112,8 @@ jobs:
 
       - name: Configure git
         run: |
-          git config user.name "chrome-devrel-infra"
-          git config user.email "chrome-devrel-infra-bot@google.com"
+          git config user.name "chrome-devrel-infra[bot]"
+          git config user.email "124898761+chrome-devrel-infra[bot]@users.noreply.github.com"
 
       - name: Commit, push branch, and open PR
         env:
@@ -226,8 +226,8 @@ jobs:
 
       - name: Configure git
         run: |
-          git config user.name "chrome-devrel-infra"
-          git config user.email "chrome-devrel-infra-bot@google.com"
+          git config user.name "chrome-devrel-infra[bot]"
+          git config user.email "124898761+chrome-devrel-infra[bot]@users.noreply.github.com"
 
       - name: Commit regenerated artifacts
         run: |
