@@ -110,7 +110,7 @@ async function main(): Promise<BuildResult | undefined> {
       banner: {
         js: `import { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
       },
-      external: ["onnxruntime-node", "sharp", "iconv-lite"],
+      external: ["onnxruntime-node", "sharp", "iconv-lite", "@img/colour", "tr46", "whatwg-url", "webidl-conversions"],
       sourcemap: true,
       loader: { ".node": "file" },
     });
