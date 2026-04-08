@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import config, { Agents, Serving } from '../config.ts';
 import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
 
-
+import type { ConversationRecord, MessageRecord, ToolCallRecord } from '@google/gemini-cli-core';
 
 export interface GuidedUsage {
   retrievedGuides: string[];
@@ -127,19 +127,19 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, _servin
     for (const file of sessionFiles) {
       const sessionPath = path.join(dirPath, file);
       const sessionContent = fs.readFileSync(sessionPath, 'utf8');
-      const session = JSON.parse(sessionContent);
+      const session = JSON.parse(sessionContent) as ConversationRecord;
 
       if (session.messages) {
         for (const msg of session.messages) {
-          if (msg.toolCalls) {
+          if (msg.type === 'gemini' && msg.toolCalls) {
             for (const tc of msg.toolCalls) {
               if (tc.name.includes('get_best_practices')) {
-                const args = tc.args as any;
+                const args = tc.args;
                 if (args && args.use_case_id) {
-                  retrievedGuides.push(args.use_case_id);
+                  retrievedGuides.push(args.use_case_id as string);
                 }
-              } else if (tc.name === 'read_file' && tc.args && (tc.args as any).file_path) {
-                const filePath = (tc.args as any).file_path;
+              } else if (tc.name === 'read_file' && tc.args && tc.args.file_path) {
+                const filePath = tc.args.file_path as string;
                   if (filePath.includes('/skills/')) {
                     if (filePath.endsWith('/guide.md')) {
                       const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
@@ -217,15 +217,15 @@ export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   try {
     const sessionPath = path.join(dir, firstSession);
     const content = fs.readFileSync(sessionPath, 'utf8');
-    const session = JSON.parse(content);
+    const session = JSON.parse(content) as ConversationRecord;
     if (Array.isArray(session.messages)) {
       for (const msg of session.messages) {
-        if (Array.isArray(msg.toolCalls)) {
+        if (msg.type === 'gemini' && Array.isArray(msg.toolCalls)) {
           for (const tc of msg.toolCalls) {
             if (tc.name.includes('get_best_practices')) {
               toolsUsed.push('modern-web');
-            } else if (tc.name === 'activate_skill' && tc.args?.name) {
-              toolsUsed.push(tc.args.name);
+            } else if (tc.name === 'activate_skill' && tc.args && tc.args.name) {
+              toolsUsed.push(tc.args.name as string);
             }
           }
         }
