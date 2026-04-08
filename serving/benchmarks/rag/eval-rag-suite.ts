@@ -39,7 +39,7 @@ function getModelObj(modelStr: string, isNoChunking: boolean, variant: string) {
     name,
     quantization,
     runtime,
-    strategy: "maxsim",
+    search: "maxsim",
     chunking: isNoChunking ? "nochunk" : "chunked",
     variant
   };
@@ -143,13 +143,13 @@ async function main() {
   console.log('\n\n=== FINAL VARIANCE ANALYSIS ===');
   for (const model of models) {
     const targetModelObj = getModelObj(model, isNoChunking, variant);
-    const targetModelStr = `${targetModelObj.name} ${targetModelObj.quantization} - trjs onnx ${targetModelObj.runtime} - ${targetModelObj.strategy}${targetModelObj.chunking === "nochunk" ? " nochunk" : ""}`;
+    const targetModelStr = `${targetModelObj.name} ${targetModelObj.quantization} - trjs onnx ${targetModelObj.runtime} - ${targetModelObj.search}${targetModelObj.chunking === "nochunk" ? " nochunk" : ""}`;
     
     const modelRuns = results.filter((r: any) => {
       let modelStr = "";
       if (typeof r.model === "object") {
         const m = r.model as any;
-        modelStr = `${m.name} ${m.quantization} - trjs onnx ${m.runtime} - ${m.strategy}${m.chunking === "nochunk" ? " nochunk" : ""}`;
+        modelStr = `${m.name} ${m.quantization} - trjs onnx ${m.runtime} - ${m.search || m.strategy}${m.chunking === "nochunk" ? " nochunk" : ""}`;
       } else {
         modelStr = r.model;
       }
