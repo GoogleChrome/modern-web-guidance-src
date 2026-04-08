@@ -8,22 +8,23 @@ function createNodeFileSystemIOHandler(modelJsonPath: string) {
   return {
     load: async () => {
       const dir = path.dirname(modelJsonPath);
-      const modelJson = JSON.parse(fs.readFileSync(modelJsonPath, "utf-8"));
+      const modelJson = JSON.parse(await fs.promises.readFile(modelJsonPath, "utf-8"));
       
       const modelTopology = modelJson.modelTopology;
       const weightsManifest = modelJson.weightsManifest;
       
-      const buffers: Buffer[] = [];
       const weightSpecs: any[] = [];
+      const shardPromises: Promise<Buffer>[] = [];
       
       for (const manifest of weightsManifest) {
         weightSpecs.push(...manifest.weights);
         for (const shardPath of manifest.paths) {
           const fullPath = path.resolve(dir, shardPath);
-          buffers.push(fs.readFileSync(fullPath));
+          shardPromises.push(fs.promises.readFile(fullPath));
         }
       }
       
+      const buffers = await Promise.all(shardPromises);
       const weightData = Buffer.concat(buffers).buffer;
       
       return {
@@ -67,7 +68,12 @@ export class TfjsEmbedder {
         console.log("TFJS Model loaded successfully!");
         
         console.log("Loading tokenizer...");
-        this.tokenizer = await AutoTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2");
+        try {
+            this.tokenizer = await AutoTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2", { local_files_only: true });
+        } catch (e) {
+            console.log("Failed to load tokenizer locally, falling back to network...");
+            this.tokenizer = await AutoTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2");
+        }
     } catch (e) {
         console.error("Failed to load TFJS model:", e);
         throw e;
