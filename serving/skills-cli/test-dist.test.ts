@@ -27,7 +27,7 @@ const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 console.log("Running build-dist to ensure fresh build...");
 execSync('node --experimental-strip-types skills-cli/build-dist.ts', { 
   cwd: path.resolve(import.meta.dirname, '..'), 
-  stdio: 'inherit' 
+  stdio: 'pipe' 
 });
 
 
