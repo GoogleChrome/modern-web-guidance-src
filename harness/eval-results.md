@@ -36,13 +36,17 @@ pnpm upload <suite-name>
 If you need to pull down suites from GCS that you don't have locally (e.g., to run backfill on them):
 
 ```bash
-gcloud storage rsync gs://guidance-evals ~/guidance-results
+gcloud storage rsync gs://guidance-evals ~/guidance-results --recursive
 ```
 
-*   **Safe**: It does not delete local files (like `.git`) by default unless you pass `--delete`.
+*   **Recursive**: You **MUST** pass `--recursive` (or `-r`), otherwise it will not copy files inside the suite folders!
+*   **Safe by Default**: It does not delete local files (like `.git`) by default.
+*   **Destructive Flag**: If you want to delete local files that aren't in the bucket, use `--delete-unmatched-destination-objects`. 
+    > [!WARNING]
+    > If you use this flag when pulling from GCS to local, **it WILL delete your `.git` folder** (because `.git` is not on GCS). Move your `.git` folder out of the target directory before running it with this flag!
 *   **Dry Run**: To see what it would do without touching files:
     ```bash
-    gcloud storage rsync gs://guidance-evals ~/guidance-results --dry-run
+    gcloud storage rsync gs://guidance-evals ~/guidance-results --recursive --dry-run
     ```
 
 ### 2. Backfilling Metrics
