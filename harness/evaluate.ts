@@ -9,6 +9,27 @@ import { resultsDir } from '../lib/paths.ts';
 
 import { Serving, type SuiteConfig } from './config.ts';
 
+function inferSuiteConfig(suiteResultsDir: string): SuiteConfig {
+  let agent = 'gemini-cli';
+  let serving: Serving = 'mcp';
+
+  const evalsPath = path.join(suiteResultsDir, 'evals.json');
+  if (fs.existsSync(evalsPath)) {
+    try {
+      const oldEvals = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+      if (oldEvals.agent) agent = oldEvals.agent;
+      if (oldEvals.serving) serving = oldEvals.serving;
+      else if (oldEvals.enableSkills !== undefined) {
+        serving = oldEvals.enableSkills ? 'skills' : 'mcp';
+      }
+    } catch {
+      // Ignore parse error
+    }
+  }
+
+  return { agent, serving, tasks: [], name: null, numRuns: 1, mcpServersToEnable: [] };
+}
+
 export async function evaluateSuite(suiteResultsDir: string, suiteName: string) {
   console.log(`Evaluating suite: ${suiteName}`.cyan);
   console.log(`Results directory: ${suiteResultsDir}`.cyan);
@@ -30,26 +51,8 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string) 
 
   if (!suiteConfig) {
     console.warn(`⚠️ No suite_config.json found in ${suiteResultsDir}. Inferring config...`.yellow);
-    
-    let agent = 'gemini-cli';
-    let serving: Serving = 'mcp';
-
-    const evalsPath = path.join(suiteResultsDir, 'evals.json');
-    if (fs.existsSync(evalsPath)) {
-      try {
-        const oldEvals = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
-        if (oldEvals.agent) agent = oldEvals.agent;
-        if (oldEvals.serving) serving = oldEvals.serving;
-        else if (oldEvals.enableSkills !== undefined) {
-          serving = oldEvals.enableSkills ? 'skills' : 'mcp';
-        }
-      } catch {
-        // Ignore parse error
-      }
-    }
-
-    suiteConfig = { agent, serving, tasks: [], name: null, numRuns: 1, mcpServersToEnable: [] };
-    console.log(`Inferred: agent=${agent}, serving=${serving}`.cyan);
+    suiteConfig = inferSuiteConfig(suiteResultsDir);
+    console.log(`Inferred: agent=${suiteConfig.agent}, serving=${suiteConfig.serving}`.cyan);
   }
 
   if (!suiteConfig) {
