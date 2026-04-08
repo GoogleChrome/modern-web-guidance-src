@@ -34,26 +34,29 @@ export async function searchUseCases(query: string, limit = 5, maxDistance = 1.5
 
   const items: any[] = JSON.parse(fs.readFileSync(VECTORS_FILE, "utf-8"));
   
-  const results: UseCaseResult[] = [];
-  const seenIds = new Set<string>();
+  const resultsMap = new Map<string, UseCaseResult>();
 
   for (const item of items) {
-    if (!item.vector || seenIds.has(item.id)) continue;
+    if (!item.vector) continue;
 
     const similarity = cosineSimilarity(queryVector, item.vector);
     const distance = 1 - similarity;
 
     if (distance > maxDistance) continue;
 
-    seenIds.add(item.id);
-    results.push({
-      id: item.id,
-      description: item.description,
-      category: item.category,
-      featuresUsed: item.featuresUsed || [],
-      distance: distance.toString(), // Retain raw float precision for accurate sorting
-    });
+    const existing = resultsMap.get(item.id);
+    if (!existing || distance < parseFloat(existing.distance)) {
+      resultsMap.set(item.id, {
+        id: item.id,
+        description: item.description,
+        category: item.category,
+        featuresUsed: item.featuresUsed || [],
+        distance: distance.toString(), // Retain raw float precision for accurate sorting
+      });
+    }
   }
+
+  const results = Array.from(resultsMap.values());
 
   // Sort by distance ascending
   results.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
