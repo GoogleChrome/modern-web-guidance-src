@@ -97,21 +97,20 @@ async function main(): Promise<BuildResult | undefined> {
     console.log(`Copied ${tfjsModelDir} to ${destTfjsModelDir}`);
   }
 
-  console.log("Bundling modern-web.ts with esbuild...");
-  // 5. Bundle modern-web.ts
-  const entryPoint = path.join(SERVING_DIR, "bin/modern-web.ts");
-  const outFile = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/modern-web.mjs");
-  
   try {
     console.time("⏳ esbuild bundle");
     await esbuild.build({
-      entryPoints: [entryPoint],
+      entryPoints: {
+        "modern-web": path.join(SERVING_DIR, "bin/modern-web.ts"),
+        "embedder": path.join(SERVING_DIR, "lib/tfjs-embedder.ts")
+      },
       bundle: true,
       platform: "node",
       format: "esm",
+      splitting: true,
+      outExtension: { ".js": ".mjs" },
       loader: { ".node": "file" },
-      external: [],
-      outfile: outFile,
+      outdir: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases"),
     });
     console.timeEnd("⏳ esbuild bundle");
 
