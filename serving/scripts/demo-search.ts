@@ -1,4 +1,4 @@
-import { Embedder } from "../mcp-server/lib/embedder.ts";
+import { Embedder } from "../lib/embedder.ts";
 import { Store } from "../lib/store.ts";
 
 async function main() {

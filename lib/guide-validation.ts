@@ -3,7 +3,7 @@ import path from 'node:path';
 import matter from 'gray-matter';
 
 // Import shared utilities (using relative paths from guides/)
-import { validateMacros } from '../serving/mcp-server/lib/macros.ts';
+import { validateMacros } from '../serving/lib/macros.ts';
 import { validateFeature } from '../serving/mcp-server/data/baseline.ts';
 import { rootDir, guidesDir } from './paths.ts';
 

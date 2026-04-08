@@ -90,7 +90,7 @@ async function main(): Promise<BuildResult | undefined> {
   }
 
   console.log("Copying TFJS model files...");
-  const tfjsModelDir = path.join(SERVING_DIR, "mcp-server/lib/tfjs_model_minilm");
+  const tfjsModelDir = path.join(SERVING_DIR, "lib/tfjs_model_minilm");
   const destTfjsModelDir = path.join(DIST_DIR, "tfjs_model_minilm");
   if (fs.existsSync(tfjsModelDir)) {
     fs.cpSync(tfjsModelDir, destTfjsModelDir, { recursive: true });

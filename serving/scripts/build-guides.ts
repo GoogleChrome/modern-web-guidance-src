@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { marked } from "marked";
-import { Embedder } from "../mcp-server/lib/embedder.ts";
+import { Embedder } from "../lib/embedder.ts";
 export interface StoreUseCase {
   id: string;
   description: string;
@@ -13,8 +13,8 @@ export interface StoreUseCase {
   distance?: number;
 }
 import { Gpt4AllEmbedder } from "../benchmarks/rag/gpt4all-embedder.ts";
-import { TfjsEmbedder } from "../mcp-server/lib/tfjs-embedder.ts";
-import { replaceMacros } from "../mcp-server/lib/macros.ts";
+import { TfjsEmbedder } from "../lib/tfjs-embedder.ts";
+import { replaceMacros } from "../lib/macros.ts";
 import { scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
 

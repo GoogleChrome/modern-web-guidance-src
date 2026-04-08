@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { Embedder } from "../mcp-server/lib/embedder.ts";
+import { Embedder } from "./embedder.ts";
 import { logToolResult } from "./logger.ts";
 
 export interface UseCaseResult {

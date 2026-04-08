@@ -1,4 +1,4 @@
-import { validateFeature, getStatusMessage } from "../data/baseline.ts";
+import { validateFeature, getStatusMessage } from "../mcp-server/data/baseline.ts";
 
 /**
  * Parses macro arguments, respecting quotes and handling commas.

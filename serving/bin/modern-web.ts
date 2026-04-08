@@ -3,7 +3,7 @@
 import { parseArgs } from "util";
 import { searchUseCases } from "../lib/search.ts";
 import { retrieveUseCase } from "../lib/retrieve.ts";
-import { TfjsEmbedder } from "../mcp-server/lib/tfjs-embedder.ts";
+import { TfjsEmbedder } from "../lib/tfjs-embedder.ts";
 
 const { values } = parseArgs({
   args: process.argv.slice(2),

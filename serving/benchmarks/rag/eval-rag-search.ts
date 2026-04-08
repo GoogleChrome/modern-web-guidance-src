@@ -5,7 +5,7 @@ import { Embedder } from "../../mcp-server/lib/embedder.ts";
 import { searchUseCases } from "../../lib/search.ts";
 import { Gpt4AllEmbedder } from "./gpt4all-embedder.ts";
 import type { EvalQuery } from "./generate-eval-queries.ts";
-import { TfjsEmbedder } from "../../mcp-server/lib/tfjs-embedder.ts";
+import { TfjsEmbedder } from "../../lib/tfjs-embedder.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
