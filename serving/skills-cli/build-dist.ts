@@ -111,6 +111,7 @@ async function main(): Promise<BuildResult | undefined> {
         js: `import { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
       },
       external: ["onnxruntime-node"],
+      sourcemap: true,
       loader: { ".node": "file" },
     });
 
