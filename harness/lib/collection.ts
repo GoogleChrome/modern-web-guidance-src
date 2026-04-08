@@ -2,7 +2,7 @@ import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
-import { Serving, Agents, type SuiteConfig } from '../config.ts';
+import { Agents, type SuiteConfig } from '../config.ts';
 import { guidesDir } from '../../lib/paths.ts';
 import { getTaskMap } from '../../lib/guide-validation.ts';
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
