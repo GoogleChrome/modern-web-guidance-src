@@ -203,7 +203,13 @@ async function processSingleGuideFile(
   const embedder = Embedder.getInstance(); // Singleton, already init
 
   for (const chunk of chunks) {
-    const embeddingText = `${id} (${category})\n\n${chunk}`;
+    let embeddingText = `${id} (${category})\n\n${chunk}`;
+    
+    if (isNoChunking) {
+      const metadataBlock = `${id} (${category})\n\n${frontmatter}`;
+      embeddingText = `${metadataBlock}\n\n${metadataBlock}\n\n${metadataBlock}\n\n${processedMarkdown}`;
+    }
+    
     const vector = await embedder.embed(embeddingText);
 
     storeUseCases.push({
