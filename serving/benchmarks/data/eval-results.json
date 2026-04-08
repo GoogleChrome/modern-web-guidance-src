@@ -1,7 +1,7 @@
 [
   {
     "timestamp": "2026-04-03T21:56:10.888Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5519,
     "top3HitRate": 0.8384,
@@ -10,7 +10,7 @@
   },
   {
     "timestamp": "2026-04-03T21:56:25.541Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5519,
     "top3HitRate": 0.8384,
@@ -19,7 +19,7 @@
   },
   {
     "timestamp": "2026-04-03T21:56:39.642Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5519,
     "top3HitRate": 0.8384,
@@ -28,7 +28,7 @@
   },
   {
     "timestamp": "2026-04-03T21:56:53.706Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5519,
     "top3HitRate": 0.8384,
@@ -37,7 +37,7 @@
   },
   {
     "timestamp": "2026-04-03T21:57:07.468Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5519,
     "top3HitRate": 0.8384,
@@ -46,7 +46,7 @@
   },
   {
     "timestamp": "2026-04-03T21:57:27.548Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5519,
     "top3HitRate": 0.8384,
@@ -55,7 +55,7 @@
   },
   {
     "timestamp": "2026-04-03T21:57:52.031Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5519,
     "top3HitRate": 0.8384,
@@ -64,7 +64,7 @@
   },
   {
     "timestamp": "2026-04-03T21:58:16.614Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5519,
     "top3HitRate": 0.8384,
@@ -73,7 +73,7 @@
   },
   {
     "timestamp": "2026-04-03T21:58:30.942Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5519,
     "top3HitRate": 0.8384,
@@ -82,7 +82,7 @@
   },
   {
     "timestamp": "2026-04-03T21:58:44.984Z",
-    "model": "Xenova/all-MiniLM-L6-v2@q8 (wasm. fullpool)",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5519,
     "top3HitRate": 0.8384,
@@ -91,7 +91,7 @@
   },
   {
     "timestamp": "2026-04-03T21:57:16.948Z",
-    "model": "all-MiniLM-L6-v2@q8-chunk-tjs",
+    "model": "minilm q8 - trjs onnx native - lancedb",
     "totalQueries": 848,
     "top1HitRate": 0.6981,
     "top3HitRate": 0.941,
@@ -100,7 +100,7 @@
   },
   {
     "timestamp": "2026-04-03T21:57:23.733Z",
-    "model": "all-MiniLM-L6-v2@q8-chunk-tjs",
+    "model": "minilm q8 - trjs onnx native - lancedb",
     "totalQueries": 848,
     "top1HitRate": 0.6981,
     "top3HitRate": 0.941,
@@ -109,7 +109,7 @@
   },
   {
     "timestamp": "2026-04-03T21:57:29.874Z",
-    "model": "all-MiniLM-L6-v2@q8-chunk-tjs",
+    "model": "minilm q8 - trjs onnx native - lancedb",
     "totalQueries": 848,
     "top1HitRate": 0.6981,
     "top3HitRate": 0.941,
@@ -118,7 +118,7 @@
   },
   {
     "timestamp": "2026-04-03T21:57:37.302Z",
-    "model": "all-MiniLM-L6-v2@q8-chunk-tjs",
+    "model": "minilm q8 - trjs onnx native - lancedb",
     "totalQueries": 848,
     "top1HitRate": 0.6981,
     "top3HitRate": 0.941,
@@ -127,7 +127,7 @@
   },
   {
     "timestamp": "2026-04-03T21:57:43.473Z",
-    "model": "all-MiniLM-L6-v2@q8-chunk-tjs",
+    "model": "minilm q8 - trjs onnx native - lancedb",
     "totalQueries": 848,
     "top1HitRate": 0.6981,
     "top3HitRate": 0.941,
@@ -136,7 +136,7 @@
   },
   {
     "timestamp": "2026-04-03T21:57:49.702Z",
-    "model": "all-MiniLM-L6-v2@q8-chunk-tjs",
+    "model": "minilm q8 - trjs onnx native - lancedb",
     "totalQueries": 848,
     "top1HitRate": 0.6981,
     "top3HitRate": 0.941,
@@ -145,7 +145,7 @@
   },
   {
     "timestamp": "2026-04-03T21:57:56.893Z",
-    "model": "all-MiniLM-L6-v2@q8-chunk-tjs",
+    "model": "minilm q8 - trjs onnx native - lancedb",
     "totalQueries": 848,
     "top1HitRate": 0.6981,
     "top3HitRate": 0.941,
@@ -154,7 +154,7 @@
   },
   {
     "timestamp": "2026-04-03T21:58:03.258Z",
-    "model": "all-MiniLM-L6-v2@q8-chunk-tjs",
+    "model": "minilm q8 - trjs onnx native - lancedb",
     "totalQueries": 848,
     "top1HitRate": 0.6981,
     "top3HitRate": 0.941,
@@ -163,7 +163,7 @@
   },
   {
     "timestamp": "2026-04-03T21:58:09.542Z",
-    "model": "all-MiniLM-L6-v2@q8-chunk-tjs",
+    "model": "minilm q8 - trjs onnx native - lancedb",
     "totalQueries": 848,
     "top1HitRate": 0.6981,
     "top3HitRate": 0.941,
@@ -172,7 +172,7 @@
   },
   {
     "timestamp": "2026-04-03T21:58:15.854Z",
-    "model": "all-MiniLM-L6-v2@q8-chunk-tjs",
+    "model": "minilm q8 - trjs onnx native - lancedb",
     "totalQueries": 848,
     "top1HitRate": 0.6981,
     "top3HitRate": 0.941,
@@ -181,7 +181,7 @@
   },
   {
     "timestamp": "2026-04-03T22:08:30.297Z",
-    "model": "all-MiniLM-L6-v2@q8 wasm-float",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -190,7 +190,7 @@
   },
   {
     "timestamp": "2026-04-03T22:08:45.798Z",
-    "model": "all-MiniLM-L6-v2@q8 wasm-float",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -199,7 +199,7 @@
   },
   {
     "timestamp": "2026-04-03T22:09:00.796Z",
-    "model": "all-MiniLM-L6-v2@q8 wasm-float",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -208,7 +208,7 @@
   },
   {
     "timestamp": "2026-04-03T22:09:15.152Z",
-    "model": "all-MiniLM-L6-v2@q8 wasm-float",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -217,7 +217,7 @@
   },
   {
     "timestamp": "2026-04-03T22:09:31.323Z",
-    "model": "all-MiniLM-L6-v2@q8 wasm-float",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -226,7 +226,7 @@
   },
   {
     "timestamp": "2026-04-03T22:09:46.974Z",
-    "model": "all-MiniLM-L6-v2@q8 wasm-float",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -235,7 +235,7 @@
   },
   {
     "timestamp": "2026-04-03T22:10:19.604Z",
-    "model": "all-MiniLM-L6-v2@q8 wasm-float",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -244,7 +244,7 @@
   },
   {
     "timestamp": "2026-04-03T22:10:37.224Z",
-    "model": "all-MiniLM-L6-v2@q8 wasm-float",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -253,7 +253,7 @@
   },
   {
     "timestamp": "2026-04-03T22:10:55.700Z",
-    "model": "all-MiniLM-L6-v2@q8 wasm-float",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -262,7 +262,7 @@
   },
   {
     "timestamp": "2026-04-03T22:11:19.142Z",
-    "model": "all-MiniLM-L6-v2@q8 wasm-float",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -271,7 +271,7 @@
   },
   {
     "timestamp": "2026-04-08T16:55:06.450Z",
-    "model": "tfjs",
+    "model": "minilm fp32 - tfjs - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8314,
@@ -280,7 +280,7 @@
   },
   {
     "timestamp": "2026-04-08T17:08:07.231Z",
-    "model": "tfjs (bundled-tokenizer)",
+    "model": "minilm fp32 - tfjs - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8314,
@@ -289,7 +289,7 @@
   },
   {
     "timestamp": "2026-04-08T17:09:46.575Z",
-    "model": "Xenova/all-MiniLM-L6-v2 (fresh-baseline)",
+    "model": "minilm q8 - trjs onnx wasm - singlechunk",
     "totalQueries": 848,
     "top1HitRate": 0.5483,
     "top3HitRate": 0.8396,
@@ -298,7 +298,7 @@
   },
   {
     "timestamp": "2026-04-08T17:12:13.157Z",
-    "model": "Xenova/all-MiniLM-L6-v2 (chunk-agg-baseline)",
+    "model": "minilm q8 - trjs onnx wasm",
     "totalQueries": 848,
     "top1HitRate": 0.7028,
     "top3HitRate": 0.941,
@@ -307,7 +307,7 @@
   },
   {
     "timestamp": "2026-04-08T17:14:30.530Z",
-    "model": "tfjs (chunk-agg-tfjs)",
+    "model": "minilm fp32 - tfjs",
     "totalQueries": 848,
     "top1HitRate": 0.7064,
     "top3HitRate": 0.941,
@@ -316,7 +316,7 @@
   },
   {
     "timestamp": "2026-04-08T17:20:54.558Z",
-    "model": "Xenova/all-MiniLM-L6-v2 (test-wasm)",
+    "model": "minilm q8 - trjs onnx wasm",
     "totalQueries": 848,
     "top1HitRate": 0.7028,
     "top3HitRate": 0.941,
@@ -325,7 +325,7 @@
   },
   {
     "timestamp": "2026-04-08T17:21:06.120Z",
-    "model": "Xenova/all-MiniLM-L6-v2 (test-native)",
+    "model": "minilm q8 - trjs onnx native",
     "totalQueries": 848,
     "top1HitRate": 0.7028,
     "top3HitRate": 0.941,
@@ -334,7 +334,7 @@
   },
   {
     "timestamp": "2026-04-08T17:21:25.145Z",
-    "model": "Xenova/all-MiniLM-L6-v2 (native-onnx)",
+    "model": "minilm q8 - trjs onnx native",
     "totalQueries": 848,
     "top1HitRate": 0.7028,
     "top3HitRate": 0.941,
@@ -343,7 +343,7 @@
   },
   {
     "timestamp": "2026-04-08T18:41:09.797Z",
-    "model": "Xenova/all-MiniLM-L6-v2 (native-agg)",
+    "model": "minilm q8 - trjs onnx native",
     "totalQueries": 848,
     "top1HitRate": 0.7028,
     "top3HitRate": 0.941,

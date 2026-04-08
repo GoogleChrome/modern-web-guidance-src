@@ -27,6 +27,17 @@ interface LatencyRun {
 }
 
 function run() {
+    console.log("\n=== Glossary ===");
+    console.log("trjs        : Transformers.js");
+    console.log("onnx        : ONNX Runtime");
+    console.log("tfjs        : TensorFlow.js");
+    console.log("wasm        : WebAssembly (onnxruntime-web)");
+    console.log("native      : Native OS bindings (onnxruntime-node)");
+    console.log("singlechunk : Early deduplication (only evaluates one chunk per guide)");
+    console.log("q8          : 8-bit Quantized");
+    console.log("fp32        : 32-bit Float precision");
+    console.log("================\n");
+
     // --- 1. Accuracy Summary ---
     if (!fs.existsSync(RESULTS_FILE)) {
         console.error(`Results file not found: ${RESULTS_FILE}`);
