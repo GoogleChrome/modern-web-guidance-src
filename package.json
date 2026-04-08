@@ -13,7 +13,7 @@
     "install:gray-matter": "pnpm add -D -w gray-matter",
     "baselinestatus": "pnpm --filter serving baselinestatus",
     "lint": "oxlint --ignore-path .oxlintignore",
-    "typecheck": "pnpm -r typecheck && tsc -p tsconfig.bin.json --noEmit",
+    "typecheck": "pnpm --filter serving build && tsc && pnpm --filter eval-view typecheck",
     "preflight": "pnpm typecheck && pnpm lint && pnpm test",
     "suite": "pnpm build:mcp && pnpm --filter harness suite",
     "qsmoke": "pnpm --filter harness qsmoke",

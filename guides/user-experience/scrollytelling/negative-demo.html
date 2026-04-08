@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll-Driven Animations</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    #tracked section {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 5px dashed grey;
+    }
+
+    #animated {
+      position: fixed;
+      top: 50%;
+      right: 10vw;
+      margin-top: -12.5vh;
+      height: 25vh;
+      width: 25vh;
+    }
+
+    #animated section {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: white;
+      border: 5px dotted lime;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: width 0.1s, height 0.1s, opacity 0.1s;
+    }
+  </style>
+  <script src="https://flackr.github.io/scroll-timeline/dist/scroll-timeline.js"></script>
+</head>
+<body>
+  <div id="tracked">
+    <section>TRACKED 1</section>
+    <section>TRACKED 2</section>
+    <section>TRACKED 3</section>
+    <section>TRACKED 4</section>
+    <section>TRACKED 5</section>
+  </div>
+  <div id="animated">
+    <section>ANIMATED 1</section>
+    <section>ANIMATED 2</section>
+    <section>ANIMATED 3</section>
+    <section>ANIMATED 4</section>
+    <section>ANIMATED 5</section>
+  </div>
+  <script>
+    window.addEventListener('scroll', function() {
+      var trackedSections = document.querySelectorAll('#tracked section');
+      var animatedSections = document.querySelectorAll('#animated section');
+      var windowHeight = window.innerHeight;
+      
+      for (var i = 0; i < trackedSections.length; i++) {
+        var rect = trackedSections[i].getBoundingClientRect();
+        
+        if (rect.top <= windowHeight && rect.bottom >= 0) {
+          var ratio = 1 - (rect.top / windowHeight);
+          animatedSections[i].style.opacity = 1;
+          animatedSections[i].style.width = (ratio * 100) + '%';
+          animatedSections[i].style.height = (ratio * 100) + '%';
+        } else {
+          animatedSections[i].style.opacity = 0;
+          animatedSections[i].style.width = '100%';
+          animatedSections[i].style.height = '100%';
+        }
+      }
+    });
+  </script>
+</body>
+</html>

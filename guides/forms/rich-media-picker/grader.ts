@@ -21,7 +21,7 @@ test.describe(`Rich Media Picker Expectations: ${demoName}`, () => {
 
   test(`The ::picker(select) pseudo-element MUST have appearance: base-select applied`, async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/::picker\(select\)[^\{]*\{[^\}]*appearance:\s*base-select/);
+    expect(html).toMatch(/::picker\(select\)[^{]*{[^}]*appearance:\s*base-select/);
   });
 
   test(`The <select> element MUST contain a <button> tag as a direct child`, async () => {
@@ -43,7 +43,7 @@ test.describe(`Rich Media Picker Expectations: ${demoName}`, () => {
   test(`The <option> tags MUST contain rich HTML formatting (e.g., <svg>, <div>, or <span>) instead of plaintext only`, async ({ page }) => {
     const hasRichFormatting = await page.evaluate(() => {
       const options = Array.from(document.querySelectorAll('select option'));
-      return options.length > 0 && options.some(opt => opt.children.length > 0);
+      return options.some(opt => opt.children.length > 0);
     });
     expect(hasRichFormatting).toBe(true);
   });

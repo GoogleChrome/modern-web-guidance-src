@@ -10,6 +10,18 @@
     "noEmit": true,
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
-    "allowImportingTsExtensions": true
-  }
+    "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "checkJs": true
+  },
+
+  "exclude": [
+    "**/node_modules",
+    "**/dist",
+    "**/test-app-results/**",
+    "**/test-app-results/**",
+    "harness/results/",
+    "**/eval-view",
+    "**/eval-view/**/*"
+  ]
 }
