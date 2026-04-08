@@ -97,6 +97,8 @@ async function main(): Promise<BuildResult | undefined> {
     console.log(`Copied ${tfjsModelDir} to ${destTfjsModelDir}`);
   }
 
+  // TODO: We are going to iterate on the module splitting stuff some more.
+  // We want to avoid dynamic chunk names but still share heavy dependencies if possible.
   try {
     console.log("Bundling embedder.mjs...");
     await esbuild.build({
