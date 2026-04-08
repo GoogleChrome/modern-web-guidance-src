@@ -24,9 +24,12 @@ We use `harness/upload_suite.ts` to upload a suite to GCS.
 
 ### Command
 ```bash
+# Upload full suite from local repo results
 pnpm upload <suite-name>
+
+# Upload with flags or from custom directory
+node harness/upload_suite.ts <suite-name> [--summary-only] [custom_results_dir]
 ```
-*(This maps to running `node --experimental-strip-types harness/upload_suite.ts`)*
 
 ---
 
@@ -64,4 +67,12 @@ This updates `evals.json` and `evals.md` in each suite directory.
 ### 3. Pushing Updates to GCS
 After backfilling, you should push the updated summaries back to GCS.
 
-*(Note: Currently `upload_suite.ts` re-uploads all files. We plan to add a `--summary-only` flag to only upload `evals.json` and `evals.md` to make this sync extremely fast).*
+You can use the **`--summary-only`** flag to only upload `evals.json` and `evals.md`, making the sync extremely fast:
+
+```bash
+# Upload ONLY summaries from your custom directory
+node harness/upload_suite.ts <suite-name> ~/guidance-evals --summary-only
+
+# Upload EVERYTHING from your custom directory
+node harness/upload_suite.ts <suite-name> ~/guidance-evals
+```
