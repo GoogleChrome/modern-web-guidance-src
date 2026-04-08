@@ -26,6 +26,20 @@ interface LatencyRun {
   runs: number[];
 }
 
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[date.getMonth()];
+  const day = date.getDate();
+  let hour = date.getHours();
+  const minute = date.getMinutes().toString().padStart(2, '0');
+  const second = date.getSeconds().toString().padStart(2, '0');
+  const ampm = hour >= 12 ? 'pm' : 'am';
+  hour = hour % 12;
+  hour = hour ? hour : 12; // the hour '0' should be '12'
+  return `${month} ${day} ${hour}:${minute}:${second}${ampm}`;
+}
+
 // Helper to align hyphens in model strings
 function alignModelString(model: string, colWidths: number[]): string {
     const parts = model.split(" - ");
@@ -74,6 +88,20 @@ function run() {
     } else {
         const history: EvalRun[] = JSON.parse(fs.readFileSync(RESULTS_FILE, "utf-8"));
         
+        // Compute col widths across ALL models for consistent alignment
+        const allModelStrings: string[] = [];
+        for (const entry of history) {
+            let modelStr = "";
+            if (typeof entry.model === "object") {
+                const m = entry.model as any;
+                modelStr = `${m.name} ${m.quantization} - trjs onnx ${m.runtime} - ${m.strategy}${m.chunking === "nochunk" ? " nochunk" : ""}`;
+            } else {
+                modelStr = entry.model as string;
+            }
+            allModelStrings.push(modelStr);
+        }
+        const colWidths = calculateColWidths(allModelStrings);
+
         // Group by runId
         const runGroups: Record<string, Record<string, EvalRun[]>> = {};
         for (const entry of history) {
@@ -95,20 +123,18 @@ function run() {
             runGroups[runId][modelStr].push(entry);
         }
 
-        console.log("\n=== Model Performance Summary (Grouped by Run) ===");
+        console.log("\n=== Model Performance Summary (Accuracy) ===");
         
         // Sort runs chronologically
         const sortedRunIds = Object.keys(runGroups).sort();
         
+        const allTableData: any[] = [];
+        
         for (const runId of sortedRunIds) {
-            console.log(`\nRun: ${runId}`);
             const modelsInRun = runGroups[runId];
+            const formattedRun = formatDate(runId);
             
-            // Calculate col widths for this run to align hyphens
-            const allModels = Object.keys(modelsInRun);
-            const colWidths = calculateColWidths(allModels);
-            
-            const tableData = Object.entries(modelsInRun).map(([modelStr, runs]) => {
+            for (const [modelStr, runs] of Object.entries(modelsInRun)) {
                 const top1 = runs.map(r => r.top1HitRate);
                 const mrr = runs.map(r => r.meanReciprocalRank);
                 
@@ -119,18 +145,19 @@ function run() {
                 
                 const formattedModel = alignModelString(modelStr, colWidths);
                 
-                return {
-                    Model: formattedModel,
-                    Runs: runs.length,
+                allTableData.push({
+                    "Run": formattedRun,
+                    "Model": formattedModel,
+                    "Runs": runs.length,
                     "Avg Top-1": `${(avgTop1 * 100).toFixed(1)}%`,
                     "Max Top-1": `${(maxTop1 * 100).toFixed(1)}%`,
                     "Min Top-1": `${(minTop1 * 100).toFixed(1)}%`,
                     "Avg MRR": avgMrr.toFixed(3)
-                };
-            });
-            
-            console.table(tableData);
+                });
+            }
         }
+        
+        console.table(allTableData);
     }
 
     // --- 2. Latency Summary ---
