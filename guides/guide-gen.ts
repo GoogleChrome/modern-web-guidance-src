@@ -23,6 +23,8 @@ import {
   copyFileIfExists,
   createTrustedFolders,
 } from '../harness/lib/agent-shared.ts';
+import { devGuide } from './dev-guide.ts';
+
 
 // ─── MDN URL construction ────────────────────────────────────────────────────
 
@@ -238,7 +240,11 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
     
     fs.writeFileSync(path.join(outputDir, 'demo.html'), cleanHtml);
     console.log(`✅ Generated demo.html`);
+
+    console.log(`Running gd dev for ${uc.slug}...`);
+    await devGuide(outputDir, { noTest: true });
   }
+
 
   cleanupIsolatedHome(path.dirname(workDir));
   console.log(`\n🎉 All use cases scaffolded!`);

@@ -102,14 +102,6 @@ jobs:
             --category "${CATEGORY}" \
             ${SLUG_ARG}
 
-      - name: Run gd dev (negative, grader, calibration, prompts, task)
-        run: |
-          FEATURE_ID="${{ inputs.feature_id || 'intl-locale-info' }}"
-          SLUG="${{ inputs.slug }}"
-          GUIDE_SLUG="${SLUG:-$FEATURE_ID}"
-          CATEGORY="${{ inputs.category || 'user-experience' }}"
-          node ./bin/gd.ts dev guides/${CATEGORY}/${GUIDE_SLUG} --no-test
-
       - name: Configure git
         run: |
           git config user.name "chrome-devrel-infra[bot]"
