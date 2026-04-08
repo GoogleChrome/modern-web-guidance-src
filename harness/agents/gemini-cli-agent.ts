@@ -137,37 +137,24 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, _servin
         for (const msg of session.messages) {
           if (msg.type === 'gemini' && msg.toolCalls) {
             for (const tc of msg.toolCalls) {
-              if (tc.name.includes('get_best_practices')) {
-                const args = tc.args;
-                if (args && args.use_case_id) {
-                  retrievedGuides.push(args.use_case_id as string);
-                }
-              } else if (tc.name === 'read_file' && tc.args && tc.args.file_path) {
+              if (tc.name.includes('get_best_practices') && tc.args?.use_case_id) {
+                retrievedGuides.push(tc.args.use_case_id as string);
+              } else if (tc.name === 'read_file' && tc.args?.file_path) {
                 const filePath = tc.args.file_path as string;
-                  if (filePath.includes('/skills/')) {
-                    if (filePath.endsWith('/guide.md')) {
-                      const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
-                      if (match) {
-                        fileReadGuides.push(match[1]);
-                      }
-                    } else if (filePath.endsWith('.md')) {
-                      const match = filePath.match(/\/skills\/[^/]+\/(?:references\/)?(?:[^/]+\/)*([^/]+)\.md$/);
-                      if (match) {
-                        fileReadGuides.push(match[1]);
-                      }
-                    }
+                if (filePath.includes('/skills/')) {
+                  // Prioritize guide.md folder name, fallback to reference filename
+                  const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/) ||
+                                filePath.match(/\/skills\/[^/]+\/(?:references\/)?(?:[^/]+\/)*([^/]+)\.md$/);
+                  if (match) {
+                    fileReadGuides.push(match[1]);
                   }
-              } else if (tc.name === 'run_shell_command' && tc.args && (tc.args as any).command) {
-                const command = (tc.args as any).command;
-                  if (command.includes('modern-web') && command.includes('--retrieve')) {
-                    const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
-                    if (match) {
-                      const ids = match[1].split(',');
-                      for (const id of ids) {
-                        retrievedGuides.push(id.trim());
-                      }
-                    }
-                  }
+                }
+              } else if (tc.name === 'run_shell_command' && tc.args?.command) {
+                const command = tc.args.command as string;
+                const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
+                if (match) {
+                  retrievedGuides.push(...match[1].split(',').map(s => s.trim()));
+                }
               }
             }
           }
