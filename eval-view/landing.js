@@ -1,4 +1,4 @@
-import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData } from './utils.js';
+import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
 let allTestData = {}; // Cache all test data by testId
@@ -79,12 +79,12 @@ window.addEventListener('popstate', () => {
 });
 
 function setupTestFilters() {
-    const filterBtn = document.getElementById('filter-btn');
-    const filterMenu = document.getElementById('filter-menu');
-    const selectAllBtn = document.getElementById('select-all-btn');
-    const deselectAllBtn = document.getElementById('deselect-all-btn');
-    const list = document.getElementById('filter-list');
-    const searchInput = document.getElementById('filter-search');
+    const filterBtn = $('#filter-btn');
+    const filterMenu = $('#filter-menu');
+    const selectAllBtn = $('#select-all-btn');
+    const deselectAllBtn = $('#deselect-all-btn');
+    const list = $('#filter-list');
+    const searchInput = $('#filter-search');
 
     // Make list scrollable
     list.style.maxHeight = '300px';
@@ -169,7 +169,7 @@ function syncSelectStyles(el) {
 
 
 function renderFilterMenuItems() {
-    const list = document.getElementById('filter-list');
+    const list = $('#filter-list');
     list.innerHTML = '';
 
     // Get all tests sorted by date
@@ -371,7 +371,7 @@ function updateFilterOptions(groupId, key) {
 
 function renderSuites() {
     const testIds = getSortedTestIds();
-    const container = document.getElementById('suites-list');
+    const container = $('#suites-list');
     const headerSource = document.getElementById('header-source');
     if (headerSource) {
         headerSource.style.display = isRemoteDashboard() ? 'none' : '';
@@ -448,7 +448,7 @@ function renderSuites() {
 let tooltipChartInstance = null;
 let currentDumbbellKey = null;
 let hideTimeout = null;
-const tooltipContainer = document.getElementById('tooltip-container');
+const tooltipContainer = $('#tooltip-container');
 
 function setupRateCellHovers() {
     const rateCells = document.querySelectorAll('.rate-cell');
@@ -488,7 +488,7 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
 
     currentDumbbellKey = compoundKey;
 
-    const headerDiv = document.getElementById('tooltip-header');
+    const headerDiv = $('#tooltip-header');
     if (headerDiv) {
         headerDiv.innerHTML = `
             <div class="tooltip-title">${escapeHtml(testInfo.testId)}</div>

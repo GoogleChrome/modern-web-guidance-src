@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $ } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
@@ -9,6 +9,10 @@ let sortedScenarios = [];
 let currentRunTypes = [];
 let currentTestID = null;
 let api;
+
+// Module-scoped state
+let dashboardLoaded = false;
+let dumbbellChartInstance = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize API Client
@@ -38,10 +42,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadDashboardData(testId) {
     // Prevent double loading
-    // @ts-expect-error global property
-    if (window.dashboardLoaded) return;
-    // @ts-expect-error global property
-    window.dashboardLoaded = true;
+    if (dashboardLoaded) return;
+    dashboardLoaded = true;
 
     try {
         const data = await api.getEvals(testId);
@@ -130,8 +132,7 @@ async function loadDashboardData(testId) {
         }
     } catch (error) {
         console.error('Error:', error);
-        // @ts-expect-error global property
-        window.dashboardLoaded = false;
+        dashboardLoaded = false;
 
         let errorHtml = `<div style="text-align:center; padding: 50px; color: red;">
             <h3>Error loading dashboard data</h3>
@@ -144,28 +145,23 @@ async function loadDashboardData(testId) {
             </div>`;
         }
         
-        const grid = document.getElementById('dashboard-grid');
-        if (grid) {
-            grid.innerHTML = errorHtml;
-        } else {
-            document.body.innerHTML = errorHtml;
-        }
+        const grid = $('#dashboard-grid');
+        grid.innerHTML = errorHtml;
     }
 }
 
 // Modal control
 document.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById('modal');
-    if (!modal) return;
+    const modal = $('dialog#modal');
 
-    const closeBtn = document.querySelector('.close-modal');
+    const closeBtn = $('.close-modal');
 
     // Close function that also cleans up URL
     const closeModal = () => {
-        if (modal instanceof HTMLDialogElement && modal.open) modal.close();
+        if (modal.open) modal.close();
     };
 
-    if (closeBtn instanceof HTMLElement) closeBtn.onclick = closeModal;
+    closeBtn.onclick = closeModal;
 
     // Close on backdrop click
     modal.addEventListener('click', (event) => event.target === modal && closeModal());
@@ -212,16 +208,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         viewLogBtn.style.display = 'none';
                     } else {
                         viewLogBtn.onclick = async () => {
-                            const modal = document.getElementById('modal');
-                            const title = document.getElementById('modal-title');
-                            const body = document.getElementById('modal-body');
+                            const modal = $('dialog#modal');
+                            const title = $('#modal-title');
+                            const body = $('#modal-body');
 
                             title.textContent = 'Test Suite Run Log';
                             body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading log...</div>';
                             modal.dataset.view = 'log';
-                            if (modal instanceof HTMLDialogElement) {
-                                modal.showModal();
-                            }
+                            modal.showModal();
 
                             try {
                                 const text = await api.getFileText(`${testId}/test_suite.log`);
@@ -243,8 +237,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Arrow key navigation
     document.addEventListener('keydown', (e) => {
-        const modal = document.getElementById('modal');
-        if (!modal || !(modal instanceof HTMLDialogElement) || !modal.open || modal.dataset.view !== 'details') return;
+        const modal = $('dialog#modal');
+        if (!modal.open || modal.dataset.view !== 'details') return;
 
         if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
             if (!currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
@@ -294,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function renderTestHeader(testId, jetskiVersion, timestamp, data) {
-    const container = document.getElementById('test-header');
+    const container = $('#test-header');
     if (container) {
         let html = `Test ID: <strong>${escapeHtml(testId)}</strong>`;
 
@@ -345,7 +339,7 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
 }
 
 function renderSummary(data) {
-    const container = document.getElementById('summary-stats');
+    const container = $('#summary-stats');
     const summary = data.summary;
 
     const unguidedRate = summary.unguidedPassRate;
@@ -413,7 +407,7 @@ function renderSummary(data) {
 }
 
 function renderGrid(data, testId) {
-    const grid = document.getElementById('dashboard-grid');
+    const grid = $('#dashboard-grid');
     const results = data.results;
     const stats = data.stats;
 
@@ -540,10 +534,10 @@ async function showDetails(testName, runs, stats, testId) {
     // Store current details for back navigation
     currentDetails = { testName, runs, stats, testId };
 
-    const modal = document.getElementById('modal');
-    const title = document.getElementById('modal-title');
-    const contentDiv = document.querySelector('.modal-content');
-    const body = document.getElementById('modal-body');
+    const modal = $('dialog#modal');
+    const title = $('#modal-title');
+    const contentDiv = $('.modal-content');
+    const body = $('#modal-body');
     const [taskName, guide, runType] = testName.split(' - ');
 
     // Reset modifier classes
@@ -759,9 +753,7 @@ async function showDetails(testName, runs, stats, testId) {
     const runDetails = await Promise.all(runDetailsPromises);
     body.innerHTML = promptHtml; // Insert promptHtml first
     runDetails.forEach(detail => body.appendChild(detail));
-    if (modal instanceof HTMLDialogElement) {
-        modal.showModal();
-    }
+    modal.showModal();
 }
 
 function renderBackButton() {
@@ -778,9 +770,9 @@ function renderBackButton() {
 }
 
 async function viewContent(fileName, filePath) {
-    const title = document.getElementById('modal-title');
-    const body = document.getElementById('modal-body');
-    const modal = document.getElementById('modal');
+    const title = $('#modal-title');
+    const body = $('#modal-body');
+    const modal = $('dialog#modal');
 
     title.textContent = fileName;
     modal.dataset.view = 'content';
@@ -818,10 +810,10 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     url.searchParams.set('run', runNumber);
     window.history.replaceState({}, '', url);
 
-    const modal = document.getElementById('modal');
-    const title = document.getElementById('modal-title');
-    const body = document.getElementById('modal-body');
-    const contentDiv = document.querySelector('.modal-content');
+    const modal = $('dialog#modal');
+    const title = $('#modal-title');
+    const body = $('#modal-body');
+    const contentDiv = $('.modal-content');
 
     modal.dataset.runNumber = runNumber;
 
@@ -977,16 +969,13 @@ function renderDashboardDumbbellChart(data, testId) {
     ];
 
     // Render the Dumbbell Chart
-    // @ts-expect-error global property
-    if (window.dumbbellChart) window.dumbbellChart.container.innerHTML = '';
-    // @ts-expect-error global property
-    window.dumbbellChart = new DumbbellChart('dumbbell-chart', {
+    if (dumbbellChartInstance) dumbbellChartInstance.container.innerHTML = '';
+    dumbbellChartInstance = new DumbbellChart('dumbbell-chart', {
         size: 700,
         rowHeight: 30,
         margin: { top: 20, right: 200, bottom: 20, left: 30 }
     });
-    // @ts-expect-error global property
-    window.dumbbellChart.render({ labels, datasets });
+    dumbbellChartInstance.render({ labels, datasets });
 }
 
 async function getResultPaths(testId, run, testName) {
