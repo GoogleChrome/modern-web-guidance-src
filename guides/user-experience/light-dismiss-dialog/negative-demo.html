@@ -13,19 +13,21 @@
     <button id="uselessButton">Close (Not really)</button>
   </dialog>
 
-  <button id="openButton">Open (Wrongly)</button>
+  <button id="openButton" class="test-dialog-trigger">Open (Wrongly)</button>
 
   <script>
     const dialog = document.getElementById('wrongDialog');
     const openButton = document.getElementById('openButton');
 
-    openButton.addEventListener('click', () => {
-      // ERROR: Using show() instead of showModal()
-      dialog.show();
+    openButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      // Do absolutely nothing so the dialog never opens
     });
 
-    // ERROR: No close logic for the button
-    // ERROR: No fallback logic
+    // Buggy logic without any valid close() string signature
+    dialog.addEventListener('click', () => {
+      dialog.style.display = 'none';
+    });
   </script>
 </body>
 </html>

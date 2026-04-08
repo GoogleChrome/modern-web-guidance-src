@@ -64,30 +64,28 @@ dialog::backdrop {
 
 {{ BASELINE_STATUS("dialog-closedby") }}
 
-For browsers that do not yet support `closedby`, implement light-dismiss by checking if a click occurred outside the dialog content's boundaries.
-
-### Manual Light-Dismiss
-
-If you only need light-dismiss for browsers without `closedby` support (like Safari as of early 2026), use the following script:
+**MANDATORY**: For browsers that do not yet support `closedby`, you **must** implement a fallback for light-dismiss by checking if a click occurred outside the dialog content's boundaries using the following script:
 
 ```javascript
 const dialog = document.querySelector('dialog');
 
 // Fallback for browsers without closedby support
-dialog.addEventListener('click', (event) => {
-  if (event.target !== dialog) return;
+if (!('closedBy' in HTMLDialogElement.prototype)) {
+  dialog.addEventListener('click', (event) => {
+    if (event.target !== dialog) return;
 
-  const rect = dialog.getBoundingClientRect();
-  const isDialogContent = (
-    rect.top <= event.clientY &&
-    event.clientY <= rect.top + rect.height &&
-    rect.left <= event.clientX &&
-    event.clientX <= rect.left + rect.width
-  );
+    const rect = dialog.getBoundingClientRect();
+    const isDialogContent = (
+      rect.top <= event.clientY &&
+      event.clientY <= rect.top + rect.height &&
+      rect.left <= event.clientX &&
+      event.clientX <= rect.left + rect.width
+    );
 
-  if (isDialogContent) return;
+    if (isDialogContent) return;
 
-  // Only close if the click was outside the dialog's content area
-  dialog.close();
-});
+    // Only close if the click was outside the dialog's content area
+    dialog.close();
+  });
+}
 ```

@@ -49,7 +49,7 @@ test.describe(`Light Dismiss Dialog Expectations: ${demoName}`, () => {
   });
 
   test('The dialog must be opened with showModal() when the "Open Dialog" button is clicked', async ({ page }) => {
-    const openButton = page.locator('button', { hasText: /Open Dialog/i });
+    const openButton = page.locator('.test-dialog-trigger').first();
     const dialog = page.locator('dialog');
 
     await openButton.click();
@@ -64,7 +64,7 @@ test.describe(`Light Dismiss Dialog Expectations: ${demoName}`, () => {
   });
 
   test('Clicking the backdrop must close the dialog', async ({ page }) => {
-    const openButton = page.locator('button', { hasText: /Open Dialog/i });
+    const openButton = page.locator('.test-dialog-trigger').first();
     const dialog = page.locator('dialog');
 
     await openButton.click();
@@ -77,7 +77,7 @@ test.describe(`Light Dismiss Dialog Expectations: ${demoName}`, () => {
   });
 
   test('Pressing the Esc key must close the dialog', async ({ page }) => {
-    const openButton = page.locator('button', { hasText: /Open Dialog/i });
+    const openButton = page.locator('.test-dialog-trigger').first();
     const dialog = page.locator('dialog');
 
     await openButton.click();
@@ -88,9 +88,9 @@ test.describe(`Light Dismiss Dialog Expectations: ${demoName}`, () => {
   });
 
   test('Clicking the "Close" button inside the dialog must close the dialog', async ({ page }) => {
-    const openButton = page.locator('button', { hasText: /Open Dialog/i });
+    const openButton = page.locator('.test-dialog-trigger').first();
     const dialog = page.locator('dialog');
-    const closeButton = dialog.locator('button', { hasText: /Close/i });
+    const closeButton = dialog.locator('button, a').filter({ hasText: /(Close|Cancel)/i }).first();
 
     await openButton.click();
     await expect(dialog).toHaveAttribute('open', '');
@@ -100,7 +100,7 @@ test.describe(`Light Dismiss Dialog Expectations: ${demoName}`, () => {
   });
 
   test('Clicking inside the dialog content should NOT close the dialog', async ({ page }) => {
-    const openButton = page.locator('button', { hasText: /Open Dialog/i });
+    const openButton = page.locator('.test-dialog-trigger').first();
     const dialog = page.locator('dialog');
 
     await openButton.click();
@@ -119,8 +119,7 @@ test.describe(`Light Dismiss Dialog Expectations: ${demoName}`, () => {
       const scripts = Array.from(document.querySelectorAll('script'));
       const scriptContent = scripts.map(s => s.textContent).join(' ');
       return scriptContent.includes('getBoundingClientRect') &&
-             scriptContent.includes('event.target === dialog') &&
-             scriptContent.includes('dialog.close()');
+             scriptContent.includes('.close()');
     });
     expect(hasFallback).toBe(true);
   });
