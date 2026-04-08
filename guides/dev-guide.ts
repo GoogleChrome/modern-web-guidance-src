@@ -551,7 +551,7 @@ export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
       console.log(cBold(`\n${category}/`));
 
       const hdr = 'guide'.padEnd(6) + 'demo'.padEnd(6) + 'expct'.padEnd(6)
-        + '│ ' + 'neg'.padEnd(6) + 'grdr'.padEnd(6) + 'prmpt'.padEnd(6) + 'task';
+        + '│ ' + 'neg'.padEnd(6) + 'grdr'.padEnd(6) + 'task';
       console.log(cDim(`  ${'name'.padEnd(42)} ${hdr}`));
 
       for (const inv of guides.sort((a, b) => a.name.localeCompare(b.name))) {
@@ -562,7 +562,7 @@ export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
         const expctDot = inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations);
         const row = col(guideDot(inv)) + col(dot(inv.hasDemo)) + col(expctDot)
           + cDim('│') + ' ' + col(dot(inv.hasNegativeDemo)) + col(dot(inv.hasGrader))
-          + col(dot(inv.hasTask));
+          + dot(inv.hasTask);
         console.log(`  ${color(name.padEnd(42))} ${row}`);
       }
     }
@@ -633,7 +633,7 @@ function renderFeatureMatrix(allGuides: GuideInventory[]): void {
     return cDim('○');
   };
 
-  const hdr = 'guide'.padEnd(10) + 'demo'.padEnd(10) + 'expct'.padEnd(10) + '│ ' + 'neg'.padEnd(10) + 'grdr'.padEnd(10) + 'prmpt'.padEnd(10) + 'task';
+  const hdr = 'guide'.padEnd(10) + 'demo'.padEnd(10) + 'expct'.padEnd(10) + '│ ' + 'neg'.padEnd(10) + 'grdr'.padEnd(10) + 'task';
   console.log(cDim(`\n  ${'feature'.padEnd(32)} count ${hdr}`));
 
   const statusRank: Record<GuideStatus, number> = {
@@ -669,7 +669,6 @@ function renderFeatureMatrix(allGuides: GuideInventory[]): void {
                 cDim('│') + ' ' +
                 col(renderDots(inv => dot(inv.hasNegativeDemo))) +
                 col(renderDots(inv => dot(inv.hasGrader))) +
-                col(renderDots(inv => dot(inv.hasTask))) +
                 renderDots(inv => dot(inv.hasTask));
 
     console.log(`  ${color(name.padEnd(32))} ${String(guides.length).padStart(5)}  ${row}`);

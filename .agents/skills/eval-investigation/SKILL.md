@@ -60,8 +60,13 @@ gcloud storage cp gs://guidance-evals/{suite_id}/evals.json .
     -   *Solution*: Update task frontmatter with `target_file: rewards.html`.
 -   **Conflicting Image Sourcing**: The prompt specifies a filename but a global instruction causes the agent to use external URLs.
     -   *Solution*: Remove conflicting global instructions.
--   **Grader Locator Rigidity**: Graders use strict attribute checks that fail even on correct logical changes.
-    -   *Solution*: Relax grader assertions or fix the agent's tool usage pattern.
+-   **Ambiguous Prompt vs Rigid Grader**: Prompt asks to "implement a feature" without specifying selectors, but the grader expects specific IDs or classes (e.g. `#target`).
+    -   *Solution*: Explicitly instruct the agent to use specific IDs or class names consistent with the demo, expectations, and grader files.
+        - **DO NOT** tell the agent how to solve the problem by naming specific web features.
+        - **DO** give the agent validation constraints like IDs and class names.
+        - **ONLY WHEN NEEDED** tell the agent that a critical part of the problem statement is mandatory, ideally not one that violates the first rule.
+-   **Overly Rigid Graders vs Valid Alternatives**: The grader fails a valid implementation because it assumes a specific DOM structure or property usage not strictly required.
+    -   *Solution*: Compare the agent's generated solution against the grader file. If the agent's solution is valid but fails the grader, update the grader to be more flexible (e.g., using descendant selectors instead of direct children, or checking for computed styles rather than exact string matches).
 -   **JS Fallback for CSS Tasks**: Agent uses JS listeners instead of CSS scroll-driven animations because it lacks guidance on modern browser support.
     -   *Solution*: Ensure MCP guidance tools are available and suggest the optimal tech stack.
 

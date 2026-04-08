@@ -26,7 +26,6 @@ export function getSuiteConfig(): SuiteConfig {
   throw new Error('GD_SUITE_CONFIG environment variable is missing.');
 }
 
-
 /**
  * Promisified version of child_process.spawn.
  */
@@ -52,6 +51,20 @@ export function createIsolatedHome(prefix: string): string {
   // Provide authentication to the isolated environment so npm tasks work
   const originalHome = process.env.HOME || process.cwd();
   copyFileIfExists(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
+
+  // Pre-populate projects.json to prevent concurrent write race conditions in geminicli. https://github.com/GoogleChrome/guidance/pull/479
+  try {
+    const geminiDir = path.join(tempHome, '.gemini');
+    fs.mkdirSync(geminiDir, { recursive: true });
+    const mockProjects = {
+      projects: {
+        [path.join(tempHome, 'work')]: 'work'
+      }
+    };
+    fs.writeFileSync(path.join(geminiDir, 'projects.json'), JSON.stringify(mockProjects, null, 2));
+  } catch (err) {
+    console.warn('Warning: Failed to pre-populate projects.json:', err);
+  }
 
   console.log(`Setting up isolated HOME at ${tempHome}...`);
   return tempHome;
@@ -264,7 +277,6 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
       }
     }
 
-    // Skills-discipline mode
     if (!fs.existsSync(guidesSource)) {
       console.warn(`Warning: Guides directory not found at ${guidesSource}`);
       return false;
@@ -290,18 +302,20 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
       }
     }
 
-    // 2. Scan and copy guide.md for eval-ready guides
-    const allGuides = scanAllGuides();
+    if (!cli) {
+      // 2. Scan and copy guide.md for eval-ready guides
+      const allGuides = scanAllGuides();
 
-    for (const inv of allGuides) {
-      if (classifyGuide(inv) === 'eval-ready') {
-        const catDest = path.join(destDir, inv.category);
-        const guideDest = path.join(catDest, inv.name);
-        fs.mkdirSync(guideDest, { recursive: true });
+      for (const inv of allGuides) {
+        if (classifyGuide(inv) === 'eval-ready') {
+          const catDest = path.join(destDir, inv.category);
+          const guideDest = path.join(catDest, inv.name);
+          fs.mkdirSync(guideDest, { recursive: true });
 
-        const guideFileSrc = path.join(inv.dir, 'guide.md');
-        const guideFileDest = path.join(guideDest, 'guide.md');
-        fs.copyFileSync(guideFileSrc, guideFileDest);
+          const guideFileSrc = path.join(inv.dir, 'guide.md');
+          const guideFileDest = path.join(guideDest, 'guide.md');
+          fs.copyFileSync(guideFileSrc, guideFileDest);
+        }
       }
     }
 
