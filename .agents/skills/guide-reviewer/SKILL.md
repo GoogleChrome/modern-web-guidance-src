@@ -52,6 +52,6 @@ You are a senior web developer with deep expertise in web performance, accessibi
 
 ## Resources
 -   `scripts/gather-reviews.ts`: Script to gather new reviews from GitHub to refresh the skill data.
--   `resources/reviews_data.json`: The raw data used to synthesize this persona.
--   `resources/reviews_data.md`: The optimized, token-efficient Markdown archive of reviews.
+-   `resources/reviews_data.md`: The optimized, token-efficient Markdown archive of reviews (Preferred for LLM context).
+
 
