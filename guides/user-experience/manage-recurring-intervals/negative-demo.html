@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,7 +15,11 @@
       --accent-primary: #58a6ff;
       --accent-secondary: #3fb950;
       --border-color: #30363d;
+      --danger-bg: rgba(248, 81, 83, 0.1);
+      --danger-border: rgba(248, 81, 83, 0.4);
+      --danger-text: #f8514f;
     }
+
     body {
       margin: 0;
       padding: 2rem;
@@ -26,16 +31,19 @@
       flex-direction: column;
       align-items: center;
     }
+
     .container {
       max-width: 800px;
       width: 100%;
     }
+
     header {
       text-align: center;
       margin-bottom: 2.5rem;
       border-bottom: 1px solid var(--border-color);
       padding-bottom: 1.5rem;
     }
+
     h1 {
       font-size: 2.5rem;
       font-weight: 800;
@@ -45,6 +53,7 @@
       background-clip: text;
       -webkit-text-fill-color: transparent;
     }
+
     p.description {
       color: var(--text-secondary);
       font-size: 1.1rem;
@@ -52,6 +61,7 @@
       max-width: 600px;
       line-height: 1.6;
     }
+
     .controls-bar {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
@@ -62,11 +72,13 @@
       gap: 1.25rem;
       margin-bottom: 2rem;
     }
+
     .input-row {
       display: flex;
       gap: 1rem;
       flex-wrap: wrap;
     }
+
     .control-group {
       display: flex;
       flex-direction: column;
@@ -74,6 +86,7 @@
       flex: 1;
       min-width: 140px;
     }
+
     label {
       font-weight: 600;
       color: var(--text-secondary);
@@ -81,6 +94,7 @@
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
+
     input {
       background: #21262d;
       border: 1px solid var(--border-color);
@@ -92,14 +106,17 @@
       outline: none;
       transition: border-color 0.2s;
     }
+
     input:focus {
       border-color: var(--accent-primary);
     }
+
     .output-grid {
       display: grid;
       grid-template-columns: 1fr;
       gap: 1.5rem;
     }
+
     .card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
@@ -109,19 +126,33 @@
       flex-direction: column;
       gap: 0.75rem;
     }
+
     .card-title {
       font-weight: 600;
       color: var(--text-secondary);
       font-size: 0.9rem;
       text-transform: uppercase;
     }
+
     .huge-value {
       font-size: 2.25rem;
       font-weight: 800;
       color: var(--accent-secondary);
     }
+
+    .code-block {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
   </style>
 </head>
+
 <body>
   <div class="container">
     <header>
@@ -153,6 +184,11 @@
         <div class="card-title">Calculated Date</div>
         <div id="resultDate" class="huge-value">-</div>
       </div>
+
+      <div class="card">
+        <div class="card-title">Code Snippet</div>
+        <div id="codeSnippet" class="code-block"></div>
+      </div>
     </div>
   </div>
 
@@ -161,6 +197,7 @@
     const yearsInput = document.getElementById('yearsInput');
     const monthsInput = document.getElementById('monthsInput');
     const resultDate = document.getElementById('resultDate');
+    const codeSnippet = document.getElementById('codeSnippet');
 
     const inputs = [startDateInput, yearsInput, monthsInput];
 
@@ -180,19 +217,20 @@
         return;
       }
 
-      const dateObj = new Date(startDateStr);
-      
-      dateObj.setFullYear(dateObj.getFullYear() + years);
-      dateObj.setMonth(dateObj.getMonth() + months);
+      let code = `const date = new Date('${startDateStr}');\n`;
+      code += `date.setFullYear(date.getFullYear() + ${years});\n`;
+      code += `date.setMonth(date.getMonth() + ${months});\n`;
 
-      const year = dateObj.getFullYear();
-      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const day = String(dateObj.getDate()).padStart(2, '0');
+      const date = new Date(startDateStr);
+      date.setFullYear(date.getFullYear() + years);
+      date.setMonth(date.getMonth() + months);
 
-      resultDate.textContent = `${year}-${month}-${day}`;
+      resultDate.textContent = date.toISOString().split('T')[0];
+      codeSnippet.textContent = code;
     }
 
     initializeApp();
   </script>
 </body>
+
 </html>

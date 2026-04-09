@@ -3,8 +3,7 @@
 - The implementation MUST manually assign the loaded polyfill to `globalThis.Temporal` to ensure it is globally accessible if the application logic relies on the global name.
 - The implementation MUST use `Temporal.PlainDate` as the primary type for calculating recurring intervals that do not depend on specific times or time zones.
 - The implementation MUST use the `.add()` method on a `Temporal.PlainDate` instance to calculate the next date in the interval.
-- The implementation MUST provide a way to configure the `overflow` strategy (e.g., 'constrain' or 'reject') when adding durations.
-- The implementation MUST correctly handle the 'constrain' overflow strategy by clamping to the end of the month (e.g., Jan 31 + 1 month results in Feb 29 in a leap year).
-- The implementation MUST correctly handle the 'reject' overflow strategy by throwing a `RangeError` (or displaying an error message indicating an invalid date) when an invalid calendar date would result.
+- IF the implementation provides a way to select the 'constrain' overflow strategy, it MUST correctly clamp invalid dates to the end of the month (e.g., Jan 31 + 1 month results in Feb 29 in a leap year).
+- IF the implementation provides a way to select the 'reject' overflow strategy, it MUST correctly throw a `RangeError` or display an error message indicating an invalid date when an invalid calendar date would result.
 - The implementation MUST NOT attempt to modify `Temporal` instances directly, as they are immutable. It MUST use the new instances returned by operations like `add()`.
 - The implementation MUST NOT use the legacy `Date` object for the core recurring interval calculations.
