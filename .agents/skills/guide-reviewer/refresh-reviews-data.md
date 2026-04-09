@@ -27,7 +27,8 @@ The script will:
 
 ## Processing the Data
 
-The gathered data is a JSON array of PR objects. Each object contains reviews and inline comments.
+The gathered data is available in `.agents/skills/guide-reviewer/resources/reviews_data.md` (and also in JSON format). The Markdown file is optimized for readability and token efficiency.
+
 
 ### How to Consider the Data
 
@@ -58,4 +59,6 @@ When reviewing the data to update the skill or persona, look for the following p
 If you identify new patterns or shifts in reviewer preferences:
 1.  Open `.agents/skills/guide-reviewer/SKILL.md`.
 2.  Update the **Core Review Principles** or **Persona** sections to reflect the new insights.
-3.  Commit the changes to preserve history.
+3.  Refer to `.agents/skills/guide-reviewer/resources/reviews_data.md` for historical examples to back up changes.
+4.  Commit the changes to preserve history.
+
