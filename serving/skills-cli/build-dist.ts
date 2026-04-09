@@ -14,20 +14,35 @@ const PUBLISH_ROOT = path.join(ROOT_DIST_DIR, "skills-cli");
 
 const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases");
 
-async function main() {
+interface BuildResult {
+  featuresCount: number;
+  useCasesCount: number;
+  skillsCount: number;
+  skillNames: string[];
+}
+
+async function acquireLock(lockFilePath: string) {
+  while (fs.existsSync(lockFilePath)) {
+    try {
+      const pid = parseInt(fs.readFileSync(lockFilePath, 'utf-8'), 10);
+      process.kill(pid, 0);
+    } catch (e: any) {
+      if (e.code === 'ESRCH') {
+        fs.unlinkSync(lockFilePath);
+        break;
+      }
+    }
+    console.log(" Another build is in progress. Waiting...");
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+  fs.writeFileSync(lockFilePath, process.pid.toString());
+}
+
+async function main(): Promise<BuildResult | undefined> {
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
   const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
 
-  if (fs.existsSync(lockFilePath)) {
-    console.log(" Another build is in progress. Waiting for it to finish...");
-    while (fs.existsSync(lockFilePath)) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-    console.log(" Previous build finished. Skipping rebuild.");
-    return; 
-  }
-
-  fs.writeFileSync(lockFilePath, process.pid.toString());
+  await acquireLock(lockFilePath);
 
   try {
     console.log("Ensuring dist/ output directory exists...");
@@ -107,6 +122,7 @@ async function main() {
     .map(d => d.name);
 
   let skillsCount = 0;
+  const skillNames: string[] = [];
   for (const candidate of candidates) {
     const skillSource = path.join(guidesDirInRoot, candidate, "SKILL.md");
     if (fs.existsSync(skillSource)) {
@@ -116,11 +132,12 @@ async function main() {
       fs.copyFileSync(skillSource, skillDest);
       console.log(`Copied skill ${candidate} (SKILL.md) to ${skillDestDir}`);
       skillsCount++;
+      skillNames.push(candidate);
     }
   }
   console.log(`Successfully copied ${skillsCount} skills to distribution.`);
 
-  updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
+  const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
 
   let nodeModulesValid = false;
   if (fs.existsSync(path.join(PUBLISH_ROOT, "node_modules"))) {
@@ -161,6 +178,7 @@ async function main() {
   }
 
   console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
+  return { featuresCount, useCasesCount, skillsCount, skillNames };
   } finally {
     if (fs.existsSync(lockFilePath)) {
       fs.unlinkSync(lockFilePath);
@@ -234,6 +252,8 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     fs.writeFileSync(readmePath, readmeContent);
     console.log("README dynamically updated with features and use cases.");
   }
+
+  return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
