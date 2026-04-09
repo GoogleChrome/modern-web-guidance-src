@@ -720,5 +720,22 @@
     "top5HitRate": 0.9741,
     "meanReciprocalRank": 0.8062,
     "runId": "2026-04-08T21:11:15.914Z"
+  },
+   {
+    "timestamp": "2026-04-09T21:04:58.158Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "native",
+      "search": "no-maxsim",
+      "chunking": "chunked",
+      "variant": "baseline main branch"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6887,
+    "top3HitRate": 0.934,
+    "top5HitRate": 0.9705,
+    "meanReciprocalRank": 0.8084,
+    "runId": "2026-04-09T21:04:49.925Z"
   }
 ]
