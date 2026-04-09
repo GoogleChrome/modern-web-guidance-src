@@ -123,6 +123,9 @@ async function main(): Promise<BuildResult | undefined> {
       loader: { ".node": "file" },
       metafile: true,
       minify: true,
+      alias: {
+        "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
+      },
     });
     console.log(await esbuild.analyzeMetafile(result.metafile));
 
