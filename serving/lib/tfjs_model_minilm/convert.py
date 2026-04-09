@@ -59,7 +59,7 @@ def main():
             "tensorflowjs_converter",
             "--input_format=tf_saved_model",
             "--weight_shard_size_bytes=100000000",
-            "--quantization_bytes=2",
+            "--quantization_bytes=1",
             saved_model_path,
             output_dir
         ], check=True)
