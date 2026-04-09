@@ -34,8 +34,11 @@ async function main() {
     try {
       const { searchUseCases } = await import("../lib/search.ts");
       const results = await searchUseCases(values.search);
-      for (const result of results) {
-        console.log(JSON.stringify(result));
+      if (results.length === 0) {
+        console.log("[]");
+      } else {
+        const jsonLines = results.map(r => JSON.stringify(r));
+        console.log("[" + jsonLines.join(",\n") + "]");
       }
     } catch (error) {
       console.error("Search failed:", error);
