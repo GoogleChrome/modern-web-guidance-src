@@ -1,11 +1,9 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { Embedder } from "../../lib/transformers-embedder.ts";
-import { searchUseCases } from "../../lib/search.ts";
+import { searchUseCases } from "../../../dist/skills-cli/skills/modern-web-use-cases/search.mjs";
 import { Gpt4AllEmbedder } from "./gpt4all-embedder.ts";
 import type { EvalQuery } from "./generate-eval-queries.ts";
-import { TfjsEmbedder } from "../../lib/tfjs-embedder.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,15 +62,17 @@ async function main() {
   
   let embedder: any;
   if (modelArg === "tfjs") {
-    embedder = TfjsEmbedder.getInstance();
+    // Handled by bundled search.mjs
+    console.log("Using bundled TFJS search runtime...");
   } else if (modelArg && (modelArg.includes(".gguf") || modelArg.includes("nomic"))) {
     embedder = Gpt4AllEmbedder.getInstance(modelArg);
+    await embedder.init();
   } else {
+    const { Embedder } = await import("../../lib/transformers-embedder.ts");
     Embedder.configureRuntime(runtimeArg);
     embedder = Embedder.getInstance(modelArg);
+    await embedder.init();
   }
-  
-  await embedder.init();
 
   let hitsTop1 = 0;
   let hitsTop3 = 0;

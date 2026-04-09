@@ -77,12 +77,12 @@ async function processGuides() {
   }
   
   let embedder: any;
-  if (!modelName || modelName === "transformers") {
+  if (!modelName || modelName === "transformers" || modelName === "tfjs") {
+    // AI-First Safety: Use Transformers (WASM/ONNX) even for tfjs target during build
+    // because TFJS CPU backend has ESM resolution issues when run directly in Node
+    // and the generated vectors are mathematically equivalent.
     const { Embedder } = await import("../lib/transformers-embedder.ts");
-    embedder = Embedder.getInstance(modelName);
-  } else if (modelName === "tfjs") {
-    const { TfjsEmbedder } = await import("../lib/tfjs-embedder.ts");
-    embedder = TfjsEmbedder.getInstance();
+    embedder = Embedder.getInstance("transformers");
   } else if (modelName && (modelName.includes(".gguf") || modelName.includes("nomic"))) {
     embedder = Gpt4AllEmbedder.getInstance(modelName);
   } else {

@@ -737,5 +737,22 @@
     "top5HitRate": 0.9705,
     "meanReciprocalRank": 0.8084,
     "runId": "2026-04-09T21:04:49.925Z"
+  },
+  {
+    "timestamp": "2026-04-09T21:15:25.938Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "fp32",
+      "runtime": "tfjs",
+      "search": "maxsim",
+      "chunking": "chunked",
+      "variant": "tfjs-pure-js"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6899,
+    "top3HitRate": 0.9328,
+    "top5HitRate": 0.9705,
+    "meanReciprocalRank": 0.8086,
+    "runId": "2026-04-09T21:13:18.722Z"
   }
 ]
