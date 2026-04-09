@@ -15,32 +15,23 @@ function runGh(args: string): string {
 }
 
 function main() {
-  console.log('Searching for PRs...');
-  // Search for PRs that might be relevant. We search for "guide" keyword as a heuristic.
-  // We can't easily filter by path in search for PR files changed.
-  const searchOutput = runGh(`search prs "guide" --repo ${REPO} --limit 100 --json number,title`);
-  const prs = JSON.parse(searchOutput);
-  console.log(`Found ${prs.length} candidate PRs.`);
+  console.log('Fetching all PRs and their file lists...');
+  const listOutput = runGh(`pr list --state all --limit 1000 --json number,title,files`);
+  const prs = JSON.parse(listOutput);
+  console.log(`Found ${prs.length} PRs. Filtering for those affecting guides/...`);
 
   const results: any[] = [];
 
   for (const pr of prs) {
-    console.log(`Checking PR #${pr.number}: ${pr.title}`);
+    const affectsGuides = pr.files.some((f: any) => f.path.startsWith('guides/'));
     
-    // Check files
+    if (!affectsGuides) {
+      continue;
+    }
+    
+    console.log(`Processing PR #${pr.number}: ${pr.title}`);
+    
     try {
-      const filesOutput = runGh(`pr view ${pr.number} --json files`);
-      const { files } = JSON.parse(filesOutput);
-      
-      const affectsGuides = files.some((f: any) => f.path.startsWith('guides/'));
-      
-      if (!affectsGuides) {
-        console.log(`  Skipping (does not affect guides/)`);
-        continue;
-      }
-      
-      console.log(`  Affects guides/. Fetching reviews...`);
-      
       // Fetch reviews
       const reviewsOutput = runGh(`api repos/${REPO}/pulls/${pr.number}/reviews`);
       const reviews = JSON.parse(reviewsOutput);
@@ -84,14 +75,13 @@ function main() {
       if (prData.reviews.length > 0 || prData.comments.length > 0) {
         console.log(`  Found relevant reviews/comments!`);
         results.push(prData);
-      } else {
-        console.log(`  No reviews from target reviewers.`);
       }
       
     } catch (e) {
       console.error(`  Error processing PR #${pr.number}:`, e);
     }
   }
+
 
   const outputPath = path.join(process.cwd(), '.agents/skills/guide-reviewer/resources/reviews_data.json');
 
