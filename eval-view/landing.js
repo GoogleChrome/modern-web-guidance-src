@@ -332,26 +332,22 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
         guideUsageRate: parsed.summary?.guideUsageRate || 0
     };
     
-    updateModelFilterOptions();
+    updateFilterOptions('filter-model-group', 'model');
+    updateFilterOptions('filter-serving-group', 'serving');
+    updateFilterOptions('filter-agent-group', 'agent');
 }
 
-function updateModelFilterOptions() {
-    const modelGroup = document.getElementById('filter-model-group');
-    if (!modelGroup) return;
+function updateFilterOptions(groupId, key) {
+    const group = document.getElementById(groupId);
+    if (!group) return;
 
-    const models = new Set();
-    Object.values(allTestData).forEach(test => {
-        if (test.model) models.add(test.model);
-    });
-
-    const sortedModels = Array.from(models).sort();
+    const values = [...new Set(Object.values(allTestData).map(t => t[key]).filter(Boolean))].sort();
     
-    // Only update if changed to avoid unnecessary re-renders or losing selection
-    const currentOptions = Array.from(modelGroup.querySelectorAll('option')).map(o => o.value);
-    if (JSON.stringify(currentOptions) === JSON.stringify(sortedModels)) return;
+    const currentOptions = Array.from(group.querySelectorAll('option')).map(o => o.value);
+    if (JSON.stringify(currentOptions) === JSON.stringify(values)) return;
 
-    modelGroup.innerHTML = sortedModels.map(model => 
-        `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`
+    group.innerHTML = values.map(val => 
+        `<option value="${escapeHtml(val)}">${escapeHtml(val)}</option>`
     ).join('');
 }
 
@@ -387,6 +383,7 @@ function renderSuites() {
         if (currentModelFilter !== 'all' && testInfo.model !== currentModelFilter) return;
 
         const data = testInfo.data;
+        const results = data.results;
         const _date = new Date(testInfo.timestamp);
 
         // Custom format to match "March 5, 2:25PM"
@@ -398,8 +395,8 @@ function renderSuites() {
             hour12: true
         }).replace(' at ', ', ');
 
-        const gStats = calculateGroupTotalStats(data.results, 'guided');
-        const uStats = calculateGroupTotalStats(data.results, 'unguided');
+        const gStats = calculateGroupTotalStats(results, 'guided');
+        const uStats = calculateGroupTotalStats(results, 'unguided');
 
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
@@ -477,7 +474,8 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
         `;
     }
 
-    const { labels, guided, unguided } = calculateChartData(testInfo.data.results);
+    const results = testInfo.data.results;
+    const { labels, guided, unguided } = calculateChartData(results);
     if (labels.length < 1) return;
 
     tooltipContainer.classList.remove('hidden');

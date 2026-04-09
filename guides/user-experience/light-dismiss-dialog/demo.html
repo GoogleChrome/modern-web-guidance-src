@@ -1,1 +1,79 @@
-<!-- TODO -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Light Dismiss Dialog Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      max-width: 80ch;
+      margin: 0 auto;
+    }
+
+    dialog {
+      padding: 2rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    dialog::backdrop {
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Light Dismiss Dialog Demo</h1>
+  <p>This demo shows how to use the <code>closedby="any"</code> attribute on a <code>&lt;dialog&gt;</code> element to enable "light-dismiss" (clicking outside) behavior.</p>
+
+  <!-- Step 1: Add closedby="any" and accessibility attributes -->
+  <dialog id="lightDismissDialog" closedby="any" aria-labelledby="dialogTitle">
+    <h2 id="dialogTitle">Welcome!</h2>
+    <p>This modal dialog can be closed by clicking outside of its content (on the backdrop) or by pressing the <code>Esc</code> key.</p>
+    <form method="dialog">
+      <button type="submit">Close</button>
+    </form>
+  </dialog>
+
+  <!-- Step 2: Open with showModal() -->
+  <button id="openButton" class="test-dialog-trigger">Open Dialog</button>
+
+  <script>
+    const dialog = document.getElementById('lightDismissDialog');
+    const openButton = document.getElementById('openButton');
+
+    openButton.addEventListener('click', () => {
+      dialog.showModal();
+    });
+
+    // Fallback for browsers that don't support the closedby attribute yet (e.g. Safari)
+    if (!('closedBy' in HTMLDialogElement.prototype)) {
+      dialog.addEventListener('click', (event) => {
+        // Clicks on the backdrop have the <dialog> as the target.
+        // We then check if the click is actually within the dialog's visual boundaries.
+        if (event.target === dialog) {
+          const rect = dialog.getBoundingClientRect();
+          const isInDialog = (
+            rect.top <= event.clientY &&
+            event.clientY <= rect.top + rect.height &&
+            rect.left <= event.clientX &&
+            event.clientX <= rect.left + rect.width
+          );
+          
+          if (!isInDialog) {
+            dialog.close();
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
