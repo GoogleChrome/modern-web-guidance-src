@@ -90,8 +90,8 @@ async function main(): Promise<BuildResult | undefined> {
   }
 
   console.log("Copying pure JS vector file...");
-  const vectorsFile = path.join(SERVING_DIR, "lib/use-cases.vectors.gen.json");
-  const destVectorsFile = path.join(DIST_DIR, "use-cases.vectors.gen.json");
+  const vectorsFile = path.join(SERVING_DIR, "lib/use-cases.vectors.gen.json.gz");
+  const destVectorsFile = path.join(DIST_DIR, "use-cases.vectors.gen.json.gz");
   if (fs.existsSync(vectorsFile)) {
     fs.cpSync(vectorsFile, destVectorsFile);
     console.log(`Copied ${vectorsFile} to ${destVectorsFile}`);

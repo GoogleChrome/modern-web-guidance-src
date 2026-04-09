@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import zlib from "zlib";
 import { TfjsEmbedder } from "./tfjs-embedder.ts";
 import { logToolResult } from "./logger.ts";
 
@@ -27,12 +28,14 @@ export async function searchUseCases(query: string, limit = 5, maxDistance = 1.5
   const queryVector = await actualEmbedder.embed(query, true); // Pass isQuery = true
 
   // Load vectors from static storage
-  const VECTORS_FILE = path.join(import.meta.dirname, "use-cases.vectors.gen.json");
+  const VECTORS_FILE = path.join(import.meta.dirname, "use-cases.vectors.gen.json.gz");
   if (!fs.existsSync(VECTORS_FILE)) {
     return [];
   }
 
-  const items: any[] = JSON.parse(fs.readFileSync(VECTORS_FILE, "utf-8"));
+  const compressed = fs.readFileSync(VECTORS_FILE);
+  const jsonContent = zlib.gunzipSync(compressed).toString("utf-8");
+  const items: any[] = JSON.parse(jsonContent);
   
   const resultsMap = new Map<string, UseCaseResult>();
 

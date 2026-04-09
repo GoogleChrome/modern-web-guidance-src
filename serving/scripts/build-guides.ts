@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import zlib from "zlib";
 import matter from "gray-matter";
 import { marked } from "marked";
 export interface StoreUseCase {
@@ -140,8 +141,10 @@ export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
   console.log(`Generated ${useCases.length} use cases to ${OUTPUT_FILE}`);
 
   console.log("Writing vectors to pure JS storage...");
-  const VECTORS_FILE = path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json");
-  fs.writeFileSync(VECTORS_FILE, JSON.stringify(storeUseCases, null, 2));
+  const VECTORS_FILE = path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
+  const jsonContent = JSON.stringify(storeUseCases);
+  const compressed = zlib.gzipSync(jsonContent);
+  fs.writeFileSync(VECTORS_FILE, compressed);
   console.log(`Vector storage updated at ${VECTORS_FILE}`);
 
 }
