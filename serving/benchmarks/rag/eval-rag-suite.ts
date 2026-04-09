@@ -28,8 +28,23 @@ function getModelObj(modelStr: string, isNoChunking: boolean, variant: string) {
   let runtime = "wasm";
   
   if (modelStr === "tfjs") {
-    quantization = "fp32";
     runtime = "tfjs";
+    // Detect quantization by file size
+    const modelDir = path.join(ROOT, 'lib/tfjs_model_minilm');
+    const shardPath = path.join(modelDir, 'group1-shard1of1.bin');
+    if (fs.existsSync(shardPath)) {
+      const stats = fs.statSync(shardPath);
+      const sizeMB = stats.size / (1024 * 1024);
+      if (sizeMB < 30) {
+        quantization = "q8";
+      } else if (sizeMB < 60) {
+        quantization = "fp16";
+      } else {
+        quantization = "fp32";
+      }
+    } else {
+      quantization = "fp32"; // default fallback
+    }
   } else if (modelStr.includes("gemma")) {
     name = "gemma";
   }
