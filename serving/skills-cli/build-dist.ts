@@ -101,7 +101,15 @@ async function main(): Promise<BuildResult | undefined> {
   const tfjsModelDir = path.join(SERVING_DIR, "lib/tfjs_model_minilm");
   const destTfjsModelDir = path.join(DIST_DIR, "tfjs_model_minilm");
   if (fs.existsSync(tfjsModelDir)) {
-    fs.cpSync(tfjsModelDir, destTfjsModelDir, { recursive: true });
+    fs.cpSync(tfjsModelDir, destTfjsModelDir, { 
+      recursive: true,
+      filter: (src) => {
+        const stat = fs.statSync(src);
+        if (stat.isDirectory()) return true;
+        const basename = path.basename(src);
+        return basename === "model.json" || basename.startsWith("group1-shard");
+      }
+    });
     console.log(`Copied ${tfjsModelDir} to ${destTfjsModelDir}`);
   }
 
