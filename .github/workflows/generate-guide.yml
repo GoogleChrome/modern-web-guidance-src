@@ -91,7 +91,7 @@ jobs:
       - name: Generate guide package (guide.md, demo.html, expectations.md)
         run: |
           # Use inputs or defaults for testing on push
-          FEATURE_ID="${{ inputs.feature_id || 'intl-locale-info' }}"
+          FEATURE_ID="${{ inputs.feature_id || 'subgrid' }}"
           CATEGORY="${{ inputs.category || 'user-experience' }}"
           SLUG="${{ inputs.slug }}"
           
@@ -112,7 +112,7 @@ jobs:
           APP_TOKEN: ${{ steps.app-token.outputs.token }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          FEATURE_ID="${{ inputs.feature_id || 'intl-locale-info' }}"
+          FEATURE_ID="${{ inputs.feature_id || 'subgrid' }}"
           SLUG="${{ inputs.slug }}"
           GUIDE_SLUG="${SLUG:-$FEATURE_ID}"
           REVIEWER="${{ inputs.reviewer || 'paulirish' }}"

@@ -227,9 +227,14 @@ export async function generateUseCases(featureId: string): Promise<void> {
 
   let useCases: { slug: string; description: string; category: string }[];
   try {
-    // Strip markdown code blocks if Gemini ignored the prompt instruction
-    const jsonStr = response.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+    // Find the first '[' and last ']' to extract JSON array
+    const match = response.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if (!match) {
+      throw new Error("Could not find JSON array in response");
+    }
+    const jsonStr = match[0];
     useCases = JSON.parse(jsonStr);
+
   } catch (err) {
     console.error(`Failed to parse JSON response from Gemini. Raw response:\n${response}`);
     throw err;
