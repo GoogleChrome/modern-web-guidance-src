@@ -1,4 +1,4 @@
-import * as tf from "@tensorflow/tfjs-core";
+import { setBackend, registerKernel, tensor2d, Tensor } from "@tensorflow/tfjs-core";
 import { loadGraphModel, GraphModel } from "@tensorflow/tfjs-converter";
 import { MathBackendCPU } from "@tensorflow/tfjs-backend-cpu/dist/base.js";
 import { castConfig } from "@tensorflow/tfjs-backend-cpu/dist/kernels/Cast.js";
@@ -98,8 +98,8 @@ export class TfjsEmbedder {
         console.log = () => {};
         console.warn = () => {};
         
-        await tf.setBackend('cpu');
-        [castConfig, gatherV2Config, expandDimsConfig, stridedSliceConfig, reshapeConfig, packConfig, subConfig, multiplyConfig, addConfig, rangeConfig, meanConfig, squaredDifferenceConfig, rsqrtConfig, prodConfig, concatConfig, batchMatMulConfig, transposeConfig, softmaxConfig, erfConfig, tileConfig, sumConfig, minimumConfig, maximumConfig, realDivConfig, squareConfig, identityConfig].forEach(c => tf.registerKernel(c));
+        await setBackend('cpu');
+        [castConfig, gatherV2Config, expandDimsConfig, stridedSliceConfig, reshapeConfig, packConfig, subConfig, multiplyConfig, addConfig, rangeConfig, meanConfig, squaredDifferenceConfig, rsqrtConfig, prodConfig, concatConfig, batchMatMulConfig, transposeConfig, softmaxConfig, erfConfig, tileConfig, sumConfig, minimumConfig, maximumConfig, realDivConfig, squareConfig, identityConfig].forEach(c => registerKernel(c));
         // Force MathBackendCPU to be included
         const _unused = MathBackendCPU;
         this.model = await loadGraphModel(ioHandler as any);
@@ -138,15 +138,15 @@ export class TfjsEmbedder {
     const attentionMaskData = extractData(tokenized.attention_mask);
     const tokenTypeIdsData = extractData(tokenized.token_type_ids);
 
-    const inputIds = tf.tensor2d([inputIdsData], undefined, 'int32');
-    const attentionMask = tf.tensor2d([attentionMaskData], undefined, 'int32');
-    const tokenTypeIds = tf.tensor2d([tokenTypeIdsData], undefined, 'int32');
+    const inputIds = tensor2d([inputIdsData], undefined, 'int32');
+    const attentionMask = tensor2d([attentionMaskData], undefined, 'int32');
+    const tokenTypeIds = tensor2d([tokenTypeIdsData], undefined, 'int32');
 
     const result = this.model.predict({
         "input_ids": inputIds,
         "attention_mask": attentionMask,
         "token_type_ids": tokenTypeIds
-    }) as tf.Tensor;
+    }) as Tensor;
 
     const data = await result.data();
 
