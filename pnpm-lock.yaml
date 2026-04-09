@@ -85,7 +85,7 @@ importers:
         version: 2.1.76
       '@anthropic-ai/vertex-sdk':
         specifier: ^0.14.4
-        version: 0.14.4(encoding@0.1.13)(zod@4.3.6)
+        version: 0.14.4(encoding@0.1.13)(zod@3.25.76)
       '@google-cloud/storage':
         specifier: ^7.19.0
         version: 7.19.0(encoding@0.1.13)
@@ -120,9 +120,6 @@ importers:
       '@huggingface/transformers':
         specifier: ^3.8.1
         version: 3.8.1
-      '@lancedb/lancedb':
-        specifier: ^0.26.2
-        version: 0.26.2(apache-arrow@21.1.0)
       '@modelcontextprotocol/sdk':
         specifier: ^1.27.1
         version: 1.27.1(zod@4.3.6)
@@ -699,60 +696,6 @@ packages:
 
   '@kwsites/promise-deferred@1.1.1':
     resolution: {integrity: sha512-GaHYm+c0O9MjZRu0ongGBRbinu8gVAMd2UZjji6jVmqKtZluZnptXGWhz1E8j8D2HJ3f/yMxKAUC0b+57wncIw==}
-
-  '@lancedb/lancedb-darwin-arm64@0.26.2':
-    resolution: {integrity: sha512-LAZ/v261eTlv44KoEm+AdqGnohS9IbVVVJkH9+8JTqwhe/k4j4Af8X9cD18tsaJAAtrGxxOCyIJ3wZTiBqrkCw==}
-    engines: {node: '>= 18'}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@lancedb/lancedb-linux-arm64-gnu@0.26.2':
-    resolution: {integrity: sha512-guHKm+zvuQB22dgyn6/sYZJvD6IL9lC24cl6ZuzVX/jYgag/gNLHT86HongrcBjgdjI6+YIGmdfD6b/iAKxn3Q==}
-    engines: {node: '>= 18'}
-    cpu: [arm64]
-    os: [linux]
-    libc: [glibc]
-
-  '@lancedb/lancedb-linux-arm64-musl@0.26.2':
-    resolution: {integrity: sha512-pR6Hs/0iphItrJYYLf/yrqCC+scPcHpCGl6rHqcU2GHxo5RFpzlMzqW1DiXScGiBRuCcD9HIMec+kBsOgXv4GQ==}
-    engines: {node: '>= 18'}
-    cpu: [arm64]
-    os: [linux]
-    libc: [musl]
-
-  '@lancedb/lancedb-linux-x64-gnu@0.26.2':
-    resolution: {integrity: sha512-u4UUSPwd2YecgGqWjh9W0MHKgsVwB2Ch2ROpF8AY+IA7kpGsbB18R1/t7v2B0q7pahRy20dgsaku5LH1zuzMRQ==}
-    engines: {node: '>= 18'}
-    cpu: [x64]
-    os: [linux]
-    libc: [glibc]
-
-  '@lancedb/lancedb-linux-x64-musl@0.26.2':
-    resolution: {integrity: sha512-XIS4qkVfGlzmsUPqAG2iKt8ykuz28GfemGC0ijXwu04kC1pYiCFzTpB3UIZjm5oM7OTync1aQ3mGTj1oCciSPA==}
-    engines: {node: '>= 18'}
-    cpu: [x64]
-    os: [linux]
-    libc: [musl]
-
-  '@lancedb/lancedb-win32-arm64-msvc@0.26.2':
-    resolution: {integrity: sha512-//tZDPitm2PxNvalHP+m+Pf6VvFAeQgcht1+HJnutjH4gp6xYW6ynQlWWFDBmz9WRkUT+mXu2O4FUIhbdNaJSQ==}
-    engines: {node: '>= 18'}
-    cpu: [arm64]
-    os: [win32]
-
-  '@lancedb/lancedb-win32-x64-msvc@0.26.2':
-    resolution: {integrity: sha512-GH3pfyzicgPGTb84xMXgujlWDaAnBTmUyjooYiCE2tC24BaehX4hgFhXivamzAEsF5U2eVsA/J60Ppif+skAbA==}
-    engines: {node: '>= 18'}
-    cpu: [x64]
-    os: [win32]
-
-  '@lancedb/lancedb@0.26.2':
-    resolution: {integrity: sha512-umk4WMCTwJntLquwvUbpqE+TXREolcQVL9MHcxr8EhRjsha88+ATJ4QuS/hpyiE1CG3R/XcgrMgJAGkziPC/gA==}
-    engines: {node: '>= 18'}
-    cpu: [x64, arm64]
-    os: [darwin, linux, win32]
-    peerDependencies:
-      apache-arrow: '>=15.0.0 <=18.1.0'
 
   '@lvce-editor/verror@1.7.0':
     resolution: {integrity: sha512-+LGuAEIC2L7pbvkyAQVWM2Go0dAy+UWEui28g07zNtZsCBhm+gusBK8PNwLJLV5Jay+TyUYuwLIbJdjLLzqEBg==}
@@ -3522,9 +3465,6 @@ packages:
     resolution: {integrity: sha512-9u/sniCrY3D5WdsERHzHE4G2YCXqoG5FTHUiCC4SIbr6XcLZBY05ya9EKjYek9O5xOAwjGq+1JdGBAS7Q9ScoA==}
     engines: {node: '>= 6'}
 
-  reflect-metadata@0.2.2:
-    resolution: {integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q==}
-
   regenerator-runtime@0.13.11:
     resolution: {integrity: sha512-kY1AZVr2Ra+t+piVaJ4gxaFaReZVH40AKNo7UCX6W+dEwBo/2oZJzqfuN1qLq1oL45o56cPaTXELwrTh8Fpggg==}
 
@@ -4214,15 +4154,15 @@ snapshots:
       '@img/sharp-win32-arm64': 0.34.5
       '@img/sharp-win32-x64': 0.34.5
 
-  '@anthropic-ai/sdk@0.78.0(zod@4.3.6)':
+  '@anthropic-ai/sdk@0.78.0(zod@3.25.76)':
     dependencies:
       json-schema-to-ts: 3.1.1
     optionalDependencies:
-      zod: 4.3.6
+      zod: 3.25.76
 
-  '@anthropic-ai/vertex-sdk@0.14.4(encoding@0.1.13)(zod@4.3.6)':
+  '@anthropic-ai/vertex-sdk@0.14.4(encoding@0.1.13)(zod@3.25.76)':
     dependencies:
-      '@anthropic-ai/sdk': 0.78.0(zod@4.3.6)
+      '@anthropic-ai/sdk': 0.78.0(zod@3.25.76)
       google-auth-library: 9.15.1(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -4614,7 +4554,7 @@ snapshots:
       '@google/gemini-cli-core': 0.33.1(@bufbuild/protobuf@2.11.0)(encoding@0.1.13)(express@5.2.1)
       '@google/genai': 1.30.0(@modelcontextprotocol/sdk@1.27.1(zod@3.25.76))
       '@iarna/toml': 2.2.5
-      '@modelcontextprotocol/sdk': 1.27.1(zod@4.3.6)
+      '@modelcontextprotocol/sdk': 1.27.1(zod@3.25.76)
       ansi-escapes: 7.3.0
       ansi-regex: 6.2.2
       chalk: 4.1.2
@@ -4669,7 +4609,7 @@ snapshots:
       google-auth-library: 10.6.1
       ws: 8.19.0
     optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.27.1(zod@4.3.6)
+      '@modelcontextprotocol/sdk': 1.27.1(zod@3.25.76)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -4873,40 +4813,6 @@ snapshots:
       - supports-color
 
   '@kwsites/promise-deferred@1.1.1': {}
-
-  '@lancedb/lancedb-darwin-arm64@0.26.2':
-    optional: true
-
-  '@lancedb/lancedb-linux-arm64-gnu@0.26.2':
-    optional: true
-
-  '@lancedb/lancedb-linux-arm64-musl@0.26.2':
-    optional: true
-
-  '@lancedb/lancedb-linux-x64-gnu@0.26.2':
-    optional: true
-
-  '@lancedb/lancedb-linux-x64-musl@0.26.2':
-    optional: true
-
-  '@lancedb/lancedb-win32-arm64-msvc@0.26.2':
-    optional: true
-
-  '@lancedb/lancedb-win32-x64-msvc@0.26.2':
-    optional: true
-
-  '@lancedb/lancedb@0.26.2(apache-arrow@21.1.0)':
-    dependencies:
-      apache-arrow: 21.1.0
-      reflect-metadata: 0.2.2
-    optionalDependencies:
-      '@lancedb/lancedb-darwin-arm64': 0.26.2
-      '@lancedb/lancedb-linux-arm64-gnu': 0.26.2
-      '@lancedb/lancedb-linux-arm64-musl': 0.26.2
-      '@lancedb/lancedb-linux-x64-gnu': 0.26.2
-      '@lancedb/lancedb-linux-x64-musl': 0.26.2
-      '@lancedb/lancedb-win32-arm64-msvc': 0.26.2
-      '@lancedb/lancedb-win32-x64-msvc': 0.26.2
 
   '@lvce-editor/verror@1.7.0': {}
 
@@ -7961,8 +7867,6 @@ snapshots:
       string_decoder: 1.3.0
       util-deprecate: 1.0.2
 
-  reflect-metadata@0.2.2: {}
-
   regenerator-runtime@0.13.11: {}
 
   registry-auth-token@5.1.1:
@@ -8107,6 +8011,7 @@ snapshots:
       - supports-color
 
   set-blocking@2.0.0: {}
+
   set-function-length@1.2.2:
     dependencies:
       define-data-property: 1.1.4

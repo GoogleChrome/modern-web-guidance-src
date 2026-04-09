@@ -69,16 +69,7 @@ async function main(): Promise<BuildResult | undefined> {
 
 
   console.log("Copying data files...");
-  // 3. Copy vector_store
-  const mcpDataDir = path.join(SERVING_DIR, "vector_store");
-  const destMcpDataDir = path.join(DIST_DIR, "vector_store");
-  if (fs.existsSync(mcpDataDir)) {
-    fs.cpSync(mcpDataDir, destMcpDataDir, { recursive: true });
-    console.log(`Copied ${mcpDataDir} to ${destMcpDataDir}`);
-  } else {
-    console.warn(`Warning: ${mcpDataDir} does not exist.`);
-  }
-
+  
   // 4. Copy build/guides
   const buildGuidesDir = path.join(SERVING_DIR, "build/guides");
   const destBuildGuidesDir = path.join(DIST_DIR, "guides");

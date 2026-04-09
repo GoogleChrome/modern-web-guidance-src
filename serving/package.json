@@ -12,7 +12,6 @@
     "mcp-server",
     "lib",
     "build",
-    "vector_store",
     "AGENTS.md",
     "README.md"
   ],
@@ -32,7 +31,6 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
-    "@lancedb/lancedb": "^0.26.2",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "apache-arrow": "21.1.0",
     "marked": "^17.0.4",
