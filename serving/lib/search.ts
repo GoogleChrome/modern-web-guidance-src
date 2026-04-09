@@ -25,7 +25,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
 export async function searchUseCases(query: string, limit = 5, maxDistance = 1.5, embedder?: any): Promise<UseCaseResult[]> {
   const actualEmbedder = embedder || TfjsEmbedder.getInstance();
-  const queryVector = await actualEmbedder.embed(query, true); // Pass isQuery = true
+  const queryVector = await actualEmbedder.embed(query);
 
   // Load vectors from static storage
   const VECTORS_FILE = path.join(import.meta.dirname, "use-cases.vectors.gen.json.gz");
@@ -36,7 +36,7 @@ export async function searchUseCases(query: string, limit = 5, maxDistance = 1.5
   const compressed = fs.readFileSync(VECTORS_FILE);
   const jsonContent = zlib.gunzipSync(compressed).toString("utf-8");
   const items: any[] = JSON.parse(jsonContent);
-  
+
   const resultsMap = new Map<string, UseCaseResult>();
 
   for (const item of items) {

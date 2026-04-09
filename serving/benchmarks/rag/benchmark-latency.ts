@@ -7,14 +7,14 @@ async function run() {
     const currentDir = import.meta.dirname;
     const queriesFile = path.resolve(currentDir, "../../benchmarks/data/eval-queries-pool.json");
     console.log(`Loading queries from ${queriesFile}...`);
-    
+
     const allQueries = JSON.parse(fs.readFileSync(queriesFile, "utf-8"));
     const query = allQueries[0].query;
-    
+
     console.log(`Using query: "${query}" for end-to-end benchmark.`);
-    
+
     const RUNS = 3;
-    
+
     // --- 1. Baseline (Transformers.js / WASM) ---
     console.log("\n=== Benchmarking Baseline (Transformers.js / WASM) ===");
     const wasmRuns: number[] = [];
@@ -23,7 +23,7 @@ async function run() {
         console.log(`Run ${i + 1}/${RUNS}...`);
         Embedder.configureRuntime('wasm');
         Embedder.clearInstance();
-        
+
         const start = Date.now();
         const embedder = Embedder.getInstance();
         await embedder.init();
@@ -35,7 +35,7 @@ async function run() {
     }
     const wasmAvg = wasmTotal / RUNS;
     console.log(`WASM Avg E2E Latency: ${wasmAvg.toFixed(2)}ms`);
-    
+
     // --- 2. Native ONNX (Transformers.js / Native) ---
     console.log("\n=== Benchmarking Native ONNX (Transformers.js / Native) ===");
     const nativeRuns: number[] = [];
@@ -45,7 +45,7 @@ async function run() {
         console.log(`Run ${i + 1}/${RUNS}...`);
         Embedder.configureRuntime('native');
         Embedder.clearInstance();
-        
+
         const start = Date.now();
         try {
             const embedder = Embedder.getInstance();
@@ -65,7 +65,7 @@ async function run() {
     if (nativeAvg !== null) {
         console.log(`Native Avg E2E Latency: ${nativeAvg.toFixed(2)}ms`);
     }
-    
+
     // --- 3. TensorFlow.js (Pure JS) ---
     console.log("\n=== Benchmarking TensorFlow.js (Pure JS) ===");
     const tfjsRuns: number[] = [];
@@ -73,11 +73,11 @@ async function run() {
     for (let i = 0; i < RUNS; i++) {
         console.log(`Run ${i + 1}/${RUNS}...`);
         TfjsEmbedder.clearInstance();
-        
+
         const start = Date.now();
         const embedder = TfjsEmbedder.getInstance();
         await embedder.init();
-        await embedder.embed(query, true);
+        await embedder.embed(query);
         const duration = Date.now() - start;
         tfjsTotal += duration;
         tfjsRuns.push(duration);
@@ -85,7 +85,7 @@ async function run() {
     }
     const tfjsAvg = tfjsTotal / RUNS;
     console.log(`TFJS Avg E2E Latency: ${tfjsAvg.toFixed(2)}ms`);
-    
+
     console.log("\n=== Summary (End-to-End Latency for 1 Query) ===");
     console.log(`WASM Avg E2E Latency: ${wasmAvg.toFixed(2)}ms`);
     if (nativeAvg !== null) {
@@ -94,14 +94,14 @@ async function run() {
         console.log(`Native Avg E2E Latency: FAILED`);
     }
     console.log(`TFJS Avg E2E Latency: ${tfjsAvg.toFixed(2)}ms`);
-    
+
     // Record results
     const resultsFile = path.resolve(currentDir, "../../benchmarks/data/eval-results-latency.json");
     if (fs.existsSync(resultsFile)) {
         console.log(`\nRecording results to ${resultsFile}...`);
         const results = JSON.parse(fs.readFileSync(resultsFile, "utf-8"));
         const timestamp = new Date().toISOString();
-        
+
         results.push({
             timestamp,
             model: "minilm q8 - trjs onnx wasm - maxsim",
@@ -109,7 +109,7 @@ async function run() {
             avgLatencyMs: parseFloat(wasmAvg.toFixed(2)),
             runs: wasmRuns
         });
-        
+
         if (nativeAvg !== null) {
             results.push({
                 timestamp,
@@ -119,7 +119,7 @@ async function run() {
                 runs: nativeRuns
             });
         }
-        
+
         results.push({
             timestamp,
             model: "minilm fp32 - TFJS - maxsim",
@@ -127,7 +127,7 @@ async function run() {
             avgLatencyMs: parseFloat(tfjsAvg.toFixed(2)),
             runs: tfjsRuns
         });
-        
+
         fs.writeFileSync(resultsFile, JSON.stringify(results, null, 2));
         console.log("Results recorded.");
     } else {

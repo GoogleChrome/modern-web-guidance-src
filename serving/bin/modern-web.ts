@@ -37,6 +37,8 @@ async function main() {
       if (results.length === 0) {
         console.log("[]");
       } else {
+        // Do a ~compressed output so users can see some of the results in their coding agent.
+        // Also fewer tokens. :p
         const jsonLines = results.map(r => JSON.stringify(r));
         console.log("[" + jsonLines.join(",\n") + "]");
       }
