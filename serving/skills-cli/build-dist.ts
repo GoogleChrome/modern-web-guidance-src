@@ -124,7 +124,7 @@ async function main(): Promise<BuildResult | undefined> {
       format: "esm",
       outfile: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/search.mjs"),
       banner: {
-        js: `import { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
+        js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
       },
       external: ["onnxruntime-node", "sharp", "iconv-lite", "@img/colour", "tr46", "whatwg-url", "webidl-conversions"],
       sourcemap: true,
