@@ -66,7 +66,18 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string) 
 
     const metrics = calculateMetrics(allResults, numRuns);
     const mdReport = generateMarkdownReport(metrics, allResults);
-    const timestamp = new Date().toISOString();
+    
+    let timestamp = new Date().toISOString();
+    const evalsPath = path.join(suiteResultsDir, 'evals.json');
+    if (fs.existsSync(evalsPath)) {
+      try {
+        const oldEvals = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+        if (oldEvals.timestamp) timestamp = oldEvals.timestamp;
+      } catch {
+        // Ignore
+      }
+    }
+
     const model = extractModelFromResults(suiteResultsDir, suiteConfig.agent);
     const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model);
 
