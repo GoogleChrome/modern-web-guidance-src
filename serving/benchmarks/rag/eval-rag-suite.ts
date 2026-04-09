@@ -45,9 +45,6 @@ function getModelObj(modelStr: string, isNoChunking: boolean, variant: string) {
     } else {
       quantization = "fp32"; // default fallback
     }
-  } else if (modelStr.includes("gemma")) {
-    name = "gemma";
-  }
   
   if (modelStr.includes("@q4")) {
     quantization = "q4";
@@ -80,9 +77,7 @@ async function main() {
   const models = modelsArg 
     ? modelsArg.split('=')[1].split(',') 
     : [
-        'Xenova/all-MiniLM-L6-v2@q8',
-        'onnx-community/embeddinggemma-300m-ONNX@q8',
-        'onnx-community/embeddinggemma-300m-ONNX@q4'
+        'Xenova/all-MiniLM-L6-v2@q8'
       ];
       
   const runsArg = args.find(a => a.startsWith('--runs='));

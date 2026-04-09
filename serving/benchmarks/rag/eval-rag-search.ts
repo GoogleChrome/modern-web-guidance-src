@@ -2,7 +2,6 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { searchUseCases } from "../../lib/search.ts";
-import { Gpt4AllEmbedder } from "./gpt4all-embedder.ts";
 import type { EvalQuery } from "./generate-eval-queries.ts";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -64,9 +63,6 @@ async function main() {
   if (modelArg === "tfjs") {
     // Handled by bundled search.mjs
     console.log("Using bundled TFJS search runtime...");
-  } else if (modelArg && (modelArg.includes(".gguf") || modelArg.includes("nomic"))) {
-    embedder = Gpt4AllEmbedder.getInstance(modelArg);
-    await embedder.init();
   } else {
     const { Embedder } = await import("../../lib/transformers-embedder.ts");
     Embedder.configureRuntime(runtimeArg);

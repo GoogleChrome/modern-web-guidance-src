@@ -12,7 +12,6 @@ export interface StoreUseCase {
   vector?: number[];
   distance?: number;
 }
-import { Gpt4AllEmbedder } from "../benchmarks/rag/gpt4all-embedder.ts";
 import { replaceMacros } from "../lib/macros.ts";
 import { scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../mcp-server/data/baseline.ts";
@@ -83,8 +82,6 @@ async function processGuides() {
   if (!modelName || modelName === "transformers" || modelName === "tfjs") {
     const { Embedder } = await import("../lib/transformers-embedder.ts");
     embedder = Embedder.getInstance();
-  } else if (modelName && (modelName.includes(".gguf") || modelName.includes("nomic"))) {
-    embedder = Gpt4AllEmbedder.getInstance(modelName);
   } else {
     const { Embedder } = await import("../lib/transformers-embedder.ts");
     embedder = Embedder.getInstance(modelName);
