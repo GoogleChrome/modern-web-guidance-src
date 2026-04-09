@@ -15,26 +15,7 @@ async function run() {
 
     const RUNS = 3;
 
-    // --- 1. Baseline (Transformers.js / WASM) ---
-    console.log("\n=== Benchmarking Baseline (Transformers.js / WASM) ===");
-    const wasmRuns: number[] = [];
-    let wasmTotal = 0;
-    for (let i = 0; i < RUNS; i++) {
-        console.log(`Run ${i + 1}/${RUNS}...`);
-        Embedder.configureRuntime('wasm');
-        Embedder.clearInstance();
 
-        const start = Date.now();
-        const embedder = Embedder.getInstance();
-        await embedder.init();
-        await embedder.embed(query, true);
-        const duration = Date.now() - start;
-        wasmTotal += duration;
-        wasmRuns.push(duration);
-        console.log(`  Duration: ${duration}ms`);
-    }
-    const wasmAvg = wasmTotal / RUNS;
-    console.log(`WASM Avg E2E Latency: ${wasmAvg.toFixed(2)}ms`);
 
     // --- 2. Native ONNX (Transformers.js / Native) ---
     console.log("\n=== Benchmarking Native ONNX (Transformers.js / Native) ===");
@@ -43,7 +24,6 @@ async function run() {
     let nativeFailed = false;
     for (let i = 0; i < RUNS; i++) {
         console.log(`Run ${i + 1}/${RUNS}...`);
-        Embedder.configureRuntime('native');
         Embedder.clearInstance();
 
         const start = Date.now();
@@ -87,7 +67,6 @@ async function run() {
     console.log(`TFJS Avg E2E Latency: ${tfjsAvg.toFixed(2)}ms`);
 
     console.log("\n=== Summary (End-to-End Latency for 1 Query) ===");
-    console.log(`WASM Avg E2E Latency: ${wasmAvg.toFixed(2)}ms`);
     if (nativeAvg !== null) {
         console.log(`Native Avg E2E Latency: ${nativeAvg.toFixed(2)}ms`);
     } else {
@@ -101,14 +80,6 @@ async function run() {
         console.log(`\nRecording results to ${resultsFile}...`);
         const results = JSON.parse(fs.readFileSync(resultsFile, "utf-8"));
         const timestamp = new Date().toISOString();
-
-        results.push({
-            timestamp,
-            model: "minilm q8 - trjs onnx wasm - maxsim",
-            type: "e2e-latency-1-query",
-            avgLatencyMs: parseFloat(wasmAvg.toFixed(2)),
-            runs: wasmRuns
-        });
 
         if (nativeAvg !== null) {
             results.push({
