@@ -1,4 +1,5 @@
-import { searchUseCases } from "../lib/search.ts";
+// @ts-ignore
+import { searchUseCases } from "../../dist/skills-cli/skills/modern-web-use-cases/search.mjs";
 
 async function main() {
   const query = process.argv[2] || "how to optimize images";
