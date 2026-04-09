@@ -101,6 +101,9 @@ Rules for Use Cases:
 - Focus on WHAT not HOW: Do not mention the solution (this feature) in the description.
 - Generic and Common: Represent common, everyday developer needs.
 - Aim for 2-5 distinct use cases.
+- Drop niche use cases: If a use case is unlikely to match real developer prompts, omit it.
+- Do not stretch: Do not invent use cases or force them into categories just to reach the 2-5 target. Quality and realism are more important than quantity. If a feature only has 1 or 2 high-confidence use cases, that is perfectly fine.
+
 
 Source URLs to read:
 ${sourcesList || '(No source URLs available — use your knowledge of this feature)'}
