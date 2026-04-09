@@ -109,7 +109,7 @@ async function main(): Promise<BuildResult | undefined> {
   // We want to avoid dynamic chunk names but still share heavy dependencies if possible.
   try {
     console.log("Bundling search.mjs...");
-    await esbuild.build({
+    const result = await esbuild.build({
       entryPoints: [path.join(SERVING_DIR, "lib/search.ts")],
       bundle: true,
       platform: "node",
@@ -121,7 +121,12 @@ async function main(): Promise<BuildResult | undefined> {
       external: ["onnxruntime-node", "sharp", "iconv-lite", "@img/colour", "tr46", "whatwg-url", "webidl-conversions"],
       sourcemap: true,
       loader: { ".node": "file" },
+      metafile: true,
+      alias: {
+        "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/dist/transformers.node.min.mjs"),
+      },
     });
+    console.log(await esbuild.analyzeMetafile(result.metafile));
 
     console.log("Bundling modern-web.mjs...");
     await esbuild.build({
