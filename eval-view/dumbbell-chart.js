@@ -8,6 +8,10 @@ export class DumbbellChart {
       hideLegend: options.hideLegend || false,
       hideAxes: options.hideAxes || false,
       title: options.title || '',
+      hideZeros: options.hideZeros || false,
+      height: options.height || null,
+      hideSeparators: options.hideSeparators || false,
+      hideLabels: options.hideLabels || false,
       ...options
     };
 
@@ -42,6 +46,7 @@ export class DumbbellChart {
 
     // Group items by Feature Name (lookup from features_mapping.gen.js if available)
     const groups = {};
+    // @ts-expect-error global property
     const featuresMap = window.__featuresMapping || {};
 
     labels.forEach((label, i) => {
@@ -141,8 +146,8 @@ export class DumbbellChart {
     // Title
     if (this.options.title) {
         const titleText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        titleText.setAttribute("x", width / 2);
-        titleText.setAttribute("y", 20);
+        titleText.setAttribute("x", (width / 2).toString());
+        titleText.setAttribute("y", "20");
         titleText.setAttribute("fill", "#c9d1d9");
         titleText.setAttribute("font-size", "14");
         titleText.setAttribute("font-weight", "bold");
@@ -198,18 +203,18 @@ export class DumbbellChart {
       [0, 25, 50, 75, 100].forEach(val => {
         const x = scale(val);
         const tick = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        tick.setAttribute("x1", x);
-        tick.setAttribute("y1", topAxisY);
-        tick.setAttribute("x2", x);
-        tick.setAttribute("y2", bottomAxisY);
+        tick.setAttribute("x1", x.toString());
+        tick.setAttribute("y1", topAxisY.toString());
+        tick.setAttribute("x2", x.toString());
+        tick.setAttribute("y2", bottomAxisY.toString());
         tick.setAttribute("stroke", val === 0 || val === 100 ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.1)");
         tick.setAttribute("stroke-width", "1");
         if (val !== 0 && val !== 100) tick.setAttribute("stroke-dasharray", "4 4");
         this.svg.appendChild(tick);
         
         const tickText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        tickText.setAttribute("x", x);
-        tickText.setAttribute("y", bottomAxisY + 20);
+        tickText.setAttribute("x", x.toString());
+        tickText.setAttribute("y", (bottomAxisY + 20).toString());
         tickText.setAttribute("fill", "rgba(255, 255, 255, 0.6)");
         tickText.setAttribute("font-size", "10");
         tickText.setAttribute("text-anchor", "middle");
@@ -347,9 +352,9 @@ export class DumbbellChart {
           // Hit area for tooltip (covers the specific sub-line)
           const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "rect");
           hitArea.setAttribute("x", leftAxis); // only over the chart area
-          hitArea.setAttribute("y", y - (offsetStep / 2));
-          hitArea.setAttribute("width", width - this.options.margin.left - this.options.margin.right);
-          hitArea.setAttribute("height", offsetStep);
+          hitArea.setAttribute("y", (y - (offsetStep / 2)).toString());
+          hitArea.setAttribute("width", (width - this.options.margin.left - this.options.margin.right).toString());
+          hitArea.setAttribute("height", offsetStep.toString());
           hitArea.setAttribute("fill", "transparent");
           hitArea.style.cursor = "pointer";
           

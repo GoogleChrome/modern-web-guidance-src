@@ -25,10 +25,17 @@ const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
 console.log("Running build-dist to ensure fresh build...");
-execSync('node --experimental-strip-types skills-cli/build-dist.ts', { 
-  cwd: path.resolve(import.meta.dirname, '..'), 
-  stdio: 'inherit' 
-});
+try {
+  execSync('node --experimental-strip-types skills-cli/build-dist.ts', { 
+    cwd: path.resolve(import.meta.dirname, '..'), 
+    stdio: 'pipe' 
+  });
+} catch (error: any) {
+  console.error("\n❌ build-dist.ts failed!");
+  if (error.stdout) console.log(error.stdout.toString('utf8'));
+  if (error.stderr) console.error(error.stderr.toString('utf8'));
+  throw new Error("build-dist.ts failed");
+}
 
 
 test('Dependency parity across package.json manifests', async () => {

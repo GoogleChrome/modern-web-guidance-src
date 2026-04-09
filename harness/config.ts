@@ -19,7 +19,8 @@ export const Agents = {
 export const Serving = {
   SKILLS_CLI: 'skills_cli',
   SKILLS: 'skills',
-  MCP: 'mcp'
+  MCP: 'mcp',
+  MEGASKILL: 'megaskill'
 } as const;
 
 export type Serving = typeof Serving[keyof typeof Serving];

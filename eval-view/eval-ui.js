@@ -6,17 +6,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Toggle button groups for Agent and Serving
   document.querySelectorAll('#agent-group .btn-toggle').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      const currentTarget = e.currentTarget;
+      if (!(currentTarget instanceof HTMLElement)) return;
       document.querySelectorAll('#agent-group .btn-toggle').forEach(b => b.classList.remove('active'));
-      e.currentTarget.classList.add('active');
-      document.getElementById('agent').value = e.currentTarget.getAttribute('data-value');
+      currentTarget.classList.add('active');
+      const agentEl = document.getElementById('agent');
+      if (agentEl instanceof HTMLInputElement) {
+        agentEl.value = currentTarget.getAttribute('data-value') || '';
+      }
     });
   });
 
   document.querySelectorAll('#serving-group .btn-toggle').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      const currentTarget = e.currentTarget;
+      if (!(currentTarget instanceof HTMLElement)) return;
       document.querySelectorAll('#serving-group .btn-toggle').forEach(b => b.classList.remove('active'));
-      e.currentTarget.classList.add('active');
-      document.getElementById('serving').value = e.currentTarget.getAttribute('data-value');
+      currentTarget.classList.add('active');
+      const servingEl = document.getElementById('serving');
+      if (servingEl instanceof HTMLInputElement) {
+        servingEl.value = currentTarget.getAttribute('data-value') || '';
+      }
     });
   });
 
@@ -84,12 +94,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.addEventListener('change', (e) => {
-    if (e.target.classList.contains('task-check')) {
-      const table = e.target.closest('table');
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    if (target.classList.contains('task-check')) {
+      const table = target.closest('table');
       updateTaskCount();
       updateHeaderChecks(table);
       updateRowChecks(table);
-    } else if (e.target.classList.contains('header-check')) {
+    } else if (target.classList.contains('header-check')) {
       updateTaskCount();
     }
   });
@@ -219,12 +232,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Attach row events (works exactly as before using fullKey as data-guide)
     document.querySelectorAll('.guide-check-all').forEach(check => {
       check.addEventListener('change', (e) => {
-        const guide = e.currentTarget.getAttribute('data-guide');
+        const currentTarget = e.currentTarget;
+        if (!(currentTarget instanceof HTMLInputElement)) return;
+        const guide = currentTarget.getAttribute('data-guide');
         const checkboxes = document.querySelectorAll(`.task-check[data-guide="${guide}"]`);
         checkboxes.forEach(tc => {
-          tc.checked = e.currentTarget.checked;
+          if (tc instanceof HTMLInputElement) tc.checked = currentTarget.checked;
         });
-        const table = e.currentTarget.closest('table');
+        const table = currentTarget.closest('table');
         updateTaskCount();
         updateHeaderChecks(table);
       });
@@ -232,12 +247,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.querySelectorAll('.header-check').forEach(headerCheck => {
       headerCheck.addEventListener('change', (e) => {
-        const taskType = e.currentTarget.getAttribute('data-task');
-        const table = e.currentTarget.closest('table');
+        const currentTarget = e.currentTarget;
+        if (!(currentTarget instanceof HTMLInputElement)) return;
+        const taskType = currentTarget.getAttribute('data-task');
+        const table = currentTarget.closest('table');
         if (!table) return;
         const checkboxes = table.querySelectorAll(`.task-check[data-task="${taskType}"]`);
         checkboxes.forEach(tc => {
-          tc.checked = e.currentTarget.checked;
+          if (tc instanceof HTMLInputElement) tc.checked = currentTarget.checked;
         });
         updateTaskCount();
         updateRowChecks(table);
@@ -249,22 +266,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.stopPropagation();
       });
       tc.addEventListener('change', (e) => {
-        const taskType = e.currentTarget.getAttribute('data-task');
-        const guideKey = e.currentTarget.getAttribute('data-guide');
+        const currentTarget = e.currentTarget;
+        if (!(currentTarget instanceof HTMLElement)) return;
+        const taskType = currentTarget.getAttribute('data-task');
+        const guideKey = currentTarget.getAttribute('data-guide');
 
         // Update column header check!
         const colCheckboxes = document.querySelectorAll(`.task-check[data-task="${taskType}"]`);
         const headerCheck = document.querySelector(`.header-check[data-task="${taskType}"]`);
-        const allColChecked = Array.from(colCheckboxes).every(c => c.checked);
-        if (headerCheck) {
+        const allColChecked = Array.from(colCheckboxes).every(c => c instanceof HTMLInputElement && c.checked);
+        if (headerCheck instanceof HTMLInputElement) {
           headerCheck.checked = allColChecked;
         }
 
         // Update row guide check!
         const rowCheckboxes = document.querySelectorAll(`.task-check[data-guide="${guideKey}"]`);
         const guideCheck = document.querySelector(`.guide-check-all[data-guide="${guideKey}"]`);
-        const allRowChecked = rowCheckboxes.length > 0 && Array.from(rowCheckboxes).every(c => c.checked);
-        if (guideCheck) {
+        const allRowChecked = rowCheckboxes.length > 0 && Array.from(rowCheckboxes).every(c => c instanceof HTMLInputElement && c.checked);
+        if (guideCheck instanceof HTMLInputElement) {
           guideCheck.checked = allRowChecked;
         }
       });
@@ -272,14 +291,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.querySelectorAll('.category-header').forEach(header => {
       header.addEventListener('click', (e) => {
-        const cat = e.currentTarget.getAttribute('data-category');
-        const icon = e.currentTarget.querySelector('.expand-icon');
+        const currentTarget = e.currentTarget;
+        if (!(currentTarget instanceof HTMLElement)) return;
+        const cat = currentTarget.getAttribute('data-category');
+        const icon = currentTarget.querySelector('.expand-icon');
         const rows = document.querySelectorAll(`.guide-row[data-category="${cat}"]`);
         
         rows.forEach(r => r.classList.toggle('collapsed'));
         
         const isCollapsed = rows[0]?.classList.contains('collapsed');
-        if (icon) {
+        if (icon instanceof HTMLElement) {
           icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
         }
       });
@@ -289,27 +310,38 @@ document.addEventListener('DOMContentLoaded', async () => {
   let allNegativeState = false;
 
   document.addEventListener('click', (e) => {
-    if (e.target.id === 'action-all-default') {
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    if (target.id === 'action-all-default') {
       allDefaultState = !allDefaultState;
       document.querySelectorAll('.task-check').forEach(tc => {
-        if (tc.getAttribute('data-task') === 'task') tc.checked = allDefaultState;
+        if (tc instanceof HTMLInputElement && tc.getAttribute('data-task') === 'task') {
+          tc.checked = allDefaultState;
+        }
       });
-      e.target.innerText = allDefaultState ? 'De-select All task.md' : 'Select All task.md';
-    } else if (e.target.id === 'action-all-negative') {
+      target.innerText = allDefaultState ? 'De-select All task.md' : 'Select All task.md';
+    } else if (target.id === 'action-all-negative') {
       allNegativeState = !allNegativeState;
       document.querySelectorAll('.task-check').forEach(tc => {
-        if (tc.getAttribute('data-task') === 'negative') tc.checked = allNegativeState;
+        if (tc instanceof HTMLInputElement && tc.getAttribute('data-task') === 'negative') {
+          tc.checked = allNegativeState;
+        }
       });
-      e.target.innerText = allNegativeState ? 'De-select All negative' : 'Select All negative';
-    } else if (e.target.id === 'action-clear-guides') {
+      target.innerText = allNegativeState ? 'De-select All negative' : 'Select All negative';
+    } else if (target.id === 'action-clear') {
+      document.querySelectorAll('input[type="checkbox"]').forEach(c => {
+        if (c instanceof HTMLInputElement) c.checked = false;
+      });
+    } else if (target.id === 'action-clear-guides') {
       const table = document.getElementById('tasks-table');
-      if (table) table.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
-    } else if (e.target.id === 'action-clear-disciplines') {
+      if (table) table.querySelectorAll('input[type="checkbox"]').forEach(c => { if (c instanceof HTMLInputElement) c.checked = false; });
+    } else if (target.id === 'action-clear-disciplines') {
       const table = document.getElementById('disciplines-table');
-      if (table) table.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
+      if (table) table.querySelectorAll('input[type="checkbox"]').forEach(c => { if (c instanceof HTMLInputElement) c.checked = false; });
     }
     
-    if (['action-all-default', 'action-all-negative', 'action-clear-guides', 'action-clear-disciplines'].includes(e.target.id)) {
+    if (['action-all-default', 'action-all-negative', 'action-clear', 'action-clear-guides', 'action-clear-disciplines'].includes(target.id)) {
       updateTaskCount();
     }
   });
@@ -330,11 +362,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    const nameEl = document.getElementById('name');
+    const numRunsEl = document.getElementById('numRuns');
+    const agentEl = document.getElementById('agent');
+    const servingEl = document.getElementById('serving');
+
     const payload = {
-      name: document.getElementById('name').value || undefined,
-      numRuns: parseInt(document.getElementById('numRuns').value),
-      agent: document.getElementById('agent').value,
-      serving: document.getElementById('serving').value,
+      name: (nameEl instanceof HTMLInputElement) ? nameEl.value || null : null,
+      numRuns: (numRunsEl instanceof HTMLInputElement) ? parseInt(numRunsEl.value) : 0,
+      agent: (agentEl instanceof HTMLInputElement) ? agentEl.value : '',
+      serving: (servingEl instanceof HTMLInputElement) ? servingEl.value : '',
       tasks: selectedTasks
     };
 
@@ -342,7 +379,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const headerBtn = document.getElementById('launch-btn-header');
     
     [runBtn, headerBtn].forEach(btn => {
-      if (btn) {
+      if (btn instanceof HTMLButtonElement) {
         btn.disabled = true;
         btn.innerHTML = '<span>⏳ Launching...</span>';
       }
@@ -358,7 +395,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const data = await response.json();
       if (data.success) {
         [runBtn, headerBtn].forEach(btn => {
-          if (btn) {
+          if (btn instanceof HTMLButtonElement) {
             btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
             btn.innerHTML = '<span>🚀 Started! Closing...</span>';
           }
@@ -373,7 +410,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       alert(`Launch failed: ${err.message}`);
       [runBtn, headerBtn].forEach(btn => {
-        if (btn) {
+        if (btn instanceof HTMLButtonElement) {
           btn.disabled = false;
           btn.innerHTML = '<span>Start Evaluation</span>';
         }
