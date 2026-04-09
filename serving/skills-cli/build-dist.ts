@@ -69,7 +69,7 @@ async function main(): Promise<BuildResult | undefined> {
 
 
   console.log("Copying data files...");
-  
+
   // 4. Copy build/guides
   const buildGuidesDir = path.join(SERVING_DIR, "build/guides");
   const destBuildGuidesDir = path.join(DIST_DIR, "guides");
@@ -92,7 +92,7 @@ async function main(): Promise<BuildResult | undefined> {
   const tfjsModelDir = path.join(SERVING_DIR, "lib/tfjs_model_minilm");
   const destTfjsModelDir = path.join(DIST_DIR, "tfjs_model_minilm");
   if (fs.existsSync(tfjsModelDir)) {
-    fs.cpSync(tfjsModelDir, destTfjsModelDir, { 
+    fs.cpSync(tfjsModelDir, destTfjsModelDir, {
       recursive: true,
       filter: (src) => {
         const stat = fs.statSync(src);
@@ -104,8 +104,6 @@ async function main(): Promise<BuildResult | undefined> {
     console.log(`Copied ${tfjsModelDir} to ${destTfjsModelDir}`);
   }
 
-  // TODO: We are going to iterate on the module splitting stuff some more.
-  // We want to avoid dynamic chunk names but still share heavy dependencies if possible.
   try {
     console.log("Bundling search.mjs...");
     const result = await esbuild.build({
@@ -202,14 +200,14 @@ async function main(): Promise<BuildResult | undefined> {
 function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   console.log("Generating dynamic README content around features and use cases...");
   const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
-  
+
   const useCaseGroupMap = new Map<string, { features: { id: string; name: string }[]; useCases: { id: string; description: string }[] }>();
   const allFeatureIds = new Set<string>();
 
   for (const guide of readyGuides) {
     const guidePath = path.join(guide.dir, "guide.md");
     if (!fs.existsSync(guidePath)) continue;
-    
+
     let description = guide.name;
     try {
       const content = fs.readFileSync(guidePath, "utf-8");
@@ -247,7 +245,7 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   const featureNamesCsv = allFeaturesSorted.map(f => `\`${f.name.replace(/</g, '&lt;')}\``).join(', ');
 
   dynamicMd += `<details>\n<summary><strong>${allFeaturesSorted.length} web features with implementation guidance from Chrome's experts</strong>: ${featureNamesCsv}</summary>\n\n`;
-  
+
   for (const group of sortedGroups) {
     const featureLinks = group.features.map(f => `[${f.name.replace(/</g, '&lt;')}](https://webstatus.dev/features/${f.id})`).join(', ');
     dynamicMd += `- **${featureLinks}**\n`;
