@@ -41,7 +41,6 @@ export async function searchUseCases(query: string, limit = 5, maxDistance = 1.5
 
     const similarity = cosineSimilarity(queryVector, item.vector);
     const distance = 1 - similarity;
-
     if (distance > maxDistance) continue;
 
     const existing = resultsMap.get(item.id);
@@ -51,7 +50,7 @@ export async function searchUseCases(query: string, limit = 5, maxDistance = 1.5
         description: item.description,
         category: item.category,
         featuresUsed: item.featuresUsed || [],
-        distance: distance.toString(), // Retain raw float precision for accurate sorting
+        distance: distance.toFixed(4),
       });
     }
   }
