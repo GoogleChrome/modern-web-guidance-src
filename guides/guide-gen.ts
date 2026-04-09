@@ -255,9 +255,14 @@ web-feature-ids:
 sources:
 ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
 ---
+
+# ${uc.slug}
+
+This is a scaffolded guide for the use case: ${uc.description}.
 `;
     fs.writeFileSync(path.join(outputDir, 'guide.md'), guideContent);
     console.log(`✅ Scaffolded guide.md`);
+
 
     // 2. Generate demo.html
     console.log(`Generating demo.html for ${uc.slug}...`);
