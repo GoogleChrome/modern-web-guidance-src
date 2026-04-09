@@ -91,19 +91,19 @@ export class TfjsEmbedder {
 
     try {
         const ioHandler = createNodeFileSystemIOHandler(modelPath);
-        
+
         // Silence TFJS console warning about node backend
         const oldLog = console.log;
         const oldWarn = console.warn;
         console.log = () => {};
         console.warn = () => {};
-        
+
         await setBackend('cpu');
         [castConfig, gatherV2Config, expandDimsConfig, stridedSliceConfig, reshapeConfig, packConfig, subConfig, multiplyConfig, addConfig, rangeConfig, meanConfig, squaredDifferenceConfig, rsqrtConfig, prodConfig, concatConfig, batchMatMulConfig, transposeConfig, softmaxConfig, erfConfig, tileConfig, sumConfig, minimumConfig, maximumConfig, realDivConfig, squareConfig, identityConfig].forEach(c => registerKernel(c));
         // Force MathBackendCPU to be included
         const _unused = MathBackendCPU;
         this.model = await loadGraphModel(ioHandler as any);
-        
+
         console.log = oldLog;
         console.warn = oldWarn;
 

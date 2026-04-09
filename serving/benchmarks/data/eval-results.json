@@ -721,7 +721,7 @@
     "meanReciprocalRank": 0.8062,
     "runId": "2026-04-08T21:11:15.914Z"
   },
-   {
+  {
     "timestamp": "2026-04-09T21:04:58.158Z",
     "model": {
       "name": "minilm",
@@ -754,5 +754,22 @@
     "top5HitRate": 0.9705,
     "meanReciprocalRank": 0.8086,
     "runId": "2026-04-09T21:13:18.722Z"
+  },
+  {
+    "timestamp": "2026-04-09T21:37:13.663Z",
+    "model": {
+      "name": "minilm",
+      "quantization": "q8",
+      "runtime": "tfjs",
+      "search": "maxsim",
+      "chunking": "chunked",
+      "variant": "q8"
+    },
+    "totalQueries": 848,
+    "top1HitRate": 0.6958,
+    "top3HitRate": 0.9316,
+    "top5HitRate": 0.9717,
+    "meanReciprocalRank": 0.8117,
+    "runId": "2026-04-09T21:35:03.972Z"
   }
 ]
