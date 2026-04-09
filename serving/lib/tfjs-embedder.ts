@@ -89,7 +89,7 @@ export class TfjsEmbedder {
     }
   }
 
-  public async embed(text: string, isQuery = false): Promise<number[]> {
+  public async embed(text: string, _isQuery = false): Promise<number[]> {
     if (!this.model || !this.tokenizer) {
         await this.init();
     }
