@@ -61,7 +61,7 @@ console.log(`Tokyo time: ${tokyoTime.toString()}`);
 -   **DO NOT** use `Temporal.PlainDateTime` for global events, as it does not carry time zone information and cannot account for DST changes.
 -   **DO** use `.withTimeZone()` to calculate the equivalent time in other locations without mutating the original object (Temporal objects are immutable).
 
-## Fallback Strategy
+## Fallback strategies
 
 {{ BASELINE_STATUS("temporal") }}
 
