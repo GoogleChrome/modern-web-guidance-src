@@ -19,7 +19,11 @@ The `text-wrap: pretty` CSS property allows you to improve the typographic quali
 
 ## Implementation steps
 
-1.  **Identify long-form text elements**: Select paragraphs (`p`), blockquotes, list items, or other long text blocks where orphaned words (runts) or poor line breaks are most noticeable.
+1.  **Identify long-form text elements**: Select elements potentially containing long runs of text where orphaned words (runts) or poor line breaks are most noticeable. This includes the following elements:
+  - `<p>`
+  - `<blockquote>`
+  - `<li>`
+  - Any other element potentially containing long runs of text.
 2.  **Apply pretty wrapping**: Use `text-wrap: pretty` to enable an optimized algorithm that evaluates the last few lines of a paragraph to find the best break points.
 
 ## Example: Optimizing Body Copy
@@ -27,16 +31,16 @@ The `text-wrap: pretty` CSS property allows you to improve the typographic quali
 ```css
 /* Apply to paragraphs to prevent orphaned words */
 p {
-  /* MANDATORY: Enables pretty line-breaking logic */
+  /* MANDATORY: Enable pretty line-breaking logic */
   text-wrap: pretty; /* Prioritizes typographic beauty for body copy */
 }
 
 /* Also effective for other multi-line text elements */
 blockquote, li, .pretty-text {
-   /* MANDATORY: Enables pretty line-breaking logic */
+   /* MANDATORY: Enable pretty line-breaking logic */
   text-wrap: pretty;
 }
-```
+*   **Performance vs. Quality**: MANDATORY: DO NOT apply `text-wrap: pretty` globally to every element on the page, because it evaluates multiple lines (typically the last four) to optimize the break points, which can affect page rendering performance.
 
 ## Key constraints
 
