@@ -35,10 +35,13 @@ async function processGuides() {
   // Scan guides first to see if we even need to run
   const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
 
-  const LANCE_DB_DIR = path.join(ROOT_DIR, "vector_store");
+  const VECTORS_FILE = path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
 
-  if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(LANCE_DB_DIR) && fs.readdirSync(LANCE_DB_DIR).length > 0) {
-    const outputFileMTime = fs.statSync(OUTPUT_FILE).mtimeMs;
+  if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(VECTORS_FILE)) {
+    const outputFileMTime = Math.min(
+      fs.statSync(OUTPUT_FILE).mtimeMs,
+      fs.statSync(VECTORS_FILE).mtimeMs
+    );
     let anyGuideNewer = false;
 
     if (fs.statSync(import.meta.filename).mtimeMs > outputFileMTime) {
@@ -141,7 +144,6 @@ export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
   console.log(`Generated ${useCases.length} use cases to ${OUTPUT_FILE}`);
 
   console.log("Writing vectors to pure JS storage...");
-  const VECTORS_FILE = path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
   const jsonContent = JSON.stringify(storeUseCases);
   const compressed = zlib.gzipSync(jsonContent);
   fs.writeFileSync(VECTORS_FILE, compressed);
