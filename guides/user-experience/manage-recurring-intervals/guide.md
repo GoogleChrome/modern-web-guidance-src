@@ -10,7 +10,7 @@ sources:
 
 # Managing Recurring Intervals with Temporal
 
-Calculating recurring intervals (such as subscription billing cycles or payroll periods) has historically been error-prone with the legacy `Date` object. Adding a month to a date like January 31st is ambiguous (should it be February 28th/29th or March 3rd?).
+Calculating recurring intervals, such as subscription billing cycles or payroll periods, has historically been error-prone with the legacy `Date` object. Adding a month to a date like January 31st is ambiguous (should it be February 28th/29th or March 3rd?).
 
 The `Temporal` API provides a clean solution with `Temporal.PlainDate` and its `.add()` method, which handles month-end transitions predictably using configurable overflow strategies.
 
@@ -66,7 +66,6 @@ For browsers that do not yet support the native `Temporal` API, use feature dete
 if (typeof Temporal === 'undefined') {
   // Load the polyfill conditionally
   import('@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill }) => {
-    // Manually assign to global scope as the polyfill does not do this by default
     globalThis.Temporal = TemporalPolyfill;
     initializeApp();
   });

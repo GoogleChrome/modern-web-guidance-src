@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -125,5 +124,4 @@ test.describe(`Temporal Interval Manager Expectations`, () => {
       throw new Error("Found legacy 'new Date()' usage. Must use Temporal API.");
     }
   });
-
 });
