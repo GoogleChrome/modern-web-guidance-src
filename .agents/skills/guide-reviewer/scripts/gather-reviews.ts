@@ -93,7 +93,8 @@ function main() {
     }
   }
 
-  const outputPath = path.join(process.cwd(), 'scripts', 'reviews_data.json');
+  const outputPath = path.join(process.cwd(), '.agents/skills/guide-reviewer/resources/reviews_data.json');
+
   fs.writeFileSync(outputPath, JSON.stringify(results, null, 2));
   console.log(`Done! Saved data to ${outputPath}`);
 }
