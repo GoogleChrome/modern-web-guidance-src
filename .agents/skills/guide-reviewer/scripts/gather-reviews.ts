@@ -96,7 +96,49 @@ function main() {
   const outputPath = path.join(process.cwd(), '.agents/skills/guide-reviewer/resources/reviews_data.json');
 
   fs.writeFileSync(outputPath, JSON.stringify(results, null, 2));
-  console.log(`Done! Saved data to ${outputPath}`);
+  console.log(`Saved JSON data to ${outputPath}`);
+
+  const mdContent = convertToMarkdown(results);
+  const mdPath = outputPath.replace('.json', '.md');
+  fs.writeFileSync(mdPath, mdContent);
+  console.log(`Saved Markdown data to ${mdPath}`);
+}
+
+function convertToMarkdown(results: any[]): string {
+  let md = '# PR Reviews Archive\n\n';
+  
+  for (const pr of results) {
+    md += `## PR #${pr.number}: ${pr.title}\n\n`;
+    
+    if (pr.reviews.length > 0) {
+      md += `### Reviews\n\n`;
+      for (const review of pr.reviews) {
+        md += `#### **${review.user}** (${review.state})\n`;
+        if (review.body) {
+          md += `> ${review.body.replace(/\n/g, '\n> ')}\n\n`;
+        } else {
+          md += `*(No review body)*\n\n`;
+        }
+      }
+    }
+    
+    if (pr.comments.length > 0) {
+      md += `### Comments\n\n`;
+      for (const comment of pr.comments) {
+        md += `#### **${comment.user}** on \`${comment.path}\`\n`;
+        md += `> ${comment.body.replace(/\n/g, '\n> ')}\n\n`;
+        
+        if (comment.diff_hunk) {
+          md += `<details>\n<summary>Diff Hunk</summary>\n\n\`\`\`diff\n${comment.diff_hunk}\n\`\`\`\n\n</details>\n\n`;
+        }
+      }
+    }
+    
+    md += '---\n\n';
+  }
+  
+  return md;
 }
 
 main();
+
