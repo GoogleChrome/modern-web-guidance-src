@@ -99,4 +99,4 @@ jobs:
 
       - name: Test Grader Calibration
         # Ensuring playwright is happy
-        run: pnpm gd dev guides/user-experience/adapt-scrollbar-to-contrast-preferences/ --test-grader
+        run: node bin/gd.ts dev guides/user-experience/adapt-scrollbar-to-contrast-preferences/ --test-grader
