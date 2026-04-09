@@ -32,6 +32,7 @@ async function main() {
 
   if (values.search) {
     try {
+      // Dynamic import to keep the CLI loading fast -- only load the embedder if needed.
       const { searchUseCases } = await import("../lib/search.ts");
       const results = await searchUseCases(values.search);
       if (results.length === 0) {
