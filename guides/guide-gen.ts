@@ -287,7 +287,11 @@ This is a scaffolded guide for the use case: ${uc.description}.
     console.log(`✅ Generated expectations.md`);
 
     console.log(`Running gd dev for ${uc.slug}...`);
-    await devGuide(outputDir, { noTest: true });
+    const success = await devGuide(outputDir, { noTest: true });
+    if (!success) {
+      throw new Error(`devGuide failed for ${uc.slug}`);
+    }
+
 
   }
 
