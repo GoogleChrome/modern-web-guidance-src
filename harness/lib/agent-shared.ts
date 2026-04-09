@@ -513,37 +513,55 @@ export async function runCliAgentCommand(
   child.stdout?.on('data', (data) => {
     const chunk = data.toString();
     stdoutData += chunk;
-    // Manually mirror to console so we can see progress while capturing
     process.stdout.write(chunk);
   });
 
   child.stderr?.on('data', (data) => {
     const chunk = data.toString();
     stderrData += chunk;
-    // Manually mirror to console so we can see progress while capturing
     process.stderr.write(chunk);
   });
 
-  const exitCode = await new Promise((resolve) => {
-    child.on('close', resolve);
-  });
+  try {
+    const exitCode = await new Promise<number>((resolve, reject) => {
+      child.on('close', (code) => resolve(code ?? 1));
+      child.on('error', (err) => reject(err));
+    });
 
-  if (exitCode !== 0) {
-    throw new Error(`${agentName} exited with code ${exitCode}`);
-  }
+    // Save output to chat_log.txt
+    const chatLogPath = path.join(targetDir, 'chat_log.txt');
+    fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
+    console.log(`Saved output to: ${chatLogPath}`);
 
-  copyResultsToTarget(workDir, targetDir);
+    // Save stderr to agent_stderr.log to surface unexpected problems
+    if (stderrData.length > 0) {
+      const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
+      fs.writeFileSync(stderrLogPath, stderrData, 'utf8');
+      console.log(`Saved stderr to: ${stderrLogPath}`);
+    }
 
-  // Save output to chat_log.txt
-  const chatLogPath = path.join(targetDir, 'chat_log.txt');
-  fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
-  console.log(`Saved output to: ${chatLogPath}`);
+    try {
+      copyResultsToTarget(workDir, targetDir);
+    } catch (e) {
+      console.error(`Failed to copy results from ${workDir} to ${targetDir}:`, e);
+    }
 
-  // Save stderr to agent_stderr.log to surface unexpected problems
-  if (stderrData.length > 0) {
+    if (exitCode !== 0) {
+      throw new Error(`${agentName} exited with code ${exitCode}`);
+    }
+  } catch (err: any) {
+    console.error(`Error in runCliAgentCommand:`, err);
+    
+    // Fallback: Save whatever we have to agent_stderr.log even if it failed
     const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
-    fs.writeFileSync(stderrLogPath, stderrData, 'utf8');
-    console.log(`Saved stderr to: ${stderrLogPath}`);
+    let fallbackContent = `Execution failed: ${err.message || err}\n`;
+    if (stderrData) {
+      fallbackContent += `\nCaptured stderr:\n${stderrData}`;
+    }
+    fs.writeFileSync(stderrLogPath, fallbackContent, 'utf8');
+    console.log(`Saved fallback error log to: ${stderrLogPath}`);
+    
+    throw err; // Re-throw to propagate failure
   }
 }
 

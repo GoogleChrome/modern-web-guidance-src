@@ -268,11 +268,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const nextRunType = currentRunTypes[rIdx];
             const nextTestName = `${nextScenario} - ${nextRunType}`;
 
-            if (nextTestName !== currentDetails.testName && allTestData.results[nextTestName]) {
+            const results = allTestData.results;
+            if (nextTestName !== currentDetails.testName && results[nextTestName]) {
                 e.preventDefault();
                 showDetails(
                     nextTestName,
-                    allTestData.results[nextTestName],
+                    results[nextTestName],
                     allTestData.stats[nextTestName],
                     currentTestID
                 );
@@ -343,6 +344,11 @@ function renderSummary(data) {
     const unguidedRate = summary.unguidedPassRate;
     const guidedRate = summary.guidedPassRate;
 
+    const unguidedEarlyFailureRate = summary.unguidedEarlyFailureRate || 0;
+    const guidedEarlyFailureRate = summary.guidedEarlyFailureRate || 0;
+
+    const completedGuidedRuns = summary.totalGuidedRuns - (summary.guidedEarlyFailures || 0);
+
     container.innerHTML = `
         <div class="stat-card">
             <span class="stat-value" style="color: ${getColor(unguidedRate)}">
@@ -352,6 +358,17 @@ function renderSummary(data) {
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
                 ${summary.unguidedPassed}/${summary.unguidedTotal} checks passed
             </div>
+            ${summary.expectedTotalRuns !== undefined ? `
+            <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-secondary);">
+                Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} tasks x ${summary.runCountPerTask} runs)` : ''}</span>
+            </div>
+            ` : ''}
+            ${summary.unguidedEarlyFailures !== undefined ? `
+            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
+                Generation Errors: <span style="font-weight: bold; color: ${getColor(100 - unguidedEarlyFailureRate)}">${unguidedEarlyFailureRate}%</span>
+                <span style="opacity: 0.8; color: ${getColor(100 - unguidedEarlyFailureRate)}">(${summary.unguidedEarlyFailures} runs)</span>
+            </div>
+            ` : ''}
         </div>
         <div class="stat-card">
             <span class="stat-value" style="color: ${getColor(guidedRate)}">
@@ -361,16 +378,27 @@ function renderSummary(data) {
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
                 ${summary.guidedPassed}/${summary.guidedTotal} checks passed
             </div>
+            ${summary.expectedTotalRuns !== undefined ? `
+            <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-secondary);">
+                Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} tasks x ${summary.runCountPerTask} runs)` : ''}</span>
+            </div>
+            ` : ''}
+            ${summary.guidedEarlyFailures !== undefined ? `
+            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
+                Generation Errors: <span style="font-weight: bold; color: ${getColor(100 - guidedEarlyFailureRate)}">${guidedEarlyFailureRate}%</span>
+                <span style="opacity: 0.8; color: ${getColor(100 - guidedEarlyFailureRate)}">(${summary.guidedEarlyFailures} runs)</span>
+            </div>
+            ` : ''}
             ${summary.toolActivationRate !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Tool Activation: <span style="font-weight: bold; color: ${getColor(summary.toolActivationRate)}">${summary.toolActivationRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(summary.toolActivationRate)}">(${summary.toolActivationCount}/${summary.totalGuidedRuns} runs)</span>
+                <span style="opacity: 0.8; color: ${getColor(summary.toolActivationRate)}">(${summary.toolActivationCount}/${completedGuidedRuns} completed runs)</span>
             </div>
             ` : ''}
             ${summary.guideUsageRate !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Guide Usage: <span style="font-weight: bold; color: ${getColor(summary.guideUsageRate)}">${summary.guideUsageRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${summary.totalGuidedRuns} runs)</span>
+                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${completedGuidedRuns} completed runs)</span>
             </div>
             ` : ''}
         </div>
@@ -463,7 +491,7 @@ function renderGrid(data, testId) {
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 0.9em; color: var(--text-secondary);">
                         <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
-                        <span>Runs: ${runData.length}</span>
+                        <span>Runs: ${runData.length}${testStats && testStats.earlyFailures ? ` (<span style="color: var(--accent-failure); font-weight: bold;">${testStats.earlyFailures} failed</span>)` : ''}</span>
                     </div>
                     ${toolActivationHtml}
                     ${guideUsageHtml}
@@ -565,7 +593,7 @@ async function showDetails(testName, runs, stats, testId) {
 
         let usageSection = '';
         const toolsUsed = run.guidanceToolsUsed || [];
-        const expectedTool = run.expectedGuidanceTool;
+        const expectedToolPrefixes = run.expectedToolPrefixes || [];
         const hasToolData = run.guidanceToolsUsed !== undefined;
 
         const guidesUsed = run.guidesUsed || 
@@ -587,21 +615,35 @@ async function showDetails(testName, runs, stats, testId) {
                             <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 90px;">Tools Used:</strong>
                             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                                 ${toolsUsed.length > 0 ? toolsUsed.map(t => {
-                                    const isExpected = t === expectedTool;
+                                    const isExpected = expectedToolPrefixes.some(p => t.startsWith(p));
                                     return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(t)}</code>`;
                                 }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
                             </div>
                         </div>` : ''}
 
                         ${hasGuideData ? `
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 90px;">Guides Used:</strong>
-                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                ${guidesUsed.length > 0 ? guidesUsed.map(g => {
-                                    const isExpected = g === expectedGuide;
-                                    return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
-                                }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
-                            </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                          <div style="display: flex; align-items: center; gap: 8px;">
+                              <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 120px;">Retrieved Guides:</strong>
+                              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                  ${(() => {
+                                      const retrieved = run.fileReadGuides === undefined ? (run.retrievedGuides || guidesUsed) : run.retrievedGuides;
+                                      return retrieved && retrieved.length > 0 ? retrieved.map(g => {
+                                          const isExpected = g === expectedGuide;
+                                          return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
+                                      }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>';
+                                  })()}
+                              </div>
+                          </div>
+                          <div style="display: flex; align-items: center; gap: 8px;">
+                              <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 120px;">File Read Guides:</strong>
+                              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                  ${run.fileReadGuides && run.fileReadGuides.length > 0 ? run.fileReadGuides.map(g => {
+                                      const isExpected = g === expectedGuide;
+                                      return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
+                                  }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
+                              </div>
+                          </div>
                         </div>` : ''}
 
                         <div style="margin-top: 5px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: flex-end;">
@@ -882,7 +924,8 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 }
 
 function renderDashboardDumbbellChart(data, testId) {
-    const { labels, guided, unguided } = calculateChartData(data.results);
+    const results = data.results;
+    const { labels, guided, unguided } = calculateChartData(results);
 
     if (labels.length < 1) {
         document.getElementById('chart-section').classList.add('hidden');
@@ -895,14 +938,14 @@ function renderDashboardDumbbellChart(data, testId) {
         const runType = type.toLowerCase(); // "guided" or "unguided"
 
         // Find the original key in the results
-        const originalKey = Object.keys(data.results).find(key => {
+        const originalKey = Object.keys(results).find(key => {
             const parts = key.split(' - ');
             return `${parts[0]} (${parts[1]})` === scenarioName && parts[2] === runType;
         });
 
         if (originalKey) {
             const testName = originalKey;
-            const runData = data.results[testName];
+            const runData = results[testName];
             const testStats = data.stats[testName];
             showDetails(testName, runData, testStats, testId);
         }
