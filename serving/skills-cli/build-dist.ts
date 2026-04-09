@@ -132,9 +132,14 @@ async function main(): Promise<BuildResult | undefined> {
       metafile: true,
       minify: true,
       alias: {
+        // Force transformers to use the ESM entry point to avoid CommonJS issues in the bundle
         "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
       },
       plugins: [{
+        // TFJS deep imports fail in pure Node ESM because they lack extensions.
+        // In raw Node runs, tfjs-kernels.ts uses require() to load the CommonJS version (all kernels).
+        // For the production bundle, we use this plugin to swap it with tfjs-kernels-precise.ts
+        // which only registers the specific kernels we need, keeping the bundle small.
         name: 'use-precise-kernels',
         setup(build) {
           build.onResolve({ filter: /tfjs-kernels\.ts$/ }, args => {
