@@ -140,8 +140,8 @@ async function run() {
   }
 }
 
-export async function collectClaudeGuidesFromTrajectory(dirPath: string, serving: string): Promise<string[]> {
-  const guidesFromSkills: string[] = [];
+export async function collectClaudeGuidesFromTrajectory(dirPath: string, _serving: string): Promise<{ retrievedGuides: string[]; fileReadGuides: string[] }> {
+  const result = { retrievedGuides: [] as string[], fileReadGuides: [] as string[] };
   try {
     const files = fs.readdirSync(dirPath);
     const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
@@ -157,23 +157,23 @@ export async function collectClaudeGuidesFromTrajectory(dirPath: string, serving
           const obj = JSON.parse(line);
           if (obj.message && obj.message.content) {
             for (const contentItem of obj.message.content) {
-              if (serving === Serving.SKILLS_CLI && contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input && contentItem.input.command) {
+              if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input && contentItem.input.command) {
                 const command = contentItem.input.command;
                 if (command.includes('modern-web') && command.includes('--retrieve')) {
                   const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
                   if (match) {
                     const ids = match[1].split(',');
                     for (const id of ids) {
-                      guidesFromSkills.push(id.trim());
+                      result.retrievedGuides.push(id.trim());
                     }
                   }
                 }
-              } else if (serving === Serving.SKILLS && contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input && contentItem.input.file_path) {
+              } else if (contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input && contentItem.input.file_path) {
                 const filePath = contentItem.input.file_path;
                 if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
                   const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
                   if (match) {
-                    guidesFromSkills.push(match[1]);
+                    result.fileReadGuides.push(match[1]);
                   }
                 }
               }
@@ -187,7 +187,10 @@ export async function collectClaudeGuidesFromTrajectory(dirPath: string, serving
   } catch (e) {
     console.error(`Error reading session files in ${dirPath}:`, e);
   }
-  return [...new Set(guidesFromSkills)];
+  
+  result.retrievedGuides = [...new Set(result.retrievedGuides)];
+  result.fileReadGuides = [...new Set(result.fileReadGuides)];
+  return result;
 }
 
 export function extractClaudeCodeModel(resultsDir: string): string {
@@ -239,8 +242,12 @@ export function collectClaudeToolsFromTrajectory(dir: string): string[] {
         const obj = JSON.parse(line);
         if (obj.message && Array.isArray(obj.message.content)) {
           for (const item of obj.message.content) {
-            if (item.type === 'tool_use' && item.name === 'Skill' && item.input?.skill) {
-              toolsUsed.push(item.input.skill);
+            if (item.type === 'tool_use') {
+              if (item.name === 'Skill' && item.input?.skill) {
+                toolsUsed.push(item.input.skill);
+              } else if (item.name === 'activate_skill' && item.input?.name) {
+                toolsUsed.push(item.input.name);
+              }
             }
           }
         }

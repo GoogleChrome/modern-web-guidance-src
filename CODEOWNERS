@@ -1,1 +1,6 @@
-/guides/ @philipwalton @rviscomi @malchata
+# Default owners for implementation and infra
+* @paulirish @micahjo7
+
+# Content reviewers for guide content (anything in category subdirectories)
+# e.g., guides/accessibility/accessible-error-announcement/
+guides/*/*/ @philipwalton @rviscomi @malchata
