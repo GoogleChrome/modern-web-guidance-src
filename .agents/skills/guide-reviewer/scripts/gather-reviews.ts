@@ -119,8 +119,11 @@ function convertToMarkdown(results: any[]): string {
         md += `> ${comment.body.replace(/\n/g, '\n> ')}\n\n`;
         
         if (comment.diff_hunk) {
-          md += `<details>\n<summary>Diff Hunk</summary>\n\n\`\`\`diff\n${comment.diff_hunk}\n\`\`\`\n\n</details>\n\n`;
+          const lines = comment.diff_hunk.split('\n');
+          const truncated = lines.slice(-4).join('\n');
+          md += `<details>\n<summary>Diff Hunk (Truncated)</summary>\n\n\`\`\`diff\n${truncated}\n\`\`\`\n\n</details>\n\n`;
         }
+
       }
     }
     
