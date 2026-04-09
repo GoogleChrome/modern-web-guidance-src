@@ -177,3 +177,26 @@ export async function authenticatedFetch(url, options = {}) {
     }
     return res;
 }
+
+/**
+ * @template {string} T
+ * @typedef {T extends `${infer TagName}#${string}` 
+ *   ? TagName extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[TagName] : TagName extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[TagName] : HTMLElement 
+ *   : T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement} ParseSelector
+ */
+
+/**
+ * Guaranteed querySelector. Always returns an element or throws if nothing matches.
+ * @template {string} T
+ * @param {T} query
+ * @param {ParentNode=} context
+ * @return {ParseSelector<T>}
+ */
+export function $(query, context) {
+  const result = (context || document).querySelector(query);
+  if (result === null) {
+    throw new Error(`querySelector('${query}') not found`);
+  }
+  return /** @type {ParseSelector<T>} */ (result);
+}
+
