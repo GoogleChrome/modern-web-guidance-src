@@ -18,9 +18,11 @@ node .agents/skills/guide-reviewer/scripts/gather-reviews.ts
 ```
 
 The script will:
-1.  Search for PRs affecting the `guides/` directory.
+1.  Fetch the most recent 1000 PRs and their file lists, filtering in memory for those affecting the `guides/` directory (ensuring no PR is missed due to missing keywords).
 2.  Filter reviews and comments by the target reviewers (Philip Walton, Rick Viscomi, Jeremy Wagner).
 3.  Save the results to `.agents/skills/guide-reviewer/resources/reviews_data.json` and a more token-efficient Markdown format at `.agents/skills/guide-reviewer/resources/reviews_data.md`.
+    -   **Optimization**: The Markdown archive truncates diff hunks to just the line where the comment was made plus 3 lines before it, significantly reducing token weight while preserving context.
+
 
 
 ## Processing the Data
