@@ -194,10 +194,11 @@ run();
 
       let taskCategory = path.basename(path.dirname(taskInfo.guideDir));
       const isSkill = taskCategory === 'guides';
+      let expectedToolPrefixes = ['modern-web'].filter(Boolean);
       if (isSkill) {
         taskCategory = path.basename(taskInfo.guideDir);
+        expectedToolPrefixes = [taskCategory].filter(Boolean);
       }
-      const expectedToolPrefixes = ['modern-web', taskCategory].filter(Boolean);
 
       const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
       let scenarioResults: any[] = [];

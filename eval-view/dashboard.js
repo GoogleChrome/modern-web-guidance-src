@@ -636,14 +636,13 @@ async function showDetails(testName, runs, stats, testId) {
                                 ${toolsUsed.length > 0 ? toolsUsed.map(t => {
 
                                     const isExpected = expectedToolPrefixes.some(p => t.startsWith(p));
-                                    const discipline = run.discipline;
-                                    const matchesDiscipline = t === discipline;
+                                    const matchesDiscipline = t === run.discipline;
 
                                     let style = '';
-                                    if (matchesDiscipline) {
-                                        style = 'background: rgba(255, 204, 0, 0.2); border: 1px solid #ffcc00; color: #ffcc00;';
-                                    } else if (isExpected) {
+                                    if (isExpected) {
                                         style = 'background: rgba(0, 200, 0, 0.1); border: 1px solid var(--accent-success); color: var(--accent-success);';
+                                    } else if (matchesDiscipline) {
+                                        style = 'background: rgba(255, 204, 0, 0.2); border: 1px solid #ffcc00; color: #ffcc00;';
                                     } else {
                                         style = 'background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-primary);';
                                     }
