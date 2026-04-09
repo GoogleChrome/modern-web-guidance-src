@@ -74,6 +74,7 @@ gd eval                       # run the full evaluation suite
 gd eval [task1] [task2]       # run specific tasks (which are the names of guides e.g. `batch-analytics-events`)
 gd eval --config <custom_config>       # run with config overrides (defaults to config.ts, or harness/config.ts)
 gd dashboard                  # start the evaluation dashboard
+gd backfill                   # backfill metrics for historical suites
 
 # To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
 gd upload <suite-name>

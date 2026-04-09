@@ -21,20 +21,28 @@ interface BuildResult {
   skillNames: string[];
 }
 
+async function acquireLock(lockFilePath: string) {
+  while (fs.existsSync(lockFilePath)) {
+    try {
+      const pid = parseInt(fs.readFileSync(lockFilePath, 'utf-8'), 10);
+      process.kill(pid, 0);
+    } catch (e: any) {
+      if (e.code === 'ESRCH') {
+        fs.unlinkSync(lockFilePath);
+        break;
+      }
+    }
+    console.log(" Another build is in progress. Waiting...");
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+  fs.writeFileSync(lockFilePath, process.pid.toString());
+}
+
 async function main(): Promise<BuildResult | undefined> {
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
   const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
 
-  if (fs.existsSync(lockFilePath)) {
-    console.log(" Another build is in progress. Waiting for it to finish...");
-    while (fs.existsSync(lockFilePath)) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-    console.log(" Previous build finished. Skipping rebuild.");
-    return; 
-  }
-
-  fs.writeFileSync(lockFilePath, process.pid.toString());
+  await acquireLock(lockFilePath);
 
   try {
     console.log("Ensuring dist/ output directory exists...");
