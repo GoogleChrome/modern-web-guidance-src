@@ -34,7 +34,9 @@ async function main() {
     try {
       const { searchUseCases } = await import("../lib/search.ts");
       const results = await searchUseCases(values.search);
-      console.log(JSON.stringify(results, null, 2));
+      for (const result of results) {
+        console.log(JSON.stringify(result));
+      }
     } catch (error) {
       console.error("Search failed:", error);
       process.exit(1);
