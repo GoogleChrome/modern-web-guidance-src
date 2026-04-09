@@ -54,7 +54,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   # Gemini CLI picks up GEMINI_API_KEY for non-OAuth auth in CI
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-  GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+  GEMINI_MODEL: gemini-3-flash-preview
 
 jobs:
   # ── Manual trigger or Test trigger: generate a brand-new guide package ─────
