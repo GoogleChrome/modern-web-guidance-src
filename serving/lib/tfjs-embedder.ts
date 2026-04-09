@@ -16,18 +16,20 @@ function createNodeFileSystemIOHandler(modelJsonPath: string) {
       const weightsManifest = modelJson.weightsManifest;
 
       const weightSpecs: any[] = [];
-      const shardPromises: Promise<Buffer>[] = [];
-
-      for (const manifest of weightsManifest) {
-        weightSpecs.push(...manifest.weights);
-        for (const shardPath of manifest.paths) {
-          const fullPath = path.resolve(dir, shardPath);
-          shardPromises.push(fs.promises.readFile(fullPath));
-        }
-      }
-
-      const buffers = await Promise.all(shardPromises);
-      const weightData = Buffer.concat(buffers).buffer;
+      
+      // NOTE: Simplified assuming 1 shard for MiniLM (group1-shard1of1.bin).
+      // If we go back to multiple shards in the future, restore the loops:
+      // for (const manifest of weightsManifest) {
+      //   weightSpecs.push(...manifest.weights);
+      //   for (const shardPath of manifest.paths) {
+      //     shardPromises.push(fs.promises.readFile(path.resolve(dir, shardPath)));
+      //   }
+      // }
+      const manifest = weightsManifest[0];
+      weightSpecs.push(...manifest.weights);
+      const shardPath = manifest.paths[0];
+      const fullPath = path.resolve(dir, shardPath);
+      const weightData = (await fs.promises.readFile(fullPath)).buffer;
 
       return {
         modelTopology,
