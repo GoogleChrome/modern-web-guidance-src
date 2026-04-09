@@ -98,4 +98,5 @@ jobs:
         run: pnpm --filter eval-view run test:e2e
 
       - name: Test Grader Calibration
-        run: ./bin/gd.ts dev guides/user-experience/adapt-scrollbar-to-contrast-preferences/ --test-grader
+        # Ensuring playwright is happy
+        run: pnpm gd dev guides/user-experience/adapt-scrollbar-to-contrast-preferences/ --test-grader
