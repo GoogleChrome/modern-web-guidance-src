@@ -348,7 +348,7 @@ function renderSummary(data) {
     const unguidedEarlyFailureRate = summary.unguidedEarlyFailureRate || 0;
     const guidedEarlyFailureRate = summary.guidedEarlyFailureRate || 0;
     const completedGuidedRuns = summary.totalGuidedRuns - (summary.guidedEarlyFailures || 0);
-    const completedGuidedNonSkillRuns = summary.totalGuidedNonSkillRuns !== undefined ? summary.totalGuidedNonSkillRuns - (summary.guidedNonSkillEarlyFailures || 0) : completedGuidedRuns;
+    const completedGuidedNonDisciplineRuns = summary.totalGuidedNonDisciplineRuns !== undefined ? summary.totalGuidedNonDisciplineRuns - (summary.guidedNonDisciplineEarlyFailures || 0) : completedGuidedRuns;
 
     container.innerHTML = `
         <div class="stat-card">
@@ -399,7 +399,7 @@ function renderSummary(data) {
             ${summary.guideUsageRate !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Guide Usage: <span style="font-weight: bold; color: ${getColor(summary.guideUsageRate)}">${summary.guideUsageRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${completedGuidedNonSkillRuns} completed runs)</span>
+                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${completedGuidedNonDisciplineRuns} completed runs)</span>
             </div>
             ` : ''}
         </div>

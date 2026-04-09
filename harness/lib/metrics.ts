@@ -35,14 +35,14 @@ export interface Metrics {
     guideUsageRate?: number;
     guideUsageCount?: number;
     totalGuidedRuns?: number;
-    totalGuidedNonSkillRuns?: number;
+    totalGuidedNonDisciplineRuns?: number;
     toolActivationRate?: number;
     toolActivationCount?: number;
     unguidedEarlyFailures?: number;
     unguidedEarlyFailureRate?: number;
     guidedEarlyFailures?: number;
     guidedEarlyFailureRate?: number;
-    guidedNonSkillEarlyFailures?: number;
+    guidedNonDisciplineEarlyFailures?: number;
   };
   testStats: Record<string, {
     medianPassRate: number;
@@ -179,8 +179,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let guideUsageCount = 0;
     let toolActivationCount = 0;
     let totalGuidedRuns = 0;
-    let totalGuidedNonSkillRuns = 0;
-    let guidedNonSkillEarlyFailures = 0;
+    let totalGuidedNonDisciplineRuns = 0;
+    let guidedNonDisciplineEarlyFailures = 0;
     let guidedEarlyFailures = 0;
     let earlyFailures = 0;
     let totalRuns = 0;
@@ -201,8 +201,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
           totalGuidedRuns += stats.runCount || 0;
 
           if (!stats.isSkill) {
-            totalGuidedNonSkillRuns += stats.runCount || 0;
-            guidedNonSkillEarlyFailures += stats.earlyFailures || 0;
+            totalGuidedNonDisciplineRuns += stats.runCount || 0;
+            guidedNonDisciplineEarlyFailures += stats.earlyFailures || 0;
           }
           guidedEarlyFailures += stats.earlyFailures || 0;
         }
@@ -210,7 +210,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     });
 
     const completedGuidedRuns = totalGuidedRuns - guidedEarlyFailures;
-    const completedGuidedNonSkillRuns = totalGuidedNonSkillRuns - guidedNonSkillEarlyFailures;
+    const completedGuidedNonDisciplineRuns = totalGuidedNonDisciplineRuns - guidedNonDisciplineEarlyFailures;
 
     return {
       median: Math.round(median),
@@ -219,15 +219,14 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       rate: total ? Math.round((passed / total) * 100) : 0,
       guideUsageCount,
       totalGuidedRuns,
-      totalGuidedNonSkillRuns,
+      totalGuidedNonDisciplineRuns,
       toolActivationCount,
       earlyFailures,
       totalRuns,
       earlyFailureRate: totalRuns ? Math.round((earlyFailures / totalRuns) * 100) : 0,
       toolActivationRate: completedGuidedRuns ? Math.round((toolActivationCount / completedGuidedRuns) * 100) : 0,
-      guideUsageRate: completedGuidedNonSkillRuns ? Math.round((guideUsageCount / completedGuidedNonSkillRuns) * 100) : 0,
-      guidedNonSkillEarlyFailures,
-      
+      guideUsageRate: completedGuidedNonDisciplineRuns ? Math.round((guideUsageCount / completedGuidedNonDisciplineRuns) * 100) : 0,
+      guidedNonDisciplineEarlyFailures,
     };
   };
 
@@ -259,14 +258,14 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       guideUsageRate: gStats.guideUsageRate,
       guideUsageCount: gStats.guideUsageCount,
       totalGuidedRuns: gStats.totalGuidedRuns,
-      totalGuidedNonSkillRuns: gStats.totalGuidedNonSkillRuns,
+      totalGuidedNonDisciplineRuns: gStats.totalGuidedNonDisciplineRuns,
       toolActivationRate: gStats.toolActivationRate,
       toolActivationCount: gStats.toolActivationCount,
       unguidedEarlyFailures: uStats.earlyFailures,
       unguidedEarlyFailureRate: uStats.earlyFailureRate,
       guidedEarlyFailures: gStats.earlyFailures,
       guidedEarlyFailureRate: gStats.earlyFailureRate,
-      guidedNonSkillEarlyFailures: gStats.guidedNonSkillEarlyFailures
+      guidedNonDisciplineEarlyFailures: gStats.guidedNonDisciplineEarlyFailures
     },
     testStats,
     sortedKeys
