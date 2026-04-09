@@ -82,7 +82,7 @@ async function processGuides() {
     // because TFJS CPU backend has ESM resolution issues when run directly in Node
     // and the generated vectors are mathematically equivalent.
     const { Embedder } = await import("../lib/transformers-embedder.ts");
-    embedder = Embedder.getInstance("transformers");
+    embedder = Embedder.getInstance();
   } else if (modelName && (modelName.includes(".gguf") || modelName.includes("nomic"))) {
     embedder = Gpt4AllEmbedder.getInstance(modelName);
   } else {
