@@ -134,6 +134,14 @@ async function main(): Promise<BuildResult | undefined> {
       alias: {
         "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
       },
+      plugins: [{
+        name: 'use-precise-kernels',
+        setup(build) {
+          build.onResolve({ filter: /tfjs-kernels\.ts$/ }, args => {
+            return { path: path.resolve(SERVING_DIR, "lib/tfjs-kernels-precise.ts") }
+          })
+        },
+      }],
     });
     console.log(await esbuild.analyzeMetafile(result.metafile));
 
