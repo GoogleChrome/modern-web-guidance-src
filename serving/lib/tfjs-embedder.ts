@@ -1,5 +1,5 @@
 import * as tf from "@tensorflow/tfjs-core";
-import { loadGraphModel } from "@tensorflow/tfjs-converter";
+import { loadGraphModel, GraphModel } from "@tensorflow/tfjs-converter";
 import { MathBackendCPU } from "@tensorflow/tfjs-backend-cpu/dist/base.js";
 import { castConfig } from "@tensorflow/tfjs-backend-cpu/dist/kernels/Cast.js";
 import { gatherV2Config } from "@tensorflow/tfjs-backend-cpu/dist/kernels/GatherV2.js";
@@ -66,7 +66,7 @@ function createNodeFileSystemIOHandler(modelJsonPath: string) {
 
 export class TfjsEmbedder {
   private static instance: TfjsEmbedder;
-  private model: tf.GraphModel | null = null;
+  private model: GraphModel | null = null;
   private tokenizer: any = null;
   public modelName = "tfjs:all-MiniLM-L6-v2";
 
@@ -160,10 +160,6 @@ export class TfjsEmbedder {
   }
 
   public shutdown() {
-    if (TfjsEmbedder.serverProcess) {
-        console.log("Stopping local HTTP server...");
-        TfjsEmbedder.serverProcess.kill();
-        TfjsEmbedder.serverProcess = null;
-    }
+    // No-op: we use custom IO handler instead of local server now
   }
 }

@@ -6,9 +6,12 @@ export class Embedder {
   public static configureRuntime(runtime: 'wasm' | 'native') {
     if (runtime === 'wasm') {
       // Force the WebAssembly runtime instead of native node binaries for lightweight CLI dist
-      globalThis[Symbol.for("onnxruntime")] = ort;
-      env.backends.onnx.wasm.numThreads = 1;
-      env.backends.onnx.wasm.wasmPaths = path.join(import.meta.dirname, "../wasm/");
+      (globalThis as any)[Symbol.for("onnxruntime")] = ort;
+      const wasm = env.backends.onnx.wasm;
+      if (wasm) {
+        wasm.numThreads = 1;
+        wasm.wasmPaths = path.join(import.meta.dirname, "../wasm/");
+      }
     } else {
       // Use native node binaries if available
       delete (globalThis as any)[Symbol.for("onnxruntime")];

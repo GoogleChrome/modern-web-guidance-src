@@ -24,7 +24,6 @@ export class Gpt4AllEmbedder {
   private async loadGpt4All() {
     if (this.gpt4allModule) return this.gpt4allModule;
     // We strictly use the generic npm package since sandbox is bypassed in benchmarks
-    // @ts-expect-error - Package is omitted because it's dependencies are pesky. And we only use this occasionally for benchmarking.
     this.gpt4allModule = await import("gpt4all");
     return this.gpt4allModule;
   }

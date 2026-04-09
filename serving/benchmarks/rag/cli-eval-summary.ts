@@ -10,6 +10,7 @@ const LATENCY_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-results-latency.j
 
 interface EvalRun {
   timestamp: string;
+  runId?: string;
   model: string | { name: string; quantization: string; runtime: string; chunking: string; };
   totalQueries: number;
   top1HitRate: number;
