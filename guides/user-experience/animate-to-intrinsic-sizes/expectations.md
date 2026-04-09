@@ -1,0 +1,6 @@
+- The `:root` or a parent element has `interpolate-size: allow-keywords` applied.
+- The interactive element (e.g., accordion, menu) has a `transition` property for the logical properties `block-size` or `inline-size` or the physical properties `height` or `width`.
+- The expanded state of the element uses an intrinsic keyword like `auto`, `min-content`, or `max-content`.
+- The element does NOT use the `max-block-size` (or `max-height`) hack for animation if `interpolate-size` is available.
+- If `calc-size()` is used, it follows the correct syntax `calc-size(<basis>, <calculation>)`.
+- The implementation provides a clear interaction (e.g., a checkbox, button, or hover) to trigger the size change.

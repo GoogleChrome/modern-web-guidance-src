@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Negative Demo: Legacy Max-Height Hack</title>
+  <style>
+    /* MISSING: interpolate-size: allow-keywords */
+
+    body {
+      font-family: sans-serif;
+      padding: 40px;
+    }
+
+    .accordion {
+      max-width: 400px;
+      border: 1px solid #ccc;
+    }
+
+    .accordion-header {
+      width: 100%;
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .accordion-content {
+      /* INCORRECT: Using max-block-size hack instead of interpolate-size + block-size: auto */
+      max-block-size: 0;
+      overflow: hidden;
+      transition: max-block-size 0.5s ease;
+    }
+
+    .accordion.is-open .accordion-content {
+      /* This is what we want to avoid */
+      max-block-size: 1000px;
+    }
+  </style>
+</head>
+<body>
+  <div class="accordion" id="accordion">
+    <div class="accordion-header" style="background: #eee; border: 1px solid #999;">
+      Broken Accordion (No interaction)
+    </div>
+    <div class="accordion-content">
+      <p style="padding: 20px;">
+        This implementation uses the old <code>max-height</code> hack. It doesn't use the modern <code>interpolate-size</code> property, which leads to awkward timing and unnecessary calculation of magic numbers like "1000px".
+      </p>
+    </div>
+  </div>
+</body>
+</html>
