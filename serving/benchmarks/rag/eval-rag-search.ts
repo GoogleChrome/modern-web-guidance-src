@@ -1,8 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-// @ts-ignore - Importing from built dist folder which lacks types
-import { searchUseCases } from "../../../dist/skills-cli/skills/modern-web-use-cases/search.mjs";
+import { searchUseCases } from "../../lib/search.ts";
 import { Gpt4AllEmbedder } from "./gpt4all-embedder.ts";
 import type { EvalQuery } from "./generate-eval-queries.ts";
 
