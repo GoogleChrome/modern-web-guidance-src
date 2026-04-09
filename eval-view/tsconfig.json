@@ -13,7 +13,10 @@
     "lib": ["esnext", "dom", "dom.iterable"]
   },
   "include": [
-    "server.js"
+    // TODO: remove this 'include' block so we typecheck ALL of eval-view!
+    "server.js",
+    "utils.js",
+    "evals.d.ts"
   ],
   "exclude": [
     "node_modules",
