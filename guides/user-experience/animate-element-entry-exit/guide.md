@@ -36,7 +36,7 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
     transform 0.4s ease-out;
 }
 
-/* Entry animation: transition FROM these values when first rendered or display changes from none */
+/* Entry animation: transition FROM these values when first rendered */
 @starting-style {
   .card {
     opacity: 0;
@@ -44,11 +44,30 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
   }
 }
 
-/* Exit animation: transition TO these values when the hidden class or attribute is present */
+/* Exit animation: transition TO these values when hidden */
 .card:where(.hidden, [hidden]) {
-  display: none; /* display none is only needed for the class-based implementation as the hidden attribute applies it by default */
+  display: none;
   opacity: 0;
   transform: translateY(-20px);
+}
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    /* Disable movement and shorten duration for a simple fade */
+    transform: none;
+    transition-duration: 0.1s;
+  }
+
+  @starting-style {
+    .card {
+      transform: none;
+    }
+  }
+
+  .card:where(.hidden, [hidden]) {
+    transform: none;
+  }
 }
 ```
 
@@ -86,7 +105,18 @@ element.remove();
 
 {{ BASELINE_STATUS("starting-style") }}
 
-For browsers that do not support these features, elements will toggle `display: none` instantly. For smooth animations in older browsers, use JavaScript-based animation libraries or manually coordinate `display` toggles using `requestAnimationFrame` and `transitionend` events.
+For browsers that do not support these features, elements will toggle `display: none` instantly. You can detect support in JavaScript using `CSS.supports()` to conditionally apply manual animation logic.
+
+```javascript
+// Detect support for discrete transitions and starting-style
+const supportsModernTransitions = 
+  window.CSS && 
+  CSS.supports('transition-behavior', 'allow-discrete');
+
+if (!supportsModernTransitions) {
+  // Implement manual JS-based fallback for entry/exit
+}
+```
 
 ### Manual Entry Animation (JS Fallback)
 

@@ -124,6 +124,24 @@
         transform: translateY(-20px) scale(0.95);
       }
     }
+
+    /* Respect user preference for reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .card {
+        transform: none;
+        transition-duration: 0.1s;
+      }
+
+      @starting-style {
+        .card {
+          transform: none;
+        }
+      }
+
+      .card:where([hidden], .hidden) {
+        transform: none;
+      }
+    }
   </style>
 </head>
 <body>

@@ -6,3 +6,4 @@
 - The CSS must include the `display` property in the `transition` list to ensure it transitions correctly.
 - The implementation should provide a way to toggle the element's visibility (e.g., a button or JavaScript).
 - The transition durations for entry and exit should be reasonable (e.g., 0.3s to 1s).
+- The implementation must respect user preferences for reduced motion using the `prefers-reduced-motion` media query by disabling or simplifying transitions (e.g., removing transforms and shortening durations).
