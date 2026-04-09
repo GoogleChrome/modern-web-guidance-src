@@ -52,15 +52,26 @@ def main():
         print(f"Saving Keras model to SavedModel directory {saved_model_path}...")
         model.save(saved_model_path)
         
-        output_dir = "model"
+        output_dir = "model_output"
         print(f"Converting to TensorFlow.js Graph Model in {output_dir}...")
         
         subprocess.run([
             "tensorflowjs_converter",
             "--input_format=tf_saved_model",
+            "--weight_shard_size_bytes=100000000",
             saved_model_path,
             output_dir
         ], check=True)
+        
+        # Move files to current directory
+        import glob
+        print(f"Moving files from {output_dir} to current directory...")
+        for file in glob.glob(os.path.join(output_dir, "*")):
+            dest = os.path.basename(file)
+            if os.path.exists(dest):
+                os.remove(dest)
+            os.rename(file, dest)
+        os.rmdir(output_dir)
         
         print("Conversion complete!")
         
