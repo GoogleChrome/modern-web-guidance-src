@@ -31,10 +31,7 @@ function getIdArg(): string | undefined {
   return idArg ? idArg.split("=")[1] : undefined;
 }
 
-function getRuntimeArg(): 'wasm' | 'native' {
-  const runtimeArg = process.argv.find((arg) => arg.startsWith("--runtime="));
-  return runtimeArg ? (runtimeArg.split("=")[1] as 'wasm' | 'native') : 'wasm';
-}
+
 
 async function main() {
   if (!fs.existsSync(EVAL_FILE)) {
@@ -52,12 +49,11 @@ async function main() {
 
   const modelArg = getModelArg();
   const idArg = getIdArg();
-  const runtimeArg = getRuntimeArg();
   let modelName = modelArg || "Xenova/all-MiniLM-L6-v2";
   if (idArg) {
     modelName = `${modelName} (${idArg})`;
   }
-  console.log(`Initializing Embedder with model: ${modelArg || "default"} (Name: ${modelName}, Runtime: ${runtimeArg})`);
+  console.log(`Initializing Embedder with model: ${modelArg || "default"} (Name: ${modelName})`);
   
   let embedder: any;
   if (modelArg === "tfjs") {
@@ -65,7 +61,6 @@ async function main() {
     console.log("Using bundled TFJS search runtime...");
   } else {
     const { Embedder } = await import("../../lib/transformers-embedder.ts");
-    Embedder.configureRuntime(runtimeArg);
     embedder = Embedder.getInstance(modelArg);
     await embedder.init();
   }

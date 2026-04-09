@@ -35,7 +35,6 @@
     "apache-arrow": "21.1.0",
     "marked": "^17.0.4",
     "onnxruntime-node": "^1.24.3",
-    "onnxruntime-web": "^1.24.3",
     "web-features": "latest",
     "zod": "^4.3.6"
   },
