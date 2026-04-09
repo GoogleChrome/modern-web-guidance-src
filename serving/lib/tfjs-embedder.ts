@@ -72,11 +72,13 @@ export class TfjsEmbedder {
         console.log = () => {};
         console.warn = () => {};
 
-        await setBackend('cpu');
-        this.model = await loadGraphModel(ioHandler as any);
-
-        console.log = oldLog;
-        console.warn = oldWarn;
+        try {
+            await setBackend('cpu');
+            this.model = await loadGraphModel(ioHandler as any);
+        } finally {
+            console.log = oldLog;
+            console.warn = oldWarn;
+        }
 
         try {
             this.tokenizer = await BertTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2", { local_files_only: true });
@@ -101,7 +103,7 @@ export class TfjsEmbedder {
 
     // Extract data and convert to numbers (handling BigInt if present)
     const extractData = (tensor: any) => {
-        const data = tensor.data || tensor.ort_tensor?.cpuData || tensor;
+        const data = tensor.data || tensor;
         return Array.from(data).map((x: any) => Number(x));
     };
 
