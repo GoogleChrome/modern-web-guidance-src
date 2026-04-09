@@ -91,7 +91,7 @@ async function processGuides() {
   }
   await embedder.init();
 
-  console.log("Processing guides (pure JS store mode)...");
+  console.log("Generating embeddings of guides/*/* ");
 
 
 
@@ -140,7 +140,7 @@ export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
   fs.writeFileSync(OUTPUT_FILE, tsContent);
   console.log(`Generated ${useCases.length} use cases to ${OUTPUT_FILE}`);
 
-  console.log("Writing vectors to pure JS storage...");
+
   const jsonContent = JSON.stringify(storeUseCases);
   const compressed = zlib.gzipSync(jsonContent);
   fs.writeFileSync(VECTORS_FILE, compressed);
