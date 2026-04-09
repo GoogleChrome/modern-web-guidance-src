@@ -4,8 +4,6 @@
   "type": "module",
   "scripts": {
     "test": "node --experimental-strip-types --test --test-reporter ${TEST_REPORTER:-dot} **/*.test.ts",
-    "test:unit": "node --experimental-strip-types --test --test-reporter ${TEST_REPORTER:-dot} ./sync-use-cases.test.ts ./playwright-config.test.ts",
-    "test:validation": "node --experimental-strip-types --test --test-reporter ${TEST_REPORTER:-dot} ./guides-integrity.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
