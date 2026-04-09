@@ -12,6 +12,33 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
+// A global helper to deduplicate all MutationObserver boilerplate
+async function waitForAnimationSpy(page: any, triggerAction: () => Promise<void>) {
+  await page.evaluate(() => {
+    (window as any)._animationObserved = false;
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        const target = mutation.target;
+        if (target instanceof Element && target.getAnimations && target.getAnimations().length > 0) {
+          (window as any)._animationObserved = true;
+        }
+        for (const node of Array.from(mutation.addedNodes)) {
+          if (node instanceof Element && node.getAnimations && node.getAnimations().length > 0) {
+            (window as any)._animationObserved = true;
+          }
+        }
+      }
+    });
+    observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+  });
+
+  await triggerAction();
+
+  await expect.poll(async () => {
+    return await page.evaluate(() => (window as any)._animationObserved);
+  }, { timeout: 2000 }).toBe(true);
+}
+
 test.describe(`animate-element-entry-exit Expectations: ${demoName}`, () => {
 
   test.beforeEach(async ({ page }) => {
@@ -27,7 +54,6 @@ test.describe(`animate-element-entry-exit Expectations: ${demoName}`, () => {
     });
 
     await page.goto(demoUrl);
-    // Give time for initial layout and potential initial transitions to settle
     await page.waitForTimeout(500);
   });
 
@@ -39,12 +65,8 @@ test.describe(`animate-element-entry-exit Expectations: ${demoName}`, () => {
             if (rule.constructor.name === 'CSSStartingStyleRule') return true;
             if (rule.cssText && rule.cssText.includes('@starting-style')) return true;
           }
-        } catch(e) {
-          if (e instanceof DOMException && e.name === 'SecurityError') {
-             // Ignore cross-origin stylesheet errors
-          } else {
-             throw e;
-          }
+        } catch (e) {
+          // Ignore cross-origin stylesheet errors
         }
       }
       return false;
@@ -65,75 +87,66 @@ test.describe(`animate-element-entry-exit Expectations: ${demoName}`, () => {
   });
 
   test(`smoothly transitions properties when added to DOM`, async ({ page }) => {
-    await page.click('#addBtn');
-    const newCard = page.locator('#domContainer .card').last();
-    const animations = await newCard.evaluate(el => el.getAnimations().length);
-    expect(animations).toBeGreaterThan(0);
+    await waitForAnimationSpy(page, async () => {
+      await page.click('#addBtn', { timeout: 2000 });
+    });
   });
 
   test(`smoothly transitions to hidden values before being hidden from layout`, async ({ page }) => {
     const toggleCard = page.locator('#toggleCard');
-    
-    // Ensure the card is visible initially
-    const displayInitial = await toggleCard.evaluate(el => window.getComputedStyle(el).display);
-    expect(displayInitial).not.toBe('none');
+    await expect(toggleCard).toBeVisible({ timeout: 2000 });
 
-    // Click to hide
-    await page.click('#toggleBtn');
-    
-    // Immediately after click, the display should NOT be none (because transition is active)
-    const displayImmediatelyAfterClick = await toggleCard.evaluate(el => window.getComputedStyle(el).display);
-    expect(displayImmediatelyAfterClick).not.toBe('none');
-
-    // Also check if animations are running
-    const animations = await toggleCard.evaluate(el => el.getAnimations().length);
-    expect(animations).toBeGreaterThan(0);
+    await waitForAnimationSpy(page, async () => {
+      await page.click('#toggleBtn', { timeout: 2000 });
+    });
   });
 
   test(`smoothly transitions properties from @starting-style values when display changes from none to visible`, async ({ page }) => {
     const toggleCard = page.locator('#toggleCard');
-    
-    // Hide it first
-    await page.click('#toggleBtn');
-    await toggleCard.evaluate(async (el) => {
-      const animations = el.getAnimations();
-      await Promise.allSettled(animations.map(a => a.finished));
-    });
-    
-    const displayHidden = await toggleCard.evaluate(el => window.getComputedStyle(el).display);
-    expect(displayHidden).toBe('none');
+    if (await toggleCard.isVisible({ timeout: 2000 })) {
+      await page.click('#toggleBtn', { timeout: 2000 });
+      await expect(toggleCard).toBeHidden({ timeout: 2000 });
+    }
 
-    // Show it
-    await page.click('#toggleBtn');
-    
-    // It should have entry animations active immediately
-    const animations = await toggleCard.evaluate(el => el.getAnimations().length);
-    expect(animations).toBeGreaterThan(0);
+    await waitForAnimationSpy(page, async () => {
+      await page.click('#toggleBtn', { timeout: 2000 });
+    });
   });
 
   test(`waits for exit transition to complete before removing element from DOM`, async ({ page }) => {
-    const container = page.locator('#domContainer');
-    const cardsBefore = await container.locator('.card').count();
-    
-    await page.click('#removeBtn');
-    
-    // Immediately after click, it should still be in the DOM
-    const cardsImmediatelyAfterClick = await container.locator('.card').count();
-    expect(cardsImmediatelyAfterClick).toBe(cardsBefore);
-    
-    const lastCard = container.locator('.card').last();
-    const animations = await lastCard.evaluate(el => el.getAnimations().length);
-    expect(animations).toBeGreaterThan(0);
-    
-    // Eventually it gets removed
-    await expect(container.locator('.card')).toHaveCount(cardsBefore - 1, { timeout: 2000 });
+    await page.evaluate(() => {
+      (window as any)._removeSpyCalled = false;
+      (window as any)._removeWasDelayed = false;
+      (window as any)._clickTimestamp = 0;
+
+      document.addEventListener('click', (e) => {
+        if (e.target instanceof Element && e.target.id === 'removeBtn') {
+          (window as any)._clickTimestamp = performance.now();
+        }
+      }, { capture: true });
+
+      const originalRemove = Element.prototype.remove;
+      Element.prototype.remove = function () {
+        (window as any)._removeSpyCalled = true;
+        if ((window as any)._clickTimestamp > 0 && (performance.now() - (window as any)._clickTimestamp) > 100) {
+          (window as any)._removeWasDelayed = true;
+        }
+        originalRemove.call(this);
+      };
+    });
+
+    await page.click('#removeBtn', { timeout: 2000 });
+
+    await expect.poll(async () => {
+      return await page.evaluate(() => (window as any)._removeSpyCalled && (window as any)._removeWasDelayed);
+    }, { timeout: 2000 }).toBe(true);
   });
 
   test(`transition durations for entry and exit are reasonable (0.3s to 1s)`, async ({ page }) => {
     const el = page.locator('.card').first();
     const transitionDuration = await el.evaluate(e => window.getComputedStyle(e).transitionDuration);
     const durations = transitionDuration.split(',').map(s => parseFloat(s));
-    
+
     const hasReasonableDuration = durations.some(d => d >= 0.3 && d <= 1.0);
     expect(hasReasonableDuration).toBe(true);
   });

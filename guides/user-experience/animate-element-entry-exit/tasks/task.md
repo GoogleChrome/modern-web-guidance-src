@@ -1,6 +1,4 @@
 ---
 base_app: daily-grind
 ---
-- can you add a 'quick view' modal for the coffee cards? when someone clicks 'view details', show a modal with more info. make sure it has a smooth fade and scale animation when it opens and closes. i want to use that new css way to animate things toggling from display none so it looks modern.
-- i want to add a simple 'added to cart' toast notification that pops up at the bottom. can you make it slide up and then fade out when it's dismissed? it should use the hidden attribute but still have a nice transition.
-- the seasonal favorites section is a bit boring. can you make the cards animate in with a subtle slide up when the page loads?
+- Add a special promo area to index.html. We need a container with id `domContainer` to hold our promo cards. Make sure all promo cards use the class `card`. Add a button with id `addBtn` that appends a new promo card to `domContainer`, and a button with id `removeBtn` that removes the last promo card from `domContainer`. Also include a default promo card with id `toggleCard` and a button with id `toggleBtn` that toggles the `hidden` attribute on `toggleCard`. MANDATORY: Ensure these promo cards fade and scale smoothly when they are added/removed.
