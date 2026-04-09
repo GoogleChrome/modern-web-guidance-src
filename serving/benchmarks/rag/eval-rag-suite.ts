@@ -45,6 +45,7 @@ function getModelObj(modelStr: string, isNoChunking: boolean, variant: string) {
     } else {
       quantization = "fp32"; // default fallback
     }
+  }
   
   if (modelStr.includes("@q4")) {
     quantization = "q4";
