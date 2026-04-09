@@ -20,7 +20,8 @@ node .agents/skills/guide-reviewer/scripts/gather-reviews.ts
 The script will:
 1.  Search for PRs affecting the `guides/` directory.
 2.  Filter reviews and comments by the target reviewers (Philip Walton, Rick Viscomi, Jeremy Wagner).
-3.  Save the results to `.agents/skills/guide-reviewer/resources/reviews_data.json`.
+3.  Save the results to `.agents/skills/guide-reviewer/resources/reviews_data.json` and a more token-efficient Markdown format at `.agents/skills/guide-reviewer/resources/reviews_data.md`.
+
 
 ## Processing the Data
 
