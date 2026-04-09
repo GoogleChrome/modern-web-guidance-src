@@ -142,7 +142,7 @@ async function main(): Promise<BuildResult | undefined> {
         // which only registers the specific kernels we need, keeping the bundle small.
         name: 'use-precise-kernels',
         setup(build) {
-          build.onResolve({ filter: /tfjs-kernels\.ts$/ }, args => {
+          build.onResolve({ filter: /tfjs-kernels\.ts$/ }, _args => {
             return { path: path.resolve(SERVING_DIR, "lib/tfjs-kernels-precise.ts") }
           })
         },
@@ -160,7 +160,7 @@ async function main(): Promise<BuildResult | undefined> {
       plugins: [{
         name: 'rewrite-search',
         setup(build) {
-          build.onResolve({ filter: /search\.ts$/ }, args => {
+          build.onResolve({ filter: /search\.ts$/ }, _args => {
             return { path: './search.mjs', external: true }
           })
         },
