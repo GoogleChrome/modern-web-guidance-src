@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intl.Locale Week Info Calendar Demo</title>
+<style>
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    padding: 20px;
+    background-color: #f0f4f8;
+    color: #333;
+  }
+  .container {
+    max-width: 500px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  .controls {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  select {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+  }
+  .calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  .day {
+    padding: 15px 5px;
+    text-align: center;
+    border-radius: 4px;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+  }
+  .header {
+    font-weight: bold;
+    background-color: #cbd5e1;
+    border-color: #94a3b8;
+  }
+  .weekend {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    border-color: #fca5a5;
+  }
+  .header.weekend {
+    background-color: #fecaca;
+  }
+  .info {
+    margin-top: 15px;
+    font-size: 14px;
+    color: #64748b;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Regional Calendar Widget</h2>
+  <div class="controls">
+    <label for="locale-select">Select Region/Locale:</label>
+    <select id="locale-select">
+      <option value="en-US">en-US (United States - Sun start, Sat/Sun weekend)</option>
+      <option value="en-GB">en-GB (United Kingdom - Mon start, Sat/Sun weekend)</option>
+      <option value="ar-EG">ar-EG (Egypt - Sat start, Fri/Sat weekend)</option>
+      <option value="he-IL">he-IL (Israel - Sun start, Fri/Sat weekend)</option>
+      <option value="fa-IR">fa-IR (Iran - Sat start, Fri weekend)</option>
+      <option value="fr-FR">fr-FR (France - Mon start, Sat/Sun weekend)</option>
+    </select>
+  </div>
+
+  <div id="calendar" class="calendar"></div>
+  <div id="debug-info" class="info"></div>
+</div>
+
+<script>
+  const calendarEl = document.getElementById('calendar');
+  const localeSelect = document.getElementById('locale-select');
+  const debugInfo = document.getElementById('debug-info');
+
+  // Intl.Locale getWeekInfo uses 1 = Monday, ..., 7 = Sunday
+  const dayNames = {
+    1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun'
+  };
+
+  function renderCalendar(localeString) {
+    calendarEl.innerHTML = '';
+    
+    try {
+      const locale = new Intl.Locale(localeString);
+      
+      // Feature: Intl.Locale getWeekInfo()
+      // Returns an object like { firstDay: 1, weekend: [6, 7], minimalDays: 4 }
+      const weekInfo = typeof locale.getWeekInfo === 'function' 
+        ? locale.getWeekInfo() 
+        // Fallback for browsers that implement it as a property
+        : (locale.weekInfo || { firstDay: 1, weekend: [6, 7] });
+
+      const firstDay = weekInfo.firstDay; // 1 (Mon) to 7 (Sun)
+      const weekendDays = weekInfo.weekend; // Array of numbers 1-7
+
+      debugInfo.textContent = `Locale: ${localeString} | First Day: ${dayNames[firstDay]} | Weekend: ${weekendDays.map(d => dayNames[d]).join(', ')}`;
+
+      // Calculate the order of days to display
+      const displayDays = [];
+      for (let i = 0; i < 7; i++) {
+        let dayNum = firstDay + i;
+        if (dayNum > 7) dayNum -= 7;
+        displayDays.push(dayNum);
+      }
+
+      // Render Day Headers
+      displayDays.forEach(dayNum => {
+        const dayEl = document.createElement('div');
+        dayEl.className = 'day header';
+        if (weekendDays.includes(dayNum)) {
+          dayEl.classList.add('weekend');
+        }
+        dayEl.textContent = dayNames[dayNum];
+        calendarEl.appendChild(dayEl);
+      });
+
+      // Render placeholder dates for a 3-week view
+      for (let w = 0; w < 3; w++) {
+        displayDays.forEach((dayNum, index) => {
+          const dateEl = document.createElement('div');
+          dateEl.className = 'day';
+          if (weekendDays.includes(dayNum)) {
+            dateEl.classList.add('weekend');
+          }
+          // Simple placeholder math to show days incrementing
+          dateEl.textContent = (w * 7) + index + 1; 
+          calendarEl.appendChild(dateEl);
+        });
+      }
+    } catch (e) {
+      debugInfo.textContent = `Error: ${e.message}. Your browser may not support Intl.Locale.prototype.getWeekInfo().`;
+    }
+  }
+
+  localeSelect.addEventListener('change', (e) => {
+    renderCalendar(e.target.value);
+  });
+
+  // Automatically detect user's default locale, or fallback to first option
+  let userLocale = navigator.language;
+  let optionExists = Array.from(localeSelect.options).some(opt => opt.value === userLocale);
+  
+  if (optionExists) {
+    localeSelect.value = userLocale;
+  }
+  
+  renderCalendar(localeSelect.value);
+</script>
+
+</body>
+</html>

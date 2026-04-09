@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Culturally Expected Alphabetical Ordering</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 2rem;
+            max-width: 600px;
+            margin: 0 auto;
+            background: #f9fafb;
+            color: #111827;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+        p.description {
+            color: #4b5563;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            background: #f3f4f6;
+            padding: 1rem;
+            border-radius: 6px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 1;
+            min-width: 200px;
+        }
+        label {
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        select {
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 1rem;
+            background: white;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        li {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        li:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Dynamic List Sorting</h1>
+        <p class="description">
+            This demo uses <code>Intl.Locale</code> to fetch culturally relevant collation (sorting) options for a given locale, then applies them to the list using <code>Intl.Collator</code>. Notice how the ordering changes based on the selected language and its specific collation rules.
+        </p>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="locale">Language / Region</label>
+                <select id="locale">
+                    <option value="sv">Swedish (sv)</option>
+                    <option value="de">German (de)</option>
+                    <option value="en-US">English (en-US)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="collation">Available Sorting Rules</label>
+                <select id="collation"></select>
+            </div>
+        </div>
+
+        <ul id="list"></ul>
+    </div>
+
+    <script>
+        // Sample list including characters that are sorted differently depending on locale
+        // (e.g., in Swedish, 'ä', 'å', 'ö' come after 'z'. In German, 'ä' is treated closely to 'a' or 'ae' depending on standard/phonebook collation)
+        const sampleData = [
+            "Zebra", "äpple", "banan", "citron", "åker", "öppna", "apel",
+            "Müller", "Möller", "Mueller", "Apfel", "Äpfel"
+        ];
+
+        const localeSelect = document.getElementById('locale');
+        const collationSelect = document.getElementById('collation');
+        const listEl = document.getElementById('list');
+
+        function fetchLocaleSortingOptions() {
+            const localeCode = localeSelect.value;
+            let collations = ['default'];
+            
+            try {
+                // Using Intl.Locale info to discover available collations for the locale
+                const localeInfo = new Intl.Locale(localeCode);
+                
+                if ('getCollations' in localeInfo) {
+                    const availableCollations = localeInfo.getCollations();
+                    if (availableCollations && availableCollations.length > 0) {
+                        // The 'default' fallback is usually equivalent to the standard sorting for that locale
+                        collations = ['default', ...availableCollations];
+                    }
+                } else if (localeInfo.collation) {
+                    collations = ['default', localeInfo.collation];
+                }
+            } catch (e) {
+                console.warn("Intl.Locale info API not fully supported or threw an error:", e);
+            }
+
+            // Populate the sorting rules dropdown
+            collationSelect.innerHTML = collations.map(c => 
+                `<option value="${c}">${c === 'default' ? 'Default Sorting' : c}</option>`
+            ).join('');
+
+            applySorting();
+        }
+
+        function applySorting() {
+            const localeCode = localeSelect.value;
+            const collation = collationSelect.value;
+            
+            // Apply the chosen collation rule from Intl.Locale info to Intl.Collator
+            let collatorOptions = { usage: 'sort' };
+            if (collation !== 'default') {
+                collatorOptions.collation = collation;
+            }
+
+            const collator = new Intl.Collator(localeCode, collatorOptions);
+            const sortedWords = [...sampleData].sort(collator.compare);
+
+            // Render the sorted list
+            listEl.innerHTML = sortedWords.map(word => 
+                `<li>${word}</li>`
+            ).join('');
+        }
+
+        // Event listeners for when the user changes preferences
+        localeSelect.addEventListener('change', fetchLocaleSortingOptions);
+        collationSelect.addEventListener('change', applySorting);
+
+        // Initialize the demo on load
+        fetchLocaleSortingOptions();
+    </script>
+</body>
+</html>

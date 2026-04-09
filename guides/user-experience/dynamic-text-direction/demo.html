@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intl.Locale Info - Text Directionality</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            color: #333;
+        }
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-radius: 8px;
+        }
+        select {
+            padding: 8px;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        .container {
+            border: 2px solid #007bff;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #fff;
+            transition: all 0.3s ease;
+        }
+        .badge {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        /* Visual cues for direction */
+        .container[dir="ltr"] {
+            border-left-width: 8px;
+            border-right-width: 2px;
+        }
+        .container[dir="rtl"] {
+            border-right-width: 8px;
+            border-left-width: 2px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Text Directionality Layout Adjuster</h2>
+    <p>This demo uses <code>Intl.Locale</code> to determine the correct text direction (LTR or RTL) for a given language and applies it to the document layout automatically.</p>
+
+    <div class="controls">
+        <label for="lang-select"><strong>User Language:</strong></label>
+        <select id="lang-select">
+            <option value="en">English (en)</option>
+            <option value="ar">Arabic (ar)</option>
+            <option value="he">Hebrew (he)</option>
+            <option value="ja">Japanese (ja)</option>
+            <option value="fa">Persian (fa)</option>
+            <option value="fr">French (fr)</option>
+            <option value="ur">Urdu (ur)</option>
+        </select>
+    </div>
+
+    <div id="ui-layout" class="container" dir="ltr">
+        <div class="badge" id="dir-badge">DIR: LTR</div>
+        <h3>Interactive UI Component</h3>
+        <p>
+            Notice how this layout responds to the language selection above. 
+            The text alignment, the starting position of the list items, and the emphasized border will automatically flip when an RTL language is selected.
+        </p>
+        <ul>
+            <li>Dashboard overview</li>
+            <li>Account settings</li>
+            <li>Privacy preferences</li>
+            <li>Logout</li>
+        </ul>
+        <button style="padding: 8px 16px; cursor: pointer;">Submit Action</button>
+    </div>
+
+    <script>
+        const langSelect = document.getElementById('lang-select');
+        const uiLayout = document.getElementById('ui-layout');
+        const dirBadge = document.getElementById('dir-badge');
+
+        function updateLayoutDirection() {
+            const langCode = langSelect.value;
+            let direction = 'ltr'; // Default fallback
+
+            try {
+                // Initialize the Intl.Locale object
+                const locale = new Intl.Locale(langCode);
+                
+                // Use the Intl.Locale Info API to get text directionality
+                // Standard modern property is `textInfo`
+                if ('textInfo' in locale) {
+                    direction = locale.textInfo.direction;
+                } 
+                // Fallback for older implementations using the getter method
+                else if (typeof locale.getTextInfo === 'function') {
+                    direction = locale.getTextInfo().direction;
+                } 
+                else {
+                    // Manual fallback if the Info API is not supported in the browser
+                    console.warn("Intl.Locale Info API not supported in this browser. Using fallback list.");
+                    const rtlLanguages = ['ar', 'he', 'fa', 'ur', 'ps', 'syr', 'dv', 'ku', 'yi'];
+                    if (rtlLanguages.includes(locale.language)) {
+                        direction = 'rtl';
+                    }
+                }
+            } catch (error) {
+                console.error("Error processing locale:", error);
+            }
+
+            // Apply the determined direction to the DOM
+            uiLayout.dir = direction;
+            dirBadge.textContent = `DIR: ${direction.toUpperCase()}`;
+        }
+
+        // Listen for language changes
+        langSelect.addEventListener('change', updateLayoutDirection);
+
+        // Run once on initial load
+        updateLayoutDirection();
+    </script>
+</body>
+</html>

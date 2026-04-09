@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intl.Locale Hour Cycles Demo</title>
+<style>
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    padding: 20px;
+    max-width: 500px;
+    margin: 0 auto;
+    color: #333;
+  }
+  .form-group {
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+  }
+  select {
+    padding: 8px;
+    font-size: 16px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  .time-picker {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: #f5f5f5;
+    padding: 15px;
+    border-radius: 8px;
+  }
+  code {
+    background: #e0e0e0;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+
+  <h2>Time Picker Configuration</h2>
+  <p>This demo uses <code>Intl.Locale.prototype.getHourCycles()</code> to automatically adapt a custom time picker to a 12-hour or 24-hour format based on cultural preference.</p>
+
+  <div class="form-group">
+    <label for="locale">Select Region/Locale:</label>
+    <select id="locale">
+      <option value="en-US">United States (en-US) - 12h</option>
+      <option value="en-GB">United Kingdom (en-GB) - 12h/24h</option>
+      <option value="fr-FR">France (fr-FR) - 24h</option>
+      <option value="ja-JP">Japan (ja-JP) - 24h</option>
+      <option value="ar-EG">Egypt (ar-EG) - 12h</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>Locale Preferred Hour Cycle:</label>
+    <code id="cycle-display"></code>
+  </div>
+
+  <div class="form-group">
+    <label>Adapted Custom Time Input:</label>
+    <div class="time-picker" id="time-picker-container">
+      <!-- Inputs generated dynamically -->
+    </div>
+  </div>
+
+<script>
+  const localeSelect = document.getElementById('locale');
+  const cycleDisplay = document.getElementById('cycle-display');
+  const timePickerContainer = document.getElementById('time-picker-container');
+
+  function updateTimePicker() {
+    const localeStr = localeSelect.value;
+    const locale = new Intl.Locale(localeStr);
+    
+    // Retrieve hour cycles for the locale
+    const cycles = locale.getHourCycles ? locale.getHourCycles() : locale.hourCycles;
+    const primaryCycle = cycles ? cycles[0] : 'h23'; // Fallback to standard 24h
+    
+    cycleDisplay.textContent = primaryCycle;
+
+    // Clear existing time picker inputs
+    timePickerContainer.innerHTML = '';
+
+    const is12Hour = primaryCycle === 'h12' || primaryCycle === 'h11';
+    
+    // Determine the hour range based on the cycle
+    let startHour = 0;
+    let endHour = 23;
+    
+    if (primaryCycle === 'h11') {
+      startHour = 0; endHour = 11;
+    } else if (primaryCycle === 'h12') {
+      startHour = 1; endHour = 12;
+    } else if (primaryCycle === 'h24') {
+      startHour = 1; endHour = 24;
+    }
+
+    // Build Hours Dropdown
+    const hourSelect = document.createElement('select');
+    for (let i = startHour; i <= endHour; i++) {
+      const option = document.createElement('option');
+      option.value = i;
+      option.textContent = i.toString().padStart(2, '0');
+      hourSelect.appendChild(option);
+    }
+    timePickerContainer.appendChild(hourSelect);
+
+    timePickerContainer.appendChild(document.createTextNode(':'));
+
+    // Build Minutes Dropdown
+    const minuteSelect = document.createElement('select');
+    for (let i = 0; i < 60; i += 15) {
+      const option = document.createElement('option');
+      option.value = i;
+      option.textContent = i.toString().padStart(2, '0');
+      minuteSelect.appendChild(option);
+    }
+    timePickerContainer.appendChild(minuteSelect);
+
+    // Conditionally Build AM/PM Dropdown for 12-hour cycles
+    if (is12Hour) {
+      const ampmSelect = document.createElement('select');
+      ['AM', 'PM'].forEach(period => {
+        const option = document.createElement('option');
+        option.value = period;
+        option.textContent = period;
+        ampmSelect.appendChild(option);
+      });
+      timePickerContainer.appendChild(ampmSelect);
+    }
+  }
+
+  // Bind event listener
+  localeSelect.addEventListener('change', updateTimePicker);
+  
+  // Set default based on browser locale if available in options, then initialize
+  try {
+     const userLocale = navigator.language;
+     const option = Array.from(localeSelect.options).find(opt => opt.value === userLocale);
+     if (option) localeSelect.value = option.value;
+  } catch(e) {}
+  
+  updateTimePicker();
+</script>
+</body>
+</html>
