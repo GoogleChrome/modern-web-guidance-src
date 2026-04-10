@@ -21,19 +21,12 @@ Must use this skill:
 
 ## Usage Instructions
 
-### Step 0. Install the modern-web CLI
-First, ensure the modern-web CLI is installed. The below command installs it globally if needed; adjust the path to the modern-web skill directory.
-
-```sh
-command -v modern-web >/dev/null 2>&1 || <modern-web-use-cases-directory>/setup.sh
-```
-
 ### Step 1. Search Use Cases
 
-Search with an action-oriented query summarizing what you want to achieve using the `--search` flag.
+Search with an action-oriented query summarizing what you want to achieve using the `--search` flag. Run `modern-web.mjs` directly with `node`.
 
 ```sh
-modern-web --search "<query>"
+node <modern-web-use-cases-directory>/modern-web.mjs --search "<query>"
 ```
 
 **Example Output**:
@@ -55,7 +48,7 @@ modern-web --search "<query>"
 Once you have a relevant `id` from the search results, call this script using the `--retrieve` flag to get the full guide. You can pass multiple IDs separated by commas.
 
 ```sh
-modern-web --retrieve "<id>"
+node <modern-web-use-cases-directory>/modern-web.mjs --retrieve "<id>"
 ```
 
 

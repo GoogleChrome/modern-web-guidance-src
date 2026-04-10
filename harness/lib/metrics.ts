@@ -2,6 +2,7 @@ export interface ScenarioCheck {
   id: string;
   passed: boolean;
   message: string;
+  isEarlyFailure?: boolean;
 }
 
 export interface RunResult {
@@ -9,9 +10,12 @@ export interface RunResult {
   results: ScenarioCheck[];
   guidesUsed?: string[];
   guidanceToolsUsed?: string[];
-  expectedGuidanceTool?: string;
+  expectedToolPrefixes?: string[];
   guideName?: string;
   evalType?: 'capability' | 'regression';
+  taskName?: string;
+  baseApp?: string;
+  prompt?: string;
 }
 
 export interface EvalTypeSummary {
@@ -34,6 +38,9 @@ export interface Metrics {
     guidedPassed: number;
     guidedTotal: number;
     runsPerTest: number;
+    expectedTotalRuns?: number;
+    taskCount?: number;
+    runCountPerTask?: number;
     guideUsageRate?: number;
     guideUsageCount?: number;
     totalGuidedRuns?: number;
@@ -41,6 +48,10 @@ export interface Metrics {
     toolActivationCount?: number;
     capability?: EvalTypeSummary;
     regression?: EvalTypeSummary;
+    unguidedEarlyFailures?: number;
+    unguidedEarlyFailureRate?: number;
+    guidedEarlyFailures?: number;
+    guidedEarlyFailureRate?: number;
   };
   testStats: Record<string, {
     medianPassRate: number;
@@ -51,8 +62,20 @@ export interface Metrics {
     passedChecks: number;
     totalChecks: number;
     evalType?: 'capability' | 'regression';
+    earlyFailures?: number;
   }>;
   sortedKeys: string[];
+}
+
+export interface EvalsReport {
+  summary: Metrics['summary'];
+  results: Record<string, RunResult[]>;
+  stats: Metrics['testStats'];
+  timestamp: string;
+  runCount: number;
+  agent: string;
+  serving: string;
+  model: string;
 }
 
 export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPerTest: number): Metrics {
@@ -82,13 +105,19 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
 
   const testStats: Metrics['testStats'] = {};
 
+
   for (const name of sortedKeys) {
     const runs = allResults[name];
     let passedChecks = 0;
     let totalChecks = 0;
 
+    let earlyFailures = 0;
     const passRates = runs.map(run => {
       const checks = run.results;
+      const isEarlyFailure = checks.some(c => c.isEarlyFailure);
+      if (isEarlyFailure) {
+        earlyFailures++;
+      }
       const passCount = checks.filter(c => c.passed).length;
       const totalCount = checks.length;
       passedChecks += passCount;
@@ -114,8 +143,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
         }
 
         const toolsUsed = run.guidanceToolsUsed || [];
-        const expectedTool = run.expectedGuidanceTool;
-        if (expectedTool && toolsUsed.includes(expectedTool)) {
+        const prefixes = run.expectedToolPrefixes || [];
+        if (prefixes.length > 0 && toolsUsed.some(t => prefixes.some(p => t.startsWith(p)))) {
           toolActivationCount++;
         }
       });
@@ -133,6 +162,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       passedChecks,
       totalChecks,
       evalType,
+      earlyFailures,
     };
   }
 
@@ -151,6 +181,9 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     let guideUsageCount = 0;
     let toolActivationCount = 0;
     let totalGuidedRuns = 0;
+    let guidedEarlyFailures = 0;
+    let earlyFailures = 0;
+    let totalRuns = 0;
 
     keys.forEach(k => {
       const [, , runType] = k.split(' - ');
@@ -159,14 +192,19 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       if (stats) {
         passed += stats.passedChecks;
         total += stats.totalChecks;
+        earlyFailures += stats.earlyFailures || 0;
+        totalRuns += stats.runCount || 0;
 
         if (runType === 'guided') {
           guideUsageCount += stats.runsUsingGuide || 0;
           toolActivationCount += stats.runsWithToolActivation || 0;
           totalGuidedRuns += stats.runCount || 0;
+          guidedEarlyFailures += stats.earlyFailures || 0;
         }
       }
     });
+
+    const completedGuidedRuns = totalGuidedRuns - guidedEarlyFailures;
 
     return {
       median: Math.round(median),
@@ -176,13 +214,24 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       guideUsageCount,
       totalGuidedRuns,
       toolActivationCount,
-      toolActivationRate: totalGuidedRuns ? Math.round((toolActivationCount / totalGuidedRuns) * 100) : 0,
-      guideUsageRate: totalGuidedRuns ? Math.round((guideUsageCount / totalGuidedRuns) * 100) : 0
+      earlyFailures,
+      totalRuns,
+      earlyFailureRate: totalRuns ? Math.round((earlyFailures / totalRuns) * 100) : 0,
+      toolActivationRate: completedGuidedRuns ? Math.round((toolActivationCount / completedGuidedRuns) * 100) : 0,
+      guideUsageRate: completedGuidedRuns ? Math.round((guideUsageCount / completedGuidedRuns) * 100) : 0
     };
   };
 
   const uStats = calcSummary(sortedKeys.filter(k => k.includes(' - unguided')));
   const gStats = calcSummary(sortedKeys.filter(k => k.includes(' - guided')));
+
+  const uniqueTasks = new Set<string>();
+  Object.keys(allResults).forEach(key => {
+    const [taskName, guideName] = key.split(' - ');
+    uniqueTasks.add(`${taskName} - ${guideName}`);
+  });
+  const numberOfTasks = uniqueTasks.size;
+  const expectedTotalRuns = numberOfTasks * runsPerTest;
 
   const buildEvalTypeSummary = (evalType: 'capability' | 'regression'): EvalTypeSummary | undefined => {
     const matchingKeys = sortedKeys.filter(k => testStats[k]?.evalType === evalType);
@@ -210,6 +259,9 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       guidedPassed: gStats.passed,
       guidedTotal: gStats.total,
       runsPerTest,
+      expectedTotalRuns,
+      taskCount: numberOfTasks,
+      runCountPerTask: runsPerTest,
       guideUsageRate: gStats.guideUsageRate,
       guideUsageCount: gStats.guideUsageCount,
       totalGuidedRuns: gStats.totalGuidedRuns,
@@ -217,6 +269,10 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       toolActivationCount: gStats.toolActivationCount,
       capability: buildEvalTypeSummary('capability'),
       regression: buildEvalTypeSummary('regression'),
+      unguidedEarlyFailures: uStats.earlyFailures,
+      unguidedEarlyFailureRate: uStats.earlyFailureRate,
+      guidedEarlyFailures: gStats.earlyFailures,
+      guidedEarlyFailureRate: gStats.earlyFailureRate,
     },
     testStats,
     sortedKeys

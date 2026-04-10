@@ -96,3 +96,7 @@ jobs:
 
       - name: Playwright E2E Tests
         run: pnpm --filter eval-view run test:e2e
+
+      - name: Test Grader Calibration
+        # Ensuring playwright is happy
+        run: node bin/gd.ts dev guides/user-experience/adapt-scrollbar-to-contrast-preferences/ --test-grader
