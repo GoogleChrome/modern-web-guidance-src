@@ -1,8 +1,6 @@
-/// <reference types="node" />
 import { test, expect } from '@playwright/test';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import process from 'node:process';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -15,7 +13,7 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-test.describe(`Animate to Intrinsic Sizes Expectations: ${demoName}`, () => {
+test.describe('Animate to Intrinsic Sizes Expectations', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
@@ -32,96 +30,161 @@ test.describe(`Animate to Intrinsic Sizes Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test('interpolate-size: allow-keywords should be applied to :root or a parent', async ({ page }) => {
-    const rootInterpolateSize = await page.evaluate(() => {
-      const el = document.documentElement;
-      return window.getComputedStyle(el).getPropertyValue('interpolate-size');
+  test('should have interpolate-size: allow-keywords applied to :root or a parent', async ({ page }) => {
+    const hasInterpolateSize = await page.evaluate(() => {
+      const rootStyles = window.getComputedStyle(document.documentElement);
+      const bodyStyles = window.getComputedStyle(document.body);
+      
+      // Check for the property. In some browsers it might be hyphenated or camelCase in the style object.
+      // We check the computed value.
+      return rootStyles.getPropertyValue('interpolate-size') === 'allow-keywords' || 
+             bodyStyles.getPropertyValue('interpolate-size') === 'allow-keywords' ||
+             // Check if any element has it inherited
+             Array.from(document.querySelectorAll('*')).some(el => {
+               const styles = window.getComputedStyle(el);
+               return styles.getPropertyValue('interpolate-size') === 'allow-keywords';
+             });
     });
-    
-    // Check root first
-    if (rootInterpolateSize === 'allow-keywords') return;
 
-    // Check if any parent of the transitioning element has it
-    const parentInterpolateSize = await page.evaluate(() => {
-      const content = document.querySelector('[class*="content"], [class*="inner"]');
-      if (!content) return null;
-      let current = content.parentElement;
-      while (current) {
-        if (window.getComputedStyle(current).getPropertyValue('interpolate-size') === 'allow-keywords') {
-          return 'allow-keywords';
+    expect(hasInterpolateSize).toBe(true);
+  });
+
+  test('should define a transition for sizing properties (block-size, inline-size, height, or width) and NOT for max-sizing properties', async ({ page }) => {
+    const hasCorrectSizingTransition = await page.evaluate(() => {
+      const correctProperties = ['block-size', 'inline-size', 'height', 'width'];
+      const incorrectProperties = ['max-block-size', 'max-inline-size', 'max-height', 'max-width'];
+      const elements = Array.from(document.querySelectorAll('*'));
+      
+      return elements.some(el => {
+        const styles = window.getComputedStyle(el);
+        const transitionProps = styles.getPropertyValue('transition-property').split(',').map(p => p.trim());
+        const duration = styles.getPropertyValue('transition-duration');
+        const hasDuration = duration !== '0s' && duration !== '' && duration !== '0ms';
+        
+        if (!hasDuration) return false;
+
+        const hasIncorrect = incorrectProperties.some(prop => transitionProps.includes(prop));
+        
+        return (correctProperties.some(p => transitionProps.includes(p)) || transitionProps.includes('all')) && !hasIncorrect;
+      });
+    });
+
+    expect(hasCorrectSizingTransition).toBe(true);
+  });
+
+  test('should trigger expansion using intrinsic keywords and not magic number hacks', async ({ page }) => {
+    const usesIntrinsicKeywords = await page.evaluate(async () => {
+      // Since we can't easily know the 'expanded' class name, we can look at stylesheets.
+      const hasIntrinsicKeyword = Array.from(document.styleSheets).some(sheet => {
+        try {
+          return Array.from(sheet.cssRules).some(rule => {
+            if (rule instanceof CSSStyleRule) {
+              const style = rule.style;
+              return (
+                style.blockSize === 'auto' || style.blockSize.includes('content') ||
+                style.inlineSize === 'auto' || style.inlineSize.includes('content') ||
+                style.height === 'auto' || style.height.includes('content') ||
+                style.width === 'auto' || style.width.includes('content') ||
+                style.blockSize.includes('calc-size') || style.inlineSize.includes('calc-size') ||
+                style.height.includes('calc-size') || style.width.includes('calc-size')
+              );
+            }
+            return false;
+          });
+        } catch (e) {
+          return false;
         }
-        current = current.parentElement;
-      }
-      return null;
+      });
+      
+      return hasIntrinsicKeyword;
     });
 
-    expect(rootInterpolateSize === 'allow-keywords' || parentInterpolateSize === 'allow-keywords').toBe(true);
+    expect(usesIntrinsicKeywords).toBe(true);
   });
 
-  test('The transitioning element should have a block-size/inline-size transition', async ({ page }) => {
-    const transition = await page.evaluate(() => {
-      const el = document.querySelector('[class*="content"], [class*="inner"], [class*="accordion"] div:not([class*="header"])');
-      if (!el) return 'none';
-      return window.getComputedStyle(el).getPropertyValue('transition-property');
-    });
-    // We want specifically logical block-size or inline-size, or physical height/width (still valid but we prefer logical in guide)
-    const properties = transition.split(',').map(p => p.trim());
-    const hasCorrectProperty = properties.some(p => p === 'block-size' || p === 'inline-size' || p === 'height' || p === 'width' || p === 'all');
-    const hasIncorrectProperty = properties.some(p => p === 'max-block-size' || p === 'max-inline-size' || p === 'max-height' || p === 'max-width');
-    
-    expect(hasCorrectProperty).toBe(true);
-    expect(hasIncorrectProperty).toBe(false);
+  test('should smoothly animate size property when triggered', async ({ page }) => {
+    // Attempt to find and click an expansion trigger - avoid the alert reset button
+    const trigger = page.locator('article button, .card .expand-btn, .accordion-header, label[for], [onclick*="toggleCard"]').first();
+
+    // Get initial size of a likely target (parent of trigger or sibling)
+    const target = page.locator('.card-content-wrapper, .accordion-content, .faq-answer, [class*="content"], [class*="answer"]').first();
+
+    const initialHeight = await target.evaluate(el => el.getBoundingClientRect().height);
+
+    // Trigger
+    await trigger.click().catch(() => {}); // Catch if not clickable
+
+    // Wait a short duration (middle of transition)
+    await page.waitForTimeout(250);
+
+    const midHeight = await target.evaluate(el => el.getBoundingClientRect().height);
+
+    // Wait for end of transition
+    await page.waitForTimeout(600);
+
+    const finalHeight = await target.evaluate(el => el.getBoundingClientRect().height);
+
+    // It should be animating
+    expect(finalHeight).toBeGreaterThan(initialHeight);
+    expect(midHeight).toBeGreaterThan(initialHeight);
+    expect(midHeight).toBeLessThan(finalHeight);
   });
 
-  test('The element should not use the max-size hack', async ({ page }) => {
-    // Trigger the interaction to expand the element
-    const button = page.locator('button, [role="button"], .accordion-header, label').first();
-    await button.click();
-    
-    // Toggle the class if it's not already there (sometimes click is finicky in tests)
-    await page.evaluate(() => {
-      const accordion = document.querySelector('.accordion');
-      if (accordion && !accordion.classList.contains('is-open')) {
-        accordion.classList.add('is-open');
-      }
-    });
+  test('should smoothly animate from intrinsic size to a fixed length', async ({ page }) => {
+    // Look for a dismissible element or similar (starts auto, goes to 0)
+    const trigger = page.locator('.dismiss-btn, button:has-text("dismiss"), button:has-text("close"), .alert button').first();
+    const target = page.locator('.alert, .dismissible, [class*="alert"]').first();
 
-    // Wait for the transition to progress
-    await page.waitForTimeout(200);
+    // Ensure they are visible
+    await expect(trigger).toBeVisible();
+    await expect(target).toBeVisible();
 
-    const sizes = await page.evaluate(() => {
-      const el = document.querySelector('[class*="content"]');
-      if (!el) return { maxBlockSize: 'none', maxHeight: 'none' };
-      const style = window.getComputedStyle(el);
-      return {
-        maxBlockSize: style.getPropertyValue('max-block-size'),
-        maxHeight: style.getPropertyValue('max-height')
-      };
-    });
+    const initialHeight = await target.evaluate(el => el.getBoundingClientRect().height);
+    expect(initialHeight).toBeGreaterThan(0);
+
+    // Trigger dismissal - force click if necessary
+    await trigger.click({ force: true });
     
-    // If either max-block-size or max-height is set to a large value, it's likely the hack
-    const valBlock = parseInt(sizes.maxBlockSize);
-    const valHeight = parseInt(sizes.maxHeight);
-    const isMaxHack = (!isNaN(valBlock) && valBlock > 500) || (!isNaN(valHeight) && valHeight > 500);
-    expect(isMaxHack).toBe(false);
+    // Verify class was added
+    const hasClass = await target.evaluate(el => el.classList.contains('is-dismissed'));
+    
+    // Wait a short duration (middle of transition)
+    await page.waitForTimeout(300);
+    const midHeight = await target.evaluate(el => el.getBoundingClientRect().height);
+
+    // Wait for end of transition (0.5s transition + buffer)
+    await page.waitForTimeout(700);
+    const finalHeight = await target.evaluate(el => el.getBoundingClientRect().height);
+
+    // If class wasn't added or animation didn't start, this will fail with better info
+    expect(hasClass, 'Target should have is-dismissed class').toBe(true);
+    expect(midHeight, `Mid height (${midHeight}) should be less than initial (${initialHeight})`).toBeLessThan(initialHeight);
+    expect(finalHeight, `Final height (${finalHeight}) should be less than mid (${midHeight})`).toBeLessThan(midHeight);
+    expect(finalHeight).toBeLessThanOrEqual(5); 
   });
 
-  test('Should use calc-size() for properties requiring calculations on intrinsic sizes', async ({ page }) => {
-    // We check the badge element specifically for calc-size in the source if possible,
-    // or at least verify it's used in the demo.
-    const content = fs.readFileSync(filePath, 'utf8');
-    expect(content).toMatch(/(inline-size|width)\s*:\s*calc-size\(/);
-  });
-
-  test('The implementation should provide an interactive element with appropriate attributes', async ({ page }) => {
-    const button = page.locator('button, [role="button"], label');
-    await expect(button.first()).toBeVisible();
-    
-    // Check for some level of accessibility or semantic correctness that we might have in demo but not negative
-    const hasAria = await button.first().evaluate(el => {
-      return el.hasAttribute('aria-expanded') || el.tagName === 'BUTTON' || el.hasAttribute('onclick');
+  test('should not use max-height/max-block-size magic number hacks anywhere in the stylesheets', async ({ page }) => {
+    const usesMaxHeightHack = await page.evaluate(() => {
+      return Array.from(document.styleSheets).some(sheet => {
+        try {
+          return Array.from(sheet.cssRules).some(rule => {
+            if (rule instanceof CSSStyleRule) {
+              const style = rule.style;
+              const hasMagicNumber = (
+                (style.maxBlockSize && style.maxBlockSize !== 'none' && parseInt(style.maxBlockSize) > 500) ||
+                (style.maxHeight && style.maxHeight !== 'none' && parseInt(style.maxHeight) > 500)
+              );
+              return hasMagicNumber;
+            }
+            return false;
+          });
+        } catch (e) {
+          return false;
+        }
+      });
     });
-    expect(hasAria).toBe(true);
+
+    expect(usesMaxHeightHack).toBe(false);
   });
 
 });

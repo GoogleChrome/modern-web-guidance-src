@@ -23,10 +23,12 @@ Animating elements to dynamic sizes like `block-size: auto` or `inline-size: max
 
 1.  **Opt-in to keyword interpolation**: Apply `interpolate-size: allow-keywords` to a parent element (typically `:root`) to enable transitions for properties using intrinsic keywords.
 2.  **Define the transition**: Set a `transition` for the sizing property (e.g., `block-size`, `inline-size`) on the target element.
-3.  **Use intrinsic keywords**: Change the sizing property to a keyword like `auto`, `min-content`, or `fit-content` during an interaction (e.g., `:hover` or a state class).
-4.  **Perform calculations (Optional)**: Use `calc-size()` if you need to perform math on an intrinsic size (e.g., `auto + 2rem`).
+3.  **Use intrinsic keywords**: Change the sizing property to a supported intrinsic keyword—`auto`, `min-content`, `max-content`, `fit-content`, or (for flex-basis) `content`—during an interaction (e.g., `:hover` or a state class).
+4.  **Perform calculations (Optional)**: Use `calc-size()` if you need to perform math on an intrinsic size (e.g., `auto + 2rem`). `calc-size()` also supports the `any` keyword for basis-agnostic calculations.
 
-## Example: Smooth Accordion Block-Size
+## Example: Generic Expansion Pattern
+
+You can apply this pattern to any container (like a "Show More" section or a navigation menu) to transition between a restricted height and the element's natural size.
 
 ```css
 /* Opt-in globally for all children */
@@ -35,14 +37,17 @@ Animating elements to dynamic sizes like `block-size: auto` or `inline-size: max
   interpolate-size: allow-keywords;
 }
 
-.accordion-content {
-  block-size: 0;
+.expandable-container {
+  /* 1. Define a fixed initial size (or 0) and hide overflow */
+  block-size: 100px;
   overflow: hidden;
-  transition: block-size 0.3s ease-out;
+  
+  /* 2. Transition the sizing property */
+  transition: block-size 0.4s ease-out;
 }
 
-.accordion-item.is-open .accordion-content {
-  /* Now animates smoothly from 0 to the content's natural block-size */
+.expandable-container.is-expanded {
+  /* 3. Smoothly animate to the intrinsic natural height */
   block-size: auto;
 }
 ```
@@ -64,15 +69,36 @@ Animating elements to dynamic sizes like `block-size: auto` or `inline-size: max
 }
 ```
 
+## Example: Transition from Intrinsic to Fixed
+
+You can also animate in the opposite direction—starting from a natural size and collapsing to a specific length. This is useful for "dismissible" components.
+
+```css
+.collapsible-alert {
+  /* 1. Start with the natural content height */
+  block-size: auto;
+  overflow: hidden;
+  transition: block-size 0.5s ease-in-out, opacity 0.5s ease;
+}
+
+.collapsible-alert.is-dismissed {
+  /* 2. Smoothly collapse to zero */
+  block-size: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+```
+
 ## Key constraints
 
-*   **Keyword-to-Keyword Restriction**: You cannot animate between two different keywords directly (e.g., from `min-content` to `max-content`). One end of the transition must be a fixed length or percentage.
-*   **Calc-size Syntax**: Inside `calc-size()`, you cannot mix different intrinsic keywords. The first argument (the basis) defines what `size` represents.
-*   **Opt-in Requirement**: `interpolate-size: allow-keywords` is inherited. If you don't set it on a parent, transitions to keywords like `auto` will remain instant unless you use `calc-size()`, which opts in automatically.
+*   **Keyword-to-Keyword Restriction**: You cannot animate between two different keywords directly (e.g., from `min-content` to `max-content`). One end of the transition must be a fixed length or percentage (e.g., `0` to `auto`).
+*   **Calc-size Syntax**: Inside `calc-size()`, you cannot mix different intrinsic keywords in the same expression. The first argument (the basis) defines what `size` represents.
+*   **Opt-in Requirement**: Transitions to intrinsic keywords are disabled by default (`numeric-only`) to maintain backward compatibility. You must apply `interpolate-size: allow-keywords` to the element or an ancestor. `calc-size()` acts as a per-property override, automatically enabling interpolation whenever it is used.
 
 ## Fallback strategies
 
 {{ BASELINE_STATUS("interpolate-size") }}
+{{ BASELINE_STATUS("calc-size") }}
 
 `interpolate-size` and `calc-size()` are progressive enhancements. Browsers that do not support them will perform an instant jump to the target size.
 
@@ -84,19 +110,5 @@ Animating elements to dynamic sizes like `block-size: auto` or `inline-size: max
   block-size: auto; /* Fallback for older browsers */
   block-size: calc-size(auto, size); /* Modern browsers use this */
   transition: block-size 0.3s ease;
-}
-```
-
-*   **Legacy Max-Size Hack**: If a smooth animation is critical for the experience in older browsers, you can use the traditional `max-block-size` approach inside an `@supports` block.
-
-```css
-@supports not (interpolate-size: allow-keywords) {
-  .accordion-content {
-    transition: max-block-size 0.3s ease;
-    max-block-size: 0;
-  }
-  .is-open .accordion-content {
-    max-block-size: 1000px; /* Arbitrary large value */
-  }
 }
 ```
