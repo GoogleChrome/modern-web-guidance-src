@@ -70,6 +70,11 @@ jobs:
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
 
+      - name: Configure git
+        run: |
+          git config user.name "chrome-devrel-infra[bot]"
+          git config user.email "124898761+chrome-devrel-infra[bot]@users.noreply.github.com"
+
       - name: Generate guide package (guide.md, demo.html, expectations.md)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -87,11 +92,6 @@ jobs:
             "${FEATURE_ID}" \
             --category "${CATEGORY}" \
             ${SLUG_ARG}
-
-      - name: Configure git
-        run: |
-          git config user.name "chrome-devrel-infra[bot]"
-          git config user.email "124898761+chrome-devrel-infra[bot]@users.noreply.github.com"
 
 
 
