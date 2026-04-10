@@ -62,6 +62,8 @@ We migrated names, so please drop the old ones.
 If you have the old `skills-alpha`, use these commands to clean them up:
 
 ```sh
+npm uninstall --global modern-web
+
 claude # and then
 # /plugin uninstall googlechrome-skills@skills-alpha
 # /plugin marketplace remove skills-alpha
