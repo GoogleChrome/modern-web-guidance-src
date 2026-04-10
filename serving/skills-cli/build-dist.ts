@@ -115,7 +115,7 @@ async function main(): Promise<BuildResult | undefined> {
       banner: {
         js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
       },
-      external: ["onnxruntime-node", "sharp", "iconv-lite", "@img/colour", "tr46", "whatwg-url", "webidl-conversions"],
+      external: ["sharp", "iconv-lite", "@img/colour", "tr46", "whatwg-url", "webidl-conversions"],
       sourcemap: true,
       loader: { ".node": "file" },
       metafile: true,
@@ -123,6 +123,8 @@ async function main(): Promise<BuildResult | undefined> {
       alias: {
         // Force transformers to use the ESM entry point to avoid CommonJS issues in the bundle
         "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
+        // Mock onnxruntime-node to avoid native dependency in pure JS bundle
+        "onnxruntime-node": path.resolve(SERVING_DIR, "lib/dummy-onnx.ts"),
       },
       plugins: [{
         // TFJS deep imports fail in pure Node ESM because they lack extensions.
