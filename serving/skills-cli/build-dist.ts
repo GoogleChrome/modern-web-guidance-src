@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import matter from "gray-matter";
 import * as esbuild from "esbuild";
 import { scanAllGuides } from "../../lib/guide-validation.ts";
-import { getFeatureName } from "../mcp-server/data/baseline.ts";
+import { getFeatureName } from "../lib/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
 
 const SERVING_DIR = path.join(rootDir, "serving");

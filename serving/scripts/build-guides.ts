@@ -14,7 +14,7 @@ export interface StoreUseCase {
 }
 import { replaceMacros } from "../lib/macros.ts";
 import { scanAllGuides } from "../../lib/guide-validation.ts";
-import { getFeatureName } from "../mcp-server/data/baseline.ts";
+import { getFeatureName } from "../lib/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
 const BUILD_GUIDES_DIR = path.join(ROOT_DIR, "build/guides");

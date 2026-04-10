@@ -4,7 +4,7 @@ import matter from 'gray-matter';
 
 // Import shared utilities (using relative paths from guides/)
 import { validateMacros } from '../serving/lib/macros.ts';
-import { validateFeature } from '../serving/mcp-server/data/baseline.ts';
+import { validateFeature } from '../serving/lib/baseline.ts';
 import { rootDir, guidesDir } from './paths.ts';
 
 const REPO_ROOT = rootDir;
