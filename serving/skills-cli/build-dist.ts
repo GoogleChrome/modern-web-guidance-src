@@ -123,9 +123,9 @@ async function main(): Promise<BuildResult | undefined> {
       alias: {
         // Force transformers to use the ESM entry point to avoid CommonJS issues in the bundle
         "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
-        // We leverage Transformers.js only for tokenization. But it is a large dependency and 
-        // tries to do a lot more, including loading native dependencies (onnxruntime-node) that 
-        // we have no use for. We use this dummy shim to ensure we can use the library without 
+        // We leverage Transformers.js only for tokenization. But it is a large dependency and
+        // tries to do a lot more, including loading native dependencies (onnxruntime-node) that
+        // we have no use for. We use this dummy shim to ensure we can use the library without
         // pulling in native binaries.
         "onnxruntime-node": path.resolve(SERVING_DIR, "lib/dummy-onnx.ts"),
       },
@@ -142,7 +142,6 @@ async function main(): Promise<BuildResult | undefined> {
         },
       }],
     });
-    console.log(await esbuild.analyzeMetafile(result.metafile));
 
     console.log("Bundling modern-web.mjs...");
     await esbuild.build({
