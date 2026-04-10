@@ -384,9 +384,15 @@ async function commitAndPush(featureId: string): Promise<boolean> {
 
   await runCommand('git', ['add', 'guides/']);
   await runCommand('git', ['commit', '-m', `feat: scaffold guide for ${featureId}`]);
-  await runCommand('git', ['push', 'origin', branch, '--force']);
+  
+  const appToken = process.env.APP_TOKEN;
+  const repo = process.env.GITHUB_REPOSITORY;
+  const pushUrl = appToken && repo ? `https://x-access-token:${appToken}@github.com/${repo}.git` : 'origin';
+  
+  await runCommand('git', ['push', pushUrl, `${branch}:${branch}`, '--force']);
   console.log(`✅ Pushed to ${branch}`);
   return true;
+
 }
 
 async function createPullRequest(featureId: string, reviewer: string): Promise<void> {
