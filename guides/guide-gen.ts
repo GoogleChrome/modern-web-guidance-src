@@ -339,7 +339,7 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
     const outputDir = await scaffoldUseCase(uc, feature, workDir, guidesDir);
 
     console.log(`Running gd dev for ${uc.slug}...`);
-    const success = await devGuide(outputDir, { noTest: true });
+    const success = await devGuide(outputDir, { test: false });
     if (!success) {
       throw new Error(`devGuide failed for ${uc.slug}`);
     }

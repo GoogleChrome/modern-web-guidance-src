@@ -194,8 +194,9 @@ function showHelp() {
   const groups = [
     {
       title: 'Guide Development',
-      commands: ['dev', 'audit'],
+      commands: ['dev', 'audit', 'gen-guide'],
     },
+
     {
       title: 'Evaluation & Dashboard',
       commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill'],

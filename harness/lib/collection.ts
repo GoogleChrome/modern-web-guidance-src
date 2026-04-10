@@ -258,7 +258,8 @@ run();
         guideName: guide,
         baseApp: actualBaseApp,
         taskName: taskName,
-        evalType: data.eval_type === 'regression' ? 'regression' : 'capability',
+        evalType: taskInfo.evalType === 'regression' ? 'regression' : 'capability',
+
         prompt: taskInfo.prompt,
       });
     }

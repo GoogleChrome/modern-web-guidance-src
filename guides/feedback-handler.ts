@@ -7,8 +7,8 @@
  *   node guides/feedback-handler.ts <pr-number>
  */
 
-import fs from 'node:fs';
 import path from 'node:path';
+
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
