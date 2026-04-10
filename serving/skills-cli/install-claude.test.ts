@@ -30,29 +30,18 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         execSync(cmd, { 
             stdio: ['ignore', 'inherit', 'inherit'], 
             timeout: 90000, 
-            env: { ...process.env, ...anthropicEnv } 
+            env: { ...process.env, ...anthropicEnv, HOME: homeDir } 
         });
 
         console.log(`\nVerifying Claude used the skill...`);
-        const projectsDir = path.join(os.homedir(), '.claude', 'projects');
+        const projectsDir = path.join(homeDir, '.claude', 'projects');
         const files = fs.globSync('**/*.jsonl', { cwd: projectsDir });
-        console.log(`Found ${files.length} session files in real HOME.`);
-        
-        let newestFile = '';
-        let maxMtime = 0;
-        for (const file of files) {
-            const fullPath = path.join(projectsDir, file);
-            const mtime = fs.statSync(fullPath).mtimeMs;
-            if (mtime > maxMtime) {
-                maxMtime = mtime;
-                newestFile = fullPath;
-            }
-        }
+        console.log(`Found session files: ${JSON.stringify(files)}`);
         
         let toolsUsed: string[] = [];
-        if (newestFile) {
-            console.log(`Analyzing newest session file: ${newestFile}`);
-            const content = fs.readFileSync(newestFile, 'utf8');
+        for (const file of files) {
+            const fullPath = path.join(projectsDir, file);
+            const content = fs.readFileSync(fullPath, 'utf8');
             const lines = content.split('\n');
             for (const line of lines) {
                 if (!line.trim()) continue;
