@@ -14,9 +14,9 @@ Modeling date concepts that lack a full calendar date—such as credit card expi
 
 The `Temporal` API provides dedicated types for these partial concepts: `Temporal.PlainYearMonth`, `Temporal.PlainMonthDay`, and `Temporal.PlainTime`. These types ensure precision and avoid leaking irrelevant date components.
 
-## How to Implement
+## Implementation Examples
 
-### 1. Monthly Expirations (Credit Cards, Billing Cycles)
+### Monthly Expirations (Credit Cards, Billing Cycles)
 Use `Temporal.PlainYearMonth` to represent a year and a month.
 
 ```javascript
@@ -40,7 +40,7 @@ if (duration.sign < 0) {
 }
 ```
 
-### 2. Annual Recurring Dates (Birthdays, Renewals)
+### Annual Recurring Dates (Birthdays, Renewals)
 Use `Temporal.PlainMonthDay` to represent a month and a day without a year.
 
 ```javascript
@@ -56,7 +56,7 @@ const isBirthdayToday = birthday.equals(today.toPlainMonthDay());
 const birthdayThisYear = birthday.toPlainDate({ year: today.year });
 ```
 
-### 3. Wall-Clock Time (Alarms, Store Hours)
+### Wall-Clock Time (Alarms, Store Hours)
 Use `Temporal.PlainTime` to represent a time of day without a date.
 
 ```javascript
