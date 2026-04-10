@@ -36,19 +36,51 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         console.log(`\nVerifying Claude used the skill...`);
         const outputStr = output.toString();
         const lines = outputStr.split('\n');
-        let skillUsed = false;
+        
+        let searchCalled = false;
+        let retrieveCalled = false;
+        let searchToolId = '';
+        let retrieveToolId = '';
+        let searchSuccess = false;
+        let retrieveSuccess = false;
         
         for (const line of lines) {
             if (!line.trim()) continue;
             try {
                 const obj = JSON.parse(line);
+                
+                // Check for tool use
                 if (obj.type === 'assistant' && obj.message && Array.isArray(obj.message.content)) {
                     for (const item of obj.message.content) {
                         if (item.type === 'tool_use' && item.name === 'Bash') {
                             const command = item.input?.command;
-                            if (typeof command === 'string' && command.includes('modern-web.mjs')) {
-                                skillUsed = true;
-                                break;
+                            if (typeof command === 'string') {
+                                if (command.includes('--search')) {
+                                    searchCalled = true;
+                                    searchToolId = item.id;
+                                }
+                                if (command.includes('--retrieve')) {
+                                    retrieveCalled = true;
+                                    retrieveToolId = item.id;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Check for tool result
+                if (obj.type === 'user' && obj.message && Array.isArray(obj.message.content)) {
+                    for (const item of obj.message.content) {
+                        if (item.type === 'tool_result') {
+                            if (searchToolId && item.tool_use_id === searchToolId) {
+                                if (item.content && !item.is_error) {
+                                    searchSuccess = true;
+                                }
+                            }
+                            if (retrieveToolId && item.tool_use_id === retrieveToolId) {
+                                if (item.content && !item.is_error) {
+                                    retrieveSuccess = true;
+                                }
                             }
                         }
                     }
@@ -56,11 +88,21 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
             } catch (e) {
                 // Ignore parse errors
             }
-            if (skillUsed) break;
         }
         
-        console.log(`Skill used: ${skillUsed}`);
-        assert.ok(skillUsed, 'Claude did not use the modern-web-use-cases skill');
+        const skillActivated = searchCalled || retrieveCalled;
+        
+        console.log(`\n[Validation State]`);
+        console.log(`- Skill Activated: ${skillActivated}`);
+        console.log(`- Search Called: ${searchCalled}`);
+        console.log(`- Retrieve Called: ${retrieveCalled}\n`);
+        
+        // Assert all, but we get the log above first!
+        assert.ok(skillActivated, 'Skill should specify check for modern-web-use-cases activation');
+        assert.ok(searchCalled, 'Modern web search should be called');
+        assert.ok(searchSuccess, 'Modern web search should be successful');
+        assert.ok(retrieveCalled, 'Modern web retrieve should be called');
+        assert.ok(retrieveSuccess, 'Modern web retrieve should be successful');
         
     } finally {
         if (homeDir) {
