@@ -6,9 +6,6 @@ name: Generate Guide
 # when an SME edits files in the PR.
 
 on:
-  push:
-    branches:
-      - 'pipelinev2'
   workflow_dispatch:
     inputs:
       feature_id:
@@ -43,7 +40,7 @@ env:
 jobs:
   # ── Manual trigger or Test trigger: generate a brand-new guide package ─────
   generate:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/pipelinev2')
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
