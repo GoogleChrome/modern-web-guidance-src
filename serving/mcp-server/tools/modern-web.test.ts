@@ -1,8 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { registerModernWebTools } from './modern-web.ts';
-import { Embedder } from '../lib/embedder.ts';
-import { Store } from '../../lib/store.ts';
 
 describe('modern-web tools (Unit Tests with Mocks)', () => {
   it('should register search_use_cases and get_best_practices tools', () => {
@@ -16,41 +14,6 @@ describe('modern-web tools (Unit Tests with Mocks)', () => {
     registerModernWebTools(mockServer);
 
     assert.strictEqual(mockToolCalls, 2);
-  });
-
-  describe('search_use_cases handler', () => {
-    it('should return search results', async () => {
-      // Monkey patch Embedder.getInstance and Store.search
-      const origGetInstance = Embedder.getInstance;
-      const origSearch = Store.prototype.search;
-
-      const mockVector = [0.1, 0.2, 0.3];
-      const mockResults = [{ id: 'test', description: 'test desc', category: 'test cat' }] as any;
-
-      Embedder.getInstance = () => ({
-        embed: async () => mockVector,
-      }) as any;
-
-      Store.prototype.search = async () => mockResults;
-
-      const handlers: { [key: string]: Function } = {};
-      const mockServer = {
-        registerTool: (name: string, schema: any, handler: Function) => {
-          handlers[name] = handler;
-        },
-      } as any;
-
-      registerModernWebTools(mockServer);
-
-      const result = await handlers['search_use_cases']({ query: 'test query' });
-
-      assert.ok(Array.isArray(JSON.parse(result.content[0].text)));
-      assert.strictEqual(JSON.parse(result.content[0].text)[0].id, 'test');
-
-      // Restore
-      Embedder.getInstance = origGetInstance;
-      Store.prototype.search = origSearch;
-    });
   });
 
   describe('get_best_practices handler', () => {

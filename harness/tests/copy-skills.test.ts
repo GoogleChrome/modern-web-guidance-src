@@ -39,10 +39,10 @@ test('copySkills sets up the isolated environment with the skill and its data', 
 
         // 3. Verify guides and vector_store were copied (they should be inside the skill dir now)
         const guidesDir = path.join(skillDir, 'guides');
-        const vectorStoreDir = path.join(skillDir, 'vector_store');
+        const vectorFile = path.join(skillDir, 'use-cases.vectors.gen.json.gz');
         
         assert.ok(fs.existsSync(guidesDir), 'guides/ should be inside the skill directory');
-        assert.ok(fs.existsSync(vectorStoreDir), 'vector_store/ should be inside the skill directory');
+        assert.ok(fs.existsSync(vectorFile), 'use-cases.vectors.gen.json.gz should be inside the skill directory');
 
         // 3.5 Run pnpm install in the skill directory to resolve dependencies (like @lancedb/lancedb)
         // This simulates what a real installer or environment would do.

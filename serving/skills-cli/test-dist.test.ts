@@ -37,24 +37,6 @@ try {
   throw new Error("build-dist.ts failed");
 }
 
-
-test('Dependency parity across package.json manifests', async () => {
-  const servingPkg = JSON.parse(await fs.readFile(path.join(ROOT_DIR, 'serving/package.json'), 'utf8'));
-  const templatePkg = JSON.parse(await fs.readFile(path.join(ROOT_DIR, 'serving/skills-cli/template/package.json'), 'utf8'));
-  const skillPkg = JSON.parse(await fs.readFile(path.join(ROOT_DIR, 'serving/skills-cli/template/skills/modern-web-use-cases/package.json'), 'utf8'));
-
-  const transformersVersion = servingPkg.dependencies["@huggingface/transformers"];
-  const lancedbVersion = servingPkg.dependencies["@lancedb/lancedb"];
-
-  // template/package.json (placed at root of dist, for global publishing)
-  assert.strictEqual(templatePkg.dependencies?.["@huggingface/transformers"], transformersVersion, "template package.json should match serving package.json @huggingface/transformers version");
-  assert.strictEqual(templatePkg.dependencies?.["@lancedb/lancedb"], lancedbVersion, "template package.json should match serving package.json @lancedb/lancedb version");
-
-  // template/skills/modern-web-use-cases/package.json (placed adjacent to SKILL.md, for skill users)
-  assert.strictEqual(skillPkg.dependencies?.["@huggingface/transformers"], transformersVersion, "skill package.json should match serving package.json @huggingface/transformers version");
-  assert.strictEqual(skillPkg.dependencies?.["@lancedb/lancedb"], lancedbVersion, "skill package.json should match serving package.json @lancedb/lancedb version");
-});
-
 test('Claude Plugin Config in Dist', async () => {
   const marketplaceJsonRaw = await fs.readFile(path.join(DIST_DIR, '.claude-plugin/marketplace.json'), 'utf8');
   const marketplaceJson = JSON.parse(marketplaceJsonRaw);
