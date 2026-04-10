@@ -1,3 +1,0 @@
-- update the cold brew card description to use a localized duration for the 18 hours steep time
-- make the steep time on the cold brew card more official by using a duration formatter instead of just hardcoding the string
-- can you add a wait time estimate to the hero section? maybe 'orders ready in 15 minutes' but use a localized duration for the 15 mins
