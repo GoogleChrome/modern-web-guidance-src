@@ -106,8 +106,8 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         
     } finally {
         if (homeDir) {
-            console.log(`Skipping cleanup of isolated HOME at ${homeDir}`);
-            // cleanupIsolatedHome(homeDir);
+            console.log(`Cleaning up isolated HOME at ${homeDir}`);
+            cleanupIsolatedHome(homeDir);
         }
     }
 });
