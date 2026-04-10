@@ -27,11 +27,20 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         const cmd = `claude --plugin-dir ${distDir} -p "use the modern-web-use-cases skill and tell me best practices on implementing an address form" --dangerously-skip-permissions --verbose`;
         
         console.log(`\nRunning Claude Code with local plugin...`);
-        execSync(cmd, { 
-            stdio: ['ignore', 'inherit', 'inherit'], 
-            timeout: 90000, 
-            env: { ...process.env, ...anthropicEnv, HOME: homeDir } 
-        });
+        try {
+            console.log(`Running Claude command: ${cmd}`);
+            const output = execSync(cmd, { 
+                stdio: ['ignore', 'pipe', 'pipe'], 
+                timeout: 30000, // 30 seconds timeout
+                env: { ...process.env, ...anthropicEnv, HOME: homeDir } 
+            });
+            console.log(`Claude Output:\n${output.toString()}`);
+        } catch (e: any) {
+            console.error(`Claude failed or timed out!`);
+            if (e.stdout) console.log(`Stdout:\n${e.stdout.toString()}`);
+            if (e.stderr) console.log(`Stderr:\n${e.stderr.toString()}`);
+            throw e;
+        }
 
         console.log(`\nVerifying Claude used the skill...`);
         const projectsDir = path.join(homeDir, '.claude', 'projects');
