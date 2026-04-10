@@ -24,48 +24,43 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
             }
         }
 
-        const cmd = `claude --plugin-dir ${distDir} -p "use the modern-web-use-cases skill and tell me best practices on implementing an address form" --dangerously-skip-permissions --verbose`;
+        const cmd = `claude --plugin-dir ${distDir} -p "use the modern-web-use-cases skill and tell me best practices on implementing an address form" --dangerously-skip-permissions --verbose --output-format stream-json`;
         
         console.log(`\nRunning Claude Code with local plugin...`);
-        execSync(cmd, { 
-            stdio: ['ignore', 'inherit', 'inherit'], 
+        const output = execSync(cmd, { 
+            stdio: ['ignore', 'pipe', 'pipe'], 
             timeout: 90000, 
             env: { ...process.env, ...anthropicEnv } 
         });
 
         console.log(`\nVerifying Claude used the skill...`);
-        const projectsDir = path.join(os.homedir(), '.claude', 'projects');
-        const files = fs.globSync('**/*.jsonl', { cwd: projectsDir });
-        console.log(`Found session files: ${JSON.stringify(files)}`);
+        const outputStr = output.toString();
+        const lines = outputStr.split('\n');
+        let skillUsed = false;
         
-        let toolsUsed: string[] = [];
-        for (const file of files) {
-            const fullPath = path.join(projectsDir, file);
-            const content = fs.readFileSync(fullPath, 'utf8');
-            const lines = content.split('\n');
-            for (const line of lines) {
-                if (!line.trim()) continue;
-                try {
-                    const obj = JSON.parse(line);
-                    if (obj.message && Array.isArray(obj.message.content)) {
-                        for (const item of obj.message.content) {
-                            if (item.type === 'tool_use') {
-                                if (item.name === 'Skill' && item.input?.skill) {
-                                    toolsUsed.push(item.input.skill);
-                                } else if (item.name === 'activate_skill' && item.input?.name) {
-                                    toolsUsed.push(item.input.name);
-                                }
+        for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+                const obj = JSON.parse(line);
+                if (obj.type === 'assistant' && obj.message && Array.isArray(obj.message.content)) {
+                    for (const item of obj.message.content) {
+                        if (item.type === 'tool_use' && item.name === 'Bash') {
+                            const command = item.input?.command;
+                            if (typeof command === 'string' && command.includes('modern-web.mjs')) {
+                                skillUsed = true;
+                                break;
                             }
                         }
                     }
-                } catch (e) {
-                    // Ignore parse errors
                 }
+            } catch (e) {
+                // Ignore parse errors
             }
+            if (skillUsed) break;
         }
         
-        console.log(`Tools used: ${JSON.stringify(toolsUsed)}`);
-        assert.ok(toolsUsed.includes('modern-web-use-cases'), 'Claude did not use the modern-web-use-cases skill');
+        console.log(`Skill used: ${skillUsed}`);
+        assert.ok(skillUsed, 'Claude did not use the modern-web-use-cases skill');
         
     } finally {
         if (homeDir) {
