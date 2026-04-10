@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessible & Performant Forms Demo</title>
+  <style>
+    /* Design System & Tokens */
+    :root {
+      --primary-color: #0b57d0;
+      --primary-hover: #0842a8;
+      --bg-color: #f8f9fa;
+      --text-color: #1f1f1f;
+      --text-secondary: #5f6368;
+      --border-color: #747775; /* Adequate contrast */
+      --error-color: #b3261e;
+      --success-color: #137333;
+      --font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+
+    body {
+      font-family: var(--font-family);
+      color: var(--text-color);
+      background-color: var(--bg-color);
+      line-height: 1.5;
+      margin: 0;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
+    }
+
+    /* Typography */
+    h1 { font-size: 1.75rem; margin-bottom: 1.5rem; }
+    h2 { font-size: 1.25rem; margin-top: 1.5rem; margin-bottom: 1rem; }
+    
+    /* Layout */
+    .form-group {
+      margin-bottom: 1.5rem; /* Gestalt Proximity: larger than label-input margin */
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Labels & Inputs */
+    label {
+      font-weight: 500;
+      margin-bottom: 0.5rem; /* Gestalt Proximity: smaller than form-group margin */
+      cursor: pointer;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="tel"],
+    textarea,
+    select {
+      font-size: 1rem; /* Prevent iOS zoom */
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      min-height: 48px; /* Tap target size */
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    /* Focus Outlines */
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible,
+    button:focus-visible {
+      outline: 3px solid var(--primary-color);
+      outline-offset: 2px;
+    }
+
+    /* Native Constraints & Custom Validation */
+    input:invalid:user-invalid,
+    textarea:invalid:user-invalid {
+      border-color: var(--error-color);
+      background-color: #fce8e6;
+    }
+
+    .error-message {
+      color: var(--error-color);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+      display: none;
+    }
+
+    .hint {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+
+    /* Selection Controls */
+    input[type="radio"],
+    input[type="checkbox"] {
+      accent-color: var(--primary-color);
+      width: 1.25rem;
+      height: 1.25rem;
+      margin-right: 0.5rem;
+      font-size: 1rem;
+    }
+
+    .choice-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .choice-item {
+      display: flex;
+      align-items: center;
+      min-height: 48px; /* Tap target */
+    }
+
+    /* Custom Select */
+    .custom-select-wrapper {
+      position: relative;
+    }
+
+    select.custom-select {
+      appearance: none;
+      padding-right: 2.5rem;
+    }
+
+    .custom-select-wrapper::after {
+      content: "▼";
+      font-size: 0.8rem;
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--text-secondary);
+    }
+
+    /* Visually Hidden */
+    .visually-hidden {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+    }
+
+    /* Buttons */
+    button {
+      font-size: 1rem;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      min-height: 48px;
+      font-weight: 500;
+    }
+
+    button[type="submit"] {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    button[type="submit"]:hover {
+      background-color: var(--primary-hover);
+    }
+
+    button[type="submit"]:disabled {
+      background-color: var(--text-secondary);
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background-color: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+    }
+
+    /* Progress Tracker */
+    .progress-tracker {
+      display: flex;
+      list-style: none;
+      padding: 0;
+      margin: 0 0 2rem 0;
+      justify-content: space-between;
+      border-bottom: 1px solid #dadce0;
+      padding-bottom: 1rem;
+    }
+
+    .progress-tracker li {
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .progress-tracker li.active {
+      color: var(--primary-color);
+      border-bottom: 2px solid var(--primary-color);
+      margin-bottom: -1rem;
+      padding-bottom: 1rem;
+    }
+
+    /* Utilities */
+    .mt-4 { margin-top: 1rem; }
+    .actions { display: flex; justify-content: space-between; gap: 1rem; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Search Form (Idempotent, GET) -->
+  <form action="/search" method="GET" role="search" class="form-group">
+    <label for="search-query">Search Site</label>
+    <div style="display: flex; gap: 0.5rem;">
+      <input type="text" id="search-query" name="q" autocomplete="off" required enterkeyhint="search">
+      <button type="submit">Search</button>
+    </div>
+  </form>
+
+  <hr style="border: 0; border-top: 1px solid #dadce0; margin: 2rem 0;">
+
+  <!-- Progress Indicator for Multi-page Form -->
+  <nav aria-label="Registration Progress">
+    <ol class="progress-tracker">
+      <li class="active" aria-current="step">1. Account</li>
+      <li>2. Address</li>
+      <li>3. Payment</li>
+    </ol>
+  </nav>
+
+  <h1>Create Your Account</h1>
+
+  <!-- Main Form (Mutations, POST) -->
+  <form id="registration-form" action="/submit-registration" method="POST" novalidate>
+    <!-- Anti-CSRF Token -->
+    <input type="hidden" name="csrf_token" value="d83j29d8sk218skJDIW2">
+    
+    <!-- Honeypot Spam Protection -->
+    <div class="visually-hidden">
+      <label for="honeypot">Do not fill this if you are human</label>
+      <input type="text" id="honeypot" name="honeypot" tabindex="-1" autocomplete="off">
+    </div>
+
+    <!-- Step 1: Account -->
+    <fieldset style="border: none; padding: 0; margin: 0;">
+      <legend class="visually-hidden">Account Information</legend>
+
+      <!-- Full Name (Single Field) -->
+      <div class="form-group">
+        <label for="full-name">Full name <span aria-hidden="true">*</span></label>
+        <input type="text" id="full-name" name="full_name" autocomplete="name" required enterkeyhint="next">
+        <span class="error-message" id="name-error" role="alert">Please enter your full name.</span>
+      </div>
+
+      <!-- Email -->
+      <div class="form-group">
+        <label for="email">Email address <span aria-hidden="true">*</span></label>
+        <input type="email" id="email" name="email" autocomplete="username" required enterkeyhint="next">
+        <span class="error-message" id="email-error" role="alert">Please enter a valid email address.</span>
+      </div>
+
+      <!-- Password -->
+      <div class="form-group">
+        <label for="password">Password <span aria-hidden="true">*</span></label>
+        <div style="position: relative;">
+          <input type="password" id="password" name="password" autocomplete="new-password" minlength="8" required enterkeyhint="next" aria-describedby="password-hint">
+          <button type="button" id="toggle-password" class="btn-secondary" style="position: absolute; right: 0; top: 0; min-height: 48px; border-left: none; border-radius: 0 4px 4px 0;" aria-label="Show password as plain text. Warning: this will display your password on the screen.">Show</button>
+        </div>
+        <span class="hint" id="password-hint">Must be at least 8 characters.</span>
+        <span class="error-message" id="password-error" role="alert">Password must be at least 8 characters.</span>
+      </div>
+
+      <!-- Phone (Single field, inputmode) -->
+      <div class="form-group">
+        <label for="phone">Mobile number</label>
+        <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" enterkeyhint="next">
+        <span class="hint">We'll only use this for security updates.</span>
+      </div>
+
+      <!-- Selection Controls: Matrix 1-5 (Radios) -->
+      <div class="form-group">
+        <label id="plan-label">Select a plan <span aria-hidden="true">*</span></label>
+        <div class="choice-group" role="radiogroup" aria-labelledby="plan-label">
+          <div class="choice-item">
+            <input type="radio" id="plan-free" name="plan" value="free" checked required>
+            <label for="plan-free">Free (Basic features)</label>
+          </div>
+          <div class="choice-item">
+            <input type="radio" id="plan-pro" name="plan" value="pro">
+            <label for="plan-pro">Pro ($10/mo)</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Selection Controls: Matrix 6+ (Select) -->
+      <div class="form-group">
+        <label for="timezone">Timezone</label>
+        <div class="custom-select-wrapper">
+          <select id="timezone" name="timezone" class="custom-select">
+            <option value="utc">UTC</option>
+            <option value="est">Eastern Time</option>
+            <option value="cst">Central Time</option>
+            <option value="mst">Mountain Time</option>
+            <option value="pst">Pacific Time</option>
+            <option value="jst">Japan Standard Time</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Selection Controls: 10+ / Dynamic (Datalist) -->
+      <div class="form-group">
+        <label for="country">Country</label>
+        <input type="text" id="country" name="country" list="countries" autocomplete="country-name">
+        <datalist id="countries">
+          <option value="United States">
+          <option value="Canada">
+          <option value="United Kingdom">
+          <option value="Australia">
+          <option value="Germany">
+          <option value="France">
+          <option value="Japan">
+          <option value="India">
+          <option value="Brazil">
+          <option value="Mexico">
+        </datalist>
+        <span class="hint">Start typing to filter options.</span>
+      </div>
+
+      <!-- Multi-select (Checkboxes) -->
+      <div class="form-group">
+        <label id="interests-label">Interests</label>
+        <div class="choice-group" aria-labelledby="interests-label">
+          <div class="choice-item">
+            <input type="checkbox" id="int-tech" name="interests" value="tech">
+            <label for="int-tech">Technology</label>
+          </div>
+          <div class="choice-item">
+            <input type="checkbox" id="int-design" name="interests" value="design">
+            <label for="int-design">Design</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Address (Textarea for global) -->
+      <div class="form-group">
+        <label for="address">Street Address</label>
+        <textarea id="address" name="address" autocomplete="street-address" rows="3" enterkeyhint="next"></textarea>
+      </div>
+
+      <!-- Postal Code (Optional, not type="number") -->
+      <div class="form-group">
+        <label for="zip">ZIP or Postal Code</label>
+        <input type="text" id="zip" name="zip" autocomplete="postal-code" inputmode="numeric" pattern="\d{5}(-\d{4})?" enterkeyhint="next">
+      </div>
+
+      <!-- Payment (Single field for CC, not type="number") -->
+      <div class="form-group">
+        <label for="cc-number">Credit Card Number</label>
+        <input type="text" id="cc-number" name="cc_number" autocomplete="cc-number" inputmode="numeric" pattern="\d{13,19}" enterkeyhint="done">
+      </div>
+
+      <!-- Consent -->
+      <div class="form-group">
+        <div class="choice-item">
+          <input type="checkbox" id="terms" name="terms" required>
+          <label for="terms">I agree to the terms and conditions <span aria-hidden="true">*</span></label>
+        </div>
+        <span class="error-message" id="terms-error" role="alert">You must agree to the terms.</span>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions mt-4">
+        <button type="button" class="btn-secondary" id="btn-back" enterkeyhint="previous">Back</button>
+        <!-- Actionable language, indicates amount if plan selected -->
+        <button type="submit" id="btn-submit" enterkeyhint="next">Save changes & Continue</button>
+      </div>
+      
+      <!-- Live region for announcements -->
+      <div id="live-announcer" class="visually-hidden" aria-live="assertive"></div>
+    </fieldset>
+  </form>
+</div>
+
+<script>
+  // No inline JS used
+  const form = document.getElementById('registration-form');
+  const passwordInput = document.getElementById('password');
+  const togglePasswordBtn = document.getElementById('toggle-password');
+  const liveAnnouncer = document.getElementById('live-announcer');
+  const submitBtn = document.getElementById('btn-submit');
+
+  // Password Toggle
+  togglePasswordBtn.addEventListener('click', () => {
+    const isPassword = passwordInput.type === 'password';
+    passwordInput.type = isPassword ? 'text' : 'password';
+    togglePasswordBtn.textContent = isPassword ? 'Hide' : 'Show';
+    togglePasswordBtn.setAttribute('aria-label', isPassword ? 'Hide password.' : 'Show password as plain text. Warning: this will display your password on the screen.');
+  });
+
+  // Validation Matrix & Timing
+  const inputs = form.querySelectorAll('input[required], select[required], textarea[required]');
+  
+  inputs.forEach(input => {
+    // 1. Clear errors on input (Active Typing)
+    input.addEventListener('input', () => {
+      clearError(input);
+    });
+
+    // 2. Run check on blur (Exiting Field)
+    input.addEventListener('blur', () => {
+      validateInput(input);
+    });
+  });
+
+  function validateInput(input) {
+    if (!input.checkValidity()) {
+      showError(input);
+      return false;
+    }
+    return true;
+  }
+
+  function showError(input) {
+    const errorId = `${input.id}-error`;
+    const errorEl = document.getElementById(errorId);
+    if (errorEl) {
+      errorEl.style.display = 'block';
+      input.setAttribute('aria-describedby', errorId);
+      liveAnnouncer.textContent = `Error on ${input.id}: ${errorEl.textContent}`;
+    }
+  }
+
+  function clearError(input) {
+    const errorId = `${input.id}-error`;
+    const errorEl = document.getElementById(errorId);
+    if (errorEl) {
+      errorEl.style.display = 'none';
+      input.removeAttribute('aria-describedby');
+    }
+  }
+
+  // 3. Final Attempt (Submit)
+  form.addEventListener('submit', (e) => {
+    e.preventDefault(); // Prevent default navigation for AJAX
+    
+    let isFormValid = true;
+    inputs.forEach(input => {
+      if (!validateInput(input)) {
+        isFormValid = false;
+      }
+    });
+
+    if (!isFormValid) {
+      // Block and route focus to first error
+      const firstError = form.querySelector(':invalid');
+      if (firstError) {
+        firstError.focus();
+      }
+      return;
+    }
+
+    // Disable button after valid submission to prevent double-posts
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+
+    // Analytics Event (No sensitive data in labels)
+    console.log('Analytics Event: Submit clicked', { formId: form.id });
+
+    // Simulate AJAX
+    setTimeout(() => {
+      alert('Form submitted successfully (simulated)!');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Save changes & Continue';
+    }, 1000);
+  });
+
+  // Plan selection affects button text (Indicate exact amounts)
+  const planRadios = form.querySelectorAll('input[name="plan"]');
+  planRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (radio.value === 'pro') {
+        submitBtn.textContent = 'Pay $10 & Continue';
+      } else {
+        submitBtn.textContent = 'Save changes & Continue';
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

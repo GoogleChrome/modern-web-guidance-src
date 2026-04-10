@@ -1,0 +1,57 @@
+- The implementation MUST inline critical CSS necessary for above-the-fold content in the `<head>`.
+- The implementation MUST use `async` or `defer` (or `type="module"`) for all non-critical scripts to prevent DOM parser blocking.
+- The implementation MUST split CSS by media queries using the `media` attribute on `<link>` tags to prevent render blocking for unused styles.
+- The implementation MUST utilize resource hints like `preconnect` or `dns-prefetch` for essential third-party domains.
+- The implementation MUST NOT use `@import` in CSS stylesheets.
+- The implementation MUST NOT place large, non-critical JavaScript in the `<head>`.
+- The implementation MUST NOT load invisible or unreachable CSS/JS (enforce tree-shaking and minification).
+- The implementation MUST use `fetchpriority="high"` on the LCP image.
+- The implementation MUST declare the LCP image in standard HTML (not relying solely on JS to mount it).
+- The implementation MUST preload CSS background images acting as LCP using `<link rel="preload" as="image">` with `fetchpriority="high"`.
+- The implementation MUST use `fetchpriority="low"` to demote competing elements above the fold that are not the primary LCP element.
+- The implementation MUST NOT apply `loading="lazy"` to above-the-fold LCP images.
+- The implementation MUST NOT overuse `fetchpriority="high"` on non-critical resources.
+- The implementation MUST NOT implement complex JavaScript loaders for the hero section.
+- The implementation MUST break up JavaScript tasks exceeding 50ms to yield to the main thread.
+- The implementation MUST use `scheduler.yield()` (or a fallback like `setTimeout`) to yield to the main thread during long tasks.
+- The implementation MUST debounce or throttle rapid event listeners like `scroll`, `resize`, or `input`.
+- The implementation MUST separate UI updates from heavy computations (e.g., using Web Workers or deferred tasks).
+- The implementation MUST prefer `scheduler.yield()` over `setTimeout(..., 0)` for task yielding when supported.
+- The implementation MUST NOT cause layout thrashing by interleaving DOM reads and writes.
+- The implementation MUST NOT block the thread with heavy polling using `setInterval`.
+- The implementation MUST avoid blocking third-party scripts by using `defer` or loading them near the end of the page.
+- The implementation SHOULD self-host critical third-party dependencies to reduce DNS lookups and control caching, where applicable.
+- The implementation MUST use `content-visibility: auto` on off-screen sections on large, complex pages.
+- The implementation MUST pair `content-visibility` with `contain-intrinsic-size` to prevent layout shifts.
+- The implementation MUST apply explicit CSS containment (`contain: layout style paint`) for isolated UI components.
+- The implementation MUST NOT apply `content-visibility: auto` on smaller, simpler pages where gains are negligible.
+- The implementation MUST NOT apply `content-visibility: auto` to above-the-fold content.
+- The implementation MUST NOT overuse `will-change` globally.
+- The implementation MUST manage `aria-hidden` attributes manually if content should be hidden from assistive technology when off-screen via `content-visibility`.
+- The implementation MUST serve modern image formats (AVIF/WebP) using the `<picture>` element or equivalent content negotiation.
+- The implementation MUST apply explicit `width` and `height` attributes on images to eliminate CLS.
+- The implementation MUST utilize `loading="lazy"` on all below-the-fold images.
+- The implementation MUST implement responsive images using `srcset` and `sizes`.
+- The implementation MUST NOT lazy load above-the-fold images.
+- The implementation MUST NOT omit width/height dimensions on lazy loaded images.
+- The implementation MUST NOT omit the `sizes` attribute when using `srcset`.
+- The implementation MUST use a `CacheFirst` strategy for static, versioned assets (fonts, JS/CSS bundles) in the Service Worker.
+- The implementation MUST use `StaleWhileRevalidate` for dynamic, non-critical resources in the Service Worker.
+- The implementation MUST implement a `NetworkFirst` strategy for HTML documents in the Service Worker.
+- The implementation MUST restrict cache sizes and expiry in the Service Worker.
+- The implementation MUST NOT cache opaque responses blindly without appropriate strategies like `NetworkFirst` or `StaleWhileRevalidate`.
+- The implementation MUST NOT cache POST requests in the Service Worker.
+- The implementation MUST NOT bypass versioning or asset hashing to avoid infinite cache loops.
+- The implementation MUST preload critical fonts seen above the fold using `<link rel="preload">` with `crossorigin`.
+- The implementation SHOULD subset fonts to include only required characters.
+- The implementation MUST NOT preload all fonts, only critical ones.
+- The implementation MUST specify explicit `width` and `height` attributes on `<video>` elements.
+- The implementation MUST provide a `poster` image fallback for videos.
+- The implementation MUST use `preload="none"` for non-critical or non-autoplaying videos.
+- The implementation MUST serve modern video formats (e.g., WebM) via source negotiation.
+- The implementation MUST use `loading="lazy"` for offscreen videos.
+- The implementation MUST NOT auto-play video files blindly without user intent or progressive enhancement.
+- The implementation MUST NOT auto-play large video files.
+- The implementation MUST use dynamic imports (`import()`) for splitting routes or heavy UI libraries.
+- The implementation MUST configure bundler asset chunking to split third-party vendors from runtime logic.
+- The implementation MUST NOT ship a single, enormous monolithic JavaScript bundle.

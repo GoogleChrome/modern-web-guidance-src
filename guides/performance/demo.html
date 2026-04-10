@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Performance Optimization Demo</title>
+
+  <!-- Resource Hints -->
+  <!-- Preconnect for essential third-party domains -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- dns-prefetch as fallback -->
+  <link rel="dns-prefetch" href="https://analytics.example.com">
+
+  <!-- Preload Critical Assets -->
+  <!-- Preload LCP image background if it was CSS-based, or fonts -->
+  <link rel="preload" href="/fonts/main.woff2" as="font" type="font/woff2" crossorigin>
+  
+  <!-- Inline Critical CSS -->
+  <style>
+    /* Critical CSS for above-the-fold content */
+    body { margin: 0; font-family: system-ui, sans-serif; background-color: #f8f9fa; color: #1f1f1f; }
+    .hero { 
+      min-height: 60vh; 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: center; 
+      align-items: center; 
+      text-align: center;
+      background-color: #0b57d0;
+      color: white;
+      padding: 2rem;
+    }
+    .hero h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+    .container { max-width: 800px; margin: 0 auto; padding: 2rem; }
+    
+    /* Adequate border contrast for inputs if any */
+    input { border: 1px solid #747775; font-size: 1rem; min-height: 48px; }
+  </style>
+
+  <!-- Defer Non-Critical CSS -->
+  <link rel="preload" href="non-critical.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="non-critical.css"></noscript>
+
+  <!-- Split CSS by Media Queries -->
+  <link rel="stylesheet" href="print.css" media="print">
+  <link rel="stylesheet" href="desktop.css" media="(min-width: 1024px)">
+
+  <!-- Defer Non-Critical Scripts -->
+  <!-- Defer for scripts depending on DOM -->
+  <script defer src="app-bundle.js"></script>
+  <!-- Async for independent scripts -->
+  <script async src="analytics.js"></script>
+  <!-- Module is deferred by default -->
+  <script type="module" src="feature-module.js"></script>
+</head>
+<body>
+
+  <!-- Hero Section (Above the Fold) -->
+  <section class="hero">
+    <h1>Optimized Web Performance</h1>
+    <p>This page demonstrates Core Web Vitals optimizations.</p>
+    
+    <!-- LCP Image -->
+    <!-- Declared in standard HTML, fetchpriority="high", loading="eager" (default), dimensions specified -->
+    <img 
+      src="/images/hero.webp" 
+      alt="Hero Illustration" 
+      width="600" 
+      height="400"
+      fetchpriority="high"
+      decoding="sync"
+    >
+  </section>
+
+  <main class="container">
+    <!-- Content Section -->
+    <section>
+      <h2>Key Features</h2>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+      
+      <!-- Demoting competing elements above the fold (if this was above fold) -->
+      <!-- <img src="/images/secondary.webp" fetchpriority="low" alt="Secondary"> -->
+    </section>
+
+    <!-- Off-Screen Section (Large/Complex) -->
+    <!-- content-visibility: auto paired with contain-intrinsic-size -->
+    <section class="article-list" style="content-visibility: auto; contain-intrinsic-size: auto 500px; margin-top: 4rem;">
+      <h2>Below the Fold Content</h2>
+      <p>This section uses content-visibility to optimize rendering.</p>
+      
+      <!-- Modern Image Formats with Source Negotiation -->
+      <picture>
+        <source type="image/avif" srcset="image-400w.avif 400w, image-800w.avif 800w" sizes="(max-width: 600px) 100vw, 50vw">
+        <source type="image/webp" srcset="image-400w.webp 400w, image-800w.webp 800w" sizes="(max-width: 600px) 100vw, 50vw">
+        <!-- Fallback + Dimensions + Lazy Loading -->
+        <img 
+          src="image-800w.jpg" 
+          alt="Descriptive text" 
+          width="800" 
+          height="600"
+          loading="lazy"
+        >
+      </picture>
+
+      <!-- Video Optimization -->
+      <!-- Width/Height specified, poster provided, preload="none", loading="lazy" for offscreen -->
+      <div style="margin-top: 2rem;">
+        <video 
+          controls 
+          width="800" 
+          height="450"
+          poster="/images/video-poster.webp" 
+          preload="none"
+          loading="lazy"
+          style="width: 100%; height: auto;"
+        >
+          <source src="/videos/demo.webm" type="video/webm">
+          <source src="/videos/demo.mp4" type="video/mp4">
+          <track src="/video-caps.vtt" kind="captions" srclang="en" label="English">
+        </video>
+      </div>
+    </section>
+
+    <!-- Isolated Widget for Containment -->
+    <section class="isolated-widget" style="contain: layout style paint; margin-top: 4rem; padding: 1rem; border: 1px solid #ccc;">
+      <h3>Isolated Widget</h3>
+      <p>This widget uses CSS containment to prevent page-wide reflows.</p>
+      <button id="heavy-btn">Run Heavy Task</button>
+    </section>
+  </main>
+
+  <!-- Third-Party Scripts near the end -->
+  <script defer src="https://cdn.example.com/widget.js"></script>
+
+  <!-- Inline Script for JS Logic (No inline handlers used) -->
+  <script>
+    // 1. Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(registration => {
+          console.log('SW registered: ', registration);
+        }).catch(registrationError => {
+          console.log('SW registration failed: ', registrationError);
+        });
+      });
+    }
+
+    // 2. INP & Main Thread Unblocking
+    const heavyBtn = document.getElementById('heavy-btn');
+    
+    heavyBtn.addEventListener('click', async () => {
+      console.log('Button clicked, starting task...');
+      await processLargeList(Array.from({length: 10000}, (_, i) => i));
+    });
+
+    // scheduler.yield() Polyfill
+    async function yieldToMain() {
+      if ('scheduler' in window && 'yield' in scheduler) {
+        return await scheduler.yield();
+      }
+      return new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    async function processLargeList(items) {
+      for (let i = 0; i < items.length; i++) {
+        // Simulate work
+        Math.sqrt(items[i]);
+        
+        // Yield every 50 iterations (The 50ms Rule)
+        if (i % 50 === 0) {
+          await yieldToMain();
+        }
+      }
+      console.log('Task complete');
+    }
+
+    // 3. Dynamic Imports
+    heavyBtn.addEventListener('click', async () => {
+      // Dynamic import of heavy module
+      try {
+        const { heavyFunction } = await import('./heavy-module.js');
+        heavyFunction();
+      } catch (e) {
+        console.log('Dynamic import failed as expected in static demo');
+      }
+    });
+
+    // 4. Debounce/Throttle
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    window.addEventListener('scroll', debounce(() => {
+      console.log('Debounced scroll event');
+    }, 100));
+  </script>
+
+</body>
+</html>
