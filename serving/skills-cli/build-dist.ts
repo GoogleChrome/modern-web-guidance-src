@@ -106,7 +106,8 @@ async function main(): Promise<BuildResult | undefined> {
 
   try {
     console.log("Bundling search.mjs...");
-    const result = await esbuild.build({
+    // To analyze bundle size breakdown, assign build()s return to `result` and use `esbuild.analyzeMetafile(result.metafile)`
+    await esbuild.build({
       entryPoints: [path.join(SERVING_DIR, "lib/search.ts")],
       bundle: true,
       platform: "node",
