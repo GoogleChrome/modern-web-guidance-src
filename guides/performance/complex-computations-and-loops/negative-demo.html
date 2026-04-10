@@ -42,67 +42,25 @@
   <div id="output">Ready</div>
 
   <script>
-    // Fallback strategy for yielding to main thread
-    async function yieldToMain() {
-      if ('scheduler' in window && 'yield' in window.scheduler) {
-        await scheduler.yield();
-      } else {
-        await new Promise(resolve => setTimeout(resolve, 0));
-      }
-    }
-
-    // Fallback strategy for prioritized scheduling
-    function scheduleTask(callback, options = { priority: 'user-visible' }) {
-      if ('scheduler' in window && 'postTask' in window.scheduler) {
-        return scheduler.postTask(callback, options);
-      }
-      
-      return new Promise((resolve) => {
-        if (options.priority === 'user-blocking') {
-          const channel = new MessageChannel();
-          channel.port1.onmessage = () => resolve(callback());
-          channel.port2.postMessage(null);
-        } else if (options.priority === 'background') {
-          setTimeout(() => resolve(callback()), 200); 
-        } else {
-          setTimeout(() => resolve(callback()), 0);
-        }
-      });
-    }
-
     function processItem() {
-      // Simulate heavy synchronous work (approx 2ms)
       const end = performance.now() + 2;
       while (performance.now() < end) {
-        // Block
       }
     }
 
-    function logAnalytics() {
-      console.log('Analytics: Background task executed.');
-      const output = document.getElementById('output');
-      output.textContent += ' [Analytics Logged]';
-    }
-
-    async function processData() {
+    function processData() {
       const output = document.getElementById('output');
       const btn = document.getElementById('start-btn');
       
       output.textContent = 'Processing...';
       btn.disabled = true;
 
-      // Schedule a background task to simulate logging analytics
-      scheduleTask(logAnalytics, { priority: 'background' });
-
       const totalItems = 1000;
       
       for (let i = 0; i < totalItems; i++) {
         processItem();
         
-        // Yield every 25 items (approximately 50ms chunks)
         if (i > 0 && i % 25 === 0) {
-          await yieldToMain();
-          // Update UI periodically after yielding
           output.textContent = `Processed ${i} of ${totalItems}...`;
         }
       }
