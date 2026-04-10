@@ -7,8 +7,8 @@ sources:
   - https://developer.mozilla.org/en-US/docs/Web/CSS/translate
   - https://developer.mozilla.org/en-US/docs/Web/CSS/rotate
   - https://developer.mozilla.org/en-US/docs/Web/CSS/scale
-  - https://webkit.org/blog/12964/individual-css-transform-properties/
-  - https://developer.chrome.com/blog/css-individual-transform-properties/
+  - https://webkit.org/blog/11420/individual-css-transform-properties/
+  - https://web.dev/articles/css-individual-transform-properties?hl=en
   - https://web.dev/learn/css/functions#scale
 ---
 
@@ -34,11 +34,11 @@ The `transform` property and individual transform properties impact the layout a
 
 ```css
 .element{
-  /* Identity transformation for `translate`. */
+  /* MANDATORY: Apply identity transformations for properties that will
+     change on state changes (like :hover). This prevents unexpected layout
+     or z-index shifts caused by creating a new stacking context only on hover. */
   translate: 0px;
-  /* Identity transformation for `rotate`. */
   rotate: 0deg;
-  /* Identity transformation for `scale`. */
   scale: 1;
 }
 .element:hover{
@@ -60,7 +60,7 @@ The primary benefit is the ability to define overlapping animations or transitio
   /* Transition only the scale property for hover states */
   transition: scale 0.3s ease;
 
-  /* Specify the identity for the scale property. */
+  /* Establish the base scale to prevent a sudden stacking context shift when transitioning on hover. */
   scale: 1;
 }
 
