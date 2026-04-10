@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSS Subgrid Card Alignment</title>
+<style>
+  :root {
+    --card-bg: #ffffff;
+    --card-border: #e0e0e0;
+    --footer-bg: #f9fafb;
+    --text-main: #111827;
+    --text-muted: #4b5563;
+    --primary-color: #2563eb;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 2rem;
+    background-color: #f0f2f5;
+  }
+
+  /* 
+    The parent container establishes the main grid context.
+    We define the columns, and use a row gap which will be inherited by the subgrid.
+  */
+  .test-card-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  /* 
+    Fallback for browsers that don't support subgrid.
+    We use Flexbox to at least push the footer to the bottom, 
+    though headers and bodies won't perfectly align across different cards.
+  */
+  .test-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    overflow: hidden;
+  }
+
+  .test-card-header {
+    padding: 1.5rem 1.5rem 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-main);
+  }
+
+  .test-card-body {
+    padding: 0.5rem 1.5rem 1.5rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    flex-grow: 1; /* Pushes the footer down in flex fallback */
+  }
+
+  .test-card-footer {
+    padding: 1.25rem 1.5rem;
+    background-color: var(--footer-bg);
+    border-top: 1px solid var(--card-border);
+    margin-top: auto; /* Aligns to bottom in flex fallback */
+  }
+
+  .test-action-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background-color 0.2s;
+  }
+
+  .test-action-button:hover {
+    background-color: #1d4ed8;
+  }
+
+  /* 
+    Feature Enhancement: CSS Subgrid 
+    This aligns the internal sections (header, body, footer) horizontally 
+    across adjacent cards in the same grid row.
+  */
+  @supports (grid-template-rows: subgrid) {
+    .test-card {
+      display: grid;
+      /* Spans exactly 3 implicit rows of the parent container */
+      grid-row: span 3;
+      /* Inherit the parent's row track sizing */
+      grid-template-rows: subgrid;
+      /* Reset fallback properties */
+      gap: 0; 
+    }
+
+    .test-card-header {
+      /* In subgrid, the row gap of the parent provides natural spacing, 
+         so we adjust internal paddings accordingly */
+      padding-bottom: 0;
+      align-self: start;
+    }
+
+    .test-card-body {
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+
+    .test-card-footer {
+      margin-top: 0;
+      align-self: end;
+      width: 100%;
+      box-sizing: border-box;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <main class="test-card-container">
+    <!-- Card 1 -->
+    <article class="test-card">
+      <header class="test-card-header">
+        Short Title
+      </header>
+      <div class="test-card-body">
+        Brief description.
+      </div>
+      <footer class="test-card-footer">
+        <button class="test-action-button">View Details</button>
+      </footer>
+    </article>
+
+    <!-- Card 2 -->
+    <article class="test-card">
+      <header class="test-card-header">
+        A Considerably Longer Title That Spans Multiple Lines For Testing Subgrid Alignment
+      </header>
+      <div class="test-card-body">
+        This card has an exceptionally long body text to demonstrate how subgrid allows adjacent cards in the same row to align their internal header, body, and footer sections perfectly, irrespective of the content volume in any single card. The container defines the tracks, and the internal subgrid rows automatically match up.
+      </div>
+      <footer class="test-card-footer">
+        <button class="test-action-button">View Details</button>
+      </footer>
+    </article>
+
+    <!-- Card 3 -->
+    <article class="test-card">
+      <header class="test-card-header">
+        Medium Title
+      </header>
+      <div class="test-card-body">
+        Intermediate length description text to provide a balanced visual test. Notice how the button in this card aligns perfectly with the adjacent cards.
+      </div>
+      <footer class="test-card-footer">
+        <button class="test-action-button">View Details</button>
+      </footer>
+    </article>
+  </main>
+
+</body>
+</html>
