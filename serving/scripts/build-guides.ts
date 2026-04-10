@@ -79,7 +79,7 @@ async function processGuides() {
   }
   
   const { Embedder } = await import("../lib/transformers-embedder.ts");
-  const embedder = Embedder.getInstance((!modelName || modelName === "transformers" || modelName === "tfjs") ? undefined : modelName);
+  const embedder = Embedder.getInstance(modelName);
   await embedder.init();
 
   console.log("Generating embeddings of guides/*/* ");
