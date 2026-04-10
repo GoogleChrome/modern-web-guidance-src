@@ -2,7 +2,7 @@ name: Publish Skills
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, publish-ci ]
     paths:
       - 'serving/skills-cli/**'
       - 'guides/**'
@@ -48,7 +48,7 @@ jobs:
           # Rewrite SSH to HTTPS using the App token for the target repo
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "git@github.com:"
 
-      - name: Publish Skills to GitHub (skills-alpha)
+      - name: Publish Skills to GitHub (modern-web-guidance)
         run: pnpm --filter serving run publish-skills -- --dry-run
 
       # =========================================================================
