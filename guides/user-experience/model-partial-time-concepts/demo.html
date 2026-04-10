@@ -242,12 +242,13 @@
   </div>
 
   <script>
-    const unsupportedWarnie      etElementById('unsupported-warning');
+    const unsupportedWarning = document.getElementById('unsupported-warning');
 
-    // Check Support and load polyfil       needed
-    if (typeof Temporal === 'undefine      {
-      import('@js-temporal/polyfill')        ({ Temporal: polyfill }) => {
-        globalThis.Temporal = polyfil             unsupportedWarning.style.display = 'none';
+    // Check Support and load polyfill if needed
+    if (typeof Temporal === 'undefined') {
+      import('@js-temporal/polyfill').then(({ Temporal: polyfill }) => {
+        globalThis.Temporal = polyfill;
+        unsupportedWarning.style.display = 'none';
         initializeDemo();
       }).catch(err => {
         console.error('Failed to load Temporal polyfill:', err);
