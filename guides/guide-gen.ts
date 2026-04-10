@@ -146,12 +146,13 @@ Follow this EXACT format with three sections:
 ## App-agnostic rules
 - Do not assert specific variable names, function names, or filenames
 - Assert API usage patterns and outcomes, not specific code structure
-- <add any other app-agnostic constraints relevant to this feature>
+- Advise against brittle regex-based DOM targeting. Encourage asserting specific class names or measurable outcomes for reliable testing.
 \`\`\`
 
 Output ONLY the raw markdown content, with no outer code blocks or other text.
 `.trim();
 }
+
 
 function buildDemoPrompt(feature: FeatureInfo, useCase: { slug: string; description: string }): string {
 
@@ -166,10 +167,14 @@ Rules:
 - Minimal and correct.
 - Demonstrates the feature solving the problem described in the use case.
 - Use placeholder content where needed.
+- Encourage semantic HTML.
+- Use specific class names for key elements to make them easily targetable by graders (e.g., use class names like \`.test-dialog-trigger\` or \`.test-target-element\` instead of generic tags).
+- Ensure fallbacks are realistic and use proper feature detection if applicable.
 
 Output ONLY the raw HTML content, with no markdown code blocks or other text.
 `.trim();
 }
+
 
 // ─── Isolated work dir setup ─────────────────────────────────────────────────
 
@@ -315,10 +320,15 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
   cleanupIsolatedHome(path.dirname(workDir));
   console.log(`\n🎉 All use cases scaffolded!`);
 
-  const pushed = await commitAndPush(featureId);
-  if (pushed) {
-    await createPullRequest(featureId, reviewer);
+  if (process.env.GITHUB_ACTIONS) {
+    const pushed = await commitAndPush(featureId);
+    if (pushed) {
+      await createPullRequest(featureId, reviewer);
+    }
+  } else {
+    console.log('\nSkipping Git commit/push and PR creation (not running in GitHub Actions).');
   }
+
 }
 
 
