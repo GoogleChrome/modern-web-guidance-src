@@ -29,7 +29,7 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         const output = execSync(cmd, { 
             stdio: ['ignore', 'pipe', 'pipe'], 
             timeout: 90000, 
-            env: { ...process.env, ...anthropicEnv } 
+            env: { ...process.env, ...anthropicEnv, HOME: homeDir } 
         });
 
         console.log(`\nVerifying Claude used the skill...`);
