@@ -242,12 +242,8 @@
   </div>
 
   <script>
-<<<<<<< HEAD
-    const unsupportedWarnie      etElementById('unsupported-warning');
-=======
     const unsupportedWarning = document.getElementById('unsupported-warning');
 
->>>>>>> 4b2440b (Repair polyfill loading in demo.html)
     // Check Support and load polyfill if needed
     if (typeof Temporal === 'undefined') {
       import('@js-temporal/polyfill').then(({ Temporal: polyfill }) => {
