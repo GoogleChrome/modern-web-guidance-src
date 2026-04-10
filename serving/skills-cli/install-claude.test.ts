@@ -32,7 +32,7 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
             '--verbose',
             '--output-format', 'stream-json'
         ], {
-            env: { ...process.env, ...anthropicEnv, HOME: homeDir },
+            env: { ...process.env, ...anthropicEnv },
             stdio: ['ignore', 'pipe', 'pipe']
         });
 
