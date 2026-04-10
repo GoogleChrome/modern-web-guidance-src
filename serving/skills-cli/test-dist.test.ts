@@ -37,9 +37,6 @@ try {
   throw new Error("build-dist.ts failed");
 }
 
-
-// Dependency parity test dropped as requested.
-
 test('Claude Plugin Config in Dist', async () => {
   const marketplaceJsonRaw = await fs.readFile(path.join(DIST_DIR, '.claude-plugin/marketplace.json'), 'utf8');
   const marketplaceJson = JSON.parse(marketplaceJsonRaw);
