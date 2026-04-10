@@ -17,9 +17,17 @@ jobs:
       id-token: write # Required for npm OIDC provenance when enabled
 
     steps:
+      - name: Generate GitHub App token
+        uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - uses: actions/checkout@v6
         with:
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
@@ -37,8 +45,8 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Rewrite SSH to HTTPS using the PAT for the target repo
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "git@github.com:"
+          # Rewrite SSH to HTTPS using the App token for the target repo
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "git@github.com:"
 
       - name: Publish Skills to GitHub (skills-alpha)
         run: pnpm --filter serving run publish-skills
