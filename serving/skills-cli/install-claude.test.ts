@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import { createIsolatedHome, cleanupIsolatedHome } from '../../harness/lib/agent-shared.ts';
 
 test('Claude Code loads plugin from local dist directory', { skip: !process.env.FULL }, async () => {
@@ -23,17 +23,45 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
             }
         }
 
-        const cmd = `claude --model claude-sonnet-4-6 --plugin-dir ${distDir} -p "use the modern-web-use-cases skill and tell me best practices on implementing an address form" --dangerously-skip-permissions --verbose --output-format stream-json`;
-        
         console.log(`\nRunning Claude Code with local plugin...`);
-        const output = execSync(cmd, { 
-            stdio: ['ignore', 'pipe', 'pipe'], 
-            timeout: 90000, 
-            env: { ...process.env, ...anthropicEnv, HOME: homeDir } 
+        const child = spawn('claude', [
+            '--model', 'claude-sonnet-4-6',
+            '--plugin-dir', distDir,
+            '-p', 'use the modern-web-use-cases skill and tell me best practices on implementing an address form',
+            '--dangerously-skip-permissions',
+            '--verbose',
+            '--output-format', 'stream-json'
+        ], {
+            env: { ...process.env, ...anthropicEnv, HOME: homeDir },
+            stdio: ['ignore', 'pipe', 'pipe']
         });
 
+        let outputStr = '';
+        child.stdout.on('data', (data) => {
+            const str = data.toString();
+            outputStr += str;
+            process.stdout.write(str);
+        });
+
+        child.stderr.on('data', (data) => {
+            process.stderr.write(data);
+        });
+
+        const timeout = setTimeout(() => {
+            console.log('\nClaude timed out! Killing process...');
+            child.kill();
+        }, 90000);
+
+        const exitCode = await new Promise<number | null>((resolve) => {
+            child.on('close', (code) => {
+                clearTimeout(timeout);
+                resolve(code);
+            });
+        });
+
+        console.log(`\nClaude exited with code ${exitCode}`);
+        
         console.log(`\nVerifying Claude used the skill...`);
-        const outputStr = output.toString();
         const lines = outputStr.split('\n');
         
         let searchCalled = false;
