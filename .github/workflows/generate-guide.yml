@@ -1,12 +1,5 @@
 name: Generate Guide
 
-# ── PURIFY INSTRUCTIONS FOR MAIN ─────────────────────────────────────────────
-# 1. Remove the 'push' trigger for 'pipelinev2' below.
-# 2. Re-enable the 'push' trigger for 'guidance-bot/**' branches (currently commented out).
-# 3. In the 'generate' job, revert FEATURE_ID, REVIEWER, etc., to use ONLY inputs:
-#    e.g., FEATURE_ID="${{ inputs.feature_id }}" (remove the '|| intl-locale-info' fallback).
-# 4. Remove the 'if: ... || github.ref == 'refs/heads/pipelinev2'' condition on the 'generate' job.
-# ──────────────────────────────────────────────────────────────────────────────
 
 # Triggered manually to generate a full guide package from a web-feature-id,
 # or automatically on guidance-bot/* branches to re-run affected pipeline stages
@@ -36,15 +29,6 @@ on:
         required: false
         type: string
 
-  # SME feedback: re-run affected pipeline stages on guidance-bot/* branches
-  # (Original push trigger logic kept for other branches)
-  # push:
-  #   branches:
-  #     - 'guidance-bot/**'
-  #   paths:
-  #     - 'guides/**/guide.md'
-  #     - 'guides/**/expectations.md'
-  #     - 'guides/**/demo.html'
 
 permissions:
   contents: write
