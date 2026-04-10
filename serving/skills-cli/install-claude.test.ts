@@ -5,8 +5,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 test('Claude Code loads plugin from local dist directory', { skip: !process.env.FULL }, async () => {
-    try {
-        const distDir = path.resolve(import.meta.dirname, '../../dist/skills-cli');
+    const distDir = path.resolve(import.meta.dirname, '../../dist/skills-cli');
         
         if (!fs.existsSync(distDir)) {
             test.skip('dist/skills-cli not found, skipping');
@@ -129,7 +128,5 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         assert.ok(retrieveCalled, 'Modern web retrieve should be called');
         assert.ok(retrieveSuccess, 'Modern web retrieve should be successful');
         
-    } finally {
-        // No cleanup needed as we use real HOME for Claude auth
-    }
+
 });
