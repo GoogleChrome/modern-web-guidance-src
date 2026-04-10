@@ -186,19 +186,19 @@ Follow this structure:
 1. An H1 title describing the goal.
 2. An introductory paragraph.
 3. A \`## How to implement\` section with H3 subheadings for specific advice.
-4. A \`## Fallback strategies\` section describing what to do if the feature is not supported. Include the baseline status macro: {{ BASELINE_STATUS("${feature.id}") }}
+4. A \`## Fallback strategies\` section describing what to do if the feature is not supported.
 
-Rules from Guide Reviewer Skill:
-- Precision in Imperative Language: Use \`MANDATORY:\`, \`DO:\`, and \`DO NOT:\` correctly for strict requirements or strong recommendations.
-- AI-Friendly & Direct Language: Prefer bulleted lists over dense paragraphs for steps or lists.
-- Tone down spec jargon: Prefer direct, developer-friendly language over spec-heavy terms.
-- Modern Best Practices & Security: Advise against outdated practices.
-- Performance Awareness: Be mindful of performance costs.
-- Accessibility First: Remind authors to include accessibility considerations.
+Rules for Writing Guide Content:
+- **Self-Contained**: DO NOT include any external links in the markdown body. All required knowledge to use the feature MUST be fully synthesized into the document.
+- **Code Snippets**: Include short, heavily commented code snippets. Put directives directly in code comments (e.g., \`<!-- Always use the required attribute -->\`). Code comments MUST explain why a value or approach is chosen.
+- **Imperative Directives**: Use strict imperative directives (\`MANDATORY:\`, \`DO:\`, \`DO NOT:\`) only when emphasis is strictly needed.
+- **Fallback Strategies**: You MUST include a \`## Fallback strategies\` section. The macro \`{{ BASELINE_STATUS("${feature.id}") }}\` must *always* be placed as the first, standalone line inside the \`## Fallback strategies\` section.
+- **No Polyfill.io**: DO NOT recommend polyfills from polyfill.io.
 
 Output ONLY the raw markdown content, with no outer code blocks or other text. Do NOT include the YAML frontmatter, as that will be added automatically.
 `.trim();
 }
+
 
 
 
