@@ -84,26 +84,40 @@ function lookupFeature(featureId: string): FeatureInfo {
   };
 }
 
+function getSkillContent(skillName: string): string {
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const skillPath = path.join(currentDir, '../.agents/skills', skillName, 'SKILL.md');
+  try {
+    return fs.readFileSync(skillPath, 'utf8');
+  } catch (err) {
+    console.warn(`Warning: Could not read skill file at ${skillPath}`);
+    return '';
+  }
+}
+
 // ─── Prompt construction ─────────────────────────────────────────────────────
 
 function buildUseCasesPrompt(feature: FeatureInfo): string {
+
   const sourcesList = [
     ...feature.mdnUrls.map(u => `- MDN: ${u}`),
     ...feature.specUrls.map(u => `- Spec: ${u}`),
   ].join('\n');
 
+  const useCasesSkill = getSkillContent('project-use-cases');
+  const researchSkill = getSkillContent('project-use-cases-research');
+
   return `
 You are researching the web platform feature "${feature.name}" (ID: ${feature.id}).
-Your task is to identify 2-5 distinct developer use cases for this feature, following the Stage 1 guidelines for Guidance Pipeline.
+Your task is to identify 2-5 distinct developer use cases for this feature.
 
-Rules for Use Cases:
-- Action-oriented: Framed as a task the user is trying to implement. Starts with a verb.
-- Focus on WHAT not HOW: Do not mention the solution (this feature) in the description.
-- Generic and Common: Represent common, everyday developer needs.
-- Aim for 2-5 distinct use cases.
-- Drop niche use cases: If a use case is unlikely to match real developer prompts, omit it.
-- Do not stretch: Do not invent use cases or force them into categories just to reach the 2-5 target. Quality and realism are more important than quantity. If a feature only has 1 or 2 high-confidence use cases, that is perfectly fine.
+Follow the guidelines in these skill files:
 
+=== project-use-cases ===
+${useCasesSkill}
+
+=== project-use-cases-research ===
+${researchSkill}
 
 Source URLs to read:
 ${sourcesList || '(No source URLs available — use your knowledge of this feature)'}
@@ -113,6 +127,7 @@ Each object must have:
 - slug: short kebab-case name of the use case (do NOT prefix with action verbs like create-, build-, add-).
 - description: A single short sentence describing the task.
 - category: one of 'performance', 'accessibility', 'user-experience', 'security', or 'forms'.
+
 
 Example output:
 [
@@ -176,11 +191,18 @@ Output ONLY the raw HTML content, with no markdown code blocks or other text.
 }
 
 function buildGuidePrompt(feature: FeatureInfo, useCase: { slug: string; description: string }): string {
+  const guideSkill = getSkillContent('project-guides');
+
   return `
 You are generating a guide for the use case: "${useCase.description}".
 This use case relies on the feature "${feature.name}" (ID: ${feature.id}).
 
 Your task is to create the content for a \`guide.md\` file (starting from the H1 title).
+
+Follow the guidelines in this skill file:
+
+=== project-guides ===
+${guideSkill}
 
 Follow this structure:
 1. An H1 title describing the goal.
@@ -188,14 +210,8 @@ Follow this structure:
 3. A \`## How to implement\` section with H3 subheadings for specific advice.
 4. A \`## Fallback strategies\` section describing what to do if the feature is not supported.
 
-Rules for Writing Guide Content:
-- **Self-Contained**: DO NOT include any external links in the markdown body. All required knowledge to use the feature MUST be fully synthesized into the document.
-- **Code Snippets**: Include short, heavily commented code snippets. Put directives directly in code comments (e.g., \`<!-- Always use the required attribute -->\`). Code comments MUST explain why a value or approach is chosen.
-- **Imperative Directives**: Use strict imperative directives (\`MANDATORY:\`, \`DO:\`, \`DO NOT:\`) only when emphasis is strictly needed.
-- **Fallback Strategies**: You MUST include a \`## Fallback strategies\` section. The macro \`{{ BASELINE_STATUS("${feature.id}") }}\` must *always* be placed as the first, standalone line inside the \`## Fallback strategies\` section.
-- **No Polyfill.io**: DO NOT recommend polyfills from polyfill.io.
-
 Output ONLY the raw markdown content, with no outer code blocks or other text. Do NOT include the YAML frontmatter, as that will be added automatically.
+
 `.trim();
 }
 
