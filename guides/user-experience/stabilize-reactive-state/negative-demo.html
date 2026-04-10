@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Time Tracking App</title>
+  <script src="https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@0.4.4/dist/index.umd.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background-color: #f4f4f9;
+      color: #333;
+    }
+    .panel {
+      background: white;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .time-display {
+      font-family: monospace;
+      font-size: 1.2rem;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="panel">
+      <h2>Legacy Date Tracking</h2>
+      <div class="time-display" id="legacy-time"></div>
+      <button onclick="updateLegacyTime()">Update Legacy Time</button>
+    </div>
+    
+    <div class="panel">
+      <h2>Temporal Tracking</h2>
+      <div class="time-display" id="temporal-time"></div>
+      <button onclick="updateTemporalTime()">Update Temporal Time</button>
+    </div>
+  </div>
+
+  <script>
+    const appState = {
+      legacyDate: new Date(),
+      temporalDate: Temporal.Now.plainDateTimeISO()
+    };
+
+    function updateLegacyTime() {
+      appState.legacyDate.setHours(appState.legacyDate.getHours() + 1);
+      document.getElementById('legacy-time').innerText = appState.legacyDate.toISOString();
+    }
+
+    function updateTemporalTime() {
+      appState.temporalDate.hour = appState.temporalDate.hour + 1;
+      document.getElementById('temporal-time').innerText = appState.temporalDate.toString();
+    }
+
+    document.getElementById('legacy-time').innerText = appState.legacyDate.toISOString();
+    document.getElementById('temporal-time').innerText = appState.temporalDate.toString();
+  </script>
+</body>
+</html>
