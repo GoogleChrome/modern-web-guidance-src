@@ -1,15 +1,13 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { Embedder } from "../../mcp-server/lib/embedder.ts";
-import { Store } from "../../lib/store.ts";
-import { Gpt4AllEmbedder } from "./gpt4all-embedder.ts";
+import { searchUseCases } from "../../lib/search.ts";
 import type { EvalQuery } from "./generate-eval-queries.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "../..");
-const EVAL_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-queries.json");
+const EVAL_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-queries.gen.json");
 const RESULTS_FILE = path.join(ROOT_DIR, "benchmarks/data/eval-results.json");
 
 interface EvalRun {
@@ -28,6 +26,13 @@ function getModelArg(): string | undefined {
   return modelArg ? modelArg.split("=")[1] : undefined;
 }
 
+function getIdArg(): string | undefined {
+  const idArg = process.argv.find((arg) => arg.startsWith("--id="));
+  return idArg ? idArg.split("=")[1] : undefined;
+}
+
+
+
 async function main() {
   if (!fs.existsSync(EVAL_FILE)) {
     console.error(`Evaluation file not found: ${EVAL_FILE}`);
@@ -43,18 +48,22 @@ async function main() {
   }
 
   const modelArg = getModelArg();
-  console.log(`Initializing Embedder with model: ${modelArg || "default"}`);
+  const idArg = getIdArg();
+  let modelName = modelArg || "Xenova/all-MiniLM-L6-v2";
+  if (idArg) {
+    modelName = `${modelName} (${idArg})`;
+  }
+  console.log(`Initializing Embedder with model: ${modelArg || "default"} (Name: ${modelName})`);
   
   let embedder: any;
-  if (modelArg && (modelArg.includes(".gguf") || modelArg.includes("nomic"))) {
-    embedder = Gpt4AllEmbedder.getInstance(modelArg);
+  if (modelArg === "tfjs") {
+    // Handled by bundled search.mjs
+    console.log("Using bundled TFJS search runtime...");
   } else {
+    const { Embedder } = await import("../../lib/transformers-embedder.ts");
     embedder = Embedder.getInstance(modelArg);
+    await embedder.init();
   }
-  
-  await embedder.init();
-
-  const store = new Store();
 
   let hitsTop1 = 0;
   let hitsTop3 = 0;
@@ -65,9 +74,8 @@ async function main() {
 
   for (let i = 0; i < queries.length; i++) {
     const q = queries[i];
-    const vector = await embedder.embed(q.query);
     // Ask for top 5 so we can calculate MRR and top-k effectively
-    const results = await store.search(vector, 5, 2.0); // maxDistance slightly higher to capture top 5
+    const results = await searchUseCases(q.query, 5, 2.0, embedder); 
 
     // Find the rank (1-indexed) of the correct guideId
     const rankIndex = results.findIndex((r) => r.id === q.guideId);
@@ -82,7 +90,7 @@ async function main() {
   const total = queries.length;
   const metrics: EvalRun = {
     timestamp: new Date().toISOString(),
-    model: modelArg || "Xenova/all-MiniLM-L6-v2", // Fallback default name
+    model: modelName,
     totalQueries: total,
     top1HitRate: +(hitsTop1 / total).toFixed(4),
     top3HitRate: +(hitsTop3 / total).toFixed(4),
@@ -112,6 +120,10 @@ async function main() {
   fs.writeFileSync(RESULTS_FILE, JSON.stringify(history, null, 2));
 
   console.log(`\nEvaluation complete. Results appended to ${RESULTS_FILE}`);
+  
+  if (embedder && typeof embedder.shutdown === "function") {
+    embedder.shutdown();
+  }
 }
 
 if (process.argv[1] === __filename) {

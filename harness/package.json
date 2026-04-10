@@ -24,5 +24,8 @@
     "glob": "^13.0.6",
     "gray-matter": "^4.0.3",
     "puppeteer-core": "^24.39.1"
+  },
+  "devDependencies": {
+    "@google/gemini-cli-core": "^0.36.0"
   }
 }

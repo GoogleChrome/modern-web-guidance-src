@@ -1,0 +1,233 @@
+[
+  {
+    "timestamp": "2026-04-08T18:39:45Z",
+    "model": "minilm q8 - trjs onnx wasm - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 60,
+    "runs": [
+      104,
+      38,
+      38
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T18:39:45Z",
+    "model": "minilm q8 - trjs onnx native - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 44.33,
+    "runs": [
+      42,
+      47,
+      44
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T18:39:45Z",
+    "model": "minilm fp32 - TFJS - maxsim - server",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 1066.33,
+    "runs": [
+      2507,
+      365,
+      327
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T19:01:00.664Z",
+    "model": "minilm q8 - trjs onnx wasm - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 62,
+    "runs": [
+      87,
+      50,
+      49
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T19:01:00.664Z",
+    "model": "minilm q8 - trjs onnx native - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 41,
+    "runs": [
+      42,
+      42,
+      39
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T19:01:00.664Z",
+    "model": "minilm fp32 - TFJS - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 295.33,
+    "runs": [
+      363,
+      260,
+      263
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:14:36.550Z",
+    "model": "minilm q8 - trjs onnx wasm - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 51.67,
+    "runs": [
+      80,
+      39,
+      36
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:14:36.550Z",
+    "model": "minilm q8 - trjs onnx native - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 39,
+    "runs": [
+      40,
+      39,
+      38
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:14:36.550Z",
+    "model": "minilm fp32 - TFJS - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 308,
+    "runs": [
+      383,
+      259,
+      282
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:15:46.930Z",
+    "model": "minilm q8 - trjs onnx wasm - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 56,
+    "runs": [
+      85,
+      42,
+      41
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:15:46.930Z",
+    "model": "minilm q8 - trjs onnx native - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 40,
+    "runs": [
+      40,
+      43,
+      37
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:15:46.930Z",
+    "model": "minilm fp32 - TFJS - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 283,
+    "runs": [
+      361,
+      255,
+      233
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:19:37.786Z",
+    "model": "minilm q8 - trjs onnx wasm - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 55,
+    "runs": [
+      92,
+      38,
+      35
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:19:37.786Z",
+    "model": "minilm q8 - trjs onnx native - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 35.33,
+    "runs": [
+      36,
+      36,
+      34
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:19:37.786Z",
+    "model": "minilm fp32 - TFJS - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 273,
+    "runs": [
+      312,
+      284,
+      223
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:20:08.606Z",
+    "model": "minilm q8 - trjs onnx native - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 39.33,
+    "runs": [
+      39,
+      38,
+      41
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:20:08.606Z",
+    "model": "minilm fp32 - TFJS - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 276,
+    "runs": [
+      338,
+      251,
+      239
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:24:50.416Z",
+    "model": "minilm q8 - trjs onnx wasm - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 45.33,
+    "runs": [
+      70,
+      33,
+      33
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:24:50.416Z",
+    "model": "minilm q8 - trjs onnx native - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 33.67,
+    "runs": [
+      33,
+      33,
+      35
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:24:50.416Z",
+    "model": "minilm fp32 - TFJS - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 261,
+    "runs": [
+      328,
+      230,
+      225
+    ]
+  },
+  {
+    "timestamp": "2026-04-08T21:30:51.745Z",
+    "model": "minilm q8 - trjs onnx wasm - maxsim",
+    "type": "e2e-latency-1-query",
+    "avgLatencyMs": 68.33,
+    "runs": [
+      121,
+      41,
+      43
+    ]
+  }
+]
