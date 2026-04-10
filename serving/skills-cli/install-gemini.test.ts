@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { createIsolatedHome, cleanupIsolatedHome } from '../../harness/lib/agent-shared.ts';
+import { parseGeminiStreamOutput } from '../../harness/agents/gemini-cli-agent.ts';
 
 test('Gemini CLI verifies extension install capability', { skip: !process.env.FULL }, async () => {
     let homeDir = '';
@@ -38,34 +39,7 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
 
         console.log(`\nVerifying Gemini used the skill...`);
         const outputStr = output.toString();
-        const lines = outputStr.split('\n');
-        
-        let skillActivated = false;
-        let searchCalled = false;
-        let retrieveCalled = false;
-        
-        for (const line of lines) {
-            if (!line.trim()) continue;
-            try {
-                const event = JSON.parse(line);
-                if (event.type === 'tool_use') {
-                    if (event.tool_name === 'activate_skill' && event.parameters?.name === 'modern-web-use-cases') {
-                        skillActivated = true;
-                    }
-                    if (event.tool_name === 'run_shell_command') {
-                        const command = event.parameters?.command || '';
-                        if (command.includes('--search')) {
-                            searchCalled = true;
-                        }
-                        if (command.includes('--retrieve')) {
-                            retrieveCalled = true;
-                        }
-                    }
-                }
-            } catch (e) {
-                // Ignore parse errors
-            }
-        }
+        const { skillActivated, searchCalled, retrieveCalled } = parseGeminiStreamOutput(outputStr);
         
         console.log(`\n[Validation State]`);
         console.log(`- Skill Activated: ${skillActivated}`);
