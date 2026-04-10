@@ -106,7 +106,8 @@ async function run() {
     const commandArgs = [
       '-p', userPrompt,
       '--dangerously-skip-permissions',
-      '--verbose'
+      '--verbose',
+      '--output-format', 'stream-json'
     ];
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
