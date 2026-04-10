@@ -75,6 +75,7 @@ export class TfjsEmbedder {
             console.warn = oldWarn;
         }
 
+        // Use local_files_only first to avoid a network request to huggingface.
         try {
             this.tokenizer = await BertTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2", { local_files_only: true });
         } catch (e) {
