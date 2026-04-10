@@ -35,12 +35,16 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
 
         console.log(`\nVerifying Claude used the skill...`);
         const projectsDir = path.join(homeDir, '.claude', 'projects');
+        const files = fs.globSync('**/*.jsonl', { cwd: projectsDir });
+        console.log(`Found session files: ${JSON.stringify(files)}`);
         const toolsUsed = collectClaudeToolsFromTrajectory(projectsDir);
+        console.log(`Tools used: ${JSON.stringify(toolsUsed)}`);
         assert.ok(toolsUsed.includes('modern-web-use-cases'), 'Claude did not use the modern-web-use-cases skill');
         
     } finally {
         if (homeDir) {
-            cleanupIsolatedHome(homeDir);
+            console.log(`Skipping cleanup of isolated HOME at ${homeDir}`);
+            // cleanupIsolatedHome(homeDir);
         }
     }
 });
