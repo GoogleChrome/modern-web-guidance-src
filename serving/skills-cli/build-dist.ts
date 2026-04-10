@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import matter from "gray-matter";
 import * as esbuild from "esbuild";
 import { scanAllGuides } from "../../lib/guide-validation.ts";
-import { getFeatureName } from "../mcp-server/data/baseline.ts";
+import { getFeatureName } from "../lib/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
 
 const SERVING_DIR = path.join(rootDir, "serving");
@@ -69,15 +69,6 @@ async function main(): Promise<BuildResult | undefined> {
 
 
   console.log("Copying data files...");
-  // 3. Copy vector_store
-  const mcpDataDir = path.join(SERVING_DIR, "vector_store");
-  const destMcpDataDir = path.join(DIST_DIR, "vector_store");
-  if (fs.existsSync(mcpDataDir)) {
-    fs.cpSync(mcpDataDir, destMcpDataDir, { recursive: true });
-    console.log(`Copied ${mcpDataDir} to ${destMcpDataDir}`);
-  } else {
-    console.warn(`Warning: ${mcpDataDir} does not exist.`);
-  }
 
   // 4. Copy build/guides
   const buildGuidesDir = path.join(SERVING_DIR, "build/guides");
@@ -89,24 +80,87 @@ async function main(): Promise<BuildResult | undefined> {
     console.warn(`Warning: ${buildGuidesDir} does not exist.`);
   }
 
-  console.log("Bundling modern-web.ts with esbuild...");
-  // 5. Bundle modern-web.ts
-  const entryPoint = path.join(SERVING_DIR, "bin/modern-web.ts");
-  const outFile = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/modern-web.mjs");
-  
+  console.log("Copying pure JS vector file...");
+  const vectorsFile = path.join(SERVING_DIR, "lib/use-cases.vectors.gen.json.gz");
+  const destVectorsFile = path.join(DIST_DIR, "use-cases.vectors.gen.json.gz");
+  if (fs.existsSync(vectorsFile)) {
+    fs.cpSync(vectorsFile, destVectorsFile);
+    console.log(`Copied ${vectorsFile} to ${destVectorsFile}`);
+  }
+
+  console.log("Copying TFJS model files...");
+  const tfjsModelDir = path.join(SERVING_DIR, "lib/tfjs_model_minilm");
+  const destTfjsModelDir = path.join(DIST_DIR, "tfjs_model_minilm");
+  if (fs.existsSync(tfjsModelDir)) {
+    fs.cpSync(tfjsModelDir, destTfjsModelDir, {
+      recursive: true,
+      filter: (src) => {
+        const stat = fs.statSync(src);
+        if (stat.isDirectory()) return true;
+        const basename = path.basename(src);
+        return basename === "model.json" || basename.startsWith("group1-shard");
+      }
+    });
+    console.log(`Copied ${tfjsModelDir} to ${destTfjsModelDir}`);
+  }
+
   try {
-    console.time("⏳ esbuild bundle");
-    // We emit pure ESM (.mjs) using esbuild! Node 20+ handles import.meta.dirname & url natively!
+    console.log("Bundling search.mjs...");
+    // To analyze bundle size breakdown, assign build()s return to `result` and use `esbuild.analyzeMetafile(result.metafile)`
     await esbuild.build({
-      entryPoints: [entryPoint],
+      entryPoints: [path.join(SERVING_DIR, "lib/search.ts")],
       bundle: true,
       platform: "node",
       format: "esm",
+      outfile: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/search.mjs"),
+      banner: {
+        js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
+      },
+      external: ["sharp", "iconv-lite", "@img/colour", "tr46", "whatwg-url", "webidl-conversions"],
+      sourcemap: true,
       loader: { ".node": "file" },
-      external: ["@lancedb/lancedb", "@huggingface/transformers"],
-      outfile: outFile,
+      metafile: true,
+      minify: true,
+      alias: {
+        // Force transformers to use the ESM entry point to avoid CommonJS issues in the bundle
+        "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
+        // We leverage Transformers.js only for tokenization. But it is a large dependency and
+        // tries to do a lot more, including loading native dependencies (onnxruntime-node) that
+        // we have no use for. We use this dummy shim to ensure we can use the library without
+        // pulling in native binaries.
+        "onnxruntime-node": path.resolve(SERVING_DIR, "lib/dummy-onnx.ts"),
+      },
+      plugins: [{
+        // TFJS deep imports fail in pure Node ESM because they lack extensions.
+        // In raw Node runs, tfjs-kernels.ts uses require() to load the CommonJS version (all kernels).
+        // For the production bundle, we use this plugin to swap it with tfjs-kernels-precise.ts
+        // which only registers the specific kernels we need, keeping the bundle small.
+        name: 'use-precise-kernels',
+        setup(build) {
+          build.onResolve({ filter: /tfjs-kernels\.ts$/ }, _args => {
+            return { path: path.resolve(SERVING_DIR, "lib/tfjs-kernels-precise.ts") }
+          })
+        },
+      }],
     });
-    console.timeEnd("⏳ esbuild bundle");
+
+    console.log("Bundling modern-web.mjs...");
+    await esbuild.build({
+      entryPoints: [path.join(SERVING_DIR, "bin/modern-web.ts")],
+      bundle: true,
+      platform: "node",
+      format: "esm",
+      outfile: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/modern-web.mjs"),
+      plugins: [{
+        name: 'rewrite-search',
+        setup(build) {
+          build.onResolve({ filter: /search\.ts$/ }, _args => {
+            return { path: './search.mjs', external: true }
+          })
+        },
+      }],
+      loader: { ".node": "file" },
+    });
 
   } catch (error) {
     console.error("Failed to bundle with esbuild:", error);
@@ -139,44 +193,6 @@ async function main(): Promise<BuildResult | undefined> {
 
   const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
 
-  let nodeModulesValid = false;
-  if (fs.existsSync(path.join(PUBLISH_ROOT, "node_modules"))) {
-    try {
-      // npm ls will exit with code 0 if all dependencies are satisfied according to package.json!
-      execSync("npm ls --depth=0", { cwd: PUBLISH_ROOT, stdio: "ignore" });
-      nodeModulesValid = true;
-    } catch {
-      nodeModulesValid = false;
-    }
-  }
-
-  const sourcePkgJson = path.join(SERVING_DIR, "skills-cli/template/package.json");
-  const destShrinkwrap = path.join(PUBLISH_ROOT, "npm-shrinkwrap.json");
-
-  let shrinkwrapUpToDate = false;
-  if (fs.existsSync(destShrinkwrap) && fs.existsSync(sourcePkgJson)) {
-    const sourceStat = fs.statSync(sourcePkgJson);
-    const destStat = fs.statSync(destShrinkwrap);
-    shrinkwrapUpToDate = destStat.mtime >= sourceStat.mtime;
-  }
-
-  const forcePublish = process.argv.includes("--force-publish") || !nodeModulesValid || !shrinkwrapUpToDate;
-
-  if (!forcePublish) {
-    console.log("Reusing valid node_modules in published root (npm ls passed). Pass --force-publish to overwrite.");
-  } else {
-    console.log("Installing dependencies and generating npm shrinkwrap in published root (so local dev matches publish)...");
-    try {
-      console.time("⏳ npm install & shrinkwrap");
-      execSync("npm install --omit=dev", { cwd: PUBLISH_ROOT, stdio: "inherit" });
-      execSync("npm shrinkwrap", { cwd: PUBLISH_ROOT, stdio: "inherit" });
-      console.timeEnd("⏳ npm install & shrinkwrap");
-    } catch (error) {
-      console.error("Failed to run npm install or shrinkwrap:", error);
-      process.exit(1);
-    }
-  }
-
   console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
   return { featuresCount, useCasesCount, skillsCount, skillNames };
   } finally {
@@ -189,14 +205,14 @@ async function main(): Promise<BuildResult | undefined> {
 function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   console.log("Generating dynamic README content around features and use cases...");
   const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
-  
+
   const useCaseGroupMap = new Map<string, { features: { id: string; name: string }[]; useCases: { id: string; description: string }[] }>();
   const allFeatureIds = new Set<string>();
 
   for (const guide of readyGuides) {
     const guidePath = path.join(guide.dir, "guide.md");
     if (!fs.existsSync(guidePath)) continue;
-    
+
     let description = guide.name;
     try {
       const content = fs.readFileSync(guidePath, "utf-8");
@@ -234,7 +250,7 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   const featureNamesCsv = allFeaturesSorted.map(f => `\`${f.name.replace(/</g, '&lt;')}\``).join(', ');
 
   dynamicMd += `<details>\n<summary><strong>${allFeaturesSorted.length} web features with implementation guidance from Chrome's experts</strong>: ${featureNamesCsv}</summary>\n\n`;
-  
+
   for (const group of sortedGroups) {
     const featureLinks = group.features.map(f => `[${f.name.replace(/</g, '&lt;')}](https://webstatus.dev/features/${f.id})`).join(', ');
     dynamicMd += `- **${featureLinks}**\n`;
