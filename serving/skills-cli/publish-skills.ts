@@ -84,10 +84,10 @@ async function main() {
     console.log(` - Skills: ${skillsCount} (${skillNames.join(', ')})`);
 
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
-    console.log(`   FULL=1 pnpm run preflight`);
+    console.log(`   env FULL=1 TEST_REPORTER=spec pnpm test`);
   } else {
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
-    console.log(`   FULL=1 pnpm run preflight`);
+    console.log(`   env FULL=1 TEST_REPORTER=spec pnpm test`);
 
     console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
     
