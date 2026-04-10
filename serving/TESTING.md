@@ -3,10 +3,9 @@
 ## Automated Tests
 
 ```sh
-cd ~/serving
 # With FULL=1 we do functional tests:
 
-env FULL=1 TEST_REPORTER=spec npm run test
+env FULL=1 TEST_REPORTER=spec pnpm --filter serving test
 ```
 
 ## Manual Testing & Reset Procedures
