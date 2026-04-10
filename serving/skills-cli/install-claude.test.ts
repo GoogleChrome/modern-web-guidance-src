@@ -3,12 +3,9 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { createIsolatedHome, cleanupIsolatedHome } from '../../harness/lib/agent-shared.ts';
 
 test('Claude Code loads plugin from local dist directory', { skip: !process.env.FULL }, async () => {
-    let homeDir = '';
     try {
-        homeDir = createIsolatedHome('test-install-claude');
         const distDir = path.resolve(import.meta.dirname, '../../dist/skills-cli');
         
         if (!fs.existsSync(distDir)) {
@@ -132,9 +129,6 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         assert.ok(retrieveSuccess, 'Modern web retrieve should be successful');
         
     } finally {
-        if (homeDir) {
-            console.log(`Cleaning up isolated HOME at ${homeDir}`);
-            cleanupIsolatedHome(homeDir);
-        }
+        // No cleanup needed as we use real HOME for Claude auth
     }
 });
