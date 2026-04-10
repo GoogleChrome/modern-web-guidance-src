@@ -401,9 +401,10 @@ async function commitAndPush(featureId: string): Promise<boolean> {
   await runCommand('git', ['add', 'guides/']);
   await runCommand('git', ['commit', '-m', `feat: scaffold guide for ${featureId}`]);
   
-  const appToken = process.env.APP_TOKEN;
+  const token = process.env.APP_TOKEN || process.env.GH_TOKEN;
   const repo = process.env.GITHUB_REPOSITORY;
-  const pushUrl = appToken && repo ? `https://x-access-token:${appToken}@github.com/${repo}.git` : 'origin';
+  const pushUrl = token && repo ? `https://x-access-token:${token}@github.com/${repo}.git` : 'origin';
+
   
   await runCommand('git', ['push', pushUrl, `${branch}:${branch}`, '--force']);
   console.log(`✅ Pushed to ${branch}`);
