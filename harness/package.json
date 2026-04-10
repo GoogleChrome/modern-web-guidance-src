@@ -17,7 +17,7 @@
     "@anthropic-ai/claude-code": "^2.1.76",
     "@anthropic-ai/vertex-sdk": "^0.14.4",
     "@google-cloud/storage": "^7.19.0",
-    "@google/gemini-cli": "^0.33.1",
+    "@google/gemini-cli": "latest",
     "@openai/codex": "0.114.0",
     "cheerio": "^1.2.0",
     "colors": "^1.4.0",
@@ -26,6 +26,6 @@
     "puppeteer-core": "^24.39.1"
   },
   "devDependencies": {
-    "@google/gemini-cli-core": "^0.36.0"
+    "@google/gemini-cli-core": "latest"
   }
 }
