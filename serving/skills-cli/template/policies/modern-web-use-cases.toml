@@ -1,20 +1,6 @@
 [[rule]]
 toolName = "run_shell_command"
-commandRegex = "setup.sh"
-decision = "allow"
-priority = 100
-modes = ["plan"]
-
-[[rule]]
-toolName = "run_shell_command"
-commandPrefix = ["npm install", "npm i"]
-decision = "allow"
-priority = 100
-modes = ["plan"]
-
-[[rule]]
-toolName = "run_shell_command"
 commandRegex = "modern-web"
-decision = "allow"
+decision = "ask_user"
 priority = 100
 modes = ["plan"]
