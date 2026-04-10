@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Form Alignment</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        .form-container {
+            background: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            width: 500px;
+        }
+
+        .row {
+            display: flex;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .row label {
+            width: 150px;
+            min-width: 150px;
+            margin-right: 10px;
+            text-align: right;
+        }
+
+        .row input, .row select, .row textarea {
+            flex: 1;
+            padding: 8px;
+        }
+
+        .help-container {
+            margin-left: 160px;
+            font-size: 12px;
+            color: #777;
+            margin-top: -10px;
+            margin-bottom: 15px;
+        }
+
+        .actions {
+            margin-left: 160px;
+        }
+
+        button {
+            padding: 10px 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Account Settings</h1>
+
+    <form class="form-container">
+        <div class="row">
+            <label for="username">Username</label>
+            <input type="text" id="username">
+        </div>
+
+        <div class="row">
+            <label for="email">Email</label>
+            <input type="email" id="email">
+        </div>
+        <div class="help-container">Primary contact email address.</div>
+
+        <div class="row">
+            <label for="role">User Role</label>
+            <select id="role">
+                <option>Administrator</option>
+                <option>Editor</option>
+                <option>Viewer</option>
+            </select>
+        </div>
+
+        <div class="row">
+            <label for="bio">Biography</label>
+            <textarea id="bio" rows="4"></textarea>
+        </div>
+
+        <div class="actions">
+            <button type="button">Save Changes</button>
+        </div>
+    </form>
+
+</body>
+</html>

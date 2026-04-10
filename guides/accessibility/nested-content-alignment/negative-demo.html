@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Table Layout</title>
+    <style>
+        .grid-layout {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            row-gap: 0;
+            column-gap: 20px;
+        }
+
+        .header-item {
+            grid-row: 1;
+            padding: 15px;
+            background: #333;
+            color: white;
+        }
+
+        .content-item {
+            grid-row: 2;
+            padding: 15px;
+            border-left: 1px solid #ccc;
+            border-right: 1px solid #ccc;
+        }
+
+        .footer-item {
+            grid-row: 3;
+            padding: 15px;
+            background: #eee;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="grid-layout">
+        <div class="header-item">Column 1 Header</div>
+        <div class="header-item">Column 2 Header with a very long title</div>
+        <div class="header-item">Column 3 Header</div>
+
+        <div class="content-item">Row 1, Col 1 Content</div>
+        <div class="content-item">Row 1, Col 2 Content is longer than the others to show lack of containment.</div>
+        <div class="content-item">Row 1, Col 3 Content</div>
+
+        <div class="footer-item">Col 1 Footer</div>
+        <div class="footer-item">Col 2 Footer</div>
+        <div class="footer-item">Col 3 Footer</div>
+    </div>
+
+</body>
+</html>

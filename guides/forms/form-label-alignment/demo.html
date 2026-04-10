@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subgrid Form Alignment Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #f4f4f9;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 1.5rem;
+        }
+
+        .description {
+            margin-bottom: 2rem;
+            color: #666;
+        }
+
+        /* 
+           The Parent Grid: 
+           Defines the overall column structure for the entire form.
+           Column 1: Auto-sized based on the widest label.
+           Column 2: Takes up the remaining space.
+        */
+        .form-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 1rem;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        /* 
+           The Subgrid Row:
+           Spans both columns of the parent grid (1 / -1).
+           Uses 'subgrid' to adopt the column tracks defined in .form-grid.
+        */
+        .form-row {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: subgrid;
+            align-items: center;
+        }
+
+        label {
+            font-weight: 600;
+            padding-right: 1.5rem;
+            white-space: nowrap;
+        }
+
+        input, textarea, select {
+            padding: 0.6rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+            width: 100%;
+        }
+
+        .help-text {
+            grid-column: 2;
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: -0.5rem;
+        }
+
+        button {
+            grid-column: 2;
+            justify-self: start;
+            padding: 0.6rem 1.5rem;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Consistent Layout with CSS Subgrid</h1>
+    <p class="description">
+        This form uses <strong>subgrid</strong> to ensure that labels and inputs align perfectly across different rows, 
+        even though each pair is wrapped in its own container for semantic grouping or styling.
+    </p>
+
+    <form class="form-grid">
+        <!-- Row 1 -->
+        <div class="form-row">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" placeholder="Alex Johnson">
+        </div>
+
+        <!-- Row 2 -->
+        <div class="form-row">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" placeholder="alex@example.com">
+        </div>
+        <div class="help-text">We'll never share your email.</div>
+
+        <!-- Row 3: Demonstrating alignment with a much longer label -->
+        <div class="form-row">
+            <label for="department">Primary Department Selection</label>
+            <select id="department">
+                <option>Engineering</option>
+                <option>Design</option>
+                <option>Marketing</option>
+            </select>
+        </div>
+
+        <!-- Row 4 -->
+        <div class="form-row">
+            <label for="comments">Additional Comments</label>
+            <textarea id="comments" rows="3" placeholder="Tell us more..."></textarea>
+        </div>
+
+        <!-- Action Row -->
+        <div class="form-row">
+            <button type="submit">Submit Request</button>
+        </div>
+    </form>
+
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Subgrid Demo: Nested Alignment</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            padding: 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        /* Parent Grid */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            /* Define 3 rows for the subgrid to hook into: header, body, footer */
+            grid-template-rows: auto auto auto;
+            gap: 1rem;
+        }
+
+        /* The Card uses Subgrid */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+
+            /* Span all 3 rows of the parent */
+            grid-row: span 3;
+
+            /* Activate subgrid for rows */
+            display: grid;
+            grid-template-rows: subgrid;
+            gap: 0; /* Inherit or override gap */
+        }
+
+        .card-header {
+            font-weight: bold;
+            font-size: 1.25rem;
+            color: var(--primary);
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .card-body {
+            padding: 1rem 0;
+            font-size: 0.95rem;
+        }
+
+        .card-footer {
+            margin-top: auto;
+            padding-top: 0.5rem;
+            border-top: 1px solid #f1f5f9;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        .tag {
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        /* Highlight the feature support */
+        @supports not (grid-template-rows: subgrid) {
+            .warning {
+                background: #fee2e2;
+                color: #991b1b;
+                padding: 1rem;
+                border-radius: 8px;
+                margin-bottom: 1rem;
+                border: 1px solid #f87171;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Subgrid: Aligning Nested Elements</h1>
+
+    <div class="warning" style="display: none;">
+        Your browser does not support CSS Subgrid. The headers and footers below might not align perfectly across different cards.
+    </div>
+    <script>
+        if (!CSS.supports('grid-template-rows', 'subgrid')) {
+            document.querySelector('.warning').style.display = 'block';
+        }
+    </script>
+
+    <div class="grid-container">
+        <!-- Card 1 -->
+        <article class="card">
+            <header class="card-header">Short Title</header>
+            <div class="card-body">
+                This card has a small amount of content. Despite this, its header and footer will align perfectly with the cards next to it thanks to <code>subgrid</code>.
+            </div>
+            <footer class="card-footer">
+                <span class="tag">Category A</span>
+            </footer>
+        </article>
+
+        <!-- Card 2 -->
+        <article class="card">
+            <header class="card-header">A Much Longer Card Title That Spans Multiple Lines</header>
+            <div class="card-body">
+                This card has medium content length. Subgrid ensures that the semantic structure (Header > Body > Footer) is preserved while visually syncing with the parent grid tracks.
+            </div>
+            <footer class="card-footer">
+                <span class="tag">Category B</span>
+            </footer>
+        </article>
+
+        <!-- Card 3 -->
+        <article class="card">
+            <header class="card-header">Medium Title</header>
+            <div class="card-body">
+                This card contains significantly more text. In a traditional grid, the footers would "float" at different heights based on the content above them. With subgrid, the footer is locked to the third row of the parent grid.
+                <br><br>
+                Extra content to push the height... Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+            </div>
+            <footer class="card-footer">
+                <span class="tag">Category C</span>
+            </footer>
+        </article>
+    </div>
+
+    <p style="margin-top: 2rem; font-size: 0.9rem; color: #64748b;">
+        <strong>How it works:</strong> The parent <code>.grid-container</code> defines three rows. Each <code>.card</code> spans those three rows and sets <code>grid-template-rows: subgrid</code>. This forces the internal <code>header</code>, <code>body</code>, and <code>footer</code> to participate in the parent's row sizing.
+    </p>
+
+</body>
+</html>

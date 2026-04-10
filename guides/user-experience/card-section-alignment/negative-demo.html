@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Card Sync Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #eee;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .card {
+            width: 300px;
+            background: #fff;
+            border: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            background: #444;
+            color: #fff;
+            padding: 10px;
+            height: 80px;
+            overflow: hidden;
+        }
+
+        .card-body {
+            padding: 15px;
+            min-height: 150px;
+        }
+
+        .card-footer {
+            padding: 10px;
+            background: #ddd;
+            height: 50px;
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                Short Title
+            </div>
+            <div class="card-body">
+                This uses fixed heights to look aligned.
+            </div>
+            <div class="card-footer">
+                Footer
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                This is a very long title that might overflow the fixed height header container if it gets too long for the eighty pixels allocated.
+            </div>
+            <div class="card-body">
+                The alignment here is forced by min-height and fixed height values rather than inheriting grid tracks.
+            </div>
+            <div class="card-footer">
+                Footer
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                Title 3
+            </div>
+            <div class="card-body">
+                If this content becomes too long, it will push the footer down or overflow, breaking the visual rhythm with adjacent cards because they don't share a grid row.
+                <br><br>
+                Manual height management is fragile.
+            </div>
+            <div class="card-footer">
+                Footer
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('resize', () => {
+            const bodies = document.querySelectorAll('.card-body');
+            let maxHeight = 0;
+            bodies.forEach(b => {
+                b.style.height = 'auto';
+                if (b.offsetHeight > maxHeight) maxHeight = b.offsetHeight;
+            });
+            bodies.forEach(b => {
+                b.style.height = maxHeight + 'px';
+            });
+        });
+    </script>
+</body>
+</html>

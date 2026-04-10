@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Subgrid Card Sync Demo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.5;
+            padding: 2rem;
+            background-color: #f4f4f9;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        /* The Grid Container */
+        .container {
+            display: grid;
+            gap: 20px;
+            /* Define a 3-column grid */
+            grid-template-columns: repeat(3, 1fr);
+            /* 
+               Each card will span 3 rows (Header, Content, Footer).
+               The grid doesn't need to explicitly define row heights; 
+               subgrid will allow the cards to dictate the row sizing 
+               collectively.
+            */
+        }
+
+        /* The Card Component */
+        .card {
+            display: grid;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+
+            /* 
+               1. Span 3 rows in the parent grid 
+            */
+            grid-row: span 3;
+
+            /* 
+               2. Use subgrid for rows. 
+               This aligns the card's children (header, section, footer) 
+               to the parent grid's row tracks.
+            */
+            grid-template-rows: subgrid;
+        }
+
+        .card header {
+            background-color: #3b82f6;
+            color: white;
+            padding: 1rem;
+            font-weight: bold;
+        }
+
+        .card section {
+            padding: 1rem;
+            color: #4b5563;
+        }
+
+        .card footer {
+            padding: 0.75rem 1rem;
+            background-color: #f9fafb;
+            border-top: 1px solid #eee;
+            font-size: 0.875rem;
+            color: #9ca3af;
+        }
+
+        /* Highlight the alignment */
+        .highlight {
+            background-color: #fef3c7 !important;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>CSS Subgrid: Aligned Card Sections</h1>
+
+    <div class="container">
+        <!-- Card 1: Short content -->
+        <div class="card">
+            <header>Short Title</header>
+            <section>
+                This card has very little content.
+            </section>
+            <footer>Category: Alpha</footer>
+        </div>
+
+        <!-- Card 2: Long Header, Short Content -->
+        <div class="card">
+            <header>A Much Longer Card Title That Wraps to Multiple Lines</header>
+            <section>
+                Standard content length here.
+            </section>
+            <footer>Category: Beta</footer>
+        </div>
+
+        <!-- Card 3: Short Header, Long Content -->
+        <div class="card">
+            <header>Title 3</header>
+            <section class="highlight">
+                This section has significantly more content. Because of <strong>subgrid</strong>, the sections in the cards to the left and right will automatically expand to match this height, keeping the footers perfectly aligned.
+                <br><br>
+                Extra paragraph to increase height.
+            </section>
+            <footer>Category: Gamma</footer>
+        </div>
+
+        <!-- Second row of cards -->
+        <div class="card">
+            <header>Row 2, Card 1</header>
+            <section>Content.</section>
+            <footer>Footer</footer>
+        </div>
+        <div class="card">
+            <header>Row 2, Card 2</header>
+            <section>Notice how the headers in this row align independently of the row above.</section>
+            <footer>Footer</footer>
+        </div>
+        <div class="card">
+            <header>Row 2, Card 3</header>
+            <section>Content.</section>
+            <footer>Footer</footer>
+        </div>
+    </div>
+
+</body>
+</html>
