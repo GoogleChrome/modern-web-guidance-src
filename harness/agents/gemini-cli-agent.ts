@@ -199,8 +199,7 @@ export function extractGeminiCliModel(resultsDir: string): string {
 
 export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
-  const files = fs.readdirSync(dir);
-  const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
+  const sessionFiles = fs.globSync('**/*.json', { cwd: dir });
   const firstSession = sessionFiles[0];
   if (!firstSession) return toolsUsed;
 

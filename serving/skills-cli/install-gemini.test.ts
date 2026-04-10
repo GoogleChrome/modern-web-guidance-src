@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { createIsolatedHome, cleanupIsolatedHome } from '../../harness/lib/agent-shared.ts';
+import { collectGeminiToolsFromTrajectory } from '../../harness/agents/gemini-cli-agent.ts';
 
 test('Gemini CLI verifies extension install capability', { skip: !process.env.FULL }, async () => {
     let homeDir = '';
@@ -38,34 +39,8 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
 
         console.log(`\nVerifying Gemini used the skill...`);
         const tmpDir = path.join(homeDir, '.gemini', 'tmp');
-        const files = fs.globSync('**/chats/*.json', { cwd: tmpDir });
-        let skillUsed = false;
-        
-        for (const file of files) {
-            const content = fs.readFileSync(path.join(tmpDir, file), 'utf8');
-            try {
-                const session = JSON.parse(content);
-                if (Array.isArray(session.messages)) {
-                    for (const msg of session.messages) {
-                        if (msg.type === 'gemini' && Array.isArray(msg.toolCalls)) {
-                            for (const tc of msg.toolCalls) {
-                                if (tc.name.includes('get_best_practices') || 
-                                    (tc.name === 'activate_skill' && tc.args && tc.args.name === 'modern-web-use-cases')) {
-                                    skillUsed = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if (skillUsed) break;
-                    }
-                }
-            } catch (e) {
-                // Ignore parse errors
-            }
-            if (skillUsed) break;
-        }
-        
-        assert.ok(skillUsed, 'Gemini did not use the modern-web-use-cases skill');
+        const toolsUsed = collectGeminiToolsFromTrajectory(tmpDir);
+        assert.ok(toolsUsed.includes('modern-web') || toolsUsed.includes('modern-web-use-cases'), 'Gemini did not use the skill');
         
     } finally {
         if (homeDir) {
