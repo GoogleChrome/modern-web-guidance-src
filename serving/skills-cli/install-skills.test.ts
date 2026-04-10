@@ -4,7 +4,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { createIsolatedHome, cleanupIsolatedHome } from '../../harness/lib/agent-shared.ts';
-import { collectGeminiToolsFromTrajectory } from '../../harness/agents/gemini-cli-agent.ts';
 
 test('npx skills add from local path', { skip: !process.env.FULL }, async () => {
     let homeDir = '';
