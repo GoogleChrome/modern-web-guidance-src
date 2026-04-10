@@ -21,6 +21,7 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         }
 
         console.log(`\nRunning Claude Code with local plugin...`);
+        // Claude won't run in an isolated home, so we use the real HOME.
         const child = spawn('claude', [
             '--model', 'claude-sonnet-4-6',
             '--plugin-dir', distDir,
