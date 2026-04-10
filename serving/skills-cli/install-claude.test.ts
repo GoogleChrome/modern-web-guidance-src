@@ -24,7 +24,7 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
             }
         }
 
-        const cmd = `claude --plugin-dir ${distDir} -p "use the modern-web-use-cases skill and tell me best practices on implementing an address form" --dangerously-skip-permissions --verbose --output-format stream-json`;
+        const cmd = `claude --model claude-sonnet-4-6 --plugin-dir ${distDir} -p "use the modern-web-use-cases skill and tell me best practices on implementing an address form" --dangerously-skip-permissions --verbose --output-format stream-json`;
         
         console.log(`\nRunning Claude Code with local plugin...`);
         const output = execSync(cmd, { 
