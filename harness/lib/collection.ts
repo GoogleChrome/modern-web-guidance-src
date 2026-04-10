@@ -37,6 +37,9 @@ function extractErrorMessage(dir: string, targetFile: string): string {
 
 export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
   const taskMap = getTaskMap();
+  const tasksToRun = suiteConfig.tasks.length > 0 
+    ? suiteConfig.tasks 
+    : Array.from(taskMap.keys()).filter(key => key.endsWith('/task'));
 
   const runDirs = fs.readdirSync(resultsDir)
     .filter(name => {
@@ -115,15 +118,24 @@ run();
 `.trim();
       const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
       fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
-      fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
-        name: `${guide.substring(0, 30)}-${runType}-grader`,
-        type: "module",
-        scripts: {
-          // The --id flag is not used by grade.mjs, it is purely added here 
-          // so that the pnpm log output clearly identifies which test is running.
-          "run-grader": `node grade.mjs --id ${relativeId}`
+        const taskKey = `${guide}/${taskName}`;
+        let taskIndex = tasksToRun.indexOf(taskKey) + 1;
+        if (taskIndex === 0) {
+          // Fallback if not found in suite config
+          taskIndex = tasksToRun.indexOf(`${guide}/task`) + 1;
         }
-      }, null, 2));
+        const totalTasks = tasksToRun.length;
+        const progressStr = taskIndex > 0 ? `[${taskIndex}/${totalTasks}] ` : '';
+
+        fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+          name: `${guide.substring(0, 30)}-${runType}-grader`,
+          type: "module",
+          scripts: {
+            // The dummy arguments are not used by grade.mjs, they are purely added here 
+            // so that the pnpm log output clearly identifies which test is running.
+            "run-grader": `node grade.mjs -- ${progressStr}${taskName} [${runType}] [r${runDir}]`
+          }
+        }, null, 2));
 
       pnpmWorkspacePackages.push(relativeId);
     }
@@ -217,6 +229,7 @@ run();
             }
           } else {
             console.error(`Missing grader results JSON for ${guide} in ${dir}`);
+            scenarioResults.push({ passed: false, message: 'Grading pending or running...' });
           }
 
           if (json && json.suites && json.suites.length > 0) {
