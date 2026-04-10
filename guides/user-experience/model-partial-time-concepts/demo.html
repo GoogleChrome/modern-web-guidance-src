@@ -247,7 +247,7 @@
     // Check Support and load polyfil       needed
     if (typeof Temporal === 'undefine      {
       import('@js-temporal/polyfill')        ({ Temporal: polyfill }) => {
-        globalThis.Temporal = polyfil             unsupportedWarning.style.disp          one';
+        globalThis.Temporal = polyfil             unsupportedWarning.style.display = 'none';
         initializeDemo();
       }).catch(err => {
         console.error('Failed to load Temporal polyfill:', err);
