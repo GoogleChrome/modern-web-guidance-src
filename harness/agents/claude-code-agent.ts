@@ -228,7 +228,7 @@ export function extractClaudeCodeModel(resultsDir: string): string {
 
 export function collectClaudeToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
-  const sessionFiles = fs.globSync('session-*.jsonl', { cwd: dir });
+  const sessionFiles = fs.globSync('**/*.jsonl', { cwd: dir });
   const firstSession = sessionFiles[0];
   if (!firstSession) return toolsUsed;
 
