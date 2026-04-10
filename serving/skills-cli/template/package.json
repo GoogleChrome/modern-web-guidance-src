@@ -22,9 +22,5 @@
   },
   "bin": {
     "modern-web": "./skills/modern-web-use-cases/modern-web.mjs"
-  },
-  "dependencies": {
-    "@huggingface/transformers": "^3.8.1",
-    "@lancedb/lancedb": "^0.26.2"
   }
 }
