@@ -152,11 +152,6 @@ window.__featuresMapping = {
     "starting-style",
     "transition-behavior"
   ],
-  "animate-scrollbar-color-on-scroll": [
-    "scrollbar-color",
-    "scroll-driven-animations",
-    "registered-custom-properties"
-  ],
   "animate-to-from-top-layer": [
     "backdrop",
     "dialog",
