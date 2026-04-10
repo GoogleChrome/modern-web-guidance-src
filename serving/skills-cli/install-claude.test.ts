@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { execSync } from 'node:child_process';
 import { createIsolatedHome, cleanupIsolatedHome } from '../../harness/lib/agent-shared.ts';
-import { collectClaudeToolsFromTrajectory } from '../../harness/agents/claude-code-agent.ts';
 
 test('Claude Code loads plugin from local dist directory', { skip: !process.env.FULL }, async () => {
     let homeDir = '';
@@ -24,7 +24,7 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
             }
         }
 
-        const cmd = `claude --plugin-dir ${distDir} -p "use the modern-web-use-cases skill and tell me best practices on implementing an address form" --dangerously-skip-permissions`;
+        const cmd = `claude --plugin-dir ${distDir} -p "use the modern-web-use-cases skill and tell me best practices on implementing an address form" --dangerously-skip-permissions --verbose`;
         
         console.log(`\nRunning Claude Code with local plugin...`);
         execSync(cmd, { 
@@ -34,10 +34,47 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         });
 
         console.log(`\nVerifying Claude used the skill...`);
-        const projectsDir = path.join(homeDir, '.claude', 'projects');
+        const projectsDir = path.join(os.homedir(), '.claude', 'projects');
         const files = fs.globSync('**/*.jsonl', { cwd: projectsDir });
-        console.log(`Found session files: ${JSON.stringify(files)}`);
-        const toolsUsed = collectClaudeToolsFromTrajectory(projectsDir);
+        console.log(`Found ${files.length} session files in real HOME.`);
+        
+        let newestFile = '';
+        let maxMtime = 0;
+        for (const file of files) {
+            const fullPath = path.join(projectsDir, file);
+            const mtime = fs.statSync(fullPath).mtimeMs;
+            if (mtime > maxMtime) {
+                maxMtime = mtime;
+                newestFile = fullPath;
+            }
+        }
+        
+        let toolsUsed: string[] = [];
+        if (newestFile) {
+            console.log(`Analyzing newest session file: ${newestFile}`);
+            const content = fs.readFileSync(newestFile, 'utf8');
+            const lines = content.split('\n');
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                try {
+                    const obj = JSON.parse(line);
+                    if (obj.message && Array.isArray(obj.message.content)) {
+                        for (const item of obj.message.content) {
+                            if (item.type === 'tool_use') {
+                                if (item.name === 'Skill' && item.input?.skill) {
+                                    toolsUsed.push(item.input.skill);
+                                } else if (item.name === 'activate_skill' && item.input?.name) {
+                                    toolsUsed.push(item.input.name);
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Ignore parse errors
+                }
+            }
+        }
+        
         console.log(`Tools used: ${JSON.stringify(toolsUsed)}`);
         assert.ok(toolsUsed.includes('modern-web-use-cases'), 'Claude did not use the modern-web-use-cases skill');
         
