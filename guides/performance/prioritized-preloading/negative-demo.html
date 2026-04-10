@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Negative Demo</title>
+</head>
+<body>
+  <button id="bg">Preload (Background Priority)</button>
+  <button id="urgent">Trigger Urgent Task</button>
+  <script>
+    function heavyMath(ms) {
+      const start = performance.now();
+      while (performance.now() - start < ms) {
+        Math.sqrt(Math.random() * Math.random());
+      }
+    }
+    
+    document.getElementById('bg').addEventListener('click', () => {
+        for (let i = 0; i < 5; i++) {
+            if (window.scheduler && window.scheduler.postTask) {
+                // INCORRECT: Missing priority: 'background'
+                scheduler.postTask(() => heavyMath(1000));
+            } else {
+                // INCORRECT: Missing delay
+                setTimeout(() => heavyMath(1000), 0);
+            }
+        }
+    });
+
+    document.getElementById('urgent').addEventListener('click', () => {
+        if (window.scheduler && window.scheduler.postTask) {
+            scheduler.postTask(() => console.log('Urgent!'));
+        } else {
+            setTimeout(() => console.log('Urgent!'), 0);
+        }
+    });
+  </script>
+</body>
+</html>

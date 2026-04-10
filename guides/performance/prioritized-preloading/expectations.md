@@ -1,0 +1,4 @@
+- The application implements a mechanism to schedule low-priority background tasks.
+- The application uses `scheduler.postTask()` with the `priority: 'background'` option to schedule the low-priority tasks.
+- The application uses a fallback mechanism (e.g., a delayed `setTimeout`) for browsers that do not support the Scheduler API.
+- The application ensures that urgent tasks or user interactions are prioritized and jump the queue ahead of scheduled background work.

@@ -288,11 +288,13 @@
           }, priorityOption);
         } else {
           log('scheduler.postTask not supported, falling back to setTimeout', 'system');
+          const delay = priority === 'background' ? 200 : 0;
           setTimeout(() => {
-            log(`Preload Item ${i}: Start processing... (Fallback)`, 'standard');
+            log(`Preload Item ${i}: Start processing... (Fallback)`, priority === 'background' ? 'prioritized' : 'standard');
             heavyMath(1000);
-            log(`Preload Item ${i}: Finished`, 'standard');
-          }, 0);
+            log(`Preload Item ${i}: Finished`, priority === 'background' ? 'prioritized' : 'standard');
+            if (i === 5) statusText.textContent = 'Preload Finished';
+          }, delay);
         }
       }
     }
