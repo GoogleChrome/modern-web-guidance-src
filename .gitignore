@@ -52,8 +52,6 @@ serving/lib/use-cases.vectors.gen.json
 serving/lib/use-cases.vectors.gen.json.gz
 serving/benchmarks/data/eval-queries.gen.json
 # ML Models
-serving/lib/tfjs_model_minilm/*.bin
-serving/lib/tfjs_model_minilm/model.json
 serving/lib/tfjs_model_minilm/tfjs_model*/
 serving/lib/tfjs_model_minilm/saved_model*/
 
