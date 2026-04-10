@@ -64,7 +64,7 @@ jobs:
       - name: Generate GitHub App token
         uses: actions/create-github-app-token@v2
         id: app-token
-        if: ${{ vars.GH_APP_ID && secrets.GH_APP_PRIVATE_KEY }}
+        continue-on-error: true
         with:
           app-id: ${{ vars.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
