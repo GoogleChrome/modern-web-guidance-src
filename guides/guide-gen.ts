@@ -191,12 +191,9 @@ function setupIsolatedWorkDir(): string {
   return workDir;
 }
 
-async function runGemini(prompt: string, workDir: string): Promise<string> {
-  const command = config.environment.geminiCliBin;
-  const commandArgs = ['-p', prompt, '--yolo'];
-
-  const child = spawn(command, commandArgs, {
-    cwd: workDir,
+async function runCommand(command: string, args: string[], cwd?: string): Promise<string> {
+  const child = spawn(command, args, {
+    cwd,
     env: { ...process.env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -209,15 +206,68 @@ async function runGemini(prompt: string, workDir: string): Promise<string> {
   const exitCode = await new Promise<number | null>(resolve => child.on('close', resolve));
 
   if (exitCode !== 0) {
-    throw new Error(`Gemini CLI exited with code ${exitCode}. Stderr: ${stderrData}`);
+    throw new Error(`Command ${command} failed with code ${exitCode}. Stderr: ${stderrData}`);
   }
 
   return stdoutData.trim();
 }
 
+async function runGemini(prompt: string, workDir: string): Promise<string> {
+  const command = config.environment.geminiCliBin;
+  const commandArgs = ['-p', prompt, '--yolo'];
+  return runCommand(command, commandArgs, workDir);
+}
+
+
+async function scaffoldUseCase(uc: { slug: string; description: string; category: string }, feature: FeatureInfo, workDir: string, guidesDir: string): Promise<string> {
+  const outputDir = path.join(guidesDir, uc.category, uc.slug);
+  console.log(`\nScaffolding ${uc.slug} in ${outputDir}...`);
+
+  fs.mkdirSync(outputDir, { recursive: true });
+
+  // 1. Write guide.md stub
+  const guideContent = `---
+name: ${uc.slug}
+description: ${uc.description}
+web-feature-ids:
+  - ${feature.id}
+sources:
+${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
+---
+
+# ${uc.slug}
+
+This is a scaffolded guide for the use case: ${uc.description}.
+`;
+  fs.writeFileSync(path.join(outputDir, 'guide.md'), guideContent);
+  console.log(`✅ Scaffolded guide.md`);
+
+  // 2. Generate demo.html
+  console.log(`Generating demo.html for ${uc.slug}...`);
+  const demoPrompt = buildDemoPrompt(feature, uc);
+  const demoHtml = await runGemini(demoPrompt, workDir);
+  
+  const cleanHtml = demoHtml.replace(/^```html\n?/, '').replace(/\n?```$/, '').trim();
+  fs.writeFileSync(path.join(outputDir, 'demo.html'), cleanHtml);
+  console.log(`✅ Generated demo.html`);
+
+  // 3. Generate expectations.md
+  console.log(`Generating expectations.md for ${uc.slug}...`);
+  const expectationsPrompt = buildExpectationsPrompt(feature, uc);
+  const expectationsMd = await runGemini(expectationsPrompt, workDir);
+  
+  const cleanExpectations = expectationsMd.replace(/^```markdown\n?/, '').replace(/\n?```$/, '').trim();
+  fs.writeFileSync(path.join(outputDir, 'expectations.md'), cleanExpectations);
+  console.log(`✅ Generated expectations.md`);
+
+  return outputDir;
+}
+
 // ─── Main generation function ────────────────────────────────────────────────
 
-export async function generateUseCases(featureId: string): Promise<void> {
+
+export async function generateUseCases(featureId: string, reviewer: string = 'paulirish'): Promise<void> {
+
   console.log(`Looking up feature: ${featureId}`);
   const feature = lookupFeature(featureId);
   console.log(`Found: ${feature.name}`);
@@ -248,69 +298,101 @@ export async function generateUseCases(featureId: string): Promise<void> {
     console.log(`- [${uc.category}] ${uc.slug}: ${uc.description}`);
   }
 
+
+
   for (const uc of useCases) {
-    const outputDir = path.join(guidesDir, uc.category, uc.slug);
-    console.log(`\nScaffolding ${uc.slug} in ${outputDir}...`);
-
-    fs.mkdirSync(outputDir, { recursive: true });
-
-    // 1. Write guide.md stub
-    const guideContent = `---
-name: ${uc.slug}
-description: ${uc.description}
-web-feature-ids:
-  - ${feature.id}
-sources:
-${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
----
-
-# ${uc.slug}
-
-This is a scaffolded guide for the use case: ${uc.description}.
-`;
-    fs.writeFileSync(path.join(outputDir, 'guide.md'), guideContent);
-    console.log(`✅ Scaffolded guide.md`);
-
-
-    // 2. Generate demo.html
-    console.log(`Generating demo.html for ${uc.slug}...`);
-    const demoPrompt = buildDemoPrompt(feature, uc);
-    const demoHtml = await runGemini(demoPrompt, workDir);
-    
-    // Strip markdown code blocks if present
-    const cleanHtml = demoHtml.replace(/^```html\n?/, '').replace(/\n?```$/, '').trim();
-    
-    fs.writeFileSync(path.join(outputDir, 'demo.html'), cleanHtml);
-    console.log(`✅ Generated demo.html`);
-
-    // 3. Generate expectations.md
-    console.log(`Generating expectations.md for ${uc.slug}...`);
-    const expectationsPrompt = buildExpectationsPrompt(feature, uc);
-    const expectationsMd = await runGemini(expectationsPrompt, workDir);
-    
-    // Strip markdown code blocks if present
-    const cleanExpectations = expectationsMd.replace(/^```markdown\n?/, '').replace(/\n?```$/, '').trim();
-    
-    fs.writeFileSync(path.join(outputDir, 'expectations.md'), cleanExpectations);
-    console.log(`✅ Generated expectations.md`);
+    const outputDir = await scaffoldUseCase(uc, feature, workDir, guidesDir);
 
     console.log(`Running gd dev for ${uc.slug}...`);
     const success = await devGuide(outputDir, { noTest: true });
     if (!success) {
       throw new Error(`devGuide failed for ${uc.slug}`);
     }
-
-
   }
+
 
 
   cleanupIsolatedHome(path.dirname(workDir));
   console.log(`\n🎉 All use cases scaffolded!`);
+
+  const pushed = await commitAndPush(featureId);
+  if (pushed) {
+    await createPullRequest(featureId, reviewer);
+  }
 }
+
 
 // ─── CLI entry point ─────────────────────────────────────────────────────────
 
+async function commitAndPush(featureId: string): Promise<boolean> {
+  const branch = `guidance-bot/${featureId}`;
+  console.log(`Committing and pushing to ${branch}...`);
+
+  // Check if there are changes
+  const status = await runCommand('git', ['status', '--porcelain']);
+  if (!status.trim()) {
+    console.log('No changes to commit.');
+    return false;
+  }
+
+  // Create or switch to branch
+  try {
+    await runCommand('git', ['checkout', '-b', branch]);
+  } catch (err) {
+    await runCommand('git', ['checkout', branch]);
+  }
+
+  await runCommand('git', ['add', 'guides/']);
+  await runCommand('git', ['commit', '-m', `feat: scaffold guide for ${featureId}`]);
+  await runCommand('git', ['push', 'origin', branch, '--force']);
+  console.log(`✅ Pushed to ${branch}`);
+  return true;
+}
+
+async function createPullRequest(featureId: string, reviewer: string): Promise<void> {
+  const branch = `guidance-bot/${featureId}`;
+  console.log(`Creating PR for ${branch}...`);
+
+  // Check if PR already exists
+  try {
+    const pr = await runCommand('gh', ['pr', 'view', branch]);
+    if (pr) {
+      console.log(`PR already exists for ${branch}. Skipping creation.`);
+      return;
+    }
+  } catch (err) {
+    // PR doesn't exist, continue
+  }
+
+  const body = `## Auto-generated guide package
+
+Please review the following files for correctness:
+
+| File | Review focus |
+|---|---|
+| \`guide.md\` | Is this use case valid and action-oriented? |
+| \`demo.html\` | Is this a correct, minimal implementation? |
+| \`expectations.md\` | Are the grading criteria accurate? |
+
+This PR was generated by the Guidance Pipeline.
+`;
+
+  const title = `Guide: ${featureId}`;
+  
+  await runCommand('gh', [
+    'pr', 'create',
+    '--draft',
+    '--head', branch,
+    '--title', title,
+    '--body', body,
+    '--reviewer', reviewer
+  ]);
+  
+  console.log(`✅ PR created for ${branch}`);
+}
+
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
+
   const args = process.argv.slice(2);
   const featureId = args.find(a => !a.startsWith('--'));
 
