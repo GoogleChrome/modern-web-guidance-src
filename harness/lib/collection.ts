@@ -4,7 +4,7 @@ import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { Agents, type SuiteConfig } from '../config.ts';
 import { getTaskMap, type TaskInfo } from '../../lib/guide-validation.ts';
-import { rootDir } from '../../lib/paths.ts';
+import { guidesDir } from '../../lib/paths.ts';
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
@@ -42,7 +42,7 @@ export function getTasksToRun(suiteConfig: SuiteConfig, taskMap: Map<string, Tas
 }
 
 export function generateGradeScript(targetFile: string, graderPath: string, reportDir: string, graderResults: string) {
-  const runGraderModulePath = path.join(rootDir, 'guides/run-grader.ts');
+  const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
   return `
 import fs from 'fs';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
