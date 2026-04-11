@@ -1,5 +1,4 @@
 ---
 base_app: daily-grind
 ---
-- i'm building an accordion for our faq page and i want it to animate smoothly when it opens. i've heard there's a new way to animate to `height: auto` without using javascript or those weird `max-height: 1000px` hacks. can you implement that for me?
-- our product cards have a "read more" section that expands. right now it just jumps to the full height instantly. i want it to slide open smoothly to whatever its natural height is. use the modern css approach for this so it's clean and performant.
+- i'm building an accordion for our faq page and i want it to animate smoothly when it opens. use `#faq-trigger` for the button that opens it and `#faq-content` for the content section. i also need a promo alert at the top of the page that can be dismissed and smoothly collapses to zero height. use `#promo-alert` for the alert container and `#alert-dismiss` for its close button. avoid javascript, if possible.

@@ -5,3 +5,4 @@
 - If `calc-size()` is used, it follows the correct syntax `calc-size(<basis>, <calculation>)`.
 - The implementation notes that `calc-size()` acts as an automatic opt-in for interpolation, even if `interpolate-size: allow-keywords` is missing.
 - The implementation provides a clear interaction (e.g., a checkbox, button, or hover) to trigger the size change.
+- The implementation includes a dismissible element (e.g., an alert) that starts at an intrinsic size (`auto`) and collapses to `0` when dismissed.

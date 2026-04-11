@@ -191,20 +191,20 @@
   <main>
     <div class="promo-container">
       <h3>Dismissible Alert (Intrinsic to Fixed)</h3>
-      <div class="alert" id="demo-alert">
+      <div class="alert" id="promo-alert">
         <div class="alert-inner">
           <span>This alert will smoothly collapse to zero when dismissed, using <code>block-size: 0</code> after starting at <code>auto</code>.</span>
-          <button class="dismiss-btn" onclick="dismissAlert('demo-alert')">×</button>
+          <button class="dismiss-btn" id="alert-dismiss" onclick="dismissAlert('promo-alert')">×</button>
         </div>
       </div>
-      <button class="expand-btn" style="margin-top: 10px;" onclick="resetAlert('demo-alert')">Reset Alert</button>
+      <button class="expand-btn" style="margin-top: 10px;" onclick="resetAlert('promo-alert')">Reset Alert</button>
     </div>
 
     <article class="card" id="product-card">
       <header class="card-header">
         Premium Product
       </header>
-      <div class="card-content-wrapper">
+      <div class="card-content-wrapper" id="faq-content">
         <div class="card-content">
           <p>This card demonstrates <code>interpolate-size</code> on a standard <code>&lt;article&gt;</code> element.</p>
           <p>The <code>interpolate-size</code> property is a game-changer for UI components that need to respond to dynamic content without jumping or requiring complex resize observers.</p>
@@ -224,11 +224,12 @@
         </div>
       </div>
       <footer class="card-footer">
-        <button class="expand-btn" onclick="toggleCard('product-card')">
+        <button class="expand-btn" id="faq-trigger" onclick="toggleCard('product-card')">
           Show Details
         </button>
       </footer>
     </article>
+
 
     <div class="calc-demo">
       <h3>calc-size() Example</h3>

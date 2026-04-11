@@ -104,10 +104,8 @@ test.describe('Animate to Intrinsic Sizes Expectations', () => {
 
   test('should smoothly animate size property when triggered', async ({ page }) => {
     // Attempt to find and click an expansion trigger - avoid the alert reset button
-    const trigger = page.locator('article button, .card .expand-btn, .accordion-header, label[for], [onclick*="toggleCard"]').first();
-
-    // Get initial size of a likely target (parent of trigger or sibling)
-    const target = page.locator('.card-content-wrapper, .accordion-content, .faq-answer, [class*="content"], [class*="answer"]').first();
+    const trigger = page.locator('#faq-trigger');
+    const target = page.locator('#faq-content');
 
     const initialHeight = await target.evaluate(el => el.getBoundingClientRect().height);
 
@@ -132,8 +130,8 @@ test.describe('Animate to Intrinsic Sizes Expectations', () => {
 
   test('should smoothly animate from intrinsic size to a fixed length', async ({ page }) => {
     // Look for a dismissible element or similar (starts auto, goes to 0)
-    const trigger = page.locator('.dismiss-btn, button:has-text("dismiss"), button:has-text("close"), .alert button').first();
-    const target = page.locator('.alert, .dismissible, [class*="alert"]').first();
+    const trigger = page.locator('#alert-dismiss');
+    const target = page.locator('#promo-alert');
 
     // Ensure they are visible
     await expect(trigger).toBeVisible();
@@ -145,9 +143,6 @@ test.describe('Animate to Intrinsic Sizes Expectations', () => {
     // Trigger dismissal - force click if necessary
     await trigger.click({ force: true });
     
-    // Verify class was added
-    const hasClass = await target.evaluate(el => el.classList.contains('is-dismissed'));
-    
     // Wait a short duration (middle of transition)
     await page.waitForTimeout(300);
     const midHeight = await target.evaluate(el => el.getBoundingClientRect().height);
@@ -156,8 +151,6 @@ test.describe('Animate to Intrinsic Sizes Expectations', () => {
     await page.waitForTimeout(700);
     const finalHeight = await target.evaluate(el => el.getBoundingClientRect().height);
 
-    // If class wasn't added or animation didn't start, this will fail with better info
-    expect(hasClass, 'Target should have is-dismissed class').toBe(true);
     expect(midHeight, `Mid height (${midHeight}) should be less than initial (${initialHeight})`).toBeLessThan(initialHeight);
     expect(finalHeight, `Final height (${finalHeight}) should be less than mid (${midHeight})`).toBeLessThan(midHeight);
     expect(finalHeight).toBeLessThanOrEqual(5); 

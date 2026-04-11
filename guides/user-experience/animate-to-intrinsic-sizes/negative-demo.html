@@ -37,13 +37,18 @@
   </style>
 </head>
 <body>
+  <div id="promo-alert" style="max-block-size: 1000px; transition: max-block-size 0.5s;">
+    Legacy Alert
+    <button id="alert-dismiss" onclick="this.parentElement.style.maxBlockSize = '0px'">Dismiss</button>
+  </div>
+
   <div class="accordion" id="accordion">
-    <div class="accordion-header" style="background: #eee; border: 1px solid #999;">
-      Broken Accordion (No interaction)
-    </div>
-    <div class="accordion-content">
+    <button id="faq-trigger" onclick="document.getElementById('faq-content').classList.toggle('is-open')">
+      Broken Accordion
+    </button>
+    <div class="accordion-content" id="faq-content">
       <p style="padding: 20px;">
-        This implementation uses the old <code>max-height</code> hack. It doesn't use the modern <code>interpolate-size</code> property, which leads to awkward timing and unnecessary calculation of magic numbers like "1000px".
+        This implementation uses the old <code>max-height</code> hack.
       </p>
     </div>
   </div>
