@@ -6,6 +6,7 @@ import { Agents, defaultSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
 import { getTaskMap, type TaskInfo } from '../lib/guide-validation.ts';
+import { getTasksToRun, generateGradeScript } from './lib/collection.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -132,22 +133,19 @@ export async function runSuite(options: RunSuiteOptions = {}) {
       // Use configured tasks, or discover all `task.md` from the guide folders.
       const tasksToRun = options.tasks && options.tasks.length > 0
         ? options.tasks
-        : (suiteConfig.tasks.length > 0
-          ? suiteConfig.tasks
-          : Array.from(taskMap.keys()).filter(key => key.endsWith('/task')));
+        : getTasksToRun(suiteConfig, taskMap);
 
-      // Filter valid tasks to get accurate count
-      const validTasksToRun = tasksToRun.filter(task => {
-        const resolvedTask = resolveTaskName(task);
-        return taskMap.has(resolvedTask);
-      });
+      const validTasksWithInfo = tasksToRun
+        .map(task => {
+          const resolvedTask = resolveTaskName(task);
+          return { resolvedTask, taskInfo: taskMap.get(resolvedTask) };
+        })
+        .filter((item): item is { resolvedTask: string; taskInfo: TaskInfo } => item.taskInfo !== undefined);
 
+      const totalTasks = validTasksWithInfo.length;
       let taskIndex = 0;
-      const totalTasks = validTasksToRun.length;
 
-      for (const task of validTasksToRun) {
-        const resolvedTask = resolveTaskName(task);
-        const taskInfo = taskMap.get(resolvedTask)!;
+      for (const { resolvedTask, taskInfo } of validTasksWithInfo) {
         taskIndex++;
 
         const [guideName, taskName] = resolvedTask.split('/');
@@ -167,19 +165,19 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
-          generateTransientPackage(
-            targetDir, 
-            agentScript, 
-            promptContent, 
-            runType, 
-            workspaceBaseAppDir, 
+          generateTransientPackage({
+            targetDir,
+            agentScript,
+            promptContent,
+            runType,
+            workspaceBaseAppDir,
             taskName,
             guideName,
             graderPath,
             taskIndex,
             totalTasks,
             runNumber
-          );
+          });
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
       }
@@ -361,47 +359,42 @@ function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: st
   return workspaceBaseAppDir;
 }
 
-function generateTransientPackage(
-  targetDir: string,
-  agentScript: string,
-  promptContent: string,
-  runType: string,
-  workspaceBaseAppDir: string,
-  taskName: string,
-  guideName: string,
-  graderPath: string,
-  taskIndex: number,
-  totalTasks: number,
-  runNumber: number
-) {
-  if (!fs.existsSync(targetDir)) {
-    fs.mkdirSync(targetDir, { recursive: true });
-  }
+interface TransientPackageOptions {
+  targetDir: string;
+  agentScript: string;
+  promptContent: string;
+  runType: string;
+  workspaceBaseAppDir: string;
+  taskName: string;
+  guideName: string;
+  graderPath: string;
+  taskIndex: number;
+  totalTasks: number;
+  runNumber: number;
+}
+
+function generateTransientPackage(options: TransientPackageOptions) {
+  const {
+    targetDir,
+    agentScript,
+    promptContent,
+    runType,
+    workspaceBaseAppDir,
+    taskName,
+    guideName,
+    graderPath,
+    taskIndex,
+    totalTasks,
+    runNumber
+  } = options;
+
+  fs.mkdirSync(targetDir, { recursive: true });
 
   const targetFile = path.join(targetDir, 'index.html');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
+  const reportDir = path.join(targetDir, 'grade-report');
   
-  const gradeScript = `
-import fs from 'fs';
-import { runPlaywright } from ${JSON.stringify(path.join(process.cwd(), 'serving/guides/run-grader.ts'))};
-
-async function run() {
-  try {
-    const json = await runPlaywright(
-      ${JSON.stringify(targetFile)},
-      ${JSON.stringify(graderPath)},
-      ${JSON.stringify(path.join(targetDir, 'grade-report'))},
-      'inherit'
-    );
-    fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
-    console.log("✅ Graded successfully");
-  } catch (err) {
-    console.error("Playwright test execution failed:", err);
-  }
-}
-
-run();
-`.trim();
+  const gradeScript = generateGradeScript(targetFile, graderPath, reportDir, graderResults);
 
   fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
 

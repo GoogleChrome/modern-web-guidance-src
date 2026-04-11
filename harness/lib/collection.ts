@@ -3,8 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { Agents, type SuiteConfig } from '../config.ts';
-import { guidesDir } from '../../lib/paths.ts';
-import { getTaskMap } from '../../lib/guide-validation.ts';
+import { getTaskMap, type TaskInfo } from '../../lib/guide-validation.ts';
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
@@ -35,11 +34,44 @@ function extractErrorMessage(dir: string, targetFile: string): string {
     .pop()?.slice(0, 100) || 'Generation mysteriously failed';
 }
 
-export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
-  const taskMap = getTaskMap();
-  const tasksToRun = suiteConfig.tasks.length > 0 
+export function getTasksToRun(suiteConfig: SuiteConfig, taskMap: Map<string, TaskInfo>) {
+  return suiteConfig.tasks.length > 0 
     ? suiteConfig.tasks 
     : Array.from(taskMap.keys()).filter(key => key.endsWith('/task'));
+}
+
+export function generateGradeScript(targetFile: string, graderPath: string, reportDir: string, graderResults: string) {
+  const runGraderModulePath = path.join(process.cwd(), 'serving/guides/run-grader.ts');
+  return `
+import fs from 'fs';
+import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
+
+async function run() {
+  try {
+    const json = await runPlaywright(
+      ${JSON.stringify(targetFile)},
+      ${JSON.stringify(graderPath)},
+      ${JSON.stringify(reportDir)},
+      'inherit'
+    );
+    fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
+    console.log("✅ Graded successfully");
+  } catch (err) {
+    console.error("Playwright test execution failed:", err);
+    process.exit(1); 
+  }
+}
+
+run();
+`.trim();
+}
+
+export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
+  const taskMap = getTaskMap();
+  const tasksToRun = getTasksToRun(suiteConfig, taskMap);
+  const taskIndexMap = new Map<string, number>(
+    tasksToRun.map((task, index) => [task, index + 1])
+  );
 
   const runDirs = fs.readdirSync(resultsDir)
     .filter(name => {
@@ -92,37 +124,15 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         continue;
       }
 
-      // Generate a runner script to be picked up by pnpm -r run-grader
-      // We import runPlaywright directly from the guides code to leverage existing test execution logic
-      const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
-      const gradeScript = `
-import fs from 'fs';
-import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
-
-async function run() {
-  try {
-    const json = await runPlaywright(
-      ${JSON.stringify(targetFile)},
-      ${JSON.stringify(graderPath)},
-      ${JSON.stringify(path.join(dir, 'grade-report'))},
-      'inherit'
-    );
-    fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
-  } catch (err) {
-    console.error("Playwright test execution failed:", err);
-    process.exit(1); 
-  }
-}
-
-run();
-`.trim();
       const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
+      const reportDir = path.join(dir, 'grade-report');
+      const gradeScript = generateGradeScript(targetFile, graderPath, reportDir, graderResults);
       fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
         const taskKey = `${guide}/${taskName}`;
-        let taskIndex = tasksToRun.indexOf(taskKey) + 1;
+        let taskIndex = taskIndexMap.get(taskKey) || 0;
         if (taskIndex === 0) {
           // Fallback if not found in suite config
-          taskIndex = tasksToRun.indexOf(`${guide}/task`) + 1;
+          taskIndex = taskIndexMap.get(`${guide}/task`) || 0;
         }
         const totalTasks = tasksToRun.length;
         const progressStr = taskIndex > 0 ? `[${taskIndex}/${totalTasks}] ` : '';
