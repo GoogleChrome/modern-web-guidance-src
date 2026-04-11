@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Unstable Text Wrap</title>
+  <style>
+    body {
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      font-family: sans-serif;
+    }
+
+    .editor {
+      width: 300px;
+      padding: 20px;
+      border: 1px solid #ccc;
+      text-wrap: balance;
+    }
+  </style>
+</head>
+<body>
+  <div class="editor" contenteditable="true">
+    This text uses balanced wrapping. As you type more words into this editable area, the browser will constantly recalculate the entire paragraph to maintain a balanced look, causing the lines above your cursor to jump and shift unexpectedly.
+  </div>
+</body>
+</html>

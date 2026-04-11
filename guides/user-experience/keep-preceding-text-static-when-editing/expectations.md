@@ -1,0 +1,2 @@
+- All `contenteditable` elements must have a `text-wrap: stable` declaration.
+- Editing text must not cause earlier lines to shift.
