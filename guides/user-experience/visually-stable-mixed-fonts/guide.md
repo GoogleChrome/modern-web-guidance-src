@@ -43,7 +43,7 @@ When the font to adjust is not a child of the font to base the size on, specify 
 }
 .theme.alternate{
   font-family: Times;
-  /*  */
+  /* Set to the aspect ratio (x-height / font-size) of the primary font */
   font-size-adjust: 0.51;
 }
 ```
@@ -53,6 +53,8 @@ When the font to adjust is not a child of the font to base the size on, specify 
 {{ BASELINE_STATUS("font-size-adjust") }}
 
 In browsers that do not support `font-size-adjust`, fonts will render at their natural `font-size` value. To mitigate this without support:
+
+- Use `@supports not (font-size-adjust: from-font)` to detect `font-size-adjust` support.
 - Choose fonts with similar x-heights to your primary font.
 - Apply specific `font-size` and `line-height` overrides for alternate and nested font families.
 
@@ -62,7 +64,7 @@ In browsers that do not support `font-size-adjust`, fonts will render at their n
   .content-area {
     /* Manual adjustment for browsers without support (if needed) */
     line-height: 1.6;
-    font-size: 
+    font-size: 1.2rem;
   }
 }
 ```

@@ -25,7 +25,7 @@
       span {
         font-family: Times;
       }
-      #paragraphs {
+      #independent-theme-container {
         max-width: 30em;
       }
       [swap-font] p {
@@ -45,7 +45,7 @@
     <script type="module">
       const button = document.getElementById("swap-font");
       button.addEventListener("click", () => {
-        const paragraphs = document.getElementById("paragraphs");
+        const paragraphs = document.getElementById("independent-theme-container");
         paragraphs.toggleAttribute("swap-font");
       });
     </script>
@@ -62,13 +62,13 @@
       </p>
 
       <h3>With <code>font-size-adjust: from-font</code></h3>
-      <p class="adjusted">
+      <p class="adjusted" id="mixed-fonts-container">
         This <span>is</span> some <span>text</span> where
         <span>every</span> other <span>word</span> is <span>in</span> a
         <span>different</span> font.
       </p>
     </section>
-    <section id="paragraphs">
+    <section id="independent-theme-container">
       <h2>Font replacement</h2>
       <button id="swap-font">Swap Font</button>
       <h3>With <code>font-size-adjust</code></h3>

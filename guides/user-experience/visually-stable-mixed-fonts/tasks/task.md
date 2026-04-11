@@ -1,4 +1,4 @@
 ---
 base_app: empty-app
 ---
-- I have a text block with mixed font families (regular text and inline code) that look inconsistent in size; fix this using `font-size-adjust: from-font`. Additionally, demonstrate how to use a numeric `font-size-adjust` value on a fallback font to match a custom web font's proportions, and provide a button to toggle between these fonts so I can verify the layout remains stable and free of shifts.
+- Create a paragraph element (`<p id="mixed-fonts-container">`) containing mixed font families (regular text and inline code). Use modern CSS to normalize the visual height of these mixed fonts automatically. Additionally, create a separate container element (`<div id="independent-theme-container">`) representing an independent theme, and apply a modern CSS property with a specific numeric aspect-ratio override to lock down its visual proportions.
