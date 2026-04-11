@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Precise Text Alignment</title>
+    <title>Imprecise Text Alignment (Negative Demo)</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap"
       rel="stylesheet"
@@ -22,8 +22,8 @@
         background: #f8fafc;
       }
 
-      /* 1. Accurate Visual Padding */
-      /* Container padding matches the visible gap to the letters */
+      /* 1. Inaccurate Visual Padding */
+      /* Uses standard padding which leaves "ghost space" from font metrics */
       .badge {
         background: hotpink;
         color: white;
@@ -34,11 +34,11 @@
         margin: 0;
         font-size: 1.25rem;
         align-self: start;
-        text-box: trim-both cap alphabetic;
+        /* MISSING text-box-trim */
       }
 
-      /* 2. Centered Icon Button */
-      /* text-box-trim ensures the flex container centers the actual letters, not the font box */
+      /* 2. Misaligned Icon Button */
+      /* Uses magic numbers to try and visually center the text */
       .button {
         display: inline-flex;
         align-items: center;
@@ -52,11 +52,13 @@
       }
 
       .button-text {
-        text-box: trim-both cap alphabetic;
+        /* Magic number margin used to eyeball centering instead of text-box-trim */
+        margin-top: -3px;
+        margin-bottom: 2px;
       }
 
-      /* 3. Flush Alignment with UI Elements */
-      /* Aligning the top of the text exactly with an adjacent image */
+      /* 3. Misaligned Flush Title */
+      /* Uses negative margin to try and align with the image top */
       .hero-title {
         display: flex;
         align-items: flex-start;
@@ -64,29 +66,34 @@
       }
 
       h1 {
-        margin: 0;
+        margin: -11px 0 0 0; /* Magic number negative margin */
         font-size: 5rem;
         line-height: 1.1;
+      }
 
-        text-box: trim-start cap alphabetic;
+      /* MISUSE: Applying text-box-trim to long-form body text */
+      .long-form-text {
+        max-width: 600px;
+        line-height: 1.6;
+        text-box: trim-both cap alphabetic;
       }
     </style>
   </head>
   <body>
-    <!-- Use case 1: Badge Padding -->
+    <!-- Use case 1: Badge with Ghost Space -->
     <div class="badge">
-      Trimmed content box
+      Untrimmed content box
     </div>
 
-    <!-- Use case 2: Centered Button -->
+    <!-- Use case 2: Button with Magic Numbers -->
     <div>
       <button class="button">
         <span class="material-symbols-outlined"> arrow_forward_ios </span>
-        <span class="button-text">Precise button</span>
+        <span class="button-text">Imprecise button</span>
       </button>
     </div>
 
-    <!-- Use case 3: Flush Alignment -->
+    <!-- Use case 3: Offset Title with Magic Margins -->
     <div class="hero-title">
       <img
         src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=400&auto=format&fit=crop"
@@ -94,7 +101,13 @@
         width="400"
         height="200"
       />
-      <h1>FLUSH TITLE</h1>
+      <h1>OFFSET TITLE</h1>
+    </div>
+
+    <!-- Misuse case: Trimmed long text -->
+    <div class="long-form-text">
+      This is a long block of text that should not have text-box-trim applied. Trimming long-form body text can negatively impact readability by making the first and last lines feel disconnected from the rest of the paragraph's rhythm and leading. 
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
     </div>
   </body>
 </html>
