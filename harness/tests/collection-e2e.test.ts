@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
+import { spawnSync } from 'child_process';
 import { defaultSuiteConfig } from '../config.ts';
 import { collectResults, generateGradeScript } from '../lib/collection.ts';
 import { guidesDir } from '../../lib/paths.ts';
@@ -87,12 +88,19 @@ base_app: ${actualBaseAppName}
     }
 });
 
-test('generateGradeScript produces script with valid run-grader.ts path', async (_t) => {
+test('generateGradeScript produces a loadable module', async (_t) => {
     const script = generateGradeScript('target.html', 'grader.ts', 'reportDir', 'results.json');
     
-    const match = script.match(/import { runPlaywright } from "(.*)";/);
-    assert.ok(match, 'Script should contain runPlaywright import');
+    // Run node with the generated script via stdin
+    const result = spawnSync(process.execPath, ['--input-type=module'], { 
+        input: script, 
+        encoding: 'utf8' 
+    });
     
-    const importPath = match[1];
-    assert.ok(fs.existsSync(importPath), `Imported path should exist: ${importPath}`);
+    // If the module path was wrong, Node would throw ERR_MODULE_NOT_FOUND
+    // We expect it to NOT contain that error.
+    assert.ok(
+        !result.stderr.includes('ERR_MODULE_NOT_FOUND'), 
+        'Generated script should not fail with ERR_MODULE_NOT_FOUND'
+    );
 });
