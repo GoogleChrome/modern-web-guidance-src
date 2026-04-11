@@ -134,8 +134,25 @@ Output your response as a clear markdown summary and TODO list.
 
   // 5. Push changes
   console.log('Pushing changes...');
-  // TODO: Implement git commit and push
-  console.log('✅ Changes pushed (simulated)');
+  if (guideDir) {
+    await runCommand('git', ['add', guideDir]);
+    const stagedFiles = await runCommand('git', ['diff', '--cached', '--name-only']);
+    if (stagedFiles.trim()) {
+      await runCommand('git', ['commit', '-m', 'chore: apply feedback and regenerate artifacts']);
+      
+      const token = process.env.APP_TOKEN || process.env.GH_TOKEN;
+      const repo = process.env.GITHUB_REPOSITORY;
+      const pushUrl = token && repo ? `https://x-access-token:${token}@github.com/${repo}.git` : 'origin';
+      const branch = prData.headRefName;
+      
+      await runCommand('git', ['push', pushUrl, `${branch}:${branch}`]);
+      console.log(`✅ Changes pushed to ${branch}`);
+    } else {
+      console.log('No changes to commit.');
+    }
+  } else {
+    console.log('No guide directory identified, skipping push.');
+  }
 }
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
