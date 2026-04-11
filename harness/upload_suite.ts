@@ -7,7 +7,7 @@ import { resultsDir as baseResultsDir } from '../lib/paths.ts';
 const PROJECT_ID = 'chrome-kiwi-air-force-dev';
 const BUCKET_NAME = 'guidance-evals';
 
-async function uploadDirectory(bucket: any, dirPath: string, gcsPrefix: string) {
+async function uploadDirectory(bucket: any, dirPath: string, gcsPrefix: string, summaryOnly = false) {
   const uploadTasks: (() => Promise<void>)[] = [];
 
   function collectFiles(currentDir: string, currentPrefix: string) {
@@ -17,10 +17,19 @@ async function uploadDirectory(bucket: any, dirPath: string, gcsPrefix: string) 
       const fullPath = path.join(currentDir, file.name);
       const destinationPath = path.join(currentPrefix, file.name);
 
+      if (file.name === 'node_modules') continue;
+
       if (file.isDirectory()) {
-        collectFiles(fullPath, destinationPath);
+        if (!summaryOnly) {
+          collectFiles(fullPath, destinationPath);
+        }
       } else {
         if (file.name === '.DS_Store' || file.name === 'pnpm-workspace.yaml') continue;
+
+        if (summaryOnly) {
+          // Only upload summary files at the root
+          if (file.name !== 'evals.json' && file.name !== 'evals.md') continue;
+        }
 
         uploadTasks.push(async () => {
           console.log(`Uploading ${fullPath} to gs://${BUCKET_NAME}/${destinationPath}...`);
@@ -45,17 +54,30 @@ async function uploadDirectory(bucket: any, dirPath: string, gcsPrefix: string) 
 }
 
 async function main() {
-  let suiteName = process.argv[2];
+  const args = process.argv.slice(2);
+  const summaryOnly = args.includes('--summary-only');
+  
+  // Remove flags to get positional arguments
+  const positionalArgs = args.filter(a => !a.startsWith('--'));
+  
+  let suiteName = positionalArgs[0];
+  const customResultsDir = positionalArgs[1];
 
   if (!suiteName) {
-    console.error('❌ Please provide a suite name or path as an argument. e.g. pnpm upload <suite-name>');
+    console.error('❌ Please provide a suite name as an argument. e.g. pnpm upload <suite-name>');
     process.exit(1);
   }
 
   // Strip trailing slashes and normalize to just the suite ID
   suiteName = path.basename(suiteName);
 
-  const resultsDir = path.join(baseResultsDir, suiteName);
+  let resultsDir = path.join(baseResultsDir, suiteName);
+  
+  // Support custom results directory!
+  if (customResultsDir) {
+    resultsDir = path.join(path.resolve(customResultsDir), suiteName);
+  }
+  
   const evalsJsonPath = path.join(resultsDir, 'evals.json');
 
   if (!fs.existsSync(resultsDir)) {
@@ -68,13 +90,13 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(cBold(cCyan(`Starting upload for suite: ${suiteName}`)));
+  console.log(cBold(cCyan(`Starting upload for suite: ${suiteName}${summaryOnly ? ' (Summary Only)' : ''}`)));
 
   const storage = new Storage({ projectId: PROJECT_ID });
   const bucket = storage.bucket(BUCKET_NAME);
 
   try {
-    await uploadDirectory(bucket, resultsDir, suiteName);
+    await uploadDirectory(bucket, resultsDir, suiteName, summaryOnly);
     console.log(cBold(cGreen(`\n✅ Successfully uploaded suite '${suiteName}' to gs://${BUCKET_NAME}/${suiteName}`)));
   } catch (error: any) {
     console.error(cRed(`❌ Upload failed: ${error.message}`));
