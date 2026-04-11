@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
 import { defaultSuiteConfig } from '../config.ts';
-import { collectResults } from '../lib/collection.ts';
+import { collectResults, generateGradeScript } from '../lib/collection.ts';
 import { guidesDir } from '../../lib/paths.ts';
 
 const testDir = import.meta.dirname;
@@ -85,4 +85,14 @@ base_app: ${actualBaseAppName}
         if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });
         if (fs.existsSync(resultsBase)) fs.rmSync(resultsBase, { recursive: true, force: true });
     }
+});
+
+test('generateGradeScript produces script with valid run-grader.ts path', async (_t) => {
+    const script = generateGradeScript('target.html', 'grader.ts', 'reportDir', 'results.json');
+    
+    const match = script.match(/import { runPlaywright } from "(.*)";/);
+    assert.ok(match, 'Script should contain runPlaywright import');
+    
+    const importPath = match[1];
+    assert.ok(fs.existsSync(importPath), `Imported path should exist: ${importPath}`);
 });
