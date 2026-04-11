@@ -13,12 +13,19 @@ test('all skill descriptions are under 1024 characters', () => {
   }
   
   const repoRoot = path.resolve(currentDir, '../../');
-  const skillsDir = path.join(repoRoot, '.agents/skills');
+  const patterns = [
+    '.agents/skills/**/SKILL.md',
+    'skills-drafts/**/SKILL.md',
+    'guides/**/SKILL.md'
+  ];
   
-  console.log(`Searching for skill files in: ${skillsDir}`);
+  console.log(`Searching for skill files with patterns: ${patterns.join(', ')}`);
   
-  // Find all SKILL.md files
-  const skillFiles = globSync('**/SKILL.md', { cwd: skillsDir, absolute: true });
+  let skillFiles: string[] = [];
+  for (const pattern of patterns) {
+    const files = globSync(pattern, { cwd: repoRoot, absolute: true });
+    skillFiles = skillFiles.concat(files);
+  }
   
   console.log(`Found ${skillFiles.length} skill files.`);
   assert.ok(skillFiles.length > 0, 'Should find at least one skill file');
