@@ -41,7 +41,7 @@ export function getTasksToRun(suiteConfig: SuiteConfig, taskMap: Map<string, Tas
 }
 
 export function generateGradeScript(targetFile: string, graderPath: string, reportDir: string, graderResults: string) {
-  const runGraderModulePath = path.join(process.cwd(), 'serving/guides/run-grader.ts');
+  const runGraderModulePath = path.join(process.cwd(), 'guides/run-grader.ts');
   return `
 import fs from 'fs';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
