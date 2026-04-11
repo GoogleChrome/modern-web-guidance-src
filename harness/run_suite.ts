@@ -149,14 +149,11 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         taskIndex++;
 
         const [guideName, taskName] = resolvedTask.split('/');
-        const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
         const workspaceBaseAppDir = setupWorkspaceBaseApp(taskInfo, runDir, guideName, taskName);
         if (!workspaceBaseAppDir) {
           continue;
         }
 
-        let promptContent = taskInfo.prompt;
-        promptContent += COMMON_APPEND_PROMPT;
         const agentScript = getAgentScript(agent);
 
         const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
@@ -166,17 +163,10 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
           generateTransientPackage({
-            targetDir,
-            agentScript,
-            promptContent,
-            runType,
-            workspaceBaseAppDir,
-            taskName,
-            guideName,
-            graderPath,
-            taskIndex,
-            totalTasks,
-            runNumber
+            task: { resolvedTask, taskInfo },
+            progress: { taskIndex, totalTasks },
+            run: { runNumber, runType, targetDir, agentScript },
+            workspaceBaseAppDir
           });
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
@@ -360,43 +350,25 @@ function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: st
 }
 
 interface TransientPackageOptions {
-  targetDir: string;
-  agentScript: string;
-  promptContent: string;
-  runType: string;
+  task: { resolvedTask: string; taskInfo: TaskInfo };
+  progress: { taskIndex: number; totalTasks: number };
+  run: { runNumber: number; runType: string; targetDir: string; agentScript: string };
   workspaceBaseAppDir: string;
-  taskName: string;
-  guideName: string;
-  graderPath: string;
-  taskIndex: number;
-  totalTasks: number;
-  runNumber: number;
 }
 
 function generateTransientPackage(options: TransientPackageOptions) {
-  const {
-    targetDir,
-    agentScript,
-    promptContent,
-    runType,
-    workspaceBaseAppDir,
-    taskName,
-    guideName,
-    graderPath,
-    taskIndex,
-    totalTasks,
-    runNumber
-  } = options;
+  const [guideName, taskName] = options.task.resolvedTask.split('/');
+  const graderPath = path.join(options.task.taskInfo.guideDir, 'grader.ts');
+  const promptContent = options.task.taskInfo.prompt + COMMON_APPEND_PROMPT;
 
-  fs.mkdirSync(targetDir, { recursive: true });
+  fs.mkdirSync(options.run.targetDir, { recursive: true });
 
-  const targetFile = path.join(targetDir, 'index.html');
-  const graderResults = path.join(targetDir, `${guideName}_results.json`);
-  const reportDir = path.join(targetDir, 'grade-report');
+  const targetFile = path.join(options.run.targetDir, 'index.html');
+  const graderResults = path.join(options.run.targetDir, `${guideName}_results.json`);
+  const reportDir = path.join(options.run.targetDir, 'grade-report');
   
   const gradeScript = generateGradeScript(targetFile, graderPath, reportDir, graderResults);
-
-  fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
+  fs.writeFileSync(path.join(options.run.targetDir, 'grade.mjs'), gradeScript);
 
   // Generate runner script
   // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
@@ -407,11 +379,11 @@ function generateTransientPackage(options: TransientPackageOptions) {
 const args = [
 '--experimental-strip-types',
 ...${JSON.stringify([
-  agentScript,
+  options.run.agentScript,
   promptContent,
-  runType,
-  targetDir,
-  workspaceBaseAppDir
+  options.run.runType,
+  options.run.targetDir,
+  options.workspaceBaseAppDir
 ])}
 ];
 const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
@@ -419,21 +391,22 @@ const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON
 // Run grader immediately after agent finishes!
 if (result.status === 0) {
   console.log("Agent finished successfully. Running grader...");
-  spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
+  spawnSync(process.execPath, ['--experimental-strip-types', 'grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(options.run.targetDir)} });
 }
 
 process.exit(result.status ?? 0);
 `.trim();
 
-  fs.writeFileSync(path.join(targetDir, 'run.mjs'), runnerContent);
+  fs.writeFileSync(path.join(options.run.targetDir, 'run.mjs'), runnerContent);
 
-  const scriptStr = `node run.mjs -- [${taskIndex}/${totalTasks}] ${taskName} [${runType}] [r${runNumber}]`;
+  const { taskIndex, totalTasks } = options.progress;
+  const scriptStr = `node run.mjs -- [${taskIndex}/${totalTasks}] ${taskName} [${options.run.runType}] [r${options.run.runNumber}]`;
 
   // Generate transient package.json
   // This tells pnpm that this directory is a "package" that can be run
   // via \`pnpm run-agent\`.
-  fs.writeFileSync(path.join(targetDir, 'package.json'), JSON.stringify({
-    name: `${taskName.substring(0, 30)}-${runType}`,
+  fs.writeFileSync(path.join(options.run.targetDir, 'package.json'), JSON.stringify({
+    name: `${taskName.substring(0, 30)}-${options.run.runType}`,
     type: "module",
     scripts: { "run-agent": scriptStr }
   }, null, 2));
