@@ -288,8 +288,9 @@
         // Use explicit calendar to avoid calendar mismatch in polyfill
         const expiry = Temporal.PlainYearMonth.from({
           year: yearNum,
-          month: monthNum
-        }, { calendar: 'iso8601' });
+          month: monthNum,
+          calendar: 'iso8601'
+        });
 
         // Calculate Duration
         const duration = currentMonth.until(expiry, { largestUnit: 'years' });
@@ -330,7 +331,7 @@
         codeDiv.innerText = `const currentMonth = Temporal.Now.plainDateISO().toPlainYearMonth();
 
 // Use explicit calendar for polyfill safety
-const expiry = Temporal.PlainYearMonth.from({ year: ${yearNum}, month: ${monthNum} }, { calendar: 'iso8601' });
+const expiry = Temporal.PlainYearMonth.from({ year: ${yearNum}, month: ${monthNum}, calendar: 'iso8601' });
 
 const duration = currentMonth.until(expiry, { largestUnit: 'years' }); // Duration: ${duration.years}Y, ${duration.months}M`;
 

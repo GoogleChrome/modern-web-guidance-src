@@ -5,5 +5,5 @@
 - The implementation MUST use `Temporal.PlainMonthDay` for modeling annual recurring events without a specific year (like birthdays).
 - The implementation MUST use `Temporal.PlainTime` for modeling time of day without a date (like daily alarms).
 - The implementation MUST NOT attempt to perform arithmetic directly on `PlainMonthDay` without converting it to a `PlainDate` first by providing a year.
-- The implementation MUST use explicit calendar options (e.g., `{ calendar: 'iso8601' }`) when creating instances from objects to ensure safety across polyfill implementations.
+- The implementation MUST include explicit calendar properties (e.g., `calendar: 'iso8601'`) when creating instances from objects to ensure safety across polyfill implementations.
 - The implementation MUST NOT use the legacy `Date` object for representing partial time concepts.

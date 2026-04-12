@@ -62,7 +62,7 @@ test.describe(`Temporal API Expectations: ${demoName}`, () => {
     expect(scriptContent).toMatch(/Temporal\.PlainYearMonth/);
   });
 
-  test('MUST use explicit calendar options when creating instances from objects', async ({ page }) => {
+  test('MUST include explicit calendar properties when creating instances from objects', async ({ page }) => {
     const scriptContent = await page.evaluate(() => {
       return Array.from(document.querySelectorAll('script')).map(s => s.textContent).join('\\n');
     });

@@ -1,11 +1,10 @@
 ---
 name: model-partial-time-concepts
-description: Model and manage date concepts that recur or expire without full calendar dates, such as monthly billing cycles and annual renewals.
+description: Model date and time concepts that inherently lack a standard component (such as a specific year, day, or date) without using arbitrary placeholder values that introduce calculation errors.
 web-feature-ids:
   - temporal
 sources:
   - https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Temporal
-  - https://www.npmjs.com/package/@js-temporal/polyfill
 ---
 
 # Modeling Partial Time Concepts with Temporal
@@ -22,7 +21,7 @@ Use `Temporal.PlainYearMonth` to represent a year and a month.
 ```javascript
 // Create a PlainYearMonth from values
 // Use explicit calendar to avoid mismatch issues in polyfill environments
-const expiry = Temporal.PlainYearMonth.from({ year: 2027, month: 12 }, { calendar: 'iso8601' });
+const expiry = Temporal.PlainYearMonth.from({ year: 2027, month: 12, calendar: 'iso8601' });
 
 // Get the current year/month
 const currentMonth = Temporal.Now.plainDateISO().toPlainYearMonth();
@@ -45,7 +44,8 @@ Use `Temporal.PlainMonthDay` to represent a month and a day without a year.
 
 ```javascript
 // Create a PlainMonthDay for an annual event
-const birthday = Temporal.PlainMonthDay.from({ month: 10, day: 31 });
+// Include explicit calendar for polyfill safety
+const birthday = Temporal.PlainMonthDay.from({ month: 10, day: 31, calendar: 'iso8601' });
 
 // Check if it matches today's date components
 const today = Temporal.Now.plainDateISO();
@@ -76,7 +76,7 @@ console.log(`Snoozed alarm: ${snoozedTime.toString()}`);
 - **DO** use `Temporal.PlainMonthDay` for annual events that ignore the year (like birthdays or anniversaries).
 - **DO** use `Temporal.PlainTime` for daily schedules or alarms that are independent of the date.
 - **DO NOT** try to perform arithmetic directly on `PlainMonthDay`. Convert it to a `PlainDate` first by providing a year, as the length of months varies by year.
-- **DO** use explicit calendar options (like `{ calendar: 'iso8601' }`) when creating instances from objects to ensure safety across polyfill implementations.
+- **DO** use explicit calendar properties (like `calendar: 'iso8601'`) when creating instances from objects to ensure safety across polyfill implementations.
 
 ## Fallback Strategy
 
