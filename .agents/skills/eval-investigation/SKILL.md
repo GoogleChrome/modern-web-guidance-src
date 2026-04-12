@@ -94,6 +94,10 @@ gcloud storage cp -r gs://guidance-evals/<suite_id> harness/results/
 
 ## 3. Some Observed Patterns & Solutions
 
+-   **Conversational Answer Instead of Code Edits (Informational Prompt)**:
+    -   *Investigation*: The agent retrieves the guide and understands the task, but the trajectory shows it outputting a text explanation instead of modifying the target files (causing all grader checks to fail).
+    -   *Solution*: Update the prompt in `tasks/task.md` to be an explicit command (e.g., `"update index.html to..."`) rather than an open-ended question (`"how can I..."`).
+
 -   **Agent Searches Skills but Picks the Wrong Guide**:
     -   *Investigation*: Verify in the trajectory which guide titles or keywords the agent searched for versus what the metadata returned.
     -   *Solution*: Improve the guide's metadata description, title, or associated search keywords so that it ranks higher or explicitly matches likely agent queries.
