@@ -162,7 +162,7 @@ Use your file editing tools to make the changes.
       const pushUrl = token && repo ? `https://x-access-token:${token}@github.com/${repo}.git` : 'origin';
       const branch = prData.headRefName;
       
-      await runCommand('git', ['push', pushUrl, `${branch}:${branch}`]);
+      await runCommand('git', ['push', pushUrl, `HEAD:${branch}`]);
       console.log(`✅ Changes pushed to ${branch}`);
     } else {
       console.log('No changes to commit.');
