@@ -118,9 +118,26 @@ Output your response as a clear markdown summary and TODO list.
   await runCommand('gh', ['pr', 'comment', prNumber, '-b', synthesis]);
   console.log('✅ Plan posted');
 
-  // 4. Apply fixes
-  console.log('Applying fixes...');
+  // 4. Apply fixes to source files
+  console.log('Applying fixes to source files...');
   if (guideDir) {
+    const applyPrompt = `
+You are an AI coding agent. Your task is to apply the following fixes to the files in the guide directory \`${guideDir}\` to address PR feedback.
+
+Synthesized Plan:
+${synthesis}
+
+Please read the files in \`${guideDir}\` and update them (e.g., \`demo.html\`, \`guide.md\`) to implement the requested changes.
+Focus on the source files. Do not run \`gd dev\` or try to calibrate the grader, that will be done in a separate step.
+Use your file editing tools to make the changes.
+`;
+    try {
+      await runGemini(applyPrompt);
+      console.log('✅ Fixes applied to source files');
+    } catch (err) {
+      console.error(`❌ Failed to apply fixes: ${(err as Error).message}`);
+    }
+
     console.log(`Running gd dev for ${guideDir}...`);
     try {
       await runCommand('node', ['bin/gd.ts', 'dev', guideDir]);
