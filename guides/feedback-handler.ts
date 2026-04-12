@@ -163,9 +163,20 @@ Use your file editing tools to make the changes.
       const branch = prData.headRefName;
       
       try {
+        console.log('Stashing any unstaged changes...');
+        await runCommand('git', ['stash', '-u']);
+        
         console.log('Pulling latest changes...');
         await runCommand('git', ['pull', '--rebase', pushUrl, branch]);
         console.log('✅ Pulled latest changes');
+        
+        console.log('Restoring stashed changes...');
+        try {
+          await runCommand('git', ['stash', 'pop']);
+          console.log('✅ Stash restored');
+        } catch (popErr) {
+          console.warn(`⚠️ Failed to restore stash: ${(popErr as Error).message}`);
+        }
       } catch (err) {
         console.warn(`⚠️ Failed to pull latest changes: ${(err as Error).message}`);
       }
