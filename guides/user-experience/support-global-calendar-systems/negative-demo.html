@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple Date Tool</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .container { max-width: 500px; margin: auto; border: 1px solid #ccc; padding: 20px; }
+    .result { margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Multi-Calendar Tool</h1>
+    <label>Pick a Date: <input type="date" id="dateInput"></label>
+    <div id="results" class="result"></div>
+  </div>
+
+  <script>
+    const input = document.getElementById('dateInput');
+    input.value = new Date().toISOString().split('T')[0];
+
+    function update() {
+      const d = new Date(input.value);
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      const day = d.getDate();
+
+      let output = "Gregorian: " + month + "/" + day + "/" + year + "<br>";
+
+      const islamicYear = year - 579;
+      output += "Islamic Year (Estimate): " + islamicYear + "<br>";
+      output += "Current Month: " + month + "<br>";
+
+      if (month == 12) {
+        output += "This is the last month of the year.<br>";
+      }
+
+      const isLeap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+      if (isLeap) {
+        output += "This is a leap year. It has 366 days.<br>";
+      }
+
+      output += "Next 12 Months:<br>";
+      for (let i = 1; i <= 12; i++) {
+        output += "Month " + i + " ";
+      }
+
+      document.getElementById('results').innerHTML = output;
+    }
+
+    input.addEventListener('change', update);
+    update();
+  </script>
+</body>
+</html>

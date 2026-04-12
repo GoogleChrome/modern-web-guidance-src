@@ -236,10 +236,20 @@
   </div>
 
   <script>
-    if (typeof Temporal !== 'undefined') {
+      (async function () {
+        if (typeof Temporal === 'undefined') {
+          try {
+            const module = await import('@js-temporal/polyfill');
+            globalThis.Temporal = module.Temporal;
+          } catch (e) {
+            console.error('Failed to load Temporal polyfill:', e);
+            return;
+          }
+        }
+    
       document.getElementById('unsupported-warning').style.display = 'none';
       initializeDemo();
-    }
+    })();
 
     function initializeDemo() {
       const input = document.getElementById('date-input');
