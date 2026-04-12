@@ -162,6 +162,14 @@ Use your file editing tools to make the changes.
       const pushUrl = token && repo ? `https://x-access-token:${token}@github.com/${repo}.git` : 'origin';
       const branch = prData.headRefName;
       
+      try {
+        console.log('Pulling latest changes...');
+        await runCommand('git', ['pull', '--rebase', pushUrl, branch]);
+        console.log('✅ Pulled latest changes');
+      } catch (err) {
+        console.warn(`⚠️ Failed to pull latest changes: ${(err as Error).message}`);
+      }
+
       await runCommand('git', ['push', pushUrl, `HEAD:${branch}`]);
       console.log(`✅ Changes pushed to ${branch}`);
     } else {
