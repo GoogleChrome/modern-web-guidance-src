@@ -84,26 +84,26 @@ async function main() {
     console.log(` - Skills: ${skillsCount} (${skillNames.join(', ')})`);
 
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
-    console.log(`   FULL=1 pnpm run preflight`);
+    console.log(`   env FULL=1 TEST_REPORTER=spec pnpm test`);
   } else {
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
-    console.log(`   FULL=1 pnpm run preflight`);
+    console.log(`   env FULL=1 TEST_REPORTER=spec pnpm test`);
 
-    console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/skills-alpha (main branch)...`);
+    console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
     
     await ghpages.publish(publishCliDir, {
       src: ['**/*'], // No longer vendor node_modules! Users will install via npx -y!
       branch: 'main',
-      repo: 'git@github.com:GoogleChrome/skills-alpha.git',
+      repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
       dotfiles: true,
       message: `Release v${newVersion}`,
       remove: "**/*"
     });
 
 
-    console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/skills-alpha!`);
+    console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance!`);
 
-    console.log(`\nv${newVersion} published.  https://github.com/GoogleChrome/skills-alpha  and [GoB repo](https://user.git.corp.google.com/rviscomi/modern-web-guidance/)`);
+    console.log(`\nv${newVersion} published.  https://github.com/GoogleChrome/modern-web-guidance  and [GoB repo](https://user.git.corp.google.com/rviscomi/modern-web-guidance/)`);
     console.log(`${useCasesCount} usecases.`);
     console.log(`${featuresCount} features`);
     console.log(`${skillsCount} skills (${skillNames.join(', ')})`);

@@ -46,7 +46,6 @@ export class DumbbellChart {
 
     // Group items by Feature Name (lookup from features_mapping.gen.js if available)
     const groups = {};
-    // @ts-expect-error global property
     const featuresMap = window.__featuresMapping || {};
 
     labels.forEach((label, i) => {
