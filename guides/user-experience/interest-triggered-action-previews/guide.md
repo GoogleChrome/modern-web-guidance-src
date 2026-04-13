@@ -12,7 +12,6 @@ sources:
   - https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/interest-delay
   - https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/interest-delay-start
   - https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/interest-delay-end
-  - https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/interest-delay-end
   - https://developer.mozilla.org/docs/Web/CSS/Reference/Selectors/:interest-source
   - https://developer.mozilla.org/docs/Web/CSS/Reference/Selectors/:interest-target
 ---
