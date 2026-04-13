@@ -60,12 +60,14 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        /* Fallback for browsers that do not support calc-size() */
+        inline-size: fit-content;
         /*
             Calculate size based on intrinsic fit-content,
             constrained to be at least 150px, at most 100% of its container,
             and padding 20px when it grows
         */
-        width: calc-size(fit-content, clamp(150px, size + 20px, 100%));
+        inline-size: calc-size(fit-content, clamp(150px, size + 20px, 100%));
       }
       code {
         background: #e9ecef;
