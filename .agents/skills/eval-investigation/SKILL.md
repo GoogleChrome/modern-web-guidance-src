@@ -14,17 +14,23 @@ This skill helps you diagnose why AI coding agents are failing evaluations, spec
 - **Platform Boundary**: When investigating an eval, strictly modify use-case specific files (i.e., `task.md`, `grader.ts`, `expectations.md`, demo apps, and `guide.md`). Do not attempt to fix bugs in the underlying platform infrastructure or Playwright test environment. If you identify infrastructure issues, note them clearly for the user and suggest filing an issue on GitHub for the engineering team, ensuring the use-case investigation remains focused and clean.
 - **Success Rate Goal**: The ultimate objective of every investigation is to achieve a **100% Guided Pass Rate**. The unguided pass rate does not matter and can be ignored.
 - **Autonomous Initiative & Iteration**: An investigation is not a single pass. You must autonomously loop through fixing files, re-running evaluations, measuring progress, and rolling back failed attempts until you hit 100% success. Never stop early, and run tests multiple times to ensure your fix is consistently non-flaky.
+
 ## Communication Protocol
 
 Because evaluation runs (`gd eval`) take time, check in with the user approximately every **30 seconds** to provide a helpful narrative summary of what the agent is currently doing.
 
-Whenever you summarize progress during these check-ins, you **MUST** include a direct quote or code block of the underlying log lines to substantiate your update. However, **NEVER include timestamps** in your updates, as they add absolutely zero value to the user.
+Whenever you summarize progress during these check-ins, you **MUST**:
+1. Include a direct quote or code block of the underlying log lines to substantiate your update.
+2. Provide a clickable markdown link to the specific log file being referenced so the user can click through to see the full contents.
+
+However, **NEVER include timestamps** in your updates, as they add absolutely zero value to the user.
 
 **Example of a good check-in:**
 > The agent has successfully retrieved the reference guidance using the modern web skill:
 > ```json
 > [Modern Web Log]: {"tool":"get_best_practices"}
 > ```
+> Reference: [task-log](file:///path/to/log/file.log)
 
 **Example of a bad check-in:**
 > The agent is currently executing a command to update the workspace CSS files! (timestamp: 00:22:21Z)
@@ -90,16 +96,17 @@ If you are reviewing a shared dashboard and need to investigate specific histori
 gcloud storage cp -r gs://guidance-evals/<suite_id> harness/results/
 ```
 
-## 2. Investigation Flow
+## 2. Investigation Checklist
 
-*Overview of the investigation process:*
-1. **Audit the Prompt First**: Verify the prompt in `tasks/task.md` is valid and non-prescriptive.
-2. **Execute Evals**: Run `gd eval` to evaluate the agent against the use case.
-3. **Inspect Results**: Review pass rates in `evals.json` and verify tool activation.
-4. **Validate Grader Tolerance (False Negatives)**: Check if a correct implementation failed due to a brittle grader.
-5. **Validate Guidance Coverage (True Negatives)**: Check if an incorrect implementation failed due to missing guidance.
-6. **Trace the Trajectory**: Read the agent's thought logs to diagnose search queries and execution logic.
-7. **Integrity Audit**: Conduct a mandatory final review against all skill best practices to verify honest success.
+To guarantee full adherence to this protocol, you **MUST output this exact verification checklist at the very beginning of your first response to the user** to establish your operational plan, and continuously update it as you complete each step:
+
+1. [ ] **Step 1: Audit the Prompt First** - Verified the target prompt in `tasks/task.md` is valid, non-prescriptive, and completely devoid of hardcoded technical APIs or explicit fallback requirements.
+2. [ ] **Step 2: Execute Evals & Check Base App** - Ran `gd eval` to establish a baseline and confirmed the base app (`index.html`) contains the necessary structural elements to support the required implementation.
+3. [ ] **Step 3: Inspect Results & Verify Tool Activation** - Reviewed the pass rates in `evals.json` and confirmed that the agent successfully discovered and utilized the relevant reference guide.
+4. [ ] **Step 4: Validate Grader Tolerance (False Negatives)** - Confirmed via `gd dev --test-grader` that the grader successfully passes a correct implementation (`demo.html`) and accurately fails an incorrect one (`negative-demo.html`) without relying on overly rigid regular expressions.
+5. [ ] **Step 5: Validate Guidance Coverage (True Negatives)** - Verified that all success criteria evaluated by the grader are explicitly documented as `MANDATORY` requirements in `guide.md`.
+6. [ ] **Step 6: Trace the Trajectory** - Read the agent's local execution thought logs (`session-*.json`) to diagnose and resolve any search query mismatches or silent implementation rejections.
+7. [ ] **Step 7: Final Integrity Audit** - Conducted a strict final review against all skill best practices to confirm that the 100% Guided Pass Rate was earned honestly and completely.
 
 ### Step 1: Audit the Prompt First (`tasks/task.md`)
 - **Solution Agnostic**: Ensure the prompt describes the **user problem or outcome**, not the technical solution. If it explicitly names the API or feature (e.g., "Use the Temporal API"), any high pass rate is a false positive.
@@ -108,6 +115,9 @@ gcloud storage cp -r gs://guidance-evals/<suite_id> harness/results/
 - **Legacy Fallbacks Are Automatic**: Prompts should almost never need to mandate that legacy fallbacks are applied. If the agent successfully discovers and reads the relevant guide, it will automatically follow any documented fallback requirements.
 - **Base App Alignment**: Any elements, selectors, or layout locations mentioned in the prompt must actually exist in the initial state of the base app.
 - **Prescriptive Constraints vs Open Solutions**: Update the prompt to prescribe specific validation constraints (such as IDs, class names, or resource filenames) if the grader requires them. However, **never** be prescriptive about the specific web platform mechanism.
+  > [!IMPORTANT]
+  > **Functional Locators vs. Technical Solutions**
+  > It is completely acceptable (and sometimes necessary) to mandate specific DOM IDs or CSS classes (e.g., `"add a .fan-card class"`) if the grader requires them to locate elements. What is strictly banned is mandating the underlying implementation technology (e.g., commanding the model to `"use sibling-index()"` or `"use the Temporal API"`).
 - **Mandatory List Formatting**: The `task.md` file **must always be formatted as a markdown list** (`- item`). Even though the file may contain multiple unused prompts for future expansion, remember that the evaluation harness currently **only executes the very first list item**.
 - **No Line Breaks in the Target Prompt**: Anything you want included in the prompt that actually gets evaluated must be entirely contained on the first bullet point line without any line breaks.
 - **Over-Prescription "Smell"**: If both the unguided and guided tests pass at 100%, this is a strong code smell indicating that your prompt may be overly prescriptive and practically giving away the modern solution.
@@ -157,9 +167,7 @@ gcloud storage cp -r gs://guidance-evals/<suite_id> harness/results/
      - *Action*: Use strict directive keywords like `"MANDATORY:"` or `"CRITICAL:"` in the guide to override the agent's pre-trained biases.
 
 ### Step 7: Integrity Audit (Mandatory Final Review)
-- After you successfully achieve a **100% Guided Pass Rate**, you must perform a strict final audit of your changes.
-- Check the best practices defined in this skill and all other relevant skills (e.g., `project-evals`, `project-guides`).
-- Ensure you did not "cheat" your way to 100% (e.g., by hardcoding explicit platform APIs into the user prompt, or by making the grader tests trivially empty). Take immense pride in your success by proving it was earned the honest and fully compliant way!
+- After you successfully achieve a **100% Guided Pass Rate**, you must perform a strict final audit of your changes to ensure no steps were skipped.
 
 ## 3. Some Observed Patterns & Solutions
 
