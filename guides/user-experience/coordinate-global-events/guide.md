@@ -18,9 +18,9 @@ The `Temporal` API provides `Temporal.ZonedDateTime` to represent a date and tim
 
 To coordinate global events and handle potential DST conflicts:
 
-1.  **Create a ZonedDateTime**: Use `Temporal.ZonedDateTime.from()` to create a time-zone-aware date-time object.
-2.  **Handle Ambiguity**: Use the `disambiguation` option to control behavior when a time is ambiguous or does not exist (e.g., during clock changes).
-3.  **Convert Time Zones**: Use `.withTimeZone()` to see the equivalent time in another location.
+1. **MANDATORY:** **Create a ZonedDateTime**: Use `Temporal.ZonedDateTime.from()` to create a time-zone-aware date-time object.
+2. **MANDATORY:** **Handle Ambiguity**: Use the `disambiguation` option to control behavior when a time is ambiguous or does not exist (e.g., during clock changes).
+3. **MANDATORY:** **Convert Time Zones**: Use `.withTimeZone()` to see the equivalent time in another location.
 
 ### Example: Scheduling and Conflict Detection
 

@@ -44,6 +44,7 @@ const COMMAND_METADATA = {
   run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
   deploy: { desc: 'Deploy the dashboard to GitHub Pages', flags: [] },
   upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
+  backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
 
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
@@ -192,7 +193,7 @@ function showHelp() {
     },
     {
       title: 'Evaluation & Dashboard',
-      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload'],
+      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill'],
     },
     {
       title: 'Utilities & Setup',
@@ -348,6 +349,11 @@ async function main() {
       const args = positionals.slice(1);
       const code = await runNpm(['upload', ...args]);
       process.exit(code);
+    }
+
+    case 'backfill': {
+      await import('../harness/backfill.ts');
+      break;
     }
 
     case 'deploy': {
