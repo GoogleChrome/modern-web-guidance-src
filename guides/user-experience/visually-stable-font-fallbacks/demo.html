@@ -10,95 +10,35 @@
         padding: 1rem;
         max-width: 800px;
         margin: 0 auto;
-      }
-
-      .demo-container {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-      }
-
-      .demo-box {
-        border: 1px solid #ccc;
-        padding: 1rem;
-        border-radius: 4px;
-      }
-
-      pre {
-        margin-top: 0;
-        color: #666;
-        font-size: 0.875rem;
-      }
-
-      .text {
-        /* Base font size */
         font-size: 1.5rem;
-        margin: 0;
-      }
-
-      .font-swap:hover {
-        font-family: Times, sans-serif;
       }
 
       /*
       * Setting font-size-adjust to from-font automatically standardizes
       * the metrics based on the first font provided in the list.
       */
-      .visually-stable {
+      .font-swap{
         /*
            Refer to this calculator to find the value for your font:
            https://philipwalton.github.io/demos/font-size-adjust-calculator/
          */
         font-size-adjust: 0.5454;
       }
-
-      .instruction {
-        font-style: italic;
-        color: #555;
-        margin-top: 0.5rem;
-        margin-bottom: 0.5rem;
+      .font-swap:hover {
+        font-family: Times, sans-serif;
       }
+
     </style>
   </head>
   <body>
     <h1>Visually Stable Font Fallbacks</h1>
-    <p>
+    <p class="font-swap">
       This demo illustrates how to use <code>font-size-adjust</code> to keep
       text visually stable when the preferred font is unavailable and the
-      browser swaps to a fallback font.
+      browser swaps to a fallback font. By using <code>font-size-adjust</code>,
+      the fallback font is automatically scaled so its lowercase characters
+      match the target size of the preferred font, preventing drastic layout
+      shifts.
     </p>
-
-    <div class="demo-container">
-      <div class="demo-box">
-        <h2>Without <code>font-size-adjust</code></h2>
-        <p>
-          Notice the significant difference in character size. If the preferred
-          font is loading, swapping causes a disruptive layout shift.
-        </p>
-
-        <p class="instruction">
-          Hover over the text below to simulate a font swap:
-        </p>
-        <p class="text font-swap">
-          The quick brown fox jumps over the lazy dog
-        </p>
-      </div>
-
-      <div class="demo-box">
-        <h2>With <code>font-size-adjust</code></h2>
-        <p>
-          By using <code>font-size-adjust</code>, the fallback font is
-          automatically scaled so its lowercase characters match the target size
-          of the preferred font, preventing drastic layout shifts.
-        </p>
-
-        <p class="instruction">
-          Hover over the text below to simulate a font swap:
-        </p>
-        <p class="text font-swap visually-stable">
-          The quick brown fox jumps over the lazy dog
-        </p>
-      </div>
-    </div>
   </body>
 </html>
