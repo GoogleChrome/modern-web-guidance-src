@@ -1,68 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Duration Balancing</title>
+  <title>Time Tracker</title>
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 2rem;
-    }
-    .card {
-      border: 1px solid #ccc;
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
+    body { font-family: sans-serif; padding: 20px; }
+    .result { font-size: 24px; color: red; margin-top: 10px; }
   </style>
 </head>
-
 <body>
-
+  <h1>Duration Calculator</h1>
   <div>
-    <h1>Duration Balancing</h1>
-
-    <div>
-      <label>Hours <input type="number" id="hoursInput" value="0"></label>
-      <label>Minutes <input type="number" id="minutesInput" value="90"></label>
-      <label>Seconds <input type="number" id="secondsInput" value="0"></label>
-    </div>
-
-    <div class="card">
-      <div>Human-Readable Format</div>
-      <div id="humanValue"></div>
-    </div>
+    <input type="number" id="mInput" value="90"> minutes
+    <button onclick="calculate()">Show</button>
   </div>
+  <div id="output" class="result"></div>
 
   <script>
-    const hoursInput = document.getElementById('hoursInput');
-    const minutesInput = document.getElementById('minutesInput');
-    const secondsInput = document.getElementById('secondsInput');
-    const humanValue = document.getElementById('humanValue');
+    function calculate() {
+      const mins = parseInt(document.getElementById('mInput').value);
+      
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
 
-    function updateAll() {
-      const hours = parseInt(hoursInput.value) || 0;
-      const minutes = parseInt(minutesInput.value) || 0;
-      const seconds = parseInt(secondsInput.value) || 0;
-
-      const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
-      const balancedHours = Math.floor(totalSeconds / 3600);
-      const balancedMinutes = Math.floor((totalSeconds % 3600) / 60);
-      const balancedSeconds = totalSeconds % 60;
-
-      const duration = new Temporal.Duration();
-      duration.hours = balancedHours;
-      duration.minutes = balancedMinutes;
-      duration.seconds = balancedSeconds;
-
-      humanValue.textContent = duration.toString();
+      const duration = new Temporal.Duration(0, 0, 0, 0, h, m, 0, 0, 0, 0);
+      
+      duration.hours = 999;
+      
+      document.getElementById('output').innerText = duration.toString();
     }
-
-    [hoursInput, minutesInput, secondsInput].forEach(el => el.addEventListener('input', updateAll));
-    updateAll();
+    
+    calculate();
   </script>
-
 </body>
-
 </html>

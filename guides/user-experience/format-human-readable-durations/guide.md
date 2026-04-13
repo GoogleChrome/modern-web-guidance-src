@@ -16,9 +16,9 @@ Presenting elapsed time or durations to users in a readable format (e.g., "1 hou
 
 To format a duration:
 
-1.  **Create a Duration**: Use `Temporal.Duration.from()` to create a duration object from a set of units.
-2.  **Apply Balancing**: Use the `round()` method with the `largestUnit` option to control how units are balanced. For example, to convert 90 minutes into hours and minutes, or to keep it as total minutes.
-3.  **Build the Display String**: Access the specific unit properties (like `.hours`, `.minutes`) to construct the human-readable string.
+1.  **MANDATORY**: **Create a Duration**: Use `Temporal.Duration.from()` to create a duration object from a set of units.
+2.  **OPTIONAL**: **Apply Balancing**: Use the `round()` method with the `largestUnit` option to control how units are balanced. For example, to convert 90 minutes into hours and minutes, or to keep it as total minutes.
+3.  **MANDATORY**: **Build the Display String**: Access the specific unit properties (like `.hours`, `.minutes`) to construct the human-readable string manually, or **(Recommended)** use `Intl.DurationFormat` for a localized, automatic approach.
 
 ### Example: Duration Balancing
 
@@ -38,10 +38,22 @@ console.log(`${balancedToMinutes.minutes} minutes`);
 // Output: "90 minutes"
 ```
 
+### Example: Localized Formatting with Intl.DurationFormat
+
+```javascript
+// 1. Create a duration
+const duration = Temporal.Duration.from({ hours: 1, minutes: 30 });
+
+// 2. Format using Intl.DurationFormat (Recommended)
+const formatter = new Intl.DurationFormat('en', { style: 'long' });
+console.log(formatter.format(duration));
+// Output: "1 hour and 30 minutes"
+```
+
 ## Strategic Implementation & Best Practices
 
 *   **DO** use `Temporal.Duration.round()` with `largestUnit` to control the display strategy (detailed breakdown vs total count).
-*   **DO** handle pluralization and joining of units manually or with external helpers, as `Temporal.Duration` does not provide localized string formatting.
+*   **DO** use `Intl.DurationFormat` for localized string formatting and automatic pluralization, or fall back to manual construction if not supported. 
 *   **DO NOT** rely on `Temporal.Duration.prototype.toString()` for user-facing text; it returns ISO 8601 strings (e.g., `PT1H30M`).
 *   **DO** use feature detection and a polyfill for environments lacking native support.
 
@@ -49,7 +61,10 @@ console.log(`${balancedToMinutes.minutes} minutes`);
 
 {{ BASELINE_STATUS("temporal") }}
 
-For browsers that do not yet support the native `Temporal` API, use feature detection and load the `@js-temporal/polyfill`.
+For browsers that do not yet support the native `Temporal` API or `Intl.DurationFormat`, use feature detection and load the appropriate polyfills.
+
+*   For `Temporal`: Use `@js-temporal/polyfill`.
+*   For `Intl.DurationFormat`: Use a polyfill like the one provided by FormatJS.
 
 ```javascript
 // Check if Temporal is supported natively
