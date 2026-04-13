@@ -17,7 +17,7 @@ sources:
   - https://developer.mozilla.org/docs/Web/CSS/Reference/Selectors/:interest-target
 ---
 
-It can be beneficial to provide users a preview of their actions before they commit to them. Interest invokers are an experimental web platform feature that provides a declarative-based way of creating interest relationships between an interest source (i.e. a button or a link) and an interest target. Once the declarative relationship has been establish there are a number of methods a developer can respond to based on interest and loss of interest using both CSS and JavaScript. For this use case, we can leverage the `interest` and `loseinterest` events to preview various effects for an interest target.
+It can be beneficial to provide users a preview of their actions before they commit to them. Interest invokers are an experimental web platform feature that provides a declarative-based way of creating interest relationships between an interest source (i.e. a button or a link) and an interest target. Once the declarative relationship has been established there are a number of methods a developer can respond to based on interest and loss of interest using both CSS and JavaScript. For this use case, we can leverage the `interest` and `loseinterest` events to preview various effects for an interest target.
 
 ## How to implement
 
@@ -40,7 +40,7 @@ interestingElement.addEventListener("interest", event => {
 
 interestingElement.addEventListener("loseinterest", event => {
   // Unapply the preview
-  delete eventTarget.dataset.preview;
+  delete event.target.dataset.preview;
 });
 ```
 
@@ -52,12 +52,12 @@ Active interest sources and targets can be selected with CSS using the `:interes
 :interest-target {}
 ```
 
-The start and end delay for an interest invoker (i.e. the element with the `interestfor` attribute) using the `interest-delay-start` and `interest-delay-end` CSS properties or the shorthand `interest-delay` property.
+The start and end delay for an interest invoker (i.e. the element with the `interestfor` attribute) can be set with the `interest-delay-start` and `interest-delay-end` CSS properties or the shorthand `interest-delay` property.
 
 ```css
 [interestfor] {
-  interest-delay-start: 0.2ms;
-  interest-delay-end: 0.1ms;
+  interest-delay-start: 0.2s;
+  interest-delay-end: 0.1s;
 }
 ```
 
