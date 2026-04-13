@@ -12,12 +12,16 @@ sources:
   - https://londonwebstandards.org/talks/everything-you-need-to-know-about-invoker-commands/
 ---
 
+<<<<<<< Updated upstream
 # Declarative Button Actions
 
+=======
+>>>>>>> Stashed changes
 The Invoker Commands API allows buttons to trigger actions on target elements declaratively using HTML attributes. This approach reduces the need for manual event listeners and ensures interactivity as soon as the HTML is parsed.
 
 For custom, application-specific actions, you can define your own command names. Custom commands must be prefixed with a double dash (`--`) to avoid collisions with future built-in browser commands.
 
+<<<<<<< Updated upstream
 ## Implementation steps
 
 1.  **Define the target element**: Identify the element that will respond to the action. It must have a unique `id`.
@@ -25,6 +29,15 @@ For custom, application-specific actions, you can define your own command names.
 3.  **Handle the command event**: Attach a `command` event listener to the `document` (or a common parent). This ensures that the event is captured even if it is dispatched by a polyfill or from a child element. The event object contains a `command` property and a `target` property (referring to the element identified by `commandfor`).
 
 ## Example: Custom Animation Controls
+=======
+### Implementation steps
+
+1.  **Define the target element**: Identify the element that will respond to the action. It must have a unique `id`.
+2.  **Configure the invoker button**: Use the `commandfor` attribute to point to the target's `id`, and the `command` attribute to specify the custom command name (prefixed with `--`).
+3.  **Handle the command event**: Attach a `command` event listener to the target element. The event object contains a `command` property matching the value defined in HTML.
+
+### Example: Custom Animation Controls
+>>>>>>> Stashed changes
 
 ```html
 <!-- The target element that will respond to custom commands -->
@@ -47,6 +60,7 @@ For custom, application-specific actions, you can define your own command names.
 </button>
 
 <script>
+<<<<<<< Updated upstream
   // Listen for the 'command' event globally (or on a stable parent)
   document.addEventListener('command', (event) => {
     // Robustly handle both native API and manual/polyfill fallbacks
@@ -62,6 +76,18 @@ For custom, application-specific actions, you can define your own command names.
     } else if (command === '--grow') {
       target.classList.toggle('is-grown');
     } else if (command === '--reset') {
+=======
+  const target = document.getElementById('action-target');
+
+  // Logic is centralized on the target element using the 'command' event
+  target.addEventListener('command', (event) => {
+    // Custom commands are checked to identify the requested action
+    if (event.command === '--spin') {
+      target.classList.toggle('is-spun');
+    } else if (event.command === '--grow') {
+      target.classList.toggle('is-grown');
+    } else if (event.command === '--reset') {
+>>>>>>> Stashed changes
       // Clear all custom classes to return to initial state
       target.classList.remove('is-spun', 'is-grown');
     }
@@ -69,6 +95,7 @@ For custom, application-specific actions, you can define your own command names.
 </script>
 ```
 
+<<<<<<< Updated upstream
 ## Key constraints
 
 *   **Prefix custom commands**: MANDATORY: All custom command names must start with `--` (e.g., `command="--my-action"`).
@@ -143,4 +170,51 @@ document.addEventListener('command', (event) => {
     action(target);
   }
 });
+=======
+
+### Key constraints
+
+*   **Prefix custom commands**: MANDATORY: All custom command names must start with `--` (e.g., `command="--my-action"`).
+*   **Targeting**: The `commandfor` attribute must match the `id` of an element in the same document tree.
+*   **Button types**: Only `<button>` and `<input type="button">` (or `type="submit"`) can act as invokers.
+
+### Fallback strategies
+
+{{ BASELINE_STATUS("invoker-commands") }}
+
+If the Invoker Commands API is not supported, the `command` event will not fire. You should detect support and fall back to traditional click event listeners.
+
+```javascript
+// Feature detection: check if HTMLButtonElement supports commandfor
+const supportsInvokers = 'commandForElement' in HTMLButtonElement.prototype;
+
+if (!supportsInvokers) {
+  // Manual fallback for browsers without Invoker support
+  const invokers = document.querySelectorAll('button[commandfor]');
+  
+  invokers.forEach(button => {
+    button.addEventListener('click', () => {
+      const targetId = button.getAttribute('commandfor');
+      const command = button.getAttribute('command');
+      const target = document.getElementById(targetId);
+      
+      if (target) {
+        // Manually dispatch a custom event or call the handler directly
+        target.dispatchEvent(new CustomEvent('command', {
+          detail: { command }, // Note: native event uses .command, not .detail.command
+          bubbles: true
+        }));
+      }
+    });
+  });
+  
+  // Adjust handler to support both native and fallback event structures
+  target.addEventListener('command', (event) => {
+    const commandName = event.command || (event.detail && event.detail.command);
+    if (commandName === '--spin') {
+      // ... logic
+    }
+  });
+}
+>>>>>>> Stashed changes
 ```

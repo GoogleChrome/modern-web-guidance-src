@@ -242,12 +242,22 @@
   </div>
 
   <script>
-    // 1. Check for Temporal support
-    if (typeof Temporal !== 'undefined') {
-      document.getElementById('unsupported-warning').style.display = 'none';
-      initializeDemo();
+    const unsupportedWarning = document.getElementById('unsupported-warning');
+
+    // Check Support and load polyfill if needed
+    if (typeof Temporal === 'undefined') {
+      import('@js-temporal/polyfill').then(({ Temporal: polyfill }) => {
+        globalThis.Temporal = polyfill;
+        unsupportedWarning.style.display = 'none';
+        initializeDemo();
+      }).catch(err => {
+        console.error('Failed to load Temporal polyfill:', err);
+        unsupportedWarning.textContent = '🚫 Failed to load Temporal polyfill. Demo may not function.';
+        document.querySelectorAll('button').forEach(b => b.disabled = true);
+      });
     } else {
-      document.querySelectorAll('button').forEach(b => b.disabled = true);
+      unsupportedWarning.style.display = 'none';
+      initializeDemo();
     }
 
     function initializeDemo() {
@@ -278,8 +288,9 @@
         // Use explicit calendar to avoid calendar mismatch in polyfill
         const expiry = Temporal.PlainYearMonth.from({
           year: yearNum,
-          month: monthNum
-        }, { calendar: 'iso8601' });
+          month: monthNum,
+          calendar: 'iso8601'
+        });
 
         // Calculate Duration
         const duration = currentMonth.until(expiry, { largestUnit: 'years' });
@@ -320,7 +331,7 @@
         codeDiv.innerText = `const currentMonth = Temporal.Now.plainDateISO().toPlainYearMonth();
 
 // Use explicit calendar for polyfill safety
-const expiry = Temporal.PlainYearMonth.from({ year: ${yearNum}, month: ${monthNum} }, { calendar: 'iso8601' });
+const expiry = Temporal.PlainYearMonth.from({ year: ${yearNum}, month: ${monthNum}, calendar: 'iso8601' });
 
 const duration = currentMonth.until(expiry, { largestUnit: 'years' }); // Duration: ${duration.years}Y, ${duration.months}M`;
 
