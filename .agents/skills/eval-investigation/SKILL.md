@@ -12,6 +12,22 @@ This skill helps you diagnose why AI coding agents are failing evaluations, spec
 ### Core Philosophy: Immediate Resolution
 - **Fix It Now**: Do not create tracking issues or delay work. The goal of an investigation is to identify the root cause and implement the fix immediately in the active session.
 - **Platform Boundary**: When investigating an eval, strictly modify use-case specific files (i.e., `task.md`, `grader.ts`, `expectations.md`, demo apps, and `guide.md`). Do not attempt to fix bugs in the underlying platform infrastructure or Playwright test environment. If you identify infrastructure issues, note them clearly for the user and suggest filing an issue on GitHub for the engineering team, ensuring the use-case investigation remains focused and clean.
+- **Success Rate Goal**: The ultimate objective of every investigation is to achieve a **100% Guided Pass Rate**. The unguided pass rate does not matter and can be ignored.
+- **Autonomous Initiative & Iteration**: An investigation is not a single pass. You must autonomously loop through fixing files, re-running evaluations, measuring progress, and rolling back failed attempts until you hit 100% success. Never stop early, and run tests multiple times to ensure your fix is consistently non-flaky.
+## Communication Protocol
+
+Because evaluation runs (`gd eval`) take time, check in with the user approximately every **30 seconds** to provide a helpful narrative summary of what the agent is currently doing.
+
+Whenever you summarize progress during these check-ins, you **MUST** include a direct quote or code block of the underlying log lines to substantiate your update. However, **NEVER include timestamps** in your updates, as they add absolutely zero value to the user.
+
+**Example of a good check-in:**
+> The agent has successfully retrieved the reference guidance using the modern web skill:
+> ```json
+> [Modern Web Log]: {"tool":"get_best_practices"}
+> ```
+
+**Example of a bad check-in:**
+> The agent is currently executing a command to update the workspace CSS files! (timestamp: 00:22:21Z)
 
 ## Quick Reference: Investigation Files
 
@@ -74,43 +90,89 @@ If you are reviewing a shared dashboard and need to investigate specific histori
 gcloud storage cp -r gs://guidance-evals/<suite_id> harness/results/
 ```
 
-
 ## 2. Investigation Flow
 
-1.  **Run `gd eval`** to execute the evaluation suite for a given use case.
-2.  **Check `evals.json` First**: Review the top-level summary in `evals.json` to inspect unguided and guided pass statuses.
-    - **Crucial Check**: In the guided run results, verify whether the skill tools were called and if the specific use case guide was used.
-    - **If the guide was NOT used**, investigate why and correct the usage:
-      - **Check the Prompt**: Review and modify the prompt directly in the use case's `tasks/task.md` file.
-      - **First Prompt Only**: Be aware that the evaluation suite only executes the **first** list item in `task.md`. Adding additional bullet points will not change the prompt used in the eval.
-      - **Base App Alignment**: Ensure the prompt makes sense against the starting conditions of the `base_app` (e.g., `daily-grind`). Any elements, selectors, or locations mentioned in the prompt must exist in the initial state of the base app.
-      - **Temporary Workaround (Debugging Only)**: If the agent fails to discover the guide, you can temporarily append `"use the modern web skill"` to the prompt in `task.md`. This forces the agent to search for and retrieve the guide, allowing you to bypass discovery issues and debug grader or implementation failures. **Crucial**: This is strictly a temporary debugging workaround and must be removed before finalizing the task.
-      - **Enforce Product Requirements (Last Resort)**: If the agent still ignores the skill, emphasize mandatory product requirements or constraints that legacy methods cannot satisfy (e.g., "mandatory: you must ensure X behavior"). This signals to the agent that its baseline training is insufficient, forcing it to look up the skill.
-      - **Always Re-Run Evals After Prompt Changes**: Prompting is extremely sensitive. If you modify the prompt in any way, you MUST immediately re-run the evaluation to validate that your changes successfully encourage skill usage and improve pass rates.
-3.  **Check which tests failed**: The most reliable way to see which tests are failing is to examine the `evals.json` file for the entire eval run. It contains a `results` object where each test run has a `results` array listing every check, including a `passed` boolean (`true` or `false`) and the test message.
-4.  **Inspect the trajectory** (`session-<timestamp>.json`) to determine how the agent used skill tools. Trajectory files for `gd eval` runs are located in the harness results directory as defined in the Quick Reference table above.
-    - *Failure Diagnosis*: Refer to Section 3 (Observed Patterns & Solutions) to match the trajectory behavior to known failure patterns, such as silent skips, poor search selection, or content ambiguity.
-5.  **Verify Harness Integration & Logs**: Review standard error and harness output files to confirm whether skill tools were registered, and check if folder trust logic (e.g., `security.folderTrust.enabled`) is silently blocking discovery.
+*Overview of the investigation process:*
+1. **Audit the Prompt First**: Verify the prompt in `tasks/task.md` is valid and non-prescriptive.
+2. **Execute Evals**: Run `gd eval` to evaluate the agent against the use case.
+3. **Inspect Results**: Review pass rates in `evals.json` and verify tool activation.
+4. **Validate Grader Tolerance (False Negatives)**: Check if a correct implementation failed due to a brittle grader.
+5. **Validate Guidance Coverage (True Negatives)**: Check if an incorrect implementation failed due to missing guidance.
+6. **Trace the Trajectory**: Read the agent's thought logs to diagnose search queries and execution logic.
+7. **Integrity Audit**: Conduct a mandatory final review against all skill best practices to verify honest success.
+
+### Step 1: Audit the Prompt First (`tasks/task.md`)
+- **Solution Agnostic**: Ensure the prompt describes the **user problem or outcome**, not the technical solution. If it explicitly names the API or feature (e.g., "Use the Temporal API"), any high pass rate is a false positive.
+- **Command vs Question**: Ensure the prompt uses imperative language (e.g., `"Add a section..."` or `"Modify the layout..."`) rather than asking an open-ended question (`"How can I..."`).
+- **Explicit Target File (Optional)**: If an ambiguous prompt causes the agent to create new files instead of modifying existing ones, explicitly name the target file (e.g., `"in index.html"`) to guide it correctly. This is only necessary if the grader is strictly locked to that specific file.
+- **Legacy Fallbacks Are Automatic**: Prompts should almost never need to mandate that legacy fallbacks are applied. If the agent successfully discovers and reads the relevant guide, it will automatically follow any documented fallback requirements.
+- **Base App Alignment**: Any elements, selectors, or layout locations mentioned in the prompt must actually exist in the initial state of the base app.
+- **Prescriptive Constraints vs Open Solutions**: Update the prompt to prescribe specific validation constraints (such as IDs, class names, or resource filenames) if the grader requires them. However, **never** be prescriptive about the specific web platform mechanism.
+- **Mandatory List Formatting**: The `task.md` file **must always be formatted as a markdown list** (`- item`). Even though the file may contain multiple unused prompts for future expansion, remember that the evaluation harness currently **only executes the very first list item**.
+- **No Line Breaks in the Target Prompt**: Anything you want included in the prompt that actually gets evaluated must be entirely contained on the first bullet point line without any line breaks.
+- **Over-Prescription "Smell"**: If both the unguided and guided tests pass at 100%, this is a strong code smell indicating that your prompt may be overly prescriptive and practically giving away the modern solution.
+- **Always Re-Run**: Because prompting is highly sensitive, you MUST immediately re-run `gd eval` after any change to validate its effectiveness.
+
+### Step 2: Execute Evals & Report Results
+- Run `gd eval <path/to/use-case>` to execute the test suite.
+- **Check-in Requirement**: Because this command takes time, you must check in with the user approximately every **30 seconds** while it runs to report on progress, output errors, and tool usage (as defined in Core Philosophy).
+- **Results Table Requirement**: Whenever you report evaluation results to the user, you **MUST** format them as a markdown table containing the use case name, the unguided pass rate, the guided pass rate, and an indicator showing whether the reference guide was successfully used.
+
+**Example Output Format:**
+| Use Case | Unguided Pass Rate | Guided Pass Rate | Guide Used |
+| :--- | :--- | :--- | :---: |
+| `customize-scrollbar` | 0% (0/5) | 100% (5/5) | ✅ |
+
+### Step 3: Inspect Results (`evals.json`)
+- Check the top-level summary in `evals.json` to compare unguided vs. guided pass statuses.
+- **Crucial Discovery Check**: One of the very first things to verify is whether the use case's guidance file was discovered and used by the agent. 
+  - **If it wasn't used (Tool Evasion)**: No amount of guide or grader changes will matter. You must immediately fix the prompt in `tasks/task.md` to force discovery:
+    - **CRITICAL RULE**: The primary skill's description (`modern-web-use-cases/SKILL.md`) is **OFF-LIMITS**. It is carefully tuned for general system health and must **never** be modified on a use-case by use-case basis.
+    - **Constraint Forcing (Correct Approach)**: Modify the prompt to introduce strict performance, layout, or declarative synchronization constraints that legacy methods cannot satisfy. This naturally forces the agent to recognize a gap in its training data and retrieve the reference guide.
+    - *Force Discovery (Temporary Check)*: Append `"use the modern web skill"` to isolate discovery failures from implementation bugs, but ensure you remove this before your final integrity audit.
+    - Always re-run `gd eval` immediately after updating the prompt.
+  - **If it was used**: This successfully narrows down the problem space to either the grader calibration or the specific implementation instructions in the guide.
+
+### Step 4: Validate Grader Tolerance (False Negatives)
+- **Eyeball the Implementation (`index.html`)**: If the guide was referenced but failures persist, visually verify the agent's output in `index.html`. 
+- Determine if the agent implemented the use case correctly **in spirit**. 
+- If the output looks correct but the grader failed it, you have found a **false negative**. 
+- Update `grader.ts` to be more tolerant and resilient (e.g., removing overly rigid or brittle regular expressions).
+- **Expectations Alignment**: If you substantively change the grader file, you must ensure that the `expectations.md` file stays in tight 1:1 alignment with the new test logic.
+- **Calibration Verification**: After editing the grader, immediately run `gd dev <path/to/use-case> --test-grader` to confirm that your updates did not break calibration against the standard `demo.html` and `negative-demo.html` reference files.
+
+### Step 5: Validate Guidance Coverage (True Negatives)
+- If the generated output in `index.html` is genuinely incorrect or missing required features, the agent failed due to a **true negative**.
+- **Clarify Requirements (`guide.md`)**: Update the guide to explicitly highlight mandatory steps using strong keywords like `"MANDATORY:"` and provide concrete code examples.
+- **Compare Guide vs Expectations**: Directly cross-reference `expectations.md` against `guide.md`. Make absolutely sure that every single grading criteria is explicitly documented in the guide, as agents cannot be expected to implement undocumented rules.
+- Map any other unexplainable trajectory behavior to the failure patterns listed in **Section 3**.
+
+### Step 6: Trace the Trajectory (`session-<timestamp>.json`)
+- If the failure persists despite perfect prompts and guides, read the agent's exact thought process to uncover hidden logic traps:
+  1. **Search Query Mismatch**: Did the agent search for a generic phrase (e.g., "custom animations") but the relevant guide required a highly specific keyword? 
+     - *Action*: Add the agent's exact search string as a keyword to the guide's metadata so it naturally surfaces in future runs.
+  2. **Guide Disambiguation**: Did the agent find the right guide but select a competing one instead because their descriptions overlapped too heavily?
+     - *Action*: Disambiguate the metadata descriptions of both guides so their unique use cases are crystal clear.
+  3. **Silent Rejection**: Did the agent read the guide but explicitly decide to ignore a crucial instruction (e.g., deciding a fallback rule wasn't necessary)?
+     - *Action*: Use strict directive keywords like `"MANDATORY:"` or `"CRITICAL:"` in the guide to override the agent's pre-trained biases.
+
+### Step 7: Integrity Audit (Mandatory Final Review)
+- After you successfully achieve a **100% Guided Pass Rate**, you must perform a strict final audit of your changes.
+- Check the best practices defined in this skill and all other relevant skills (e.g., `project-evals`, `project-guides`).
+- Ensure you did not "cheat" your way to 100% (e.g., by hardcoding explicit platform APIs into the user prompt, or by making the grader tests trivially empty). Take immense pride in your success by proving it was earned the honest and fully compliant way!
 
 ## 3. Some Observed Patterns & Solutions
 
--   **Conversational Answer Instead of Code Edits (Informational Prompt)**:
-    -   *Investigation*: The agent retrieves the guide and understands the task, but the trajectory shows it outputting a text explanation instead of modifying the target files (causing all grader checks to fail).
-    -   *Solution*: Update the prompt in `tasks/task.md` to be an explicit command (e.g., `"update index.html to..."`) rather than an open-ended question (`"how can I..."`).
-
--   **Agent Searches Skills but Picks the Wrong Guide**:
+-   **Tool Evasion (Agent Completely Bypasses Guidance Tools)**: 
+    -   *Investigation*: Check `evals.json` and confirm `guideUsageRate` is 0.
+    -   *Solution*: Apply **Constraint Forcing** to the prompt in `tasks/task.md`. Introduce non-negotiable declarative layout, rendering, or synchronization constraints that legacy web technologies cannot resolve. This naturally drives the agent to look up the reference guide.
+-   **Search Mismatch (Agent Searches Skills but Picks the Wrong Guide)**:
     -   *Investigation*: Verify in the trajectory which guide titles or keywords the agent searched for versus what the metadata returned.
     -   *Solution*: Improve the guide's metadata description, title, or associated search keywords so that it ranks higher or explicitly matches likely agent queries.
 -   **Missing Skill Tools (Silent Skip)**: GCLI skips tool discovery in untrusted folders.
     -   *Solution*: Disable `folderTrust` in the harness `settings.json` or set `GEMINI_CLI_INTEGRATION_TEST=true`.
--   **Salient changes in new files**: Graders typically only inspect `index.html`. If a prompt is ambiguous, the agent might happily create a new page or subresource, causing all grader checks to fail because the grader never sees those edits.
-    -   *Investigation*: Check the agent's output in the results directory to see exactly which files were modified or created.
-    -   *Solution*: Prepend a specific target instruction to the prompt, for example: `"add to index.html: <rest of prompt>"`. This removes ambiguity and forces the agent to modify the exact file the grader expects.
 -   **Conflicting Image Sourcing**: The prompt specifies a filename but a global instruction causes the agent to use external URLs.
     -   *Solution*: Remove conflicting global instructions.
--   **Ambiguous Prompt vs Rigid Grader**: A disconnect exists between what the agent generates and what the grader targets. For example, the grader might query for `#my-button` or `hero.jpg`, but the prompt never specifies those names.
-    -   *Investigation*: Compare the agent's output in `index.html` with the precise selectors and resource names expected by the `grader.ts` file to spot discrepancies.
-    -   *Solution*: Update the prompt to be explicitly prescriptive about validation constraints (such as specific IDs, class names, or resource filenames). However, **never** be prescriptive about the specific modern web features or solution mechanisms.
 -   **Overly Rigid Graders vs Valid Alternatives**: If the agent's `index.html` changes faithfully follow the guide but still fail the checks, the grader is likely too brittle (often due to relying on regular expressions).
     -   *Solution*: Update the `grader.ts` file to be more resilient. Avoid regular expressions at all costs. Instead, verify the implementation using computed styles, structural descendant selectors, or behavior-based Playwright assertions to tolerate non-deterministic but correct agent outputs.
 -   **Unreasonable or Untestable Expectations**: Grader files are auto-generated from `expectations.md`. If the expectations themselves are flawed, the resulting grader will be untestable or redundant.
