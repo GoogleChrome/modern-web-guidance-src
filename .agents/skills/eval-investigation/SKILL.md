@@ -109,11 +109,12 @@ To guarantee full adherence to this protocol, you **MUST output this exact verif
 7. [ ] **Step 7: Final Integrity Audit** - Conducted a strict final review against all skill best practices to confirm that the 100% Guided Pass Rate was earned honestly and completely.
 
 ### Step 1: Audit the Prompt First (`tasks/task.md`)
+- **Mandatory Substantiation**: When reporting the completion of this step, you MUST explicitly quote the target prompt to the user and summarize exactly why it adheres to all non-prescriptive guidelines.
 - **Solution Agnostic**: Ensure the prompt describes the **user problem or outcome**, not the technical solution. If it explicitly names the API or feature (e.g., "Use the Temporal API"), any high pass rate is a false positive.
 - **Command vs Question**: Ensure the prompt uses imperative language (e.g., `"Add a section..."` or `"Modify the layout..."`) rather than asking an open-ended question (`"How can I..."`).
 - **Explicit Target File (Optional)**: If an ambiguous prompt causes the agent to create new files instead of modifying existing ones, explicitly name the target file (e.g., `"in index.html"`) to guide it correctly. This is only necessary if the grader is strictly locked to that specific file.
 - **Legacy Fallbacks Are Automatic**: Prompts should almost never need to mandate that legacy fallbacks are applied. If the agent successfully discovers and reads the relevant guide, it will automatically follow any documented fallback requirements.
-- **Base App Alignment**: Any elements, selectors, or layout locations mentioned in the prompt must actually exist in the initial state of the base app.
+- **Base App Alignment**: If the prompt instructs the agent to modify an existing element, confirm that such an element actually exists in the base app template.
 - **Prescriptive Constraints vs Open Solutions**: Update the prompt to prescribe specific validation constraints (such as IDs, class names, or resource filenames) if the grader requires them. However, **never** be prescriptive about the specific web platform mechanism.
   > [!IMPORTANT]
   > **Functional Locators vs. Technical Solutions**
@@ -125,7 +126,10 @@ To guarantee full adherence to this protocol, you **MUST output this exact verif
 
 ### Step 2: Execute Evals & Report Results
 - Run `gd eval <path/to/use-case>` to execute the test suite.
-- **Check-in Requirement**: Because this command takes time, you must check in with the user approximately every **30 seconds** while it runs to report on progress, output errors, and tool usage (as defined in Core Philosophy).
+- **Check-in Requirement (Meaningful Trajectory & RAG Guidance Only)**: Because this command takes time, you must check in with the user approximately every **30 seconds** while it runs. When providing these updates, **NEVER output noisy internal JSON tool executions for file edits (e.g., `read`, `repl`, `write_file`, etc.)**. These provide zero value to the user. You MUST exclusively quote domain-relevant activations:
+  1. **Guidance Activations**: When the agent successfully uses the search or retrieval mechanisms against the `modern-web` MCP server to find our specific reference documentation.
+  2. **Agent Reasoning**: When the agent's natural language thought trajectory explicitly explains its technical strategy for solving the problem.
+  3. **Playwright Output**: When the test suite produces a final failure or success status.
 - **Results Table Requirement**: Whenever you report evaluation results to the user, you **MUST** format them as a markdown table containing the use case name, the unguided pass rate, the guided pass rate, and an indicator showing whether the reference guide was successfully used.
 
 **Example Output Format:**
@@ -167,6 +171,10 @@ To guarantee full adherence to this protocol, you **MUST output this exact verif
      - *Action*: Use strict directive keywords like `"MANDATORY:"` or `"CRITICAL:"` in the guide to override the agent's pre-trained biases.
 
 ### Step 7: Integrity Audit (Mandatory Final Review)
+- **Mandatory Substantiation**: When concluding the investigation, you MUST provide a final Markdown table showing the exact outcome:
+  | Use Case | Unguided Pass Rate | Guided Pass Rate | Guide Used |
+  | :--- | :--- | :--- | :---: |
+  | `style-parent-with-has` | 0% (0/5) | 100% (5/5) | ✅ |
 - After you successfully achieve a **100% Guided Pass Rate**, you must perform a strict final audit of your changes to ensure no steps were skipped.
 
 ## 3. Some Observed Patterns & Solutions
