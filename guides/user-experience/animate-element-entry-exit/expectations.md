@@ -1,0 +1,9 @@
+- The element must use the `@starting-style` at-rule to define starting property values for its entry animation.
+- The element's CSS must include `transition-behavior: allow-discrete` or the `allow-discrete` keyword within the `transition` shorthand for the `display` property.
+- When an element is added to the DOM or its `display` changes from `none` to a visible value, it must smoothly transition its properties (e.g., `opacity`, `transform`) from the `@starting-style` values to its visible values.
+- When an element's `display` changes from a visible value to `none` (e.g., via a class toggle), it must smoothly transition its properties to its hidden values before being hidden from the layout.
+- When an element is removed from the DOM, the implementation must first trigger the exit transition and wait for it to complete (e.g., using `getAnimations().finished` or `transitionend`) before calling `.remove()`.
+- The CSS must include the `display` property in the `transition` list to ensure it transitions correctly.
+- The implementation should provide a way to toggle the element's visibility (e.g., a button or JavaScript).
+- The transition durations for entry and exit should be reasonable (e.g., 0.3s to 1s).
+- The implementation must respect user preferences for reduced motion using the `prefers-reduced-motion` media query by disabling or simplifying transitions (e.g., removing transforms and shortening durations).

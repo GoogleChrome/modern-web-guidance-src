@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Font Fallback Demo</title>
+    <style>
+      body {
+        font-family: Verdana, sans-serif;
+        line-height: 1.5;
+        padding: 2rem;
+        max-width: 700px;
+        margin: 0 auto;
+        font-size: 1.25rem;
+      }
+
+      .text-box {
+        border: 2px solid #ccc;
+        padding: 1.5rem;
+        background-color: #f9f9f9;
+        font-family: Verdana, sans-serif;
+      }
+
+      .text-box:hover {
+        font-family: "Times New Roman", serif;
+      }
+
+      .indicator {
+        margin-top: 1rem;
+        font-weight: bold;
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Typography and Layout</h1>
+    <div class="text-box">
+      This container uses a font stack that transitions between different
+      typefaces. When the font family changes, the browser renders the glyphs
+      at their default scale for the specified font size. This often results in
+      a noticeable change in the visual weight and height of the text block,
+      as different fonts have varying x-heights despite being set to the same
+      point size. The layout adapts dynamically to these changes in character
+      dimensions.
+    </div>
+    <p class="indicator">Hover over the box to change the typeface.</p>
+  </body>
+</html>
