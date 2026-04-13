@@ -43,7 +43,9 @@ The first argument defines the "base" size for the calculation.
 **Special Arguments:**
 - `any`: A generic basis used when the specific intrinsic type is unknown or when nesting calculations.
 - Nested `calc-size()`: Allows for multi-step or conditional calculations.
-- `<calc-sum>`: A specific length or percentage. This allows `calc-size()` to behave like a standard `calc()` while maintaining the syntax requirements of the function.
+- `<calc-sum>`: A specific length, percentage, or mathematical expression (e.g., `100px` or `20%`). When a fixed value is used as the basis, the **`size` keyword is still available** (but only within the second argument) and represents the resolved value of that basis.
+
+**MANDATORY**: The `size` keyword is **not valid** within the first argument (`<calc-size-basis>`) itself. It is a local variable that only exists to refer back to the basis from within the second argument (`<calc-sum>`).
 
 ### Valid Calculation Arguments (`<calc-sum>`)
 The second argument is the mathematical expression.
