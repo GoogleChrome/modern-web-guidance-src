@@ -22,16 +22,21 @@ To break up a large loop or computation, use `await scheduler.yield()` periodica
 
 ```javascript
 async function processLargeArray(items) {
-  // DO: Process items in chunks to avoid blocking the main thread
+  // DO: Set a time-based deadline 50 milliseconds into the future. 50
+  // milliseconds is the boundary for when a task becomes a long task.
+  let deadline = performance.now() + 50; // 50ms budget
+
   for (let i = 0; i < items.length; i++) {
     // Process the item
     processItem(items[i]);
     
-    // MANDATORY: Yield to the main thread periodically to keep the UI responsive.
-    // The chunk size (e.g., 50) should be tuned based on how long each item takes to process.
-    // Aim for chunks that complete within 50ms.
-    if (i > 0 && i % 50 === 0) {
+    // MANDATORY: Yield to the main thread periodically to keep the UI
+    // responsive. This can be done by checking if the deadline set earlier
+    // has been exceeded. When it has been, yield, then reset the deadline
+    // another 50 milliseconds into the future.
+    if (performance.now() >= deadline) {
       await scheduler.yield();
+      deadline = performance.now() + 50;
     }
   }
 }
