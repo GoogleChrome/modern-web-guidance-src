@@ -97,7 +97,7 @@ importers:
         version: 27.0.2
       web-features:
         specifier: latest
-        version: 3.22.1
+        version: 3.23.1
 
   harness:
     dependencies:
@@ -151,7 +151,7 @@ importers:
         version: 17.0.4
       web-features:
         specifier: latest
-        version: 3.22.1
+        version: 3.23.1
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -3773,8 +3773,8 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  web-features@3.22.1:
-    resolution: {integrity: sha512-aHlGO8NhNf19aQH5yWd6gFMEWZZh0W91bRMBlNLTaEASF0Ko1Rm4KnY/9rV69lYd9LyQTaJQBVae4PtDxfFJdg==}
+  web-features@3.23.1:
+    resolution: {integrity: sha512-oNnrhMYcYswjguZXXAH1P7Q1oj8TfonYGQhuBn7/BvoDl7ExxqBFvZQkpZThcDufPaL5rCZg0SV6OE3Yo2r6Sw==}
 
   web-streams-polyfill@3.3.3:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
@@ -7763,7 +7763,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  web-features@3.22.1: {}
+  web-features@3.23.1: {}
 
   web-streams-polyfill@3.3.3: {}
 

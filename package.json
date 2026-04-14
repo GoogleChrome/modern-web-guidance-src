@@ -66,6 +66,7 @@
   },
   "dependencies": {
     "glob": "^13.0.6",
+
     "omelette": "^0.4.17"
   }
 }

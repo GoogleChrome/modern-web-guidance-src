@@ -2,10 +2,7 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
-import postcss from 'postcss';
-import selectorParser from 'postcss-selector-parser';
-import nested from 'postcss-nested';
-import shorthandExpand from 'postcss-shorthand-expand';
+import { Parser, CSSStyleRule } from '../../../../cssom/src/index.ts';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -22,58 +19,40 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
   const html = fs.readFileSync(filePath, 'utf-8');
   const { document } = parseHTML(html);
   
-  // Extract CSS and parse with PostCSS (including nesting and shorthand expansion)
   const styles = Array.from(document.querySelectorAll('style')).map(s => s.textContent).join('\n');
-  const root = postcss([nested(), shorthandExpand()]).processSync(styles).root;
+  const rules = Parser.parseStyleSheetText(styles);
+  const styleRules = rules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
 
   test('The :autofill pseudo-class must be applied to a form control', () => {
-    let hasAutofill = false;
-    root.walkRules(rule => {
-      selectorParser(selectors => {
-        selectors.walkPseudos(pseudo => {
-          if (pseudo.value.toLowerCase() === ':autofill') hasAutofill = true;
-        });
-      }).processSync(rule.selector);
-    });
+    const hasAutofill = styleRules.some(rule => rule.selectorText.includes(':autofill'));
     expect(hasAutofill).toBe(true);
   });
 
   test('The incorrect spelling :auto-fill must not be used', () => {
-    let hasInvalid = false;
-    root.walkRules(rule => {
-      selectorParser(selectors => {
-        selectors.walkPseudos(pseudo => {
-          if (pseudo.value.toLowerCase() === ':auto-fill') hasInvalid = true;
-        });
-      }).processSync(rule.selector);
-    });
+    const hasInvalid = styleRules.some(rule => rule.selectorText.includes(':auto-fill'));
     expect(hasInvalid).toBe(false);
   });
 
   test('The :autofill pseudo-class must only be applied to <input>, <select>, or <textarea>', () => {
-    let invalidSelectors: string[] = [];
+    const invalidSelectors: string[] = [];
     
-    root.walkRules(rule => {
-      selectorParser(selectors => {
-        selectors.each(selector => {
-          let containsAutofill = false;
-          selector.walkPseudos(pseudo => {
-            if (pseudo.value.toLowerCase() === ':autofill') containsAutofill = true;
-          });
-
-          if (containsAutofill) {
-            const firstNode = selector.first;
-            const isValidTag = firstNode && firstNode.type === 'tag' && 
-                               ['input', 'select', 'textarea'].includes(firstNode.value.toLowerCase());
-            
-            if (!isValidTag) invalidSelectors.push(selector.toString());
+    styleRules.forEach(rule => {
+      if (rule.selectorText.includes(':autofill')) {
+        const matches = rule.selectorText.split(',').map(s => s.trim());
+        matches.forEach(selector => {
+          if (selector.includes(':autofill')) {
+            const isValid = selector.startsWith('input') || 
+                            selector.startsWith('select') || 
+                            selector.startsWith('textarea');
+            if (!isValid) invalidSelectors.push(selector);
           }
         });
-      }).processSync(rule.selector);
+      }
     });
     
     expect(invalidSelectors).toHaveLength(0);
   });
+
 
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page }) => {
