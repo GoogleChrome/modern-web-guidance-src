@@ -1,0 +1,4 @@
+- The document contains a `<meta name="color-scheme" content="light dark">` tag in the `<head>`.
+- The `html` element or `:root` pseudo-class has the `color-scheme: light dark;` CSS property applied (applying it only to the `body` is insufficient for root scrollbars and the canvas background).
+- All built-in browser UI elements and surfaces (including scrollbars and form control backgrounds) automatically switch between light and dark modes based on the system theme preference.
+- Specific elements can override the global theme using `color-scheme: light` or `color-scheme: dark` to force a particular UI theme for that component and its children.
