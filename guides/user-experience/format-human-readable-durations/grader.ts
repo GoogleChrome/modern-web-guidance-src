@@ -100,7 +100,7 @@ test.describe(`Temporal Duration Balancing Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test('Implementation MUST feature-detect Temporal API using typeof', async ({ page }) => {
+  test('Implementation MUST feature-detect Temporal API using typeof', async () => {
     const content = fs.readFileSync(filePath, 'utf8');
     // We check if the source code contains the mandatory feature detection string
     expect(content).toContain("typeof Temporal === 'undefined'");
@@ -191,7 +191,7 @@ test.describe(`Temporal Duration Balancing Expectations: ${demoName}`, () => {
     expect(outputText).not.toMatch(/PT\d+H/);
   });
 
-  test('Implementation MUST NOT attempt to modify Temporal.Duration instances directly', async ({ page }) => {
+  test('Implementation MUST NOT attempt to modify Temporal.Duration instances directly', async () => {
     const content = fs.readFileSync(filePath, 'utf8');
     // Check for assignment to duration properties which should be read-only
     // Brittle but the negative demo does exactly this: dur.hours = h;
