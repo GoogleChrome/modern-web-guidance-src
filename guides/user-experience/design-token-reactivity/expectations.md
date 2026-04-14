@@ -1,0 +1,1 @@
+- Only use container style queries with custom properties.
