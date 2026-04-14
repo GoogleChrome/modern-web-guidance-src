@@ -2,10 +2,7 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
-import postcss from 'postcss';
-import selectorParser from 'postcss-selector-parser';
-import nested from 'postcss-nested';
-import shorthandExpand from 'postcss-shorthand-expand';
+import { Parser, CSSStyleRule, CSSMediaRule, CSSUnknownRule, serialize } from '../../../../cssom/src/index.ts';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -20,9 +17,9 @@ const htmlStr = fs.readFileSync(filePath, 'utf-8');
 // Initialize a static parser
 const { document } = parseHTML(htmlStr);
 
-// Extract CSS and parse with PostCSS
+// Extract CSS and parse with CSSOM
 const styles = Array.from(document.querySelectorAll('style')).map(s => s.textContent).join('\n');
-const root = postcss([nested(), shorthandExpand()]).processSync(styles).root;
+const styleRules = Parser.parseStyleSheetText(styles);
 
 // Tests
 test.describe(`Adapt scrollbar to high-contrast preferences Expectations: ${demoName}`, () => {
@@ -31,9 +28,14 @@ test.describe(`Adapt scrollbar to high-contrast preferences Expectations: ${demo
     let hasThumbVar = false;
     let hasTrackVar = false;
     
-    root.walkDecls(decl => {
-      if (decl.prop.includes('--') && decl.prop.includes('thumb')) hasThumbVar = true;
-      if (decl.prop.includes('--') && decl.prop.includes('track')) hasTrackVar = true;
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSStyleRule) {
+        for (let i = 0; i < rule.style.length; i++) {
+          const prop = rule.style.item(i);
+          if (prop.includes('--') && prop.includes('thumb')) hasThumbVar = true;
+          if (prop.includes('--') && prop.includes('track')) hasTrackVar = true;
+        }
+      }
     });
     
     expect(hasThumbVar && hasTrackVar).toBe(true);
@@ -42,13 +44,21 @@ test.describe(`Adapt scrollbar to high-contrast preferences Expectations: ${demo
   test('@media (prefers-contrast: more) block updates scrollbar CSS variables', () => {
     let foundUpdate = false;
     
-    root.walkAtRules('media', atRule => {
-      if (atRule.params.includes('prefers-contrast') && atRule.params.includes('more')) {
-        atRule.walkDecls(decl => {
-          if (decl.prop.includes('--') && (decl.prop.includes('thumb') || decl.prop.includes('track'))) {
-            foundUpdate = true;
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSMediaRule) {
+        if (rule.media.mediaText.includes('prefers-contrast') && rule.media.mediaText.includes('more')) {
+          for (let i = 0; i < rule.cssRules.length; i++) {
+            const childRule = rule.cssRules[i];
+            if (childRule instanceof CSSStyleRule) {
+              for (let j = 0; j < childRule.style.length; j++) {
+                const prop = childRule.style.item(j);
+                if (prop.includes('--') && (prop.includes('thumb') || prop.includes('track'))) {
+                  foundUpdate = true;
+                }
+              }
+            }
           }
-        });
+        }
       }
     });
 
@@ -58,9 +68,12 @@ test.describe(`Adapt scrollbar to high-contrast preferences Expectations: ${demo
   test('scrollbar-color property uses CSS variables', () => {
     let usesVars = false;
     
-    root.walkDecls('scrollbar-color', decl => {
-      if (decl.value.includes('var(--') && decl.value.includes('var(--')) {
-        usesVars = true; // Two var() calls expected
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSStyleRule) {
+        const value = rule.style.getPropertyValue('scrollbar-color');
+        if (value.includes('var(--') && value.includes('var(--')) {
+          usesVars = true; // Two var() calls expected
+        }
       }
     });
 
@@ -72,24 +85,27 @@ test.describe(`Adapt scrollbar to high-contrast preferences Expectations: ${demo
     let hasProtectedWebkitScrollbar = false;
     
     // First figure out if there's any webkit scrollbar at all
-    root.walkRules(rule => {
-      selectorParser(selectors => {
-        selectors.walkPseudos(pseudo => {
-          if (pseudo.value.includes('-webkit-scrollbar')) hasWebkitScrollbar = true;
-        });
-      }).processSync(rule.selector);
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSStyleRule) {
+        if (rule.selectorText.includes('-webkit-scrollbar')) hasWebkitScrollbar = true;
+      }
     });
 
     if (hasWebkitScrollbar) {
-      root.walkAtRules('supports', atRule => {
-        if (atRule.params.includes('not') && atRule.params.includes('scrollbar-color') && atRule.params.includes('auto')) {
-          atRule.walkRules(rule => {
-            selectorParser(selectors => {
-              selectors.walkPseudos(pseudo => {
-                if (pseudo.value.includes('-webkit-scrollbar')) hasProtectedWebkitScrollbar = true;
+      styleRules.forEach(rule => {
+        if (rule instanceof CSSUnknownRule && rule.name === 'supports') {
+          const preludeStr = serialize(rule.prelude);
+          if (preludeStr.includes('not') && preludeStr.includes('scrollbar-color') && preludeStr.includes('auto')) {
+            const block = rule.block;
+            if (block && typeof block === 'object' && 'value' in block && Array.isArray(block.value)) {
+              const childRules = Parser.parseStyleSheetText(serialize(block.value));
+              childRules.forEach(childRule => {
+                if (childRule instanceof CSSStyleRule) {
+                  if (childRule.selectorText.includes('-webkit-scrollbar')) hasProtectedWebkitScrollbar = true;
+                }
               });
-            }).processSync(rule.selector);
-          });
+            }
+          }
         }
       });
       expect(hasProtectedWebkitScrollbar).toBe(true);
@@ -97,6 +113,7 @@ test.describe(`Adapt scrollbar to high-contrast preferences Expectations: ${demo
       expect(hasWebkitScrollbar).toBe(false);
     }
   });
+
 
   // Setup browser testing
   test.beforeEach(async ({ page }) => {
