@@ -70,10 +70,11 @@ Track the pointer position and update the CSS variables. Because the properties 
 
 ```javascript
 const container = document.querySelector('.container');
+// Calculate position as a percentage of the container.
+// Note: If your container is resized, `rect` must be updated.
+const rect = container.getBoundingClientRect();
 
-container.addEventListener('mousemove', (e) => {
-  // Calculate position as a percentage of the container
-  const rect = container.getBoundingClientRect();
+container.addEventListener('pointermove', (e) => {
   const x = ((e.clientX - rect.left) / rect.width) * 100;
   const y = ((e.clientY - rect.top) / rect.height) * 100;
 
@@ -118,17 +119,7 @@ Browsers that support `mask-image` but not `@property` will still show the spotl
 {{ BASELINE_STATUS("masks") }}
 
 ### Basic Mask Support
-For browsers that do not support CSS masking at all:
-1. **Prefixed property:** Use the `--webkit-mask-image` prefixed property for broader browser support.
-2. **Progressive Enhancement:** Design the base state of the UI to be fully functional and legible without the reveal effect. This is useful when the effect is only adds visual flair, and not a requirement for reading content.
-3. **Feature Detection:** Use `@supports` to only apply the masking styles if the browser supports them.
 
-```css
-@supports not (mask-image: radial-gradient(circle, black, transparent)) {
-  .reveal-layer {
-    /* Hide the layer or show it fully if it's a "spoiler" reveal */
-    mask-image: none;
-    opacity: 1;
-  }
-}
-```
+For browsers that do not support CSS masking at all:
+1. **Prefixed property:** Use the `-webkit-mask-image` prefixed property for broader browser support.
+2. **Progressive Enhancement:** Design the base state of the UI to be fully functional and legible without the reveal effect. This is useful when the effect is only adds visual flair, and not a requirement for reading content.
