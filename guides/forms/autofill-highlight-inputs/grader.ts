@@ -38,15 +38,17 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
     
     styleRules.forEach(rule => {
       if (rule.selectorText.includes(':autofill')) {
-        const matches = rule.selectorText.split(',').map(s => s.trim());
-        matches.forEach(selector => {
-          if (selector.includes(':autofill')) {
+        const matches = rule.selectorText.split(',');
+        matches.forEach(s => {
+          const selector = Parser.parseSelector(s);
+          if (selector && selector.includes(':autofill')) {
             const isValid = selector.startsWith('input') || 
                             selector.startsWith('select') || 
                             selector.startsWith('textarea');
             if (!isValid) invalidSelectors.push(selector);
           }
         });
+
       }
     });
     
