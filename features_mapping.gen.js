@@ -276,9 +276,6 @@ window.__featuresMapping = {
     "popover-hint",
     "anchor-positioning"
   ],
-  "keep-preceding-text-static-when-editing": [
-    "text-wrap"
-  ],
   "light-dark-theme-semantic-color-palettes": [
     "color-scheme",
     "light-dark"
