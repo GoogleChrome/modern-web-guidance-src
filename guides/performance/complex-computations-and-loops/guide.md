@@ -58,7 +58,7 @@ scheduler.postTask(() => sendAnalyticsData(), { priority: 'background' });
 
 {{ BASELINE_STATUS("scheduler") }}
 
-Older browsers may not support the `scheduler` API. You MUST implement a fallback using `setTimeout` (or `requestIdleCallback`) to ensure code executes without breaking.
+Some browsers may not support the `scheduler` API. You MUST implement a fallback using `setTimeout` to ensure code executes without breaking.
 
 #### Fallback for `scheduler.yield()`
 
