@@ -93,6 +93,7 @@ For browsers that do not support `linear()`, provide a standard easing function 
 ```
 
 #### JavaScript Library Fallback (Motion/GSAP)
+
 Optional: If a high-fidelity physics animation is critical even in older browsers, use a JavaScript library like **Motion** (motion.dev) or **GSAP** (greensock.com) to handle the animation when `linear()` is unsupported.
 
 1.  **Detect support:** Use `CSS.supports()` to check if the browser handles the `linear()` function.
