@@ -12,7 +12,7 @@ sources:
   - https://web.dev/articles/optimize-long-tasks
 ---
 
-Long-running JavaScript tasks block the main thread, preventing the browser from rendering updates or responding to user input (like clicks or scrolling). By intentionally breaking up these heavy synchronous processes and yielding control back to the main thread, you ensure your application remains responsive.
+Long-running JavaScript tasks block the main thread, preventing the browser from rendering updates or responding to user input (like clicks). By intentionally breaking up these heavy synchronous processes and yielding control back to the main thread, you ensure your application remains responsive.
 
 The modern approach is to use `scheduler.yield()`, which returns control to the browser and seamlessly resumes execution. Unlike older workarounds (like `setTimeout`), it maintains the task's priority and avoids being pushed to the back of the queue.
 
