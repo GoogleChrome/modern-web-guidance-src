@@ -1,36 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Time Tracker</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    .result { font-size: 24px; color: red; margin-top: 10px; }
-  </style>
+    <title>Duration Display</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .box { border: 1px solid #ccc; padding: 20px; border-radius: 5px; }
+        input { margin-bottom: 10px; }
+    </style>
 </head>
 <body>
-  <h1>Duration Calculator</h1>
-  <div>
-    <input type="number" id="mInput" value="90"> minutes
-    <button onclick="calculate()">Show</button>
-  </div>
-  <div id="output" class="result"></div>
+    <h1>Duration Display</h1>
+    <div class="box">
+        <label>Enter Minutes:</label><br>
+        <input type="number" id="minutesInput" value="150"><br>
+        <button id="calcBtn">Calculate Duration</button>
+        <p id="output"></p>
+    </div>
 
-  <script>
-    function calculate() {
-      const mins = parseInt(document.getElementById('mInput').value);
-      
-      const h = Math.floor(mins / 60);
-      const m = mins % 60;
+    <script>
+        document.getElementById('calcBtn').onclick = function() {
+            var mins = document.getElementById('minutesInput').value;
+            var h = Math.floor(mins / 60);
+            var m = mins % 60;
 
-      const duration = new Temporal.Duration(0, 0, 0, 0, h, m, 0, 0, 0, 0);
-      
-      duration.hours = 999;
-      
-      document.getElementById('output').innerText = duration.toString();
-    }
-    
-    calculate();
-  </script>
+            var dur = new Temporal.Duration(0, 0, 0, 0, h, m, 0, 0, 0, 0);
+            
+            dur.hours = h;
+            dur.minutes = m;
+
+            document.getElementById('output').innerText = "Result: " + dur.toString() + " which is " + h + " hours and " + m + " minutes";
+        };
+    </script>
 </body>
 </html>

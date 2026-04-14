@@ -16,9 +16,9 @@ Presenting elapsed time or durations to users in a readable format (e.g., "1 hou
 
 To format a duration:
 
-1.  **MANDATORY**: **Create a Duration**: Use `Temporal.Duration.from()` to create a duration object from a set of units.
-2.  **OPTIONAL**: **Apply Balancing**: Use the `round()` method with the `largestUnit` option to control how units are balanced. For example, to convert 90 minutes into hours and minutes, or to keep it as total minutes.
-3.  **MANDATORY**: **Build the Display String**: Access the specific unit properties (like `.hours`, `.minutes`) to construct the human-readable string manually, or **(Recommended)** use `Intl.DurationFormat` for a localized, automatic approach.
+1.  (**MANDATORY**) **Create a Duration**: Use `Temporal.Duration.from()` to create a duration object from a set of units.
+2.  (**OPTIONAL**) **Apply Balancing**: Use the `round()` method with the `largestUnit` option to control how units are balanced. For example, to convert 90 minutes into hours and minutes, or to keep it as total minutes.
+3.  (**MANDATORY**) **Build the Display String**: Access the specific unit properties (like `.hours`, `.minutes`) to construct the human-readable string manually, or **(Recommended)** use `Intl.DurationFormat` for a localized, automatic approach.
 
 ### Example: Duration Balancing
 
