@@ -2,10 +2,7 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
-import postcss from 'postcss';
-import selectorParser from 'postcss-selector-parser';
-import nested from 'postcss-nested';
-import shorthandExpand from 'postcss-shorthand-expand';
+import { Parser, CSSStyleRule, CSSMediaRule, CSSUnknownRule, serialize } from '../../../../cssom/src/index.ts';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -22,7 +19,7 @@ const htmlStr = fs.readFileSync(filePath, 'utf-8');
 // Initialize static parsers
 const { document } = parseHTML(htmlStr);
 const styles = Array.from(document.querySelectorAll('style')).map(s => s.textContent).join('\n');
-const root = postcss([nested(), shorthandExpand()]).processSync(styles).root;
+const styleRules = Parser.parseStyleSheetText(styles);
 
 // Tests
 test.describe(`Adapt Scrollbar Expectations: ${demoName}`, () => {
@@ -30,11 +27,10 @@ test.describe(`Adapt Scrollbar Expectations: ${demoName}`, () => {
   // 1. Root element defines color-scheme: light dark
   test('The :root element must define color-scheme: light dark', async () => {
     let hasColorScheme = false;
-    root.walkRules(rule => {
-      if (rule.selector === ':root') {
-        rule.walkDecls('color-scheme', decl => {
-          if (decl.value.includes('light') && decl.value.includes('dark')) hasColorScheme = true;
-        });
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSStyleRule && rule.selectorText === ':root') {
+        const value = rule.style.getPropertyValue('color-scheme');
+        if (value.includes('light') && value.includes('dark')) hasColorScheme = true;
       }
     });
     expect(hasColorScheme).toBe(true);
@@ -43,8 +39,13 @@ test.describe(`Adapt Scrollbar Expectations: ${demoName}`, () => {
   // 2. CSS variables are used for scrollbar colors
   test('CSS custom properties must be used for scrollbar colors', async () => {
     let hasScrollbarVars = false;
-    root.walkDecls(decl => {
-      if (decl.prop.startsWith('--') && decl.prop.includes('scrollbar')) hasScrollbarVars = true;
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSStyleRule) {
+        for (let i = 0; i < rule.style.length; i++) {
+          const prop = rule.style.item(i);
+          if (prop.startsWith('--') && prop.includes('scrollbar')) hasScrollbarVars = true;
+        }
+      }
     });
     expect(hasScrollbarVars).toBe(true);
   });
@@ -52,11 +53,19 @@ test.describe(`Adapt Scrollbar Expectations: ${demoName}`, () => {
   // 3. prefers-color-scheme: dark updates variables
   test('A prefers-color-scheme: dark media query must update the scrollbar variables', async () => {
     let updatesInMedia = false;
-    root.walkAtRules('media', atRule => {
-      if (atRule.params.includes('prefers-color-scheme') && atRule.params.includes('dark')) {
-        atRule.walkDecls(decl => {
-          if (decl.prop.startsWith('--')) updatesInMedia = true;
-        });
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSMediaRule) {
+        if (rule.media.mediaText.includes('prefers-color-scheme') && rule.media.mediaText.includes('dark')) {
+          for (let i = 0; i < rule.cssRules.length; i++) {
+            const childRule = rule.cssRules[i];
+            if (childRule instanceof CSSStyleRule) {
+              for (let j = 0; j < childRule.style.length; j++) {
+                const prop = childRule.style.item(j);
+                if (prop.startsWith('--')) updatesInMedia = true;
+              }
+            }
+          }
+        }
       }
     });
     expect(updatesInMedia).toBe(true);
@@ -65,8 +74,11 @@ test.describe(`Adapt Scrollbar Expectations: ${demoName}`, () => {
   // 4. scrollbar-color property uses var()
   test('The scrollbar-color property must utilize the defined CSS variables', async () => {
     let usesVars = false;
-    root.walkDecls('scrollbar-color', decl => {
-      if (decl.value.includes('var(--')) usesVars = true;
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSStyleRule) {
+        const value = rule.style.getPropertyValue('scrollbar-color');
+        if (value.includes('var(--')) usesVars = true;
+      }
     });
     expect(usesVars).toBe(true);
   });
@@ -74,8 +86,10 @@ test.describe(`Adapt Scrollbar Expectations: ${demoName}`, () => {
   // 5. scrollbar-width is explicitly applied
   test('The scrollbar-width property must be explicitly applied for macOS support', async () => {
     let hasWidth = false;
-    root.walkDecls('scrollbar-width', () => {
-      hasWidth = true;
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSStyleRule) {
+        if (rule.style.getPropertyValue('scrollbar-width')) hasWidth = true;
+      }
     });
     expect(hasWidth).toBe(true);
   });
@@ -83,15 +97,20 @@ test.describe(`Adapt Scrollbar Expectations: ${demoName}`, () => {
   // 6. Legacy WebKit styling is isolated with @supports
   test('Legacy WebKit scrollbar styling must be isolated within an @supports block', async () => {
     let hasProtectedWebkit = false;
-    root.walkAtRules('supports', atRule => {
-      if (atRule.params.includes('not') && atRule.params.includes('scrollbar-color') && atRule.params.includes('auto')) {
-        atRule.walkRules(rule => {
-          selectorParser(selectors => {
-            selectors.walkPseudos(pseudo => {
-              if (pseudo.value.includes('-webkit-scrollbar')) hasProtectedWebkit = true;
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSUnknownRule && rule.name === 'supports') {
+        const preludeStr = serialize(rule.prelude);
+        if (preludeStr.includes('not') && preludeStr.includes('scrollbar-color') && preludeStr.includes('auto')) {
+          const block = rule.block;
+          if (block && typeof block === 'object' && 'value' in block && Array.isArray(block.value)) {
+            const childRules = Parser.parseStyleSheetText(serialize(block.value));
+            childRules.forEach(childRule => {
+              if (childRule instanceof CSSStyleRule) {
+                if (childRule.selectorText.includes('-webkit-scrollbar')) hasProtectedWebkit = true;
+              }
             });
-          }).processSync(rule.selector);
-        });
+          }
+        }
       }
     });
     expect(hasProtectedWebkit).toBe(true);
@@ -100,26 +119,29 @@ test.describe(`Adapt Scrollbar Expectations: ${demoName}`, () => {
   // 7. WebKit fallback includes dimension properties
   test('The legacy WebKit fallback must include basic scrollbar dimensions', async () => {
     let hasDimensions = false;
-    root.walkAtRules('supports', atRule => {
-      if (atRule.params.includes('not') && atRule.params.includes('scrollbar-color') && atRule.params.includes('auto')) {
-        atRule.walkRules(rule => {
-          let isWebkit = false;
-          selectorParser(selectors => {
-            selectors.walkPseudos(pseudo => {
-              if (pseudo.value === '::-webkit-scrollbar') isWebkit = true;
-            });
-          }).processSync(rule.selector);
-
-          if (isWebkit) {
-            rule.walkDecls(decl => {
-              if (decl.prop === 'width' || decl.prop === 'height') hasDimensions = true;
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSUnknownRule && rule.name === 'supports') {
+        const preludeStr = serialize(rule.prelude);
+        if (preludeStr.includes('not') && preludeStr.includes('scrollbar-color') && preludeStr.includes('auto')) {
+          const block = rule.block;
+          if (block && typeof block === 'object' && 'value' in block && Array.isArray(block.value)) {
+            const childRules = Parser.parseStyleSheetText(serialize(block.value));
+            childRules.forEach(childRule => {
+              if (childRule instanceof CSSStyleRule) {
+                if (childRule.selectorText.includes('::-webkit-scrollbar')) {
+                  if (childRule.style.getPropertyValue('width') || childRule.style.getPropertyValue('height')) {
+                    hasDimensions = true;
+                  }
+                }
+              }
             });
           }
-        });
+        }
       }
     });
     expect(hasDimensions).toBe(true);
   });
+
 
   // Setup browser testing
   test.beforeEach(async ({ page }) => {
