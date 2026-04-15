@@ -4,6 +4,7 @@ description: Create smooth, seamless transitions between full page navigations, 
 web-feature-ids:
   - view-transitions
   - cross-document-view-transitions
+  - navigation
 sources:
   - https://developer.chrome.com/docs/web-platform/view-transitions/cross-document
   - https://blog.robino.dev/posts/cross-document-view-transitions
@@ -20,10 +21,13 @@ Cross-document view transitions allow you to create smooth, app-like transitions
 Both the source and destination pages must opt-in to view transitions for the browser to trigger them on navigation.
 
 ```css
-/* Add to a global stylesheet shared by both pages */
-@view-transition {
-  /* Enables transitions for same-origin navigations */
-  navigation: auto;
+/* Respect user's preference for reduced motion */
+@media (prefers-reduced-motion: no-preference) {
+  /* Add to a global stylesheet shared by both pages */
+  @view-transition {
+    /* Enables transitions for same-origin navigations */
+    navigation: auto;
+  }
 }
 ```
 
@@ -60,10 +64,12 @@ You may want different transition effects depending on the pages you are navigat
 If the page you are navigating to will always have the same transition type, regardless of how you get to the page, you can specify it with `types` in the `@view-transition` rule.
 
 ```css
- @view-transition {
-  navigation: auto;
-  /* Specify the types of view transitions that will always be used on this page. */
-  types: previous;
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+    /* Specify the types of view transitions that will always be used on this page. */
+    types: previous;
+  }
 }
 ```
 
@@ -71,7 +77,7 @@ You can also conditionally specify transition types inside of an event listener 
 
 ```js
 window.addEventListener("pagereveal", async (e) => {
-  if (e.viewTransition) {
+  if (e.viewTransition && window.navigation?.activation) {
     // Use application-specific logic to compute a transition type
      const transitionType = yourTransitionTypeLogic(navigation.activation.from, navigation.activation.entry);
     e.viewTransition.types.add(transitionType);
@@ -102,17 +108,6 @@ Then, use the `:active-view-transition-type()` pseudo selector to apply the diff
 }
 ```
 
-#### 4. Respect User Preferences for Reduced Motion
-
-
-```css
-@media (prefers-reduced-motion: no-preference) {
-  @view-transition {
-    navigation: auto;
-  }
-}
-```
-
 ### Fallback strategies
 
 {{ BASELINE_STATUS("view-transitions") }}
@@ -126,5 +121,17 @@ To check for support in JavaScript:
 ```javascript
 if ('onpagereveal' in window) {
   // Browser supports cross-document view transitions
+}
+```
+
+{{ BASELINE_STATUS("navigation") }}
+
+If a browser does not support the Navigation API, you will not be able to use it to determine a transition type. Use an alternate method for determining the transition type, or provide a fallback transition type. Otherwise, the browser will perform a standard instant page navigation.
+
+To check for support in JavaScript:
+
+```javascript
+if (window.navigation?.activation) {
+  // Browser supports the Navigation API
 }
 ```

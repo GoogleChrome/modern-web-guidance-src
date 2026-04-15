@@ -94,19 +94,29 @@
 
       const nextPage = Number(page) + 1;
       const next = document.getElementById("next");
-      next.href = `?page=${nextPage}&direction=next`;
+      next.href = `?page=${nextPage}`;
       next.textContent = `Go to Page ${nextPage} →`;
 
       const previousPage = Number(page) - 1;
       const previous = document.getElementById("previous");
-      previous.href = `?page=${previousPage}&direction=previous`;
+      previous.href = `?page=${previousPage}`;
       previous.textContent = `← Go to Page ${previousPage}`;
     }
+    const getTransitionType = (from, to) => {
+      const fromUrl = new URL(from.url);
+      const fromPage = fromUrl.searchParams.get("page");
+      const toUrl = new URL(to.url);
+      const toPage = toUrl.searchParams.get("page");
+      if (!toPage || !fromPage) return;
+      return toPage > fromPage ? "next" : "previous";
+    };
     window.addEventListener("pagereveal", async (e) => {
-      if (e.viewTransition) {
-        const params = new URLSearchParams(location.search);
-        const direction = params.get("direction");
-        e.viewTransition.types.add(direction ?? "next");
+      if (e.viewTransition && window.navigation?.activation) {
+        const transitionType = getTransitionType(
+          navigation.activation.from,
+          navigation.activation.entry,
+        );
+        if (transitionType) e.viewTransition.types.add(transitionType);
       }
     });
   </script>
