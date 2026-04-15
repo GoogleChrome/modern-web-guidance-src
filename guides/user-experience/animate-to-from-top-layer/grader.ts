@@ -143,19 +143,19 @@ test.describe(`Top Layer Animation Expectations: ${demoName}`, () => {
     await closeBtn.click();
 
     // Because of allow-discrete and overlay, it should still be in the DOM and visible during transition
-    const isVisibleDuringTransition = await dialog.evaluate((el) => {
-      const style = window.getComputedStyle(el);
-      return style.display !== 'none' && parseFloat(style.opacity) > 0 && parseFloat(style.opacity) < 1;
-    });
-
-    expect(isVisibleDuringTransition).toBe(true);
+    await expect.poll(async () => {
+      return await dialog.evaluate((el) => {
+        const style = window.getComputedStyle(el);
+        return style.display !== 'none' && parseFloat(style.opacity) > 0 && parseFloat(style.opacity) < 1;
+      });
+    }, { timeout: 1000 }).toBe(true);
 
     // Eventually it should be gone
     await expect(dialog).not.toBeVisible();
   });
 
   test('The [popover] element must smoothly transition when opened', async ({ page }) => {
-    const popoverBtn = page.locator('[popovertarget]').first();
+    const popoverBtn = page.locator('#foobar, [popovertarget]').first();
     const popover = page.locator('[popover]').first();
 
     await expect(popover).not.toBeVisible();

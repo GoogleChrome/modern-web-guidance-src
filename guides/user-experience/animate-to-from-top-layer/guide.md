@@ -108,8 +108,8 @@ dialog[open]::backdrop,
 
 - **MANDATORY**: Include `overlay` in your `transition` list for any element moving into or out of the top layer.
 - **MANDATORY**: Use `allow-discrete` for the `display` property transition.
+- **MANDATORY**: Respect user preferences for reduced motion using `prefers-reduced-motion` by simplifying transitions (e.g., removing transforms and shortening duration).
 - **DO**: Place the `@starting-style` block inside or after the "open" state selector to ensure proper cascading.
-- **DO**: Respect user preferences for reduced motion using `prefers-reduced-motion`.
 - **DO NOT**: Use `@starting-style` for exit animations; exit animations are defined by the transition to the base (closed) state.
 
 ## Fallback strategies
