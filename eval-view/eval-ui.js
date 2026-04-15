@@ -192,6 +192,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!tableBody) return;
     tableBody.innerHTML = '';
 
+    const taskTypes = new Set();
+    for (const tasks of Object.values(disciplines)) {
+      tasks.forEach(t => taskTypes.add(t));
+    }
+    const headers = Array.from(taskTypes).sort((a, b) => {
+      const order = ['task', 'negative'];
+      const indexA = order.indexOf(a);
+      const indexB = order.indexOf(b);
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    const headersRow = document.getElementById('disciplines-table-headers');
+    if (headersRow) {
+      let headerHtml = `<th>Discipline</th>`;
+      headers.forEach(h => {
+        const isSelected = h === 'task';
+        headerHtml += `<th class="checkbox-header">
+          <label class="custom-checkbox">
+            <input type="checkbox" class="header-check" data-task="${h}" ${isSelected ? 'checked' : ''}>
+            <span class="checkmark"></span>
+          </label>
+        </th>`;
+      });
+      headersRow.innerHTML = headerHtml;
+    }
+
     for (const [disciplineName, tasks] of Object.entries(disciplines)) {
       const row = document.createElement('tr');
       row.classList.add('guide-row');
@@ -208,7 +237,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         </td>
       `;
 
-      const headers = ['task', 'negative'];
       headers.forEach(h => {
         if (tasks.includes(h)) {
           rowHtml += `
