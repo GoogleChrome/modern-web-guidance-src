@@ -2,11 +2,7 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
-import postcss from 'postcss';
-import selectorParser from 'postcss-selector-parser';
-import valueParser from 'postcss-value-parser';
-import nested from 'postcss-nested';
-import shorthandExpand from 'postcss-shorthand-expand';
+import { Parser, CSSStyleRule, CSSMediaRule, CSSUnknownRule, CSSKeyframesRule, CSSKeyframeRule, serialize } from '../../../../cssom/src/index.ts';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -23,43 +19,60 @@ const htmlStr = fs.readFileSync(filePath, 'utf-8');
 // Initialize a static parser
 const { document } = parseHTML(htmlStr);
 
-// Extract CSS and parse with PostCSS (including nesting and shorthand expansion)
+// Extract CSS and parse with CSSOM
 const styles = Array.from(document.querySelectorAll('style')).map(s => s.textContent).join('\n');
-const root = postcss([nested(), shorthandExpand()]).processSync(styles).root;
+const styleRules = Parser.parseStyleSheetText(styles);
 
 test.describe(`Animate Scrollbar Color Expectations: ${demoName}`, () => {
   
   test('MANDATORY: Define a CSS @property with syntax: "<color>"', () => {
     let hasColorSyntax = false;
-    root.walkAtRules('property', atRule => {
-      atRule.walkDecls('syntax', decl => {
-        if (decl.value.includes('<color>')) hasColorSyntax = true;
-      });
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSUnknownRule && rule.name === 'property') {
+        const block = rule.block;
+        if (block && typeof block === 'object' && 'value' in block && Array.isArray(block.value)) {
+          const dummyRules = Parser.parseStyleSheetText(`dummy { ${serialize(block.value)} }`);
+          dummyRules.forEach(dummyRule => {
+            if (dummyRule instanceof CSSStyleRule) {
+              const syntax = dummyRule.style.getPropertyValue('syntax');
+              if (syntax.includes('<color>')) hasColorSyntax = true;
+            }
+          });
+        }
+      }
     });
     expect(hasColorSyntax).toBe(true);
   });
 
   test('MANDATORY: Define an @keyframes block that animates a custom property', () => {
     let animatesCustomProp = false;
-    root.walkAtRules('keyframes', atRule => {
-      atRule.walkDecls(decl => {
-        if (decl.prop.startsWith('--')) animatesCustomProp = true;
-      });
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSKeyframesRule) {
+        for (let i = 0; i < rule.cssRules.length; i++) {
+          const keyframeRule = rule.cssRules[i];
+          if (keyframeRule instanceof CSSKeyframeRule) {
+            for (let j = 0; j < keyframeRule.style.length; j++) {
+              const prop = keyframeRule.style.item(j);
+              if (prop.startsWith('--')) animatesCustomProp = true;
+            }
+          }
+        }
+      }
     });
     expect(animatesCustomProp).toBe(true);
   });
 
   test('MANDATORY: The scrollable element uses scrollbar-color with a var() and a fallback color', () => {
     let hasVarWithFallback = false;
-    root.walkDecls('scrollbar-color', decl => {
-      const parsed = valueParser(decl.value);
-      parsed.walk(node => {
-        if (node.type === 'function' && node.value === 'var') {
-          // var() has children: the first is the variable name, then potentially a comma and the fallback
-          const hasComma = node.nodes.some(n => n.type === 'div' && n.value === ',');
-          if (hasComma) hasVarWithFallback = true;
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSStyleRule) {
+        const value = rule.style.getPropertyValue('scrollbar-color');
+        const varRegex = /var\(([^)]+)\)/g;
+        let match;
+        while ((match = varRegex.exec(value)) !== null) {
+          if (match[1].includes(',')) hasVarWithFallback = true;
         }
-      });
+      }
     });
     expect(hasVarWithFallback).toBe(true);
   });
@@ -68,27 +81,22 @@ test.describe(`Animate Scrollbar Color Expectations: ${demoName}`, () => {
     let hasWebkitThumb = false;
     let hasVarFallback = false;
 
-    root.walkRules(rule => {
-      let isWebkitThumb = false;
-      selectorParser(selectors => {
-        selectors.walkPseudos(pseudo => {
-          if (pseudo.value === '::-webkit-scrollbar-thumb') isWebkitThumb = true;
-        });
-      }).processSync(rule.selector);
-
-      if (isWebkitThumb) {
-        hasWebkitThumb = true;
-        rule.walkDecls(decl => {
-          if (decl.prop.includes('background')) {
-            const parsed = valueParser(decl.value);
-            parsed.walk(node => {
-              if (node.type === 'function' && node.value === 'var') {
-                const hasComma = node.nodes.some(n => n.type === 'div' && n.value === ',');
-                if (hasComma) hasVarFallback = true;
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSStyleRule) {
+        if (rule.selectorText.includes('::-webkit-scrollbar-thumb')) {
+          hasWebkitThumb = true;
+          for (let i = 0; i < rule.style.length; i++) {
+            const prop = rule.style.item(i);
+            if (prop.includes('background')) {
+              const value = rule.style.getPropertyValue(prop);
+              const varRegex = /var\(([^)]+)\)/g;
+              let match;
+              while ((match = varRegex.exec(value)) !== null) {
+                if (match[1].includes(',')) hasVarFallback = true;
               }
-            });
+            }
           }
-        });
+        }
       }
     });
 
@@ -98,6 +106,7 @@ test.describe(`Animate Scrollbar Color Expectations: ${demoName}`, () => {
       expect(hasWebkitThumb).toBe(false);
     }
   });
+
 
   test.describe('Browser Tests', () => {
     test.beforeEach(async ({ page }) => {
