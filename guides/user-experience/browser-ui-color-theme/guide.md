@@ -2,7 +2,8 @@
 name: browser-ui-color-theme
 description: Configure built-in browser UI (e.g. scrollbars, form controls, etc) to respect the user's light/dark theme preference.
 web-feature-ids:
-  - color-scheme
+- color-scheme
+- prefers-color-scheme
 sources:
   - https://web.dev/articles/baseline-in-action-color-theme
   - https://web.dev/articles/color-scheme
@@ -22,7 +23,7 @@ The `color-scheme` property indicates which color schemes (such as light or dark
 ## Implementation
 
 ### 1. Declare supported schemes in HTML
-MANDATORY: Place a `<meta>` tag in your `<head>` to ensure the browser knows which themes you support before it even starts rendering. While this is the most effective way to reduce the "flash of un-themed content" (FOUC) by setting the initial canvas color early, it may not completely eliminate flashes in all browsers or loading conditions.
+MANDATORY: To help prevent a "flash of un-themed content" (FOUC), place a `<meta>` tag in your `<head>` to ensure the browser knows which themes you support before it even starts rendering. While this `<meta>` tag helps to avoid FOUC by setting the initial canvas color early, it may not completely eliminate flashes in all browsers or loading conditions.
 
 ```html
 <!-- MANDATORY: Declare support for both light and dark themes -->
