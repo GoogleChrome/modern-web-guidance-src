@@ -99,11 +99,11 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
       const graderResults = path.join(dir, `${guide}_results.json`);
 
-      const targetExists = isTargetAppPresent(targetFile, targetPkgJson);
+      const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson);
 
       const failureFile = path.join(dir, 'generation_failed.json');
       // If grader is missing, generation failed, target file is missing, or results already exist, skip generating a runner.
-      if (!fs.existsSync(graderPath) || fs.existsSync(failureFile) || !targetExists || fs.existsSync(graderResults)) {
+      if (!fs.existsSync(graderPath) || fs.existsSync(failureFile) || !targetAppExists || fs.existsSync(graderResults)) {
         continue;
       }
 
@@ -239,12 +239,12 @@ run();
       let scenarioResults: any[] = [];
       const graderResults = path.join(dir, `${guide}_results.json`);
 
-      const targetExists = isTargetAppPresent(targetFile, targetPkgJson);
+      const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson);
 
       if (!fs.existsSync(graderPath)) {
         console.warn(`Grader not found for ${guide} at ${graderPath}`);
         scenarioResults.push({ name: 'Configuration', status: 'fail', message: 'Grader not found' });
-      } else if (!targetExists) {
+      } else if (!targetAppExists) {
         scenarioResults.push({ name: 'File Check', status: 'fail', message: 'Target app missing' });
       } else if (!fs.existsSync(graderResults)) {
         const errorMessage = extractErrorMessage(dir, targetFile);
