@@ -2,7 +2,7 @@
 import path from 'path';
 import { Octokit } from '@octokit/rest';
 import { fileURLToPath } from 'url';
-import { ProjectStatus, processGuideInventory, scanAllGuides } from '../lib/guide-validation.ts';
+import { ProjectStatus, processGuideInventory, scanAllGuides, type GuideInventory } from '../lib/guide-validation.ts';
 
 // --- Types ---
 
@@ -124,7 +124,8 @@ export function buildIssueContent(
   description: string,
   featureIds: string[],
   relativeSubdir: string,
-  featureToIssueMap: Map<string, FeatureIssueData>
+  featureToIssueMap: Map<string, FeatureIssueData>,
+  inv: GuideInventory
 ): IssueContent {
   const relatedLinks: string[] = [];
   let priorityLabel: string | null = null;
@@ -147,9 +148,12 @@ export function buildIssueContent(
   const subdirUrl = `https://github.com/${ORG}/${REPO}/tree/main/${relativeSubdir}`;
   const linkedFeatures = featureIds.map(id => `[${id}](https://webstatus.dev/features/${id})`).join(', ');
 
+  const checklist = buildRequiredFilesChecklist(inv);
+  const checklistSection = `\n\n${REQUIRED_FILES_START}\n**Required files:**\n${checklist}\n${REQUIRED_FILES_END}`;
+
   return {
     issueTitle: `Create guide and evals for the ${name} use case`,
-    issueBody: `${description}\n\nAffected web-feature IDs: ${linkedFeatures}\n\nUse case subdir: [${relativeSubdir}](${subdirUrl})${relatedFeaturesStr}`,
+    issueBody: `${description}\n\nAffected web-feature IDs: ${linkedFeatures}\n\nUse case subdir: [${relativeSubdir}](${subdirUrl})${relatedFeaturesStr}${checklistSection}`,
     priorityLabel,
     milestoneNumber,
   };
@@ -175,6 +179,22 @@ export function buildFeatureToIssueMap(issues: any[]): Map<string, FeatureIssueD
 
 export const USE_CASES_START = '<!-- use-cases-start: automatically updated by sync-use-cases.ts, do not edit -->';
 export const USE_CASES_END = '<!-- use-cases-end -->';
+
+export const REQUIRED_FILES_START = '<!-- required-files-start: automatically updated by sync-use-cases.ts, do not edit -->';
+export const REQUIRED_FILES_END = '<!-- required-files-end -->';
+
+export function buildRequiredFilesChecklist(inv: GuideInventory): string {
+  const items = [
+    `- [${(inv.isStub || inv.hasGuide) ? 'x' : ' '}] Use case metadata (guide.md frontmatter)`,
+    `- [${inv.hasDemo ? 'x' : ' '}] demo.html`,
+    `- [${inv.hasGuide ? 'x' : ' '}] Use case guidance (guide.md)`,
+    `- [${(inv.hasExpectations && !inv.expectationsEmpty) ? 'x' : ' '}] expectations.md`,
+    `- [${inv.hasTask ? 'x' : ' '}] tasks/task.md`,
+    `- [${inv.hasNegativeDemo ? 'x' : ' '}] negative-demo.html`,
+    `- [${inv.hasGrader ? 'x' : ' '}] grader.ts`,
+  ];
+  return items.join('\n');
+}
 
 /**
  * Inserts or replaces the use case checklist section in a feature issue body.
@@ -558,7 +578,12 @@ async function processUseCases(
   }
 
   for (const { name, description, featureIds, relativeSubdir, statusName } of preparedGuides) {
-    const { issueTitle, issueBody, priorityLabel, milestoneNumber } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap);
+    const inv = guides.find(g => path.relative(REPO_ROOT, g.dir) === relativeSubdir);
+    if (!inv) {
+      console.warn(`⚠️ Could not find inventory for ${relativeSubdir}`);
+      continue;
+    }
+    const { issueTitle, issueBody, priorityLabel, milestoneNumber } = buildIssueContent(name, description, featureIds, relativeSubdir, featureToIssueMap, inv);
     const existingIssue = nameToIssueMap.get(name) || subdirToIssueMap.get(relativeSubdir);
     const existingIssueNumber = existingIssue?.number;
     const currentProjectStatus = existingIssueNumber ? projectDetails?.issueStatusMap.get(existingIssueNumber) : undefined;

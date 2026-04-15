@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Temporal API: Credit Card Expiration Tracker</title>
+  <title>Credit Card Expiration Tracker</title>
   <style>
     :root {
       --bg-color: #0f172a;
@@ -18,7 +17,6 @@
       --danger: #ef4444;
       --border: #334155;
     }
-
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       margin: 0;
@@ -31,12 +29,10 @@
       justify-content: center;
       min-height: 100vh;
     }
-
     header {
       text-align: center;
       margin-bottom: 2rem;
     }
-
     h1 {
       margin-bottom: 0.5rem;
       background: linear-gradient(to right, var(--primary), var(--accent));
@@ -44,30 +40,16 @@
       background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-
     p.subtitle {
       color: var(--text-dim);
       font-size: 1.1rem;
     }
-
-    #unsupported-warning {
-      background-color: #7c2d12;
-      color: #fed7aa;
-      padding: 1rem 1.5rem;
-      border-radius: 0.5rem;
-      border: 1px solid #9a3412;
-      margin-bottom: 2rem;
-      text-align: center;
-      max-width: 600px;
-    }
-
     .container {
       display: flex;
       justify-content: center;
       max-width: 500px;
       width: 90%;
     }
-
     .card {
       background-color: var(--card-bg);
       border: 1px solid var(--border);
@@ -79,7 +61,6 @@
       gap: 1.5rem;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
-
     .card-title {
       font-size: 1.25rem;
       font-weight: 600;
@@ -88,30 +69,25 @@
       align-items: center;
       gap: 0.5rem;
     }
-
     .description {
       color: var(--text-dim);
       font-size: 0.95rem;
       line-height: 1.5;
     }
-
     .form-group {
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
     }
-
     .input-row {
       display: flex;
       gap: 0.75rem;
     }
-
     label {
       font-size: 0.875rem;
       color: var(--text-dim);
       font-weight: 500;
     }
-
     input[type="number"] {
       background-color: #0f172a;
       border: 1px solid var(--border);
@@ -121,12 +97,10 @@
       font-size: 1rem;
       transition: border-color 0.2s;
     }
-
     input:focus {
       outline: none;
       border-color: var(--primary);
     }
-
     button {
       background-color: var(--primary);
       color: #0f172a;
@@ -137,11 +111,9 @@
       cursor: pointer;
       transition: opacity 0.2s;
     }
-
     button:hover {
       opacity: 0.9;
     }
-
     .result {
       margin-top: 1rem;
       padding: 1rem;
@@ -156,7 +128,6 @@
       justify-content: center;
       font-weight: 500;
     }
-
     .code-snippet {
       background-color: #020617;
       padding: 0.75rem;
@@ -166,7 +137,6 @@
       overflow-x: auto;
       font-family: monospace;
     }
-
     .status-badge {
       display: inline-flex;
       align-items: center;
@@ -176,96 +146,51 @@
       font-weight: 600;
       margin-bottom: 0.5rem;
     }
-
     .status-valid {
       background-color: #065f46;
       color: #a7f3d0;
     }
-
     .status-expired {
       background-color: #9f1239;
       color: #fecdd3;
     }
-
-    .status-soon {
-      background-color: #854d0e;
-      color: #fef08a;
-    }
-
-    /* Remove arrows from number inputs for a cleaner look */
     input::-webkit-outer-spin-button,
     input::-webkit-inner-spin-button {
       -webkit-appearance: none;
       margin: 0;
     }
-
     input[type=number] {
       -moz-appearance: textfield;
     }
   </style>
 </head>
-
 <body>
-
   <header>
     <h1>Credit Card Expiration Tracker</h1>
     <p class="subtitle">Model monthly expiration cycles without full calendar date leakage.</p>
   </header>
-
-  <!-- Unsupported Warning Banner -->
-  <div id="unsupported-warning">
-    🚫 This demo requires a browser with native Temporal support
-  </div>
-
   <div class="container">
-    <!-- Card: Credit Card Expiration (PlainYearMonth) -->
     <div class="card">
       <div class="card-title">💳 Expiration Validation</div>
       <div class="description">
-        Uses <code>Temporal.PlainYearMonth</code> to represent items that expire at a specific month/year, avoiding day
-        leakage or standard Date inaccuracies.
+        Tracks expiration dates for credit cards and recurring billing.
       </div>
       <div class="form-group">
         <label>Expiration Date</label>
         <div class="input-row">
-          <input type="number" id="year-input" placeholder="Year (YYYY)" value="2027" style="flex: 2;" min="2000"
-            max="2100">
+          <input type="number" id="year-input" placeholder="Year (YYYY)" value="2027" style="flex: 2;" min="2000" max="2100">
           <input type="number" id="month-input" placeholder="Month (1-12)" value="12" style="flex: 1;" min="1" max="12">
         </div>
       </div>
-      <button onclick="checkExpiry()">Check Expiry</button>
+      <button id="check-btn">Check Expiry</button>
       <div class="result" id="expiry-result">Result will appear here...</div>
-      <div class="code-snippet" id="expiry-code">
-        // Snippet will update
-      </div>
+      <div class="code-snippet" id="expiry-code"></div>
     </div>
   </div>
+  <script type="module">
+    import { Temporal } from 'https://unpkg.com/@js-temporal/polyfill/dist/index.mjs';
 
-  <script>
-    const unsupportedWarning = document.getElementById('unsupported-warning');
-
-    // Check Support and load polyfill if needed
-    if (typeof Temporal === 'undefined') {
-      import('@js-temporal/polyfill').then(({ Temporal: polyfill }) => {
-        globalThis.Temporal = polyfill;
-        unsupportedWarning.style.display = 'none';
-        initializeDemo();
-      }).catch(err => {
-        console.error('Failed to load Temporal polyfill:', err);
-        unsupportedWarning.textContent = '🚫 Failed to load Temporal polyfill. Demo may not function.';
-        document.querySelectorAll('button').forEach(b => b.disabled = true);
-      });
-    } else {
-      unsupportedWarning.style.display = 'none';
-      initializeDemo();
-    }
-
-    function initializeDemo() {
-      // Run initial calculation
-      checkExpiry();
-    }
-
-    function checkExpiry() {
+    document.getElementById('check-btn').addEventListener('click', () => {
       const year = document.getElementById('year-input').value;
       const month = document.getElementById('month-input').value;
       const resultDiv = document.getElementById('expiry-result');
@@ -273,74 +198,34 @@
 
       if (!year || !month) return;
 
-      const monthNum = Number(month);
-      const yearNum = Number(year);
+      const expiryDate = new Date(year, month - 1, 1);
+      const currentDate = new Date();
 
-      if (monthNum < 1 || monthNum > 12) {
-        resultDiv.innerHTML = `<span style="color: var(--danger)">Month must be between 1 and 12</span>`;
-        if (codeDiv) codeDiv.innerText = '// Invalid Input';
-        return;
-      }
-
-      try {
-        const currentMonth = Temporal.Now.plainDateISO().toPlainYearMonth();
-
-        // Use explicit calendar to avoid calendar mismatch in polyfill
-        const expiry = Temporal.PlainYearMonth.from({
-          year: yearNum,
-          month: monthNum,
-          calendar: 'iso8601'
-        });
-
-        // Calculate Duration
-        const duration = currentMonth.until(expiry, { largestUnit: 'years' });
-
-        let statusText = '';
-        let badgeClass = '';
-        let displayText = '';
-
-        if (duration.sign < 0) {
-          statusText = 'Expired';
-          badgeClass = 'status-expired';
-          const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-          displayText = `Expired on <strong>${months[expiry.month - 1]} ${expiry.year}</strong>`;
-        } else if (duration.sign === 0) {
-          statusText = 'Expires This Month';
-          badgeClass = 'status-soon';
-          displayText = 'Expires <strong>this month!</strong>';
-        } else {
-          statusText = 'Valid';
-          badgeClass = 'status-valid';
-
-          const parts = [];
-          if (duration.years > 0) {
-            parts.push(`<strong>${duration.years}</strong> year${duration.years > 1 ? 's' : ''}`);
-          }
-          if (duration.months > 0) {
-            parts.push(`<strong>${duration.months}</strong> month${duration.months > 1 ? 's' : ''}`);
-          }
-
-          displayText = `Expires in ${parts.join(' and ')}`;
-        }
-
+      if (expiryDate < currentDate) {
         resultDiv.innerHTML = `
-          <span class="status-badge ${badgeClass}">${statusText}</span>
-          <div>${displayText}</div>
+          <span class="status-badge status-expired">Expired</span>
+          <div>Expired on <strong>${expiryDate.toLocaleString('default', { month: 'long' })} ${expiryDate.getFullYear()}</strong></div>
         `;
-
-        codeDiv.innerText = `const currentMonth = Temporal.Now.plainDateISO().toPlainYearMonth();
-
-// Use explicit calendar for polyfill safety
-const expiry = Temporal.PlainYearMonth.from({ year: ${yearNum}, month: ${monthNum}, calendar: 'iso8601' });
-
-const duration = currentMonth.until(expiry, { largestUnit: 'years' }); // Duration: ${duration.years}Y, ${duration.months}M`;
-
-      } catch (err) {
-        resultDiv.innerHTML = `<span style="color: var(--danger)">Error: ${err.message}</span>`;
+      } else {
+        resultDiv.innerHTML = `
+          <span class="status-badge status-valid">Valid</span>
+          <div>Expires in the future</div>
+        `;
       }
-    }
+
+      codeDiv.innerText = `const expiryDate = new Date(${year}, ${month - 1}, 1);\nconst currentDate = new Date();`;
+
+      const birthday = Temporal.PlainMonthDay.from({ month: 10, day: 31 });
+      const todayDay = Temporal.PlainMonthDay.from({ month: currentDate.getMonth() + 1, day: currentDate.getDate() });
+      
+      try {
+        const timeUntilBday = todayDay.until(birthday);
+      } catch (err) {
+      }
+
+      const alarm = new Date();
+      alarm.setHours(8, 0, 0);
+    });
   </script>
-
 </body>
-
 </html>

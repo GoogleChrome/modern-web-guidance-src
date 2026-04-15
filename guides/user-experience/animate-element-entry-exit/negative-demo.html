@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dynamic Content Injection Demo</title>
+  <title>Dynamic Content Injection</title>
   <style>
     :root {
       --primary: #1a73e8;
@@ -67,7 +67,6 @@
       border: none;
       border-radius: 6px;
       cursor: pointer;
-      transition: background 0.2s ease;
       font-weight: 500;
     }
 
@@ -86,7 +85,6 @@
       border-radius: 8px;
     }
 
-    /* Target Elements */
     .card {
       width: 100px;
       height: 100px;
@@ -97,50 +95,12 @@
       justify-content: center;
       border-radius: 8px;
       font-weight: 600;
-
-      /*
-        transition-behavior: allow-discrete enables transitions on discrete
-        properties like display.
-      */
-      transition:
-        display 0.4s allow-discrete,
-        opacity 0.4s ease-out,
-        transform 0.4s ease-out;
       opacity: 1;
       transform: translateY(0) scale(1);
     }
 
-    /* State when hidden/removing */
     .card:where([hidden], .hidden) {
       display: none;
-      opacity: 0;
-      transform: translateY(-20px) scale(0.95);
-    }
-
-    /* State precisely before the element starts rendering */
-    @starting-style {
-      .card {
-        opacity: 0;
-        transform: translateY(-20px) scale(0.95);
-      }
-    }
-
-    /* Respect user preference for reduced motion */
-    @media (prefers-reduced-motion: reduce) {
-      .card {
-        transform: none;
-        transition-duration: 0.1s;
-      }
-
-      @starting-style {
-        .card {
-          transform: none;
-        }
-      }
-
-      .card:where([hidden], .hidden) {
-        transform: none;
-      }
     }
   </style>
 </head>
@@ -170,12 +130,11 @@
       <button id="removeBtn">Remove Element</button>
     </div>
     <div class="container" id="domContainer">
-      <div class="card">Item A</div>
+      <div class="card">Item 1</div>
     </div>
   </div>
 
   <script>
-    // Example 1: Toggling display
     const toggleBtn = document.getElementById('toggleBtn');
     const toggleCard = document.getElementById('toggleCard');
 
@@ -183,7 +142,6 @@
       toggleCard.toggleAttribute('hidden');
     });
 
-    // Example 2: Adding and Removing from the DOM
     const addBtn = document.getElementById('addBtn');
     const removeBtn = document.getElementById('removeBtn');
     const domContainer = document.getElementById('domContainer');
@@ -193,40 +151,18 @@
       totalAdded++;
       const newCard = document.createElement('div');
       newCard.className = 'card';
-      // Use A, B, C... logic for naming items for up to 26 then it uses symbols,
-      // but numbers are safer if we spam the button. Let's stick with numbers after A
-      newCard.textContent = `Item ${totalAdded > 1 ? totalAdded : 'A'}`;
+      newCard.textContent = `Item ${totalAdded}`;
       domContainer.appendChild(newCard);
     });
 
-    removeBtn.addEventListener('click', async () => {
-      // Find the last card that isn't currently being removed
+    removeBtn.addEventListener('click', () => {
       const cards = Array.from(domContainer.querySelectorAll('.card:not([hidden])'));
       const lastCard = cards[cards.length - 1];
 
       if (lastCard) {
-        // Trigger the transition out by adding the hidden class
-        lastCard.setAttribute('hidden', true);
-
-        // Wait for animations to finish before removing from the DOM
-        const animations = lastCard.getAnimations();
-        if (animations.length > 0) {
-          await Promise.allSettled(animations.map(animation => animation.finished));
-        }
-
-        // Remove the element from the DOM
         lastCard.remove();
       }
     });
-
-    // Fix the initial Item "A" labeling issue
-    // to keep it consistent if removed and re-added
-    // Actually, setting totalAdded to 1 and starting with "Item A" is a bit weird.
-    // Let's just fix the label of the initial card on startup (but keeping the HTML as is is fine)
-    const initialCard = domContainer.querySelector('.card');
-    if (initialCard) {
-        initialCard.textContent = "Item 1";
-    }
   </script>
 </body>
 </html>

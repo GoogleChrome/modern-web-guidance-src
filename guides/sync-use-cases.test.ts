@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END } from './sync-use-cases.ts';
+import { getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, buildRequiredFilesChecklist } from './sync-use-cases.ts';
 import { ProjectStatus, validateGuide, getStatusName, processGuideInventory, type GuideInventory } from '../lib/guide-validation.ts';
 
 function createTempDir(): string {
@@ -411,38 +411,126 @@ describe('buildUseCaseMaps', () => {
   });
 });
 
+describe('buildRequiredFilesChecklist', () => {
+  function makeInventory(overrides: Partial<GuideInventory> = {}): GuideInventory {
+    return {
+      dir: 'guides/ux/my-use-case',
+      name: 'my-use-case',
+      category: 'ux',
+      hasGuide: false,
+      isStub: false,
+      hasDemo: false,
+      hasExpectations: false,
+      expectationsEmpty: false,
+      hasNegativeDemo: false,
+      hasGrader: false,
+      hasTask: false,
+      featureIds: [],
+      ...overrides,
+    };
+  }
+
+  test('generates unchecked checklist for empty inventory', () => {
+    const inv = makeInventory();
+    const result = buildRequiredFilesChecklist(inv);
+    assert.ok(result.includes('- [ ] Use case metadata (guide.md frontmatter)'));
+    assert.ok(result.includes('- [ ] Use case guidance (guide.md)'));
+    assert.ok(result.includes('- [ ] demo.html'));
+    assert.ok(result.includes('- [ ] expectations.md'));
+    assert.ok(result.includes('- [ ] tasks/task.md'));
+    assert.ok(result.includes('- [ ] negative-demo.html'));
+    assert.ok(result.includes('- [ ] grader.ts'));
+  });
+
+  test('marks checked files accurately', () => {
+    const inv = makeInventory({
+      isStub: true,
+      hasGuide: true,
+      hasDemo: true,
+      hasExpectations: true,
+      expectationsEmpty: false,
+      hasTask: true,
+      hasNegativeDemo: true,
+      hasGrader: true,
+    });
+    const result = buildRequiredFilesChecklist(inv);
+    assert.ok(result.includes('- [x] Use case metadata (guide.md frontmatter)'));
+    assert.ok(result.includes('- [x] Use case guidance (guide.md)'));
+    assert.ok(result.includes('- [x] demo.html'));
+    assert.ok(result.includes('- [x] expectations.md'));
+    assert.ok(result.includes('- [x] tasks/task.md'));
+    assert.ok(result.includes('- [x] negative-demo.html'));
+    assert.ok(result.includes('- [x] grader.ts'));
+  });
+
+  test('handles stubs without full guidance', () => {
+    const inv = makeInventory({
+      isStub: true,
+      hasGuide: false,
+    });
+    const result = buildRequiredFilesChecklist(inv);
+    assert.ok(result.includes('- [x] Use case metadata (guide.md frontmatter)'));
+    assert.ok(result.includes('- [ ] Use case guidance (guide.md)'));
+  });
+
+  test('handles empty expectations', () => {
+    const inv = makeInventory({
+      hasExpectations: true,
+      expectationsEmpty: true,
+    });
+    const result = buildRequiredFilesChecklist(inv);
+    assert.ok(result.includes('- [ ] expectations.md'));
+  });
+});
+
 describe('buildIssueContent', () => {
   const emptyMap = new Map();
+  function makeInventory() {
+    return {
+      dir: 'guides/ux/my-use-case',
+      name: 'my-use-case',
+      category: 'ux',
+      hasGuide: false,
+      isStub: false,
+      hasDemo: false,
+      hasExpectations: false,
+      expectationsEmpty: false,
+      hasNegativeDemo: false,
+      hasGrader: false,
+      hasTask: false,
+      featureIds: [],
+    };
+  }
 
   test('generates correct issue title', () => {
-    const { issueTitle } = buildIssueContent('my-use-case', 'A description', [], 'guides/ux/my-use-case', emptyMap);
+    const { issueTitle } = buildIssueContent('my-use-case', 'A description', [], 'guides/ux/my-use-case', emptyMap, makeInventory());
     assert.strictEqual(issueTitle, 'Create guide and evals for the my-use-case use case');
   });
 
   test('includes description in issue body', () => {
-    const { issueBody } = buildIssueContent('my-use-case', 'A description', [], 'guides/ux/my-use-case', emptyMap);
+    const { issueBody } = buildIssueContent('my-use-case', 'A description', [], 'guides/ux/my-use-case', emptyMap, makeInventory());
     assert.ok(issueBody.startsWith('A description'));
   });
 
   test('includes subdir link in issue body', () => {
-    const { issueBody } = buildIssueContent('my-use-case', 'desc', [], 'guides/ux/my-use-case', emptyMap);
+    const { issueBody } = buildIssueContent('my-use-case', 'desc', [], 'guides/ux/my-use-case', emptyMap, makeInventory());
     assert.ok(issueBody.includes('[guides/ux/my-use-case]'));
   });
 
   test('includes linked feature IDs in issue body', () => {
-    const { issueBody } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap);
+    const { issueBody } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap, makeInventory());
     assert.ok(issueBody.includes('[dialog-closedby](https://webstatus.dev/features/dialog-closedby)'));
   });
 
   test('returns null priority label and milestone when no features have linked issues', () => {
-    const { priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap);
+    const { priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap, makeInventory());
     assert.strictEqual(priorityLabel, null);
     assert.strictEqual(milestoneNumber, null);
   });
 
   test('includes related feature issue links when available', () => {
     const featureMap = new Map([['dialog-closedby', { number: 99, priorityLabel: 'P1', milestoneNumber: 2, state: 'open', body: '' }]]);
-    const { issueBody, priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', featureMap);
+    const { issueBody, priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', featureMap, makeInventory());
     assert.ok(issueBody.includes('Related features: #99'));
     assert.strictEqual(priorityLabel, 'P1');
     assert.strictEqual(milestoneNumber, 2);
@@ -453,14 +541,21 @@ describe('buildIssueContent', () => {
       ['feature-a', { number: 1, priorityLabel: 'P1', milestoneNumber: 1, state: 'open', body: '' }],
       ['feature-b', { number: 2, priorityLabel: 'P2', milestoneNumber: 2, state: 'open', body: '' }],
     ]);
-    const { priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['feature-a', 'feature-b'], 'guides/ux/my-use-case', featureMap);
+    const { priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['feature-a', 'feature-b'], 'guides/ux/my-use-case', featureMap, makeInventory());
     assert.strictEqual(priorityLabel, 'P1');
     assert.strictEqual(milestoneNumber, 1);
   });
 
   test('omits related features section when no features have linked issues', () => {
-    const { issueBody } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap);
+    const { issueBody } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap, makeInventory());
     assert.ok(!issueBody.includes('Related features'));
+  });
+
+  test('includes the required files checklist', () => {
+    const { issueBody } = buildIssueContent('my-use-case', 'desc', ['dialog-closedby'], 'guides/ux/my-use-case', emptyMap, makeInventory());
+    assert.ok(issueBody.includes('<!-- required-files-start'));
+    assert.ok(issueBody.includes('**Required files:**'));
+    assert.ok(issueBody.includes('<!-- required-files-end -->'));
   });
 });
 
