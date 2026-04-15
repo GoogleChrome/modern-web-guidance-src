@@ -9,6 +9,9 @@ eval-view/features_mapping.gen.js
 eval-view/grouped-tasks.gen.json
 eval-view/suites.gen.json
 dist/
+guides/index.json
+guides/index.csv
+guides/index.md
 
 # Test artifacts
 eval-view/test-results/
