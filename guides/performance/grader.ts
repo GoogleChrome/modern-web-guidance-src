@@ -14,7 +14,7 @@ const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
-test.describe(`Forms Skill Grader: ${demoName}`, () => {
+test.describe(`Performance Skill Grader: ${demoName}`, () => {
 
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
@@ -31,9 +31,12 @@ test.describe(`Forms Skill Grader: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test('Page contains at least one <form> element', async ({ page }) => {
-    const formCount = await page.locator('form').count();
-    expect(formCount).toBeGreaterThan(0);
+  test('Styles do not use @import', async ({ page }) => {
+    const hasImport = await page.evaluate(() => {
+      const styles = Array.from(document.querySelectorAll('style'));
+      return styles.some(s => s.innerText.includes('@import'));
+    });
+    expect(hasImport).toBe(false);
   });
 
   // TODO: Populate the grader with comprehensive tests based on SKILL.md
