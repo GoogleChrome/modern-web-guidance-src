@@ -2,10 +2,7 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
-import postcss from 'postcss';
-import selectorParser from 'postcss-selector-parser';
-import nested from 'postcss-nested';
-import shorthandExpand from 'postcss-shorthand-expand';
+import { Parser, CSSStyleRule, CSSMediaRule, CSSUnknownRule, serialize } from '../../../../cssom/src/index.ts';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -20,32 +17,39 @@ const htmlStr = fs.readFileSync(filePath, 'utf-8');
 // Initialize a static parser
 const { document } = parseHTML(htmlStr);
 
-// Extract CSS and parse with PostCSS (including nesting and shorthand expansion)
+// Extract CSS and parse with CSSOM
 const styles = Array.from(document.querySelectorAll('style')).map(s => s.textContent).join('\n');
-const root = postcss([nested(), shorthandExpand()]).processSync(styles).root;
+const styleRules = Parser.parseStyleSheetText(styles);
 
 test.describe(`Scrollbar Customization Expectations: ${demoName}`, () => {
   // Static assertions
   test('Standard scrollbar-width property is used in CSS', () => {
     let hasWidth = false;
-    root.walkDecls('scrollbar-width', () => {
-      hasWidth = true;
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSStyleRule) {
+        if (rule.style.getPropertyValue('scrollbar-width')) hasWidth = true;
+      }
     });
     expect(hasWidth).toBe(true);
   });
 
   test('Standard scrollbar-color property is used in CSS', () => {
     let hasColor = false;
-    root.walkDecls('scrollbar-color', () => {
-      hasColor = true;
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSStyleRule) {
+        if (rule.style.getPropertyValue('scrollbar-color')) hasColor = true;
+      }
     });
     expect(hasColor).toBe(true);
   });
 
   test('scrollbar-gutter: stable is used in CSS', () => {
     let hasGutterStable = false;
-    root.walkDecls('scrollbar-gutter', (decl) => {
-      if (decl.value.includes('stable')) hasGutterStable = true;
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSStyleRule) {
+        const value = rule.style.getPropertyValue('scrollbar-gutter');
+        if (value.includes('stable')) hasGutterStable = true;
+      }
     });
     expect(hasGutterStable).toBe(true);
   });
@@ -55,24 +59,27 @@ test.describe(`Scrollbar Customization Expectations: ${demoName}`, () => {
     let protectedWebkits = false;
     
     // First figure out if there's any webkit scrollbar at all
-    root.walkRules(rule => {
-      selectorParser(selectors => {
-        selectors.walkPseudos(pseudo => {
-          if (pseudo.value.includes('-webkit-scrollbar')) hasWebkits = true;
-        });
-      }).processSync(rule.selector);
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSStyleRule) {
+        if (rule.selectorText.includes('-webkit-scrollbar')) hasWebkits = true;
+      }
     });
 
     if (hasWebkits) {
-      root.walkAtRules('supports', atRule => {
-        if (atRule.params.includes('not') && atRule.params.includes('scrollbar-color') && atRule.params.includes('auto')) {
-          atRule.walkRules(rule => {
-            selectorParser(selectors => {
-              selectors.walkPseudos(pseudo => {
-                if (pseudo.value.includes('-webkit-scrollbar')) protectedWebkits = true;
+      styleRules.forEach(rule => {
+        if (rule instanceof CSSUnknownRule && rule.name === 'supports') {
+          const preludeStr = serialize(rule.prelude);
+          if (preludeStr.includes('not') && preludeStr.includes('scrollbar-color') && preludeStr.includes('auto')) {
+            const block = rule.block;
+            if (block && typeof block === 'object' && 'value' in block && Array.isArray(block.value)) {
+              const childRules = Parser.parseStyleSheetText(serialize(block.value));
+              childRules.forEach(childRule => {
+                if (childRule instanceof CSSStyleRule) {
+                  if (childRule.selectorText.includes('-webkit-scrollbar')) protectedWebkits = true;
+                }
               });
-            }).processSync(rule.selector);
-          });
+            }
+          }
         }
       });
       expect(protectedWebkits).toBe(true);
@@ -84,26 +91,29 @@ test.describe(`Scrollbar Customization Expectations: ${demoName}`, () => {
   test('Legacy ::-webkit-scrollbar has width or height defined for visibility', () => {
     let hasSizingInFallback = false;
     
-    root.walkAtRules('supports', atRule => {
-      if (atRule.params.includes('not') && atRule.params.includes('scrollbar-color') && atRule.params.includes('auto')) {
-        atRule.walkRules(rule => {
-          let isWebkitScrollbar = false;
-          selectorParser(selectors => {
-            selectors.walkPseudos(pseudo => {
-              if (pseudo.value === '::-webkit-scrollbar') isWebkitScrollbar = true;
-            });
-          }).processSync(rule.selector);
-
-          if (isWebkitScrollbar) {
-            rule.walkDecls(decl => {
-              if (decl.prop === 'width' || decl.prop === 'height') hasSizingInFallback = true;
+    styleRules.forEach(rule => {
+      if (rule instanceof CSSUnknownRule && rule.name === 'supports') {
+        const preludeStr = serialize(rule.prelude);
+        if (preludeStr.includes('not') && preludeStr.includes('scrollbar-color') && preludeStr.includes('auto')) {
+          const block = rule.block;
+          if (block && typeof block === 'object' && 'value' in block && Array.isArray(block.value)) {
+            const childRules = Parser.parseStyleSheetText(serialize(block.value));
+            childRules.forEach(childRule => {
+              if (childRule instanceof CSSStyleRule) {
+                if (childRule.selectorText.includes('::-webkit-scrollbar')) {
+                  if (childRule.style.getPropertyValue('width') || childRule.style.getPropertyValue('height')) {
+                    hasSizingInFallback = true;
+                  }
+                }
+              }
             });
           }
-        });
+        }
       }
     });
     expect(hasSizingInFallback).toBe(true);
   });
+
 
   // Setup browser testing
   test.beforeEach(async ({ page }) => {
