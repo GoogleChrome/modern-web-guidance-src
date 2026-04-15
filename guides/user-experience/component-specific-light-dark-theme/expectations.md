@@ -1,0 +1,6 @@
+- The component uses the `light-dark()` CSS function to define at least one color property (e.g., `background-color` or `color`).
+- The document or the component has `color-scheme` set to `light dark` (or includes both) to enable the resolution of `light-dark()`.
+- The component supports an override mechanism (e.g., a specific CSS class) that sets `color-scheme` to `light` to force light mode.
+- The component supports an override mechanism (e.g., a specific CSS class) that sets `color-scheme` to `dark` to force dark mode.
+- When the component is forced to `color-scheme: light`, its computed colors match the first argument of the `light-dark()` function, regardless of the system's `prefers-color-scheme`.
+- When the component is forced to `color-scheme: dark`, its computed colors match the second argument of the `light-dark()` function, regardless of the system's `prefers-color-scheme`.
