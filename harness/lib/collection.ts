@@ -26,6 +26,16 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
 }
 
 function extractErrorMessage(dir: string, targetFile: string): string {
+  const failureFile = path.join(dir, 'generation_failed.json');
+  if (fs.existsSync(failureFile)) {
+    try {
+      const failureInfo = JSON.parse(fs.readFileSync(failureFile, 'utf-8'));
+      return `Generation failed: ${failureInfo.agentName} exited with ${failureInfo.exitCode}`;
+    } catch (e) {
+      return 'Generation failed (could not parse failure info)';
+    }
+  }
+
   const stderrPath = path.join(dir, 'agent_stderr.log');
   
   if (!fs.existsSync(stderrPath)) {
@@ -91,8 +101,9 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
 
       const targetExists = isTargetAppPresent(targetFile, targetPkgJson);
 
-      // If grader is missing, target file is missing, or results already exist, skip generating a runner.
-      if (!fs.existsSync(graderPath) || !targetExists || fs.existsSync(graderResults)) {
+      const failureFile = path.join(dir, 'generation_failed.json');
+      // If grader is missing, generation failed, target file is missing, or results already exist, skip generating a runner.
+      if (!fs.existsSync(graderPath) || fs.existsSync(failureFile) || !targetExists || fs.existsSync(graderResults)) {
         continue;
       }
 
