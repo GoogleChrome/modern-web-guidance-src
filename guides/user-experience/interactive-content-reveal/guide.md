@@ -70,11 +70,16 @@ Track the pointer position and update the CSS variables. Because the properties 
 
 ```javascript
 const container = document.querySelector('.container');
-// Calculate position as a percentage of the container.
-// Note: If your container is resized, `rect` must be updated.
-const rect = container.getBoundingClientRect();
+// Store the container's bounding rect
+let rect = container.getBoundingClientRect();
+// Update the rect when the container is resized
+const resizeObserver = new ResizeObserver(()=>{
+  rect = container.getBoundingClientRect();
+})
+resizeObserver.observe(container);
 
 container.addEventListener('pointermove', (e) => {
+  // Calculate position as a percentage of the container.
   const x = ((e.clientX - rect.left) / rect.width) * 100;
   const y = ((e.clientY - rect.top) / rect.height) * 100;
 
