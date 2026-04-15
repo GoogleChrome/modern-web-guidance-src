@@ -12,6 +12,9 @@ dist/
 guides/index.json
 guides/index.csv
 guides/index.md
+skills-drafts/index.json
+skills-drafts/index.csv
+skills-drafts/index.md
 
 # Test artifacts
 eval-view/test-results/
