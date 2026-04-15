@@ -2,7 +2,7 @@ import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
-import { Serving, Agents, type SuiteConfig } from '../config.ts';
+import { Agents, type SuiteConfig } from '../config.ts';
 import { guidesDir } from '../../lib/paths.ts';
 import { getTaskMap } from '../../lib/guide-validation.ts';
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
@@ -25,6 +25,20 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
   return 'unknown';
 }
 
+function extractErrorMessage(dir: string, targetFile: string): string {
+  const stderrPath = path.join(dir, 'agent_stderr.log');
+  
+  if (!fs.existsSync(stderrPath)) {
+    return fs.existsSync(targetFile) ? 'Generation failed' : 'index.html not found';
+  }
+
+  return fs.readFileSync(stderrPath, 'utf8')
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l && !l.includes('YOLO mode'))
+    .pop()?.slice(0, 100) || 'Generation mysteriously failed';
+}
+
 export async function collectResults(resultsDir: string, suiteConfig: SuiteConfig) {
   const taskMap = getTaskMap();
 
@@ -45,13 +59,26 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
 
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
-    const directories = glob.sync('*/*/*/', { cwd: runPath, absolute: true });
+    const runTypeDirs = [
+      ...glob.sync('**/guided', { cwd: runPath, absolute: true }),
+      ...glob.sync('**/unguided', { cwd: runPath, absolute: true })
+    ];
 
-    for (const dir of directories) {
+    for (const dir of runTypeDirs) {
       const relPath = path.relative(runPath, dir);
       const parts = relPath.split(path.sep);
-      if (parts.length < 3) continue;
-      const [guide, taskName, runType] = parts;
+      
+      let guide: string, taskName: string, runType: string;
+      if (parts.length === 2) {
+        // [Legacy Fallback] Old structure: {taskName}/{runType}
+        taskName = 'task'; // Old suites always had a single task
+        runType = parts[1];
+        guide = parts[0].replace(/-task$/, ''); // Infer guide name by removing suffix
+      } else if (parts.length >= 3) {
+        [guide, taskName, runType] = parts;
+      } else {
+        continue;
+      }
       if (runType === 'base_app') continue; // Skip the base app setup folder
       const targetFile = path.join(dir, 'index.html');
       const targetPkgJson = path.join(dir, 'package.json');
@@ -151,25 +178,38 @@ run();
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
 
-    // Structure: results/{suiteName}/{runNumber}/{guideName}/{taskName}/{runType}
-    const directories = glob.sync('*/*/*/', {
-      cwd: runPath,
-      absolute: true
-    });
+    const runTypeDirs = [
+      ...glob.sync('**/guided', { cwd: runPath, absolute: true }),
+      ...glob.sync('**/unguided', { cwd: runPath, absolute: true })
+    ];
 
-    for (const dir of directories) {
+    for (const dir of runTypeDirs) {
       const relPath = path.relative(runPath, dir);
       const parts = relPath.split(path.sep);
-      if (parts.length < 3) continue;
-
-      const [guide, taskName, runType] = parts;
+      
+      let guide: string, taskName: string, runType: string;
+      if (parts.length === 2) {
+        // [Legacy Fallback] Old structure: {taskName}/{runType}
+        taskName = 'task';
+        runType = parts[1];
+        guide = parts[0].replace(/-task$/, '');
+      } else if (parts.length >= 3) {
+        [guide, taskName, runType] = parts;
+      } else {
+        continue;
+      }
       if (runType === 'base_app') continue; // Skip the base app setup folder
       let guidesUsedResult: string[] = [];
+      let retrievedGuides: string[] = [];
+      let fileReadGuides: string[] = [];
       let guidanceToolsUsedResult: string[] = [];
 
       if (runType === 'guided') {
         const serving = suiteConfig.serving;
-        guidesUsedResult = await collectGuidesUsed(dir, serving, suiteConfig.agent);
+        const usage = await collectGuidesUsed(dir, serving, suiteConfig.agent);
+        retrievedGuides = usage.retrievedGuides;
+        fileReadGuides = usage.fileReadGuides;
+        guidesUsedResult = [...new Set([...retrievedGuides, ...fileReadGuides])];
         guidanceToolsUsedResult = await collectGuidanceToolsUsed(dir, serving, suiteConfig.agent);
       }
 
@@ -180,18 +220,8 @@ run();
         console.warn(`Skipping grading: Task ${guide} not found in task map`);
         continue;
       }
-
       const taskCategory = path.basename(path.dirname(taskInfo.guideDir));
-      let expectedGuidanceTool: string | undefined;
-      const serving = suiteConfig.serving;
-
-      if (serving === Serving.MCP || suiteConfig.agent === Agents.JETSKI) {
-        expectedGuidanceTool = 'modern-web';
-      } else if (serving === Serving.SKILLS_CLI) {
-        expectedGuidanceTool = 'modern-web-use-cases';
-      } else if (serving === Serving.SKILLS) {
-        expectedGuidanceTool = taskCategory || undefined;
-      }
+      const expectedToolPrefixes = ['modern-web', taskCategory].filter(Boolean);
 
       const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
 
@@ -205,6 +235,9 @@ run();
         scenarioResults.push({ name: 'Configuration', status: 'fail', message: 'Grader not found' });
       } else if (!targetExists) {
         scenarioResults.push({ name: 'File Check', status: 'fail', message: 'Target app missing' });
+      } else if (!fs.existsSync(graderResults)) {
+        const errorMessage = extractErrorMessage(dir, targetFile);
+        scenarioResults.push({ passed: false, message: errorMessage, isEarlyFailure: true });
       } else {
         try {
           let json: any = null;
@@ -251,8 +284,10 @@ run();
         runNumber: parseInt(runDir),
         results: scenarioResults,
         guidesUsed: guidesUsedResult,
+        retrievedGuides: retrievedGuides,
+        fileReadGuides: fileReadGuides,
         guidanceToolsUsed: guidanceToolsUsedResult,
-        expectedGuidanceTool: expectedGuidanceTool,
+        expectedToolPrefixes: expectedToolPrefixes,
         guideName: guide,
         taskName: taskName,
         baseApp: actualBaseApp,
