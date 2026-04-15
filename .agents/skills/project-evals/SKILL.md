@@ -94,6 +94,9 @@ base_app: daily-grind
 - DO NOT mention the guide, the feature name, or hint that guidance exists.
 - DO NOT name the base app (e.g., "daily-grind") — a real developer wouldn't refer to it that way.
 - DO NOT tell the agent which web API or CSS property to use unless a real developer would naturally do so. The point is to test whether the agent discovers the right solution via the guide.
+  > [!IMPORTANT]
+  > **Functional Locators vs. Technical Solutions**
+  > It is completely acceptable (and sometimes necessary) to mandate specific DOM IDs or CSS classes (e.g., `"add a .fan-card class"`) if the grader requires them to locate elements. What is strictly banned is mandating the underlying implementation technology (e.g., commanding the model to `"use sibling-index()"` or `"use the Temporal API"`).
 
 **Quantity:** 1–4 prompts is typical. A single highly specific prompt is fine for technical use cases. Multiple prompts are useful for use cases with multiple valid entry points (e.g., "accordion", "tabs", "drawer" all exercising the same feature).
 
