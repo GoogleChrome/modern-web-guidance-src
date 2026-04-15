@@ -3,11 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
 import { Project, SyntaxKind } from 'ts-morph';
-import postcss from 'postcss';
-import selectorParser from 'postcss-selector-parser';
-import valueParser from 'postcss-value-parser';
-import nested from 'postcss-nested';
-import shorthandExpand from 'postcss-shorthand-expand';
+import { Parser, CSSStyleRule, CSSUnknownRule, serialize } from '../../cssom/src/index.ts';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -46,10 +42,10 @@ test.describe(`<guide-name> Expectations: ${demoName}`, () => {
   // Example for CSS parsing
   // test(`CSS <test-case-name>`, () => {
   //   const cssContent = document.querySelector('style')?.textContent || '';
-  //   const root = postcss([nested(), shorthandExpand()]).processSync(cssContent).root;
+  //   const rules = Parser.parseStyleSheetText(cssContent);
   //   let found = false;
-  //   root.walkAtRules('supports', () => {
-  //     found = true;
+  //   rules.forEach(rule => {
+  //     if (rule instanceof CSSUnknownRule && rule.name === 'supports') found = true;
   //   });
   //   expect(found).toBe(true);
   // });
@@ -57,14 +53,12 @@ test.describe(`<guide-name> Expectations: ${demoName}`, () => {
   // Example for CSS Selector parsing
   // test(`Selector <test-case-name>`, () => {
   //   const cssContent = document.querySelector('style')?.textContent || '';
-  //   const root = postcss([nested(), shorthandExpand()]).processSync(cssContent).root;
+  //   const rules = Parser.parseStyleSheetText(cssContent);
   //   let hasAutofill = false;
-  //   root.walkRules(rule => {
-  //     selectorParser((selectors) => {
-  //       selectors.walkPseudos((pseudo) => {
-  //         if (pseudo.value === ':autofill') hasAutofill = true;
-  //       });
-  //     }).processSync(rule.selector);
+  //   rules.forEach(rule => {
+  //     if (rule instanceof CSSStyleRule) {
+  //       if (rule.selectorText.includes(':autofill')) hasAutofill = true;
+  //     }
   //   });
   //   expect(hasAutofill).toBe(true);
   // });
@@ -72,15 +66,16 @@ test.describe(`<guide-name> Expectations: ${demoName}`, () => {
   // Example for CSS Value parsing
   // test(`Value <test-case-name>`, () => {
   //   const cssContent = document.querySelector('style')?.textContent || '';
-  //   const root = postcss([nested(), shorthandExpand()]).processSync(cssContent).root;
+  //   const rules = Parser.parseStyleSheetText(cssContent);
   //   let hasVar = false;
-  //   root.walkDecls(decl => {
-  //     valueParser(decl.value).walk(node => {
-  //       if (node.type === 'function' && node.value === 'var') hasVar = true;
-  //     });
+  //   rules.forEach(rule => {
+  //     if (rule instanceof CSSStyleRule) {
+  //       if (rule.style.getPropertyValue('--my-var')) hasVar = true;
+  //     }
   //   });
   //   expect(hasVar).toBe(true);
   // });
+
 
   // --- BROWSER ASSERTIONS ---
   // Use browser assertions ONLY when you need to compute real layout boxes, evaluate dynamic page scripts, interact with elements, or verify rendered visibility.
