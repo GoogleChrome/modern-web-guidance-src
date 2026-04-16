@@ -119,7 +119,7 @@ async function run() {
   try {
     const pkgJsonPath = ${JSON.stringify(targetPkgJson)};
     if (fs.existsSync(pkgJsonPath)) {
-      const installResult = spawnSync('pnpm', ['install', '--frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
+      const installResult = spawnSync('pnpm', ['install', '--no-frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
         cwd: ${JSON.stringify(dir)},
         stdio: 'inherit',
         shell: true,
