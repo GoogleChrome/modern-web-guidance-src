@@ -32,7 +32,7 @@ async function processGuides() {
   const force = process.argv.includes("--force");
 
   // Scan guides first to see if we even need to run
-  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
+  let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
 
   const VECTORS_FILE = path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
 
@@ -83,8 +83,6 @@ async function processGuides() {
   const embedder = Embedder.getInstance(modelName);
   await embedder.init();
 
-  const guidesToProcess: Array<{ guidePath: string; category: string; id: string }> = [];
-
   if (targetGuidePath) {
     // Single guide mode
     const absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
@@ -97,24 +95,22 @@ async function processGuides() {
 
     const category = path.basename(path.dirname(absoluteTargetPath));
     const id = path.basename(absoluteTargetPath);
-    guidesToProcess.push({ guidePath, category, id });
-  } else {
-    // Batch process all guides
-    if (readyGuides.length === 0) {
-      console.log("No guides found.");
-    }
-
-    for (const inv of readyGuides) {
-      guidesToProcess.push({
-        guidePath: path.join(inv.dir, "guide.md"),
-        category: inv.category,
-        id: inv.name
-      });
-    }
+    
+    readyGuides = [{
+      dir: absoluteTargetPath,
+      name: id,
+      category: category,
+      hasGuide: true,
+    } as any];
   }
 
-  for (const { guidePath, category, id } of guidesToProcess) {
-    await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases, embedder);
+  if (readyGuides.length === 0) {
+    console.log("No guides found.");
+  }
+
+  for (const inv of readyGuides) {
+    const guidePath = path.join(inv.dir, "guide.md");
+    await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder);
   }
 
   // Generate TypeScript file
