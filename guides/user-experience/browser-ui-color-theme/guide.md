@@ -55,7 +55,8 @@ You can override the global theme for specific elements. This is useful for "dar
 
 ## Best Practices
 - **System Colors**: Use system color keywords like `Canvas` (background) and `CanvasText` (text) for your custom components when you want them to match the browser's native themed surfaces exactly. This is ideal for ensuring consistency between your content and the browser's UI (like scrollbars) while automatically respecting OS-level accessibility features like High Contrast mode.
-- **Forcing a Theme**: Use a single value like `color-scheme: dark` or `color-scheme: light` if a specific section of your site (like a code editor or a video player) must always remain in one theme regardless of system settings. This is also common when your application implements a manual theme toggle that overrides the user's OS preference by dynamically updating the root element's style.
+- **Respect User Preference**: **MANDATORY**: Avoid forcing a single theme on the overall page. While specific components (like a code editor) may benefit from a fixed theme, the main application should respect the user's system preference and ideally provide a manual toggle to allow users to choose between light, dark, or system-default modes.
+- **Forcing a Theme**: Use a single value like `color-scheme: dark` or `color-scheme: light` ONLY for specific sections of your site (like a code editor or a video player) that must remain in one theme. Avoid applying this to the root element unless it's the result of an explicit user selection via a theme toggle.
 - **Opting out of Auto-Dark Mode**: Use `color-scheme: only light` to prevent browsers (particularly on mobile) from automatically inverting your colors if you haven't yet implemented a dedicated dark theme.
 
 ## Fallback strategies
