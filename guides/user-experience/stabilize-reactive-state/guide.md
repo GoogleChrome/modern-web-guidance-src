@@ -11,9 +11,7 @@ sources:
 
 # Stabilize Reactive State with Temporal
 
-In modern web development, reactive systems (such as React, Vue, or Svelte) rely on reference equality to detect state changes. When an object's reference remains the same, the system assumes the state has not changed and skips re-rendering the UI.
-
-The legacy `Date` object is mutable. Methods like `setHours()` or `setDate()` modify the instance in place. If a `Date` object is stored in reactive state and mutated, its reference does not change, leading to missed UI updates and hard-to-debug side effects.
+While some reactive systems (like [React](https://react.dev/)) rely strictly on reference equality to detect state changes, others (like [Vue](https://vuejs.org/) and [Svelte](https://svelte.dev/)) can track mutations to plain objects. However, for built-in objects like the legacy `Date` object, internal mutations (like `setHours()`) do not change the object's reference and are generally not tracked by any framework's default reactivity system. This leads to missed UI updates and hard-to-debug side effects.
 
 The `Temporal` API solves this by providing immutable objects. Any operation that modifies a value (such as adding time or setting a field) returns a new instance with a new memory reference. This guarantees that state updates are always detected by reactive systems, ensuring UI stability.
 
