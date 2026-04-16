@@ -6,6 +6,7 @@ import { Agents, defaultSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
 import { getTaskMap, type TaskInfo } from '../lib/guide-validation.ts';
+import { getGraderScriptContent } from './lib/agent-shared.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -158,10 +159,11 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
         const guideFolder = path.join(runDir, guideName);
         const taskFolder = path.join(guideFolder, taskName);
+        const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
         
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
-          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName);
+          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath);
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
       }
@@ -364,11 +366,17 @@ function generateTransientPackage(
   promptContent: string,
   runType: string,
   workspaceBaseAppDir: string,
-  taskName: string
+  taskName: string,
+  guideName: string,
+  graderPath: string
 ) {
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
   }
+
+  // Generate grade.mjs using shared function
+  const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName);
+  fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
 
   // Generate runner script
   // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
@@ -376,6 +384,9 @@ function generateTransientPackage(
   // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
   // This run.mjs wrapper executes the actual agent command via spawnSync.
   const runnerContent = `import { spawnSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+
 const args = [
 '--experimental-strip-types',
 ...${JSON.stringify([
@@ -387,6 +398,12 @@ const args = [
 ])}
 ];
 const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
+
+if (result.status === 0) {
+  console.log("Agent finished successfully. Running grader immediately...");
+  const gradeResult = spawnSync(process.execPath, ['grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
+  process.exit(gradeResult.status ?? 0);
+}
 process.exit(result.status ?? 0);
 `.trim();
 
