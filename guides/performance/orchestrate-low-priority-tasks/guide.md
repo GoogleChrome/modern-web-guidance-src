@@ -1,6 +1,6 @@
 ---
-name: prioritized-preloading
-description: Orchestrate low priority work, such as background network requests, without competing with critical rendering.
+name: orchestrate-low-priority-tasks
+description: Orchestrate background low priority tasks (such as sending and processing analytics), allowing the browser to yield instantly to critical user input.
 web-feature-ids:
   - scheduler
 sources:
@@ -62,7 +62,7 @@ function fallbackScheduleTask(callback) {
     // the main thread is less busy, giving priority to immediate user interactions.
     if ('requestIdleCallback' in window) {
       requestIdleCallback(() => resolve(callback()));
-    else {
+    } else {
       setTimeout(() => resolve(callback()), 200); 
     }
   });
