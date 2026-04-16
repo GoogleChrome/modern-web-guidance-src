@@ -17,7 +17,7 @@ sources:
   - https://developer.mozilla.org/en-US/docs/Web/CSS/overlay
 ---
 
-Elements that render in the "top layer" (like `<dialog>`, elements with the `popover` attribute, or tooltips) have historically been difficult to animate because they toggle between `display: none` and a visible state. Modern CSS provides `@starting-style`, `transition-behavior: allow-discrete`, and the `overlay` property to enable smooth entry and exit transitions for these elements.
+Elements that render in the "top layer" (like `<dialog>`, elements with the `popover` attribute, or tooltips) have historically been difficult to animate because they toggle between `display: none` and a visible state. Modern CSS provides `@starting-style`, `transition-behavior: allow-discrete`, and the `overlay` property to enable smooth entry and exit transitions for these elements. Note that native CSS nesting is used in the examples below.
 
 ## Implementation
 
@@ -71,10 +71,11 @@ dialog,
 dialog::backdrop,
 [popover]::backdrop {
   background-color: rgba(0, 0, 0, 0);
-  transition-property: display, overlay, background-color;
-  transition-duration: 0.3s;
-  transition-timing-function: ease-out;
-  transition-behavior: allow-discrete;
+  /* The transition shorthand can also be used with allow-discrete */
+  transition:
+    display 0.3s allow-discrete,
+    overlay 0.3s allow-discrete,
+    background-color 0.3s ease-out;
 }
 
 dialog[open]::backdrop,
@@ -130,7 +131,9 @@ const supportsTopLayerAnimation =
   CSS.supports('overlay', 'auto');
 
 if (!supportsTopLayerAnimation) {
-  // Manual JS fallback for entry/exit animations
+  // Manual JS fallback for entry/exit animations:
+  // 1. Add an `.is-opening` class for entry.
+  // 2. On close, add an `.is-closing` class, wait for the `transitionend` event, then call .close() or hide the popover.
 }
 ```
 

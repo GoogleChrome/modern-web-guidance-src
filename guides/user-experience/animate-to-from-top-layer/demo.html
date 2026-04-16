@@ -147,10 +147,8 @@
         /* Open state */
         opacity: 1;
         transform: scale(1) translateY(0);
-      }
 
-      @starting-style {
-        dialog[open] {
+        @starting-style {
           /* Open starting state */
           opacity: 0;
           transform: scale(1.05) translateY(-20px);
@@ -160,18 +158,17 @@
       /* Dialog Backdrop */
       dialog::backdrop {
         background-color: rgb(0 0 0 / 0%);
-        transition-property: background-color, overlay, display;
-        transition-duration: 0.5s;
-        transition-timing-function: ease;
-        transition-behavior: allow-discrete;
+        /* The transition shorthand can also be used with allow-discrete */
+        transition:
+          display 0.5s allow-discrete,
+          overlay 0.5s allow-discrete,
+          background-color 0.5s ease;
       }
 
       dialog[open]::backdrop {
         background-color: rgb(0 0 0 / 50%);
-      }
 
-      @starting-style {
-        dialog[open]::backdrop {
+        @starting-style {
           background-color: rgb(0 0 0 / 0%);
         }
       }
@@ -193,10 +190,8 @@
       [popover]:popover-open {
         opacity: 1;
         transform: scale(1);
-      }
 
-      @starting-style {
-        [popover]:popover-open {
+        @starting-style {
           opacity: 0;
           transform: scale(0.8);
         }
@@ -204,18 +199,17 @@
 
       [popover]::backdrop {
         background-color: rgb(0 0 0 / 0%);
-        transition-property: background-color, display, overlay;
-        transition-duration: 0.4s;
-        transition-timing-function: ease;
-        transition-behavior: allow-discrete;
+        /* The transition shorthand can also be used with allow-discrete */
+        transition:
+          display 0.4s allow-discrete,
+          overlay 0.4s allow-discrete,
+          background-color 0.4s ease;
       }
 
       [popover]:popover-open::backdrop {
         background-color: rgb(15 23 42 / 70%);
-      }
 
-      @starting-style {
-        [popover]:popover-open::backdrop {
+        @starting-style {
           background-color: rgb(0 0 0 / 0%);
         }
       }
