@@ -101,9 +101,6 @@ window.__featuresMapping = {
   "incorrect-theme-flash": [
     "color-scheme"
   ],
-  "inject-sharp-pseudo-element-icons": [
-    "image-set"
-  ],
   "interaction-latency-attribution": [
     "event-timing"
   ],
@@ -123,11 +120,11 @@ window.__featuresMapping = {
   "optimize-scroll-stability": [
     "contain-intrinsic-size"
   ],
-  "prioritized-continuation-after-yielding": [
-    "scheduler"
-  ],
   "prioritized-preloading": [
     "scheduler"
+  ],
+  "resolution-optimized-pseudo-elements": [
+    "image-set"
   ],
   "sequence-distributed-events": [
     "temporal"
@@ -247,7 +244,8 @@ window.__featuresMapping = {
     "container-queries"
   ],
   "format-human-readable-durations": [
-    "temporal"
+    "temporal",
+    "intl-duration-format"
   ],
   "group-element-transitions": [
     "view-transitions",
