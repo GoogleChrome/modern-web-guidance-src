@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Negative Demo: Legacy Max-Height Hack</title>
+  <style>
+    /* MISSING: interpolate-size: allow-keywords */
+
+    body {
+      font-family: sans-serif;
+      padding: 40px;
+    }
+
+    .accordion {
+      max-width: 400px;
+      border: 1px solid #ccc;
+    }
+
+    .accordion-header {
+      width: 100%;
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .accordion-content {
+      /* INCORRECT: Using max-block-size hack instead of interpolate-size + block-size: auto */
+      max-block-size: 0;
+      overflow: hidden;
+      transition: max-block-size 0.5s ease;
+    }
+
+    .accordion.is-open .accordion-content {
+      /* This is what we want to avoid */
+      max-block-size: 1000px;
+    }
+  </style>
+</head>
+<body>
+  <div id="promo-alert" style="max-block-size: 1000px; transition: max-block-size 0.5s;">
+    Legacy Alert
+    <button id="alert-dismiss" onclick="this.parentElement.style.maxBlockSize = '0px'">Dismiss</button>
+  </div>
+
+  <div class="accordion" id="accordion">
+    <button id="faq-trigger" onclick="document.getElementById('faq-content').classList.toggle('is-open')">
+      Broken Accordion
+    </button>
+    <div class="accordion-content" id="faq-content">
+      <p style="padding: 20px;">
+        This implementation uses the old <code>max-height</code> hack.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

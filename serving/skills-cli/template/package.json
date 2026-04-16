@@ -1,6 +1,6 @@
 {
-  "name": "modern-web",
-  "displayName": "Chrome Web Development Skills",
+  "name": "modern-web-guidance",
+  "displayName": "Modern Web Guidance",
   "private": true,
   "description": "Curated collection of agent skills for modern web development.",
   "version": "0.0.13",
