@@ -1,0 +1,5 @@
+- MUST: The document contains a `<meta name="color-scheme">` tag in the `<head>`.
+- MUST: The `<meta name="color-scheme">` tag's `content` attribute includes both "light" and "dark".
+- MUST: The root element (or `html`) has a computed `color-scheme` CSS property value that includes both "light" and "dark".
+- MUST: The root element should have the `color-scheme` CSS property explicitly set to "light dark".
+- OPTIONAL: If a theme override is implemented via JavaScript (e.g., checking `localStorage`), the script MUST be placed in the `<head>` immediately following the `<meta name="color-scheme">` tag to minimize flash duration.

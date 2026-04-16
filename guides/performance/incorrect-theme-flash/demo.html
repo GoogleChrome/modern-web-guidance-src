@@ -2,20 +2,64 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Prevent Incorrect Theme Flash</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- The meta tag is crucial to prevent the flash before CSS loads -->
   <meta name="color-scheme" content="light dark">
+
+  <script>
+    // OPTIONAL: If your app allows a user-selected theme override (e.g. via a toggle),
+    // you MUST check for it here and apply it immediately to the root element.
+    // This prevents a "Flash of inAccurate coloR Theme" (FART).
+    const savedTheme = localStorage.getItem('theme-preference');
+    if (savedTheme) {
+      document.documentElement.classList.add(savedTheme + '-theme');
+    }
+  </script>
+
+  <title>Prevent Incorrect Theme Flash</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root {
       /* The color-scheme property lets the browser know what color schemes this page supports */
       color-scheme: light dark;
       font-family: system-ui, sans-serif;
+      background-color: light-dark(white, #1c1c1e);
+      color: light-dark(black, white);
+    }
+    .themed-island {
+      max-width: 60ch;
+      border: 1px solid currentColor;
+      padding: 0 1rem 1rem;
+      margin-top: 2rem;
+      border-radius: 8px;
+      background-color: light-dark(#e8f0fc, #1a73e8);
+      color: light-dark(#1a73e8, #e8f0fc);
+    }
+
+    /* This element and its children will always use light-mode system colors */
+    .always-light {
+      color-scheme: light;
+    }
+
+    /* This element and its children will always use dark-mode system colors */
+    .always-dark {
+      color-scheme: dark;
     }
   </style>
 </head>
 <body>
   <h1>Color Scheme Demo</h1>
   <p>If your system is in dark mode, this page will render with a dark background immediately, avoiding a "flash of white" while loading.</p>
+
+  <section class="themed-island always-light">
+    <h2>Themed Island (Always Light)</h2>
+    <p>This section explicitly sets <code>color-scheme: light</code>. Even if the rest of the page is in dark mode, the scrollbars and native form controls inside this box will use light-mode styling.</p>
+    <button>Native Button</button>
+  </section>
+
+  <section class="themed-island always-dark">
+    <h2>Themed Island (Always Dark)</h2>
+    <p>This section explicitly sets <code>color-scheme: dark</code>. Even if the rest of the page is in light mode, the scrollbars and native form controls inside this box will use dark-mode styling.</p>
+    <button>Native Button</button>
+  </section>
 </body>
 </html>
