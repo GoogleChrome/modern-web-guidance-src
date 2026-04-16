@@ -11,7 +11,7 @@ sources:
  - https://drafts.csswg.org/css-values-5/#calc-size
 ---
 
-`calc-size()` is a CSS function for performing mathematical operations on intrinsic sizing keywords like `auto`, `min-content`, and `fit-content`. Use `calc-size()` only when you need to modify an intrinsic size with a calculation or constraint; for simple keyword-based animations, prefer `interpolate-size`.
+`calc-size()` is a CSS function for performing mathematical operations on intrinsic sizing keywords like `auto`, `min-content`, and `fit-content`. **MANDATORY**: Use `calc-size()` only when you need to modify an intrinsic size with a calculation or constraint; for simple keyword-based animations (e.g., `0` to `auto`), you must use `interpolate-size: allow-keywords`.
 
 ## Implementation Steps
 
@@ -24,8 +24,12 @@ sources:
 ## Basic Syntax
 
 ```css
-/* calc-size(<basis>, <calculation>) */
+/* calc-size(<calc-size-basis>, <calc-sum>) — mathematical operations on intrinsic sizing keywords */
 .element {
+  /* MANDATORY: Always provide a fallback for browsers that do not support calc-size() */
+  inline-size: min-content;
+  
+  /* DO: Use calc-size to modify an intrinsic basis with a calculation or function */
   inline-size: calc-size(min-content, size + 2rem);
 }
 ```
@@ -61,21 +65,43 @@ The second argument is the mathematical expression.
 By default, browsers cannot interpolate between a length (e.g., `0px`) and an intrinsic keyword (e.g., `auto`). Wrapping the keyword in `calc-size()` makes it an interpolatable value.
 
 #### Choosing the Right Tool for Animations
-- **Use `interpolate-size: allow-keywords`**: For simple animations to or from intrinsic sizes (e.g., `height: 0` to `height: auto`) without any mathematical modifications. This is the preferred approach for simple keyword interpolation as it can be applied globally via `:root`.
+- **MANDATORY: Use `interpolate-size: allow-keywords`**: For simple animations to or from intrinsic sizes (e.g., `height: 0` to `height: auto`) without any mathematical modifications. This is the required approach for simple keyword interpolation and should ideally be applied globally via `:root`.
+
+  ```css
+  :root {
+    /* Best practice: Enable keyword interpolation globally */
+    interpolate-size: allow-keywords;
+  }
+
+  .item {
+    height: 0;
+    transition: height 0.3s ease;
+  }
+
+  .item.open {
+    /* Simple interpolation from 0 to auto now works without calc-size() */
+    height: auto;
+  }
+  ```
+
 - **Use `calc-size()`**: ONLY when you need to perform mathematical calculations on an intrinsic size during a transition (e.g., adding padding or clamping the size).
 
 ```css
 .accordion-content {
   display: block;
   overflow: hidden;
+  /* MANDATORY: Fallback value for closed state */
   block-size: 0;
   transition: block-size 0.3s ease-out;
 }
 
 .accordion-content.open {
+  /* MANDATORY: Fallback value for open state */
+  block-size: auto;
+
   /* 
-    Enables animation from 0 to the element's auto height, 
-    plus an extra 2rem of 'breathing room' calculated dynamically.
+    DO: Use calc-size(auto, ...) to enable animation from 0 to the element's 
+    intrinsic size while doing a calculation (in this case, adding a space of 2rem).
   */
   block-size: calc-size(auto, size + 2rem);
 }
@@ -89,9 +115,12 @@ You can use `calc-size()` with any CSS math function—such as `min()`, `max()`,
 
 ```css
 .dynamic-container {
+  /* MANDATORY: Always provide a fallback for browsers that do not support calc-size() */
+  inline-size: fit-content;
+
   /* 
-    Establish a dynamic size based on content, while:
-    1. Enforcing boundaries using CSS math functions
+    DO: Establish a dynamic size based on content, while:
+    1. Enforcing boundaries using CSS math functions (min, clamp, etc.)
     2. Modifying the intrinsic size with fixed or relative offsets
   */
   inline-size: calc-size(fit-content, min(size + var(--extra-space), var(--max-allowed)));
@@ -101,8 +130,8 @@ You can use `calc-size()` with any CSS math function—such as `min()`, `max()`,
 ## Critical Considerations
 
 - **Percentage Pitfalls**: Percentages inside the `<calc-sum>` are resolved against the **container's size**, not the `size` keyword. For example, `calc-size(auto, size + 10%)` adds 10% of the *parent's* width to the element's `auto` width, which may lead to unexpected results or overflows.
-- **Calculations requirement**: Avoid using `calc-size()` for simple animations (e.g., `0` to `auto`). In those cases, `interpolate-size: allow-keywords` is the cleaner, more idiomatic solution. Use `calc-size()` only when the layout requires dynamic adjustments to the intrinsic base.
-- **Performance Note**: Animating box model properties like `inline-size` or `block-size` triggers layout recalculations, which can be expensive. If possible, prioritize animating `transform` or `opacity` for better performance. Use `calc-size()` animations primarily for layout-critical elements where non-layout alternatives are insufficient.
+- **Calculations requirement**: **MANDATORY**: Use `interpolate-size: allow-keywords` instead of `calc-size()` for simple animations (e.g., `0` to `auto`). `calc-size()` should only be used when the layout requires dynamic mathematical adjustments to the intrinsic base.
+- **Performance Note**: Animating box model properties like `inline-size` or `block-size` triggers layout recalculations, which can be expensive. Use `calc-size()` animations primarily for layout-critical elements where non-layout alternatives are insufficient.
 
 ## Fallback strategies
 

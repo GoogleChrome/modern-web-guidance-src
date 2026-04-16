@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Negative Demo: Fixed Sizing & Hacks</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 2rem;
+        background: #eee;
+      }
+
+      section {
+        background: white;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid #ccc;
+        max-width: 600px;
+      }
+
+      /* DO NOT: Use physical width instead of logical inline-size */
+      /* DO NOT: Omit a fallback for modern sizing properties */
+      /* DO NOT: Use fixed width + magic number hacks when content-based sizing is needed */
+      .tag {
+        background: #0066cc;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 20px;
+        display: inline-block;
+        width: 150px; /* Magic number instead of content-based sizing */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .accordion-content {
+        /* DO NOT: Use physical height when block-size is preferred for logical layout */
+        /* DO NOT: Use the max-height hack for animation; it is bad for performance and accessibility */
+        height: 0;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.5s ease;
+      }
+
+      .open .accordion-content {
+        /* DO NOT: Use a magic number for the expanded state of an animation */
+        max-height: 1000px;
+      }
+
+      /* DO NOT: Use calc() on physical width with fixed values when proportional content-sizing is required */
+      .proportional-box {
+        background: #e1f5fe;
+        border: 2px dashed #03a9f4;
+        padding: 1rem;
+        width: calc(200px + 20%); /* Fixed calculation instead of content-based */
+      }
+    </style>
+  </head>
+  <body>
+    <section>
+      <h2>Broken Tag</h2>
+      <div class="tag">Fixed Size Tag</div>
+    </section>
+
+    <section id="accordion">
+      <h2>Broken Accordion</h2>
+      <button onclick="document.getElementById('accordion').classList.toggle('open')">Toggle</button>
+      <div class="accordion-content">
+        <p>This uses max-height: 1000px hack which is bad for performance and accessibility.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Fixed Proportional Box</h2>
+      <div class="proportional-box">Fixed Width Box</div>
+    </section>
+  </body>
+</html>
