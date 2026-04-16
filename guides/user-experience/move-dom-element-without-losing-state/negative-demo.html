@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Demo</title>
+<style>
+  body {
+    padding: 2rem;
+    font-family: sans-serif;
+  }
+  p {
+    border: 1px solid #000;
+    padding: 1rem;
+  }
+  span {
+    color: blue;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<p id="target">Content</p>
+<span id="act">Move</span>
+<script>
+document.getElementById('act').onmouseenter = function() {
+  var target = document.getElementById('target');
+  if (target) {
+    var html = target.outerHTML;
+    target.remove();
+    document.body.innerHTML += html;
+  }
+};
+</script>
+</body>
+</html>

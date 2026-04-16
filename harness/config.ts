@@ -1,6 +1,7 @@
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
+import { pathToFileURL } from 'url';
 import { rootDir, harnessDir } from '../lib/paths.ts';
 
 try {
@@ -20,7 +21,8 @@ export const Agents = {
 export const Serving = {
   SKILLS_CLI: 'skills_cli',
   SKILLS: 'skills',
-  MCP: 'mcp'
+  MCP: 'mcp',
+  MEGASKILL: 'megaskill'
 } as const;
 
 export type Serving = typeof Serving[keyof typeof Serving];
@@ -64,6 +66,30 @@ export const defaultSuiteConfig: SuiteConfig = {
 
 export function mergeSuiteConfig(overrides: Partial<SuiteConfig>): SuiteConfig {
   return { ...defaultSuiteConfig, ...overrides };
+}
+
+export async function resolveSuiteConfig(configPath?: string): Promise<SuiteConfig> {
+  const resolvedConfigPath = configPath
+    ? path.resolve(process.cwd(), configPath)
+    : path.resolve(rootDir, 'config.ts');
+
+  let overrides: any = {};
+  try {
+    const fileUrl = pathToFileURL(resolvedConfigPath).href;
+    const customConfig = await import(fileUrl);
+    overrides = customConfig.default || customConfig;
+  } catch (err: any) {
+    if (err.code === 'ERR_MODULE_NOT_FOUND') {
+      if (configPath) {
+        console.error(`⚠️ Specified config file not found: ${resolvedConfigPath}`);
+        process.exit(1);
+      }
+    } else {
+      throw err;
+    }
+  }
+
+  return mergeSuiteConfig(overrides);
 }
 
 export interface EnvironmentConfig {

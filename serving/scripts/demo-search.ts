@@ -1,28 +1,17 @@
-import { Embedder } from "../mcp-server/lib/embedder.ts";
-import { Store } from "../lib/store.ts";
+import { searchUseCases } from "../lib/search.ts";
 
 async function main() {
   const query = process.argv[2] || "how to optimize images";
   console.log(`\n🔎 Searching for: "${query}"\n`);
 
-
-  // 1. Embed
-  console.log("Vectorizing query...");
-  const startEmbed = performance.now();
-  const embedder = Embedder.getInstance();
-  const vector = await embedder.embed(query);
-  const endEmbed = performance.now();
-  console.log(`  ↳ Took ${(endEmbed - startEmbed).toFixed(2)}ms`);
-
-  // 2. Search
-  console.log("Querying LanceDB...");
+  // Search
+  console.log("Searching vectors...");
   const startSearch = performance.now();
-  const store = new Store();
-  const results = await store.search(vector, 3);
+  const results = await searchUseCases(query, 3);
   const endSearch = performance.now();
   console.log(`  ↳ Took ${(endSearch - startSearch).toFixed(2)}ms`);
 
-  // 3. Display
+  // Display
   console.log(JSON.stringify(results, null, 2));
 }
 

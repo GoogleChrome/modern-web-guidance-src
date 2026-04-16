@@ -146,7 +146,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         }
 
         const [guideName, taskName] = resolvedTask.split('/');
-        const workspaceBaseAppDir = setupWorkspaceBaseApp(taskInfo, runDir, guideName, taskName);
+        const workspaceBaseAppDir = await setupWorkspaceBaseApp(taskInfo, runDir, guideName, taskName);
         if (!workspaceBaseAppDir) {
           continue;
         }
@@ -199,7 +199,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     }
 
     if (hasErrors) {
-      console.log(`\n❌ Test suite completed with errors! Results saved to: ${testDir}`);
+      console.log(`\n❌ Test suite completed with errors! Results saved to: ${testDir} .\n    For details, see agent_stderr.log and/or generation_failed.json`);
     } else {
       console.log(`\n✅ Test suite complete! Results saved to: ${testDir}`);
     }
@@ -314,7 +314,7 @@ function resolveTaskName(task: string): string {
   return resolvedTask;
 }
 
-function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): string | null {
+async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): Promise<string | null> {
   // Copy the base app to the run directory (for tracking purposes)
   const guideFolder = path.join(runDir, guideName);
   const taskFolder = path.join(guideFolder, taskName);
@@ -334,8 +334,23 @@ function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: st
   } else {
     const sourceBaseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
     if (fs.existsSync(sourceBaseAppDir)) {
-      for (const file of fs.readdirSync(sourceBaseAppDir)) {
-        fs.copyFileSync(path.join(sourceBaseAppDir, file), path.join(workspaceBaseAppDir, file));
+      await fs.promises.cp(sourceBaseAppDir, workspaceBaseAppDir, {
+        recursive: true,
+        filter: (src) => {
+          const basename = path.basename(src);
+          return !['node_modules', '.git', 'dist', '.astro'].includes(basename);
+        }
+      });
+
+      const pkgJsonPath = path.join(workspaceBaseAppDir, 'package.json');
+      if (fs.existsSync(pkgJsonPath)) {
+        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+        if (!pkgJson.pnpm || !pkgJson.pnpm.onlyBuiltDependencies) {
+          throw new Error(`Assertion failed: pnpm.onlyBuiltDependencies is missing in ${pkgJsonPath}`);
+        }
+
+        // pnpm install is intentionally deferred until after agent execution
+        // to avoid copying massive node_modules directories.
       }
     }
   }
