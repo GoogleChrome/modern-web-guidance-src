@@ -1,4 +1,0 @@
----
-base_app: empty-app
----
-- Create a minimal web page demonstrating how to break up heavy synchronous processing to keep the UI responsive. Add a button that starts a long-running computation (e.g., a loop of 1000 items that take 2ms each). Add a visual element (like a colored box with a hover effect) to verify the UI remains responsive. The heavy computation MUST yield control to the main thread periodically (e.g., every 50ms) using `scheduler.yield()`, with a fallback to `setTimeout` for unsupported browsers. Additionally, demonstrate scheduling a background task (e.g., logging analytics after the computation starts) using `scheduler.postTask()` with priority `'background'`, implementing a fallback strategy using `setTimeout` with a delay (e.g., 200ms) for unsupported browsers. Write the implementation to index.html.
