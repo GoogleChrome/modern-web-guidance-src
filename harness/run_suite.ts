@@ -6,6 +6,7 @@ import { Agents, defaultSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir, guidesDir } from '../lib/paths.ts';
 import { getTaskMap, type TaskInfo } from '../lib/guide-validation.ts';
+import { getGraderScriptContent } from './lib/agent-shared.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -373,6 +374,23 @@ function generateTransientPackage(
   }
 
   const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
+  
+  // Generate grade.mjs using shared function
+  const targetPkgJson = path.join(targetDir, 'package.json');
+  const targetFile = path.join(targetDir, 'index.html');
+  const graderResults = path.join(targetDir, `${guideName}_results.json`);
+  const gradeReportDir = path.join(targetDir, 'grade-report');
+  
+  const gradeScript = getGraderScriptContent(
+    runGraderModulePath,
+    targetPkgJson,
+    targetDir,
+    targetFile,
+    graderPath,
+    gradeReportDir,
+    graderResults
+  );
+  fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
 
   // Generate runner script
   // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
@@ -382,7 +400,6 @@ function generateTransientPackage(
   const runnerContent = `import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
 const args = [
 '--experimental-strip-types',
@@ -398,37 +415,8 @@ const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON
 
 if (result.status === 0) {
   console.log("Agent finished successfully. Running grader immediately...");
-  
-  const targetFile = path.join(${JSON.stringify(targetDir)}, 'index.html');
-  const targetPkgJson = path.join(${JSON.stringify(targetDir)}, 'package.json');
-  const graderResults = path.join(${JSON.stringify(targetDir)}, ${JSON.stringify(guideName + '_results.json')});
-  
-  try {
-    if (fs.existsSync(targetPkgJson)) {
-      const installResult = spawnSync('pnpm', ['install', '--frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
-        cwd: ${JSON.stringify(targetDir)},
-        stdio: 'inherit',
-        shell: true,
-        env: { ...process.env, CI: 'true' }
-      });
-      if (installResult.status !== 0) {
-        console.error("pnpm install failed");
-        process.exit(1);
-      }
-    }
-
-    const json = await runPlaywright(
-      targetFile,
-      ${JSON.stringify(graderPath)},
-      path.join(${JSON.stringify(targetDir)}, 'grade-report'),
-      'inherit'
-    );
-    fs.writeFileSync(graderResults, JSON.stringify(json, null, 2));
-    console.log("Grading complete.");
-  } catch (err) {
-    console.error("Playwright test execution failed:", err);
-    process.exit(1);
-  }
+  const gradeResult = spawnSync(process.execPath, ['grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
+  process.exit(gradeResult.status ?? 0);
 }
 process.exit(result.status ?? 0);
 `.trim();
