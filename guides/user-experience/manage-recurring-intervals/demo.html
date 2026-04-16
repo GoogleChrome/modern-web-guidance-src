@@ -242,15 +242,30 @@
     const codeSnippet = document.getElementById('codeSnippet');
     const unsupportedBanner = document.getElementById('unsupportedBanner');
 
-    if (typeof Temporal === 'undefined') {
-      unsupportedBanner.style.display = 'flex';
-      [startDateInput, yearsInput, monthsInput, overflowSelect].forEach(el => el.disabled = true);
-    } else {
       const inputs = [startDateInput, yearsInput, monthsInput, overflowSelect];
+
+      function initializeApp() {
       inputs.forEach(el => el.addEventListener('input', updateCalculation));
       inputs.forEach(el => el.addEventListener('change', updateCalculation));
       updateCalculation();
     }
+
+      if (typeof Temporal === 'undefined') {
+        unsupportedBanner.style.display = 'flex';
+        unsupportedBanner.innerHTML = '<div>⏳ Loading Temporal polyfill...</div>';
+
+        import('@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill }) => {
+          globalThis.Temporal = TemporalPolyfill;
+          unsupportedBanner.style.display = 'none';
+          initializeApp();
+        }).catch(err => {
+          console.error("Failed to load polyfill", err);
+          unsupportedBanner.innerHTML = '<div>🚫 Failed to load polyfill. This demo requires a browser with native Temporal support or internet access.</div>';
+          inputs.forEach(el => el.disabled = true);
+        });
+      } else {
+        initializeApp();
+      }
 
     function updateCalculation() {
       const startDateStr = startDateInput.value;
