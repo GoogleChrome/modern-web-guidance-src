@@ -114,16 +114,38 @@ dialog[open]::backdrop,
 
 ## Fallback strategies
 
+#### Top-layer animation features
+
 {{ BASELINE_STATUS("starting-style") }}
+{{ BASELINE_STATUS("transition-behavior") }}
+{{ BASELINE_STATUS("overlay") }}
 
 For browsers that do not support these features, top-layer elements will appear and disappear instantly. To provide animations in older browsers, you must use JavaScript to coordinate classes and wait for `transitionend` events or use the Web Animations API.
 
 ```javascript
-// Feature detection for discrete transitions
-const supportsDiscreteTransitions =
-  window.CSS && CSS.supports('transition-behavior', 'allow-discrete');
+// Feature detection for top-layer animations
+const supportsTopLayerAnimation =
+  window.CSS &&
+  CSS.supports('transition-behavior', 'allow-discrete') &&
+  CSS.supports('overlay', 'auto');
 
-if (!supportsDiscreteTransitions) {
+if (!supportsTopLayerAnimation) {
   // Manual JS fallback for entry/exit animations
 }
 ```
+
+#### popover
+
+{{ BASELINE_STATUS("popover") }}
+
+If the browser does not support Popover, use the `@oddbird/popover-polyfill`:
+
+```html
+<script type="module">
+  if (!HTMLElement.prototype.hasOwnProperty('popover')) {
+    await import('https://unpkg.com/@oddbird/popover-polyfill');
+  }
+</script>
+```
+
+Alternatively, for legacy support without a polyfill, use `position: fixed` and manually calculate coordinates via JavaScript `getBoundingClientRect()`.
