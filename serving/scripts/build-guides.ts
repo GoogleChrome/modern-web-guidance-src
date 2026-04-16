@@ -56,7 +56,8 @@ async function processGuides() {
     }
 
     if (!anyGuideNewer) {
-      console.log("No guides or script modified since last build. Skipping guide build.");
+      // No guides or script modified since last build. Skipping guide build
+      console.log("👌");
       return;
     }
   }
@@ -82,13 +83,11 @@ async function processGuides() {
   const embedder = Embedder.getInstance(modelName);
   await embedder.init();
 
-  console.log("Generating embeddings of guides/*/* ");
-
-
+  const guidesToProcess: Array<{ guidePath: string; category: string; id: string }> = [];
 
   if (targetGuidePath) {
     // Single guide mode
-    let absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
+    const absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
     console.log(`Building single guide from: ${absoluteTargetPath}`);
 
     const guidePath = path.join(absoluteTargetPath, "guide.md");
@@ -98,22 +97,24 @@ async function processGuides() {
 
     const category = path.basename(path.dirname(absoluteTargetPath));
     const id = path.basename(absoluteTargetPath);
-    await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases, embedder);
+    guidesToProcess.push({ guidePath, category, id });
   } else {
     // Batch process all guides
-
     if (readyGuides.length === 0) {
       console.log("No guides found.");
     }
 
     for (const inv of readyGuides) {
-      const guideDir = inv.dir;
-      const guidePath = path.join(guideDir, "guide.md");
-      const id = inv.name;
-      const category = inv.category;
-
-      await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases, embedder);
+      guidesToProcess.push({
+        guidePath: path.join(inv.dir, "guide.md"),
+        category: inv.category,
+        id: inv.name
+      });
     }
+  }
+
+  for (const { guidePath, category, id } of guidesToProcess) {
+    await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases, embedder);
   }
 
   // Generate TypeScript file
