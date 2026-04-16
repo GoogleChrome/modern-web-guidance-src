@@ -49,7 +49,7 @@ DISABLE_TELEMETRY=1 npx skills add GoogleChrome/modern-web-guidance
 Example one-liners to test integration:
 
 ```sh
-claude --plugin-dir ~/code/guidance/dist/skills-cli --allow-dangerously-skip-permissions -p "add an address form to the bottom of the page"
+claude --plugin-dir ~/code/guidance/dist/skills-cli --dangerously-skip-permissions -p "add an address form to the bottom of the page"
 ```
 
 
