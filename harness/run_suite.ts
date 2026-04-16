@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { Agents, defaultSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
-import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
+import { harnessDir, baseAppsDir, resultsDir, guidesDir } from '../lib/paths.ts';
 import { getTaskMap, type TaskInfo } from '../lib/guide-validation.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
@@ -157,10 +157,11 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
         const guideFolder = path.join(runDir, guideName);
         const taskFolder = path.join(guideFolder, taskName);
+        const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
         
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
-          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName);
+          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath);
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
       }
@@ -363,11 +364,15 @@ function generateTransientPackage(
   promptContent: string,
   runType: string,
   workspaceBaseAppDir: string,
-  taskName: string
+  taskName: string,
+  guideName: string,
+  graderPath: string
 ) {
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
   }
+
+  const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
 
   // Generate runner script
   // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
@@ -375,6 +380,10 @@ function generateTransientPackage(
   // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
   // This run.mjs wrapper executes the actual agent command via spawnSync.
   const runnerContent = `import { spawnSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
+
 const args = [
 '--experimental-strip-types',
 ...${JSON.stringify([
@@ -386,6 +395,41 @@ const args = [
 ])}
 ];
 const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
+
+if (result.status === 0) {
+  console.log("Agent finished successfully. Running grader immediately...");
+  
+  const targetFile = path.join(${JSON.stringify(targetDir)}, 'index.html');
+  const targetPkgJson = path.join(${JSON.stringify(targetDir)}, 'package.json');
+  const graderResults = path.join(${JSON.stringify(targetDir)}, ${JSON.stringify(guideName + '_results.json')});
+  
+  try {
+    if (fs.existsSync(targetPkgJson)) {
+      const installResult = spawnSync('pnpm', ['install', '--frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
+        cwd: ${JSON.stringify(targetDir)},
+        stdio: 'inherit',
+        shell: true,
+        env: { ...process.env, CI: 'true' }
+      });
+      if (installResult.status !== 0) {
+        console.error("pnpm install failed");
+        process.exit(1);
+      }
+    }
+
+    const json = await runPlaywright(
+      targetFile,
+      ${JSON.stringify(graderPath)},
+      path.join(${JSON.stringify(targetDir)}, 'grade-report'),
+      'inherit'
+    );
+    fs.writeFileSync(graderResults, JSON.stringify(json, null, 2));
+    console.log("Grading complete.");
+  } catch (err) {
+    console.error("Playwright test execution failed:", err);
+    process.exit(1);
+  }
+}
 process.exit(result.status ?? 0);
 `.trim();
 
