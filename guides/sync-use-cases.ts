@@ -161,7 +161,7 @@ export function buildIssueContent(
 export function buildFeatureToIssueMap(issues: any[]): Map<string, FeatureIssueData> {
   const map = new Map<string, FeatureIssueData>();
   for (const issue of issues) {
-    const match = issue.body?.match(/Feature ID: ([a-z0-9-]+)/);
+    const match = issue.body?.match(/(?:Feature ID:|### web-feature-id)[\s\r\n]+([a-z0-9-]+)/i);
     if (match) {
       const priorityLabel = issue.labels
         .map((l: any) => (typeof l === 'string' ? l : l.name))

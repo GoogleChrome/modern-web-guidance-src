@@ -6,17 +6,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Toggle button groups for Agent and Serving
   document.querySelectorAll('#agent-group .btn-toggle').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      const currentTarget = e.currentTarget;
+      if (!(currentTarget instanceof HTMLElement)) return;
       document.querySelectorAll('#agent-group .btn-toggle').forEach(b => b.classList.remove('active'));
-      e.currentTarget.classList.add('active');
-      document.getElementById('agent').value = e.currentTarget.getAttribute('data-value');
+      currentTarget.classList.add('active');
+      const agentEl = document.getElementById('agent');
+      if (agentEl instanceof HTMLInputElement) {
+        agentEl.value = currentTarget.getAttribute('data-value') || '';
+      }
     });
   });
 
   document.querySelectorAll('#serving-group .btn-toggle').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      const currentTarget = e.currentTarget;
+      if (!(currentTarget instanceof HTMLElement)) return;
       document.querySelectorAll('#serving-group .btn-toggle').forEach(b => b.classList.remove('active'));
-      e.currentTarget.classList.add('active');
-      document.getElementById('serving').value = e.currentTarget.getAttribute('data-value');
+      currentTarget.classList.add('active');
+      const servingEl = document.getElementById('serving');
+      if (servingEl instanceof HTMLInputElement) {
+        servingEl.value = currentTarget.getAttribute('data-value') || '';
+      }
     });
   });
 
@@ -113,42 +123,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Attach row events (works exactly as before using fullKey as data-guide)
     document.querySelectorAll('.guide-check-all').forEach(check => {
       check.addEventListener('change', (e) => {
-        const guide = e.currentTarget.getAttribute('data-guide');
+        const currentTarget = e.currentTarget;
+        if (!(currentTarget instanceof HTMLInputElement)) return;
+        const guide = currentTarget.getAttribute('data-guide');
         const checkboxes = document.querySelectorAll(`.task-check[data-guide="${guide}"]`);
         checkboxes.forEach(tc => {
-          tc.checked = e.currentTarget.checked;
+          if (tc instanceof HTMLInputElement) tc.checked = currentTarget.checked;
         });
       });
     });
 
     document.querySelectorAll('.header-check').forEach(headerCheck => {
       headerCheck.addEventListener('change', (e) => {
-        const taskType = e.currentTarget.getAttribute('data-task');
+        const currentTarget = e.currentTarget;
+        if (!(currentTarget instanceof HTMLInputElement)) return;
+        const taskType = currentTarget.getAttribute('data-task');
         const checkboxes = document.querySelectorAll(`.task-check[data-task="${taskType}"]`);
         checkboxes.forEach(tc => {
-          tc.checked = e.currentTarget.checked;
+          if (tc instanceof HTMLInputElement) tc.checked = currentTarget.checked;
         });
       });
     });
 
     document.querySelectorAll('.task-check').forEach(tc => {
       tc.addEventListener('change', (e) => {
-        const taskType = e.currentTarget.getAttribute('data-task');
-        const guideKey = e.currentTarget.getAttribute('data-guide');
+        const currentTarget = e.currentTarget;
+        if (!(currentTarget instanceof HTMLElement)) return;
+        const taskType = currentTarget.getAttribute('data-task');
+        const guideKey = currentTarget.getAttribute('data-guide');
 
         // Update column header check!
         const colCheckboxes = document.querySelectorAll(`.task-check[data-task="${taskType}"]`);
         const headerCheck = document.querySelector(`.header-check[data-task="${taskType}"]`);
-        const allColChecked = Array.from(colCheckboxes).every(c => c.checked);
-        if (headerCheck) {
+        const allColChecked = Array.from(colCheckboxes).every(c => c instanceof HTMLInputElement && c.checked);
+        if (headerCheck instanceof HTMLInputElement) {
           headerCheck.checked = allColChecked;
         }
 
         // Update row guide check!
         const rowCheckboxes = document.querySelectorAll(`.task-check[data-guide="${guideKey}"]`);
         const guideCheck = document.querySelector(`.guide-check-all[data-guide="${guideKey}"]`);
-        const allRowChecked = rowCheckboxes.length > 0 && Array.from(rowCheckboxes).every(c => c.checked);
-        if (guideCheck) {
+        const allRowChecked = rowCheckboxes.length > 0 && Array.from(rowCheckboxes).every(c => c instanceof HTMLInputElement && c.checked);
+        if (guideCheck instanceof HTMLInputElement) {
           guideCheck.checked = allRowChecked;
         }
       });
@@ -156,14 +172,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.querySelectorAll('.category-header').forEach(header => {
       header.addEventListener('click', (e) => {
-        const cat = e.currentTarget.getAttribute('data-category');
-        const icon = e.currentTarget.querySelector('.expand-icon');
+        const currentTarget = e.currentTarget;
+        if (!(currentTarget instanceof HTMLElement)) return;
+        const cat = currentTarget.getAttribute('data-category');
+        const icon = currentTarget.querySelector('.expand-icon');
         const rows = document.querySelectorAll(`.guide-row[data-category="${cat}"]`);
         
         rows.forEach(r => r.classList.toggle('collapsed'));
         
         const isCollapsed = rows[0]?.classList.contains('collapsed');
-        if (icon) {
+        if (icon instanceof HTMLElement) {
           icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
         }
       });
@@ -174,20 +192,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   let allNegativeState = false;
 
   document.addEventListener('click', (e) => {
-    if (e.target.id === 'action-all-default') {
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    if (target.id === 'action-all-default') {
       allDefaultState = !allDefaultState;
       document.querySelectorAll('.task-check').forEach(tc => {
-        if (tc.getAttribute('data-task') === 'task') tc.checked = allDefaultState;
+        if (tc instanceof HTMLInputElement && tc.getAttribute('data-task') === 'task') {
+          tc.checked = allDefaultState;
+        }
       });
-      e.target.innerText = allDefaultState ? 'De-select All task.md' : 'Select All task.md';
-    } else if (e.target.id === 'action-all-negative') {
+      target.innerText = allDefaultState ? 'De-select All task.md' : 'Select All task.md';
+    } else if (target.id === 'action-all-negative') {
       allNegativeState = !allNegativeState;
       document.querySelectorAll('.task-check').forEach(tc => {
-        if (tc.getAttribute('data-task') === 'negative') tc.checked = allNegativeState;
+        if (tc instanceof HTMLInputElement && tc.getAttribute('data-task') === 'negative') {
+          tc.checked = allNegativeState;
+        }
       });
-      e.target.innerText = allNegativeState ? 'De-select All negative' : 'Select All negative';
-    } else if (e.target.id === 'action-clear') {
-      document.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
+      target.innerText = allNegativeState ? 'De-select All negative' : 'Select All negative';
+    } else if (target.id === 'action-clear') {
+      document.querySelectorAll('input[type="checkbox"]').forEach(c => {
+        if (c instanceof HTMLInputElement) c.checked = false;
+      });
     }
   });
 
@@ -207,17 +234,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    const nameEl = document.getElementById('name');
+    const numRunsEl = document.getElementById('numRuns');
+    const agentEl = document.getElementById('agent');
+    const servingEl = document.getElementById('serving');
+
     const payload = {
-      name: document.getElementById('name').value || null,
-      numRuns: parseInt(document.getElementById('numRuns').value),
-      agent: document.getElementById('agent').value,
-      serving: document.getElementById('serving').value,
+      name: (nameEl instanceof HTMLInputElement) ? nameEl.value || null : null,
+      numRuns: (numRunsEl instanceof HTMLInputElement) ? parseInt(numRunsEl.value) : 0,
+      agent: (agentEl instanceof HTMLInputElement) ? agentEl.value : '',
+      serving: (servingEl instanceof HTMLInputElement) ? servingEl.value : '',
       tasks: selectedTasks
     };
 
     const runBtn = document.getElementById('launch-btn');
-    runBtn.disabled = true;
-    runBtn.innerText = '⏳ Launching suite...';
+    if (runBtn instanceof HTMLButtonElement) {
+      runBtn.disabled = true;
+      runBtn.innerText = '⏳ Launching suite...';
+    }
 
     try {
       const response = await fetch('/api/eval-launch', {
@@ -228,8 +262,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const data = await response.json();
       if (data.success) {
-        runBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-        runBtn.innerHTML = '🚀 Evaluation Started! Closing this window in 1s...';
+        if (runBtn instanceof HTMLButtonElement) {
+          runBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+          runBtn.innerHTML = '🚀 Evaluation Started! Closing this window in 1s...';
+        }
         
         setTimeout(() => {
           window.close();
@@ -239,8 +275,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     } catch (err) {
       alert(`Launch failed: ${err.message}`);
-      runBtn.disabled = false;
-      runBtn.innerText = '🚀 Kick Off Evaluation';
+      if (runBtn instanceof HTMLButtonElement) {
+        runBtn.disabled = false;
+        runBtn.innerText = '🚀 Kick Off Evaluation';
+      }
     }
   });
 });
