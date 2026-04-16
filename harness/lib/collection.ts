@@ -113,25 +113,10 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       const gradeScript = `
 import fs from 'fs';
 import { spawnSync } from 'child_process';
-import { spawnSync } from 'child_process';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
 async function run() {
   try {
-    const pkgJsonPath = ${JSON.stringify(targetPkgJson)};
-    if (fs.existsSync(pkgJsonPath)) {
-      const installResult = spawnSync('pnpm', ['install', '--frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
-        cwd: ${JSON.stringify(dir)},
-        stdio: 'inherit',
-        shell: true,
-        env: { ...process.env, CI: 'true' }
-      });
-      if (installResult.status !== 0) {
-        console.error("pnpm install failed");
-        process.exit(1);
-      }
-    }
-
     const pkgJsonPath = ${JSON.stringify(targetPkgJson)};
     if (fs.existsSync(pkgJsonPath)) {
       const installResult = spawnSync('pnpm', ['install', '--frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
