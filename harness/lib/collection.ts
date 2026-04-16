@@ -111,15 +111,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       // Generate a runner script to be picked up by pnpm -r run-grader
       // We import runPlaywright directly from the guides code to leverage existing test execution logic
       const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
-      const gradeScript = getGraderScriptContent(
-        runGraderModulePath,
-        targetPkgJson,
-        dir,
-        targetFile,
-        graderPath,
-        path.join(dir, 'grade-report'),
-        graderResults
-      );
+      const gradeScript = getGraderScriptContent(dir, graderPath, guide);
       const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
       fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
       let pkgJsonObj: any = {

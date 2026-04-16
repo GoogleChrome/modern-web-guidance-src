@@ -373,23 +373,8 @@ function generateTransientPackage(
     fs.mkdirSync(targetDir, { recursive: true });
   }
 
-  const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
-  
   // Generate grade.mjs using shared function
-  const targetPkgJson = path.join(targetDir, 'package.json');
-  const targetFile = path.join(targetDir, 'index.html');
-  const graderResults = path.join(targetDir, `${guideName}_results.json`);
-  const gradeReportDir = path.join(targetDir, 'grade-report');
-  
-  const gradeScript = getGraderScriptContent(
-    runGraderModulePath,
-    targetPkgJson,
-    targetDir,
-    targetFile,
-    graderPath,
-    gradeReportDir,
-    graderResults
-  );
+  const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName);
   fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
 
   // Generate runner script

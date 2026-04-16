@@ -7,23 +7,10 @@ import { getGraderScriptContent } from './agent-shared.ts';
 
 describe('getGraderScriptContent', () => {
   test('should generate valid JavaScript code', () => {
-    const runGraderModulePath = '/path/to/run-grader.ts';
-    const targetPkgJson = '/path/to/package.json';
     const cwd = '/path/to/cwd';
-    const targetFile = '/path/to/index.html';
     const graderPath = '/path/to/grader.ts';
-    const gradeReportDir = '/path/to/grade-report';
-    const graderResults = '/path/to/results.json';
 
-    const scriptContent = getGraderScriptContent(
-      runGraderModulePath,
-      targetPkgJson,
-      cwd,
-      targetFile,
-      graderPath,
-      gradeReportDir,
-      graderResults
-    );
+    const scriptContent = getGraderScriptContent(cwd, graderPath, 'dummy-guide');
 
     // Write to a temporary file with .mjs extension to ensure it's parsed as ESM
     const tempFile = path.join(process.cwd(), `temp_grader_test_${Math.random().toString(36).substring(7)}.mjs`);

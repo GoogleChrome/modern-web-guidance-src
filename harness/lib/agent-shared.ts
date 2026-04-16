@@ -657,14 +657,16 @@ export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, pro
  * Generates the content for the grader script used to run Playwright tests.
  */
 export function getGraderScriptContent(
-  runGraderModulePath: string,
-  targetPkgJson: string,
-  cwd: string,
-  targetFile: string,
+  targetDir: string,
   graderPath: string,
-  gradeReportDir: string,
-  graderResults: string
+  guideName: string
 ): string {
+  const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
+  const targetPkgJson = path.join(targetDir, 'package.json');
+  const targetFile = path.join(targetDir, 'index.html');
+  const gradeReportDir = path.join(targetDir, 'grade-report');
+  const graderResults = path.join(targetDir, `${guideName}_results.json`);
+
   return `import fs from 'fs';
 import { spawnSync } from 'child_process';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
@@ -674,7 +676,7 @@ async function run() {
     const pkgJsonPath = ${JSON.stringify(targetPkgJson)};
     if (fs.existsSync(pkgJsonPath)) {
       const installResult = spawnSync('pnpm', ['install', '--frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
-        cwd: ${JSON.stringify(cwd)},
+        cwd: ${JSON.stringify(targetDir)},
         stdio: 'inherit',
         shell: true,
         env: { ...process.env, CI: 'true' }
