@@ -13,10 +13,6 @@ function isTargetAppPresent(targetFile: string, targetPkgJson: string): boolean 
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson);
 }
 
-function isTargetAppPresent(targetFile: string, targetPkgJson: string): boolean {
-  return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson);
-}
-
 export function extractModelFromResults(resultsDir: string, agent: string): string {
   if (agent === Agents.GEMINI_CLI) {
     return extractGeminiCliModel(resultsDir);
@@ -102,8 +98,6 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
 
       const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
       const graderResults = path.join(dir, `${guide}_results.json`);
-
-      const targetExists = isTargetAppPresent(targetFile, targetPkgJson);
 
       const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson);
 
@@ -261,8 +255,6 @@ run();
       const graderResults = path.join(dir, `${guide}_results.json`);
 
       const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson);
-
-      const targetExists = isTargetAppPresent(targetFile, targetPkgJson);
 
       if (!fs.existsSync(graderPath)) {
         console.warn(`Grader not found for ${guide} at ${graderPath}`);
