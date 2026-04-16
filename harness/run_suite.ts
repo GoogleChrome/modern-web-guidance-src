@@ -198,7 +198,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     }
 
     if (hasErrors) {
-      console.log(`\n❌ Test suite completed with errors! Results saved to: ${testDir}`);
+      console.log(`\n❌ Test suite completed with errors! Results saved to: ${testDir} .\n    For details, see agent_stderr.log and/or generation_failed.json`);
     } else {
       console.log(`\n✅ Test suite complete! Results saved to: ${testDir}`);
     }
