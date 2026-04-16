@@ -1,4 +1,0 @@
----
-base_app: empty-app
----
-- Create a minimal web page demonstrating prioritized preloading to orchestrate low-priority work without competing with critical interactions. Add a button to schedule multiple heavy background tasks (e.g., a loop of 5 tasks simulating work for 1000ms each) using `scheduler.postTask()` with priority `'background'`, falling back to a delayed `setTimeout` (e.g., 200ms) for unsupported browsers. Add another button to trigger an urgent task (e.g., logging a message or updating the UI). Demonstrate that if the urgent task is triggered while background tasks are queued, the urgent task jumps the queue and executes before the remaining background tasks. Write the implementation to index.html.
