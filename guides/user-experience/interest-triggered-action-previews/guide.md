@@ -34,7 +34,7 @@ For the sake of this use case, we can leverage the `interest` and `loseinterest`
 ```javascript
 interestingElement.addEventListener("interest", event => {
   // Apply the preview based on `event.source`
-  eventTarget.dataset.preview = event.source.dataset.effect;
+  event.target.dataset.preview = event.source.dataset.effect;
 });
 
 interestingElement.addEventListener("loseinterest", event => {
