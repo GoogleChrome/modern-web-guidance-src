@@ -1,0 +1,84 @@
+name: Publish Skills
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'serving/skills-cli/**'
+      - 'guides/**'
+      - '.github/workflows/publish.yml'
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write # Required for npm OIDC provenance when enabled
+
+    steps:
+      - name: Generate GitHub App token
+        uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Configure Git for Auth and Commit
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Rewrite SSH to HTTPS using the App token for the target repo
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "git@github.com:"
+
+      - name: Publish Skills to GitHub (modern-web-guidance)
+        run: pnpm --filter serving run publish-skills
+
+      # =========================================================================
+      # Future: Enable these steps when ready to publish to npm publicly!
+      # =========================================================================
+      # - name: Setup Node with npm registry
+      #   uses: actions/setup-node@v6
+      #   with:
+      #     node-version: 24
+      #     registry-url: 'https://registry.npmjs.org'
+      # 
+      # - name: Publish to npm via OIDC Provenance
+      #   run: |
+      #     npm install -g npm@latest
+      #     cd dist/skills-cli
+      #     
+      #     # Run dry-run for safety or full publish
+      #     # npm publish --provenance --access public --registry https://registry.npmjs.org/
+      #     npm publish --dry-run --provenance --access public --registry https://registry.npmjs.org/
+      # =========================================================================
+
+      - name: Commit and Push Version Bump
+        run: |
+          git add serving/skills-cli/template/
+          if ! git diff --quiet --exit-code --cached; then
+            git commit -m "chore: bump version [skip ci]"
+
+            # Fetch latest changes and rebase our commit on top of them
+            git fetch origin main
+            git rebase origin/main
+
+            git push origin main
+          fi

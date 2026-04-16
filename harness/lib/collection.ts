@@ -13,6 +13,10 @@ function isTargetAppPresent(targetFile: string, targetPkgJson: string): boolean 
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson);
 }
 
+function isTargetAppPresent(targetFile: string, targetPkgJson: string): boolean {
+  return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson);
+}
+
 export function extractModelFromResults(resultsDir: string, agent: string): string {
   if (agent === Agents.GEMINI_CLI) {
     return extractGeminiCliModel(resultsDir);
@@ -99,6 +103,8 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
       const graderResults = path.join(dir, `${guide}_results.json`);
 
+      const targetExists = isTargetAppPresent(targetFile, targetPkgJson);
+
       const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson);
 
       const failureFile = path.join(dir, 'generation_failed.json');
@@ -113,10 +119,25 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       const gradeScript = `
 import fs from 'fs';
 import { spawnSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
 async function run() {
   try {
+    const pkgJsonPath = ${JSON.stringify(targetPkgJson)};
+    if (fs.existsSync(pkgJsonPath)) {
+      const installResult = spawnSync('pnpm', ['install', '--frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
+        cwd: ${JSON.stringify(dir)},
+        stdio: 'inherit',
+        shell: true,
+        env: { ...process.env, CI: 'true' }
+      });
+      if (installResult.status !== 0) {
+        console.error("pnpm install failed");
+        process.exit(1);
+      }
+    }
+
     const pkgJsonPath = ${JSON.stringify(targetPkgJson)};
     if (fs.existsSync(pkgJsonPath)) {
       const installResult = spawnSync('pnpm', ['install', '--frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
@@ -240,6 +261,8 @@ run();
       const graderResults = path.join(dir, `${guide}_results.json`);
 
       const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson);
+
+      const targetExists = isTargetAppPresent(targetFile, targetPkgJson);
 
       if (!fs.existsSync(graderPath)) {
         console.warn(`Grader not found for ${guide} at ${graderPath}`);
