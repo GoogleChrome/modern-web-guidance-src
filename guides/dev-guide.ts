@@ -250,10 +250,11 @@ Rules:
 - The first prompt is the most important: it must be specific enough that an agent implementing it would produce a grader-testable result.
 - Vary specificity: include at least one vague/intent-based prompt and one specific/technical ask.
 - Assume the developer is working on the existing app seen in base-app.html. Reference its real assets and content where relevant.
+- Do NOT mention or mandate legacy fallbacks in the prompt. The RAG system handles fallbacks automatically.
 - Do NOT mention the guide itself or indicate that guidance exists.
 - Do NOT name the base app (e.g. "${baseApp}") — a real developer wouldn't refer to it that way.
-- Do NOT tell the agent which web API or CSS property to use unless a real developer would naturally do so.
-- Each prompt must be on its own line, prefixed with "- ".
+- Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS functions (e.g., do not command the agent to 'use the Temporal API' or 'use sibling-index()'). You MUST describe the desired user outcome instead. However, it is completely acceptable (and sometimes necessary) to include specific DOM IDs or class names if the grader requires them to locate elements.
+- Each prompt must be on its own line, prefixed with "- ", containing absolutely no internal line breaks.
 - When writing files, you MUST use your built-in structured file editing tools (e.g., \`write_file\` or \`replace\`). Do not use shell commands (like \`cat\`, \`echo\`, or heredocs \`<<\`) to create files in the terminal.
 
 Only create the ${TASK_FILE} file. Do not modify any other files.`;
@@ -497,12 +498,12 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
 }
 
 const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
-  'incomplete':         { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
-  'stub':               { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
+  'incomplete': { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
+  'stub': { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
   'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
-  'needs-calibration':  { label: 'Needs calibration (run gd dev)', color: cYellow },
-  'needs-test':         { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
-  'eval-ready':         { label: 'Ready for eval', color: cGreen },
+  'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
+  'needs-test': { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
+  'eval-ready': { label: 'Ready for eval', color: cGreen },
 };
 
 export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
@@ -664,12 +665,12 @@ function renderFeatureMatrix(allGuides: GuideInventory[]): void {
     const expctDots = guides.map(inv => (inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations))).join('');
 
     const row = col(renderDots(guideDot)) +
-                col(renderDots(inv => dot(inv.hasDemo))) +
-                col(expctDots) +
-                cDim('│') + ' ' +
-                col(renderDots(inv => dot(inv.hasNegativeDemo))) +
-                col(renderDots(inv => dot(inv.hasGrader))) +
-                renderDots(inv => dot(inv.hasTask));
+      col(renderDots(inv => dot(inv.hasDemo))) +
+      col(expctDots) +
+      cDim('│') + ' ' +
+      col(renderDots(inv => dot(inv.hasNegativeDemo))) +
+      col(renderDots(inv => dot(inv.hasGrader))) +
+      renderDots(inv => dot(inv.hasTask));
 
     console.log(`  ${color(name.padEnd(32))} ${String(guides.length).padStart(5)}  ${row}`);
   }

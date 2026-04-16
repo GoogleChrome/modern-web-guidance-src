@@ -1,0 +1,9 @@
+- The implementation MUST feature-detect the `Temporal` API using `typeof Temporal === 'undefined'` before usage.
+- The implementation MUST conditionally load a Temporal polyfill only if native support is absent.
+- The implementation MUST use `Temporal.Duration.from()` to create duration objects representing spans of time.
+- The implementation MUST use the `.round()` method on `Temporal.Duration` instances with a `largestUnit` option to control how units are balanced (e.g., converting 90 minutes to 1 hour and 30 minutes).
+- The implementation MUST use `Intl.DurationFormat` to build the human-readable display string, OR extract individual unit properties (such as `.hours`, `.minutes`, `.seconds`) to construct it manually if `Intl.DurationFormat` is not supported.
+- The implementation MUST NOT rely on `Temporal.Duration.prototype.toString()` for user-facing text, as it outputs ISO 8601 strings (e.g., `PT1H30M`).
+- The implementation MUST NOT assume `Temporal.Duration` automatically localizes strings for the user.
+- The implementation MUST NOT attempt to modify `Temporal.Duration` instances directly, as they are immutable. It MUST use the new instances returned by operations like `round()`.
+- The implementation MUST NOT use legacy manual calculations (like `totalSeconds / 3600` and `totalSeconds % 60`) for duration balancing when `Temporal` is available.
