@@ -47,3 +47,13 @@ GEMINI.md
 # Research drafts
 skills-drafts/.research/
 
+# Generated vector and benchmark evaluation files
+serving/lib/use-cases.vectors.gen.json
+serving/lib/use-cases.vectors.gen.json.gz
+serving/benchmarks/data/eval-queries.gen.json
+# ML Models
+serving/lib/tfjs_model_minilm/tfjs_model*/
+serving/lib/tfjs_model_minilm/saved_model*/
+
+# Caches
+**/.cache/

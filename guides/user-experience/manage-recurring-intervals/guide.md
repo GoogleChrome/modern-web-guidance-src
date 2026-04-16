@@ -16,9 +16,9 @@ The `Temporal` API provides a clean solution with `Temporal.PlainDate` and its `
 
 ## How to Implement
 
-1. **Parse the starting date**: Use `Temporal.PlainDate.from()` to create a date object.
-2. **Add the duration**: Use the `.add()` method with a duration object (e.g., `{ months: 1 }`).
-3. **Specify overflow behavior**: Use the `overflow` option to control how invalid dates (like Feb 31) are handled.
+1. **MANDATORY:** **Parse the starting date**: Use `Temporal.PlainDate.from()` to create a date object.
+2. **MANDATORY:** **Add the duration**: Use the `.add()` method with a duration object (e.g., `{ months: 1 }`).
+3. **OPTIONAL:** **Specify overflow behavior**: Use the `overflow` option to control how invalid dates (like Feb 31) are handled.
     - `'constrain'` (default): Clamps to the last valid day of the month.
     - `'reject'`: Throws a `RangeError`.
 

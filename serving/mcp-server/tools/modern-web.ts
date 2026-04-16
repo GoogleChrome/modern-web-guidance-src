@@ -19,16 +19,10 @@ export function registerModernWebTools(server: McpServer) {
       },
     },
     async ({ query }) => {
-      const { Store } = await import("../../lib/store.ts");
-      const { Embedder } = await import("../lib/embedder.ts");
+      const { searchUseCases } = await import("../../lib/search.ts");
+      const results = await searchUseCases(query);
 
-      const store = new Store();
-      const embedder = Embedder.getInstance();
-
-      const vector = await embedder.embed(query);
-      const results = await store.search(vector);
-
-      logToolResult("search_use_cases", results.map(r => ({ id: r.id, distance: r.distance })));
+      logToolResult("search_use_cases", results.map((r: any) => ({ id: r.id, distance: r.distance })));
 
       return {
         content: [

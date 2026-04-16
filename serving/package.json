@@ -12,7 +12,6 @@
     "mcp-server",
     "lib",
     "build",
-    "vector_store",
     "AGENTS.md",
     "README.md"
   ],
@@ -32,10 +31,13 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
-    "@lancedb/lancedb": "^0.26.2",
     "@modelcontextprotocol/sdk": "^1.27.1",
+    "@tensorflow/tfjs-backend-cpu": "^4.22.0",
+    "@tensorflow/tfjs-converter": "^4.22.0",
+    "@tensorflow/tfjs-core": "^4.22.0",
     "apache-arrow": "21.1.0",
     "marked": "^17.0.4",
+    "onnxruntime-node": "^1.24.3",
     "web-features": "latest",
     "zod": "^4.3.6"
   },
