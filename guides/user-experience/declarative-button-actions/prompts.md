@@ -1,0 +1,3 @@
+- implement a way to trigger custom animations on a box using buttons without manual click handlers for each button.
+- Build a custom interactive element where buttons declaratively trigger actions like spinning, growing, or rounding.
+- I want to make a set of buttons that control a target element's state (spin, grow, round, reset) using declarative attributes.
