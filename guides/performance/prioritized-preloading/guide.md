@@ -60,7 +60,11 @@ function fallbackScheduleTask(callback) {
     // DO: Fallback for background tasks.
     // Using a short timeout (e.g., 200ms) helps defer execution until 
     // the main thread is less busy, giving priority to immediate user interactions.
-    setTimeout(() => resolve(callback()), 200); 
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => resolve(callback()));
+    else {
+      setTimeout(() => resolve(callback()), 200); 
+    }
   });
 }
 ```
