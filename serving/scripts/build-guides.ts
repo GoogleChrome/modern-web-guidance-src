@@ -13,7 +13,7 @@ export interface StoreUseCase {
   distance?: number;
 }
 import { replaceMacros } from "../lib/macros.ts";
-import { scanAllGuides } from "../../lib/guide-validation.ts";
+import { scanAllGuides, type GuideInventory } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
@@ -94,20 +94,11 @@ async function processGuides() {
     }
 
     const category = path.basename(path.dirname(absoluteTargetPath));
-    const id = path.basename(absoluteTargetPath);
-    
-    readyGuides = [{
-      dir: absoluteTargetPath,
-      name: id,
-      category: category,
-      hasGuide: true,
-    } as any];
+    const name = path.basename(absoluteTargetPath);
+    readyGuides = [{dir: absoluteTargetPath, name, category, hasGuide: true} as GuideInventory];
   }
 
-  if (readyGuides.length === 0) {
-    console.log("No guides found.");
-  }
-
+  console.log("Generating embeddings…");
   for (const inv of readyGuides) {
     const guidePath = path.join(inv.dir, "guide.md");
     await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder);
