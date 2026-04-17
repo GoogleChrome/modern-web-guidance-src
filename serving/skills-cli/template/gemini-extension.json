@@ -1,7 +1,7 @@
 {
   "name": "modern-web-guidance",
   "description": "Google Chrome's web development agent skills.",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "author": {
     "name": "Google Chrome"
   }
