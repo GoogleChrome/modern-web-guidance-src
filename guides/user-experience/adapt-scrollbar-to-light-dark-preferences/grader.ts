@@ -2,8 +2,9 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
-import { Parser, CSSStyleRule, CSSMediaRule, CSSUnknownRule, serialize } from '../../../lib/third_party/cssom/index.js';
-import type { ComponentValue } from '../../../lib/third_party/cssom/index.js';
+import { Parser, CSSStyleRule, CSSMediaRule, CSSUnknownRule, serialize } from '../../../lib/third_party/cssomnom/index.js';
+import type { ComponentValue } from '../../../lib/third_party/cssomnom/index.js';
+
 
 
 

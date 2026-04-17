@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
-import { Parser, CSSStyleRule } from '../../../lib/third_party/cssom/index.js';
+import { Parser, CSSStyleRule } from '../../../lib/third_party/cssomnom/index.js';
+
 
 
 // Setup

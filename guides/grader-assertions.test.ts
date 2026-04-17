@@ -1,7 +1,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import { parseHTML } from 'linkedom';
-import { Parser, CSSStyleRule } from '../lib/third_party/cssom/index.js';
+import { Parser, CSSStyleRule } from '../lib/third_party/cssomnom/index.js';
+
 
 // Dummy function to satisfy compiler for skipped tests
 const getComputedStyleStatically = (_el: any, _rules: any) => ({ getPropertyValue: (_prop: string) => '' });

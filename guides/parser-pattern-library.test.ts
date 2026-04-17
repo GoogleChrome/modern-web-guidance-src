@@ -1,7 +1,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import { parseHTML } from 'linkedom';
-import { Parser, CSSStyleRule } from '../lib/third_party/cssom/index.js';
+import { Parser, CSSStyleRule } from '../lib/third_party/cssomnom/index.js';
+
 
 
 import { Project, SyntaxKind } from 'ts-morph';

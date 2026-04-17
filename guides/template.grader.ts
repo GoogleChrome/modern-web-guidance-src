@@ -3,7 +3,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
 import { Project, SyntaxKind } from 'ts-morph';
-import { Parser, CSSStyleRule, CSSUnknownRule, serialize } from '../lib/third_party/cssom/index.js';
+import { Parser, CSSStyleRule, CSSUnknownRule, serialize } from '../lib/third_party/cssomnom/index.js';
+
 
 
 // Setup
