@@ -235,10 +235,13 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
     // Wait for SW to install and create caches
     const hasCaches = await page.evaluate(async () => {
-      // Wait a bit for SW to install and create caches
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      const keys = await caches.keys();
-      return keys.length > 0; // Just check that at least one cache was created
+      // Poll for caches keys to be non-empty
+      for (let i = 0; i < 10; i++) {
+        const keys = await caches.keys();
+        if (keys.length > 0) return true;
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      return false;
     });
     expect(hasCaches).toBe(true);
   });

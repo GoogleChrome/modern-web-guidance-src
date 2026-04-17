@@ -1,4 +1,4 @@
 ---
 base_app: daily-grind
 ---
-- Build a comprehensive, accessible, and secure multi-step registration form for our rewards program at the bottom of the page. You MUST implement semantic structure (form, fieldset, legend), proper labeling (associated via for/id, placed above), multi-step navigation with progress indicators, custom validation on blur (clearing on input), secure handling (POST method, CSRF token placeholder, no inline scripts), password toggle, autocomplete attributes, tap targets of at least 44px, and input font-size of at least 16px.
+- You MUST use the `forms` skill to build a comprehensive, accessible, and secure multi-step registration form for our rewards program at the bottom of the page, AND audit and fix any existing accessibility or security issues in the page's current forms or structure. Access the `forms` skill guide and apply all its rules and patterns fully.

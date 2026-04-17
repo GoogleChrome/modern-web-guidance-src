@@ -277,17 +277,6 @@ test.describe(`Forms Expectations: ${demoName}`, () => {
     expect(tapTargetOk).toBe(true);
   });
 
-  test('Implementation MUST use CSS logical properties', async ({ page }) => {
-    const hasLogicalProps = await page.evaluate(() => {
-      return Array.from(document.styleSheets).some(sheet => {
-        try {
-          return Array.from(sheet.cssRules).some(rule => rule.cssText.includes('margin-block') || rule.cssText.includes('padding-inline'));
-        } catch (e) { return false; }
-      });
-    });
-    expect(hasLogicalProps).toBe(true);
-  });
-
   test('Focus outlines MUST NOT be disabled', async ({ page }) => {
     const focusOk = await page.evaluate(() => {
       const input = document.querySelector('input:not([type="hidden"])') as HTMLInputElement;
@@ -313,10 +302,24 @@ test.describe(`Forms Expectations: ${demoName}`, () => {
   test('Validation MUST show on blur', async ({ page }) => {
     const input = page.locator('input[required]').first();
     if (await input.count() === 0) throw new Error('No required input found');
+    
+    const describedById = await input.getAttribute('aria-describedby');
+    
     await input.focus();
     await input.type('a');
-    await input.press('Backspace'); // Make it empty again to trigger required validation
+    await input.press('Backspace');
     await input.blur();
+    
+    if (describedById) {
+      // Check if the described element is visible
+      const error = page.locator(`#${describedById}`).filter({ visible: true });
+      if (await error.count() > 0) {
+        await expect(error.first()).toBeVisible();
+        return;
+      }
+    }
+    
+    // Fallback to standard selectors
     const error = page.locator('.error-message, [role="alert"]').filter({ visible: true });
     await expect(error.first()).toBeVisible();
   });

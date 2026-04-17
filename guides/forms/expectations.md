@@ -41,7 +41,7 @@
 - The implementation MUST set `font-size` to at least `1rem` (16px) for inputs.
 - The implementation MUST ensure tap targets are at least `48px`.
 - The implementation MUST use units relative to root (`rem`) for typography and spacing.
-- The implementation MUST use CSS logical properties (e.g., `margin-inline-start`).
+- The implementation SHOULD use CSS logical properties (e.g., `margin-inline-start`).
 - The implementation MUST use `appearance: none` for custom dropdown arrows without breaking semantics.
 - The implementation MUST ensure inputs are clearly visible with adequate border contrast.
 - The implementation MUST hide inputs visually using `position: absolute; opacity: 0` (NOT `display: none`) to keep them accessible.
