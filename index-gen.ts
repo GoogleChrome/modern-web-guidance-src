@@ -325,7 +325,11 @@ for (const sourceName of sourceNames) {
     process.exit(1);
   }
 
+  process.stdout.write(`Building ${sourceName} index…`);
+  const t0 = performance.now();
   const source = await sourceBuilders[sourceName]();
+  const buildMs = performance.now() - t0;
+  console.log(` ${source.rows.length} entries (${(buildMs / 1000).toFixed(1)}s)`);
 
   for (const t of outputTypes) {
     if (!(t in formats)) {
@@ -336,6 +340,6 @@ for (const sourceName of sourceNames) {
     const file = `index.${format.ext}`;
     const outPath = path.join(rootDir, source.dir, file);
     fs.writeFileSync(outPath, format.render(source));
-    console.log(`Wrote ${source.rows.length} ${sourceName} to ${source.dir}/${file}`);
+    console.log(`  → ${source.dir}/${file}`);
   }
 }
