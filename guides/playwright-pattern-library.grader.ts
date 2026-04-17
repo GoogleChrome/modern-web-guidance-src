@@ -14,10 +14,12 @@ test.describe('Playwright Pattern Library (Best Practices)', () => {
     // Mock CSS.supports to report no support for :has()
     await page.addInitScript(() => {
       const originalSupports = CSS.supports;
-      CSS.supports = function(...args: any[]) {
+      CSS.supports = (...args: any[]) => {
         if (args[0] === 'selector(:has(*))') return false;
-        return originalSupports.apply(this, args as any);
-      } as any;
+        return originalSupports.apply(CSS, args as any);
+      };
+
+
     });
     
     await page.goto('data:text/html,<script>window.hasSupport = CSS.supports("selector(:has(*))")</script>');

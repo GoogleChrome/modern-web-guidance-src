@@ -72,8 +72,9 @@ describe('Parser Pattern Library (Best Practices)', () => {
     });
     
     assert.ok(matchedRule);
-    assert.strictEqual(matchedRule.style.getPropertyValue('color'), 'red');
+    assert.strictEqual((matchedRule as unknown as CSSStyleRule).style.getPropertyValue('color'), 'red');
   });
+
 
   test('Pattern 4: Handling Advanced Selectors supported by Linkedom (:has)', () => {
     const html = `

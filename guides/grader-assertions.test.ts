@@ -3,6 +3,10 @@ import assert from 'node:assert';
 import { parseHTML } from 'linkedom';
 import { Parser, CSSStyleRule } from '../lib/third_party/cssom/index.js';
 
+// Dummy function to satisfy compiler for skipped tests
+const getComputedStyleStatically = (el: any, rules: any) => ({ getPropertyValue: (prop: string) => '' });
+
+
 
 
 
