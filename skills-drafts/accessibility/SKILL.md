@@ -363,27 +363,15 @@ Modern browsers provide native mechanisms for focus trapping and modal overlays 
 
 **CSS: Standard Visually Hidden for secondary text**
 ```css
-.visually-hidden {
+.visually-hidden:where(:not(:focus-within, :active)) {
   position: absolute !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
   width: 1px !important;
   height: 1px !important;
-  padding: 0 !important;
   margin: -1px !important;
-  overflow: hidden !important;
-  clip-path: inset(50%) !important;
-  white-space: nowrap !important;
+  padding: 0 !important;
   border: 0 !important;
-}
-
-/* Reverse visually hidden on focus for interactive elements */
-.visually-hidden-focusable:focus,
-.visually-hidden-focusable:active {
-  position: static !important;
-  width: auto !important;
-  height: auto !important;
-  overflow: visible !important;
-  clip: auto !important;
-  clip-path: none !important;
-  white-space: normal !important;
+  white-space: nowrap !important;
 }
 ```
