@@ -383,13 +383,12 @@
               if (typeof Temporal === 'undefined') {
                 const unsupportedBanner = document.getElementById('unsupportedBanner');
                 unsupportedBanner.style.display = 'flex';
-
                 try {
-                  await import('https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@0.4.4/dist/index.umd.js');
-                  globalThis.Temporal = temporal?.Temporal;
-                } catch (err) {
-                  console.error('Failed to load Temporal polyfill:', err);
-                  return; // Stop execution if polyfill fails
+                  const module = await import('https://esm.sh/@js-temporal/polyfill');
+                  globalThis.Temporal = module.Temporal;
+                } catch (e) {
+                  console.error('Failed to load Temporal polyfill:', e);
+                  return;
                 }
               }
 

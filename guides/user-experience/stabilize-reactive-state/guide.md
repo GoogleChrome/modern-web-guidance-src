@@ -32,10 +32,10 @@ let dateState = { deadline: new Date() };
 function extendDeadlineBad() {
   // Mutates the object in place. Reference remains the same!
   dateState.deadline.setHours(dateState.deadline.getHours() + 1);
-  
+
   // Frameworks will skip re-rendering because
   // prevState === nextState (same memory reference)
-  updateState(dateState); 
+  updateState(dateState);
 }
 
 // ✅ GOOD: Temporal ensures immutability and reliable reactivity
@@ -44,10 +44,10 @@ let temporalState = { deadline: Temporal.Now.plainDateTimeISO() };
 function extendDeadlineGood() {
   // Returns a new object with a new reference.
   const newDeadline = temporalState.deadline.add({ hours: 1 });
-  
+
   // Create a new state object with the new Temporal reference
   temporalState = { deadline: newDeadline };
-  
+
   // Frameworks will detect the reference change and re-render the UI
   updateState(temporalState);
 }
@@ -61,6 +61,7 @@ function extendDeadlineGood() {
 - **DO** ensure you handle environments without native support by conditionally loading a polyfill.
 
 ### Fallback strategies
+
 {{ BASELINE_STATUS("temporal") }}
 
 Since the `Temporal` API is a newer feature and may not be supported in all browsers, you should feature-detect it and conditionally load a polyfill if needed.
@@ -68,23 +69,13 @@ Since the `Temporal` API is a newer feature and may not be supported in all brow
 ```html
 <!-- Conditionally load the Temporal polyfill only if not natively supported -->
 <script>
-  if (typeof Temporal === 'undefined') {
+  if (typeof Temporal === "undefined") {
     try {
-      await import('https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@0.4.4/dist/index.umd.js');
-      globalThis.Temporal = temporal?.Temporal;
-    } catch (err) {
-      console.error('Failed to load Temporal polyfill:', err);
+      const module = await import("https://esm.sh/@js-temporal/polyfill");
+      globalThis.Temporal = module.Temporal;
+    } catch (e) {
+      console.error("Failed to load Temporal polyfill:", e);
     }
   }
 </script>
-```
-
-Alternatively, if you are using a module bundler, you can dynamically import the polyfill:
-
-```javascript
-async function ensureTemporal() {
-  if (typeof Temporal === 'undefined') {
-    await import('@js-temporal/polyfill');
-  }
-}
 ```
