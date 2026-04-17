@@ -14,7 +14,7 @@
 - The implementation MUST use `<input list="id">` (`<datalist>`) for massive or dynamic sets of options (10+).
 - The implementation MUST use `<input type="checkbox">` for multi-select options.
 - The implementation MUST associate every `<label>` with its input using `for` and `id`.
-- The implementation MUST place labels visually above form controls.
+- The implementation MUST place labels visually above form controls, unless using a valid accessible wrapping pattern.
 - The implementation MUST use visible labels and NOT rely on `placeholder` alone.
 - The implementation MUST ensure the vertical margin between a label and its input is less than the margin between form groups.
 - The implementation MUST use `aria-describedby` to link inputs with help text or error messages.
@@ -39,7 +39,7 @@
 - The implementation MUST block invalid payloads on `submit` and route focus to the error summary or first error field.
 - The implementation MUST use single-column layouts for scanning.
 - The implementation MUST set `font-size` to at least `1rem` (16px) for inputs.
-- The implementation MUST ensure tap targets are at least `48px`.
+- The implementation MUST ensure tap targets are at least 40px.
 - The implementation MUST use units relative to root (`rem`) for typography and spacing.
 - The implementation SHOULD use CSS logical properties (e.g., `margin-inline-start`).
 - The implementation MUST use `appearance: none` for custom dropdown arrows without breaking semantics.

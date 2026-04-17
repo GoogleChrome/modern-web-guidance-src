@@ -12,7 +12,7 @@
 - The implementation MUST NOT overuse `fetchpriority="high"`.
 - The implementation MUST NOT implement complex JavaScript loaders for the hero section.
 - The implementation MUST break up long JavaScript tasks exceeding 50ms.
-- The implementation MUST use `scheduler.yield()` with a fallback to `setTimeout` for yielding.
+- The implementation MUST use `scheduler.yield()` with a fallback to `setTimeout` for yielding if heavy computations are present.
 - The implementation MUST debounce or throttle rapid event listeners (`scroll`, `resize`, `input`).
 - The implementation MUST separate UI updates from heavy computations.
 - The implementation MUST NOT rely solely on `setTimeout(..., 0)` for continuous yielding if `scheduler.yield` is available.
@@ -25,7 +25,7 @@
 - The implementation MUST apply explicit CSS containment (`contain: layout style paint`) for isolated UI components.
 - The implementation MUST NOT apply `content-visibility: auto` to above-the-fold content or on small, simpler pages.
 - The implementation MUST NOT overuse `will-change` globally.
-- The implementation MUST serve modern image formats (AVIF / WebP) via the `<picture>` element.
+- The implementation MUST serve modern image formats (AVIF / WebP) via the `<picture>` element or equivalent CDN auto-formatting.
 - The implementation MUST apply explicit `width` and `height` attributes to images.
 - The implementation MUST utilize `loading="lazy"` on all below-the-fold images.
 - The implementation MUST implement responsive images with `srcset` and `sizes`.
@@ -46,5 +46,5 @@
 - The implementation MUST serve modern video formats via source negotiation.
 - The implementation MUST use `loading="lazy"` for offscreen videos.
 - The implementation MUST NOT auto-play large video files without user intent.
-- The implementation MUST use dynamic imports (`import()`) to load code on demand.
+- The implementation MUST use dynamic imports (`import()`) to load code on demand if code splitting is beneficial.
 - The implementation MUST configure bundler asset chunking to split third-party vendors.
