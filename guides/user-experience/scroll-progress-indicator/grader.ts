@@ -96,7 +96,7 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     const handle = await findProgressElementHandle(page);
 
     const hasTimeline = await handle.evaluate((el: any) => {
-      if (!el) return false; const style = window.getComputedStyle(el);
+      if (!el) return false; const style = window.getComputedStyle(el) as any;
       return style.animationTimeline !== 'auto';
     });
 
