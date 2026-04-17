@@ -421,7 +421,7 @@ const formats: Record<string, Format> = {
         '',
         `# ${title}`,
         '',
-        `> Generated on ${new Date().toISOString().slice(0, 10)} — ${rows.length} entries.`,
+        `> Generated on ${new Date().toLocaleString('en', { dateStyle: 'long', timeStyle: 'short' })} — ${rows.length} entries.`,
         '',
         headerRow,
         separatorRow,
