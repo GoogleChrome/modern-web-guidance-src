@@ -288,9 +288,15 @@
 
     // Check Support
     if (typeof Temporal === 'undefined') {
-      unsupportedBanner.style.display = 'flex';
-      [hoursInput, minutesInput, secondsInput].forEach(el => el.disabled = true);
-      radioButtons.forEach(el => el.disabled = true);
+      import('@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill }) => {
+        globalThis.Temporal = TemporalPolyfill;
+        initializeDemo();
+      }).catch(err => {
+        console.error('Failed to load Temporal polyfill:', err);
+        unsupportedBanner.style.display = 'flex';
+        [hoursInput, minutesInput, secondsInput].forEach(el => el.disabled = true);
+        radioButtons.forEach(el => el.disabled = true);
+      });
     } else {
       initializeDemo();
     }
@@ -342,6 +348,14 @@
           code += `// No balancing applied (using original creation)`;
         }
 
+        code += `\n\n// 3. Format display string\n`;
+        if (typeof Intl.DurationFormat !== 'undefined') {
+          code += `const formatter = new Intl.DurationFormat('en', { style: 'long' });\n`;
+          code += `const display = formatter.format(${selectedUnit !== 'auto' ? 'balanced' : 'duration'});`;
+        } else {
+          code += `// Manual formatting fallback used (see source)`;
+        }
+
         // 3. Update DOM
         rawString.textContent = displayDuration.toString();
         humanValue.textContent = formatDuration(displayDuration);
@@ -355,6 +369,13 @@
     }
 
     function formatDuration(dur) {
+      // Check if Intl.DurationFormat is supported
+      if (typeof Intl.DurationFormat !== 'undefined') {
+        const formatter = new Intl.DurationFormat('en', { style: 'long' });
+        return formatter.format(dur);
+      }
+
+      // Fallback to manual formatting if not supported
       const parts = [];
       if (dur.hours > 0) parts.push(`${dur.hours} hour${dur.hours > 1 ? 's' : ''}`);
       if (dur.minutes > 0) parts.push(`${dur.minutes} minute${dur.minutes > 1 ? 's' : ''}`);

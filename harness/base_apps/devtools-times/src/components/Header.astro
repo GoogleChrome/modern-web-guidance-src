@@ -1,0 +1,69 @@
+---
+import ReadingListButton from "./ReadingListButton.tsx";
+import SearchButton from "./SearchButton.tsx";
+import { getCollection } from "astro:content";
+import BottomNav from "./BottomNav.tsx";
+
+const articles = await getCollection("articles");
+const reports = await getCollection("reports");
+const multimedia = await getCollection("multimedia");
+const categories = [...new Set(articles.map((article) => article.data.category))];
+
+const baseUrl = import.meta.env.BASE_URL;
+const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+---
+
+<header class="font-inter group relative bg-white">
+  <!-- Row 1: Search, Subscribe, Log In -->
+  <div class="container mx-auto px-4 py-2 border-b border-gray-300">
+    <div class="flex justify-between items-center">
+      <!-- Left: Search Icon -->
+      <div class="flex items-center space-x-3">
+        <SearchButton client:load />
+        <ReadingListButton client:load />
+      </div>
+
+      <!-- Right: Buttons -->
+      <div class="flex items-center space-x-3">
+        <a
+          href={`${baseUrl}signup`}
+          data-skip-tracking="true"
+          class="bg-gray-800 text-white text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-700"
+        >
+          Sign up
+        </a>
+        <a
+          href={`${baseUrl}signin`}
+          data-skip-tracking="true"
+          class="bg-gray-500 text-white text-xs font-semibold py-2 px-3 rounded hover:bg-gray-400"
+        >
+          Sign in
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Date, Logo, Stock -->
+  <div class="container mx-auto px-4 py-3">
+    <div class="grid grid-cols-3 items-center">
+      <!-- Left Section: Date -->
+      <div class="text-xs">
+        <p class="font-semibold">{todaysDate}</p>
+      </div>
+
+      <!-- Center Section: Logo -->
+      <div class="text-center">
+        <a href={`${import.meta.env.BASE_URL}`}>
+          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" class="w-80 h-auto mx-auto" />
+        </a>
+      </div>
+
+      <!-- Right Section: Stock -->
+      <div class="text-xs font-semibold text-right">
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar -->
+  <BottomNav client:load categories={categories} articles={articles} reports={reports} multimedia={multimedia} />
+</header>

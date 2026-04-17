@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './test-fixture.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
@@ -14,7 +14,6 @@ if (!targetFile) {
 const filePath = path.resolve(targetFile);
 const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
-const demoUrl = `http://localhost/${demoName}`;
 const htmlStr = fs.readFileSync(filePath, 'utf-8');
 
 // Initialize a static parser
@@ -76,30 +75,31 @@ test.describe(`<guide-name> Expectations: ${demoName}`, () => {
   //   expect(hasVar).toBe(true);
   // });
 
-
   // --- BROWSER ASSERTIONS ---
   // Use browser assertions ONLY when you need to compute real layout boxes, evaluate dynamic page scripts, interact with elements, or verify rendered visibility.
   
-test.describe('Browser tests', () => {
+  test.describe('Browser tests', () => {
+    // Setup browser testing
+    test.beforeEach(async ({ page, TARGET_URL }) => {
+      // Only mock local routes if it's a file-based demo, else let the dev server handle it
+      if (TARGET_URL.startsWith('http://localhost/')) {
+        await page.route('http://localhost/*', async (route) => {
+          const requestPath = new URL(route.request().url()).pathname;
+          const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
 
-    test.beforeEach(async ({ page }) => {
-      await page.route('http://localhost/*', async (route) => {
-        const requestPath = new URL(route.request().url()).pathname;
-        const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
-
-        if (fs.existsSync(localFilePath)) {
-          await route.fulfill({ path: localFilePath });
-        } else {
-          await route.continue();
-        }
-      });
-
-      await page.goto(demoUrl);
+          if (fs.existsSync(localFilePath)) {
+            await route.fulfill({ path: localFilePath });
+          } else {
+            await route.continue();
+          }
+        });
+      }
+      
+      await page.goto(TARGET_URL);
     });
 
     test(`<test-case-name>`, async ({ page }) => {
       // example: await expect(page.locator('button')).toBeVisible();
     });
   });
-
 });

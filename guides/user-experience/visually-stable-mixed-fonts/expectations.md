@@ -1,0 +1,4 @@
+- In the mixed fonts container (`#mixed-fonts-container`), `font-size-adjust` is applied to the text container.
+- In the mixed fonts container (`#mixed-fonts-container`), the `from-font` keyword is used to automatically extract font metrics from the primary font.
+- A `@supports` rule or other fallback strategy is provided for browsers that do not support `font-size-adjust`.
+- In the independent theme container (`#independent-theme-container`), the `font-size-adjust` property is applied with a specific numeric value to normalize proportions independently.

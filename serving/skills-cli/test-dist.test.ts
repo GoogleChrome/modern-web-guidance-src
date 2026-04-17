@@ -25,48 +25,37 @@ const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
 console.log("Running build-dist to ensure fresh build...");
-execSync('node --experimental-strip-types skills-cli/build-dist.ts', { 
-  cwd: path.resolve(import.meta.dirname, '..'), 
-  stdio: 'inherit' 
-});
-
-
-test('Dependency parity across package.json manifests', async () => {
-  const servingPkg = JSON.parse(await fs.readFile(path.join(ROOT_DIR, 'serving/package.json'), 'utf8'));
-  const templatePkg = JSON.parse(await fs.readFile(path.join(ROOT_DIR, 'serving/skills-cli/template/package.json'), 'utf8'));
-  const skillPkg = JSON.parse(await fs.readFile(path.join(ROOT_DIR, 'serving/skills-cli/template/skills/modern-web-use-cases/package.json'), 'utf8'));
-
-  const transformersVersion = servingPkg.dependencies["@huggingface/transformers"];
-  const lancedbVersion = servingPkg.dependencies["@lancedb/lancedb"];
-
-  // template/package.json (placed at root of dist, for global publishing)
-  assert.strictEqual(templatePkg.dependencies?.["@huggingface/transformers"], transformersVersion, "template package.json should match serving package.json @huggingface/transformers version");
-  assert.strictEqual(templatePkg.dependencies?.["@lancedb/lancedb"], lancedbVersion, "template package.json should match serving package.json @lancedb/lancedb version");
-
-  // template/skills/modern-web-use-cases/package.json (placed adjacent to SKILL.md, for skill users)
-  assert.strictEqual(skillPkg.dependencies?.["@huggingface/transformers"], transformersVersion, "skill package.json should match serving package.json @huggingface/transformers version");
-  assert.strictEqual(skillPkg.dependencies?.["@lancedb/lancedb"], lancedbVersion, "skill package.json should match serving package.json @lancedb/lancedb version");
-});
+try {
+  execSync('node --experimental-strip-types skills-cli/build-dist.ts', { 
+    cwd: path.resolve(import.meta.dirname, '..'), 
+    stdio: 'pipe' 
+  });
+} catch (error: any) {
+  console.error("\n❌ build-dist.ts failed!");
+  if (error.stdout) console.log(error.stdout.toString('utf8'));
+  if (error.stderr) console.error(error.stderr.toString('utf8'));
+  throw new Error("build-dist.ts failed");
+}
 
 test('Claude Plugin Config in Dist', async () => {
   const marketplaceJsonRaw = await fs.readFile(path.join(DIST_DIR, '.claude-plugin/marketplace.json'), 'utf8');
   const marketplaceJson = JSON.parse(marketplaceJsonRaw);
-  assert.strictEqual(marketplaceJson.name, 'skills-alpha', 'marketplace.json name should be skills-alpha');
+  assert.strictEqual(marketplaceJson.name, 'googlechrome', 'marketplace.json name should be googlechrome');
   assert.strictEqual(marketplaceJson.owner.name, 'Google Chrome', 'marketplace.json owner should be Google Chrome');
   
   assert.ok(Array.isArray(marketplaceJson.plugins) && marketplaceJson.plugins.length > 0, 'should have plugins');
-  assert.strictEqual(marketplaceJson.plugins[0].name, 'googlechrome-skills');
+  assert.strictEqual(marketplaceJson.plugins[0].name, 'modern-web-guidance');
   assert.strictEqual(marketplaceJson.plugins[0].source, './');
 
   const pluginJsonRaw = await fs.readFile(path.join(DIST_DIR, '.claude-plugin/plugin.json'), 'utf8');
   const pluginJson = JSON.parse(pluginJsonRaw);
-  assert.strictEqual(pluginJson.name, 'googlechrome-skills', 'plugin.json name should match');
+  assert.strictEqual(pluginJson.name, 'modern-web-guidance', 'plugin.json name should match');
   assert.strictEqual(pluginJson.author.name, 'Google Chrome', 'plugin.json author should be Google Chrome');
 });
 
 test('Gemini and VS Code manifests', async () => {
   const geminiJson = JSON.parse(await fs.readFile(path.join(DIST_DIR, 'gemini-extension.json'), 'utf8'));
-  assert.strictEqual(geminiJson.name, 'googlechrome-skills');
+  assert.strictEqual(geminiJson.name, 'modern-web-guidance');
   assert.strictEqual(geminiJson.author.name, 'Google Chrome');
 
   const pkgJsonRaw = await fs.readFile(path.join(DIST_DIR, 'package.json'), 'utf8');

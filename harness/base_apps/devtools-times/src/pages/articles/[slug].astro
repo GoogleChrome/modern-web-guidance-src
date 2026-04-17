@@ -1,0 +1,143 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Ad from '../../components/AdSlotBanner.tsx';
+import Comments from '../../components/Comments.tsx';
+import { getCollection, getEntry } from 'astro:content';
+import type { GetStaticPaths } from 'astro';
+import { Image } from 'astro:assets';
+import { getArticleImage } from '../../utils/images';
+import BookmarkButton from '../../components/BookmarkButton.tsx';
+import ArticleTeaser from '../../components/ArticleTeaser.astro';
+
+export const getStaticPaths = (async () => {
+  const articles = await getCollection('articles');
+  return articles.map(article => ({
+    params: { slug: article.slug },
+  }));
+}) satisfies GetStaticPaths;
+
+const { slug } = Astro.params;
+if (!slug) throw new Error('Slug not found');
+
+const article = await getEntry('articles', slug);
+if (!article) return Astro.redirect('/404');
+
+// Fetch comments for the current article
+let commentCount = 0;
+try {
+    const commentsResponse = await fetch(new URL(`/api/comments/${slug}.json`, Astro.url));
+    if (commentsResponse.ok) {
+        const comments = await commentsResponse.json();
+        commentCount = comments.length;
+    }
+} catch (e) {
+    console.error("Could not fetch comments for article", e);
+}
+
+
+const { Content } = await article.render();
+const allArticles = await getCollection('articles');
+const relatedArticles = allArticles.filter(a => a.slug !== article.slug).slice(0, 3);
+
+const articleImage = await getArticleImage(article);
+const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+const readingList = await Astro.session?.get('readingList') || [];
+const isBookmarked = readingList.includes(article.slug);
+---
+
+<Layout title={article.data.title}>
+    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+        <!-- Breadcrumbs/Category -->
+        <div class="text-base text-gray-600 font-semibold mb-2">
+            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+        </div>
+
+        <!-- Headline -->
+        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+            {article.data.title}
+        </h1>
+        
+        <!-- Sub-headline / Lead Paragraph -->
+        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
+            {article.data.summary}
+        </p>
+
+        <!-- Author / Date -->
+        <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
+        </div>
+
+        <!-- Main Article Image -->
+        <figure class="mb-5">
+            {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+            {article.data.prompt_comment ? (
+                <img 
+                    src={article.data.image}
+                    alt={article.data.title}
+                    width="1200"
+                    height="675"
+                    class="w-full h-auto"
+                    crossorigin="use-credentials"
+                />
+            ) : (
+                <Image 
+                    src={articleImage} 
+                    alt={article.data.title} 
+                    width={1200}
+                    height={675}
+                    format="webp"
+                    class="w-full h-auto"
+                />
+            )}
+            {article.data.image_caption && (
+                <figcaption class="text-xs text-gray-500 mt-2 px-2">
+                    {article.data.image_caption}
+                </figcaption>
+            )}
+        </figure>
+
+        <!-- Share Buttons & Comments -->
+        <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+            <!-- Social Share Icons (Placeholders) -->
+            <div class="flex space-x-3 items-center">
+                <span class="text-sm font-semibold text-gray-800">Share:</span>
+                <a href="#" class="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-lg">f</a>
+                <a href="#" class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg">X</a>
+                <a href="#" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.001 2.002a7.994 7.994 0 00-6.43 12.868l-1.564 1.563a.5.5 0 00.707.707l1.564-1.564a7.994 7.994 0 105.722-13.574zm0 14.986a6.994 6.994 0 110-13.988 6.994 6.994 0 010 13.988zM6.58 8.016a.5.5 0 00-.707 0L4.5 9.387A3.5 3.5 0 007.485 14.5l.34-.34a.5.5 0 000-.707l-.34-.34a2.5 2.5 0 01-.702-2.31l1.693-1.693a.5.5 0 000-.707L6.58 8.016zM13.42 11.98a.5.5 0 00.707 0l1.372-1.373a3.5 3.5 0 00-2.985-5.113l-.34.34a.5.5 0 000 .707l.34.34a2.5 2.5 0 01.703 2.31l-1.694 1.693a.5.5 0 000 .707l1.89 1.89z"/></svg>
+                </a>
+                <a href="#" class="w-8 h-8 rounded-full bg-gray-600 text-white flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 10.884l7.997-5V4H2.003v1.884zM18 6.116l-8 4.05-8-4.05V16h16V6.116zM2 4h16v-1c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v1z"/></svg>
+                </a>
+                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
+            </div>
+            <!-- Comments Link -->
+            <a href="#comments" class="flex items-center space-x-1 text-sm font-semibold text-gray-700 hover:text-amber-400">
+                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443h2.284M7.5 12h.008M12 12h.008m3.75 0h.008m4.5-4.22V12a10.5 10.5 0 0 1-10.5 10.5c-5.798 0-10.5-4.702-10.5-10.5S4.202 1.5 10 1.5c4.628 0 8.59 3.067 9.938 7.22Z" />
+                </svg>
+                <span>{commentCount} Comments</span>
+            </a>
+        </div>
+
+        <!-- Article Body Content -->
+        <div class="prose max-w-none">
+            <Content />
+        </div>
+
+        <!-- ADVERTISEMENT -->
+        <section class="p-4 md:p-6 text-center">
+            <Ad client:load />
+        </section>
+    </article>
+
+    <!-- RELATED ARTICLES SECTION -->
+    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
+        <div class="grid md:grid-cols-3 gap-6">
+            {relatedArticles.map((related_article) => <ArticleTeaser article={related_article} />)}
+        </div>
+    </section>
+
+    <!-- Comments Section -->
+    <Comments slug={article.slug} client:visible />
+</Layout>

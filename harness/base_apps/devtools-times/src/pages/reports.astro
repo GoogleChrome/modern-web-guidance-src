@@ -1,0 +1,21 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+
+const reports = await getCollection('reports');
+---
+<Layout title="Reports">
+    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
+        <div class="prose max-w-none">
+            <p>Read our latest reports.</p>
+            <ul>
+                {reports.map(report => (
+                    <li>
+                        <a href={`/reports/${report.slug}`}>{report.data.title}</a>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    </div>
+</Layout>

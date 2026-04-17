@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scroll-Driven Animations: Carousel Item Effects</title>
+  <script src="https://unpkg.com/scroll-timeline-polyfill"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      height: 100%;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .scroller {
+      display: flex;
+      overflow-x: scroll;
+      border: 1px solid black;
+      padding: 1rem;
+      width: 800px;
+      max-width: 90vw;
+      list-style: none;
+    }
+    @keyframes animate {
+      0% {
+        width: 100px;
+        height: 150px;
+      }
+      100% {
+        width: 300px;
+        height: 450px;
+      }
+    }
+    .entry {
+      flex-shrink: 0;
+      border: 1px solid black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      animation-timeline: scroll(inline);
+      animation: animate 1s linear;
+    }
+  </style>
+</head>
+<body>
+  <ul class="scroller">
+    <li class="entry">1</li>
+    <li class="entry">2</li>
+    <li class="entry">3</li>
+    <li class="entry">4</li>
+    <li class="entry">5</li>
+    <li class="entry">6</li>
+    <li class="entry">7</li>
+    <li class="entry">8</li>
+    <li class="entry">9</li>
+    <li class="entry">10</li>
+  </ul>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../test-fixture.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
