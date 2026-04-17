@@ -3,11 +3,11 @@ import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { Agents, type SuiteConfig } from '../config.ts';
-import { guidesDir } from '../../lib/paths.ts';
 import { getTaskMap } from '../../lib/guide-validation.ts';
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
+import { getGraderScriptContent } from './agent-shared.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string): boolean {
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson);
@@ -109,43 +109,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
 
       // Generate a runner script to be picked up by pnpm -r run-grader
       // We import runPlaywright directly from the guides code to leverage existing test execution logic
-      const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
-      const gradeScript = `
-import fs from 'fs';
-import { spawnSync } from 'child_process';
-import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
-
-async function run() {
-  try {
-    const pkgJsonPath = ${JSON.stringify(targetPkgJson)};
-    if (fs.existsSync(pkgJsonPath)) {
-      const installResult = spawnSync('pnpm', ['install', '--no-frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
-        cwd: ${JSON.stringify(dir)},
-        stdio: 'inherit',
-        shell: true,
-        env: { ...process.env, CI: 'true' }
-      });
-      if (installResult.status !== 0) {
-        console.error("pnpm install failed");
-        process.exit(1);
-      }
-    }
-
-    const json = await runPlaywright(
-      ${JSON.stringify(targetFile)},
-      ${JSON.stringify(graderPath)},
-      ${JSON.stringify(path.join(dir, 'grade-report'))},
-      'inherit'
-    );
-    fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
-  } catch (err) {
-    console.error("Playwright test execution failed:", err);
-    process.exit(1); 
-  }
-}
-
-run();
-`.trim();
+      const gradeScript = getGraderScriptContent(dir, graderPath, guide);
       const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
       fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
       let pkgJsonObj: any = {

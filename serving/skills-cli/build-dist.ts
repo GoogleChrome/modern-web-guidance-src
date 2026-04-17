@@ -107,7 +107,7 @@ async function main(): Promise<BuildResult | undefined> {
   try {
     console.log("Bundling search.mjs...");
     // To analyze bundle size breakdown, assign build()s return to `result` and use `esbuild.analyzeMetafile(result.metafile)`
-    await esbuild.build({
+    const resultSearch = await esbuild.build({
       entryPoints: [path.join(SERVING_DIR, "lib/search.ts")],
       bundle: true,
       platform: "node",
@@ -145,7 +145,7 @@ async function main(): Promise<BuildResult | undefined> {
     });
 
     console.log("Bundling modern-web.mjs...");
-    await esbuild.build({
+    const resultModernWeb = await esbuild.build({
       entryPoints: [path.join(SERVING_DIR, "bin/modern-web.ts")],
       bundle: true,
       platform: "node",
@@ -160,7 +160,14 @@ async function main(): Promise<BuildResult | undefined> {
         },
       }],
       loader: { ".node": "file" },
+      metafile: true,
     });
+
+    console.log("Generating THIRD_PARTY_NOTICES...");
+    generateThirdPartyNotices(
+      [resultSearch.metafile, resultModernWeb.metafile],
+      path.join(PUBLISH_ROOT, "THIRD_PARTY_NOTICES")
+    );
 
   } catch (error) {
     console.error("Failed to bundle with esbuild:", error);
@@ -270,6 +277,64 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   }
 
   return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
+}
+
+function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath: string) {
+  const allowedLicenses = ['MIT', 'Apache 2.0', 'Apache-2.0', 'BSD-3-Clause', 'BSD-2-Clause', 'ISC', '0BSD'];
+  const paths = new Set<string>();
+  
+  for (const metafile of metafiles) for (const p of Object.keys(metafile.inputs)) paths.add(p);
+
+  const nodeModules = new Map<string, string>();
+  for (const filePath of paths) {
+    if (!filePath.includes('node_modules')) continue;
+
+    const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(SERVING_DIR, filePath);
+    let dir = path.dirname(absolutePath);
+    let pkgJsonPath;
+
+    while (dir.startsWith(rootDir) && dir !== rootDir) {
+      const candidate = path.join(dir, 'package.json');
+      if (fs.existsSync(candidate)) {
+        pkgJsonPath = candidate;
+        break;
+      }
+      dir = path.dirname(dir);
+    }
+
+    if (pkgJsonPath && pkgJsonPath.includes('node_modules')) {
+      const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+      if (pkg.name && pkg.name !== 'guidance') nodeModules.set(pkg.name, path.dirname(pkgJsonPath));
+    }
+  }
+
+  const divider = '\n\n-------------------- DEPENDENCY DIVIDER --------------------\n\n';
+
+  const stringifiedDependencies = Array.from(nodeModules.keys()).sort().map(name => {
+    const nodeModulePath = nodeModules.get(name)!;
+    const dependency = JSON.parse(fs.readFileSync(path.join(nodeModulePath, 'package.json'), 'utf-8'));
+    
+    const licenseFilePaths = ['LICENSE', 'LICENSE.txt', 'LICENSE.md', 'LICENSE.MIT', 'LICENSE.APACHE'].map(f => path.join(nodeModulePath, f));
+    const licenseFile = licenseFilePaths.find(f => fs.existsSync(f));
+    if (licenseFile) dependency.licenseText = fs.readFileSync(licenseFile, 'utf-8');
+    
+    const license = dependency.license ?? 'N/A';
+    if (!allowedLicenses.includes(license)) throw new Error(`Unapproved license for dependency ${name}: ${license}`);
+
+    let url = dependency.homepage ?? dependency.repository;
+    if (url && typeof url === 'object') url = url.url;
+
+    return [
+      `Name: ${dependency.name ?? 'N/A'}`,
+      `URL: ${url ?? 'N/A'}`,
+      `Version: ${dependency.version ?? 'N/A'}`,
+      `License: ${license}`,
+      ...(dependency.licenseText ? ['', dependency.licenseText.replaceAll('\r', '')] : [])
+    ].join('\n');
+  }).join(divider);
+
+  fs.writeFileSync(outputFilePath, stringifiedDependencies);
+  console.log(`Generated THIRD_PARTY_NOTICES at ${outputFilePath}`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
