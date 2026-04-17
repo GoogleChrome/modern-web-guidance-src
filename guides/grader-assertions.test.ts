@@ -95,8 +95,8 @@ describe('Grader Assertions - CSSOM + DOM Integration', () => {
     const target = document.querySelector('#hero');
     
     // In a perfect world, we have a getComputedStyle-like function
-    // const computedStyle = getComputedStyleStatically(target, rules);
-    // assert.strictEqual(computedStyle.getPropertyValue('color'), 'blue');
+    const computedStyle = getComputedStyleStatically(target, rules);
+    assert.strictEqual(computedStyle.getPropertyValue('color'), 'blue');
   });
 
   test.skip('Case 5: Advanced Selector Matching (:has) (Perfect World)', () => {
@@ -116,9 +116,9 @@ describe('Grader Assertions - CSSOM + DOM Integration', () => {
     const containers = document.querySelectorAll('.container');
     
     // In a perfect world, querySelectorAll supports :has()
-    // const matched = document.querySelectorAll('.container:has(p)');
-    // assert.strictEqual(matched.length, 1);
-    // assert.strictEqual(matched[0], containers[0]);
+    const matched = document.querySelectorAll('.container:has(p)');
+    assert.strictEqual(matched.length, 1);
+    assert.strictEqual(matched[0], containers[0]);
   });
 
   test.skip('Case 6: Anchor Positioning Resolution (Perfect World)', () => {
@@ -141,8 +141,8 @@ describe('Grader Assertions - CSSOM + DOM Integration', () => {
     const tooltip = document.querySelector('#tooltip');
     
     // In a perfect world, we can resolve anchor positioning
-    // const computedStyle = getComputedStyleStatically(tooltip, rules);
-    // assert.strictEqual(computedStyle.getPropertyValue('top'), '<resolved pixel value>');
+    const computedStyle = getComputedStyleStatically(tooltip, rules);
+    assert.strictEqual(computedStyle.getPropertyValue('top'), '<resolved pixel value>');
   });
 });
 
