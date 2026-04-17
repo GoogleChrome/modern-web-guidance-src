@@ -19,9 +19,9 @@
     "**/node_modules",
     "**/dist",
     "**/test-app-results/**",
-    "**/test-app-results/**",
     "harness/results/",
     "**/eval-view",
-    "**/eval-view/**/*"
+    "**/eval-view/**/*",
+    "harness/base_apps/devtools-times/"
   ]
 }
