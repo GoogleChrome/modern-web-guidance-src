@@ -109,8 +109,8 @@ For browsers that do not support these features, elements will toggle `display: 
 
 ```javascript
 // Detect support for discrete transitions and starting-style
-const supportsModernTransitions = 
-  window.CSS && 
+const supportsModernTransitions =
+  window.CSS &&
   CSS.supports('transition-behavior', 'allow-discrete');
 
 if (!supportsModernTransitions) {
