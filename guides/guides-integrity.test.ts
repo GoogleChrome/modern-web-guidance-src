@@ -63,6 +63,14 @@ describe('Guides Validation (Single Source of Truth)', () => {
       } catch (e) {
         assert.fail(`Marked parsing failed: ${e}`);
       }
+
+      // 4. Check for git conflict markers
+      const conflictMarkers = ['<<<<<<<', '=======', '>>>>>>>'];
+      for (const marker of conflictMarkers) {
+        if (content.includes(marker)) {
+          assert.fail(`File contains git conflict marker "${marker}" in ${relativeDir}`);
+        }
+      }
     });
   }
 });
