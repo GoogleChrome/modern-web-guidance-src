@@ -290,6 +290,8 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
     '0BSD',
   ];
 
+  const workspacePackages = new Set(['guidance', 'serving', 'harness', 'eval-view', 'guides']);
+
   const paths = new Set<string>();
   for (const metafile of metafiles) {
     for (const p of Object.keys(metafile.inputs)) {
@@ -321,7 +323,7 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
 
     if (pkgJsonPath) {
       const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
-      if (pkg.name && pkg.name !== 'guidance') {
+      if (pkg.name && !workspacePackages.has(pkg.name)) {
         nodeModules.set(pkg.name, path.dirname(pkgJsonPath));
       }
     }
