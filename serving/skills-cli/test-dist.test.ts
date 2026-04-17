@@ -135,3 +135,18 @@ test('modern-web CLI search and retrieve', async () => {
   assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
 });
 
+test('THIRD_PARTY_NOTICES validation', async () => {
+  const noticesPath = path.join(DIST_DIR, 'THIRD_PARTY_NOTICES');
+  await assert.doesNotReject(fs.access(noticesPath), `Missing THIRD_PARTY_NOTICES in dist`);
+
+  const content = await fs.readFile(noticesPath, 'utf8');
+  
+  // Check for some expected dependencies
+  assert.ok(content.includes('Name: @tensorflow/tfjs-core'), 'Should contain @tensorflow/tfjs-core');
+  assert.ok(content.includes('Name: @huggingface/transformers'), 'Should contain @huggingface/transformers');
+  
+  // Check structure
+  assert.ok(content.includes('-------------------- DEPENDENCY DIVIDER --------------------'), 'Should contain dividers');
+});
+
+

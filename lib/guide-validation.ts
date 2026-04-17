@@ -247,56 +247,67 @@ export function getTaskMap(): Map<string, TaskInfo> {
   const taskMap = new Map<string, TaskInfo>();
   if (!fs.existsSync(guidesDir)) return taskMap;
 
-  const categories = fs.readdirSync(guidesDir, { withFileTypes: true })
+  function processTasks(guideName: string, tasksDir: string, guideDir: string) {
+    let defaultPrompt: string | null = null;
+
+    for (const taskEntry of fs.readdirSync(tasksDir, { withFileTypes: true })) {
+      if (taskEntry.isDirectory() || !taskEntry.name.endsWith('.md')) continue;
+      const taskFileName = taskEntry.name;
+      const taskName = path.basename(taskFileName, '.md');
+      const taskPath = path.join(tasksDir, taskFileName);
+
+      const rawContent = readFileSafe(taskPath);
+      if (!rawContent) continue;
+
+      const { data, content } = matter(rawContent);
+
+      const firstLine = content.split('\n').find((l: string) => l.trim().startsWith('- '));
+      const prompt = firstLine ? firstLine.replace(/^-\s*/, '').trim() : content.trim();
+
+      const info: TaskInfo = {
+        baseApp: data?.base_app || 'daily-grind',
+        prompt: prompt,
+        guideDir: guideDir,
+      };
+
+      if (taskName === 'task') {
+        defaultPrompt = prompt;
+      }
+
+      taskMap.set(`${guideName}/${taskName}`, info);
+    }
+
+    if (defaultPrompt) {
+      taskMap.set(`${guideName}/negative`, {
+        baseApp: NEGATIVE_DEMO_FILE,
+        prompt: defaultPrompt,
+        guideDir: guideDir,
+      });
+    }
+  }
+
+  const disciplines = fs.readdirSync(guidesDir, { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
     .map(d => d.name);
 
-  for (const category of categories) {
-    const categoryDir = path.join(guidesDir, category);
-    if (!fs.existsSync(categoryDir)) continue;
-    for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
+  for (const discipline of disciplines) {
+    const disciplineDir = path.join(guidesDir, discipline);
+    if (!fs.existsSync(disciplineDir)) continue;
+
+    // Check if the discipline itself is a skill with tasks
+    const disciplineTasksDir = path.join(disciplineDir, 'tasks');
+    if (fs.existsSync(disciplineTasksDir)) {
+      processTasks(discipline, disciplineTasksDir, disciplineDir);
+    }
+
+    // Check subdirectories (guides)
+    for (const entry of fs.readdirSync(disciplineDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       const guideName = entry.name;
-      const tasksDir = path.join(categoryDir, guideName, 'tasks');
+      const tasksDir = path.join(disciplineDir, guideName, 'tasks');
       if (!fs.existsSync(tasksDir)) continue;
 
-      let defaultPrompt: string | null = null;
-
-      for (const taskEntry of fs.readdirSync(tasksDir, { withFileTypes: true })) {
-        if (taskEntry.isDirectory() || !taskEntry.name.endsWith('.md')) continue;
-        const taskFileName = taskEntry.name;
-        const taskName = path.basename(taskFileName, '.md');
-        const taskPath = path.join(tasksDir, taskFileName);
-
-        const rawContent = readFileSafe(taskPath);
-        if (!rawContent) continue;
-
-        const { data, content } = matter(rawContent);
-
-        // We take the first prompt from the list (which might be the first line that starts with - or just the first line)
-        const firstLine = content.split('\n').find((l: string) => l.trim().startsWith('- '));
-        const prompt = firstLine ? firstLine.replace(/^-\s*/, '').trim() : content.trim();
-
-        const info: TaskInfo = {
-          baseApp: data?.base_app || 'daily-grind',
-          prompt: prompt,
-          guideDir: path.join(categoryDir, guideName),
-        };
-
-        if (taskName === 'task') {
-          defaultPrompt = prompt;
-        }
-
-        taskMap.set(`${guideName}/${taskName}`, info);
-      }
-
-      if (defaultPrompt) {
-        taskMap.set(`${guideName}/negative`, {
-          baseApp: NEGATIVE_DEMO_FILE,
-          prompt: defaultPrompt,
-          guideDir: path.join(categoryDir, guideName),
-        });
-      }
+      processTasks(guideName, tasksDir, path.join(disciplineDir, guideName));
     }
   }
   return taskMap;
@@ -309,9 +320,13 @@ export function inventoryGuide(dir: string): GuideInventory {
   const expectationsContent = readFileSafe(path.join(dir, EXPECTATIONS_FILE));
   const hasExpectations = fs.existsSync(path.join(dir, EXPECTATIONS_FILE));
 
-  const guideContent = readFileSafe(path.join(dir, GUIDE_FILE));
+  let guideContent = readFileSafe(path.join(dir, GUIDE_FILE));
   let hasGuide = false;
   let isStub = false;
+
+  if (!guideContent) {
+    guideContent = readFileSafe(path.join(dir, 'SKILL.md'));
+  }
 
   if (guideContent) {
     const parsed = matter(guideContent);

@@ -29,13 +29,13 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
       throw new Error('TARGET_FILE environment variable not set.');
     }
     
-    if (!fs.existsSync(targetFile)) {
-      throw new Error(`Target file not found: ${targetFile}`);
-    }
-    
     const targetDir = path.dirname(targetFile);
     const pkgJsonPath = path.join(targetDir, 'package.json');
     const demoName = path.basename(targetFile);
+
+    if (!fs.existsSync(pkgJsonPath) && !fs.existsSync(targetFile)) {
+      throw new Error(`Target file not found: ${targetFile}`);
+    }
 
     console.log(`[TEST-FIXTURE] targetFile: ${targetFile}`);
     console.log(`[TEST-FIXTURE] targetDir: ${targetDir}`);

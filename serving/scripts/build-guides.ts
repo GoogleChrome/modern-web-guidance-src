@@ -13,7 +13,7 @@ export interface StoreUseCase {
   distance?: number;
 }
 import { replaceMacros } from "../lib/macros.ts";
-import { scanAllGuides } from "../../lib/guide-validation.ts";
+import { scanAllGuides, type GuideInventory } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
@@ -32,7 +32,7 @@ async function processGuides() {
   const force = process.argv.includes("--force");
 
   // Scan guides first to see if we even need to run
-  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
+  let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
 
   const VECTORS_FILE = path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
 
@@ -56,7 +56,8 @@ async function processGuides() {
     }
 
     if (!anyGuideNewer) {
-      console.log("No guides or script modified since last build. Skipping guide build.");
+      // No guides or script modified since last build. Skipping guide build
+      console.log("👌");
       return;
     }
   }
@@ -82,13 +83,9 @@ async function processGuides() {
   const embedder = Embedder.getInstance(modelName);
   await embedder.init();
 
-  console.log("Generating embeddings of guides/*/* ");
-
-
-
   if (targetGuidePath) {
     // Single guide mode
-    let absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
+    const absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
     console.log(`Building single guide from: ${absoluteTargetPath}`);
 
     const guidePath = path.join(absoluteTargetPath, "guide.md");
@@ -97,23 +94,14 @@ async function processGuides() {
     }
 
     const category = path.basename(path.dirname(absoluteTargetPath));
-    const id = path.basename(absoluteTargetPath);
-    await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases, embedder);
-  } else {
-    // Batch process all guides
+    const name = path.basename(absoluteTargetPath);
+    readyGuides = [{dir: absoluteTargetPath, name, category, hasGuide: true} as GuideInventory];
+  }
 
-    if (readyGuides.length === 0) {
-      console.log("No guides found.");
-    }
-
-    for (const inv of readyGuides) {
-      const guideDir = inv.dir;
-      const guidePath = path.join(guideDir, "guide.md");
-      const id = inv.name;
-      const category = inv.category;
-
-      await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases, embedder);
-    }
+  console.log("Generating embeddings…");
+  for (const inv of readyGuides) {
+    const guidePath = path.join(inv.dir, "guide.md");
+    await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder);
   }
 
   // Generate TypeScript file

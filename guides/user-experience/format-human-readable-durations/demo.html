@@ -286,20 +286,23 @@
     const codeSnippet = document.getElementById('codeSnippet');
     const unsupportedBanner = document.getElementById('unsupportedBanner');
 
-    // Check Support
-    if (typeof Temporal === 'undefined') {
-      import('@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill }) => {
-        globalThis.Temporal = TemporalPolyfill;
+    (async () => {
+      // Check Support and load polyfill if needed
+      if (typeof Temporal === 'undefined') {
+        try {
+          const module = await import("https://esm.sh/@js-temporal/polyfill");
+          globalThis.Temporal = module.Temporal;
+          initializeDemo();
+        } catch (e) {
+          console.error("Failed to load Temporal polyfill:", e);
+          unsupportedBanner.style.display = 'flex';
+          [hoursInput, minutesInput, secondsInput].forEach(el => el.disabled = true);
+          radioButtons.forEach(el => el.disabled = true);
+        }
+      } else {
         initializeDemo();
-      }).catch(err => {
-        console.error('Failed to load Temporal polyfill:', err);
-        unsupportedBanner.style.display = 'flex';
-        [hoursInput, minutesInput, secondsInput].forEach(el => el.disabled = true);
-        radioButtons.forEach(el => el.disabled = true);
-      });
-    } else {
-      initializeDemo();
-    }
+      }
+    })();
 
     function initializeDemo() {
       const inputs = [hoursInput, minutesInput, secondsInput];
