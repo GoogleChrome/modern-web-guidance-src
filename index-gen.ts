@@ -16,7 +16,7 @@ import { parseArgs, promisify } from 'node:util';
 
 const exec = promisify(execCb);
 import matter from 'gray-matter';
-import { scanAllGuides, processGuideInventory, classifyGuide } from './lib/guide-validation.ts';
+import { scanAllGuides, processGuideInventory, classifyGuide, type GuideStatus } from './lib/guide-validation.ts';
 import { rootDir, guidesDir } from './lib/paths.ts';
 
 // --- Types ---
@@ -25,8 +25,8 @@ type Column<R> = {
   heading?: string;
   /** Maps a scalar value to a URL. Applied per-element for arrays. MD only. */
   link?: (v: string) => string;
-  /** Custom MD display text. Overrides default rendering and link. */
-  md?: (r: R) => string | null;
+  /** Custom MD display. Function overrides default rendering. Set to false to hide column in MD. */
+  md?: ((r: R) => string | null) | false;
 };
 
 interface Source<R extends Record<string, unknown>> {
@@ -52,8 +52,8 @@ async function fetchIssues (label: string): Promise<any[]> {
   return JSON.parse(stdout);
 }
 
-type GitInfo = { lastUpdated: string | null; lastAuthor: string | null };
-const nullGitInfo: GitInfo = { lastUpdated: null, lastAuthor: null };
+type GitInfo = { lastUpdated: string | null; lastAuthor: string | null; lastAuthorEmail: string | null };
+const nullGitInfo: GitInfo = { lastUpdated: null, lastAuthor: null, lastAuthorEmail: null };
 
 /**
  * Batch-fetch last commit date and author for multiple directory paths.
@@ -66,12 +66,13 @@ async function batchGitInfo (paths: string[]): Promise<Map<string, GitInfo>> {
 
   try {
     const { stdout: log } = await exec(
-      `git log --format=COMMIT%x09%aI%x09%aN --name-only -- ${paths.join(' ')}`,
+      `git log --format=COMMIT%x09%aI%x09%aN%x09%aE --name-only -- ${paths.join(' ')}`,
       { cwd: rootDir, maxBuffer: 50 * 1024 * 1024 },
     );
 
     let date: string | null = null;
     let author: string | null = null;
+    let email: string | null = null;
 
     for (const line of log.split('\n')) {
       if (remaining === 0) {
@@ -79,9 +80,10 @@ async function batchGitInfo (paths: string[]): Promise<Map<string, GitInfo>> {
       }
 
       if (line.startsWith('COMMIT\t')) {
-        const [, d, a] = line.split('\t');
+        const [, d, a, e] = line.split('\t');
         date = d?.slice(0, 10) ?? null;
         author = a ?? null;
+        email = e ?? null;
       }
       else if (line && date) {
         for (const p of paths) {
@@ -89,6 +91,7 @@ async function batchGitInfo (paths: string[]): Promise<Map<string, GitInfo>> {
           if (!entry.lastUpdated && (line === p || line.startsWith(p + '/'))) {
             entry.lastUpdated = date;
             entry.lastAuthor = author;
+            entry.lastAuthorEmail = email;
             remaining--;
             break;
           }
@@ -99,6 +102,12 @@ async function batchGitInfo (paths: string[]): Promise<Map<string, GitInfo>> {
   catch { /* empty — returns nulls for any paths not found */ }
 
   return info;
+}
+
+/** Extract a GitHub username from a noreply email, or return null. */
+function githubUser (email: string | null): string | null {
+  const m = email?.match(/^(?:\d+\+)?(.+)@users\.noreply\.github\.com$/);
+  return m?.[1] ?? null;
 }
 
 /** Markdown link helper for issue numbers. */
@@ -173,21 +182,47 @@ async function buildGuideSource (): Promise<Source<any>> {
       md: (r: any) => `[\`${r.guide}\`](https://github.com/GoogleChrome/guidance/tree/main/guides/${r.guide})`,
     },
     name: {},
-    category: {},
+    category: {
+      md: (r: any) => r.category ? `[${r.category}](https://github.com/GoogleChrome/guidance/tree/main/guides/${r.category})` : null,
+    },
     description: {},
     featureIds: {
       heading: 'Feature IDs',
       link: (v: string) => `https://webstatus.dev/features/${v}`,
     },
-    status: {},
+    status: {
+      md: (r: any) => {
+        const emoji: Record<GuideStatus, string> = {
+          'eval-ready': '🟢',
+          'needs-test': '🟠',
+          'needs-calibration': '🟠',
+          'needs-expectations': '🟠',
+          'stub': '🟠',
+          'incomplete': '🔴',
+        };
+        return `${emoji[r.status as GuideStatus] ?? ''} ${r.status}`;
+      },
+    },
     has: {},
     lastUpdated: { heading: 'Updated' },
-    lastAuthor: { heading: 'Author' },
+    lastAuthor: {
+      heading: 'Author',
+      md: (r: any) => {
+        if (!r.lastAuthor) return null;
+        const user = githubUser(r.lastAuthorEmail);
+        return user ? `[${r.lastAuthor}](https://github.com/${user})` : r.lastAuthor;
+      },
+    },
     issueNumber: {
       heading: 'Issue',
-      md: (r: any) => issueLink(r.issueNumber),
+      md: (r: any) => {
+        const link = issueLink(r.issueNumber);
+        if (!link) return null;
+        const emoji = r.issueOpen ? '🟢' : '🟣';
+        return `${emoji} ${link}`;
+      },
     },
-    issueOpen: { heading: 'Issue Open' },
+    issueOpen: { heading: 'Issue Open', md: false as const },
   };
 
   return { dir: 'guides', title: 'Guide Index', rows, columns };
@@ -311,7 +346,7 @@ const formats: Record<string, Format> = {
   md: {
     ext: 'md',
     render ({ rows, columns, title }) {
-      const keys = Object.keys(columns);
+      const keys = Object.keys(columns).filter(k => columns[k].md !== false);
       const headings = keys.map(k => columns[k].heading ?? k);
       const separator = ', ';
       const empty = '—';
