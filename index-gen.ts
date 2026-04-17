@@ -11,8 +11,10 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
-import { parseArgs } from 'node:util';
+import { exec as execCb } from 'node:child_process';
+import { parseArgs, promisify } from 'node:util';
+
+const exec = promisify(execCb);
 import matter from 'gray-matter';
 import { scanAllGuides, processGuideInventory, classifyGuide } from './lib/guide-validation.ts';
 import { rootDir, guidesDir } from './lib/paths.ts';
@@ -42,29 +44,61 @@ type Format = {
 // --- Shared helpers ---
 
 /** Fetch GitHub issues by label, returning all matches. */
-function fetchIssues (label: string): any[] {
-  const json = execSync(
+async function fetchIssues (label: string): Promise<any[]> {
+  const { stdout } = await exec(
     `gh issue list -R GoogleChrome/guidance -l ${label} --state all --json number,title,body,state -L 10000`,
-    { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 },
+    { maxBuffer: 10 * 1024 * 1024 },
   );
-  return JSON.parse(json);
+  return JSON.parse(stdout);
 }
 
-/** Get last commit date and author for a path relative to the repo root. */
-function gitInfo (relativePath: string): { lastUpdated: string | null; lastAuthor: string | null } {
+type GitInfo = { lastUpdated: string | null; lastAuthor: string | null };
+const nullGitInfo: GitInfo = { lastUpdated: null, lastAuthor: null };
+
+/**
+ * Batch-fetch last commit date and author for multiple directory paths.
+ * Runs a single `git log --name-only` and maps each changed file back to its
+ * parent directory. Since git log outputs newest-first, the first match wins.
+ */
+async function batchGitInfo (paths: string[]): Promise<Map<string, GitInfo>> {
+  const info = new Map(paths.map(p => [p, { ...nullGitInfo }]));
+  let remaining = paths.length;
+
   try {
-    const logLine = execSync(`git log -1 --format=%aI%n%aN -- ${relativePath}`, {
-      encoding: 'utf-8',
-      cwd: rootDir,
-    }).trim();
-    const [date, author] = logLine.split('\n');
-    return {
-      lastUpdated: date ? date.slice(0, 10) : null,
-      lastAuthor: author || null,
-    };
-  } catch {
-    return { lastUpdated: null, lastAuthor: null };
+    const { stdout: log } = await exec(
+      `git log --format=COMMIT%x09%aI%x09%aN --name-only -- ${paths.join(' ')}`,
+      { cwd: rootDir, maxBuffer: 50 * 1024 * 1024 },
+    );
+
+    let date: string | null = null;
+    let author: string | null = null;
+
+    for (const line of log.split('\n')) {
+      if (remaining === 0) {
+        break;
+      }
+
+      if (line.startsWith('COMMIT\t')) {
+        const [, d, a] = line.split('\t');
+        date = d?.slice(0, 10) ?? null;
+        author = a ?? null;
+      }
+      else if (line && date) {
+        for (const p of paths) {
+          const entry = info.get(p)!;
+          if (!entry.lastUpdated && (line === p || line.startsWith(p + '/'))) {
+            entry.lastUpdated = date;
+            entry.lastAuthor = author;
+            remaining--;
+            break;
+          }
+        }
+      }
+    }
   }
+  catch { /* empty — returns nulls for any paths not found */ }
+
+  return info;
 }
 
 /** Markdown link helper for issue numbers. */
@@ -84,18 +118,26 @@ function serialize (v: unknown, separator: string): string {
 
 /** Build the guides index source. */
 async function buildGuideSource (): Promise<Source<any>> {
+  // Start async work early so it runs during sync scanning
+  const issuesPromise = fetchIssues('new-use-case');
+
   // Suppress the "dry run" log from sync-use-cases importing its env setup
   const origLog = console.log;
   console.log = () => {};
   const { buildUseCaseMaps } = await import('./guides/sync-use-cases.ts');
   console.log = origLog;
 
-  const allUseCases = fetchIssues('new-use-case');
-  const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(allUseCases);
-
   const guides = scanAllGuides();
   const { preparedGuides } = processGuideInventory(guides);
   const inventoryByName = new Map(guides.map(g => [g.name, g]));
+
+  // Await remaining async work in parallel
+  const [allUseCases, gitInfoMap] = await Promise.all([
+    issuesPromise,
+    batchGitInfo(preparedGuides.map(g => g.relativeSubdir)),
+  ]);
+
+  const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(allUseCases);
 
   const rows = preparedGuides.map(g => {
     const issue = nameToIssueMap.get(g.name) || subdirToIssueMap.get(g.relativeSubdir);
@@ -118,7 +160,7 @@ async function buildGuideSource (): Promise<Source<any>> {
       featureIds: g.featureIds,
       status: inv ? classifyGuide(inv) : 'incomplete',
       has,
-      ...gitInfo(g.relativeSubdir),
+      ...(gitInfoMap.get(g.relativeSubdir) ?? nullGitInfo),
       issueNumber: issue?.number ?? null,
       issueOpen: issue ? issue.state === 'OPEN' : null,
     };
@@ -178,8 +220,20 @@ function scanSkillsIn (dir: string, source: string): any[] {
 }
 
 /** Build the skills index source. */
-function buildSkillSource (): Source<any> {
-  const allIssues = fetchIssues('new-skill');
+async function buildSkillSource (): Promise<Source<any>> {
+  // Start async work early so it runs during sync scanning
+  const issuesPromise = fetchIssues('new-skill');
+
+  const skills = [
+    ...scanSkillsIn(guidesDir, 'guides'),
+    ...scanSkillsIn(path.join(rootDir, 'skills-drafts'), 'skills-drafts'),
+  ];
+
+  // Await remaining async work in parallel
+  const [allIssues, gitInfoMap] = await Promise.all([
+    issuesPromise,
+    batchGitInfo(skills.map(s => s.relativePath)),
+  ]);
 
   // Build issue lookup: extract directory name from body URLs or match by title
   const dirToIssue = new Map<string, any>();
@@ -190,11 +244,6 @@ function buildSkillSource (): Source<any> {
     }
   }
 
-  const skills = [
-    ...scanSkillsIn(guidesDir, 'guides'),
-    ...scanSkillsIn(path.join(rootDir, 'skills-drafts'), 'skills-drafts'),
-  ];
-
   const rows = skills.map(s => {
     const issue = dirToIssue.get(s.dir);
     return {
@@ -203,7 +252,7 @@ function buildSkillSource (): Source<any> {
       source: s.source,
       description: s.description,
       license: s.license,
-      ...gitInfo(s.relativePath),
+      ...(gitInfoMap.get(s.relativePath) ?? nullGitInfo),
       issueNumber: issue?.number ?? null,
       issueOpen: issue ? issue.state === 'OPEN' : null,
     };
@@ -231,7 +280,7 @@ function buildSkillSource (): Source<any> {
   return { dir: 'skills-drafts', title: 'Skill Index', rows, columns };
 }
 
-const sourceBuilders: Record<string, () => Source<any> | Promise<Source<any>>> = {
+const sourceBuilders: Record<string, () => Promise<Source<any>>> = {
   guides: buildGuideSource,
   skills: buildSkillSource,
 };
@@ -319,27 +368,36 @@ const { values, positionals } = parseArgs({
 const sourceNames = positionals.length > 0 ? positionals : Object.keys(sourceBuilders);
 const outputTypes = (values.type as string).split(',').map(s => s.trim());
 
-for (const sourceName of sourceNames) {
-  if (!(sourceName in sourceBuilders)) {
-    console.error(`Unknown source "${sourceName}". Use ${Object.keys(sourceBuilders).join(', ')}.`);
+for (const name of sourceNames) {
+  if (!(name in sourceBuilders)) {
+    console.error(`Unknown source "${name}". Use ${Object.keys(sourceBuilders).join(', ')}.`);
     process.exit(1);
   }
+}
 
-  process.stdout.write(`Building ${sourceName} index…`);
-  const t0 = performance.now();
-  const source = await sourceBuilders[sourceName]();
-  const buildMs = performance.now() - t0;
-  console.log(` ${source.rows.length} entries (${(buildMs / 1000).toFixed(1)}s)`);
+for (const t of outputTypes) {
+  if (!(t in formats)) {
+    console.error(`Unknown type "${t}". Use ${Object.keys(formats).join(', ')}.`);
+    process.exit(1);
+  }
+}
 
+// Build all sources in parallel
+console.log(`Building ${sourceNames.join(', ')}…`);
+const t0 = performance.now();
+const sources = await Promise.all(
+  sourceNames.map(async name => ({ name, source: await sourceBuilders[name]() })),
+);
+const totalMs = performance.now() - t0;
+
+for (const { name, source } of sources) {
+  console.log(`  ${name}: ${source.rows.length} entries`);
   for (const t of outputTypes) {
-    if (!(t in formats)) {
-      console.error(`Unknown type "${t}". Use ${Object.keys(formats).join(', ')}.`);
-      process.exit(1);
-    }
     const format = formats[t];
     const file = `index.${format.ext}`;
     const outPath = path.join(rootDir, source.dir, file);
     fs.writeFileSync(outPath, format.render(source));
-    console.log(`  → ${source.dir}/${file}`);
+    console.log(`    → ${source.dir}/${file}`);
   }
 }
+console.log(`Done in ${(totalMs / 1000).toFixed(1)}s`);
