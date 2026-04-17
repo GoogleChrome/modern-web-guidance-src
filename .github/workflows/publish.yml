@@ -70,10 +70,4 @@ jobs:
       #     npm publish --dry-run --provenance --access public --registry https://registry.npmjs.org/
       # =========================================================================
 
-      - name: Create and Push Tag
-        run: |
-          VERSION=$(node -p "require('./dist/skills-cli/package.json').version")
-          TAG="v$VERSION"
-          echo "Creating tag $TAG"
-          git tag $TAG
-          git push origin $TAG
+

@@ -93,6 +93,15 @@ async function main() {
 
     console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance!`);
 
+    // Create and push tag on current repo
+    try {
+      console.log(`Creating and pushing Git tag v${newVersion}...`);
+      execSync(`git tag v${newVersion}`, { stdio: 'inherit' });
+      execSync(`git push origin v${newVersion}`, { stdio: 'inherit' });
+    } catch (e: any) {
+      console.error(`Failed to create or push tag: ${e.message}`);
+    }
+
     console.log(`\nv${newVersion} published.  https://github.com/GoogleChrome/modern-web-guidance  and [GoB repo](https://user.git.corp.google.com/rviscomi/modern-web-guidance/)`);
     console.log(`${useCasesCount} usecases.`);
     console.log(`${featuresCount} features`);
