@@ -17,13 +17,18 @@
         accent-color: var(--brand-color); /* A vibrant brand color */
         font-family: system-ui, sans-serif;
         padding: 2rem;
+        color: #333;
       }
 
       .demo-container {
         display: flex;
         flex-direction: column;
         gap: 1.5rem;
-        max-width: 300px;
+        max-width: 400px;
+        border: 1px solid #ddd;
+        padding: 1.5rem;
+        border-radius: 8px;
+        background: #f9f9f9;
       }
 
       .control-group {
@@ -34,6 +39,9 @@
 
       label {
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
       }
 
       .brand-header {
@@ -46,6 +54,74 @@
 
       .brand-title {
         margin: 0;
+      }
+
+      hr {
+        border: 0;
+        border-top: 1px solid #ddd;
+        margin: 1.5rem 0;
+      }
+
+      /* Fallback Technique Styles */
+      .fallback-section {
+        margin-top: 2rem;
+      }
+
+      .fallback-form input[type="checkbox"],
+      .fallback-form input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .fallback-form label {
+        position: relative;
+        padding-left: 2rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        min-height: 1.5rem;
+      }
+
+      /* Custom box for checkbox */
+      .fallback-form input[type="checkbox"] + span::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 1.2rem;
+        height: 1.2rem;
+        border: 2px solid #ccc;
+        background: white;
+        border-radius: 4px;
+        box-sizing: border-box;
+        transition: all 0.2s ease;
+      }
+
+      /* Custom style when checked */
+      .fallback-form input[type="checkbox"]:checked + span::before {
+        background-color: var(--brand-color);
+        border-color: var(--brand-color);
+      }
+
+      /* Checkmark (simplified) */
+      .fallback-form input[type="checkbox"]:checked + span::after {
+        content: "✓";
+        position: absolute;
+        left: 0.25rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: white;
+        font-weight: bold;
+        font-size: 0.9rem;
+      }
+
+      /* Focus indicator for accessibility */
+      .fallback-form input[type="checkbox"]:focus-visible + span::before {
+        outline: 2px solid black;
+        outline-offset: 2px;
       }
     </style>
   </head>
@@ -105,5 +181,24 @@
         <progress id="loading" max="100" value="65">65%</progress>
       </div>
     </form>
+
+    <hr />
+
+    <div class="fallback-section">
+      <h2>Fallback Technique (Demonstration)</h2>
+      <p>
+        For browsers where <code>accent-color</code> is not supported or if you need strict custom styling, you can use visually hidden inputs and pseudo-elements.
+      </p>
+      <form class="demo-container fallback-form" onsubmit="event.preventDefault()">
+        <label>
+          <input type="checkbox" name="fallback-sub" checked />
+          <span>Subscribe with Fallback Style</span>
+        </label>
+        <label>
+          <input type="checkbox" name="fallback-terms" />
+          <span>Accept terms with Fallback Style</span>
+        </label>
+      </form>
+    </div>
   </body>
 </html>
