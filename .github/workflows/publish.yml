@@ -71,14 +71,22 @@ jobs:
       # =========================================================================
 
       - name: Commit and Push Version Bump
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           git add serving/skills-cli/template/
           if ! git diff --quiet --exit-code --cached; then
             git commit -m "chore: bump version [skip ci]"
-
-            # Fetch latest changes and rebase our commit on top of them
-            git fetch origin main
-            git rebase origin/main
-
-            git push origin main
+            
+            BRANCH_NAME="chore/version-bump"
+            git checkout -b $BRANCH_NAME
+            
+            # Force push to the branch to update it
+            git push -f origin $BRANCH_NAME
+            
+            # Create PR, ignore error if it already exists
+            gh pr create --title "chore: bump version" --body "Automated version bump from CI publish workflow." --base main --head $BRANCH_NAME || echo "PR already exists or failed to create"
+            
+            # Enable auto-merge for the PR
+            gh pr merge $BRANCH_NAME --auto --merge || echo "Failed to enable auto-merge"
           fi
