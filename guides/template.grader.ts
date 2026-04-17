@@ -3,7 +3,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
 import { Project, SyntaxKind } from 'ts-morph';
-import { Parser, CSSStyleRule, CSSUnknownRule, serialize } from '../lib/third_party/cssomnom/index.js';
+import { Parser, CSSStyleRule, CSSAtRule, serialize } from '../lib/third_party/cssomnom/index.js';
+
 
 
 
@@ -46,8 +47,9 @@ test.describe(`<guide-name> Expectations: ${demoName}`, () => {
   //   const rules = Parser.parseStyleSheetText(cssContent);
   //   let found = false;
   //   rules.forEach(rule => {
-  //     if (rule instanceof CSSUnknownRule && rule.name === 'supports') found = true;
+  //     if (rule instanceof CSSAtRule && rule.name === 'supports') found = true;
   //   });
+
   //   expect(found).toBe(true);
   // });
 

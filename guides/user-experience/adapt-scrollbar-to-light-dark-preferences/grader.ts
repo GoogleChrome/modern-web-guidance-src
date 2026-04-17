@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
-import { Parser, CSSStyleRule, CSSMediaRule, CSSUnknownRule, serialize } from '../../../lib/third_party/cssomnom/index.js';
+import { Parser, CSSStyleRule, CSSMediaRule, CSSAtRule, serialize } from '../../../lib/third_party/cssomnom/index.js';
+
 import type { ComponentValue } from '../../../lib/third_party/cssomnom/index.js';
 
 
@@ -103,7 +104,7 @@ test.describe(`Adapt Scrollbar Expectations: ${demoName}`, () => {
   test('Legacy WebKit scrollbar styling must be isolated within an @supports block', async () => {
     let hasProtectedWebkit = false;
     styleRules.forEach(rule => {
-      if (rule instanceof CSSUnknownRule && rule.name === 'supports') {
+      if (rule instanceof CSSAtRule && rule.name === 'supports') {
         const preludeStr = serialize(rule.prelude as ComponentValue[]);
         if (preludeStr.includes('not') && preludeStr.includes('scrollbar-color') && preludeStr.includes('auto')) {
           const block = rule.block;
@@ -125,7 +126,7 @@ test.describe(`Adapt Scrollbar Expectations: ${demoName}`, () => {
   test('The legacy WebKit fallback must include basic scrollbar dimensions', async () => {
     let hasDimensions = false;
     styleRules.forEach(rule => {
-      if (rule instanceof CSSUnknownRule && rule.name === 'supports') {
+      if (rule instanceof CSSAtRule && rule.name === 'supports') {
         const preludeStr = serialize(rule.prelude as ComponentValue[]);
         if (preludeStr.includes('not') && preludeStr.includes('scrollbar-color') && preludeStr.includes('auto')) {
           const block = rule.block;

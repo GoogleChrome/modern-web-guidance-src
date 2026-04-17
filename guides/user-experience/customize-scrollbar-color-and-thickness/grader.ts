@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
-import { Parser, CSSStyleRule, CSSUnknownRule, serialize } from '../../../lib/third_party/cssomnom/index.js';
+import { Parser, CSSStyleRule, CSSAtRule, serialize } from '../../../lib/third_party/cssomnom/index.js';
+
 
 
 import type { ComponentValue } from '../../../lib/third_party/cssomnom/index.js';
@@ -74,7 +75,7 @@ test.describe(`Scrollbar Customization Expectations: ${demoName}`, () => {
 
     if (hasWebkits) {
       styleRules.forEach(rule => {
-        if (rule instanceof CSSUnknownRule && rule.name === 'supports') {
+        if (rule instanceof CSSAtRule && rule.name === 'supports') {
           const preludeStr = serialize(rule.prelude as ComponentValue[]);
           if (preludeStr.includes('not') && preludeStr.includes('scrollbar-color') && preludeStr.includes('auto')) {
             const block = rule.block;
@@ -99,7 +100,7 @@ test.describe(`Scrollbar Customization Expectations: ${demoName}`, () => {
     let hasSizingInFallback = false;
     
     styleRules.forEach(rule => {
-      if (rule instanceof CSSUnknownRule && rule.name === 'supports') {
+      if (rule instanceof CSSAtRule && rule.name === 'supports') {
         const preludeStr = serialize(rule.prelude as ComponentValue[]);
         if (preludeStr.includes('not') && preludeStr.includes('scrollbar-color') && preludeStr.includes('auto')) {
           const block = rule.block;
