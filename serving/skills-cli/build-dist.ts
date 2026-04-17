@@ -290,7 +290,22 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
     '0BSD',
   ];
 
-  const workspacePackages = new Set(['guidance', 'serving', 'harness', 'eval-view', 'guides']);
+  const workspacePackages = new Set(['guidance']);
+  try {
+    const workspaceYamlPath = path.join(rootDir, 'pnpm-workspace.yaml');
+    if (fs.existsSync(workspaceYamlPath)) {
+      const content = fs.readFileSync(workspaceYamlPath, 'utf8');
+      const matches = content.match(/-\s+'([^']+)'/g);
+      if (matches) {
+        for (const m of matches) {
+          const name = m.match(/'([^']+)'/)?.[1];
+          if (name) workspacePackages.add(name);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to read pnpm-workspace.yaml", e);
+  }
 
   const paths = new Set<string>();
   for (const metafile of metafiles) {
@@ -323,6 +338,9 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
 
     if (pkgJsonPath) {
       const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+      if (pkg.name === 'serving') {
+        console.log(`[DEBUG] Found serving from path: ${filePath} (absolute: ${absolutePath})`);
+      }
       if (pkg.name && !workspacePackages.has(pkg.name)) {
         nodeModules.set(pkg.name, path.dirname(pkgJsonPath));
       }
