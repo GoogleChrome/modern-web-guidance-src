@@ -81,4 +81,68 @@ describe('Grader Assertions - CSSOM + DOM Integration', () => {
     
     // TODO: Merge with author styles from matching rules
   });
+
+  test.skip('Case 4: Full Computed Style Resolution (Perfect World)', () => {
+    const html = `<div id="hero" class="target">Hello</div>`;
+    const css = `
+      .target { color: red; }
+      #hero { color: blue; }
+    `;
+    
+    const { document } = parseHTML(html);
+    const rules = Parser.parseStyleSheetText(css);
+    
+    const target = document.querySelector('#hero');
+    
+    // In a perfect world, we have a getComputedStyle-like function
+    // const computedStyle = getComputedStyleStatically(target, rules);
+    // assert.strictEqual(computedStyle.getPropertyValue('color'), 'blue');
+  });
+
+  test.skip('Case 5: Advanced Selector Matching (:has) (Perfect World)', () => {
+    const html = `
+      <div class="container">
+        <p class="child">Hello</p>
+      </div>
+      <div class="container">
+        <span>No child p</span>
+      </div>
+    `;
+    const css = `.container:has(p) { background: yellow; }`;
+    
+    const { document } = parseHTML(html);
+    const rules = Parser.parseStyleSheetText(css);
+    
+    const containers = document.querySelectorAll('.container');
+    
+    // In a perfect world, querySelectorAll supports :has()
+    // const matched = document.querySelectorAll('.container:has(p)');
+    // assert.strictEqual(matched.length, 1);
+    // assert.strictEqual(matched[0], containers[0]);
+  });
+
+  test.skip('Case 6: Anchor Positioning Resolution (Perfect World)', () => {
+    const html = `
+      <div id="anchor">Anchor</div>
+      <div id="tooltip">Tooltip</div>
+    `;
+    const css = `
+      #anchor { anchor-name: --my-anchor; }
+      #tooltip {
+        position: absolute;
+        position-anchor: --my-anchor;
+        top: anchor(bottom);
+      }
+    `;
+    
+    const { document } = parseHTML(html);
+    const rules = Parser.parseStyleSheetText(css);
+    
+    const tooltip = document.querySelector('#tooltip');
+    
+    // In a perfect world, we can resolve anchor positioning
+    // const computedStyle = getComputedStyleStatically(tooltip, rules);
+    // assert.strictEqual(computedStyle.getPropertyValue('top'), '<resolved pixel value>');
+  });
 });
+
