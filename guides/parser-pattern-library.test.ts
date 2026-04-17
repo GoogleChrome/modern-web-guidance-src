@@ -1,7 +1,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import { parseHTML } from 'linkedom';
-import { Parser, CSSStyleRule, CSSUnknownRule, serialize } from '/usr/local/google/home/paulirish/code/cssom/src/index.ts';
+import { Parser, CSSStyleRule, CSSUnknownRule, serialize } from '../lib/third_party/cssom/index.js';
+
 import { Project, SyntaxKind } from 'ts-morph';
 
 
