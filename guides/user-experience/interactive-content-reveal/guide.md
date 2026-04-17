@@ -13,7 +13,7 @@ sources:
   - https://css-tricks.com/image-fragmentation-effect-with-css-masks-and-custom-properties/
 ---
 
-Add performant, interactive reveal effects to your site with CSS masks and registered custom properties. By using a radial gradient as a mask and registering its stop values, we can smoothly transition the entry and exit, while following a user's pointer with minimal JavaScript.
+Add performant, interactive reveal effects to your site with CSS masks and registered custom properties. By using a radial gradient as a mask and registering its stop values, we can smoothly transition the entry and exit, while following a user's pointer with minimal JavaScript. 
 
 ## Implementation
 
@@ -90,9 +90,10 @@ container.addEventListener('pointermove', (e) => {
 ```
 
 ### 4. Accessibility and Interaction
-MANDATORY: Ensure the reveal effect does not interfere with content accessibility.
+MANDATORY: Ensure the reveal effect does not interfere with content accessibility. Avoid using this effect for revealing essential content.
 
 * **Pointer Events:** If the reveal layer is an overlay, set `pointer-events: none` to allow users to interact with buttons or links underneath.
+* **Non-Pointer Inputs:** Consider disabling the effect for users without a pointer using the `@media (pointer: none)` media query, especially if the revealed content is critical.
 * **Reduced Motion:** Respect user preferences for reduced motion by disabling transitions or the effect entirely.
 
 ```css
