@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
-import { Agents, defaultSuiteConfig, type SuiteConfig } from './config.ts';
+import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
 import { getTaskMap, type TaskInfo } from '../lib/guide-validation.ts';
@@ -78,7 +78,7 @@ export interface RunSuiteOptions {
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
-  const suiteConfig = options.suiteConfig || defaultSuiteConfig;
+  const suiteConfig = options.suiteConfig ? mergeSuiteConfig(options.suiteConfig) : defaultSuiteConfig;
 
   // Create results directory if it doesn't exist
   if (!fs.existsSync(resultsDir)) {
@@ -88,10 +88,10 @@ export async function runSuite(options: RunSuiteOptions = {}) {
   const agent = suiteConfig.agent;
 
   // Generate a unique testID with timestamp or use custom name
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-  const testID = options.name || suiteConfig.name || `test_${timestamp}`;
+  const timestamp = new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-');
+  const testID = options.name || suiteConfig.name || `test-${timestamp}`;
   const testDir = options.outputDir || path.join(resultsDir, testID);
-  
+
   if (!fs.existsSync(testDir)) {
     fs.mkdirSync(testDir, { recursive: true });
   }
@@ -145,7 +145,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         }
 
         const [guideName, taskName] = resolvedTask.split('/');
-        const workspaceBaseAppDir = setupWorkspaceBaseApp(taskInfo, runDir, guideName, taskName);
+        const workspaceBaseAppDir = await setupWorkspaceBaseApp(taskInfo, runDir, guideName, taskName);
         if (!workspaceBaseAppDir) {
           continue;
         }
@@ -176,9 +176,9 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           ...pnpmWorkspacePackages.map(pkg => `  - '${pkg}'`)
         ].join('\n') + '\n';
         fs.writeFileSync(pnpmWorkspacePath, yamlContent);
-        
+
         try {
-          const pnpmArgs = ['-r'];
+          const pnpmArgs = ['-r', '--no-bail'];
           if (agent === Agents.JETSKI) {
             pnpmArgs.push('--workspace-concurrency', '1');
           }
@@ -198,7 +198,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     }
 
     if (hasErrors) {
-      console.log(`\n❌ Test suite completed with errors! Results saved to: ${testDir}`);
+      console.log(`\n❌ Test suite completed with errors! Results saved to: ${testDir} .\n    For details, see agent_stderr.log and/or generation_failed.json`);
     } else {
       console.log(`\n✅ Test suite complete! Results saved to: ${testDir}`);
     }
@@ -298,7 +298,13 @@ function resolveTaskName(task: string): string {
   let resolvedTask = task;
   if (task.startsWith('guides/')) {
     const segments = task.split('/');
-    if (segments.length >= 3) {
+    if (segments.length === 4 && segments[2] === 'tasks') {
+      // Support discipline skill tasks (e.g., guides/forms/tasks/task.md)
+      const guideName = segments[1];
+      const taskName = segments[3].replace('.md', '');
+      resolvedTask = `${guideName}/${taskName}`;
+    } else if (segments.length >= 3) {
+      // Standard guide path: guides/category/guideName/...
       const guideName = segments[2];
       let taskName = 'task';
       const lastSegment = segments[segments.length - 1];
@@ -313,7 +319,7 @@ function resolveTaskName(task: string): string {
   return resolvedTask;
 }
 
-function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): string | null {
+async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: string, taskName: string): Promise<string | null> {
   // Copy the base app to the run directory (for tracking purposes)
   const guideFolder = path.join(runDir, guideName);
   const taskFolder = path.join(guideFolder, taskName);
@@ -333,8 +339,23 @@ function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, guideName: st
   } else {
     const sourceBaseAppDir = path.join(baseAppsDir, taskInfo.baseApp);
     if (fs.existsSync(sourceBaseAppDir)) {
-      for (const file of fs.readdirSync(sourceBaseAppDir)) {
-        fs.copyFileSync(path.join(sourceBaseAppDir, file), path.join(workspaceBaseAppDir, file));
+      await fs.promises.cp(sourceBaseAppDir, workspaceBaseAppDir, {
+        recursive: true,
+        filter: (src) => {
+          const basename = path.basename(src);
+          return !['node_modules', '.git', 'dist', '.astro'].includes(basename);
+        }
+      });
+
+      const pkgJsonPath = path.join(workspaceBaseAppDir, 'package.json');
+      if (fs.existsSync(pkgJsonPath)) {
+        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+        if (!pkgJson.pnpm || !pkgJson.pnpm.onlyBuiltDependencies) {
+          throw new Error(`Assertion failed: pnpm.onlyBuiltDependencies is missing in ${pkgJsonPath}`);
+        }
+
+        // pnpm install is intentionally deferred until after agent execution
+        // to avoid copying massive node_modules directories.
       }
     }
   }

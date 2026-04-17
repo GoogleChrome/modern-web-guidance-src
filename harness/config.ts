@@ -54,7 +54,7 @@ export const environmentConfig: EnvironmentConfig = {
 };
 
 export const defaultSuiteConfig: SuiteConfig = {
-  name: `full-${new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-')}`,
+  name: null,
   numRuns: 1,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
   mcpServersToEnable: ['modern-web'],
