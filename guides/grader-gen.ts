@@ -17,10 +17,9 @@ You should generate both static tests and browser tests, with each test containi
 CRITICAL DIRECTIVE: ALWAYS prefer static analysis over browser assertions!
 - Use \`linkedom\` (\`document.querySelector\`) to statically verify HTML structure, attributes, tags, and label associations parsed directly from the HTML source.
 - Use \`ts-morph\` to statically verify JavaScript source code (e.g. validating function calls, declarations, variables in \`<script>\` blocks using AST parsing).
-- Use `postcss` with `postcss-nested` and `postcss-shorthand-expand` to statically verify CSS source code (e.g. validating `@supports`, `@property`, declarations, or keyframes in `<style>` blocks using AST parsing).
-- Use `postcss-selector-parser` to statically verify CSS selectors (e.g. validating pseudo-elements, pseudo-classes, or attribute selectors).
-- Use `postcss-value-parser` to statically verify CSS declaration values (e.g. validating `var()`, `calc()`, or multi-part properties like `scrollbar-color`).
-- ONLY fallback to Playwright browser automation (`await expect(page...)`) if the expectation strictly requires browser rendering, interactivity (clicks/typing), or computed layouts (styles).
+- Use \`cssom\` (via \`Parser.parseStyleSheetText\`) to statically verify CSS source code, rules, selectors, and property values.
+- ONLY fallback to Playwright browser automation (\`await expect(page...)\`) if the expectation strictly requires browser rendering, interactivity (clicks/typing), or computed layouts (styles).
+
 
 If you are unfamiliar with the APIs for these parsers, you can refer to their TypeScript definitions located at these absolute paths in the workspace:
 - PostCSS: ${path.join(guidesDir, 'node_modules/postcss/lib/postcss.d.ts')}
