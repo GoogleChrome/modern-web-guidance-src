@@ -289,6 +289,10 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
 
   const nodeModules = new Map<string, string>();
   for (let filePath of paths) {
+    if (!filePath.includes('node_modules')) {
+      continue;
+    }
+
     let absolutePath = filePath;
     if (!path.isAbsolute(filePath)) {
         absolutePath = path.resolve(SERVING_DIR, filePath);
