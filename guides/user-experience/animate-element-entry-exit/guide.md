@@ -56,18 +56,18 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
 @media (prefers-reduced-motion: reduce) {
   .card {
     /* Disable movement and shorten duration for a simple fade */
-    translate: 0;
+    translate: none;
     transition-duration: 0.1s;
   }
 
   @starting-style {
     .card {
-      translate: 0;
+      translate: none;
     }
   }
 
   .card:where(.hidden, [hidden]) {
-    translate: 0;
+    translate: none;
   }
 }
 ```
