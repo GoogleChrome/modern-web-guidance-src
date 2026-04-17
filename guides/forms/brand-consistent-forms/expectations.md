@@ -2,6 +2,3 @@
 - The implementation MUST target at least one of the following elements with `accent-color`: `<input type="checkbox">`, `<input type="radio">`, `<input type="range">`, or `<progress>`.
 - The implementation MUST use `color-scheme: light dark` (in CSS or meta tag) to enable appropriate default styling for forms in dark mode.
 - The implementation MUST update the `accent-color` value for dark mode using a `prefers-color-scheme` media query if brand colors need adjustment for contrast.
-- The fallback strategy for non-supporting browsers MUST visually hide the native input using methods that maintain accessibility (e.g., `position: absolute` and `opacity: 0` or zero dimensions).
-- The fallback strategy MUST NOT use `display: none` or `visibility: hidden` to hide the native inputs.
-- The fallback strategy MUST use pseudo-elements (like `::before`) on a sibling element (like `span`) to render the custom control.
