@@ -2,6 +2,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import { parseHTML } from 'linkedom';
 import { Parser, CSSStyleRule } from '/usr/local/google/home/paulirish/code/cssom/src/index.ts';
+import { resolveValue } from '/usr/local/google/home/paulirish/code/cssom/src/Resolver.ts';
+
 
 
 describe('Grader Assertions - CSSOM + DOM Integration', () => {
@@ -199,6 +201,35 @@ describe('Grader Assertions - CSSOM + DOM Integration', () => {
     assert.ok(rules[1] instanceof CSSStyleRule);
     assert.strictEqual((rules[0] as CSSStyleRule).selectorText, 'div:has(p)');
     assert.strictEqual((rules[1] as CSSStyleRule).selectorText, ':popover-open');
+  });
+
+  test('Case 11: Basic Value Resolution - var() with local variable', () => {
+    const css = `
+      .target {
+        --main-color: blue;
+        color: var(--main-color, red);
+      }
+    `;
+    const rules = Parser.parseStyleSheetText(css);
+    assert.strictEqual(rules.length, 1);
+    const styleRule = rules[0] as CSSStyleRule;
+    
+    const resolvedColor = resolveValue(styleRule.style, 'color');
+    assert.strictEqual(resolvedColor, 'blue');
+  });
+
+  test('Case 12: Basic Value Resolution - var() with fallback', () => {
+    const css = `
+      .target {
+        color: var(--non-existent, red);
+      }
+    `;
+    const rules = Parser.parseStyleSheetText(css);
+    assert.strictEqual(rules.length, 1);
+    const styleRule = rules[0] as CSSStyleRule;
+    
+    const resolvedColor = resolveValue(styleRule.style, 'color');
+    assert.strictEqual(resolvedColor.trim(), 'red');
   });
 });
 
