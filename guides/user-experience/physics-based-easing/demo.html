@@ -8,43 +8,32 @@
       body {
         font-family: system-ui, sans-serif;
         padding: 2rem;
-      }
-      .demo-area {
-        margin-top: 2rem;
-        padding: 2rem;
-        background: #f0f0f0;
-        border-radius: 8px;
-        cursor: pointer;
-        container-type: inline-size;
+        --bounce-easing: linear(0, 0.214 14.7%, 0.386 23.7%, 0.598 31.9%, 0.999 44.7%, 0.807 52.6%, 0.762 56%, 0.747 59.4%, 0.758 62.4%, 0.793 65.6%, 0.999 77.4%, 0.961 81.2%, 0.949 84.8%, 0.956 88%, 0.993 95.5%, 1);
+        --spring-easing: linear(0, 0.016 0.5%, 0.06 1%, 0.226 2%, 1.116 5.4%, 1.375 6.6%, 1.527 7.7%, 1.565 8.2%, 1.585 8.8%, 1.581 9.3%, 1.559 9.8%, 1.458 10.9%, 0.937 14.3%, 0.784 15.5%, 0.693 16.6%, 0.67 17.1%, 0.657 17.7%, 0.671 18.7%, 0.729 19.8%, 1.042 23.3%, 1.13 24.5%, 1.182 25.6%, 1.201 26.7%, 1.192 27.7%, 1.156 28.8%, 0.977 32.2%, 0.925 33.4%, 0.894 34.5%, 0.882 35.6%, 0.887 36.6%, 0.907 37.7%, 1.045 42.4%, 1.069 44.5%, 1.059 46.3%, 0.979 50.9%, 0.96 53.4%, 0.966 55.3%, 1.013 59.9%, 1.024 62.3%, 0.986 71.2%, 1.008 79.9%, 0.995 88.9%, 1);
       }
       .box {
         width: 80px;
         height: 80px;
         background: #007bff;
         border-radius: 8px;
-        /* Custom spring/bounce easing using linear() */
-        transition: transform 0.8s
-          linear(
-            0,
-            0.012 0.8%,
-            0.051 1.8%,
-            0.291 6.3%,
-            0.418 9%,
-            0.513 11.4%,
-            0.596 13.9%,
-            0.681 17.1%,
-            0.754 20.6%,
-            0.815 24.4%,
-            0.866 28.7%,
-            0.905 33.3%,
-            0.935 38.4%,
-            0.975 51.2%,
-            0.993 68.9%,
-            1
-          );
+        transition: transform var(--transition-speed) ease-out;
+        transition: transform var(--transition-speed) var(--easing);
       }
-      .demo-area.is-active .box {
-        transform: translateX(calc(100cqi - 100%));
+      .bounce {
+        --easing: var(--bounce-easing);
+        --transition-speed: 0.4s;
+      }
+      .spring {
+        --easing: var(--spring-easing);
+        --transition-speed: 0.8s;
+      }
+      .box:hover {
+        transform: scale(1.2);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .box {
+          transition: none;
+        }
       }
     </style>
   </head>
@@ -52,18 +41,15 @@
     <h1>Physics-based Easing</h1>
     <p>
       This demo illustrates how to create a custom bounce or spring animation
-      using the <code>linear()</code> easing function in CSS. Click the gray
-      area below to trigger the animation.
+      using the <code>linear()</code> easing function in CSS. Hover a blue box
+      below to trigger the animation.
     </p>
+    <h2>Spring</h2>
 
-    <div class="demo-area">
-      <div class="box"></div>
-    </div>
-    <script>
-      const demoArea = document.querySelector('.demo-area');
-      demoArea.addEventListener('click', () => {
-        demoArea.classList.toggle('is-active');
-      });
-    </script>
+    <div class="box spring"></div>
+
+    <h2>Bounce</h2>
+
+    <div class="bounce box"></div>
   </body>
 </html>
