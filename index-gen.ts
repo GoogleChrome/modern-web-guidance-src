@@ -181,7 +181,7 @@ async function buildGuideSource (): Promise<Source<any>> {
     guide: {
       md: (r: any) => `[\`${r.guide}\`](https://github.com/GoogleChrome/guidance/tree/main/guides/${r.guide})`,
     },
-    name: {},
+    name: { md: false as const },
     category: {
       md: (r: any) => r.category ? `[${r.category}](https://github.com/GoogleChrome/guidance/tree/main/guides/${r.category})` : null,
     },
