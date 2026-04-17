@@ -4,7 +4,7 @@ import { parseHTML } from 'linkedom';
 import { Parser, CSSStyleRule } from '../lib/third_party/cssom/index.js';
 
 // Dummy function to satisfy compiler for skipped tests
-const getComputedStyleStatically = (el: any, rules: any) => ({ getPropertyValue: (prop: string) => '' });
+const getComputedStyleStatically = (_el: any, _rules: any) => ({ getPropertyValue: (_prop: string) => '' });
 
 
 
@@ -77,7 +77,7 @@ describe('Grader Assertions - CSSOM + DOM Integration', () => {
     const css = `.target { color: red; }`;
     
     const { document } = parseHTML(html);
-    const rules = Parser.parseStyleSheetText(css);
+    const _rules = Parser.parseStyleSheetText(css);
     
     const target = document.querySelector('.target') as any;
     
@@ -117,7 +117,7 @@ describe('Grader Assertions - CSSOM + DOM Integration', () => {
     const css = `.container:has(p) { background: yellow; }`;
     
     const { document } = parseHTML(html);
-    const rules = Parser.parseStyleSheetText(css);
+    const _rules = Parser.parseStyleSheetText(css);
     
     const containers = document.querySelectorAll('.container');
     
