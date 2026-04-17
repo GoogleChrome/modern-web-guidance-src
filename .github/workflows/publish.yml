@@ -70,15 +70,10 @@ jobs:
       #     npm publish --dry-run --provenance --access public --registry https://registry.npmjs.org/
       # =========================================================================
 
-      - name: Commit and Push Version Bump
+      - name: Create and Push Tag
         run: |
-          git add serving/skills-cli/template/
-          if ! git diff --quiet --exit-code --cached; then
-            git commit -m "chore: bump version [skip ci]"
-
-            # Fetch latest changes and rebase our commit on top of them
-            git fetch origin main
-            git rebase origin/main
-
-            git push origin main
-          fi
+          VERSION=$(node -p "require('./dist/skills-cli/package.json').version")
+          TAG="v$VERSION"
+          echo "Creating tag $TAG"
+          git tag $TAG
+          git push origin $TAG

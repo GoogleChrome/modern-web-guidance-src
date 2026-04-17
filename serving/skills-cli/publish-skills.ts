@@ -18,52 +18,42 @@ function incrementVersion(version: string): string {
 }
 
 
-async function bumpVersions() {
-  console.log("Bumping versions in skills-cli templates...");
-  
-  // Gemini
-  const geminiPath = path.join(SKILLS_CLI_TEMPLATE_DIR, "gemini-extension.json");
-  const geminiData = JSON.parse(await fs.readFile(geminiPath, 'utf8'));
-  const newVersion = incrementVersion(geminiData.version);
-  geminiData.version = newVersion;
+async function getNextVersion(): Promise<string> {
+  console.log("Determining next version...");
+  let currentVersion = "0.0.0";
 
-  // VSCode
-  const vscodePath = path.join(SKILLS_CLI_TEMPLATE_DIR, "package.json");
-  const vscodeData = JSON.parse(await fs.readFile(vscodePath, 'utf8'));
-  vscodeData.version = newVersion;
-
-  // Claude Plugin
-  const claudePluginPath = path.join(SKILLS_CLI_TEMPLATE_DIR, ".claude-plugin/plugin.json");
-  const claudePluginData = JSON.parse(await fs.readFile(claudePluginPath, 'utf8'));
-  claudePluginData.version = newVersion;
-
-  // Claude Marketplace
-  const marketplacePath = path.join(SKILLS_CLI_TEMPLATE_DIR, ".claude-plugin/marketplace.json");
-  const marketplaceData = JSON.parse(await fs.readFile(marketplacePath, 'utf8'));
-  marketplaceData.plugins[0].version = newVersion;
-
-  if (isDryRun) {
-    console.log(`[Dry Run] Would have updated files to version ${newVersion}`);
-  } else {
-    await fs.writeFile(geminiPath, JSON.stringify(geminiData, null, 2) + '\n');
-    await fs.writeFile(vscodePath, JSON.stringify(vscodeData, null, 2) + '\n');
-    await fs.writeFile(claudePluginPath, JSON.stringify(claudePluginData, null, 2) + '\n');
-    await fs.writeFile(marketplacePath, JSON.stringify(marketplaceData, null, 2) + '\n');
+  try {
+    // Get the latest tag that looks like v*.*.*
+    const latestTag = execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    currentVersion = latestTag.startsWith('v') ? latestTag.slice(1) : latestTag;
+    console.log(`Found latest tag: ${latestTag}`);
+  } catch (e) {
+    console.warn("No version tags found, falling back to package.json version.");
+    try {
+      const vscodePath = path.join(SKILLS_CLI_TEMPLATE_DIR, "package.json");
+      const vscodeData = JSON.parse(await fs.readFile(vscodePath, 'utf8'));
+      currentVersion = vscodeData.version;
+    } catch (err) {
+      console.error("Failed to read package.json version, using fallback 0.0.0");
+    }
   }
 
-  console.log(`Successfully bumped to version ${newVersion}`);
+  const newVersion = incrementVersion(currentVersion);
+  console.log(`Next version will be: ${newVersion}`);
   return newVersion;
 }
 
+
+
 async function main() {
-  const newVersion = await bumpVersions();
+  const newVersion = await getNextVersion();
   
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
   await fs.mkdir(publishCliDir, {recursive: true});
   await fs.rm(publishCliDir, { recursive: true, force: true });
 
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  const result = await buildDist();
+  const result = await buildDist(newVersion);
   if (!result) {
     throw new Error("Build failed or was already in progress.");
   }
