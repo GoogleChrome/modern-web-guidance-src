@@ -1,8 +1,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import { parseHTML } from 'linkedom';
-import { Parser, CSSStyleRule } from '/usr/local/google/home/paulirish/code/cssom/src/index.ts';
-import { resolveValue } from '/usr/local/google/home/paulirish/code/cssom/src/Resolver.ts';
+import { Parser, CSSStyleRule } from '../lib/third_party/cssom/index.js';
+
 
 
 
@@ -214,7 +214,7 @@ describe('Grader Assertions - CSSOM + DOM Integration', () => {
     assert.strictEqual(rules.length, 1);
     const styleRule = rules[0] as CSSStyleRule;
     
-    const resolvedColor = resolveValue(styleRule.style, 'color');
+    const resolvedColor = Parser.resolveVariables(styleRule.style, 'color');
     assert.strictEqual(resolvedColor, 'blue');
   });
 
@@ -228,7 +228,7 @@ describe('Grader Assertions - CSSOM + DOM Integration', () => {
     assert.strictEqual(rules.length, 1);
     const styleRule = rules[0] as CSSStyleRule;
     
-    const resolvedColor = resolveValue(styleRule.style, 'color');
+    const resolvedColor = Parser.resolveVariables(styleRule.style, 'color');
     assert.strictEqual(resolvedColor.trim(), 'red');
   });
 });
