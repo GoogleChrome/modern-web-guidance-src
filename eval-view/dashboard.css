@@ -81,7 +81,7 @@ h1 {
   max-width: 600px;
 }
 
-#dashboard-grid {
+#dashboard-grid, .dashboard-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;

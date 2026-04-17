@@ -44,7 +44,7 @@ test.describe('Eval View Dashboard', () => {
     await expect(page.locator('#test-header')).toContainText('example-result');
 
     // Check grid exists and has content
-    await expect(page.locator('#dashboard-grid')).toBeVisible();
+    await expect(page.locator('#guide-grid')).toBeVisible();
     
     // Wait for actual cards to be rendered by JS
     const firstCard = page.locator('.test-card').first();

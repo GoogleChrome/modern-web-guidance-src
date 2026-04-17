@@ -21,14 +21,12 @@ Must use this skill:
 
 ## Usage Instructions
 
-You can execute these tools using standard `node` from the command line from **any** directory. 
+### Step 1. Search Use Cases
 
-### 1. Search Use Cases
+Search with an action-oriented query summarizing what you want to achieve using the `--search` flag. Run `modern-web.mjs` directly with `node`.
 
-Search with an action-oriented query summarizing what you want to achieve using the `--search` flag.
-
-```bash
-node ./cli/serving/bin/modern-web.cjs --search "<query>"
+```sh
+node <modern-web-use-cases-directory>/modern-web.mjs --search "<query>"
 ```
 
 **Example Output**:
@@ -45,13 +43,14 @@ node ./cli/serving/bin/modern-web.cjs --search "<query>"
 
 ---
 
-### 2. Retrieve Best Practices
+### Step 2. Retrieve Best Practices
 
 Once you have a relevant `id` from the search results, call this script using the `--retrieve` flag to get the full guide. You can pass multiple IDs separated by commas.
 
-```bash
-node ./cli/serving/bin/modern-web.cjs --retrieve "<id>"
+```sh
+node <modern-web-use-cases-directory>/modern-web.mjs --retrieve "<id>"
 ```
+
 
 **Example Output**:
 `The markdown content of the guide describing implementation steps...`

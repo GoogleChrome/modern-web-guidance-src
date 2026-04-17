@@ -1,0 +1,99 @@
+
+---
+import Layout from '../../layouts/Layout.astro';
+import ArticleTeaser from '../../components/ArticleTeaser.astro';
+import { getCollection } from 'astro:content';
+import type { GetStaticPaths } from 'astro';
+import { Image } from 'astro:assets';
+import { getArticleImage } from '../../utils/images';
+
+export const getStaticPaths = (async () => {
+    const articles = await getCollection('articles');
+    const categories = [...new Set(articles.map(article => article.data.category.toLowerCase()))];
+    
+    return categories.map(category => ({
+        params: { category },
+    }));
+}) satisfies GetStaticPaths;
+
+const { category } = Astro.params;
+
+const allArticlesInCategory = await getCollection('articles', ({ data }) => {
+    return data.category.toLowerCase() === category;
+});
+
+allArticlesInCategory.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const featuredArticle = allArticlesInCategory[0];
+const otherArticles = allArticlesInCategory.slice(1);
+
+const randomArticleForHero = allArticlesInCategory.length > 0 
+    ? allArticlesInCategory[Math.floor(Math.random() * allArticlesInCategory.length)]
+    : null;
+
+const heroImage = randomArticleForHero ? await getArticleImage(randomArticleForHero) : null;
+const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArticle) : null;
+
+const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+---
+
+<Layout title={`Category: ${capitalizedCategory}`}>
+    <div class="pb-8">
+        <!-- Dynamic Category Header -->
+        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+            {heroImage && (
+                <Image 
+                    src={heroImage} 
+                    alt={`Background for ${capitalizedCategory}`} 
+                    width={1200}
+                    height={400}
+                    format="webp"
+                    quality={80}
+                    class="absolute w-full h-full object-cover filter blur-md scale-110 z-0"
+                />
+            )}
+            <div class="absolute w-full h-full bg-black opacity-50 z-1"></div>
+            <div class="absolute w-full h-full flex items-center justify-center z-2">
+                <div class="text-center text-white">
+                    <p class="text-lg font-semibold uppercase tracking-widest">Category</p>
+                    <h1 class="text-5xl md:text-6xl font-bold text-white drop-shadow-sm">
+                        {capitalizedCategory}
+                    </h1>
+                </div>
+            </div>
+        </header>
+
+        <div class="px-4 md:px-6">
+            <!-- Featured Article -->
+            {featuredArticle && featuredArticleImage && (
+                <section class="mb-8 pb-8 border-b border-gray-200">
+                    <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.slug}`} class="block group">
+                        <Image 
+                            src={featuredArticleImage} 
+                            alt={featuredArticle.data.title} 
+                            width={1200}
+                            height={675}
+                            format="webp"
+                            class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                        />
+                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+                            {featuredArticle.data.title}
+                        </h2>
+                        <p class="text-base md:text-lg text-gray-700">
+                            {featuredArticle.data.summary}
+                        </p>
+                    </a>
+                </section>
+            )}
+
+            <!-- Other Articles -->
+            {otherArticles.length > 0 ? (
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {otherArticles.map(article => <ArticleTeaser article={article} />)}
+                </div>
+            ) : (
+                <p class="text-center text-gray-500 py-12">There is only one article in this category. More to come soon!</p>
+            )}
+        </div>
+    </div>
+</Layout>

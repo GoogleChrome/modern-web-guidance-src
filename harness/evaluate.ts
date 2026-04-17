@@ -7,7 +7,28 @@ import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
 import { resultsDir } from '../lib/paths.ts';
 
-import { config } from './config.ts';
+import { Serving, type SuiteConfig } from './config.ts';
+
+function inferSuiteConfig(suiteResultsDir: string): SuiteConfig {
+  let agent = 'gemini-cli';
+  let serving: Serving = 'mcp';
+
+  const evalsPath = path.join(suiteResultsDir, 'evals.json');
+  if (fs.existsSync(evalsPath)) {
+    try {
+      const oldEvals = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+      if (oldEvals.agent) agent = oldEvals.agent;
+      if (oldEvals.serving) serving = oldEvals.serving;
+      else if (oldEvals.enableSkills !== undefined) {
+        serving = oldEvals.enableSkills ? 'skills' : 'mcp';
+      }
+    } catch {
+      // Ignore parse error
+    }
+  }
+
+  return { agent, serving, tasks: [], name: null, numRuns: 1, mcpServersToEnable: [] };
+}
 
 export async function evaluateSuite(suiteResultsDir: string, suiteName: string) {
   console.log(`Evaluating suite: ${suiteName}`.cyan);
@@ -18,15 +39,47 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string) 
     return;
   }
 
+  const configPath = path.join(suiteResultsDir, 'suite_config.json');
+  let suiteConfig: SuiteConfig | null = null;
+  if (fs.existsSync(configPath)) {
+    try {
+      suiteConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch {
+      console.warn(`⚠️ Failed to parse suite_config.json in ${suiteResultsDir}`.yellow);
+    }
+  }
+
+  if (!suiteConfig) {
+    console.warn(`⚠️ No suite_config.json found in ${suiteResultsDir}. Inferring config...`.yellow);
+    suiteConfig = inferSuiteConfig(suiteResultsDir);
+    console.log(`Inferred: agent=${suiteConfig.agent}, serving=${suiteConfig.serving}`.cyan);
+  }
+
+  if (!suiteConfig) {
+    console.error(`⚠️ Failed to infer suite config for ${suiteResultsDir}. Aborting evaluation.`.red);
+    return;
+  }
+
   try {
-    const { allResults, numRuns } = await collectResults(suiteResultsDir);
+    const { allResults, numRuns } = await collectResults(suiteResultsDir, suiteConfig);
     console.log(`Found ${numRuns} test run(s)`.cyan);
 
     const metrics = calculateMetrics(allResults, numRuns);
     const mdReport = generateMarkdownReport(metrics, allResults);
-    const timestamp = new Date().toISOString();
-    const model = extractModelFromResults(suiteResultsDir, config.suite.agent);
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, config.suite.agent, config.suite.serving, model);
+    
+    let timestamp = new Date().toISOString();
+    const evalsPath = path.join(suiteResultsDir, 'evals.json');
+    if (fs.existsSync(evalsPath)) {
+      try {
+        const oldEvals = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+        if (oldEvals.timestamp) timestamp = oldEvals.timestamp;
+      } catch {
+        // Ignore
+      }
+    }
+
+    const model = extractModelFromResults(suiteResultsDir, suiteConfig.agent);
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model);
 
     saveReports(suiteResultsDir, mdReport, jsonReport);
 
@@ -42,11 +95,10 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string) 
 export async function evaluate() {
   console.log('Starting Evaluation...'.cyan.bold);
 
-
-  let suiteName = process.argv[2] || config.suite?.name;
+  let suiteName = process.argv[2];
 
   if (!suiteName) {
-    console.error('❌ No suite name provided and no previous tests found!'.red);
+    console.error('❌ No suite name provided!'.red);
     process.exit(1);
   }
 

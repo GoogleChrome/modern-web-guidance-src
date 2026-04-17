@@ -1,67 +1,78 @@
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
+import { fileURLToPath } from "url";
 import matter from "gray-matter";
-import { classifyGuide, scanAllGuides } from "../../lib/guide-validation.ts";
-import { getFeatureName } from "../mcp-server/data/baseline.ts";
+import * as esbuild from "esbuild";
+import { scanAllGuides } from "../../lib/guide-validation.ts";
+import { getFeatureName } from "../lib/baseline.ts";
+import { rootDir } from "../../lib/paths.ts";
 
-const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
-const SERVING_DIR = path.resolve(import.meta.dirname, ".."); // guidance/serving/
-const ROOT_DIST_DIR = path.join(ROOT_DIR, "dist");
+const SERVING_DIR = path.join(rootDir, "serving");
+const ROOT_DIST_DIR = path.join(rootDir, "dist");
 const PUBLISH_ROOT = path.join(ROOT_DIST_DIR, "skills-cli");
-const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases");
-const CLI_DIR = path.join(DIST_DIR, "cli");
 
-async function main() {
-  console.log("Cleaning previous dist/ output...");
-  if (fs.existsSync(ROOT_DIST_DIR)) {
-    fs.rmSync(ROOT_DIST_DIR, { recursive: true, force: true });
+const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases");
+
+interface BuildResult {
+  featuresCount: number;
+  useCasesCount: number;
+  skillsCount: number;
+  skillNames: string[];
+}
+
+async function acquireLock(lockFilePath: string) {
+  while (fs.existsSync(lockFilePath)) {
+    try {
+      const pid = parseInt(fs.readFileSync(lockFilePath, 'utf-8'), 10);
+      process.kill(pid, 0);
+    } catch (e: any) {
+      if (e.code === 'ESRCH') {
+        fs.unlinkSync(lockFilePath);
+        break;
+      }
+    }
+    console.log(" Another build is in progress. Waiting...");
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
+  fs.writeFileSync(lockFilePath, process.pid.toString());
+}
+
+async function main(): Promise<BuildResult | undefined> {
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
+  const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
+
+  await acquireLock(lockFilePath);
+
+  try {
+    console.log("Ensuring dist/ output directory exists...");
+    fs.mkdirSync(PUBLISH_ROOT, { recursive: true });
 
   console.log("Generating guides and updating vector store...");
   // 1. Run build-guides.ts to update .modern-web-data and build/guides
   try {
+    console.time("⏳ build-guides.ts");
     execSync("node --experimental-strip-types scripts/build-guides.ts", {
       cwd: SERVING_DIR,
       stdio: "inherit",
     });
+    console.timeEnd("⏳ build-guides.ts");
   } catch (error) {
     console.error("Failed to build guides:", error);
     process.exit(1);
   }
 
-  console.log(`Creating output directories in ${CLI_DIR}...`);
-  // 2. Clear and create output directory
-  if (fs.existsSync(CLI_DIR)) {
-    fs.rmSync(CLI_DIR, { recursive: true, force: true });
-  }
-  fs.mkdirSync(CLI_DIR, { recursive: true });
-
-  // Create deeper directory to mimic original path depth for relative path resolution
-  const BUNDLE_OUT_DIR = path.join(CLI_DIR, "serving/bin");
-  fs.mkdirSync(BUNDLE_OUT_DIR, { recursive: true });
+  // Placing modern-web.mjs inside the skill directory instead of bin/ for self-containment!
 
   console.log("Copying installation manifests and metadata for AI tools...");
   fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), PUBLISH_ROOT, { recursive: true });
 
-  console.log("Renaming vscode-ext-package.json to package.json for publishing...");
-  fs.renameSync(path.join(PUBLISH_ROOT, "vscode-ext-package.json"), path.join(PUBLISH_ROOT, "package.json"));
 
   console.log("Copying data files...");
-  // 3. Copy .modern-web-data
-  const mcpDataDir = path.join(SERVING_DIR, ".modern-web-data");
-  const destMcpDataDir = path.join(CLI_DIR, ".modern-web-data");
-  if (fs.existsSync(mcpDataDir)) {
-    fs.cpSync(mcpDataDir, destMcpDataDir, { recursive: true });
-    console.log(`Copied ${mcpDataDir} to ${destMcpDataDir}`);
-  } else {
-    console.warn(`Warning: ${mcpDataDir} does not exist.`);
-  }
 
   // 4. Copy build/guides
   const buildGuidesDir = path.join(SERVING_DIR, "build/guides");
-  const destBuildGuidesDir = path.join(CLI_DIR, "build/guides");
+  const destBuildGuidesDir = path.join(DIST_DIR, "guides");
   if (fs.existsSync(buildGuidesDir)) {
     fs.cpSync(buildGuidesDir, destBuildGuidesDir, { recursive: true });
     console.log(`Copied ${buildGuidesDir} to ${destBuildGuidesDir}`);
@@ -69,67 +80,146 @@ async function main() {
     console.warn(`Warning: ${buildGuidesDir} does not exist.`);
   }
 
-  console.log("Bundling modern-web.ts with esbuild...");
-  // 5. Bundle modern-web.ts
-  const entryPoint = path.join(SERVING_DIR, "bin/modern-web.ts");
-  const outFile = path.join(BUNDLE_OUT_DIR, "modern-web.cjs");
-  
+  console.log("Copying pure JS vector file...");
+  const vectorsFile = path.join(SERVING_DIR, "lib/use-cases.vectors.gen.json.gz");
+  const destVectorsFile = path.join(DIST_DIR, "use-cases.vectors.gen.json.gz");
+  if (fs.existsSync(vectorsFile)) {
+    fs.cpSync(vectorsFile, destVectorsFile);
+    console.log(`Copied ${vectorsFile} to ${destVectorsFile}`);
+  }
+
+  console.log("Copying TFJS model files...");
+  const tfjsModelDir = path.join(SERVING_DIR, "lib/tfjs_model_minilm");
+  const destTfjsModelDir = path.join(DIST_DIR, "tfjs_model_minilm");
+  if (fs.existsSync(tfjsModelDir)) {
+    fs.cpSync(tfjsModelDir, destTfjsModelDir, {
+      recursive: true,
+      filter: (src) => {
+        const stat = fs.statSync(src);
+        if (stat.isDirectory()) return true;
+        const basename = path.basename(src);
+        return basename === "model.json" || basename.startsWith("group1-shard");
+      }
+    });
+    console.log(`Copied ${tfjsModelDir} to ${destTfjsModelDir}`);
+  }
+
   try {
-    // Try to run npx esbuild or pnpm exec esbuild
-    // We assume the user has esbuild accessible or npx works.
-    execSync(`pnpm exec esbuild "${entryPoint}" --bundle --platform=node --format=cjs --loader:.node=file --define:import.meta.url="'__import_meta_url_placeholder__'" --define:import.meta.dirname="__dirname" --external:@lancedb/lancedb --external:@huggingface/transformers --outfile="${outFile}"`, {
-      stdio: "inherit",
+    console.log("Bundling search.mjs...");
+    // To analyze bundle size breakdown, assign build()s return to `result` and use `esbuild.analyzeMetafile(result.metafile)`
+    const resultSearch = await esbuild.build({
+      entryPoints: [path.join(SERVING_DIR, "lib/search.ts")],
+      bundle: true,
+      platform: "node",
+      format: "esm",
+      outfile: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/search.mjs"),
+      banner: {
+        js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
+      },
+      external: ["sharp", "iconv-lite", "@img/colour", "tr46", "whatwg-url", "webidl-conversions"],
+      sourcemap: true,
+      loader: { ".node": "file" },
+      metafile: true,
+      minify: true,
+      alias: {
+        // Force transformers to use the ESM entry point to avoid CommonJS issues in the bundle
+        "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
+        // We leverage Transformers.js only for tokenization. But it is a large dependency and
+        // tries to do a lot more, including loading native dependencies (onnxruntime-node) that
+        // we have no use for. We use this dummy shim to ensure we can use the library without
+        // pulling in native binaries.
+        "onnxruntime-node": path.resolve(SERVING_DIR, "lib/dummy-onnx.ts"),
+      },
+      plugins: [{
+        // TFJS deep imports fail in pure Node ESM because they lack extensions.
+        // In raw Node runs, tfjs-kernels.ts uses require() to load the CommonJS version (all kernels).
+        // For the production bundle, we use this plugin to swap it with tfjs-kernels-precise.ts
+        // which only registers the specific kernels we need, keeping the bundle small.
+        name: 'use-precise-kernels',
+        setup(build) {
+          build.onResolve({ filter: /tfjs-kernels\.ts$/ }, _args => {
+            return { path: path.resolve(SERVING_DIR, "lib/tfjs-kernels-precise.ts") }
+          })
+        },
+      }],
     });
-    console.log(`Bundled ${entryPoint} to ${outFile}`);
 
-    console.log("Replacing import.meta.url placeholder in bundle...");
-    let bundleContent = fs.readFileSync(outFile, "utf-8");
-    bundleContent = bundleContent.replace(
-      /(['"])__import_meta_url_placeholder__\1/g,
-      "require('url').pathToFileURL(__filename).toString()"
+    console.log("Bundling modern-web.mjs...");
+    const resultModernWeb = await esbuild.build({
+      entryPoints: [path.join(SERVING_DIR, "bin/modern-web.ts")],
+      bundle: true,
+      platform: "node",
+      format: "esm",
+      outfile: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/modern-web.mjs"),
+      plugins: [{
+        name: 'rewrite-search',
+        setup(build) {
+          build.onResolve({ filter: /search\.ts$/ }, _args => {
+            return { path: './search.mjs', external: true }
+          })
+        },
+      }],
+      loader: { ".node": "file" },
+      metafile: true,
+    });
+
+    console.log("Generating THIRD_PARTY_NOTICES...");
+    generateThirdPartyNotices(
+      [resultSearch.metafile, resultModernWeb.metafile],
+      path.join(PUBLISH_ROOT, "THIRD_PARTY_NOTICES")
     );
-    fs.writeFileSync(outFile, bundleContent);
-    console.log("Placeholder replaced successfully.");
 
-    console.log("Downloading external production dependencies via npm install...");
-    execSync("npm install --omit=dev", {
-      cwd: CLI_DIR,
-      stdio: "inherit",
-    });
-    console.log("Dependencies downloaded successfully.");
   } catch (error) {
     console.error("Failed to bundle with esbuild:", error);
     process.exit(1);
   }
 
-  console.log("Copying SKILL.md...");
-  const skillMdSource = path.join(ROOT_DIR, "guides/modern-web-use-cases/SKILL.md");
-  const skillMdDest = path.join(DIST_DIR, "SKILL.md");
 
-  if (fs.existsSync(skillMdSource)) {
-    fs.copyFileSync(skillMdSource, skillMdDest);
-    console.log(`Copied SKILL.md to ${skillMdDest}`);
-  } else {
-    console.error(`Error: SKILL.md source not found at ${skillMdSource}`);
-    process.exit(1);
+
+  console.log("Scanning for skills (SKILL.md) in guides/...");
+  const guidesDirInRoot = path.join(rootDir, "guides");
+  const candidates = fs.readdirSync(guidesDirInRoot, { withFileTypes: true })
+    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+    .map(d => d.name);
+
+  let skillsCount = 0;
+  const skillNames: string[] = [];
+  for (const candidate of candidates) {
+    const skillSource = path.join(guidesDirInRoot, candidate, "SKILL.md");
+    if (fs.existsSync(skillSource)) {
+      const skillDestDir = path.join(PUBLISH_ROOT, "skills", candidate);
+      const skillDest = path.join(skillDestDir, "SKILL.md");
+      fs.mkdirSync(skillDestDir, { recursive: true });
+      fs.copyFileSync(skillSource, skillDest);
+      console.log(`Copied skill ${candidate} (SKILL.md) to ${skillDestDir}`);
+      skillsCount++;
+      skillNames.push(candidate);
+    }
   }
+  console.log(`Successfully copied ${skillsCount} skills to distribution.`);
 
-  updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
+  const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
 
   console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
+  return { featuresCount, useCasesCount, skillsCount, skillNames };
+  } finally {
+    if (fs.existsSync(lockFilePath)) {
+      fs.unlinkSync(lockFilePath);
+    }
+  }
 }
 
 function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   console.log("Generating dynamic README content around features and use cases...");
-  const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
-  
+  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
+
   const useCaseGroupMap = new Map<string, { features: { id: string; name: string }[]; useCases: { id: string; description: string }[] }>();
   const allFeatureIds = new Set<string>();
 
   for (const guide of readyGuides) {
     const guidePath = path.join(guide.dir, "guide.md");
     if (!fs.existsSync(guidePath)) continue;
-    
+
     let description = guide.name;
     try {
       const content = fs.readFileSync(guidePath, "utf-8");
@@ -164,10 +254,10 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   } catch {}
 
   let dynamicMd = `#### Skill Coverage in \`v${version}\`\n\n`;
-  const featureNamesCsv = allFeaturesSorted.map(f => `${f.name.replace(/</g, '&lt;')}`).join(', ');
+  const featureNamesCsv = allFeaturesSorted.map(f => `\`${f.name.replace(/</g, '&lt;')}\``).join(', ');
 
   dynamicMd += `<details>\n<summary><strong>${allFeaturesSorted.length} web features with implementation guidance from Chrome's experts</strong>: ${featureNamesCsv}</summary>\n\n`;
-  
+
   for (const group of sortedGroups) {
     const featureLinks = group.features.map(f => `[${f.name.replace(/</g, '&lt;')}](https://webstatus.dev/features/${f.id})`).join(', ');
     dynamicMd += `- **${featureLinks}**\n`;
@@ -185,6 +275,70 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     fs.writeFileSync(readmePath, readmeContent);
     console.log("README dynamically updated with features and use cases.");
   }
+
+  return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
 }
 
-main().catch(console.error);
+function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath: string) {
+  const allowedLicenses = ['MIT', 'Apache 2.0', 'Apache-2.0', 'BSD-3-Clause', 'BSD-2-Clause', 'ISC', '0BSD'];
+  const paths = new Set<string>();
+  
+  for (const metafile of metafiles) for (const p of Object.keys(metafile.inputs)) paths.add(p);
+
+  const nodeModules = new Map<string, string>();
+  for (const filePath of paths) {
+    if (!filePath.includes('node_modules')) continue;
+
+    const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(SERVING_DIR, filePath);
+    let dir = path.dirname(absolutePath);
+    let pkgJsonPath;
+
+    while (dir.startsWith(rootDir) && dir !== rootDir) {
+      const candidate = path.join(dir, 'package.json');
+      if (fs.existsSync(candidate)) {
+        pkgJsonPath = candidate;
+        break;
+      }
+      dir = path.dirname(dir);
+    }
+
+    if (pkgJsonPath && pkgJsonPath.includes('node_modules')) {
+      const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+      if (pkg.name && pkg.name !== 'guidance') nodeModules.set(pkg.name, path.dirname(pkgJsonPath));
+    }
+  }
+
+  const divider = '\n\n-------------------- DEPENDENCY DIVIDER --------------------\n\n';
+
+  const stringifiedDependencies = Array.from(nodeModules.keys()).sort().map(name => {
+    const nodeModulePath = nodeModules.get(name)!;
+    const dependency = JSON.parse(fs.readFileSync(path.join(nodeModulePath, 'package.json'), 'utf-8'));
+    
+    const licenseFilePaths = ['LICENSE', 'LICENSE.txt', 'LICENSE.md', 'LICENSE.MIT', 'LICENSE.APACHE'].map(f => path.join(nodeModulePath, f));
+    const licenseFile = licenseFilePaths.find(f => fs.existsSync(f));
+    if (licenseFile) dependency.licenseText = fs.readFileSync(licenseFile, 'utf-8');
+    
+    const license = dependency.license ?? 'N/A';
+    if (!allowedLicenses.includes(license)) throw new Error(`Unapproved license for dependency ${name}: ${license}`);
+
+    let url = dependency.homepage ?? dependency.repository;
+    if (url && typeof url === 'object') url = url.url;
+
+    return [
+      `Name: ${dependency.name ?? 'N/A'}`,
+      `URL: ${url ?? 'N/A'}`,
+      `Version: ${dependency.version ?? 'N/A'}`,
+      `License: ${license}`,
+      ...(dependency.licenseText ? ['', dependency.licenseText.replaceAll('\r', '')] : [])
+    ].join('\n');
+  }).join(divider);
+
+  fs.writeFileSync(outputFilePath, stringifiedDependencies);
+  console.log(`Generated THIRD_PARTY_NOTICES at ${outputFilePath}`);
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch(console.error);
+}
+
+export { main as buildDist };

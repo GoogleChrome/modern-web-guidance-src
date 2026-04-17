@@ -68,17 +68,30 @@ async function uploadToGit(suiteName: string, resultsDir: string) {
 }
 
 async function main() {
-  let suiteName = process.argv[2];
+  const args = process.argv.slice(2);
+  const summaryOnly = args.includes('--summary-only');
+  
+  // Remove flags to get positional arguments
+  const positionalArgs = args.filter(a => !a.startsWith('--'));
+  
+  let suiteName = positionalArgs[0];
+  const customResultsDir = positionalArgs[1];
 
   if (!suiteName) {
-    console.error('❌ Please provide a suite name or path as an argument. e.g. pnpm upload <suite-name>');
+    console.error('❌ Please provide a suite name as an argument. e.g. pnpm upload <suite-name>');
     process.exit(1);
   }
 
   // Strip trailing slashes and normalize to just the suite ID
   suiteName = path.basename(suiteName);
 
-  const resultsDir = path.join(baseResultsDir, suiteName);
+  let resultsDir = path.join(baseResultsDir, suiteName);
+  
+  // Support custom results directory!
+  if (customResultsDir) {
+    resultsDir = path.join(path.resolve(customResultsDir), suiteName);
+  }
+  
   const evalsJsonPath = path.join(resultsDir, 'evals.json');
 
   if (!fs.existsSync(resultsDir)) {
@@ -91,7 +104,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(cBold(cCyan(`Starting upload for suite: ${suiteName}`)));
+  console.log(cBold(cCyan(`Starting upload for suite: ${suiteName}${summaryOnly ? ' (Summary Only)' : ''}`)));
 
   try {
     await uploadToGit(suiteName, resultsDir);

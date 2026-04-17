@@ -45,7 +45,7 @@ export function capitalize(s) {
 }
 
 export function timeAgo(date) {
-    const diff = Math.floor((new Date() - new Date(date)) / 1000);
+    const diff = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
     const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
     const units = [
         { name: 'year', s: 31536000 }, { name: 'month', s: 2592000 },
@@ -53,7 +53,7 @@ export function timeAgo(date) {
         { name: 'minute', s: 60 }, { name: 'second', s: 1 }
     ];
     const u = units.find(u => Math.abs(diff) >= u.s) || units[units.length - 1];
-    return rtf.format(-Math.floor(diff / u.s), u.name);
+    return rtf.format(-Math.floor(diff / u.s), /** @type {Intl.RelativeTimeFormatUnit} */ (u.name));
 }
 
 export function calculateChartData(results) {
@@ -61,9 +61,12 @@ export function calculateChartData(results) {
     const taskNames = {};
     
     Object.keys(results).forEach(key => {
-        const [appName, guide, runType] = key.split(' - ');
-        if (!runType) return;
-        const scenario = `${appName} (${guide})`;
+        const parts = key.split(' - ');
+        if (parts.length < 3) return;
+        const [taskName, guide, runType] = parts;
+
+        if (!['guided', 'unguided'].includes(runType)) return;
+        const scenario = `${taskName} (${guide})`;
         if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [] };
         
         const runs = results[key];
@@ -88,6 +91,7 @@ export function calculateChartData(results) {
     return { labels, guided: labels.map(l => getAvg(l, 'guided')), unguided: labels.map(l => getAvg(l, 'unguided')) };
 }
 
+
 export function formatTestName(name) {
     if (!name) return name;
     return name.split(' - ').join(' / ');
@@ -109,7 +113,7 @@ export function initGoogleAuth(onAuthSuccess) {
             return;
         }
 
-        const authBtn = document.getElementById('auth-btn');
+        const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
             authBtn.style.display = 'block';
             if (accessToken) {
@@ -162,7 +166,7 @@ export async function authenticatedFetch(url, options = {}) {
         accessToken = null;
         
         // Reset button UI if available
-        const authBtn = document.getElementById('auth-btn');
+        const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
             authBtn.textContent = 'Sign in with Google';
             authBtn.disabled = false;
@@ -173,3 +177,26 @@ export async function authenticatedFetch(url, options = {}) {
     }
     return res;
 }
+
+/**
+ * @template {string} T
+ * @typedef {T extends `${infer TagName}#${string}` 
+ *   ? TagName extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[TagName] : TagName extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[TagName] : HTMLElement 
+ *   : T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement} ParseSelector
+ */
+
+/**
+ * Guaranteed querySelector. Always returns an element or throws if nothing matches.
+ * @template {string} T
+ * @param {T} query
+ * @param {ParentNode=} context
+ * @return {ParseSelector<T>}
+ */
+export function $(query, context) {
+  const result = (context || document).querySelector(query);
+  if (result === null) {
+    throw new Error(`querySelector('${query}') not found`);
+  }
+  return /** @type {ParseSelector<T>} */ (result);
+}
+

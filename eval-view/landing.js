@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, timeAgo, calculateChartData } from './utils.js';
+import { getRunStats, getColor, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { ApiClient } from './api.js';
 
@@ -69,12 +69,12 @@ window.addEventListener('popstate', () => {
 });
 
 function setupTestFilters() {
-    const filterBtn = document.getElementById('filter-btn');
-    const filterMenu = document.getElementById('filter-menu');
-    const selectAllBtn = document.getElementById('select-all-btn');
-    const deselectAllBtn = document.getElementById('deselect-all-btn');
-    const list = document.getElementById('filter-list');
-    const searchInput = document.getElementById('filter-search');
+    const filterBtn = $('#filter-btn');
+    const filterMenu = $('#filter-menu');
+    const selectAllBtn = $('#select-all-btn');
+    const deselectAllBtn = $('#deselect-all-btn');
+    const list = $('#filter-list');
+    const searchInput = $('#filter-search');
 
     // Make list scrollable
     list.style.maxHeight = '300px';
@@ -88,8 +88,11 @@ function setupTestFilters() {
 
     // Close menu when clicking outside
     document.addEventListener('click', (e) => {
-        if (!filterMenu.contains(e.target) && !filterBtn.contains(e.target)) {
-            filterMenu.classList.add('hidden');
+        const target = e.target;
+        if (target instanceof Node && filterMenu && filterBtn) {
+            if (!filterMenu.contains(target) && !filterBtn.contains(target)) {
+                filterMenu.classList.add('hidden');
+            }
         }
     });
 
@@ -111,11 +114,16 @@ function setupTestFilters() {
 
     // Search functionality
     searchInput.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
+        const target = e.target;
+        if (!(target instanceof HTMLInputElement)) return;
+        const term = target.value.toLowerCase();
         const items = list.querySelectorAll('.filter-item');
         items.forEach(item => {
-            const label = item.querySelector('.filter-item-label').textContent.toLowerCase();
-            item.style.display = label.includes(term) ? 'flex' : 'none';
+            if (item instanceof HTMLElement) {
+                const labelEl = item.querySelector('.filter-item-label');
+                const label = labelEl ? labelEl.textContent.toLowerCase() : '';
+                item.style.display = label.includes(term) ? 'flex' : 'none';
+            }
         });
     });
 
@@ -134,9 +142,12 @@ function setupTableFilters() {
         const el = document.getElementById(id);
         if (!el) return;
         el.addEventListener('change', (e) => {
-            updateFn(e.target.value);
-            syncSelectStyles(e.target);
-            renderSuites();
+            const target = e.target;
+            if (target instanceof HTMLSelectElement || target instanceof HTMLInputElement) {
+                updateFn(target.value);
+                syncSelectStyles(target);
+                renderSuites();
+            }
         });
         syncSelectStyles(el);
     });
@@ -148,12 +159,12 @@ function syncSelectStyles(el) {
 
 
 function renderFilterMenuItems() {
-    const list = document.getElementById('filter-list');
+    const list = $('#filter-list');
     list.innerHTML = '';
 
     // Get all tests sorted by date
     const sortedIds = Object.keys(allTestData).sort((a, b) => {
-        return new Date(allTestData[b].timestamp) - new Date(allTestData[a].timestamp);
+        return new Date(allTestData[b].timestamp).getTime() - new Date(allTestData[a].timestamp).getTime();
     });
 
     sortedIds.forEach(compoundKey => {
@@ -166,13 +177,16 @@ function renderFilterMenuItems() {
         checkbox.value = compoundKey;
 
         checkbox.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                selectedTestIds.add(compoundKey);
-            } else {
-                selectedTestIds.delete(compoundKey);
+            const target = e.target;
+            if (target instanceof HTMLInputElement) {
+                if (target.checked) {
+                    selectedTestIds.add(compoundKey);
+                } else {
+                    selectedTestIds.delete(compoundKey);
+                }
+                updateUrlParams();
+                renderAll();
             }
-            updateUrlParams();
-            renderAll();
         });
 
         const labelContent = document.createElement('div');
@@ -205,7 +219,7 @@ function renderFilterMenuItems() {
 }
 
 function updateUrlParams() {
-    const url = new URL(window.location);
+    const url = new URL(window.location.href);
     const allIds = Object.keys(allTestData);
 
     // If all are selected, remove param
@@ -267,26 +281,22 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
         guideUsageRate: parsed.summary?.guideUsageRate || 0
     };
     
-    updateModelFilterOptions();
+    updateFilterOptions('filter-model-group', 'model');
+    updateFilterOptions('filter-serving-group', 'serving');
+    updateFilterOptions('filter-agent-group', 'agent');
 }
 
-function updateModelFilterOptions() {
-    const modelGroup = document.getElementById('filter-model-group');
-    if (!modelGroup) return;
+function updateFilterOptions(groupId, key) {
+    const group = document.getElementById(groupId);
+    if (!group) return;
 
-    const models = new Set();
-    Object.values(allTestData).forEach(test => {
-        if (test.model) models.add(test.model);
-    });
-
-    const sortedModels = Array.from(models).sort();
+    const values = [...new Set(Object.values(allTestData).map(t => t[key]).filter(Boolean))].sort();
     
-    // Only update if changed to avoid unnecessary re-renders or losing selection
-    const currentOptions = Array.from(modelGroup.querySelectorAll('option')).map(o => o.value);
-    if (JSON.stringify(currentOptions) === JSON.stringify(sortedModels)) return;
+    const currentOptions = Array.from(group.querySelectorAll('option')).map(o => o.value);
+    if (JSON.stringify(currentOptions) === JSON.stringify(values)) return;
 
-    modelGroup.innerHTML = sortedModels.map(model => 
-        `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`
+    group.innerHTML = values.map(val => 
+        `<option value="${escapeHtml(val)}">${escapeHtml(val)}</option>`
     ).join('');
 }
 
@@ -296,7 +306,7 @@ function updateModelFilterOptions() {
 
 function renderSuites() {
     const testIds = getSortedTestIds();
-    const container = document.getElementById('suites-list');
+    const container = $('#suites-list');
     const headerSource = document.getElementById('header-source');
     if (headerSource) {
         headerSource.style.display = api.capabilities.useManifests ? 'none' : '';
@@ -322,6 +332,7 @@ function renderSuites() {
         if (currentModelFilter !== 'all' && testInfo.model !== currentModelFilter) return;
 
         const data = testInfo.data;
+        const results = data.results;
         const _date = new Date(testInfo.timestamp);
 
         // Custom format to match "March 5, 2:25PM"
@@ -333,8 +344,8 @@ function renderSuites() {
             hour12: true
         }).replace(' at ', ', ');
 
-        const gStats = calculateGroupTotalStats(data.results, 'guided');
-        const uStats = calculateGroupTotalStats(data.results, 'unguided');
+        const gStats = calculateGroupTotalStats(results, 'guided');
+        const uStats = calculateGroupTotalStats(results, 'unguided');
 
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
@@ -372,13 +383,15 @@ function renderSuites() {
 let tooltipChartInstance = null;
 let currentDumbbellKey = null;
 let hideTimeout = null;
-const tooltipContainer = document.getElementById('tooltip-container');
+const tooltipContainer = $('#tooltip-container');
 
 function setupRateCellHovers() {
     const rateCells = document.querySelectorAll('.rate-cell');
     rateCells.forEach(cell => {
         cell.addEventListener('mouseenter', (e) => {
+            if (!(cell instanceof HTMLElement)) return;
             const compoundKey = cell.dataset.compoundKey;
+            if (!compoundKey) return;
             const testInfo = allTestData[compoundKey];
             if (!testInfo) return;
 
@@ -387,10 +400,16 @@ function setupRateCellHovers() {
                 hideTimeout = null;
             }
 
-            showTooltipChart(testInfo, e.clientX, e.clientY, compoundKey);
+            if (e instanceof MouseEvent) {
+                showTooltipChart(testInfo, e.clientX, e.clientY, compoundKey);
+            }
         });
 
-        cell.addEventListener('mousemove', (e) => updateTooltipPosition(e.clientX, e.clientY));
+        cell.addEventListener('mousemove', (e) => {
+            if (e instanceof MouseEvent) {
+                updateTooltipPosition(e.clientX, e.clientY);
+            }
+        });
 
         cell.addEventListener('mouseleave', () => hideTooltipChart());
     });
@@ -404,7 +423,7 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
 
     currentDumbbellKey = compoundKey;
 
-    const headerDiv = document.getElementById('tooltip-header');
+    const headerDiv = $('#tooltip-header');
     if (headerDiv) {
         headerDiv.innerHTML = `
             <div class="tooltip-title">${escapeHtml(testInfo.testId)}</div>
@@ -412,7 +431,8 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
         `;
     }
 
-    const { labels, guided, unguided } = calculateChartData(testInfo.data.results);
+    const results = testInfo.data.results;
+    const { labels, guided, unguided } = calculateChartData(results);
     if (labels.length < 1) return;
 
     tooltipContainer.classList.remove('hidden');
@@ -493,6 +513,6 @@ function getSortedTestIds() {
     return Array.from(selectedTestIds).sort((a, b) => {
         // Safety check if id not in allTestData (shouldn't happen but good practice)
         if (!allTestData[a] || !allTestData[b]) return 0;
-        return new Date(allTestData[b].timestamp) - new Date(allTestData[a].timestamp);
+        return new Date(allTestData[b].timestamp).getTime() - new Date(allTestData[a].timestamp).getTime();
     });
 }

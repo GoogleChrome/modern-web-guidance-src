@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $ } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
@@ -9,6 +9,10 @@ let sortedScenarios = [];
 let currentRunTypes = [];
 let currentTestID = null;
 let api;
+
+// Module-scoped state
+let dashboardLoaded = false;
+let dumbbellChartInstance = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize API Client
@@ -38,8 +42,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadDashboardData(testId) {
     // Prevent double loading
-    if (window.dashboardLoaded) return;
-    window.dashboardLoaded = true;
+    if (dashboardLoaded) return;
+    dashboardLoaded = true;
 
     try {
         const data = await api.getEvals(testId);
@@ -114,9 +118,11 @@ async function loadDashboardData(testId) {
                         const checkItems = document.querySelectorAll('.check-item');
                         for (const item of checkItems) {
                             if (item.textContent.includes(checkId)) {
-                                item.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                item.style.backgroundColor = 'rgba(255, 255, 0, 0.2)'; // Highlight
-                                item.style.transition = 'background-color 0.5s';
+                                if (item instanceof HTMLElement) {
+                                    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    item.style.backgroundColor = 'rgba(255, 255, 0, 0.2)'; // Highlight
+                                    item.style.transition = 'background-color 0.5s';
+                                }
                                 break;
                             }
                         }
@@ -126,7 +132,7 @@ async function loadDashboardData(testId) {
         }
     } catch (error) {
         console.error('Error:', error);
-        window.dashboardLoaded = false;
+        dashboardLoaded = false;
 
         let errorHtml = `<div style="text-align:center; padding: 50px; color: red;">
             <h3>Error loading dashboard data</h3>
@@ -139,28 +145,23 @@ async function loadDashboardData(testId) {
             </div>`;
         }
         
-        const grid = document.getElementById('dashboard-grid');
-        if (grid) {
-            grid.innerHTML = errorHtml;
-        } else {
-            document.body.innerHTML = errorHtml;
-        }
+        const grid = $('#dashboard-grid');
+        grid.innerHTML = errorHtml;
     }
 }
 
 // Modal control
 document.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById('modal');
-    if (!modal) return;
+    const modal = $('dialog#modal');
 
-    const closeBtn = document.querySelector('.close-modal');
+    const closeBtn = $('.close-modal');
 
     // Close function that also cleans up URL
     const closeModal = () => {
         if (modal.open) modal.close();
     };
 
-    if (closeBtn) closeBtn.onclick = closeModal;
+    closeBtn.onclick = closeModal;
 
     // Close on backdrop click
     modal.addEventListener('click', (event) => event.target === modal && closeModal());
@@ -207,9 +208,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         viewLogBtn.style.display = 'none';
                     } else {
                         viewLogBtn.onclick = async () => {
-                            const modal = document.getElementById('modal');
-                            const title = document.getElementById('modal-title');
-                            const body = document.getElementById('modal-body');
+                            const modal = $('dialog#modal');
+                            const title = $('#modal-title');
+                            const body = $('#modal-body');
 
                             title.textContent = 'Test Suite Run Log';
                             body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading log...</div>';
@@ -236,16 +237,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Arrow key navigation
     document.addEventListener('keydown', (e) => {
-        const modal = document.getElementById('modal');
-        if (!modal || !modal.open || modal.dataset.view !== 'details') return;
+        const modal = $('dialog#modal');
+        if (!modal.open || modal.dataset.view !== 'details') return;
 
         if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
             if (!currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
 
-            const parts = currentDetails.testName.split(' - ');
-            if (parts.length !== 3) return;
-            const [appName, guide, runType] = parts;
-            const currentScenario = `${appName} - ${guide}`;
+            const [taskName, guide, runType] = currentDetails.testName.split(' - ');
+            const currentScenario = `${taskName} - ${guide}`;
 
             let sIdx = sortedScenarios.indexOf(currentScenario);
             let rIdx = currentRunTypes.indexOf(runType);
@@ -270,11 +269,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const nextRunType = currentRunTypes[rIdx];
             const nextTestName = `${nextScenario} - ${nextRunType}`;
 
-            if (nextTestName !== currentDetails.testName && allTestData.results[nextTestName]) {
+            const results = allTestData.results;
+            if (nextTestName !== currentDetails.testName && results[nextTestName]) {
                 e.preventDefault();
                 showDetails(
                     nextTestName,
-                    allTestData.results[nextTestName],
+                    results[nextTestName],
                     allTestData.stats[nextTestName],
                     currentTestID
                 );
@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function renderTestHeader(testId, jetskiVersion, timestamp, data) {
-    const container = document.getElementById('test-header');
+    const container = $('#test-header');
     if (container) {
         let html = `Test ID: <strong>${escapeHtml(testId)}</strong>`;
 
@@ -339,11 +339,16 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
 }
 
 function renderSummary(data) {
-    const container = document.getElementById('summary-stats');
+    const container = $('#summary-stats');
     const summary = data.summary;
 
     const unguidedRate = summary.unguidedPassRate;
     const guidedRate = summary.guidedPassRate;
+
+    const unguidedEarlyFailureRate = summary.unguidedEarlyFailureRate || 0;
+    const guidedEarlyFailureRate = summary.guidedEarlyFailureRate || 0;
+    const completedGuidedRuns = summary.totalGuidedRuns - (summary.guidedEarlyFailures || 0);
+    const completedGuidedNonDisciplineRuns = summary.totalGuidedNonDisciplineRuns !== undefined ? summary.totalGuidedNonDisciplineRuns - (summary.guidedNonDisciplineEarlyFailures || 0) : completedGuidedRuns;
 
     container.innerHTML = `
         <div class="stat-card">
@@ -354,6 +359,17 @@ function renderSummary(data) {
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
                 ${summary.unguidedPassed}/${summary.unguidedTotal} checks passed
             </div>
+            ${summary.expectedTotalRuns !== undefined ? `
+            <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-secondary);">
+                Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} tasks x ${summary.runCountPerTask} runs)` : ''}</span>
+            </div>
+            ` : ''}
+            ${summary.unguidedEarlyFailures !== undefined ? `
+            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
+                Generation Errors: <span style="font-weight: bold; color: ${getColor(100 - unguidedEarlyFailureRate)}">${unguidedEarlyFailureRate}%</span>
+                <span style="opacity: 0.8; color: ${getColor(100 - unguidedEarlyFailureRate)}">(${summary.unguidedEarlyFailures} runs)</span>
+            </div>
+            ` : ''}
         </div>
         <div class="stat-card">
             <span class="stat-value" style="color: ${getColor(guidedRate)}">
@@ -363,16 +379,27 @@ function renderSummary(data) {
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
                 ${summary.guidedPassed}/${summary.guidedTotal} checks passed
             </div>
+            ${summary.expectedTotalRuns !== undefined ? `
+            <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-secondary);">
+                Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} tasks x ${summary.runCountPerTask} runs)` : ''}</span>
+            </div>
+            ` : ''}
+            ${summary.guidedEarlyFailures !== undefined ? `
+            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
+                Generation Errors: <span style="font-weight: bold; color: ${getColor(100 - guidedEarlyFailureRate)}">${guidedEarlyFailureRate}%</span>
+                <span style="opacity: 0.8; color: ${getColor(100 - guidedEarlyFailureRate)}">(${summary.guidedEarlyFailures} runs)</span>
+            </div>
+            ` : ''}
             ${summary.toolActivationRate !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Tool Activation: <span style="font-weight: bold; color: ${getColor(summary.toolActivationRate)}">${summary.toolActivationRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(summary.toolActivationRate)}">(${summary.toolActivationCount}/${summary.totalGuidedRuns} runs)</span>
+                <span style="opacity: 0.8; color: ${getColor(summary.toolActivationRate)}">(${summary.toolActivationCount}/${completedGuidedRuns} completed runs)</span>
             </div>
             ` : ''}
             ${summary.guideUsageRate !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Guide Usage: <span style="font-weight: bold; color: ${getColor(summary.guideUsageRate)}">${summary.guideUsageRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${summary.totalGuidedRuns} runs)</span>
+                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${completedGuidedNonDisciplineRuns} completed runs)</span>
             </div>
             ` : ''}
         </div>
@@ -380,7 +407,11 @@ function renderSummary(data) {
 }
 
 function renderGrid(data, testId) {
-    const grid = document.getElementById('dashboard-grid');
+    const disciplineGrid = $('#discipline-grid');
+    const guideGrid = $('#guide-grid');
+    const disciplineSection = $('#discipline-section');
+    const guideSection = $('#guide-section');
+
     const results = data.results;
     const stats = data.stats;
 
@@ -389,34 +420,44 @@ function renderGrid(data, testId) {
 
     // Extract dimensions dynamically from data keys
     const keys = Object.keys(results);
-    const partsMap = keys.map(k => k.split(' - '));
+    const validParts = keys.map(k => {
+        const parts = k.split(' - ');
+        if (parts.length === 3) {
+            return { raw: k, taskName: parts[0], guide: parts[1], runType: parts[2] };
+        }
+        return null;
+    }).filter(p => p !== null);
 
-    // Assume 3 parts: [appName, guide, runType]
-    const validParts = partsMap.filter(p => p.length === 3);
-
-    const sortedAppNames = [...new Set(validParts.map(p => p[0]))].sort();
-    const sortedGuides = [...new Set(validParts.map(p => p[1]))].sort();
-
-    // Sort runTypes: unguided first, then guided, then alphabetical
-    const sortedRunTypes = [...new Set(validParts.map(p => p[2]))].sort((a, b) => {
+    const sortedRunTypes = [...new Set(validParts.map(p => p.runType))].sort((a, b) => {
         if (a === 'unguided' && b === 'guided') return -1;
         if (a === 'guided' && b === 'unguided') return 1;
         return a.localeCompare(b);
     });
     currentRunTypes = sortedRunTypes;
 
-    sortedAppNames.forEach(appName => {
-        sortedGuides.forEach(guide => {
-            sortedScenarios.push(`${appName} - ${guide}`);
+    const sortedTasks = [...new Set(validParts.map(p => p.taskName))].sort();
+    const sortedGuides = [...new Set(validParts.map(p => p.guide))].sort();
+
+    sortedGuides.forEach(guide => {
+        sortedTasks.forEach(taskName => {
+            // Check if this pair actually has any run data before rendering a row
+            const hasData = sortedRunTypes.some(rt => results[`${taskName} - ${guide} - ${rt}`]);
+            if (!hasData) return;
+
+            const scenarioKey = `${taskName} - ${guide}`;
+            sortedScenarios.push(scenarioKey);
+
             sortedRunTypes.forEach(runType => {
-                const testName = `${appName} - ${guide} - ${runType}`;
+                const testName = `${taskName} - ${guide} - ${runType}`;
                 const runData = results[testName];
                 const testStats = stats[testName];
 
-                if (!runData) return; // Skip combinations that don't exist
+                if (!runData) return;
 
                 const card = document.createElement('div');
                 card.className = 'test-card';
+
+                const isSkill = runData[0] && runData[0].isSkill;
 
                 // Calculate Total/Average Pass Rate for this specific test configuration
                 const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
@@ -437,7 +478,7 @@ function renderGrid(data, testId) {
                 }
 
                 let guideUsageHtml = '';
-                if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined) {
+                if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined && !isSkill) {
                     const count = testStats.runsUsingGuide;
                     const total = testStats.runCount;
                     const usageRate = total > 0 ? Math.round((count / total) * 100) : 0;
@@ -457,16 +498,28 @@ function renderGrid(data, testId) {
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 0.9em; color: var(--text-secondary);">
                         <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
-                        <span>Runs: ${runData.length}</span>
+                        <span>Runs: ${runData.length}${testStats && testStats.earlyFailures ? ` (<span style="color: var(--accent-failure); font-weight: bold;">${testStats.earlyFailures} failed</span>)` : ''}</span>
                     </div>
                     ${toolActivationHtml}
                     ${guideUsageHtml}
                 `;
 
-                grid.appendChild(card);
+                if (isSkill) {
+                    disciplineGrid.appendChild(card);
+                    disciplineSection.style.display = 'block';
+                } else {
+                    guideGrid.appendChild(card);
+                }
             });
         });
     });
+
+    // Hide Guide section if empty
+    if (guideGrid.children.length === 0) {
+        guideSection.style.display = 'none';
+    } else {
+        guideSection.style.display = 'block';
+    }
 }
 
 function openTrajectory(usedBasePath, sessionFile) {
@@ -499,11 +552,11 @@ async function showDetails(testName, runs, stats, testId) {
     // Store current details for back navigation
     currentDetails = { testName, runs, stats, testId };
 
-    const modal = document.getElementById('modal');
-    const title = document.getElementById('modal-title');
-    const contentDiv = document.querySelector('.modal-content');
-    const body = document.getElementById('modal-body');
-    const [, guide, runType] = testName.split(' - ');
+    const modal = $('dialog#modal');
+    const title = $('#modal-title');
+    const contentDiv = $('.modal-content');
+    const body = $('#modal-body');
+    const [taskName, guide, runType] = testName.split(' - ');
 
     // Reset modifier classes
     modal.classList.remove('diff-modal');
@@ -530,48 +583,43 @@ async function showDetails(testName, runs, stats, testId) {
             console.log('Error checking run files:', e);
         }
 
-        // Fetch prompt text from the task definition
         if (run === runs[0]) {
             try {
-                const isNegative = run.taskName && run.taskName.endsWith('-negative');
-                const taskPath = `tasks/${isNegative ? 'negative/' : ''}${run.taskName}.md`;
-                const text = await api.getFileText(taskPath);
+                let prompt = run.prompt || '';
+                const baseApp = run.baseApp || 'n/a';
 
-                // Extract base_app from YAML frontmatter
-                const frontmatterMatch = text.match(/^---([\s\S]+?)---/);
-                let baseApp = 'n/a';
-                if (frontmatterMatch) {
-                    const yaml = frontmatterMatch[1];
-                    const baseAppMatch = yaml.match(/base_app:\s*([^\n\r]+)/);
-                    if (baseAppMatch) {
-                        baseApp = baseAppMatch[1].trim();
+                if (!prompt) {
+                    try {
+                        const isNegative = taskName && taskName.endsWith('-negative');
+                        const taskPath = `tasks/${isNegative ? 'negative/' : ''}${taskName}.md`;
+                        const taskMd = await api.getFileText(taskPath);
+                        prompt = taskMd.replace(/^---[\s\S]+?---\n+/, '').trim();
+                    } catch {
+                        console.log(`Fallback failed: Could not resolve task file for ${run.taskName}`);
                     }
                 }
-
-                // Strip YAML frontmatter from the markdown task file
-                const cleanedText = text.replace(/^---[\s\S]+?---\n+/, '');
 
                 promptHtml = `
                     <div class="prompt-section" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--text-secondary);">
                         <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px;">Base App: <strong style="color: var(--text-primary);">${escapeHtml(baseApp)}</strong></div>
-                        <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px;">Prompt: <strong style="color: var(--text-primary); white-space: pre-wrap; font-family: inherit;">${escapeHtml(cleanedText)}</strong></div>
+                        <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px;">Prompt: <strong style="color: var(--text-primary); white-space: pre-wrap; font-family: inherit;">${escapeHtml(prompt)}</strong></div>
                     </div>
                 `;
             } catch (e) {
-                console.log('Task prompt file not found:', e.message);
+                console.log('Failed to render prompt:', e.message);
             }
         }
 
         let usageSection = '';
         const toolsUsed = run.guidanceToolsUsed || [];
-        const expectedTool = run.expectedGuidanceTool;
+        const expectedToolPrefixes = run.expectedToolPrefixes || [];
         const hasToolData = run.guidanceToolsUsed !== undefined;
 
         const guidesUsed = run.guidesUsed || 
                (run.guideUsed !== undefined ? 
                (typeof run.guideUsed === 'object' && run.guideUsed !== null ? run.guideUsed.guidesUsed : []) 
                : []);
-        const expectedGuide = run.expectedGuide || guide;
+        const expectedGuide = run.guideName || run.expectedGuide || guide;
         const hasGuideData = run.guidesUsed !== undefined || run.guideUsed !== undefined;
 
         const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : 'modern-web.log';
@@ -586,21 +634,47 @@ async function showDetails(testName, runs, stats, testId) {
                             <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 90px;">Tools Used:</strong>
                             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                                 ${toolsUsed.length > 0 ? toolsUsed.map(t => {
-                                    const isExpected = t === expectedTool;
-                                    return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(t)}</code>`;
+
+                                    const isExpected = expectedToolPrefixes.some(p => t.startsWith(p));
+                                    const matchesDiscipline = t === run.discipline;
+
+                                    let style = '';
+                                    if (isExpected) {
+                                        style = 'background: rgba(0, 200, 0, 0.1); border: 1px solid var(--accent-success); color: var(--accent-success);';
+                                    } else if (matchesDiscipline) {
+                                        style = 'background: rgba(255, 204, 0, 0.2); border: 1px solid #ffcc00; color: #ffcc00;';
+                                    } else {
+                                        style = 'background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-primary);';
+                                    }
+
+                                    return `<code style="${style} padding: 3px 6px; border-radius: 4px; font-size: 0.85em;">${escapeHtml(t)}</code>`;
                                 }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
                             </div>
                         </div>` : ''}
 
                         ${hasGuideData ? `
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 90px;">Guides Used:</strong>
-                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                ${guidesUsed.length > 0 ? guidesUsed.map(g => {
-                                    const isExpected = g === expectedGuide;
-                                    return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
-                                }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
-                            </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                          <div style="display: flex; align-items: center; gap: 8px;">
+                              <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 120px;">Retrieved Guides:</strong>
+                              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                  ${(() => {
+                                      const retrieved = run.fileReadGuides === undefined ? (run.retrievedGuides || guidesUsed) : run.retrievedGuides;
+                                      return retrieved && retrieved.length > 0 ? retrieved.map(g => {
+                                          const isExpected = g === expectedGuide;
+                                          return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
+                                      }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>';
+                                  })()}
+                              </div>
+                          </div>
+                          <div style="display: flex; align-items: center; gap: 8px;">
+                              <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 120px;">File Read Guides:</strong>
+                              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                  ${run.fileReadGuides && run.fileReadGuides.length > 0 ? run.fileReadGuides.map(g => {
+                                      const isExpected = g === expectedGuide;
+                                      return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
+                                  }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
+                              </div>
+                          </div>
                         </div>` : ''}
 
                         <div style="margin-top: 5px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: flex-end;">
@@ -632,7 +706,7 @@ async function showDetails(testName, runs, stats, testId) {
         `;
 
         const viewResourcesLink = runDetail.querySelector('.view-resources-link');
-        if (viewResourcesLink) {
+        if (viewResourcesLink instanceof HTMLElement) {
             viewResourcesLink.onclick = (e) => {
                 e.preventDefault();
                 if (shouldUseTrajectory) {
@@ -681,8 +755,10 @@ async function showDetails(testName, runs, stats, testId) {
         }
 
         dropdown.onchange = (e) => {
-            const val = e.target.value;
-            e.target.value = ''; // reset selection
+            const target = e.target;
+            if (!(target instanceof HTMLSelectElement)) return;
+            const val = target.value;
+            target.value = ''; // reset selection
             if (val === 'source') {
                 if (api.source === 'remote') {
                     // Open directly via the mTLS domain which handles auth and serves raw HTML
@@ -724,9 +800,9 @@ function renderBackButton() {
 }
 
 async function viewContent(fileName, filePath) {
-    const title = document.getElementById('modal-title');
-    const body = document.getElementById('modal-body');
-    const modal = document.getElementById('modal');
+    const title = $('#modal-title');
+    const body = $('#modal-body');
+    const modal = $('dialog#modal');
 
     title.textContent = fileName;
     modal.dataset.view = 'content';
@@ -764,10 +840,10 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     url.searchParams.set('run', runNumber);
     window.history.replaceState({}, '', url);
 
-    const modal = document.getElementById('modal');
-    const title = document.getElementById('modal-title');
-    const body = document.getElementById('modal-body');
-    const contentDiv = document.querySelector('.modal-content');
+    const modal = $('dialog#modal');
+    const title = $('#modal-title');
+    const body = $('#modal-body');
+    const contentDiv = $('.modal-content');
 
     modal.dataset.runNumber = runNumber;
 
@@ -801,6 +877,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
             </div>`;
             diffHtml += `<pre style="white-space: pre-wrap; margin: 0; color: var(--text-primary); font-family: monospace;">${escapeHtml(resultText)}</pre>`;
         } else {
+            // @ts-expect-error global library
             const diff = Diff.diffLines(setupText, resultText);
 
             diff.forEach((part, index) => {
@@ -881,8 +958,9 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 }
 
 function renderDashboardDumbbellChart(data, testId) {
-    const { labels, guided, unguided } = calculateChartData(data.results);
-    
+    const results = data.results;
+    const { labels, guided, unguided } = calculateChartData(results);
+
     if (labels.length < 1) {
         document.getElementById('chart-section').classList.add('hidden');
         return;
@@ -894,14 +972,14 @@ function renderDashboardDumbbellChart(data, testId) {
         const runType = type.toLowerCase(); // "guided" or "unguided"
 
         // Find the original key in the results
-        const originalKey = Object.keys(data.results).find(key => {
+        const originalKey = Object.keys(results).find(key => {
             const parts = key.split(' - ');
             return `${parts[0]} (${parts[1]})` === scenarioName && parts[2] === runType;
         });
 
         if (originalKey) {
             const testName = originalKey;
-            const runData = data.results[testName];
+            const runData = results[testName];
             const testStats = data.stats[testName];
             showDetails(testName, runData, testStats, testId);
         }
@@ -921,13 +999,13 @@ function renderDashboardDumbbellChart(data, testId) {
     ];
 
     // Render the Dumbbell Chart
-    if (window.dumbbellChart) window.dumbbellChart.container.innerHTML = '';
-    window.dumbbellChart = new DumbbellChart('dumbbell-chart', {
+    if (dumbbellChartInstance) dumbbellChartInstance.container.innerHTML = '';
+    dumbbellChartInstance = new DumbbellChart('dumbbell-chart', {
         size: 700,
         rowHeight: 30,
         margin: { top: 20, right: 200, bottom: 20, left: 30 }
     });
-    window.dumbbellChart.render({ labels, datasets });
+    dumbbellChartInstance.render({ labels, datasets });
 }
 
 async function getResultPaths(testId, run, testName) {

@@ -1,7 +1,9 @@
+
 import * as http from "http";
 import fs from 'fs';
 import path from 'path';
-import { exec } from 'child_process';
+import os from 'os';
+import { exec, spawn } from 'child_process';
 import { generateSuitesManifest, generateRunFilesManifests } from './generate-manifests.js';
 
 const PORT = process.env.PORT || 8081;
@@ -135,6 +137,95 @@ const server = http.createServer(async (req, res) => {
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ suites: suitesList }));
+    return;
+  }
+
+  // --- /api/grouped-tasks : lists tasks grouped per guide ---
+  if (decodedPath === '/api/grouped-tasks') {
+    try {
+      const { getTaskMap } = await import('../lib/guide-validation.ts');
+      const { USE_CASES } = await import('../serving/lib/practices.ts');
+      const taskMap = getTaskMap();
+      /** @type {Record<string, Record<string, string[]>>} */
+      const grouped = {}; // categoryName -> guideName -> [tasks]
+      /** @type {Record<string, string[]>} */
+      const disciplines = {}; // disciplineName -> [tasks]
+      
+      for (const [key, info] of taskMap.entries()) {
+        const [guide, task] = key.split('/');
+        
+        const parentDir = path.basename(path.dirname(info.guideDir));
+        const isSkill = parentDir === 'guides';
+        
+        if (isSkill) {
+          if (!disciplines[guide]) disciplines[guide] = [];
+          disciplines[guide].push(task);
+        } else {
+          const useCase = USE_CASES.find(u => u.id === guide);
+          const category = useCase ? useCase.category : 'Uncategorized';
+          if (!grouped[category]) grouped[category] = {};
+          if (!grouped[category][guide]) grouped[category][guide] = [];
+          grouped[category][guide].push(task);
+        }
+      }
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ guides: grouped, disciplines: disciplines }));
+    } catch (e) {
+      console.error('Error fetching grouped tasks:', e);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }));
+    }
+    return;
+  }
+
+  // --- /api/eval-launch : spawns an evaluation run in background ---
+  if (decodedPath === '/api/eval-launch' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        // Return 200 immediately so UI can track the run
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+
+        server.close(() => {
+          console.log(`Server closed to release port ${PORT}`);
+        });
+
+        const tempConfigPath = path.join(os.tmpdir(), `.ui_eval_config_${Math.random().toString(36).substring(2, 10)}.ts`);
+        const options = JSON.parse(body);
+        fs.writeFileSync(tempConfigPath, `export default ${JSON.stringify(options, null, 2)};`);
+
+        console.log(`\n>>> Launching UI Eval Suite in background...`);
+
+        const p = spawn('pnpm', [
+          'gd',
+          'eval',
+          '--config',
+          tempConfigPath,
+          '--no-ui',
+          ...options.tasks
+        ], {
+          stdio: 'inherit',
+          cwd: path.resolve('..'), // Run from root to resolve paths correctly
+          detached: false
+        });
+
+        p.on('close', () => {
+          try {
+            if (fs.existsSync(tempConfigPath)) fs.unlinkSync(tempConfigPath);
+            console.log(`🗑️ Cleaned up temporary UI config for ${tempConfigPath}.`);
+          } catch (e) {
+            console.error(`Failed to delete temporary config for ${tempConfigPath}:`, e);
+          }
+        });
+
+        p.unref(); // Avoid holding parent open if terminating event context
+      } catch (e) {
+        console.error('Launch failure:', e);
+      }
+    });
     return;
   }
 
@@ -356,7 +447,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  const url = `http://localhost:${PORT}/`;
+  const isLaunchUi = process.env.LAUNCH_UI === 'true';
+  const url = isLaunchUi ? `http://localhost:${PORT}/eval-ui.html` : `http://localhost:${PORT}/`;
   console.log(`Server running at ${url}`);
 
   // Try to open the browser if not disabled

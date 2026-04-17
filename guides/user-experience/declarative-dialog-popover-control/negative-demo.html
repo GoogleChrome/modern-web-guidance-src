@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legacy Visibility Control</title>
+  <script src="https://unpkg.com/@oddbird/popover-polyfill"></script>
+  <script src="https://esm.run/invokers-polyfill"></script>
+  <style>
+    body {
+      font-family: serif;
+      padding: 10px;
+    }
+
+    .custom-popover, .custom-dialog {
+      display: none;
+      padding: 20px;
+      border: 5px solid black;
+      background: white;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+    }
+
+    .visible, :popover-open {
+      display: block;
+    }
+
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 9998;
+    }
+  </style>
+</head>
+<body>
+  <h1>Manual UI Controls</h1>
+
+  <section>
+    <h2>Popover</h2>
+    <button id="popover-btn">Click for Popover</button>
+    <div id="popover-element" class="custom-popover">
+      <p>Content Managed by JS</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Modal</h2>
+    <button id="dialog-btn">Open Custom Modal</button>
+    <div id="modal-overlay" class="overlay"></div>
+    <div id="dialog-element" class="custom-dialog">
+      <h3>Modal Title</h3>
+      <p>This is a div pretending to be a dialog.</p>
+      <button id="close-btn">Close Everything</button>
+    </div>
+  </section>
+
+  <script>
+    const pBtn = document.getElementById('popover-btn');
+    const pEl = document.getElementById('popover-element');
+    const dBtn = document.getElementById('dialog-btn');
+    const dEl = document.getElementById('dialog-element');
+    const dOver = document.getElementById('modal-overlay');
+    const cBtn = document.getElementById('close-btn');
+
+    pBtn.onclick = function() {
+      if (pEl.style.display === 'block') {
+        pEl.style.display = 'none';
+      } else {
+        pEl.style.display = 'block';
+      }
+    };
+
+    dBtn.onclick = function() {
+      dEl.className = 'custom-dialog visible';
+      dOver.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    };
+
+    cBtn.onclick = function() {
+      dEl.className = 'custom-dialog';
+      dOver.style.display = 'none';
+      document.body.style.overflow = 'auto';
+    };
+
+    window.onclick = function(event) {
+      if (event.target == dOver) {
+        dEl.className = 'custom-dialog';
+        dOver.style.display = 'none';
+        document.body.style.overflow = 'auto';
+      }
+    };
+  </script>
+</body>
+</html>

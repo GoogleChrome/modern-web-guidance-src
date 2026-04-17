@@ -1,5 +1,3 @@
-# Force tracking of node_modules when publishing releases from dist envelope
-!node_modules/
+# Exclude node_modules from publishing as we move to npx -y style
+node_modules/
 
-# Specifically exclude the node_modules in the modern-web-use-cases CLI
-skills-cli/modern-web-use-cases/cli/node_modules/
