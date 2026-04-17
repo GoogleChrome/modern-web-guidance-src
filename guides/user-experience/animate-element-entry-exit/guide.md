@@ -83,11 +83,15 @@ For elements added via `appendChild()` or removed via `remove()`:
 // Trigger exit transition
 element.setAttribute('hidden', true);
 
-// 2. Wait for all active transitions/animations to finish
+// 2. Wait for all active transitions/animations to finish,
+//    with a failsafe timeout in case an animation never ends (e.g. for looping animations)
 const animations = element.getAnimations();
 if (animations.length > 0) {
-  // Promise.allSettled ensures we wait even if some animations fail
-  await Promise.allSettled(animations.map(a => a.finished));
+  await Promise.race([
+    // Promise.allSettled ensures we wait even if some animations fail
+    Promise.allSettled(animations.map(a => a.finished)),
+    new Promise(r => setTimeout(r, 2000))
+  ]);
 }
 
 // 3. Finally remove the node from the DOM
