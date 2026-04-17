@@ -17,16 +17,23 @@ You should generate both static tests and browser tests, with each test containi
 CRITICAL DIRECTIVE: ALWAYS prefer static analysis over browser assertions!
 - Use \`linkedom\` (\`document.querySelector\`) to statically verify HTML structure, attributes, tags, and label associations parsed directly from the HTML source.
 - Use \`ts-morph\` to statically verify JavaScript source code (e.g. validating function calls, declarations, variables in \`<script>\` blocks using AST parsing).
-- Use \`cssom\` (via \`Parser.parseStyleSheetText\`) to statically verify CSS source code, rules, selectors, and property values.
+- Use \`cssomnom\` (via \`Parser.parseStyleSheetText\`) to statically verify CSS source code, rules, selectors, and property values.
 - ONLY fallback to Playwright browser automation (\`await expect(page...)\`) if the expectation strictly requires browser rendering, interactivity (clicks/typing), or computed layouts (styles).
 
 
 If you are unfamiliar with the APIs for these parsers, you can refer to their TypeScript definitions located at these absolute paths in the workspace:
-- PostCSS: ${path.join(guidesDir, 'node_modules/postcss/lib/postcss.d.ts')}
-- PostCSS Selector Parser: ${path.join(guidesDir, 'node_modules/postcss-selector-parser/postcss-selector-parser.d.ts')}
-- PostCSS Value Parser: ${path.join(guidesDir, 'node_modules/postcss-value-parser/lib/index.d.ts')}
+- CSSOMNom: ${path.join(guidesDir, '../lib/third_party/cssomnom/index.d.ts')}
 - TS Morph: ${path.join(guidesDir, 'node_modules/ts-morph/lib/ts-morph.d.ts')}
 - Linkedom: ${path.join(guidesDir, 'node_modules/linkedom/types/index.d.ts')}
+
+Here are examples of best practice approaches for all sorts of assertions:
+
+### Static Analysis Patterns (Linkedom, CSSOMNom, ts-morph)
+${fs.readFileSync(path.join(guidesDir, 'parser-pattern-library.test.ts'), 'utf-8')}
+
+### Browser Analysis Patterns (Playwright)
+${fs.readFileSync(path.join(guidesDir, 'playwright-pattern-library.grader.ts'), 'utf-8')}
+
 
 
 Design it so that the demo.html passes all tests (100% success rate), and the negative-demo.html fails all tests (0% success rate).
