@@ -144,5 +144,61 @@ describe('Grader Assertions - CSSOM + DOM Integration', () => {
     const computedStyle = getComputedStyleStatically(tooltip, rules);
     assert.strictEqual(computedStyle.getPropertyValue('top'), '<resolved pixel value>');
   });
+
+  test('Case 7: Priority Syntax - Anchor Positioning', () => {
+    const css = `
+      #tooltip {
+        top: anchor(bottom);
+        width: anchor-size(width);
+      }
+    `;
+    const rules = Parser.parseStyleSheetText(css);
+    assert.strictEqual(rules.length, 1);
+    assert.ok(rules[0] instanceof CSSStyleRule);
+    const styleRule = rules[0] as CSSStyleRule;
+    assert.strictEqual(styleRule.style.getPropertyValue('top'), 'anchor(bottom)');
+    assert.strictEqual(styleRule.style.getPropertyValue('width'), 'anchor-size(width)');
+  });
+
+  test('Case 8: Priority Syntax - @starting-style and @view-transition', () => {
+    const css = `
+      @starting-style {
+        h1 { opacity: 0; }
+      }
+      @view-transition {
+        navigation: auto;
+      }
+    `;
+    const rules = Parser.parseStyleSheetText(css);
+    assert.strictEqual(rules.length, 2);
+    assert.strictEqual(rules[0].constructor.name, 'CSSStartingStyleRule');
+    assert.strictEqual(rules[1].constructor.name, 'CSSViewTransitionRule');
+  });
+
+  test('Case 9: Priority Syntax - Dynamic Functions', () => {
+    const css = `
+      li {
+        animation-delay: calc(sibling-index() * 100ms);
+      }
+    `;
+    const rules = Parser.parseStyleSheetText(css);
+    assert.strictEqual(rules.length, 1);
+    assert.ok(rules[0] instanceof CSSStyleRule);
+    const styleRule = rules[0] as CSSStyleRule;
+    assert.strictEqual(styleRule.style.getPropertyValue('animation-delay'), 'calc(sibling-index() * 100ms)');
+  });
+
+  test('Case 10: Priority Syntax - Advanced Selectors', () => {
+    const css = `
+      div:has(p) { color: red; }
+      :popover-open { color: green; }
+    `;
+    const rules = Parser.parseStyleSheetText(css);
+    assert.strictEqual(rules.length, 2);
+    assert.ok(rules[0] instanceof CSSStyleRule);
+    assert.ok(rules[1] instanceof CSSStyleRule);
+    assert.strictEqual((rules[0] as CSSStyleRule).selectorText, 'div:has(p)');
+    assert.strictEqual((rules[1] as CSSStyleRule).selectorText, ':popover-open');
+  });
 });
 
