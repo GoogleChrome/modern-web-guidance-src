@@ -124,7 +124,7 @@ if (!supportsModernTransitions) {
 
 ```javascript
 // To show:
-el.style.display = 'block';
+el.style.display = '';
 requestAnimationFrame(() => {
   requestAnimationFrame(() => {
     el.classList.remove('hidden');
