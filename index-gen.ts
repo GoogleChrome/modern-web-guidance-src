@@ -81,7 +81,7 @@ async function batchGitInfo (paths: string[]): Promise<Map<string, GitInfo>> {
 
       if (line.startsWith('COMMIT\t')) {
         const [, d, a, e] = line.split('\t');
-        date = d?.slice(0, 16).replace('T', ' ') ?? null;
+        date = d ?? null;
         author = a ?? null;
         email = e ?? null;
       }
@@ -105,9 +105,51 @@ async function batchGitInfo (paths: string[]): Promise<Map<string, GitInfo>> {
 }
 
 /** Extract a GitHub username from a noreply email, or return null. */
-function githubUser (email: string | null): string | null {
-  const m = email?.match(/^(?:\d+\+)?(.+)@users\.noreply\.github\.com$/);
+function githubUser (email: string): string | null {
+  const m = email.match(/^(?:\d+\+)?(.+)@users\.noreply\.github\.com$/);
   return m?.[1] ?? null;
+}
+
+/**
+ * Build a map from author name → GitHub username.
+ * First pass: extract from noreply emails in git history.
+ * Second pass: resolve remaining authors via GitHub commits API.
+ */
+async function buildAuthorMap (): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const unresolvedEmails = new Map<string, string>(); // name → email
+
+  try {
+    const { stdout } = await exec('git log --all --format=%aN%x09%aE', { cwd: rootDir, maxBuffer: 50 * 1024 * 1024 });
+    for (const line of stdout.split('\n')) {
+      const [name, email] = line.split('\t');
+      if (!name || !email) continue;
+      if (map.has(name)) continue;
+      const user = githubUser(email);
+      if (user) {
+        map.set(name, user);
+      }
+      else if (!unresolvedEmails.has(name)) {
+        unresolvedEmails.set(name, email);
+      }
+    }
+  }
+  catch { /* empty */ }
+
+  // Resolve remaining authors via GitHub API (one call per unique email)
+  const lookups = [...unresolvedEmails].map(async ([name, email]) => {
+    try {
+      const { stdout } = await exec(
+        `gh api '/repos/GoogleChrome/guidance/commits?per_page=1&author=${email}' --jq '.[0].author.login'`,
+      );
+      const login = stdout.trim();
+      if (login) map.set(name, login);
+    }
+    catch { /* skip — author stays unlinked */ }
+  });
+  await Promise.all(lookups);
+
+  return map;
 }
 
 /** Markdown link helper for issue numbers. */
@@ -141,9 +183,10 @@ async function buildGuideSource (): Promise<Source<any>> {
   const inventoryByName = new Map(guides.map(g => [g.name, g]));
 
   // Await remaining async work in parallel
-  const [allUseCases, gitInfoMap] = await Promise.all([
+  const [allUseCases, gitInfoMap, authorMap] = await Promise.all([
     issuesPromise,
     batchGitInfo(preparedGuides.map(g => g.relativeSubdir)),
+    buildAuthorMap(),
   ]);
 
   const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(allUseCases);
@@ -208,7 +251,7 @@ async function buildGuideSource (): Promise<Source<any>> {
       heading: 'Updated',
       md: (r: any) => {
         if (!r.lastUpdated) return null;
-        const ms = new Date(r.lastUpdated.replace(' ', 'T')).getTime() - Date.now();
+        const ms = new Date(r.lastUpdated).getTime() - Date.now();
         const units: [Intl.RelativeTimeFormatUnit, number][] = [
           ['year', 365.25 * 24 * 3600_000],
           ['month', 30 * 24 * 3600_000],
@@ -229,7 +272,7 @@ async function buildGuideSource (): Promise<Source<any>> {
       heading: 'Author',
       md: (r: any) => {
         if (!r.lastAuthor) return null;
-        const user = githubUser(r.lastAuthorEmail);
+        const user = authorMap.get(r.lastAuthor);
         return user ? `[${r.lastAuthor}](https://github.com/${user})` : r.lastAuthor;
       },
     },
