@@ -107,7 +107,7 @@ async function main(): Promise<BuildResult | undefined> {
   try {
     console.log("Bundling search.mjs...");
     // To analyze bundle size breakdown, assign build()s return to `result` and use `esbuild.analyzeMetafile(result.metafile)`
-    await esbuild.build({
+    const resultSearch = await esbuild.build({
       entryPoints: [path.join(SERVING_DIR, "lib/search.ts")],
       bundle: true,
       platform: "node",
@@ -145,7 +145,7 @@ async function main(): Promise<BuildResult | undefined> {
     });
 
     console.log("Bundling modern-web.mjs...");
-    await esbuild.build({
+    const resultModernWeb = await esbuild.build({
       entryPoints: [path.join(SERVING_DIR, "bin/modern-web.ts")],
       bundle: true,
       platform: "node",
@@ -160,7 +160,14 @@ async function main(): Promise<BuildResult | undefined> {
         },
       }],
       loader: { ".node": "file" },
+      metafile: true,
     });
+
+    console.log("Generating THIRD_PARTY_NOTICES...");
+    generateThirdPartyNotices(
+      [resultSearch.metafile, resultModernWeb.metafile],
+      path.join(PUBLISH_ROOT, "THIRD_PARTY_NOTICES")
+    );
 
   } catch (error) {
     console.error("Failed to bundle with esbuild:", error);
@@ -270,6 +277,78 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   }
 
   return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
+}
+
+function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath: string) {
+  const paths = new Set<string>();
+  for (const metafile of metafiles) {
+    for (const p of Object.keys(metafile.inputs)) {
+      paths.add(p);
+    }
+  }
+
+  const nodeModules = new Map<string, string>();
+  for (let filePath of paths) {
+    let absolutePath = filePath;
+    if (!path.isAbsolute(filePath)) {
+        absolutePath = path.resolve(SERVING_DIR, filePath);
+    }
+
+    let dir = path.dirname(absolutePath);
+    let pkgJsonPath;
+    while (dir.startsWith(rootDir) && dir !== rootDir) {
+      const candidate = path.join(dir, 'package.json');
+      if (fs.existsSync(candidate)) {
+        pkgJsonPath = candidate;
+        break;
+      }
+      dir = path.dirname(dir);
+    }
+
+    if (pkgJsonPath) {
+      const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+      if (pkg.name && pkg.name !== 'guidance') {
+        nodeModules.set(pkg.name, path.dirname(pkgJsonPath));
+      }
+    }
+  }
+
+  const divider = '\n\n-------------------- DEPENDENCY DIVIDER --------------------\n\n';
+
+  const stringifiedDependencies = Array.from(nodeModules.keys()).sort().map(name => {
+    const nodeModulePath = nodeModules.get(name)!;
+    const dependency = JSON.parse(fs.readFileSync(path.join(nodeModulePath, 'package.json'), 'utf-8'));
+    const licenseFilePaths = [
+      path.join(nodeModulePath, 'LICENSE'),
+      path.join(nodeModulePath, 'LICENSE.txt'),
+      path.join(nodeModulePath, 'LICENSE.md'),
+      path.join(nodeModulePath, 'LICENSE.MIT'),
+      path.join(nodeModulePath, 'LICENSE.APACHE'),
+    ];
+    for (const licenseFile of licenseFilePaths) {
+      if (fs.existsSync(licenseFile)) {
+        dependency.licenseText = fs.readFileSync(licenseFile, 'utf-8');
+        break;
+      }
+    }
+    const parts = [];
+    parts.push(`Name: ${dependency.name ?? 'N/A'}`);
+    let url = dependency.homepage ?? dependency.repository;
+    if (url && typeof url === 'object') {
+      url = url.url;
+    }
+    parts.push(`URL: ${url ?? 'N/A'}`);
+    parts.push(`Version: ${dependency.version ?? 'N/A'}`);
+    parts.push(`License: ${dependency.license ?? 'N/A'}`);
+    if (dependency.licenseText) {
+      parts.push('');
+      parts.push(dependency.licenseText.replaceAll('\r', ''));
+    }
+    return parts.join('\n');
+  }).join(divider);
+
+  fs.writeFileSync(outputFilePath, stringifiedDependencies);
+  console.log(`Generated THIRD_PARTY_NOTICES at ${outputFilePath}`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
