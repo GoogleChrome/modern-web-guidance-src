@@ -5,7 +5,8 @@
  * Usage:
  *   node --experimental-strip-types index-gen.ts [guides|skills] [--type=json,md,csv]
  *
- * Defaults to guides, json+md. Output files go to the source directory.
+ * With no positional arg, generates both guides and skills.
+ * Defaults to json+md output. Output files go to the source directory.
  */
 
 import fs from 'node:fs';
@@ -16,15 +17,7 @@ import matter from 'gray-matter';
 import { scanAllGuides, processGuideInventory, classifyGuide } from './lib/guide-validation.ts';
 import { rootDir, guidesDir } from './lib/paths.ts';
 
-const { values, positionals } = parseArgs({
-  options: { type: { type: 'string', default: 'json,md' } },
-  strict: false,
-  allowPositionals: true,
-});
-const sourceName = positionals[0] ?? 'guides';
-const outputTypes = (values.type as string).split(',').map(s => s.trim());
-
-// --- Shared helpers ---
+// --- Types ---
 
 type Column<R> = {
   heading?: string;
@@ -40,6 +33,13 @@ interface Source<R extends Record<string, unknown>> {
   rows: R[];
   columns: Record<string, Column<R>>;
 }
+
+type Format = {
+  ext: string;
+  render: (source: Source<any>) => string;
+};
+
+// --- Shared helpers ---
 
 /** Fetch GitHub issues by label, returning all matches. */
 function fetchIssues (label: string): any[] {
@@ -72,8 +72,17 @@ function issueLink (issueNumber: number | null): string | null {
   return issueNumber ? `[#${issueNumber}](https://github.com/GoogleChrome/guidance/issues/${issueNumber})` : null;
 }
 
-// --- Source: guides ---
+/** Serialize a raw value to a plain string. */
+function serialize (v: unknown, separator: string): string {
+  if (Array.isArray(v)) {
+    return v.join(separator);
+  }
+  return v == null ? '' : String(v);
+}
 
+// --- Source builders ---
+
+/** Build the guides index source. */
 async function buildGuideSource (): Promise<Source<any>> {
   // Suppress the "dry run" log from sync-use-cases importing its env setup
   const origLog = console.log;
@@ -142,8 +151,6 @@ async function buildGuideSource (): Promise<Source<any>> {
   return { dir: 'guides', title: 'Guide Index', rows, columns };
 }
 
-// --- Source: skills ---
-
 /** Scan a directory for SKILL.md files and parse their frontmatter. */
 function scanSkillsIn (dir: string, source: string): any[] {
   if (!fs.existsSync(dir)) {
@@ -170,6 +177,7 @@ function scanSkillsIn (dir: string, source: string): any[] {
     });
 }
 
+/** Build the skills index source. */
 function buildSkillSource (): Source<any> {
   const allIssues = fetchIssues('new-skill');
 
@@ -223,57 +231,42 @@ function buildSkillSource (): Source<any> {
   return { dir: 'skills-drafts', title: 'Skill Index', rows, columns };
 }
 
-// --- Formatting & output ---
-
 const sourceBuilders: Record<string, () => Source<any> | Promise<Source<any>>> = {
   guides: buildGuideSource,
   skills: buildSkillSource,
 };
 
-if (!(sourceName in sourceBuilders)) {
-  console.error(`Unknown source "${sourceName}". Use ${Object.keys(sourceBuilders).join(', ')}.`);
-  process.exit(1);
-}
+// --- Output formatters ---
 
-const source = await sourceBuilders[sourceName]();
-const { rows: sourceRows, columns: sourceColumns, dir: outDir, title } = source;
-
-/** Serialize a raw value to a plain string. */
-function serialize (v: unknown, separator: string): string {
-  if (Array.isArray(v)) {
-    return v.join(separator);
+/** Render a Markdown table cell. */
+function mdCell (key: string, col: Column<any>, row: any, separator: string): string {
+  if (col.md) {
+    return col.md(row) ?? '';
   }
-  return v == null ? '' : String(v);
+  const raw = row[key];
+  if (col.link) {
+    const items = Array.isArray(raw) ? raw : [raw];
+    return items.filter(v => v != null && v !== '').map(v => `[${v}](${col.link!(String(v))})`).join(separator);
+  }
+  if (typeof raw === 'boolean') {
+    return raw ? '✅' : '❌';
+  }
+  return serialize(raw, separator);
 }
 
-const keys = Object.keys(sourceColumns);
-const headings = keys.map(k => sourceColumns[k].heading ?? k);
-
-/** Format definitions — each knows how to render the full output. */
-const formats = {
+const formats: Record<string, Format> = {
   json: {
-    file: 'index.json',
-    render: () => JSON.stringify(sourceRows, null, '\t') + '\n',
+    ext: 'json',
+    render: ({ rows }) => JSON.stringify(rows, null, '\t') + '\n',
   },
   md: {
-    file: 'index.md',
-    separator: ', ',
-    empty: '—',
-    cell (key: string, col: Column<any>, row: any): string {
-      if (col.md) {
-        return col.md(row) ?? '';
-      }
-      const raw = row[key];
-      if (col.link) {
-        const items = Array.isArray(raw) ? raw : [raw];
-        return items.filter(v => v != null && v !== '').map(v => `[${v}](${col.link!(String(v))})`).join(this.separator);
-      }
-      if (typeof raw === 'boolean') {
-        return raw ? '✅' : '❌';
-      }
-      return serialize(raw, this.separator);
-    },
-    render () {
+    ext: 'md',
+    render ({ rows, columns, title }) {
+      const keys = Object.keys(columns);
+      const headings = keys.map(k => columns[k].heading ?? k);
+      const separator = ', ';
+      const empty = '—';
+
       const headerRow = '| ' + headings.join(' | ') + ' |';
       const separatorRow = '| ' + keys.map(() => '-----').join(' | ') + ' |';
       const lines: string[] = [
@@ -281,15 +274,15 @@ const formats = {
         '',
         `# ${title}`,
         '',
-        `> Generated on ${new Date().toISOString().slice(0, 10)} — ${sourceRows.length} entries.`,
+        `> Generated on ${new Date().toISOString().slice(0, 10)} — ${rows.length} entries.`,
         '',
         headerRow,
         separatorRow,
       ];
-      for (const row of sourceRows) {
+      for (const row of rows) {
         const cells = keys.map(k => {
-          const v = this.cell(k, sourceColumns[k], row);
-          return v === '' ? this.empty : v;
+          const v = mdCell(k, columns[k], row, separator);
+          return v === '' ? empty : v;
         });
         lines.push('| ' + cells.join(' | ') + ' |');
       }
@@ -298,29 +291,51 @@ const formats = {
     },
   },
   csv: {
-    file: 'index.csv',
-    separator: ', ',
-    empty: '',
-    escape: (s: string) => s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s,
-    render () {
-      const csvLines = [headings.join(',')];
-      for (const row of sourceRows) {
-        const cells = keys.map(k => this.escape(serialize(row[k], this.separator)));
-        csvLines.push(cells.join(','));
+    ext: 'csv',
+    render ({ rows, columns }) {
+      const keys = Object.keys(columns);
+      const headings = keys.map(k => columns[k].heading ?? k);
+      const separator = ', ';
+      const escape = (s: string) => s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+
+      const lines = [headings.join(',')];
+      for (const row of rows) {
+        const cells = keys.map(k => escape(serialize(row[k], separator)));
+        lines.push(cells.join(','));
       }
-      csvLines.push('');
-      return csvLines.join('\n');
+      lines.push('');
+      return lines.join('\n');
     },
   },
 };
 
-for (const t of outputTypes) {
-  if (!(t in formats)) {
-    console.error(`Unknown type "${t}". Use ${Object.keys(formats).join(', ')}.`);
+// --- Main ---
+
+const { values, positionals } = parseArgs({
+  options: { type: { type: 'string', default: 'json,md' } },
+  strict: false,
+  allowPositionals: true,
+});
+const sourceNames = positionals.length > 0 ? positionals : Object.keys(sourceBuilders);
+const outputTypes = (values.type as string).split(',').map(s => s.trim());
+
+for (const sourceName of sourceNames) {
+  if (!(sourceName in sourceBuilders)) {
+    console.error(`Unknown source "${sourceName}". Use ${Object.keys(sourceBuilders).join(', ')}.`);
     process.exit(1);
   }
-  const format = formats[t as keyof typeof formats];
-  const outPath = path.join(rootDir, outDir, format.file);
-  fs.writeFileSync(outPath, format.render());
-  console.log(`Wrote ${sourceRows.length} ${sourceName} to ${outDir}/${format.file}`);
+
+  const source = await sourceBuilders[sourceName]();
+
+  for (const t of outputTypes) {
+    if (!(t in formats)) {
+      console.error(`Unknown type "${t}". Use ${Object.keys(formats).join(', ')}.`);
+      process.exit(1);
+    }
+    const format = formats[t];
+    const file = `index.${format.ext}`;
+    const outPath = path.join(rootDir, source.dir, file);
+    fs.writeFileSync(outPath, format.render(source));
+    console.log(`Wrote ${source.rows.length} ${sourceName} to ${source.dir}/${file}`);
+  }
 }
