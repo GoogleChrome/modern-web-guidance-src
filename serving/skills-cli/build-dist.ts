@@ -280,6 +280,16 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
 }
 
 function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath: string) {
+  const allowedLicenses = [
+    'MIT',
+    'Apache 2.0',
+    'Apache-2.0',
+    'BSD-3-Clause',
+    'BSD-2-Clause',
+    'ISC',
+    '0BSD',
+  ];
+
   const paths = new Set<string>();
   for (const metafile of metafiles) {
     for (const p of Object.keys(metafile.inputs)) {
@@ -335,6 +345,12 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
         break;
       }
     }
+    
+    const license = dependency.license ?? 'N/A';
+    if (!allowedLicenses.includes(license)) {
+      throw new Error(`Unapproved license for dependency ${name}: ${license}`);
+    }
+
     const parts = [];
     parts.push(`Name: ${dependency.name ?? 'N/A'}`);
     let url = dependency.homepage ?? dependency.repository;
@@ -343,7 +359,7 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
     }
     parts.push(`URL: ${url ?? 'N/A'}`);
     parts.push(`Version: ${dependency.version ?? 'N/A'}`);
-    parts.push(`License: ${dependency.license ?? 'N/A'}`);
+    parts.push(`License: ${license}`);
     if (dependency.licenseText) {
       parts.push('');
       parts.push(dependency.licenseText.replaceAll('\r', ''));
