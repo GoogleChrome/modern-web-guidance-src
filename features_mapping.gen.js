@@ -98,9 +98,6 @@ window.__featuresMapping = {
   "improve-next-page-load-performance": [
     "speculation-rules"
   ],
-  "incorrect-theme-flash": [
-    "color-scheme"
-  ],
   "interaction-latency-attribution": [
     "event-timing"
   ],
@@ -119,6 +116,9 @@ window.__featuresMapping = {
   ],
   "optimize-scroll-stability": [
     "contain-intrinsic-size"
+  ],
+  "prevent-incorrect-theme-flash": [
+    "color-scheme"
   ],
   "prioritized-preloading": [
     "scheduler"
@@ -173,7 +173,7 @@ window.__featuresMapping = {
   "capture-location-agnostic-data": [
     "temporal"
   ],
-  "carousel-item-effects": [
+  "carousel-slide-effects": [
     "scroll-driven-animations",
     "scroll-snap"
   ],
@@ -222,6 +222,9 @@ window.__featuresMapping = {
     "invoker-commands",
     "popover",
     "dialog"
+  ],
+  "serve-alternative-image-formats": [
+    "image-set"
   ],
   "design-token-reactivity": [
     "container-style-queries"
@@ -278,13 +281,13 @@ window.__featuresMapping = {
     "color-scheme",
     "light-dark"
   ],
+  "light-dismiss-a-dialog": [
+    "dialog-closedby"
+  ],
   "light-dismiss-content-overlay": [
     "popover",
     "scroll-snap",
     "inert"
-  ],
-  "light-dismiss-dialog": [
-    "dialog-closedby"
   ],
   "manage-recurring-intervals": [
     "temporal"
@@ -312,7 +315,7 @@ window.__featuresMapping = {
     "sibling-count",
     "transition-behavior"
   ],
-  "persistent-top-layer": [
+  "persistent-top-layer-ui": [
     "move-before"
   ],
   "physics-based-easing": [
@@ -372,16 +375,13 @@ window.__featuresMapping = {
     "details-name",
     "hidden-until-found"
   ],
-  "serve-alternative-image-formats": [
-    "image-set"
-  ],
   "shared-element-transitions": [
     "view-transitions"
   ],
   "shrinking-header-on-scroll": [
     "scroll-driven-animations"
   ],
-  "size-aware-adaptations": [
+  "size-aware-styling": [
     "container-queries"
   ],
   "soft-edge-content-fade": [
@@ -389,9 +389,6 @@ window.__featuresMapping = {
   ],
   "stabilize-reactive-state": [
     "temporal"
-  ],
-  "state-driven-component-variations": [
-    "container-style-queries"
   ],
   "stencil-cutouts": [
     "masks"
@@ -404,6 +401,9 @@ window.__featuresMapping = {
   ],
   "theme-within-theme": [
     "color-scheme"
+  ],
+  "usage-aware-component-variations": [
+    "container-style-queries"
   ],
   "visually-stable-font-fallbacks": [
     "font-size-adjust"
