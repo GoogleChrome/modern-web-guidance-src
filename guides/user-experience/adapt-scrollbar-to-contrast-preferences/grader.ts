@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseHTML } from 'linkedom';
-import { Parser, CSSStyleRule, CSSMediaRule, CSSUnknownRule, serialize } from '../../../../cssom/src/index.ts';
+import { Parser, CSSStyleRule, CSSMediaRule, CSSUnknownRule, serialize } from '../../../lib/third_party/cssom/index.js';
+
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
