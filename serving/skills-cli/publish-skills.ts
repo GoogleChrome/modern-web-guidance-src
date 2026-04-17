@@ -19,19 +19,15 @@ function incrementVersion(version: string): string {
 }
 
 
-export const _internal = {
-  getLatestGitTag(): string {
-    return execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
-  }
-};
-
-export async function getNextVersion(): Promise<string> {
+export async function getNextVersion(
+  getLatestTag = () => execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim()
+): Promise<string> {
   console.log("Determining next version...");
   let currentVersion = "0.0.0";
 
   try {
     // Get the latest tag that looks like v*.*.*
-    const latestTag = _internal.getLatestGitTag();
+    const latestTag = getLatestTag();
     currentVersion = latestTag.startsWith('v') ? latestTag.slice(1) : latestTag;
     console.log(`Found latest tag: ${latestTag}`);
   } catch (e) {

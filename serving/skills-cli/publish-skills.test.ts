@@ -1,29 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import { mock } from 'node:test';
-import { getNextVersion, _internal } from './publish-skills.ts';
+import { getNextVersion } from './publish-skills.ts';
 import fs from 'node:fs/promises';
-import path from 'node:path';
 
 test('getNextVersion derive from git tag', async () => {
-  // Mock getLatestGitTag to return a tag
-  const mockGetTag = mock.method(_internal, 'getLatestGitTag', () => {
-    return 'v0.0.22';
-  });
-
-  try {
-    const version = await getNextVersion();
-    assert.strictEqual(version, '0.0.23');
-  } finally {
-    mockGetTag.mock.restore();
-  }
+  const mockGetTag = () => 'v0.0.22';
+  
+  const version = await getNextVersion(mockGetTag);
+  assert.strictEqual(version, '0.0.23');
 });
 
 test('getNextVersion fallback to package.json', async () => {
-  // Mock getLatestGitTag to fail (no tags)
-  const mockGetTag = mock.method(_internal, 'getLatestGitTag', () => {
+  const mockGetTag = () => {
     throw new Error('fatal: No names found, cannot describe anything.');
-  });
+  };
 
   // Mock fs.readFile to return a version from package.json
   const mockReadFile = mock.method(fs, 'readFile', async (p: string | any) => {
@@ -34,10 +25,9 @@ test('getNextVersion fallback to package.json', async () => {
   });
 
   try {
-    const version = await getNextVersion();
+    const version = await getNextVersion(mockGetTag);
     assert.strictEqual(version, '0.0.25');
   } finally {
-    mockGetTag.mock.restore();
     mockReadFile.mock.restore();
   }
 });
