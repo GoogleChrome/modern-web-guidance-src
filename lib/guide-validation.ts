@@ -87,6 +87,11 @@ export function validateGuide(filePath: string): ValidationResult {
 
   if (!data.name) {
     errors.push(`Missing "name" in frontmatter for ${relativePath}.`);
+  } else {
+    const dirName = path.basename(path.dirname(filePath));
+    if (data.name !== dirName) {
+      errors.push(`Guide name "${data.name}" in frontmatter does not match directory name "${dirName}" (${relativePath}).`);
+    }
   }
 
   if (!data.description) {
