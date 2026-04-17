@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Persistent Top Layer Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      display: flex;
+      gap: 2rem;
+    }
+    .container {
+      border: 2px dashed #ccc;
+      padding: 1rem;
+      min-height: 200px;
+      min-width: 300px;
+    }
+    dialog {
+      padding: 1rem;
+      border: 1px solid #005fcc;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <div>
+    <h2>Container A</h2>
+    <div id="container-a" class="container">
+      <dialog id="my-dialog">
+        <p>I am an open dialog!</p>
+        <button id="move-btn">Move Dialog to Container B</button>
+        <form method="dialog" style="margin-top: 1rem;">
+          <button>Close</button>
+        </form>
+      </dialog>
+      <button id="open-btn">Open Dialog</button>
+    </div>
+  </div>
+
+  <div>
+    <h2>Container B</h2>
+    <div id="container-b" class="container"></div>
+  </div>
+
+  <script>
+    const dialog = document.getElementById('my-dialog');
+    const openBtn = document.getElementById('open-btn');
+    const moveBtn = document.getElementById('move-btn');
+    const containerA = document.getElementById('container-a');
+    const containerB = document.getElementById('container-b');
+
+    openBtn.addEventListener('click', () => {
+      dialog.showModal();
+    });
+
+    moveBtn.addEventListener('click', () => {
+      const currentParent = dialog.parentElement;
+      const targetParent = currentParent === containerA ? containerB : containerA;
+
+      moveBtn.textContent = `Move Dialog to Container ${targetParent === containerA ? 'B' : 'A'}`;
+
+      if ('moveBefore' in Element.prototype) {
+        targetParent.moveBefore(dialog, null);
+      } else {
+        const wasOpen = dialog.hasAttribute('open');
+        targetParent.insertBefore(dialog, null);
+        if (wasOpen) {
+          dialog.showModal();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
