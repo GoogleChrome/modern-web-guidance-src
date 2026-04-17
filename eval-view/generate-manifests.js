@@ -69,26 +69,6 @@ export function generateSuitesManifest(outputDir = '.') {
 /** 
  * Recursively scans test results and adds run-files.gen.json to leaf directories.
  */
-export function generateRunFilesManifests(targetDir = resultsDir) {
-    if (!fs.existsSync(targetDir)) return;
-
-    const items = fs.readdirSync(targetDir, { withFileTypes: true });
-    const files = [];
-
-    for (const item of items) {
-        if (item.isDirectory()) {
-            generateRunFilesManifests(path.join(targetDir, item.name));
-        } else if (item.isFile() && !item.name.endsWith('.gen.json')) {
-            files.push(item.name);
-        }
-    }
-
-    if (files.length > 0) {
-        const manifestPath = path.join(targetDir, 'run-files.gen.json');
-        fs.writeFileSync(manifestPath, JSON.stringify({ files }, null, 2));
-    }
-}
-
 /**
  * Main CLI Orchestrator
  */
@@ -98,9 +78,8 @@ export function runAllManifests({ resultsOnly = false, outputDir = '.' } = {}) {
         generateMapping(outputDir);
     }
 
-    console.log('🔄 Generating suites and run-files manifests...');
+    console.log('🔄 Generating suites manifests...');
     generateSuitesManifest(outputDir);
-    generateRunFilesManifests();
 }
 
 // CLI Runner

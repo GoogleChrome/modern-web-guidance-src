@@ -273,7 +273,8 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         guideName: guide,
         taskName: taskName,
         baseApp: actualBaseApp,
-        prompt: taskInfo.prompt
+        prompt: taskInfo.prompt,
+        files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory())
       });
     }
   }
