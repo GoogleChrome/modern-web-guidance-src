@@ -355,7 +355,7 @@ function mdCell (key: string, col: Column<any>, row: any, separator: string): st
   if (typeof raw === 'boolean') {
     return raw ? '✅' : '❌';
   }
-  return serialize(raw, separator);
+  return serialize(raw, separator).replaceAll('<', '&lt;');
 }
 
 const formats: Record<string, Format> = {
