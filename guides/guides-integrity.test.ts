@@ -46,6 +46,10 @@ describe('Guides Validation (Single Source of Truth)', () => {
       }
 
       // 2. Check for unclosed code blocks (fence count)
+      // Note: We use a simple fence count check because standard parsers like marked
+      // silently consume unclosed blocks to the end of the file. Since many guides
+      // legitimately end with a code block, checking if the last token is a code block
+      // yields too many false positives. Linters are also too noisy with style rules.
       const lines = content.split('\n');
       const fenceLines = lines.filter(line => line.trim().startsWith('```'));
       if (fenceLines.length % 2 !== 0) {
