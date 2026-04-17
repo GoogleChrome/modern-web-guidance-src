@@ -8,7 +8,9 @@ export default defineConfig({
   // Forces Playwright to always search relative to this config file (the guides directory),
   // regardless of where you run it from (e.g., when run from within a specific results folder).
   testDir: import.meta.dirname,
-  testMatch: '**/*.grader.ts',
+  testMatch: ['**/grader.ts', '**/*.grader.ts'],
+
+
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,
