@@ -74,19 +74,15 @@ importers:
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
-<<<<<<< HEAD
       linkedom:
         specifier: ^0.18.12
         version: 0.18.12
-      ts-morph:
-        specifier: ^27.0.2
-        version: 27.0.2
-||||||| 398d258c
-=======
       marked:
         specifier: ^17.0.4
         version: 17.0.4
->>>>>>> origin/main
+      ts-morph:
+        specifier: ^27.0.2
+        version: 27.0.2
       web-features:
         specifier: latest
         version: 3.23.1
