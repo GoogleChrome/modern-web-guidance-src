@@ -19,9 +19,9 @@ function incrementVersion(version: string): string {
 }
 
 
-export async function getNextVersion(
-  getLatestTag = () => execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim()
-): Promise<string> {
+const getLatestGitTag = () => execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+
+export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<string> {
   console.log("Determining next version...");
   let currentVersion = "0.0.0";
 
