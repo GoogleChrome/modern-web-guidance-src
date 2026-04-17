@@ -3,6 +3,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import ghpages from 'gh-pages';
 import { buildDist } from './build-dist.ts';
+import { fileURLToPath } from 'node:url';
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const SERVING_DIR = path.join(ROOT_DIR, "serving");
@@ -18,13 +19,19 @@ function incrementVersion(version: string): string {
 }
 
 
-async function getNextVersion(): Promise<string> {
+export const _internal = {
+  getLatestGitTag(): string {
+    return execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  }
+};
+
+export async function getNextVersion(): Promise<string> {
   console.log("Determining next version...");
   let currentVersion = "0.0.0";
 
   try {
     // Get the latest tag that looks like v*.*.*
-    const latestTag = execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    const latestTag = _internal.getLatestGitTag();
     currentVersion = latestTag.startsWith('v') ? latestTag.slice(1) : latestTag;
     console.log(`Found latest tag: ${latestTag}`);
   } catch (e) {
@@ -111,7 +118,9 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error("Publishing failed!", err);
-  process.exit(1);
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    console.error("Publishing failed!", err);
+    process.exit(1);
+  });
+}
