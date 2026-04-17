@@ -6,7 +6,8 @@ export default defineConfig({
   timeout: 10000,
   expect: { timeout: 3000 },
   testDir: '.',
-  testMatch: '**/grader.ts',
+  testMatch: '**/*.grader.ts',
+
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,
