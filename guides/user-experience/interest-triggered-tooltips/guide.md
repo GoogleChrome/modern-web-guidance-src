@@ -79,6 +79,7 @@ Interest invokers must be conditionally polyfilled with the `interestfor` polyfi
 ```html
 <script type="module">
   if(!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")){
+    // CDN link only used for example, prefer bundling.
     await import("https://unpkg.com/interestfor@latest");
   }
 </script>
