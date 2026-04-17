@@ -59,17 +59,19 @@
       .simple-toggle-content {
         block-size: 0;
         overflow: hidden;
-        transition: block-size 0.3s ease;
+        opacity: 0;
+        transition: block-size 0.3s ease, opacity 0.3s ease;
         background: #f9f9f9;
         border-radius: 4px;
       }
 
       .simple-toggle.open .simple-toggle-content {
         /* 
-           DO: Use simple auto for animations when no calculation is needed.
+           DO: Use intrinsic size keywords like auto for animations when no calculation is needed.
            This works because of interpolate-size: allow-keywords on :root.
         */
         block-size: auto;
+        opacity: 1;
       }
 
       /* --- Use Case 2: Constrained Dynamic Tag --- */
@@ -121,12 +123,14 @@
         /* MANDATORY: Provide a fallback height for non-supporting browsers */
         block-size: 0;
         overflow: hidden;
-        transition: block-size 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        opacity: 0;
+        transition: block-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
       }
 
       .accordion.open .accordion-content {
         /* MANDATORY: Fallback value for the open state */
         block-size: auto;
+        opacity: 1;
         
         /* 
            DO: Use calc-size(auto, ...) to animate to an intrinsic height 
@@ -162,6 +166,27 @@
         margin-top: 1rem;
         display: flex;
         gap: 0.5rem;
+      }
+
+      /* 
+         MANDATORY: Respect user motion preferences by simplifying animations 
+         for users who have requested reduced motion.
+      */
+      @media (prefers-reduced-motion: reduce) {
+        .simple-toggle-content,
+        .accordion-content {
+          /* 
+             EXAMPLE: Replacing disruptive layout animations with a subtle fade-in.
+             Setting the block-size instantly and transitioning opacity 
+             provides a clear state change without large-scale motion.
+          */
+          transition: opacity 1.5s ease;
+        }
+
+        .simple-toggle.open .simple-toggle-content,
+        .accordion.open .accordion-content {
+          block-size: auto;
+        }
       }
 
       input[type="text"] {

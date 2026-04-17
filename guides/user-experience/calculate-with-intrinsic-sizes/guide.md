@@ -9,6 +9,7 @@ sources:
  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/calc-size
  - https://12daysofweb.dev/2024/calc-size-and-interpolate-size/
  - https://drafts.csswg.org/css-values-5/#calc-size
+ - https://web.dev/articles/prefers-reduced-motion
 ---
 
 `calc-size()` is a CSS function for performing mathematical operations on intrinsic sizing keywords like `auto`, `min-content`, and `fit-content`. **MANDATORY**: Use `calc-size()` only when you need to modify an intrinsic size with a calculation or constraint; for simple keyword-based animations (e.g., `0` to `auto`), you must use `interpolate-size: allow-keywords`.
@@ -108,6 +109,36 @@ By default, browsers cannot interpolate between a length (e.g., `0px`) and an in
 ```
 
 **MANDATORY**: Interpolation between two intrinsic sizing keywords is not possible directly. One end of the transition must be a length or a percentage.
+
+#### Respecting User Motion Preferences
+Animations that change the size of large layout areas can be particularly disruptive for users with vestibular disorders. **MANDATORY**: Always respect user motion preferences by using the `prefers-reduced-motion` media query to simplify or minimize non-essential animations. Common strategies include disabling motion entirely, reducing duration, or replacing layout shifts with subtle opacity transitions.
+
+```css
+.accordion-content {
+  opacity: 0;
+  transition: block-size 0.3s ease, opacity 0.3s ease;
+}
+
+.accordion-content.open {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accordion-content {
+    /* 
+       EXAMPLE: Replacing disruptive layout animations with a subtle fade-in.
+       Setting the block-size instantly and transitioning opacity 
+       provides a clear state change without large-scale motion.
+    */
+    transition: opacity 1.5s ease;
+  }
+
+  .accordion-content.open {
+    /* Jump the size instantly */
+    block-size: auto;
+  }
+}
+```
 
 
 ### Applying Constraints to Intrinsic Sizes
