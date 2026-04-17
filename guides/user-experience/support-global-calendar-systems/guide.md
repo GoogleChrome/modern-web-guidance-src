@@ -27,23 +27,41 @@ To support global calendar systems using Temporal:
 ## Example Code: Converting and Iterating Calendars
 
 ```javascript
-// 1. Get current date in default ISO 8601 calendar
-const isoDate = Temporal.Now.plainDateISO();
-
-// 2. Convert to Hebrew calendar
-const hebrewDate = isoDate.withCalendar('hebrew');
-
-// 3. Log properties specific to the calendar
-console.log(`Hebrew Year: ${hebrewDate.year}`);
-console.log(`Month Code: ${hebrewDate.monthCode}`); // Stable across leap years
-
-// 4. Safely iterate through months in the current year
-for (let m = 1; m <= hebrewDate.monthsInYear; m++) {
-  console.log(`Month ${m} has ${hebrewDate.with({ month: m }).daysInMonth} days.`);
+// 1. Helper to check calendar support
+function isCalendarSupported(calendarId) {
+  try {
+    return Intl.supportedValuesOf('calendar').includes(calendarId);
+  } catch {
+    // Fallback for environments where supportedValuesOf is not available
+    return false;
+  }
 }
 
-// 5. Format for display using toLocaleString
-const localizedDisplay = hebrewDate.toLocaleString('en-u-ca-hebrew', {
+// 2. Get current date in default ISO 8601 calendar
+const isoDate = Temporal.Now.plainDateISO();
+
+// 3. Convert to Hebrew calendar if supported
+const calendarId = 'hebrew';
+const targetDate = isCalendarSupported(calendarId) 
+  ? isoDate.withCalendar(calendarId)
+  : isoDate; // Fallback to ISO if not supported
+
+if (targetDate.calendar.id !== calendarId) {
+  console.warn(`Calendar ${calendarId} not supported; falling back to ISO 8601`);
+}
+
+// 4. Log properties specific to the calendar
+console.log(`Calendar: ${targetDate.calendar.id}`);
+console.log(`Year: ${targetDate.year}`);
+console.log(`Month Code: ${targetDate.monthCode}`); // Stable across leap years
+
+// 5. Safely iterate through months in the current year
+for (let m = 1; m <= targetDate.monthsInYear; m++) {
+  console.log(`Month ${m} has ${targetDate.with({ month: m }).daysInMonth} days.`);
+}
+
+// 6. Format for display using toLocaleString
+const localizedDisplay = targetDate.toLocaleString('en-u-ca-hebrew', {
   day: 'numeric',
   month: 'long',
   year: 'numeric'
@@ -58,7 +76,10 @@ const localizedDisplay = hebrewDate.toLocaleString('en-u-ca-hebrew', {
 - **DO NOT** assume `date.month === 12` is the last month of the year. Use `date.month === date.monthsInYear`.
 - **DO NOT** assume `inLeapYear === true` implies the year is only one day longer. In lunisolar calendars, it may add a full leap month.
 - **DO** use `toLocaleString()` to format dates for users instead of manual string concatenation.
-
+- **DO** verify that the target calendar system is supported by the environment using `Intl.supportedValuesOf('calendar')` before creating calendar-specific Temporal objects.
+- **DO** be aware that some calendars (like variants of the Islamic calendar) may rely on visual observation rather than fixed calculations. The `Temporal` API follows the environment's `Intl` implementation, which usually uses calculated approximations. For critical cultural or religious date calculations, verify with domain experts or use specialized libraries.
+- **DO** account for era names when using calendars that use eras (e.g., Japanese, Buddhist), using `toLocaleString()`.
+∂
 ## Fallback Strategy
 
 {{ BASELINE_STATUS("temporal") }}
@@ -78,7 +99,7 @@ async function getTemporal() {
   
   try {
     // Load polyfill dynamically
-    const module = await import('https://esm.sh/@js-temporal/polyfill');
+    const module = await import('@js-temporal/polyfill');
     return module.Temporal;
   } catch (e) {
     console.error('Failed to load Temporal polyfill:', e);
@@ -86,8 +107,3 @@ async function getTemporal() {
   }
 }
 ```
-
-## Knowledge Gaps & Open Questions
-
-- **Supported Calendars:** While Temporal supports many calendars via `Intl`, the exact list of supported calendar IDs may vary by environment. Developers should verify support using `Intl.supportedValuesOf('calendar')`.
-- **Complex Calendar Edge Cases:** Specific cultural nuances for less common calendars may not be fully covered by general invariants. Human review is recommended for critical cultural date calculations.

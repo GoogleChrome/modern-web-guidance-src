@@ -239,7 +239,7 @@
       (async function () {
         if (typeof Temporal === 'undefined') {
           try {
-            const module = await import('@js-temporal/polyfill');
+            const module = await import('https://esm.sh/@js-temporal/polyfill');
             globalThis.Temporal = module.Temporal;
           } catch (e) {
             console.error('Failed to load Temporal polyfill:', e);
@@ -250,6 +250,15 @@
       document.getElementById('unsupported-warning').style.display = 'none';
       initializeDemo();
     })();
+
+      function isCalendarSupported(calendarId) {
+        try {
+          return Intl.supportedValuesOf('calendar').includes(calendarId);
+        } catch (e) {
+          // Fallback for environments where supportedValuesOf is not available
+          return false;
+        }
+      }
 
     function initializeDemo() {
       const input = document.getElementById('date-input');
@@ -279,6 +288,12 @@
 
         calendars.forEach(cal => {
           try {
+            // Verify support
+            if (!isCalendarSupported(cal.name)) {
+              document.getElementById(`${cal.id}-date`).innerText = `Not supported in this environment`;
+              return;
+            }
+
             const converted = baseDate.withCalendar(cal.name);
 
             // Update Display Date
