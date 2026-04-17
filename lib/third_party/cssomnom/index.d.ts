@@ -1,7 +1,20 @@
-type CSSToken = string | CSSStyleValue | CSSParserValue;
+interface PropertyDefinition {
+    name: string;
+    syntax?: string;
+    inherits: boolean;
+    initialValue?: string;
+}
+
 declare abstract class CSSParserValue {
     abstract toString(): string;
 }
+declare class CSSParserToken extends CSSParserValue {
+    value: string;
+    constructor(value: string);
+    private val;
+    toString(): string;
+}
+type CSSToken = CSSParserValue;
 declare class CSSParserBlock extends CSSParserValue {
     name: string;
     body: CSSParserValue[];
@@ -36,20 +49,21 @@ declare class CSSParserDeclaration extends CSSParserRule {
     constructor(name: string, body: CSSParserValue[]);
     toString(): string;
 }
+type CSSStringSource = string | ReadableStream<Uint8Array>;
 interface CSSParserOptions {
     atRules?: Record<string, string>;
 }
 /**
  * Parser API Implementation
  */
-declare function parseStylesheetSync(css: string, _options?: CSSParserOptions): CSSParserRule[];
-declare function parseStylesheet(css: string, options?: CSSParserOptions): Promise<CSSParserRule[]>;
-declare function parseRuleListSync(css: string, _options?: CSSParserOptions): CSSParserRule[];
-declare function parseRuleList(css: string, options?: CSSParserOptions): Promise<CSSParserRule[]>;
-declare function parseRuleSync(css: string, _options?: CSSParserOptions): CSSParserRule | null;
-declare function parseRule(css: string, options?: CSSParserOptions): Promise<CSSParserRule | null>;
-declare function parseDeclarationListSync(css: string, _options?: CSSParserOptions): CSSParserRule[];
-declare function parseDeclarationList(css: string, options?: CSSParserOptions): Promise<CSSParserRule[]>;
+declare function parseStylesheetSync(css: string, options?: CSSParserOptions): CSSParserRule[];
+declare function parseStylesheet(css: CSSStringSource, options?: CSSParserOptions): Promise<CSSParserRule[]>;
+declare function parseRuleListSync(css: string, options?: CSSParserOptions): CSSParserRule[];
+declare function parseRuleList(css: CSSStringSource, options?: CSSParserOptions): Promise<CSSParserRule[]>;
+declare function parseRuleSync(css: string, options?: CSSParserOptions): CSSParserRule | null;
+declare function parseRule(css: string, options?: CSSParserOptions): CSSParserRule | null;
+declare function parseDeclarationListSync(css: string, options?: CSSParserOptions): CSSParserRule[];
+declare function parseDeclarationList(css: string, options?: CSSParserOptions): CSSParserRule[];
 declare function parseDeclarationSync(css: string, _options?: CSSParserOptions): CSSParserDeclaration | null;
 declare function parseValueSync(css: string): CSSToken;
 declare function parseValueListSync(css: string): CSSToken[];
@@ -73,26 +87,20 @@ declare const CSS: {
     s: (v: number) => CSSUnitValue;
     ms: (v: number) => CSSUnitValue;
     fr: (v: number) => CSSUnitValue;
-    parseStylesheetSync: typeof parseStylesheetSync;
-    parseRuleListSync: typeof parseRuleListSync;
-    parseRuleSync: typeof parseRuleSync;
-    parseDeclarationListSync: typeof parseDeclarationListSync;
-    parseDeclarationSync: typeof parseDeclarationSync;
-    parseValueSync: typeof parseValueSync;
-    parseValueListSync: typeof parseValueListSync;
-    parseCommaValueListSync: typeof parseCommaValueListSync;
     parseStylesheet: typeof parseStylesheet;
     parseRuleList: typeof parseRuleList;
     parseRule: typeof parseRule;
     parseDeclarationList: typeof parseDeclarationList;
-    parseDeclaration: (css: string, options?: CSSParserOptions) => Promise<CSSParserDeclaration | null>;
-    parseValue: (css: string) => Promise<CSSToken>;
-    parseValueList: (css: string) => Promise<CSSToken[]>;
-    parseCommaValueList: (css: string) => Promise<CSSToken[][]>;
+    parseDeclaration: typeof parseDeclarationSync;
+    parseValue: typeof parseValueSync;
+    parseValueList: typeof parseValueListSync;
+    parseCommaValueList: typeof parseCommaValueListSync;
+    registerProperty: (definition: PropertyDefinition) => void;
 };
 
 declare abstract class CSSStyleValue {
     abstract toString(): string;
+    static parseAll(property: string, css: string): CSSStyleValue[];
     static parse(property: string, css: string): CSSStyleValue | null;
 }
 declare class CSSKeywordValue extends CSSStyleValue {
@@ -101,8 +109,43 @@ declare class CSSKeywordValue extends CSSStyleValue {
     toString(): string;
     serialize(): string;
 }
+declare abstract class CSSImageValue extends CSSStyleValue {
+}
+declare abstract class CSSColorValue extends CSSStyleValue {
+}
+declare class CSSRGB extends CSSColorValue {
+    r: CSSNumericValue | CSSKeywordValue;
+    g: CSSNumericValue | CSSKeywordValue;
+    b: CSSNumericValue | CSSKeywordValue;
+    alpha: CSSNumericValue | CSSKeywordValue;
+    constructor(r: CSSNumericValue | CSSKeywordValue, g: CSSNumericValue | CSSKeywordValue, b: CSSNumericValue | CSSKeywordValue, alpha?: CSSNumericValue | CSSKeywordValue);
+    toString(): string;
+}
+declare class CSSHSL extends CSSColorValue {
+    h: CSSNumericValue | CSSKeywordValue;
+    s: CSSNumericValue | CSSKeywordValue;
+    l: CSSNumericValue | CSSKeywordValue;
+    alpha: CSSNumericValue | CSSKeywordValue;
+    constructor(h: CSSNumericValue | CSSKeywordValue, s: CSSNumericValue | CSSKeywordValue, l: CSSNumericValue | CSSKeywordValue, alpha?: CSSNumericValue | CSSKeywordValue);
+    toString(): string;
+}
+interface CSSNumericType {
+    length?: number;
+    angle?: number;
+    time?: number;
+    frequency?: number;
+    resolution?: number;
+    flex?: number;
+    percent?: number;
+    percentHint?: 'length' | 'angle' | 'time' | 'frequency' | 'resolution' | 'flex';
+}
 declare abstract class CSSNumericValue extends CSSStyleValue {
     abstract serialize(): string;
+    abstract type(): CSSNumericType;
+    to(unit: string): CSSUnitValue;
+    toSum(...units: string[]): CSSMathSum;
+    simplify(): CSSNumericValue;
+    static parse(css: string): CSSNumericValue | null;
     add(...values: (number | CSSNumericValue)[]): CSSNumericValue;
     sub(...values: (number | CSSNumericValue)[]): CSSNumericValue;
     mul(...values: (number | CSSNumericValue)[]): CSSNumericValue;
@@ -111,6 +154,20 @@ declare abstract class CSSNumericValue extends CSSStyleValue {
     max(...values: (number | CSSNumericValue)[]): CSSNumericValue;
     equals(...values: (number | CSSNumericValue)[]): boolean;
     private _equals;
+}
+declare class CSSNumericArray {
+    private _values;
+    constructor(values: CSSNumericValue[]);
+    get length(): number;
+    [Symbol.iterator](): ArrayIterator<CSSNumericValue>;
+    entries(): IterableIterator<[number, CSSNumericValue]>;
+    keys(): IterableIterator<number>;
+    values(): IterableIterator<CSSNumericValue>;
+    forEach(callback: (value: CSSNumericValue, index: number) => void, thisArg?: unknown): void;
+    item(index: number): CSSNumericValue | undefined;
+    map<U>(callback: (value: CSSNumericValue, index: number) => U): U[];
+    push(...items: CSSNumericValue[]): number;
+    every(callback: (value: CSSNumericValue, index: number) => boolean): boolean;
 }
 type CSSUnit = 'number' | 'percent' | 'em' | 'ex' | 'ch' | 'rem' | 'vw' | 'vh' | 'vmin' | 'vmax' | 'vi' | 'vb' | 'svw' | 'svh' | 'svi' | 'svb' | 'svmin' | 'svmax' | 'lvw' | 'lvh' | 'lvi' | 'lvb' | 'lvmin' | 'lvmax' | 'dvw' | 'dvh' | 'dvi' | 'dvb' | 'dvmin' | 'dvmax' | 'cm' | 'mm' | 'in' | 'pt' | 'pc' | 'px' | 'q' | 'deg' | 'grad' | 'rad' | 'turn' | 's' | 'ms' | 'hz' | 'khz' | 'dpi' | 'dpcm' | 'dppx' | 'rex' | 'cap' | 'rcap' | 'rch' | 'ic' | 'ric' | 'lh' | 'rlh' | 'cqw' | 'cqh' | 'cqi' | 'cqb' | 'cqmin' | 'cqmax' | 'fr';
 interface DOMMatrixReadOnly {
@@ -144,11 +201,13 @@ declare class CSSUnitValue extends CSSNumericValue {
     constructor(value: number, unit: CSSUnit);
     toString(): string;
     serialize(): string;
+    type(): CSSNumericType;
+    to(unit: string): CSSUnitValue;
 }
 /**
- * Converts a parsed token into a Typed OM CSSStyleValue.
+ * Converts a parsed component value into a Typed OM CSSStyleValue.
  */
-declare function createCSSStyleValue(token: Token): CSSStyleValue | null;
+declare function createCSSStyleValue(v: ComponentValue): CSSStyleValue | null;
 declare class CSSVariableReferenceValue {
     variable: string;
     fallback: CSSUnparsedValue | null;
@@ -156,10 +215,18 @@ declare class CSSVariableReferenceValue {
     toString(): string;
 }
 declare class CSSUnparsedValue extends CSSStyleValue {
-    private values;
+    private _values;
     constructor(values: (string | CSSVariableReferenceValue)[]);
+    get length(): number;
+    [Symbol.iterator](): ArrayIterator<string | CSSVariableReferenceValue>;
+    entries(): IterableIterator<[number, string | CSSVariableReferenceValue]>;
+    keys(): IterableIterator<number>;
+    values(): IterableIterator<string | CSSVariableReferenceValue>;
+    forEach(callback: (value: string | CSSVariableReferenceValue, index: number) => void, thisArg?: unknown): void;
+    item(index: number): string | CSSVariableReferenceValue | undefined;
     toString(): string;
     serialize(): string;
+    type(): CSSNumericType;
 }
 declare abstract class CSSMathValue extends CSSNumericValue {
     abstract serialize(): string;
@@ -172,60 +239,69 @@ declare class CSSNumericNode extends CSSMathValue {
     constructor(value: number, unit: string);
     get operator(): string;
     serialize(): string;
+    type(): CSSNumericType;
 }
 declare class CSSMathNegate extends CSSMathValue {
-    child: CSSMathValue;
+    value: CSSNumericValue;
     constructor(child: number | CSSNumericValue);
     get operator(): string;
     serialize(): string;
     toString(): string;
+    type(): CSSNumericType;
 }
 declare class CSSMathInvert extends CSSMathValue {
-    child: CSSMathValue;
+    value: CSSNumericValue;
     constructor(child: number | CSSNumericValue);
     get operator(): string;
     serialize(): string;
     toString(): string;
+    type(): CSSNumericType;
 }
 declare class CSSMathSum extends CSSMathValue {
-    children: CSSMathValue[];
+    values: CSSNumericArray;
     constructor(...args: (number | CSSNumericValue)[]);
     get operator(): string;
     serialize(): string;
+    type(): CSSNumericType;
 }
 declare class CSSMathProduct extends CSSMathValue {
-    children: CSSMathValue[];
+    values: CSSNumericArray;
     constructor(...args: (number | CSSNumericValue)[]);
     get operator(): string;
     serialize(): string;
+    type(): CSSNumericType;
 }
 declare class CSSMathMin extends CSSMathValue {
-    children: CSSMathValue[];
+    values: CSSNumericArray;
     constructor(...args: (number | CSSNumericValue)[]);
     get operator(): string;
     serialize(): string;
+    type(): CSSNumericType;
 }
 declare class CSSMathMax extends CSSMathValue {
-    children: CSSMathValue[];
+    values: CSSNumericArray;
     constructor(...args: (number | CSSNumericValue)[]);
     get operator(): string;
     serialize(): string;
+    type(): CSSNumericType;
 }
 declare class CSSMathClamp extends CSSMathValue {
-    min: CSSMathValue;
-    val: CSSMathValue;
-    max: CSSMathValue;
+    min: CSSNumericValue;
+    val: CSSNumericValue;
+    max: CSSNumericValue;
     constructor(min: number | CSSNumericValue, val: number | CSSNumericValue, max: number | CSSNumericValue);
     get operator(): string;
     serialize(): string;
+    type(): CSSNumericType;
 }
-declare class CSSMathExpression extends CSSMathValue {
-    root: CSSMathValue;
+declare class CSSMathFunction extends CSSMathValue {
+    values: CSSNumericArray;
     name: string;
-    constructor(root: CSSMathValue, name?: string);
+    constructor(name: string, ...args: (number | CSSNumericValue)[]);
     get operator(): string;
     serialize(): string;
     toString(): string;
+    type(): CSSNumericType;
 }
 declare abstract class CSSTransformComponent {
     is2D: boolean;
@@ -283,6 +359,13 @@ declare class CSSMatrixComponent extends CSSTransformComponent {
 declare class CSSTransformValue extends CSSStyleValue {
     components: CSSTransformComponent[];
     constructor(components: CSSTransformComponent[]);
+    get length(): number;
+    [Symbol.iterator](): ArrayIterator<CSSTransformComponent>;
+    entries(): IterableIterator<[number, CSSTransformComponent]>;
+    keys(): IterableIterator<number>;
+    values(): IterableIterator<CSSTransformComponent>;
+    forEach(callback: (value: CSSTransformComponent, index: number, array: CSSTransformComponent[]) => void, thisArg?: unknown): void;
+    item(index: number): CSSTransformComponent | undefined;
     get is2D(): boolean;
     toString(): string;
     static parse(css: string): CSSTransformValue;
@@ -293,6 +376,7 @@ declare class StylePropertyMapReadOnly {
     get(property: string): CSSStyleValue | null;
     protected _getForDecl(decl: Declaration): CSSStyleValue | null;
     has(property: string): boolean;
+    getAll(property: string): CSSStyleValue[];
 }
 interface StyleLike {
     declarations: Declaration[];
@@ -330,6 +414,7 @@ interface Token {
     originalText?: string;
     unicodeRangeStart?: number;
     unicodeRangeEnd?: number;
+    sign?: '+' | '-' | null;
 }
 interface TokenStream {
     next(): Token;
@@ -433,7 +518,7 @@ interface CompoundSelector {
     type: 'compound-selector';
     selectors: SimpleSelector[];
 }
-type SimpleSelector = TypeSelector | UniversalSelector | IDSelector | ClassSelector | AttributeSelector | PseudoClassSelector | PseudoElementSelector;
+type SimpleSelector = TypeSelector | UniversalSelector | IDSelector | ClassSelector | AttributeSelector | PseudoClassSelector | PseudoElementSelector | NestingSelector;
 interface TypeSelector {
     type: 'type-selector';
     name: string;
@@ -463,11 +548,16 @@ interface PseudoClassSelector {
     type: 'pseudo-class-selector';
     name: string;
     argument?: ComponentValue[] | SelectorList;
+    nth?: ComponentValue[];
 }
 interface PseudoElementSelector {
     type: 'pseudo-element-selector';
     name: string;
     argument?: ComponentValue[];
+    nth?: ComponentValue[];
+}
+interface NestingSelector {
+    type: 'nesting-selector';
 }
 
 declare class CSSStyleDeclaration {
@@ -481,6 +571,7 @@ declare class CSSStyleDeclaration {
     get length(): number;
     item(index: number): string;
     getPropertyValue(property: string): string;
+    private _getWinningDeclaration;
     getPropertyPriority(property: string): string;
     private _getPropertyAliases;
     setProperty(property: string, value: string | null, priority?: string): void;
@@ -743,7 +834,7 @@ declare class CSSPropertyRule extends CSSRule {
     get cssText(): string;
     set cssText(_value: string);
 }
-declare class CSSUnknownRule extends CSSRule {
+declare class CSSAtRule extends CSSRule {
     name: string;
     prelude: unknown[];
     block?: unknown;
@@ -753,6 +844,9 @@ declare class CSSUnknownRule extends CSSRule {
     get cssText(): string;
 }
 
+interface ParserOptions {
+    atRules?: Record<string, string>;
+}
 /**
  * Skeleton Parser for CSSOM.
  * Implements top-level parsing algorithms from CSS Syntax Module Level 3.
@@ -761,9 +855,12 @@ declare class CSSUnknownRule extends CSSRule {
 declare class Parser {
     #private;
     private tokens;
-    private atRuleHandlers;
+    private static readonly MARGIN_RULE_NAMES;
+    private static readonly AT_RULE_HANDLERS;
+    private getAtRuleHandler;
     private isSupportedAtRule;
-    constructor(tokens: TokenStream | Token[]);
+    options: ParserOptions;
+    constructor(tokens: TokenStream | Token[], options?: ParserOptions);
     private get nextToken();
     private consumeToken;
     private discardToken;
@@ -822,17 +919,12 @@ declare class Parser {
      * @see https://drafts.csswg.org/css-syntax-3/#consume-list-of-declarations
      */
     consumeDeclarationsFromBlockContents(values: ComponentValue[]): Declaration[];
-    /**
-     * Consume a block's contents.
-     * @see https://drafts.csswg.org/css-syntax/#consume-block-contents
-     * // 5.5.5 https://drafts.csswg.org/css-syntax/#consume-block-contents
-     */
     private consumeBlockContents;
-    private consumeDeclarationFromValues;
-    private getOriginalText;
+    private consumeDeclarationFromStream;
     private validateCustomPropertyValue;
-    private consumeNestedQualifiedRuleFromValues;
-    private consumeAtRuleFromValues;
+    private consumeNestedQualifiedRuleFromStream;
+    private consumeAtRuleFromStream;
+    private skipToNextSemicolonOrBlock;
     private isValidSelector;
     private createStyleRule;
     static parseSelectorAST(text: string): SelectorList | null;
@@ -857,7 +949,7 @@ declare class Parser {
     static parseRuleText(text: string): Rule;
     static parseStyleSheetText(text: string): Rule[];
     static parseRuleInBlockText(text: string): Rule;
-    static calculateSpecificity(selector: string | SelectorList): [number, number, number];
+    static calculateSpecificity(selector: string | SelectorList): [number, number, number] | [number, number, number][];
     static getCascadedStyle(element: unknown, rules: Rule[]): Record<string, string>;
     /**
      * Resolves a CSS value string by expanding var() functions using the provided style declaration.
@@ -868,7 +960,7 @@ declare class Parser {
 
 declare function tokenize(input: string, unicodeRangesAllowed?: boolean): Token[];
 
-declare function serialize(nodes: ComponentValue[], preserveCase?: boolean): string;
+declare function serialize(nodes: ComponentValue[], preserveCase?: boolean, propertyName?: string): string;
 
 declare abstract class AbstractTokenizer {
     unicodeRangesAllowed: boolean;
@@ -878,6 +970,7 @@ declare abstract class AbstractTokenizer {
     protected abstract reconsume(): void;
     protected abstract slice(start: number, end: number): string;
     protected abstract getPosition(): number;
+    protected parseError(message: string): void;
     protected consumeToken(): Token;
     protected consumeComments(): void;
     protected consumeNumericToken(): Token;
@@ -892,6 +985,7 @@ declare abstract class AbstractTokenizer {
     protected consumeNumber(): {
         value: number;
         type: 'integer' | 'number';
+        sign: '+' | '-' | null;
     };
     protected consumeRemnantsOfBadUrl(): void;
     protected wouldStartUnicodeRange(cp1: number, cp2: number, cp3: number): boolean;
@@ -927,4 +1021,4 @@ declare class StreamingTokenizer extends AbstractTokenizer {
     protected getPosition(): number;
 }
 
-export { type ASTAtRule, CSS, CSSContainerRule, CSSFontFaceRule, type CSSFunction, CSSGroupingRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSKeywordValue, CSSLayerBlockRule, CSSLayerStatementRule, CSSMarginDescriptors, CSSMarginRule, CSSMathClamp, CSSMathExpression, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSMathValue, CSSMatrixComponent, CSSMediaRule, CSSNamespaceRule, CSSNestedDeclarations, CSSNumericNode, CSSNumericValue, CSSPageDescriptors, CSSPageRule, CSSParserAtRule, CSSParserBlock, CSSParserDeclaration, CSSParserFunction, type CSSParserOptions, CSSParserQualifiedRule, CSSParserRule, CSSParserValue, CSSPerspective, CSSPropertyRule, CSSRotate, CSSRule, CSSRuleList, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSStartingStyleRule, CSSStyleDeclaration, CSSStyleRule, CSSStyleSheet, type CSSStyleSheetInit, CSSStyleValue, CSSSupportsRule, type CSSToken, CSSTransformComponent, CSSTransformValue, CSSTranslate, type CSSUnit, CSSUnitValue, CSSUnknownRule, CSSUnparsedValue, CSSVariableReferenceValue, CSSViewTransitionRule, type ComponentValue, type DOMMatrixReadOnly, type Declaration, type LinkStyle, MediaList, Parser, type Rule, type SimpleBlock, StreamingTokenizer, StylePropertyMap, StylePropertyMapReadOnly, StyleSheetList, type Token, type TokenType, createCSSStyleValue, parseCommaValueListSync, parseDeclarationList, parseDeclarationListSync, parseDeclarationSync, parseRule, parseRuleList, parseRuleListSync, parseRuleSync, parseStylesheet, parseStylesheetSync, parseValueListSync, parseValueSync, serialize, tokenize };
+export { type ASTAtRule, CSS, CSSAtRule, CSSColorValue, CSSContainerRule, CSSFontFaceRule, type CSSFunction, CSSGroupingRule, CSSHSL, CSSImageValue, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSKeywordValue, CSSLayerBlockRule, CSSLayerStatementRule, CSSMarginDescriptors, CSSMarginRule, CSSMathClamp, CSSMathFunction, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSMathValue, CSSMatrixComponent, CSSMediaRule, CSSNamespaceRule, CSSNestedDeclarations, CSSNumericArray, CSSNumericNode, type CSSNumericType, CSSNumericValue, CSSPageDescriptors, CSSPageRule, CSSParserAtRule, CSSParserBlock, CSSParserDeclaration, CSSParserFunction, type CSSParserOptions, CSSParserQualifiedRule, CSSParserRule, CSSParserToken, CSSParserValue, CSSPerspective, CSSPropertyRule, CSSRGB, CSSRotate, CSSRule, CSSRuleList, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSStartingStyleRule, type CSSStringSource, CSSStyleDeclaration, CSSStyleRule, CSSStyleSheet, type CSSStyleSheetInit, CSSStyleValue, CSSSupportsRule, type CSSToken, CSSTransformComponent, CSSTransformValue, CSSTranslate, type CSSUnit, CSSUnitValue, CSSUnparsedValue, CSSVariableReferenceValue, CSSViewTransitionRule, type ComponentValue, type DOMMatrixReadOnly, type Declaration, type LinkStyle, MediaList, Parser, type Rule, type SimpleBlock, StreamingTokenizer, StylePropertyMap, StylePropertyMapReadOnly, StyleSheetList, type Token, type TokenType, createCSSStyleValue, parseCommaValueListSync, parseDeclarationList, parseDeclarationListSync, parseDeclarationSync, parseRule, parseRuleList, parseRuleListSync, parseRuleSync, parseStylesheet, parseStylesheetSync, parseValueListSync, parseValueSync, serialize, tokenize };
