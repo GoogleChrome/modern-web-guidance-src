@@ -168,7 +168,8 @@ window.__featuresMapping = {
     "temporal"
   ],
   "calculate-with-intrinsic-sizes": [
-    "calc-size"
+    "calc-size",
+    "interpolate-size"
   ],
   "capture-location-agnostic-data": [
     "temporal"
