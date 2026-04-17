@@ -111,4 +111,38 @@ describe('Parser Pattern Library (Best Practices)', () => {
     assert.strictEqual(functionDecls.length, 1);
     assert.strictEqual(functionDecls[0].getName(), 'handleInteraction');
   });
+
+  test('Pattern 6: Advanced JS Analysis with ts-morph (Feature Detection)', () => {
+    const html = `
+      <script>
+        if ('onbeforematch' in HTMLElement.prototype) {
+          // feature supported
+        } else {
+          // fallback
+        }
+      </script>
+    `;
+    
+    const { document } = parseHTML(html);
+    const scriptContent = document.querySelector('script')?.textContent || '';
+    
+    const project = new Project({ useInMemoryFileSystem: true });
+    const sourceFile = project.createSourceFile('test.js', scriptContent);
+    
+    // Find binary expressions (like 'onbeforematch' in HTMLElement.prototype)
+    const binaryExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression);
+    
+    let hasFeatureDetection = false;
+    binaryExpressions.forEach(expr => {
+      const left = expr.getLeft().getText();
+      const operator = expr.getOperatorToken().getText();
+      const right = expr.getRight().getText();
+      
+      if (left === "'onbeforematch'" && operator === 'in' && right === 'HTMLElement.prototype') {
+        hasFeatureDetection = true;
+      }
+    });
+    
+    assert.strictEqual(hasFeatureDetection, true);
+  });
 });
