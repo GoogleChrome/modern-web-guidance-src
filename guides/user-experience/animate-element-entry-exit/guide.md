@@ -28,12 +28,12 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
 .card {
   display: block;
   opacity: 1;
-  transform: translateY(0);
+  translate: 0;
   /* MANDATORY: Use transition-behavior: allow-discrete for display transition */
   transition:
     display 0.4s,
     opacity 0.4s ease-out,
-    transform 0.4s ease-out;
+    translate 0.4s ease-out;
   transition-behavior: allow-discrete;
 }
 
@@ -41,7 +41,7 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
 @starting-style {
   .card {
     opacity: 0;
-    transform: translateY(-20px);
+    translate: 0 -20px;
   }
 }
 
@@ -49,25 +49,25 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
 .card:where(.hidden, [hidden]) {
   display: none;
   opacity: 0;
-  transform: translateY(-20px);
+  translate: 0 -20px;
 }
 
 /* Respect user preference for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .card {
     /* Disable movement and shorten duration for a simple fade */
-    transform: none;
+    translate: 0;
     transition-duration: 0.1s;
   }
 
   @starting-style {
     .card {
-      transform: none;
+      translate: 0;
     }
   }
 
   .card:where(.hidden, [hidden]) {
-    transform: none;
+    translate: 0;
   }
 }
 ```
