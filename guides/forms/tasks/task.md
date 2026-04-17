@@ -1,7 +1,4 @@
 ---
 base_app: daily-grind
 ---
-- hey, can you add a contact us form to the home page? it should have fields for name, email, and a message. make it look like the rest of the site and ensure it's easy to use on mobile and accessible.
-- i need a shipping address section for the rewards page. use a single field for their name and a textarea for the address so it's flexible, and make sure it supports browser autofill.
-- help me add a sign up form for the rewards program. i need name, email, and password. add a toggle to show the password and use the right attributes so it's secure and easy to fill.
-- can you add a feedback form for the seasonal drinks? let people pick which one they liked best (maple oat latte, dark roast espresso, or cold brew) and leave a comment.
+- Build a comprehensive, accessible, and secure multi-step registration form for our rewards program at the bottom of the page. You MUST implement semantic structure (form, fieldset, legend), proper labeling (associated via for/id, placed above), multi-step navigation with progress indicators, custom validation on blur (clearing on input), secure handling (POST method, CSRF token placeholder, no inline scripts), password toggle, autocomplete attributes, tap targets of at least 44px, and input font-size of at least 16px.
