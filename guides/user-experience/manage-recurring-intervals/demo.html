@@ -250,22 +250,23 @@
       updateCalculation();
     }
 
+    (async () => {
+      // Check Support and load polyfill if needed
       if (typeof Temporal === 'undefined') {
-        unsupportedBanner.style.display = 'flex';
-        unsupportedBanner.innerHTML = '<div>⏳ Loading Temporal polyfill...</div>';
-
-        import('@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill }) => {
-          globalThis.Temporal = TemporalPolyfill;
-          unsupportedBanner.style.display = 'none';
+        try {
+          const module = await import("https://esm.sh/@js-temporal/polyfill");
+          globalThis.Temporal = module.Temporal;
           initializeApp();
-        }).catch(err => {
-          console.error("Failed to load polyfill", err);
+        } catch (e) {
+          console.error("Failed to load Temporal polyfill:", e);
+          unsupportedBanner.style.display = 'flex';
           unsupportedBanner.innerHTML = '<div>🚫 Failed to load polyfill. This demo requires a browser with native Temporal support or internet access.</div>';
           inputs.forEach(el => el.disabled = true);
-        });
+        }
       } else {
         initializeApp();
       }
+    })();
 
     function updateCalculation() {
       const startDateStr = startDateInput.value;
