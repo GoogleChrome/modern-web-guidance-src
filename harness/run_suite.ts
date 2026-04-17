@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
-import { Agents, defaultSuiteConfig, type SuiteConfig } from './config.ts';
+import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
 import { harnessDir, baseAppsDir, resultsDir } from '../lib/paths.ts';
 import { getTaskMap, type TaskInfo } from '../lib/guide-validation.ts';
@@ -50,7 +50,8 @@ export async function runAgent(templateDirRaw: string, promptContentRaw: string,
       agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
         agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
           agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
-            'jetski-agent.ts'
+            agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
+              'jetski-agent.ts'
     );
 
     const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
@@ -79,7 +80,7 @@ export interface RunSuiteOptions {
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
-  const suiteConfig = options.suiteConfig || defaultSuiteConfig;
+  const suiteConfig = options.suiteConfig ? mergeSuiteConfig(options.suiteConfig) : defaultSuiteConfig;
 
   // Create results directory if it doesn't exist
   if (!fs.existsSync(resultsDir)) {
@@ -89,10 +90,10 @@ export async function runSuite(options: RunSuiteOptions = {}) {
   const agent = suiteConfig.agent;
 
   // Generate a unique testID with timestamp or use custom name
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-  const testID = options.name || suiteConfig.name || `test_${timestamp}`;
+  const timestamp = new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-');
+  const testID = options.name || suiteConfig.name || `test-${timestamp}`;
   const testDir = options.outputDir || path.join(resultsDir, testID);
-  
+
   if (!fs.existsSync(testDir)) {
     fs.mkdirSync(testDir, { recursive: true });
   }
@@ -178,9 +179,9 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           ...pnpmWorkspacePackages.map(pkg => `  - '${pkg}'`)
         ].join('\n') + '\n';
         fs.writeFileSync(pnpmWorkspacePath, yamlContent);
-        
+
         try {
-          const pnpmArgs = ['-r'];
+          const pnpmArgs = ['-r', '--no-bail'];
           if (agent === Agents.JETSKI) {
             pnpmArgs.push('--workspace-concurrency', '1');
           }
@@ -300,7 +301,13 @@ function resolveTaskName(task: string): string {
   let resolvedTask = task;
   if (task.startsWith('guides/')) {
     const segments = task.split('/');
-    if (segments.length >= 3) {
+    if (segments.length === 4 && segments[2] === 'tasks') {
+      // Support discipline skill tasks (e.g., guides/forms/tasks/task.md)
+      const guideName = segments[1];
+      const taskName = segments[3].replace('.md', '');
+      resolvedTask = `${guideName}/${taskName}`;
+    } else if (segments.length >= 3) {
+      // Standard guide path: guides/category/guideName/...
       const guideName = segments[2];
       let taskName = 'task';
       const lastSegment = segments[segments.length - 1];
@@ -422,6 +429,7 @@ function getAgentScript(agent: string): string {
   return path.join(harnessDir, 'agents', agent === Agents.GEMINI_CLI ? 'gemini-cli-agent.ts' :
     agent === Agents.CLAUDE_CODE ? 'claude-code-agent.ts' :
     agent === Agents.CODEX_CLI ? 'codex-cli-agent.ts' :
+    agent === Agents.JETSKI_CLI ? 'jetski-cli-agent.ts' :
       'jetski-agent.ts');
 }
 

@@ -85,21 +85,17 @@ console.log(`Snoozed alarm: ${snoozedTime.toString()}`);
 For environments without native `Temporal` support, use feature detection and load the `@js-temporal/polyfill`.
 
 ```javascript
-// Feature detect Temporal support
-if (typeof Temporal === 'undefined') {
-  // Conditionally load the polyfill
-  import('@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill, toTemporalInstant }) => {
-    // Assign to global scope if application code expects global Temporal
-    globalThis.Temporal = TemporalPolyfill;
-    // Extend Date.prototype if needed for legacy interop
-    if (toTemporalInstant) {
-      Date.prototype.toTemporalInstant = toTemporalInstant;
-    }
+// Check if Temporal is supported natively
+(async () => {
+  if (typeof Temporal === 'undefined') {
+    // Load the polyfill conditionally
+    const module = await import("https://esm.sh/@js-temporal/polyfill");
+    globalThis.Temporal = module.Temporal;
+    // Extend Date.prototype if needed
+    Date.prototype.toTemporalInstant = module.toTemporalInstant;
     initializeApp();
-  });
-} else {
-  initializeApp();
-}
+  }
+})();
 
 function initializeApp() {
   // Application logic using Temporal

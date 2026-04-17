@@ -75,19 +75,16 @@ For browsers that do not yet support the native `Temporal` API, use feature dete
 
 ```javascript
 // Check if Temporal is supported natively
-if (typeof Temporal === 'undefined') {
-  // Load the polyfill conditionally
-  import('@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill, toTemporalInstant }) => {
-    // Manually assign to global scope if your app code uses the global 'Temporal'
-    globalThis.Temporal = TemporalPolyfill;
+(async () => {
+  if (typeof Temporal === 'undefined') {
+    // Load the polyfill conditionally
+    const module = await import("https://esm.sh/@js-temporal/polyfill");
+    globalThis.Temporal = module.Temporal;
     // Extend Date.prototype if needed
-    Date.prototype.toTemporalInstant = toTemporalInstant;
+    Date.prototype.toTemporalInstant = module.toTemporalInstant;
     initializeApp();
-  });
-} else {
-  // Native Temporal is available
-  initializeApp();
-}
+  }
+})();
 
 function initializeApp() {
   const now = Temporal.Now.zonedDateTimeISO();
