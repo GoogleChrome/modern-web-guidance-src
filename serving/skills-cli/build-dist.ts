@@ -280,36 +280,19 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
 }
 
 function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath: string) {
-  const allowedLicenses = [
-    'MIT',
-    'Apache 2.0',
-    'Apache-2.0',
-    'BSD-3-Clause',
-    'BSD-2-Clause',
-    'ISC',
-    '0BSD',
-  ];
-
+  const allowedLicenses = ['MIT', 'Apache 2.0', 'Apache-2.0', 'BSD-3-Clause', 'BSD-2-Clause', 'ISC', '0BSD'];
   const paths = new Set<string>();
-  for (const metafile of metafiles) {
-    for (const p of Object.keys(metafile.inputs)) {
-      paths.add(p);
-    }
-  }
+  
+  for (const metafile of metafiles) for (const p of Object.keys(metafile.inputs)) paths.add(p);
 
   const nodeModules = new Map<string, string>();
-  for (let filePath of paths) {
-    if (!filePath.includes('node_modules')) {
-      continue;
-    }
+  for (const filePath of paths) {
+    if (!filePath.includes('node_modules')) continue;
 
-    let absolutePath = filePath;
-    if (!path.isAbsolute(filePath)) {
-        absolutePath = path.resolve(SERVING_DIR, filePath);
-    }
-
+    const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(SERVING_DIR, filePath);
     let dir = path.dirname(absolutePath);
     let pkgJsonPath;
+
     while (dir.startsWith(rootDir) && dir !== rootDir) {
       const candidate = path.join(dir, 'package.json');
       if (fs.existsSync(candidate)) {
@@ -319,16 +302,9 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
       dir = path.dirname(dir);
     }
 
-    if (pkgJsonPath) {
-      // If the found package.json is not inside a node_modules directory, it's a local package!
-      if (!pkgJsonPath.includes('node_modules')) {
-        continue;
-      }
-
+    if (pkgJsonPath && pkgJsonPath.includes('node_modules')) {
       const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
-      if (pkg.name && pkg.name !== 'guidance') {
-        nodeModules.set(pkg.name, path.dirname(pkgJsonPath));
-      }
+      if (pkg.name && pkg.name !== 'guidance') nodeModules.set(pkg.name, path.dirname(pkgJsonPath));
     }
   }
 
@@ -337,39 +313,24 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
   const stringifiedDependencies = Array.from(nodeModules.keys()).sort().map(name => {
     const nodeModulePath = nodeModules.get(name)!;
     const dependency = JSON.parse(fs.readFileSync(path.join(nodeModulePath, 'package.json'), 'utf-8'));
-    const licenseFilePaths = [
-      path.join(nodeModulePath, 'LICENSE'),
-      path.join(nodeModulePath, 'LICENSE.txt'),
-      path.join(nodeModulePath, 'LICENSE.md'),
-      path.join(nodeModulePath, 'LICENSE.MIT'),
-      path.join(nodeModulePath, 'LICENSE.APACHE'),
-    ];
-    for (const licenseFile of licenseFilePaths) {
-      if (fs.existsSync(licenseFile)) {
-        dependency.licenseText = fs.readFileSync(licenseFile, 'utf-8');
-        break;
-      }
-    }
+    
+    const licenseFilePaths = ['LICENSE', 'LICENSE.txt', 'LICENSE.md', 'LICENSE.MIT', 'LICENSE.APACHE'].map(f => path.join(nodeModulePath, f));
+    const licenseFile = licenseFilePaths.find(f => fs.existsSync(f));
+    if (licenseFile) dependency.licenseText = fs.readFileSync(licenseFile, 'utf-8');
     
     const license = dependency.license ?? 'N/A';
-    if (!allowedLicenses.includes(license)) {
-      throw new Error(`Unapproved license for dependency ${name}: ${license}`);
-    }
+    if (!allowedLicenses.includes(license)) throw new Error(`Unapproved license for dependency ${name}: ${license}`);
 
-    const parts = [];
-    parts.push(`Name: ${dependency.name ?? 'N/A'}`);
     let url = dependency.homepage ?? dependency.repository;
-    if (url && typeof url === 'object') {
-      url = url.url;
-    }
-    parts.push(`URL: ${url ?? 'N/A'}`);
-    parts.push(`Version: ${dependency.version ?? 'N/A'}`);
-    parts.push(`License: ${license}`);
-    if (dependency.licenseText) {
-      parts.push('');
-      parts.push(dependency.licenseText.replaceAll('\r', ''));
-    }
-    return parts.join('\n');
+    if (url && typeof url === 'object') url = url.url;
+
+    return [
+      `Name: ${dependency.name ?? 'N/A'}`,
+      `URL: ${url ?? 'N/A'}`,
+      `Version: ${dependency.version ?? 'N/A'}`,
+      `License: ${license}`,
+      ...(dependency.licenseText ? ['', dependency.licenseText.replaceAll('\r', '')] : [])
+    ].join('\n');
   }).join(divider);
 
   fs.writeFileSync(outputFilePath, stringifiedDependencies);
