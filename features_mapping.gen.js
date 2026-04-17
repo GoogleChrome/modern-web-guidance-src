@@ -267,7 +267,8 @@ window.__featuresMapping = {
     "individual-transforms"
   ],
   "interactive-content-reveal": [
-    "masks"
+    "masks",
+    "registered-custom-properties"
   ],
   "interest-triggered-action-previews": [
     "interest-invokers"
