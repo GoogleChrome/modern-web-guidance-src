@@ -41,47 +41,31 @@ async function acquireLock(lockFilePath: string) {
 function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   // Gemini
   const geminiPath = path.join(publishCliDir, "gemini-extension.json");
-  try {
-    const geminiData = JSON.parse(fs.readFileSync(geminiPath, 'utf8'));
-    geminiData.version = newVersion;
-    fs.writeFileSync(geminiPath, JSON.stringify(geminiData, null, 2) + '\n');
-    console.log(`Updated ${geminiPath}`);
-  } catch (e: any) {
-    console.error(`Failed to update ${geminiPath}: ${e.message}`);
-  }
+  const geminiData = JSON.parse(fs.readFileSync(geminiPath, 'utf8'));
+  geminiData.version = newVersion;
+  fs.writeFileSync(geminiPath, JSON.stringify(geminiData, null, 2) + '\n');
+  console.log(`Updated ${geminiPath}`);
 
   // VSCode
   const vscodePath = path.join(publishCliDir, "package.json");
-  try {
-    const vscodeData = JSON.parse(fs.readFileSync(vscodePath, 'utf8'));
-    vscodeData.version = newVersion;
-    fs.writeFileSync(vscodePath, JSON.stringify(vscodeData, null, 2) + '\n');
-    console.log(`Updated ${vscodePath}`);
-  } catch (e: any) {
-    console.error(`Failed to update ${vscodePath}: ${e.message}`);
-  }
+  const vscodeData = JSON.parse(fs.readFileSync(vscodePath, 'utf8'));
+  vscodeData.version = newVersion;
+  fs.writeFileSync(vscodePath, JSON.stringify(vscodeData, null, 2) + '\n');
+  console.log(`Updated ${vscodePath}`);
 
   // Claude Plugin
   const claudePluginPath = path.join(publishCliDir, ".claude-plugin/plugin.json");
-  try {
-    const claudePluginData = JSON.parse(fs.readFileSync(claudePluginPath, 'utf8'));
-    claudePluginData.version = newVersion;
-    fs.writeFileSync(claudePluginPath, JSON.stringify(claudePluginData, null, 2) + '\n');
-    console.log(`Updated ${claudePluginPath}`);
-  } catch (e: any) {
-    console.error(`Failed to update ${claudePluginPath}: ${e.message}`);
-  }
+  const claudePluginData = JSON.parse(fs.readFileSync(claudePluginPath, 'utf8'));
+  claudePluginData.version = newVersion;
+  fs.writeFileSync(claudePluginPath, JSON.stringify(claudePluginData, null, 2) + '\n');
+  console.log(`Updated ${claudePluginPath}`);
 
   // Claude Marketplace
   const marketplacePath = path.join(publishCliDir, ".claude-plugin/marketplace.json");
-  try {
-    const marketplaceData = JSON.parse(fs.readFileSync(marketplacePath, 'utf8'));
-    marketplaceData.plugins[0].version = newVersion;
-    fs.writeFileSync(marketplacePath, JSON.stringify(marketplaceData, null, 2) + '\n');
-    console.log(`Updated ${marketplacePath}`);
-  } catch (e: any) {
-    console.error(`Failed to update ${marketplacePath}: ${e.message}`);
-  }
+  const marketplaceData = JSON.parse(fs.readFileSync(marketplacePath, 'utf8'));
+  marketplaceData.plugins[0].version = newVersion;
+  fs.writeFileSync(marketplacePath, JSON.stringify(marketplaceData, null, 2) + '\n');
+  console.log(`Updated ${marketplacePath}`);
 }
 
 async function main(version?: string): Promise<BuildResult | undefined> {
