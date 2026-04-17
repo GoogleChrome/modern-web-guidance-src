@@ -290,23 +290,6 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
     '0BSD',
   ];
 
-  const workspacePackages = new Set(['guidance']);
-  try {
-    const workspaceYamlPath = path.join(rootDir, 'pnpm-workspace.yaml');
-    if (fs.existsSync(workspaceYamlPath)) {
-      const content = fs.readFileSync(workspaceYamlPath, 'utf8');
-      const matches = content.match(/-\s+'([^']+)'/g);
-      if (matches) {
-        for (const m of matches) {
-          const name = m.match(/'([^']+)'/)?.[1];
-          if (name) workspacePackages.add(name);
-        }
-      }
-    }
-  } catch (e) {
-    console.warn("Failed to read pnpm-workspace.yaml", e);
-  }
-
   const paths = new Set<string>();
   for (const metafile of metafiles) {
     for (const p of Object.keys(metafile.inputs)) {
@@ -337,11 +320,13 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
     }
 
     if (pkgJsonPath) {
-      const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
-      if (pkg.name === 'serving') {
-        console.log(`[DEBUG] Found serving from path: ${filePath} (absolute: ${absolutePath})`);
+      // If the found package.json is not inside a node_modules directory, it's a local package!
+      if (!pkgJsonPath.includes('node_modules')) {
+        continue;
       }
-      if (pkg.name && !workspacePackages.has(pkg.name)) {
+
+      const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+      if (pkg.name && pkg.name !== 'guidance') {
         nodeModules.set(pkg.name, path.dirname(pkgJsonPath));
       }
     }
