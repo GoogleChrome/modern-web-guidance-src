@@ -81,7 +81,7 @@ async function batchGitInfo (paths: string[]): Promise<Map<string, GitInfo>> {
 
       if (line.startsWith('COMMIT\t')) {
         const [, d, a, e] = line.split('\t');
-        date = d?.slice(0, 10) ?? null;
+        date = d?.slice(0, 16).replace('T', ' ') ?? null;
         author = a ?? null;
         email = e ?? null;
       }
@@ -175,7 +175,7 @@ async function buildGuideSource (): Promise<Source<any>> {
     };
   });
 
-  rows.sort((a, b) => a.guide.localeCompare(b.guide));
+  rows.sort((a, b) => (b.lastUpdated ?? '').localeCompare(a.lastUpdated ?? ''));
 
   const columns = {
     guide: {
@@ -204,7 +204,27 @@ async function buildGuideSource (): Promise<Source<any>> {
       },
     },
     has: {},
-    lastUpdated: { heading: 'Updated' },
+    lastUpdated: {
+      heading: 'Updated',
+      md: (r: any) => {
+        if (!r.lastUpdated) return null;
+        const ms = new Date(r.lastUpdated.replace(' ', 'T')).getTime() - Date.now();
+        const units: [Intl.RelativeTimeFormatUnit, number][] = [
+          ['year', 365.25 * 24 * 3600_000],
+          ['month', 30 * 24 * 3600_000],
+          ['week', 7 * 24 * 3600_000],
+          ['day', 24 * 3600_000],
+          ['hour', 3600_000],
+          ['minute', 60_000],
+        ];
+        const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+        for (const [unit, d] of units) {
+          const value = Math.trunc(ms / d);
+          if (Math.abs(value) >= 1) return rtf.format(value, unit);
+        }
+        return rtf.format(0, 'second');
+      },
+    },
     lastAuthor: {
       heading: 'Author',
       md: (r: any) => {
