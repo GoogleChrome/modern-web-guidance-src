@@ -547,6 +547,14 @@ export async function runCliAgentCommand(
     }
 
     if (exitCode !== 0) {
+      const failureFile = path.join(targetDir, 'generation_failed.json');
+      fs.writeFileSync(failureFile, JSON.stringify({
+        agentName,
+        exitCode,
+        stderr: stderrData,
+        stdout: stdoutData
+      }, null, 2));
+      console.log(`Saved generation failure info to: ${failureFile}`);
       throw new Error(`${agentName} exited with code ${exitCode}`);
     }
   } catch (err: any) {
