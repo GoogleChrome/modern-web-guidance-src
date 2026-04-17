@@ -3,7 +3,7 @@
   "displayName": "Modern Web Guidance",
   "private": true,
   "description": "Curated collection of agent skills for modern web development.",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "publisher": "GoogleChrome",
   "engines": {
     "vscode": "^1.90.0",
