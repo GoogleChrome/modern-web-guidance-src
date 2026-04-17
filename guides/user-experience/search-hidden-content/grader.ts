@@ -110,10 +110,8 @@ test.describe(`Search Hidden Content Expectations: ${demoName}`, () => {
   test('State MUST be synchronized using a beforematch event listener', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const { document } = parseHTML(html);
-    const scriptContent = document.querySelector('script')?.textContent || '';
-    
-    const project = new Project({ useInMemoryFileSystem: true });
-    const sourceFile = project.createSourceFile('test.js', scriptContent);
+    const js = document.querySelector('script')?.textContent || '';
+    const sourceFile = new Project({ useInMemoryFileSystem: true }).createSourceFile('test.js', js);
     
     const strings = sourceFile.getDescendantsOfKind(SyntaxKind.StringLiteral);
     const hasBeforeMatch = strings.some(s => s.getLiteralValue() === 'beforematch');
@@ -128,10 +126,8 @@ test.describe(`Search Hidden Content Expectations: ${demoName}`, () => {
   test('Implementation MUST include explicit fallback strategy with feature detection', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const { document } = parseHTML(html);
-    const scriptContent = document.querySelector('script')?.textContent || '';
-    
-    const project = new Project({ useInMemoryFileSystem: true });
-    const sourceFile = project.createSourceFile('test.js', scriptContent);
+    const js = document.querySelector('script')?.textContent || '';
+    const sourceFile = new Project({ useInMemoryFileSystem: true }).createSourceFile('test.js', js);
     
     const binaryExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression);
     

@@ -101,10 +101,8 @@ describe('Parser Pattern Library (Best Practices)', () => {
     `;
     
     const { document } = parseHTML(html);
-    const scriptContent = document.querySelector('script')?.textContent || '';
-    
-    const project = new Project({ useInMemoryFileSystem: true });
-    const sourceFile = project.createSourceFile('test.js', scriptContent);
+    const js = document.querySelector('script')?.textContent || '';
+    const sourceFile = new Project({ useInMemoryFileSystem: true }).createSourceFile('test.js', js);
     
     // Find all function declarations
     const functionDecls = sourceFile.getDescendantsOfKind(SyntaxKind.FunctionDeclaration);
@@ -124,10 +122,8 @@ describe('Parser Pattern Library (Best Practices)', () => {
     `;
     
     const { document } = parseHTML(html);
-    const scriptContent = document.querySelector('script')?.textContent || '';
-    
-    const project = new Project({ useInMemoryFileSystem: true });
-    const sourceFile = project.createSourceFile('test.js', scriptContent);
+    const js = document.querySelector('script')?.textContent || '';
+    const sourceFile = new Project({ useInMemoryFileSystem: true }).createSourceFile('test.js', js);
     
     // Find binary expressions (like 'onbeforematch' in HTMLElement.prototype)
     const binaryExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression);
