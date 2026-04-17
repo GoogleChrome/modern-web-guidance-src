@@ -231,11 +231,16 @@ run();
         console.warn(`Skipping grading: Task ${guide} not found in task map`);
         continue;
       }
-      const taskCategory = path.basename(path.dirname(taskInfo.guideDir));
-      const expectedToolPrefixes = ['modern-web', taskCategory].filter(Boolean);
+
+      let taskCategory = path.basename(path.dirname(taskInfo.guideDir));
+      const isSkill = taskCategory === 'guides';
+      let expectedToolPrefixes = ['modern-web'].filter(Boolean);
+      if (isSkill) {
+        taskCategory = path.basename(taskInfo.guideDir);
+        expectedToolPrefixes = [taskCategory].filter(Boolean);
+      }
 
       const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
-
       let scenarioResults: any[] = [];
       const graderResults = path.join(dir, `${guide}_results.json`);
 
@@ -298,6 +303,8 @@ run();
         retrievedGuides: retrievedGuides,
         fileReadGuides: fileReadGuides,
         guidanceToolsUsed: guidanceToolsUsedResult,
+        discipline: taskCategory,
+        isSkill: isSkill,
         expectedToolPrefixes: expectedToolPrefixes,
         guideName: guide,
         taskName: taskName,
