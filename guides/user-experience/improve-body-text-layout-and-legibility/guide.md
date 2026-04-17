@@ -40,7 +40,7 @@ blockquote, li, .pretty-text {
    /* MANDATORY: Enable pretty line-breaking logic */
   text-wrap: pretty;
 }
-*   **Performance vs. Quality**: MANDATORY: DO NOT apply `text-wrap: pretty` globally to every element on the page, because it evaluates multiple lines (typically the last four) to optimize the break points, which can affect page rendering performance.
+```
 
 ## Key constraints
 
