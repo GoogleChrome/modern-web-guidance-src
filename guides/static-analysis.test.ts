@@ -46,8 +46,8 @@ test('ts-morph can parse Javascript and yield AST nodes via fluent API', () => {
     }
   `;
 
-  const project = new Project({ useInMemoryFileSystem: true });
-  const sourceFile = project.createSourceFile('test.js', code);
+  const sourceFile = new Project({ useInMemoryFileSystem: true }).createSourceFile('test.js', code);
+
 
   const functionDecls = sourceFile.getDescendantsOfKind(SyntaxKind.FunctionDeclaration);
 

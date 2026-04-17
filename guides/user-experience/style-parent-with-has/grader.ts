@@ -47,8 +47,8 @@ test.describe(`Style parent with :has() Expectations: ${demoName}`, () => {
     let foundClassListToggle = false;
 
     if (scripts.trim()) {
-      const project = new Project({ useInMemoryFileSystem: true });
-      const sourceFile = project.createSourceFile('test.js', scripts);
+      const sourceFile = new Project({ useInMemoryFileSystem: true }).createSourceFile('test.js', scripts);
+
       
       const propertyAccesses = sourceFile.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression);
       foundClassListToggle = propertyAccesses.some(propAccess => 
