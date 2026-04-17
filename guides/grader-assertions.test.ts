@@ -101,7 +101,7 @@ describe('Grader Assertions - CSSOM + DOM Integration', () => {
     assert.strictEqual(computedStyle.getPropertyValue('color'), 'blue');
   });
 
-  test.skip('Case 5: Advanced Selector Matching (:has) (Perfect World)', () => {
+  test('Case 5: Advanced Selector Matching (:has) (Perfect World)', () => {
     const html = `
       <div class="container">
         <p class="child">Hello</p>
