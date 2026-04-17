@@ -68,10 +68,13 @@ Since the `Temporal` API is a newer feature and may not be supported in all brow
 ```html
 <!-- Conditionally load the Temporal polyfill only if not natively supported -->
 <script>
-  if (!globalThis.Temporal) {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@0.4.4/dist/index.umd.js';
-    document.head.appendChild(script);
+  if (typeof Temporal === 'undefined') {
+    try {
+      await import('https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@0.4.4/dist/index.umd.js');
+      globalThis.Temporal = temporal?.Temporal;
+    } catch (err) {
+      console.error('Failed to load Temporal polyfill:', err);
+    }
   }
 </script>
 ```
@@ -80,8 +83,7 @@ Alternatively, if you are using a module bundler, you can dynamically import the
 
 ```javascript
 async function ensureTemporal() {
-  if (!globalThis.Temporal) {
-    // @ts-ignore
+  if (typeof Temporal === 'undefined') {
     await import('@js-temporal/polyfill');
   }
 }
