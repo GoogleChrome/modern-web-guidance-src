@@ -211,7 +211,8 @@ window.__featuresMapping = {
   ],
   "cross-document-transitions": [
     "view-transitions",
-    "cross-document-view-transitions"
+    "cross-document-view-transitions",
+    "navigation"
   ],
   "customize-scrollbar-color-and-thickness": [
     "scrollbar-color",
