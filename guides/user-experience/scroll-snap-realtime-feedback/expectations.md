@@ -1,0 +1,9 @@
+- The element with class `.thumbnail` corresponding to the pending snap target receives the class `pending` during a scroll gesture on the `#gallery` element.
+- The element with class `.thumbnail` corresponding to the final snap target receives the class `active` after the scroll gesture on the `#gallery` element completes.
+- The element with class `.thumbnail` corresponding to the final snap target does not have the class `pending` after the scroll gesture on the `#gallery` element completes.
+- The gallery contains child elements with class `.gallery-item`, one per photo.
+- The Nth `.thumbnail` element (in document order) corresponds to the Nth `.gallery-item` element (in document order).
+- The number of `.thumbnail` elements must equal the number of `.gallery-item` elements.
+
+> [!IMPORTANT]
+> Fallback implementations using scroll listeners or intersection observers are out of scope for this specific task and will fail the automated grader's anti-cheat checks.
