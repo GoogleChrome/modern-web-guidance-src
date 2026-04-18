@@ -1,0 +1,5 @@
+- The header container uses `position: sticky` to remain at the top of the scroller.
+- The header container defines `container-type: scroll-state` to enable scroll state queries.
+- The header container defines `container-name: section-header` to avoid collisions.
+- The header visual style changes (both background color and padding) when it is stuck at the top.
+- The visual style changes are implemented using the `@container scroll-state(stuck: top)` query.

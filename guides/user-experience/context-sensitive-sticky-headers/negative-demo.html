@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Static Headers</title>
+  <style>
+    body {
+      font-family: serif;
+      margin: 0;
+      padding: 0;
+      background: #000;
+      color: #fff;
+    }
+
+    .scroller {
+      height: 400px;
+      overflow: hidden;
+      margin: 0;
+    }
+
+    .section {
+      padding: 0;
+    }
+
+    .header-container {
+      position: static;
+      background: #222;
+      padding: 5px;
+      font-size: 1rem;
+    }
+
+    .header-content {
+      background: transparent;
+      padding: 0;
+    }
+
+    .content {
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="scroller">
+    <div class="section">
+      <div class="header-container">
+        <div class="header-content">
+          Item 1
+        </div>
+      </div>
+      <div class="content">
+        <p>This text stays here.</p>
+        <p>No movement occurs.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="header-container">
+        <div class="header-content">
+          Item 2
+        </div>
+      </div>
+      <div class="content">
+        <p>This is just a list.</p>
+        <p>Nothing sticks or changes.</p>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

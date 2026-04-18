@@ -13,15 +13,6 @@
       color: #333;
     }
 
-    .scroller {
-      height: 400px;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      margin: 20px;
-      background: #fff;
-      border-radius: 8px;
-    }
-
     .section {
       padding-bottom: 50px;
     }
@@ -31,6 +22,7 @@
       position: sticky;
       top: 0;
       container-type: scroll-state;
+      container-name: section-header;
       z-index: 10;
     }
 
@@ -44,7 +36,7 @@
     }
 
     /* Target the inner header when the container is stuck */
-    @container scroll-state(stuck: top) {
+    @container section-header scroll-state(stuck: top) {
       .sticky-header {
         background: #0056b3;
         color: white;
@@ -61,8 +53,11 @@
 </head>
 <body>
 
-  <div class="scroller">
-    <div class="section">
+  <nav>
+    <div class="logo">Logo</div>
+  </nav>
+
+  <div class="section">
       <div class="sticky-container">
         <div class="sticky-header">
           Section 1
@@ -97,7 +92,6 @@
         <p>Suspendisse dictum feugiat nisl ut dapibus.</p>
       </div>
     </div>
-  </div>
 
 </body>
 </html>
