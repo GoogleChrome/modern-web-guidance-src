@@ -162,7 +162,8 @@ window.__featuresMapping = {
     "interpolate-size"
   ],
   "browser-ui-color-theme": [
-    "color-scheme"
+    "color-scheme",
+    "prefers-color-scheme"
   ],
   "calculate-event-differentials": [
     "temporal"
