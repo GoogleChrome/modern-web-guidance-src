@@ -26,8 +26,12 @@ describe('validateGuide', () => {
     removeTempDir(tempDir);
   });
 
-  function writeTempGuide(content: string): string {
-    const filePath = path.join(tempDir, 'guide.md');
+  function writeTempGuide(content: string, dirName = 'my-use-case'): string {
+    const guideDir = path.join(tempDir, dirName);
+    if (!fs.existsSync(guideDir)) {
+      fs.mkdirSync(guideDir);
+    }
+    const filePath = path.join(guideDir, 'guide.md');
     fs.writeFileSync(filePath, content);
     return filePath;
   }
@@ -723,6 +727,7 @@ describe('processGuideInventory', () => {
 
   beforeEach(() => {
     tempDir = createTempDir();
+    fs.mkdirSync(path.join(tempDir, 'my-use-case'));
   });
 
   afterEach(() => {
@@ -731,7 +736,7 @@ describe('processGuideInventory', () => {
 
   function makeInventory(overrides: Partial<GuideInventory> = {}): GuideInventory {
     return {
-      dir: tempDir,
+      dir: path.join(tempDir, 'my-use-case'),
       name: 'my-use-case',
       category: 'test',
       hasGuide: true,
@@ -748,7 +753,7 @@ describe('processGuideInventory', () => {
   }
 
   test('returns exactly one error for one invalid feature ID', () => {
-    fs.writeFileSync(path.join(tempDir, 'guide.md'), `---
+    fs.writeFileSync(path.join(tempDir, 'my-use-case', 'guide.md'), `---
 name: my-use-case
 description: A description
 web-feature-ids:
@@ -762,7 +767,7 @@ Body content.
   });
 
   test('returns no errors for a valid guide', () => {
-    fs.writeFileSync(path.join(tempDir, 'guide.md'), `---
+    fs.writeFileSync(path.join(tempDir, 'my-use-case', 'guide.md'), `---
 name: my-use-case
 description: A description
 web-feature-ids:

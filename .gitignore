@@ -34,7 +34,7 @@ skills/modern-web/
 project-gleam/
 
 # Local configs
-config.ts
+/config.ts
 
 # Git worktrees directory
 .worktrees

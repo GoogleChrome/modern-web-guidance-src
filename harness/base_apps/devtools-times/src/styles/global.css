@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+.font-brand {
+  font-family: "Grenze", serif;
+  font-weight: 500;
+  font-style: normal;
+}
