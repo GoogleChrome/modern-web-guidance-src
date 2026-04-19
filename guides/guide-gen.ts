@@ -62,6 +62,12 @@ interface FeatureInfo {
   mdnUrls: string[];
 }
 
+interface UseCase {
+  slug: string;
+  description: string;
+  category: string;
+}
+
 function lookupFeature(featureId: string): FeatureInfo {
   const feature = (features as Record<string, any>)[featureId];
   if (!feature || feature.kind !== 'feature') {
@@ -314,6 +320,30 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
   return outputDir;
 }
 
+function parseUseCasesResponse(response: string): UseCase[] {
+  try {
+    const match = response.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if (!match) {
+      throw new Error("Could not find JSON array in response");
+    }
+    return JSON.parse(match[0]);
+  } catch (err) {
+    console.error(`Failed to parse JSON response from Gemini. Raw response:\n${response}`);
+    throw err;
+  }
+}
+
+async function handleGitAndPR(featureId: string, reviewer: string): Promise<void> {
+  if (process.env.GITHUB_ACTIONS) {
+    const pushed = await commitAndPush(featureId);
+    if (pushed) {
+      await createPullRequest(featureId, reviewer);
+    }
+  } else {
+    console.log('\nSkipping Git commit/push and PR creation (not running in GitHub Actions).');
+  }
+}
+
 // ─── Main generation function ────────────────────────────────────────────────
 
 
@@ -329,27 +359,12 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
   console.log(`Asking Gemini to identify use cases...`);
   const response = await runGemini(prompt, workDir);
 
-  let useCases: { slug: string; description: string; category: string }[];
-  try {
-    // Find the first '[' and last ']' to extract JSON array
-    const match = response.match(/\[\s*\{[\s\S]*\}\s*\]/);
-    if (!match) {
-      throw new Error("Could not find JSON array in response");
-    }
-    const jsonStr = match[0];
-    useCases = JSON.parse(jsonStr);
-
-  } catch (err) {
-    console.error(`Failed to parse JSON response from Gemini. Raw response:\n${response}`);
-    throw err;
-  }
+  const useCases = parseUseCasesResponse(response);
 
   console.log(`\nIdentified ${useCases.length} use cases:`);
   for (const uc of useCases) {
     console.log(`- [${uc.category}] ${uc.slug}: ${uc.description}`);
   }
-
-
 
   for (const uc of useCases) {
     const outputDir = await scaffoldUseCase(uc, feature, workDir, guidesDir);
@@ -361,20 +376,10 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
     }
   }
 
-
-
   cleanupIsolatedHome(path.dirname(workDir));
   console.log(`\n🎉 All use cases scaffolded!`);
 
-  if (process.env.GITHUB_ACTIONS) {
-    const pushed = await commitAndPush(featureId);
-    if (pushed) {
-      await createPullRequest(featureId, reviewer);
-    }
-  } else {
-    console.log('\nSkipping Git commit/push and PR creation (not running in GitHub Actions).');
-  }
-
+  await handleGitAndPR(featureId, reviewer);
 }
 
 
