@@ -7,7 +7,6 @@ serving/build/
 serving/lib/use-cases.gen.ts
 eval-view/features_mapping.gen.js
 eval-view/*.gen.json
-harness/results/**/run-files.gen.json
 dist/
 
 # Test artifacts
