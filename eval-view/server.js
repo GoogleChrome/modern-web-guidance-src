@@ -23,6 +23,26 @@ if (STATIC) {
     }
   }
 
+  // Symlink results, tasks, and base_apps into eval-view to mimic deployment structure
+  const links = [
+    { src: '../harness/results', dest: 'results' },
+    { src: '../harness/tasks', dest: 'tasks' },
+    { src: '../harness/base_apps', dest: 'base_apps' }
+  ];
+
+  for (const link of links) {
+    const srcPath = path.resolve(link.src);
+    const destPath = path.resolve(link.dest);
+    if (!fs.existsSync(destPath)) {
+      console.log(`🔗 Creating symlink: ${srcPath} -> ${destPath}`);
+      try {
+        fs.symlinkSync(srcPath, destPath, 'dir');
+      } catch (e) {
+        console.error(`Failed to create symlink for ${link.dest}:`, e.message);
+      }
+    }
+  }
+
   console.log(`🚀 Spawning statikk on port ${PORT}...`);
   const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString()], { stdio: 'inherit' });
   
