@@ -70,8 +70,8 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
   for (const runDir of runDirs) {
     const runPath = path.join(resultsDir, runDir);
     const runTypeDirs = [
-      ...glob.sync('**/guided', { cwd: runPath, absolute: true }),
-      ...glob.sync('**/unguided', { cwd: runPath, absolute: true })
+      ...glob.sync('*/*/guided', { cwd: runPath, absolute: true }),
+      ...glob.sync('*/*/unguided', { cwd: runPath, absolute: true })
     ];
 
     for (const dir of runTypeDirs) {
@@ -154,8 +154,8 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
     const runPath = path.join(resultsDir, runDir);
 
     const runTypeDirs = [
-      ...glob.sync('**/guided', { cwd: runPath, absolute: true }),
-      ...glob.sync('**/unguided', { cwd: runPath, absolute: true })
+      ...glob.sync('*/*/guided', { cwd: runPath, absolute: true }),
+      ...glob.sync('*/*/unguided', { cwd: runPath, absolute: true })
     ];
 
     for (const dir of runTypeDirs) {
