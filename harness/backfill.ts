@@ -30,8 +30,14 @@ async function main() {
   let mainResultsDir = resultsDir;
   
   // Allow passing a custom results directory as an argument!
-  if (process.argv[2]) {
-    mainResultsDir = path.resolve(process.argv[2]);
+  const arg = process.argv[2];
+  if (arg === 'backfill') {
+    // Run via gd, check next argument for custom directory
+    const customDir = process.argv[3];
+    if (customDir) mainResultsDir = path.resolve(customDir);
+  } else if (arg) {
+    // Run via node, use this argument
+    mainResultsDir = path.resolve(arg);
   }
 
   if (!fs.existsSync(mainResultsDir)) {
