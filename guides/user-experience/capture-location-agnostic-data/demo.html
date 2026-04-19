@@ -315,24 +315,25 @@
     const unsupportedBanner = document.getElementById('unsupportedBanner');
 
     // Check Support
-    if (typeof Temporal === 'undefined') {
-      // Load the polyfill conditionally as defined in guide.md
-      // Note: In a non-bundled browser environment, you may need to use a CDN URL like 'https://esm.sh/@js-temporal/polyfill'
-      import('@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill, toTemporalInstant }) => {
+      (async () => {
+      if (typeof Temporal === 'undefined') {
+        try {
+          const module = await import('https://esm.sh/@js-temporal/polyfill');
         // Manually assign to global scope if needed
-        globalThis.Temporal = TemporalPolyfill;
-        // Extend Date.prototype as recommended by polyfill docs
-        Date.prototype.toTemporalInstant = toTemporalInstant;
+          globalThis.Temporal = module.Temporal;
+          // Extend Date.prototype as recommended by polyfill docs
+          Date.prototype.toTemporalInstant = module.toTemporalInstant;
+          initializeDemo();
+        } catch (err) {
+          console.error("Failed to load polyfill:", err);
+          unsupportedBanner.style.display = 'flex';
+          birthdateInput.disabled = true;
+          timezoneSelect.disabled = true;
+        }
+      } else {
         initializeDemo();
-      }).catch(err => {
-        console.error("Failed to load polyfill:", err);
-        unsupportedBanner.style.display = 'flex';
-        birthdateInput.disabled = true;
-        timezoneSelect.disabled = true;
-      });
-    } else {
-      initializeDemo();
-    }
+      }
+        })(); 
 
     function initializeDemo() {
       // Event Listeners

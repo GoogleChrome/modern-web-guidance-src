@@ -49,24 +49,24 @@ export class DumbbellChart {
     const featuresMap = window.__featuresMapping || {};
 
     labels.forEach((label, i) => {
-        let appName = label;
+        let taskName = label;
         let useCaseId = "";
         const match = label.match(/^(.*) \(([^)]+)\)$/);
         if (match) {
-            appName = match[1];
+            taskName = match[1];
             useCaseId = match[2];
         } else {
             const parts = label.split(' - ');
             if (parts.length >= 2) {
-                appName = parts[0];
+                taskName = parts[0];
                 useCaseId = parts.slice(1).join(' - ');
             }
         }
 
-        const usecaseFolder = appName.replace(/-task$/, '');
-        let featureName = appName; // fallback to task name if not found
-        if (featuresMap[usecaseFolder] && featuresMap[usecaseFolder].length > 0) {
-            featureName = featuresMap[usecaseFolder][0]; // take primary feature
+        // Use useCaseId (guide name) for lookup in featuresMap, fallback to useCaseId if no feature found, and finally taskName
+        let featureName = useCaseId || taskName;
+        if (featuresMap[useCaseId] && featuresMap[useCaseId].length > 0) {
+            featureName = featuresMap[useCaseId][0]; // take primary feature
         }
 
         const uVal = unguidedSet.data[i] || 0;

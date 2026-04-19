@@ -109,18 +109,29 @@ const server = http.createServer(async (req, res) => {
       const taskMap = getTaskMap();
       /** @type {Record<string, Record<string, string[]>>} */
       const grouped = {}; // categoryName -> guideName -> [tasks]
+      /** @type {Record<string, string[]>} */
+      const disciplines = {}; // disciplineName -> [tasks]
       
-      for (const [key, _] of taskMap.entries()) {
+      for (const [key, info] of taskMap.entries()) {
         const [guide, task] = key.split('/');
-        const useCase = USE_CASES.find(u => u.id === guide);
-        const category = useCase ? useCase.category : 'Uncategorized';
-        if (!grouped[category]) grouped[category] = {};
-        if (!grouped[category][guide]) grouped[category][guide] = [];
-        grouped[category][guide].push(task);
+        
+        const parentDir = path.basename(path.dirname(info.guideDir));
+        const isSkill = parentDir === 'guides';
+        
+        if (isSkill) {
+          if (!disciplines[guide]) disciplines[guide] = [];
+          disciplines[guide].push(task);
+        } else {
+          const useCase = USE_CASES.find(u => u.id === guide);
+          const category = useCase ? useCase.category : 'Uncategorized';
+          if (!grouped[category]) grouped[category] = {};
+          if (!grouped[category][guide]) grouped[category][guide] = [];
+          grouped[category][guide].push(task);
+        }
       }
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ guides: grouped }));
+      res.end(JSON.stringify({ guides: grouped, disciplines: disciplines }));
     } catch (e) {
       console.error('Error fetching grouped tasks:', e);
       res.writeHead(500);
@@ -135,17 +146,19 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', async () => {
       try {
-        const options = JSON.parse(body);
-        const testId = options.name || `full-${new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-')}`;
-        
-        // Return 200 immediately so UI can track the testId
+        // Return 200 immediately so UI can track the run
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, testId }));
+        res.end(JSON.stringify({ success: true }));
 
-        const tempConfigPath = path.join(os.tmpdir(), `.ui_eval_config_${testId}.ts`);
-        fs.writeFileSync(tempConfigPath, `export default ${body};`);
+        server.close(() => {
+          console.log(`Server closed to release port ${PORT}`);
+        });
 
-        console.log(`\n>>> Launching UI Eval Suite for ${testId} in background...`);
+        const tempConfigPath = path.join(os.tmpdir(), `.ui_eval_config_${Math.random().toString(36).substring(2, 10)}.ts`);
+        const options = JSON.parse(body);
+        fs.writeFileSync(tempConfigPath, `export default ${JSON.stringify(options, null, 2)};`);
+
+        console.log(`\n>>> Launching UI Eval Suite in background...`);
 
         const p = spawn('pnpm', [
           'gd',
@@ -163,9 +176,9 @@ const server = http.createServer(async (req, res) => {
         p.on('close', () => {
           try {
             if (fs.existsSync(tempConfigPath)) fs.unlinkSync(tempConfigPath);
-            console.log(`🗑️ Cleaned up temporary UI config for ${testId}.`);
+            console.log(`🗑️ Cleaned up temporary UI config for ${tempConfigPath}.`);
           } catch (e) {
-            console.error(`Failed to delete temporary config for ${testId}:`, e);
+            console.error(`Failed to delete temporary config for ${tempConfigPath}:`, e);
           }
         });
 

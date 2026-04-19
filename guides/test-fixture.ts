@@ -33,6 +33,10 @@ export const test = base.extend<{}, ServerWorkerFixtures>({
     const pkgJsonPath = path.join(targetDir, 'package.json');
     const demoName = path.basename(targetFile);
 
+    if (!fs.existsSync(pkgJsonPath) && !fs.existsSync(targetFile)) {
+      throw new Error(`Target file not found: ${targetFile}`);
+    }
+
     console.log(`[TEST-FIXTURE] targetFile: ${targetFile}`);
     console.log(`[TEST-FIXTURE] targetDir: ${targetDir}`);
     console.log(`[TEST-FIXTURE] pkgJsonPath: ${pkgJsonPath}`);
