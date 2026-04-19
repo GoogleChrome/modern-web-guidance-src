@@ -30,6 +30,10 @@ function inferSuiteConfig(suiteResultsDir: string): SuiteConfig {
   return { agent, serving, tasks: [], name: null, numRuns: 1, mcpServersToEnable: [] };
 }
 
+export function mergeResults(oldResults: Record<string, any>, newResults: Record<string, any>): Record<string, any> {
+  return { ...oldResults, ...newResults };
+}
+
 export async function evaluateSuite(suiteResultsDir: string, suiteName: string) {
   console.log(`Evaluating suite: ${suiteName}`.cyan);
   console.log(`Results directory: ${suiteResultsDir}`.cyan);
@@ -74,7 +78,7 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string) 
         if (oldEvals.timestamp) timestamp = oldEvals.timestamp;
         if (oldEvals.results) {
           console.log(`Merging with existing results in evals.json to preserve historical data...`.cyan);
-          mergedResults = { ...oldEvals.results, ...allResults };
+          mergedResults = mergeResults(oldEvals.results, allResults);
         }
       } catch {
         // Ignore
