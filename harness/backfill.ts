@@ -69,4 +69,9 @@ async function main() {
   console.log('Backfill completed!'.cyan.bold);
 }
 
-main().catch(console.error);
+import { fileURLToPath } from 'url';
+
+const isMain = process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url));
+if (isMain) {
+  main().catch(console.error);
+}
