@@ -87,7 +87,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         // [Legacy Fallback] Old structure: {taskName}/{runType}
         taskName = 'task'; // Old suites always had a single task
         runType = parts[1];
-        guide = parts[0].replace(/-task$/, ''); // Infer guide name by removing suffix
+        guide = parts[0].replace(/-task(-negative)?$/, ''); // Infer guide name by removing suffix
       } else if (parts.length >= 3) {
         [guide, taskName, runType] = parts;
       } else {
