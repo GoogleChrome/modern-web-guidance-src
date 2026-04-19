@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Resolution-optimized pseudo-elements</title>
+  <style>
+    .download-button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+
+    .download-button::before {
+      /* Fallback for browsers that do not support image-set() */
+      content: url("https://img.icons8.com/ios-filled/24/ffffff/download.png");
+      
+      /* Modern browsers will apply this and override the fallback */
+      content: image-set(
+        url("https://placehold.co/24x24/transparent/ffffff/webp?text=D") type("image/webp") 1x,
+        url("https://placehold.co/48x48/transparent/ffffff/webp?text=D") type("image/webp") 2x,
+        url("https://img.icons8.com/ios-filled/24/ffffff/download.png") type("image/png") 1x,
+        url("https://img.icons8.com/ios-filled/48/ffffff/download.png") type("image/png") 2x
+      );
+      
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <button class="download-button">Download</button>
+</body>
+</html>

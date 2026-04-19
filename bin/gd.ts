@@ -5,9 +5,8 @@ import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
-import { pathToFileURL } from 'url';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
-import { Serving, mergeSuiteConfig, type SuiteConfig } from '../harness/config.ts';
+import { Serving, resolveSuiteConfig } from '../harness/config.ts';
 import { rootDir, guidesDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
 import { getTaskMap } from '../lib/guide-validation.ts';
 
@@ -144,29 +143,7 @@ const { positionals, values } = parseArgs({
 
 // --- Helpers ---
 
-async function resolveSuiteConfig(configPath?: string): Promise<SuiteConfig> {
-  const resolvedConfigPath = configPath
-    ? path.resolve(process.cwd(), configPath)
-    : path.resolve(rootDir, 'config.ts');
 
-  let overrides: any = {};
-  try {
-    const fileUrl = pathToFileURL(resolvedConfigPath).href;
-    const customConfig = await import(fileUrl);
-    overrides = customConfig.default || customConfig;
-  } catch (err: any) {
-    if (err.code === 'ERR_MODULE_NOT_FOUND') {
-      if (configPath) {
-        console.error(cRed('⚠️ Specified config file not found: ' + resolvedConfigPath));
-        process.exit(1);
-      }
-    } else {
-      throw err;
-    }
-  }
-
-  return mergeSuiteConfig(overrides);
-}
 
 function spawnChild(command: string, args: string[], options: import('child_process').SpawnOptions = {}): Promise<number> {
   return new Promise((resolve, reject) => {

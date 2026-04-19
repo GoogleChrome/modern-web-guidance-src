@@ -1,0 +1,15 @@
+
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Page Not Found">
+    <div class="flex flex-col items-center justify-center text-center py-20">
+        <h1 class="text-6xl font-bold text-amber-400">404</h1>
+        <p class="text-2xl font-semibold text-gray-800 mt-4">Seite nicht gefunden</p>
+        <p class="text-gray-600 mt-2">Die von Ihnen angeforderte Seite konnte nicht gefunden werden.</p>
+        <a href={import.meta.env.BASE_URL} class="mt-6 px-6 py-3 bg-amber-400 text-white font-semibold hover:bg-amber-700 transition-colors">
+            Zurück zur Startseite
+        </a>
+    </div>
+</Layout>
