@@ -67,15 +67,45 @@ export function generateSuitesManifest(outputDir = '.') {
 }
 
 /** 
- * Recursively scans test results and adds run-files.gen.json to leaf directories.
+ * Generates grouped-tasks.gen.json by scanning guides.
  */
+export async function generateGroupedTasksManifest(outputDir = '.') {
+    const { getTaskMap } = await import('../lib/guide-validation.ts');
+    const { USE_CASES } = await import('../serving/lib/practices.ts');
+    const taskMap = getTaskMap();
+    const grouped = {};
+    const disciplines = {};
+    
+    for (const [key, info] of taskMap.entries()) {
+        const [guide, task] = key.split('/');
+        const parentDir = path.basename(path.dirname(info.guideDir));
+        const isSkill = parentDir === 'guides';
+        
+        if (isSkill) {
+            if (!disciplines[guide]) disciplines[guide] = [];
+            disciplines[guide].push(task);
+        } else {
+            const useCase = USE_CASES.find(u => u.id === guide);
+            const category = useCase ? useCase.category : 'Uncategorized';
+            if (!grouped[category]) grouped[category] = {};
+            if (!grouped[category][guide]) grouped[category][guide] = [];
+            grouped[category][guide].push(task);
+        }
+    }
+    
+    const outputPath = path.join(outputDir, 'grouped-tasks.gen.json');
+    fs.writeFileSync(outputPath, JSON.stringify({ guides: grouped, disciplines: disciplines }, null, 2));
+}
+
 /**
  * Main CLI Orchestrator
  */
-export function runAllManifests({ resultsOnly = false, outputDir = '.' } = {}) {
+export async function runAllManifests({ resultsOnly = false, outputDir = '.' } = {}) {
     if (!resultsOnly) {
         console.log('🔄 Generating features mapping...');
         generateMapping(outputDir);
+        console.log('🔄 Generating grouped tasks manifest...');
+        await generateGroupedTasksManifest(outputDir);
     }
 
     console.log('🔄 Generating suites manifests...');
@@ -88,7 +118,7 @@ if (isMain) {
     const args = process.argv.slice(2);
     const resultsOnly = args.includes('--results-only');
     try {
-        runAllManifests({ resultsOnly });
+        await runAllManifests({ resultsOnly });
         console.log('✅ All manifests generated successfully.');
     } catch (e) {
         console.error('❌ Error generating manifests:', e);
