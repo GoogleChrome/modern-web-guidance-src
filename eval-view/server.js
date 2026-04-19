@@ -37,7 +37,8 @@ if (STATIC) {
     try {
       fs.symlinkSync(`../../${f}`, destPath);
     } catch (e) {
-      console.error(`Failed to create symlink for ${f}:`, e.message);
+      const message = e instanceof Error ? e.message : String(e);
+      console.error(`Failed to create symlink for ${f}:`, message);
     }
   }
 
@@ -53,7 +54,8 @@ if (STATIC) {
     try {
       fs.symlinkSync(link.target, destPath, 'dir');
     } catch (e) {
-      console.error(`Failed to create symlink for ${link.name}:`, e.message);
+      const message = e instanceof Error ? e.message : String(e);
+      console.error(`Failed to create symlink for ${link.name}:`, message);
     }
   }
 

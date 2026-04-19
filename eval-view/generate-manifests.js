@@ -9,8 +9,10 @@ const { resultsDir, guidesDir } = await import('../lib/paths.ts');
  * Scans guides for web-feature-ids in frontmatter and generates window.__featuresMapping.
  */
 export function generateMapping(outputDir = '.') {
+    /** @type {Record<string, string[]>} */
     const mapping = {}; // usecase -> [feature_ids]
 
+    /** @param {string} dir */
     function scanGuides(dir) {
         if (!fs.existsSync(dir)) return;
         const items = fs.readdirSync(dir, { withFileTypes: true });
@@ -72,7 +74,9 @@ export async function generateGroupedTasksManifest(outputDir = '.') {
     const { getTaskMap } = await import('../lib/guide-validation.ts');
     const { USE_CASES } = await import('../serving/lib/practices.ts');
     const taskMap = getTaskMap();
+    /** @type {Record<string, Record<string, string[]>>} */
     const grouped = {};
+    /** @type {Record<string, string[]>} */
     const disciplines = {};
     
     for (const [key, info] of taskMap.entries()) {
