@@ -5,7 +5,7 @@ export class ApiClient {
         if (!sourceParam) {
             // Auto-detect static Github Pages deployment
             if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-                sourceParam = 'gh';
+                sourceParam = 'static';
             } else {
                 sourceParam = 'local';
             }
@@ -15,7 +15,7 @@ export class ApiClient {
 
         // Capabilities based on source
         this.capabilities = {
-            useManifests: this.source === 'gh',
+            useManifests: this.source === 'static',
             canListFiles: this.source === 'local',
             canProbeExists: this.source === 'local'
         };
@@ -88,7 +88,7 @@ export class ApiClient {
             if (!res.ok) throw new Error('Failed to load remote suites (suites.gen.json not found)');
 
             const suites = await res.json();
-            return { suites: suites.map(id => ({ id, source: 'gh' })) };
+            return { suites: suites.map(id => ({ id, source: 'static' })) };
         } else {
             // Fetch directly from server.js /api/suites endpoint
             const res = await fetch('/api/suites');
@@ -111,7 +111,7 @@ export class ApiClient {
         const path = `${testId}/jetski_info.json`;
         let exists = false;
         
-        if (this.source === 'gh') {
+        if (this.source === 'static') {
             exists = await this._checkRemoteFileExists(path);
         } else {
             exists = await this._checkLocalFileExists(path);
@@ -166,7 +166,7 @@ export class ApiClient {
         const localBaseAppPath = `${testId}/${run.runNumber}/${guideName}/${taskName}/base_app/${relativePath}`;
         let exists = false;
 
-        if (this.source === 'remote') {
+        if (!this.capabilities.canProbeExists) {
             exists = await this._checkRemoteFileExists(localBaseAppPath);
         } else {
             exists = await this._checkLocalFileExists(localBaseAppPath);
@@ -194,7 +194,7 @@ export class ApiClient {
         ];
 
         let bestCandidate = null;
-        if (this.source === 'gh') {
+        if (this.source === 'static') {
             // Cannot list files on static servers. Guess by checking common candidates or fallback to index.html.
             const checks = candidates.map(candidate =>
                 this._checkRemoteFileExists(`${basePath}/${candidate}`)

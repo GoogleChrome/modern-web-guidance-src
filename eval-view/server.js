@@ -60,7 +60,7 @@ if (STATIC) {
   console.log(`🚀 Spawning statikk on port ${PORT} serving dist/dashboard...`);
   const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString(), 'dist/dashboard'], { stdio: 'inherit' });
   
-  const url = `http://localhost:${PORT}/?source=gh`;
+  const url = `http://localhost:${PORT}/?source=static`;
   console.log(`Server running at ${url}`);
 
   // Try to open the browser if not disabled

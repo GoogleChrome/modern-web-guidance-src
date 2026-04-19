@@ -3,8 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import matter from 'gray-matter';
 
-const resultsDir = path.resolve('../harness/results');
-const guidesDir = path.resolve('../guides');
+const { resultsDir, guidesDir } = await import('../lib/paths.ts');
 
 /** 
  * Scans guides for web-feature-ids in frontmatter and generates window.__featuresMapping.
