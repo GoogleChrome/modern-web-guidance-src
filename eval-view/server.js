@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
-import { generateSuitesManifest, generateRunFilesManifests } from './generate-manifests.js';
+import { generateSuitesManifest } from './generate-manifests.js';
 
 const PORT = process.env.PORT || 8081;
 const STRICT_STATIC = process.env.STRICT_STATIC === 'true';
@@ -18,7 +18,6 @@ if (process.env.USE_MOCK_RESULTS !== 'true') {
   console.log('🔄 Generating static manifests for local parity...');
   try {
     generateSuitesManifest('.');
-    generateRunFilesManifests();
     console.log('✅ Static manifests generated.');
   } catch (e) {
     console.error('Failed to trigger manifest generation:', e);
@@ -91,7 +90,6 @@ const server = http.createServer(async (req, res) => {
     // Refresh manifests on every API call to keep local dev aligned with static manifests
     try {
       generateSuitesManifest('.');
-      generateRunFilesManifests();
     } catch (e) {
       console.error('Failed to refresh manifests during API call:', e);
     }
