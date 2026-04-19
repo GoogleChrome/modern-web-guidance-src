@@ -1,15 +1,15 @@
 import fs from 'fs';
 import path from 'path';
-import { test } from 'node:test';
+import { test, before, after } from 'node:test';
 import assert from 'node:assert';
 import { generateSuitesManifest } from './generate-manifests.js';
 import { resultsDir } from '../lib/paths.ts';
 
-test('Parity: Static manifests should be correctly generated and accessible', async () => {
-    // 1. Setup mock results dir if real results missing (e.g. in CI)
-    const mockResultsDir = path.resolve('./test-mock-results');
-    let targetResultsDir = resultsDir;
+const mockResultsDir = path.resolve('./test-mock-results');
+let targetResultsDir = resultsDir;
 
+before(async () => {
+    // Setup mock results dir if real results missing (e.g. in CI)
     if (!fs.existsSync(resultsDir)) {
         console.log('⚠️ harness/results missing. Creating mock results for test...');
         targetResultsDir = mockResultsDir;
@@ -17,32 +17,38 @@ test('Parity: Static manifests should be correctly generated and accessible', as
         fs.writeFileSync(path.join(mockResultsDir, 'mock-suite', 'evals.json'), JSON.stringify({ summary: {}, results: {} }));
     }
 
-    // 2. Generate manifests
+    // Generate manifests
     generateSuitesManifest('.', targetResultsDir);
+});
 
-    // 2. Verify suites.gen.json exists and contains data
+after(async () => {
+    // Cleanup mock dir
+    if (targetResultsDir === mockResultsDir) {
+        fs.rmSync(mockResultsDir, { recursive: true, force: true });
+    }
+    // Also cleanup generated manifest file
+    const suitesPath = path.resolve('./suites.gen.json');
+    if (fs.existsSync(suitesPath)) {
+        fs.unlinkSync(suitesPath);
+    }
+});
+
+test('Parity: Static manifests should be correctly generated and accessible', async () => {
+    // Verify suites.gen.json exists and contains data
     const suitesPath = path.resolve('./suites.gen.json');
     assert.strictEqual(fs.existsSync(suitesPath), true, 'suites.gen.json should exist');
     const suitesData = JSON.parse(fs.readFileSync(suitesPath, 'utf8'));
     assert.strictEqual(Array.isArray(suitesData), true, 'suites.gen.json should be an array');
     
-    // 3. Compare with local results
+    // Compare with local results
     const localDirs = fs.readdirSync(targetResultsDir, { withFileTypes: true })
         .filter(d => d.isDirectory() && fs.existsSync(path.join(targetResultsDir, d.name, 'evals.json')))
         .map(d => d.name);
         
     assert.deepStrictEqual(suitesData.sort(), localDirs.sort(), 'Static suites manifest should match local completed suites');
-
-    // 4. Cleanup mock dir
-    if (targetResultsDir === mockResultsDir) {
-        fs.rmSync(mockResultsDir, { recursive: true, force: true });
-    }
 });
 
 test('Parity: evals.json should be valid in all completed suites', async () => {
-    const mockResultsDir = path.resolve('./test-mock-results');
-    const targetResultsDir = fs.existsSync(resultsDir) ? resultsDir : mockResultsDir;
-
     const suitesPath = path.resolve('./suites.gen.json');
     if (!fs.existsSync(suitesPath)) return;
     
