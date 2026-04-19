@@ -1,7 +1,7 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { tasksDir, baseAppsDir, resultsDir, evalViewDir } from '../lib/paths.ts';
+import { baseAppsDir, resultsDir, evalViewDir } from '../lib/paths.ts';
 
 const tasksDest = path.join(evalViewDir, 'tasks');
 const appsDest = path.join(evalViewDir, 'base_apps');
@@ -27,8 +27,7 @@ try {
   if (fs.existsSync(resultsDest)) fs.rmSync(resultsDest, { recursive: true });
 
   // 3. Staging tasks and base apps
-  console.log(`Copying tasks to ${tasksDest}...`);
-  fs.cpSync(tasksDir, tasksDest, { recursive: true });
+
 
   console.log(`Copying base apps to ${appsDest}...`);
   // dereference: true resolves symlinks (mimicking cp -RL)
