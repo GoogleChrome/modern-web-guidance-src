@@ -48,14 +48,14 @@ export function generateMapping(outputDir = '.') {
 /** 
  * Generates suites.gen.json based on folders in harness/results that contain evals.json.
  */
-export function generateSuitesManifest(outputDir = '.') {
+export function generateSuitesManifest(outputDir = '.', resultsSourceDir = resultsDir) {
     const suites = [];
-    if (!fs.existsSync(resultsDir)) return [];
+    if (!fs.existsSync(resultsSourceDir)) return [];
 
-    const items = fs.readdirSync(resultsDir, { withFileTypes: true });
+    const items = fs.readdirSync(resultsSourceDir, { withFileTypes: true });
     for (const item of items) {
         if (item.isDirectory()) {
-            const suiteDir = path.join(resultsDir, item.name);
+            const suiteDir = path.join(resultsSourceDir, item.name);
             if (fs.existsSync(path.join(suiteDir, 'evals.json'))) {
                 suites.push(item.name);
             }
