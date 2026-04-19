@@ -23,28 +23,42 @@ if (STATIC) {
     }
   }
 
-  // Symlink results, tasks, and base_apps into eval-view to mimic deployment structure
-  const links = [
-    { src: '../harness/results', dest: 'results' },
-    { src: '../harness/tasks', dest: 'tasks' },
-    { src: '../harness/base_apps', dest: 'base_apps' }
-  ];
+  // Create dist/dashboard directory to mimic deployment structure
+  const distDir = path.resolve('dist/dashboard');
+  if (fs.existsSync(distDir)) {
+    fs.rmSync(distDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(distDir, { recursive: true });
 
-  for (const link of links) {
-    const srcPath = path.resolve(link.src);
-    const destPath = path.resolve(link.dest);
-    if (!fs.existsSync(destPath)) {
-      console.log(`🔗 Creating symlink: ${srcPath} -> ${destPath}`);
-      try {
-        fs.symlinkSync(srcPath, destPath, 'dir');
-      } catch (e) {
-        console.error(`Failed to create symlink for ${link.dest}:`, e.message);
-      }
+  // Symlink eval-view files into dist/dashboard
+  const sourceFiles = fs.readdirSync('.').filter(f => f !== 'dist' && f !== 'node_modules' && !f.startsWith('.'));
+  for (const f of sourceFiles) {
+    const destPath = path.join(distDir, f);
+    try {
+      fs.symlinkSync(`../../${f}`, destPath);
+    } catch (e) {
+      console.error(`Failed to create symlink for ${f}:`, e.message);
     }
   }
 
-  console.log(`🚀 Spawning statikk on port ${PORT}...`);
-  const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString()], { stdio: 'inherit' });
+  // Symlink data directories into dist/dashboard
+  const links = [
+    { target: '../../../harness/results', name: 'results' },
+    { target: '../../../harness/tasks', name: 'tasks' },
+    { target: '../../../harness/base_apps', name: 'base_apps' }
+  ];
+
+  for (const link of links) {
+    const destPath = path.join(distDir, link.name);
+    try {
+      fs.symlinkSync(link.target, destPath, 'dir');
+    } catch (e) {
+      console.error(`Failed to create symlink for ${link.name}:`, e.message);
+    }
+  }
+
+  console.log(`🚀 Spawning statikk on port ${PORT} serving dist/dashboard...`);
+  const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString(), 'dist/dashboard'], { stdio: 'inherit' });
   
   const url = `http://localhost:${PORT}/?source=gh`;
   console.log(`Server running at ${url}`);
