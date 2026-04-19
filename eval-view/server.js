@@ -26,6 +26,17 @@ if (STATIC) {
   console.log(`🚀 Spawning statikk on port ${PORT}...`);
   const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString()], { stdio: 'inherit' });
   
+  const url = `http://localhost:${PORT}/?source=gh`;
+  console.log(`Server running at ${url}`);
+
+  // Try to open the browser if not disabled
+  if (process.env.NO_OPEN !== 'true') {
+    const startCommand = process.platform === 'darwin' ? 'open' :
+      process.platform === 'win32' ? 'start' : 'xdg-open';
+
+    exec(`${startCommand} "${url}"`);
+  }
+
   p.on('close', (code) => {
     process.exit(code || 0);
   });
