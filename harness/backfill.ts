@@ -26,6 +26,7 @@ async function backfillSuite(suiteResultsDir: string, suiteName: string) {
 
 async function main() {
   console.log('Starting Backfill of all results...'.cyan.bold);
+  console.log('process.argv:', process.argv);
 
   let mainResultsDir = resultsDir;
   
@@ -46,13 +47,21 @@ async function main() {
   }
 
   const entries = fs.readdirSync(mainResultsDir, { withFileTypes: true });
-  const suiteDirs = entries.filter(e => e.isDirectory()).map(e => e.name);
+  // Check if this is a single suite folder (contains numbered run directories)
+  const hasRunDirs = entries.some(e => e.isDirectory() && /^\d+$/.test(e.name));
 
-  console.log(`Found ${suiteDirs.length} potential suites in ${mainResultsDir}.`.cyan);
+  if (hasRunDirs) {
+    const suiteName = path.basename(mainResultsDir);
+    console.log(`Detected single suite folder. Backfilling ${suiteName}...`.cyan);
+    await backfillSuite(mainResultsDir, suiteName);
+  } else {
+    const suiteDirs = entries.filter(e => e.isDirectory()).map(e => e.name);
+    console.log(`Found ${suiteDirs.length} potential suites in ${mainResultsDir}.`.cyan);
 
-  for (const suiteName of suiteDirs) {
-    const suiteResultsDir = path.join(mainResultsDir, suiteName);
-    await backfillSuite(suiteResultsDir, suiteName);
+    for (const suiteName of suiteDirs) {
+      const suiteResultsDir = path.join(mainResultsDir, suiteName);
+      await backfillSuite(suiteResultsDir, suiteName);
+    }
   }
 
   console.log('Backfill completed!'.cyan.bold);
