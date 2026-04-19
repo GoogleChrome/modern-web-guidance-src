@@ -35,7 +35,7 @@ async function backfillSuite(suiteResultsDir: string, suiteName: string) {
   await evaluateSuite(suiteResultsDir, suiteName);
 }
 
-async function main() {
+export async function runBackfill() {
   console.log('Starting Backfill of all results...'.cyan.bold);
   console.log('process.argv:', process.argv);
 
@@ -73,5 +73,5 @@ import { fileURLToPath } from 'url';
 
 const isMain = process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url));
 if (isMain) {
-  main().catch(console.error);
+  runBackfill().catch(console.error);
 }
