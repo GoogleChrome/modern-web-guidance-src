@@ -4,7 +4,7 @@ export class ApiClient {
         let sourceParam = params.get('source');
         if (!sourceParam) {
             // Auto-detect static Github Pages deployment
-            if (window.__STRICT_STATIC === true || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')) {
+            if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
                 sourceParam = 'gh';
             } else {
                 sourceParam = 'local';

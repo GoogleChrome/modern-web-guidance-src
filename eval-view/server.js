@@ -7,22 +7,29 @@ import { exec, spawn } from 'child_process';
 import { generateSuitesManifest } from './generate-manifests.js';
 
 const PORT = process.env.PORT || 8081;
-const STRICT_STATIC = process.env.STRICT_STATIC === 'true';
+const STATIC = process.env.STATIC === 'true';
 
-if (STRICT_STATIC) {
-  console.log('⚠️  Running in STRICT_STATIC mode. All dynamic API endpoints are disabled.');
-}
-
-// Auto-generate manifests on startup to ensure local parity
-if (process.env.USE_MOCK_RESULTS !== 'true') {
-  console.log('🔄 Generating static manifests for local parity...');
-  try {
-    generateSuitesManifest('.');
-    console.log('✅ Static manifests generated.');
-  } catch (e) {
-    console.error('Failed to trigger manifest generation:', e);
+if (STATIC) {
+  console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
+  
+  // Auto-generate manifests on startup to ensure local parity
+  if (process.env.USE_MOCK_RESULTS !== 'true') {
+    console.log('🔄 Generating static manifests for local parity...');
+    try {
+      generateSuitesManifest('.');
+      console.log('✅ Static manifests generated.');
+    } catch (e) {
+      console.error('Failed to trigger manifest generation:', e);
+    }
   }
-}
+
+  console.log(`🚀 Spawning statikk on port ${PORT}...`);
+  const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString()], { stdio: 'inherit' });
+  
+  p.on('close', (code) => {
+    process.exit(code || 0);
+  });
+} else {
 
 /** @type {Record<string, string>} */
 const MIME_TYPES = {
@@ -81,11 +88,7 @@ const server = http.createServer(async (req, res) => {
 
   // Handle /api/suites endpoint
   if (decodedPath === '/api/suites') {
-    if (STRICT_STATIC) {
-      res.writeHead(404);
-      res.end('404 Not Found (STRICT_STATIC mode enabled)');
-      return;
-    }
+
 
     // Refresh manifests on every API call to keep local dev aligned with static manifests
     try {
@@ -228,11 +231,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (decodedPath === '/api/run-files') {
-    if (STRICT_STATIC) {
-      res.writeHead(404);
-      res.end('404 Not Found (STRICT_STATIC mode enabled)');
-      return;
-    }
+
     const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
     const relativePath = parsedUrl.searchParams.get('dir');
     const source = parsedUrl.searchParams.get('source') || 'local';
@@ -270,11 +269,7 @@ const server = http.createServer(async (req, res) => {
   // --- Silent File Probing API ---
   // Avoids native browser 404 console errors by returning JSON { exists: boolean }
   if (decodedPath === '/api/exists') {
-    if (STRICT_STATIC) {
-      res.writeHead(404);
-      res.end('404 Not Found (STRICT_STATIC mode enabled)');
-      return;
-    }
+
     const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
     const checkPath = parsedUrl.searchParams.get('path');
     if (!checkPath) {
@@ -400,10 +395,7 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(404);
             res.end('404 Not Found (Directory index missing)');
           } else {
-            let finalContent = content2;
-            if (STRICT_STATIC && indexPath.endsWith('index.html')) {
-              finalContent = content2.replace('<head>', '<head><script>window.__STRICT_STATIC = true;</script>');
-            }
+            const finalContent = content2;
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end(finalContent, 'utf-8');
           }
@@ -434,10 +426,7 @@ const server = http.createServer(async (req, res) => {
         res.end(`Server Error: ${err.code}`);
       }
     } else {
-      let finalContent = content;
-      if (STRICT_STATIC && filePath.endsWith('index.html')) {
-        finalContent = content.toString().replace('<head>', '<head><script>window.__STRICT_STATIC = true;</script>');
-      }
+      const finalContent = content;
       res.writeHead(200, { 'Content-Type': contentType });
       res.end(finalContent, 'utf-8');
     }
@@ -457,3 +446,4 @@ server.listen(PORT, () => {
     exec(`${startCommand} ${url}`);
   }
 });
+}
