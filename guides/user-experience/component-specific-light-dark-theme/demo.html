@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- 
-      To reduce the risk of FOUC (Flash of Unstyled Content) use the meta element 
+      MANDATORY: To reduce the risk of FOUC (Flash of Unstyled Content) use the meta element 
       `<meta name="color-scheme" content="light dark">` and the css root attribute.
     -->
   <meta name="color-scheme" content="light dark">
@@ -16,6 +16,7 @@
       The document defaults to the user's system preference. 
     */
     :root {
+      /* MANDATORY: Enable color-scheme support at the root to allow light-dark() to resolve. */
       color-scheme: light dark;
 
       /* Global base styles for the page body, strictly for contrast against the component */
@@ -53,20 +54,18 @@
       ===============================================================
     */
     .themed-card {
-      /* Color Variables */
-      --card-bg: light-dark(#ffffff, #2d2e31);
-      --card-border: light-dark(#dadce0, #5f6368);
-      --card-shadow: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.4));
-      --text-color: light-dark(#202124, #f8f9fa);
-      --accent-color: light-dark(#1a73e8, #8ab4f8);
-      --btn-text-color: light-dark(white, #202124);
-
       /* 
-         MANDATORY: Fallback for images/gradients using media queries.
-         This is required because image support in light-dark() is newer (Firefox 150+).
+         MANDATORY: Define base fallback values for browsers that don't support light-dark().
+         These will be overridden by @media (prefers-color-scheme: dark) or @supports (light-dark()).
       */
-      --card-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-      
+      --card-bg: #ffffff;
+      --card-border: #dadce0;
+      --card-shadow: rgba(0, 0, 0, 0.1);
+      --text-color: #202124;
+      --accent-color: #1a73e8;
+      --btn-text-color: white;
+      --header-bg: #f5f7fa;
+
       background-color: var(--card-bg);
       border: 1px solid var(--card-border);
       color: var(--text-color);
@@ -83,29 +82,43 @@
       gap: 1rem;
     }
 
+    /* 
+       DO: Provide a @media fallback for older browsers that don't support light-dark() 
+       but DO support prefers-color-scheme.
+    */
     @media (prefers-color-scheme: dark) {
       .themed-card {
-        --card-gradient: linear-gradient(135deg, #2d2e31 0%, #1c1c1e 100%);
+        --card-bg: #2d2e31;
+        --card-border: #5f6368;
+        --card-shadow: rgba(0, 0, 0, 0.4);
+        --text-color: #f8f9fa;
+        --accent-color: #8ab4f8;
+        --btn-text-color: #202124;
+        --header-bg: #1c1c1e;
       }
     }
 
     /* 
-       MANDATORY: Progressive enhancement for light-dark() with images.
-       We must ensure type consistency (both arguments are gradients).
+       DO: Use progressive enhancement with @supports to enable light-dark().
+       This is the preferred method as it allows per-component 'color-scheme' overrides 
+       to automatically swap the variables, which @media queries cannot do.
     */
-    @supports (background-image: light-dark(linear-gradient(white, black), linear-gradient(black, white))) {
+    @supports (color: light-dark(white, black)) {
       .themed-card {
-        --card-gradient: light-dark(
-          linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%),
-          linear-gradient(135deg, #2d2e31 0%, #1c1c1e 100%)
-        );
+        --card-bg: light-dark(#ffffff, #2d2e31);
+        --card-border: light-dark(#dadce0, #5f6368);
+        --card-shadow: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.4));
+        --text-color: light-dark(#202124, #f8f9fa);
+        --accent-color: light-dark(#1a73e8, #8ab4f8);
+        --btn-text-color: light-dark(white, #202124);
+        --header-bg: light-dark(#f5f7fa, #1c1c1e);
       }
     }
 
     .card-header {
       height: 100px;
       border-radius: 4px;
-      background-image: var(--card-gradient);
+      background-color: var(--header-bg);
     }
 
     .themed-card h2 {
@@ -132,16 +145,37 @@
       3. Component-Specific Override Classes 
       ===============================================================
     */
+    
+    /* 
+       DO: Set 'color-scheme: light' to force the first argument of light-dark() to resolve.
+    */
     .themed-card.force-light {
       color-scheme: light;
-      /* Manual variable overrides for older browsers */
-      --card-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      
+      /* MANDATORY: Manual variable overrides for older browsers that don't support light-dark(). */
+      --card-bg: #ffffff;
+      --card-border: #dadce0;
+      --card-shadow: rgba(0, 0, 0, 0.1);
+      --text-color: #202124;
+      --accent-color: #1a73e8;
+      --btn-text-color: white;
+      --header-bg: #f5f7fa;
     }
 
+    /* 
+       DO: Set 'color-scheme: dark' to force the second argument of light-dark() to resolve.
+    */
     .themed-card.force-dark {
       color-scheme: dark;
-      /* Manual variable overrides for older browsers */
-      --card-gradient: linear-gradient(135deg, #2d2e31 0%, #1c1c1e 100%);
+      
+      /* MANDATORY: Manual variable overrides for older browsers that don't support light-dark(). */
+      --card-bg: #2d2e31;
+      --card-border: #5f6368;
+      --card-shadow: rgba(0, 0, 0, 0.4);
+      --text-color: #f8f9fa;
+      --accent-color: #8ab4f8;
+      --btn-text-color: #202124;
+      --header-bg: #1c1c1e;
     }
 
     .theme-toggle {
@@ -178,7 +212,7 @@
 
   <h1>Component-Specific Themes</h1>
   <p class="description">
-    This demo uses <code>light-dark()</code> for both colors and gradients, with mandatory fallbacks and per-component overrides.
+    This demo uses <code>light-dark()</code> for colors with mandatory fallbacks and per-component overrides.
   </p>
 
   <button id="themeToggleBtn" class="theme-toggle">
@@ -190,7 +224,7 @@
     <div class="themed-card">
       <div class="card-header"></div>
       <h2>System Preference</h2>
-      <p>This card automatically switches colors and gradients based on the <code>:root</code> color-scheme.</p>
+      <p>This card automatically switches colors based on the <code>:root</code> color-scheme.</p>
       <button>Action</button>
     </div>
 
@@ -220,6 +254,10 @@
 
     themeToggleBtn.addEventListener('click', () => {
       isDark = !isDark;
+      /* 
+         DO: Toggle the root color-scheme property to switch the global theme.
+         This will affect all elements using light-dark() that don't have their own override.
+      */
       root.style.colorScheme = isDark ? 'dark' : 'light';
       themeToggleBtn.textContent = `Toggle Page Theme (Forced ${isDark ? 'Dark' : 'Light'})`;
     });

@@ -15,12 +15,11 @@ sources:
   - https://www.bram.us/2020/04/26/the-quest-for-the-perfect-dark-mode-using-vanilla-javascript/
   - https://css-tricks.com/come-to-the-light-dark-side/
   - https://web.dev/articles/light-dark
-  - https://www.bram.us/2026/03/19/more-easy-light-dark-mode-switching-light-dark-is-about-to-support-images/
 ---
 
 # Component-Specific Light/Dark Themes
 
-The `light-dark()` function allows you to define two values (either colors or images) for a single property, which the browser automatically switches based on the current `color-scheme`. By scoping both the `light-dark()` variables and the `color-scheme` property to a specific component, you can create UI elements that can be independently forced into light or dark mode, regardless of the user's global system preference.
+The `light-dark()` function allows you to define two colors for a single property, which the browser automatically switches based on the current `color-scheme`. By scoping both the `light-dark()` variables and the `color-scheme` property to a specific component, you can create UI elements that can be independently forced into light or dark mode, regardless of the user's global system preference.
 
 ## Implementation steps
 
@@ -28,25 +27,26 @@ The `light-dark()` function allows you to define two values (either colors or im
 
     ```css
     :root {
-      /* Enable system-wide support for both themes */
+      /* 
+         MANDATORY: Enable system-wide support for both themes.
+         Without this, the browser will not know how to resolve light-dark().
+      */
       color-scheme: light dark;
     }
     ```
 
-2. **Define semantic variables or properties using `light-dark()`.** Use the `light-dark(light-value, dark-value)` syntax. Both values must be of the same type (both colors or both images).
+2. **Define semantic variables or properties using `light-dark()`.** Use the `light-dark(light-color, dark-color)` syntax. 
 
     ```css
     .themed-card {
-      /* Example with colors */
+      /* 
+         DO: Use semantic variables to define theme-aware colors.
+         The first argument is used when color-scheme is 'light'.
+         The second argument is used when color-scheme is 'dark'.
+      */
       --card-bg: light-dark(#ffffff, #2d2e31);
       --card-text: light-dark(#202124, #f8f9fa);
       
-      /* Example with images/gradients */
-      background-image: light-dark(
-        linear-gradient(white, #eee), 
-        linear-gradient(#2d2e31, #111)
-      );
-
       background-color: var(--card-bg);
       color: var(--card-text);
       padding: 1.5rem;
@@ -54,16 +54,21 @@ The `light-dark()` function allows you to define two values (either colors or im
     }
     ```
 
-3. **Create theme override classes.** You can force a component instance into a specific theme by setting its `color-scheme` property directly. This overrides the inherited system preference for that specific subtree.
+3. **Create theme overrides.** You can force a component instance into a specific theme by setting its `color-scheme` property using any valid CSS selector (classes, data attributes, etc.). This overrides the inherited system preference for that specific subtree.
 
     ```css
-    /* This card will always use the light-value from light-dark() */
+    /* 
+       DO: Use color-scheme to force a specific theme on a component.
+       You can use classes, data attributes, or any other selector.
+    */
+    
+    /* Using classes */
     .themed-card.force-light {
       color-scheme: light;
     }
 
-    /* This card will always use the dark-value from light-dark() */
-    .themed-card.force-dark {
+    /* Using data attributes (often preferred for state) */
+    .themed-card[data-theme="dark"] {
       color-scheme: dark;
     }
     ```
@@ -78,12 +83,17 @@ For browsers that do not support `light-dark()` or the `color-scheme` property, 
 
 ```css
 .themed-card {
-  /* Fallback: define light mode colors first */
+  /* 
+     MANDATORY: Define base fallback colors for browsers without light-dark().
+     Default to light mode values.
+  */
   --card-bg: #ffffff;
   --card-text: #202124;
 }
 
-/* Update variables based on system preference */
+/* 
+   DO: Update variables based on system preference for older browsers.
+*/
 @media (prefers-color-scheme: dark) {
   .themed-card {
     --card-bg: #2d2e31;
@@ -91,7 +101,10 @@ For browsers that do not support `light-dark()` or the `color-scheme` property, 
   }
 }
 
-/* Use light-dark() where supported for per-component overrides */
+/* 
+   DO: Use @supports to provide progressive enhancement for light-dark().
+   This ensures that per-component overrides (via color-scheme) work where supported.
+*/
 @supports (color: light-dark(white, black)) {
   .themed-card {
     --card-bg: light-dark(#ffffff, #2d2e31);
@@ -100,37 +113,16 @@ For browsers that do not support `light-dark()` or the `color-scheme` property, 
 }
 ```
 
-### Image Fallbacks
-**MANDATORY**: As of early 2026, support for `<image>` values in `light-dark()` is more restricted than color support (e.g., supported in Firefox 150+, but behind flags in other browsers). Always provide a standard `background-image` fallback.
-
-```css
-.hero {
-  /* Fallback for all browsers */
-  background-image: url('light-hero.jpg');
-}
-
-@media (prefers-color-scheme: dark) {
-  .hero {
-    background-image: url('dark-hero.jpg');
-  }
-}
-
-/* Progressive enhancement for modern browsers */
-@supports (background-image: light-dark(url(l.png), url(d.png))) {
-  .hero {
-    background-image: light-dark(url('light-hero.jpg'), url('dark-hero.jpg'));
-  }
-}
-```
-
 ## Critical Considerations
 
-- **Staggered Browser Support**: While `light-dark()` for colors is widely supported, support for **`<image>`** values (including gradients and `url()`) is newer and may require feature detection via `@supports`.
-- **MANDATORY: Type Consistency**: Both arguments in `light-dark()` must be of the same type. You cannot mix colors and images (e.g., `light-dark(white, url('dark.png'))` is invalid).
-- **Unsupported Properties**: It cannot be used for lengths, numbers, or other non-color/image types (e.g., `padding`, `font-size`, `opacity`).
+- **Supported Types**: Currently, `light-dark()` is only used for color values. It cannot be used for lengths, numbers, or other non-color types (e.g., `padding`, `font-size`, `opacity`).
+- **MANDATORY: Two Arguments**: The function must always have exactly two arguments.
 
 ```css
-/* INVALID: light-dark() only accepts colors or images */
+/* 
+   DO NOT: Attempt to use light-dark() for non-color properties like padding.
+   This will result in an invalid property value.
+*/
 .themed-card {
   padding: light-dark(10px, 20px); 
 }
