@@ -106,6 +106,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 </div>
 
 <!-- Modal Dialog -->
+<button id="show-dialog">Open dialog</button>
 <dialog id="fav-modal">
   <form method="dialog">
     <p>Confirm action?</p>
@@ -115,10 +116,13 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 </dialog>
 
 <script>
-  // Open modal
-  btn.addEventListener('click', () => dialog.showModal());
+  const dialog = document.getElementById("fav-modal");
+  const openModal = document.getElementById("show-dialog");
   
-  // Handle close
+  // Show modal dialog
+  openModal.addEventListener('click', () => dialog.showModal());
+  
+  // Close modal dialog
   dialog.addEventListener('close', () => {
     console.log(dialog.returnValue); // "confirm" or "cancel"
   });
