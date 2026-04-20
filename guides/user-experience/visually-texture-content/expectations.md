@@ -1,0 +1,5 @@
+- The element with class `.weathered-element` has the `mask-image` property applied.
+- The element with class `.weathered-element` has the `-webkit-mask-image` property applied for older browser support.
+- The mask references a repeating image pattern or SVG.
+- The mask applies a texture effect (e.g., grunge, noise) that affects the transparency of the content.
+- A fallback strategy is included for browsers that do not support masking, such as a background image overlay.

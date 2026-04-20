@@ -1,83 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Visually Textured Content</title>
+  <title>Visually Texture Content Demo</title>
   <style>
     body {
-      font-family: 'Segoe UI', serif;
+      font-family: sans-serif;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
+      height: 100vh;
       margin: 0;
-      background-color: #e8e4db;
+      background-color: #f0f0f0;
     }
-
-    .weathered-badge {
+    
+    .weathered-container {
       position: relative;
-      width: 250px;
-      height: 150px;
-      background-color: #c0392b;
-      /* Deep red badge */
+      width: 300px;
+      height: 200px;
+      background-color: #2ecc71; /* Base color */
       color: white;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      border-radius: 4px;
-      box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      border: 5px double white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-
-    .weathered-badge::after {
-      content: "";
+    
+    /* Apply the mask to a background layer to protect text readability */
+    .weathered-bg {
       position: absolute;
       top: 0;
       left: 0;
       right: 0;
       bottom: 0;
-      background-color: #c0392b;
-      pointer-events: none;
-      mask-image: url('grunge-texture.svg');
-      mask-mode: luminance;
-      mask-size: cover;
+      background-color: #27ae60; /* Texture color */
+      
+      /* Apply the checkerboard mask */
+      -webkit-mask-image: 
+        linear-gradient(45deg, #000 25%, transparent 25%), 
+        linear-gradient(-45deg, #000 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #000 75%), 
+        linear-gradient(-45deg, transparent 75%, #000 75%);
+      -webkit-mask-size: 10px 10px;
+      -webkit-mask-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+      
+      mask-image: 
+        linear-gradient(45deg, #000 25%, transparent 25%), 
+        linear-gradient(-45deg, #000 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #000 75%), 
+        linear-gradient(-45deg, transparent 75%, #000 75%);
+      mask-size: 10px 10px;
+      mask-position: 0 0, 0 5px, 5px -5px, -5px 0px;
     }
-
-    .badge-content {
-      text-align: center;
+    
+    .content {
+      position: relative;
+      z-index: 1; /* Ensure text is above the background texture */
       padding: 20px;
-      mask-image: url('grunge-texture.svg');
-      mask-mode: luminance;
-      mask-size: cover;
     }
-
-    h1 {
-      margin: 0;
-      font-size: 24px;
-    }
-
-    p {
-      margin: 5px 0 0;
-      font-size: 14px;
-      opacity: 0.9;
+    
+    h2 {
+      margin-top: 0;
     }
   </style>
 </head>
-
 <body>
-  <div class="weathered-badge">
-    <div class="badge-content">
-      <h1>VINTAGE</h1>
-      <p>Est. 1924</p>
-      <p>Certified Quality</p>
+<div class="weathered-container">
+  <div class="weathered-bg"></div>
+  <div class="content">
+    <h2>Textured Background</h2>
+    <p>This demo applies the mask to a background layer.</p>
     </div>
   </div>
-</body>
 
+</body>
 </html>
