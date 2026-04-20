@@ -1,0 +1,5 @@
+- The component wrapper has `container-type: inline-size` (or `size`) applied.
+- The component title has a `font-size` that uses container query units (like `cqi` or `cqw`).
+- The component title uses `clamp()` to constrain the font size between a minimum and maximum value.
+- The font size of the title changes when the width of the container changes, independently of the viewport size.
+- A fallback font size using viewport units (like `vw`) or media queries is provided for browsers that do not support container query units.

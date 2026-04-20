@@ -1,1 +1,71 @@
-<!-- TODO -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fluid Scaling Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 2rem;
+      background: #f0f2f5;
+    }
+
+    /* The container that we want to measure */
+    .card-wrapper {
+      container-type: inline-size;
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      
+      /* Make the container resizable for the demo */
+      resize: horizontal;
+      overflow: auto;
+      min-width: 200px;
+      max-width: 800px;
+      width: 500px;
+    }
+
+    /* The element that scales fluids based on container width */
+    .card-title {
+      /* Fallback for browsers that do not support container units */
+      font-size: clamp(1.2rem, 6vw, 3rem);
+      margin-top: 0;
+      color: #1a0dab;
+    }
+
+    @supports (font-size: 1cqi) {
+      .card-title {
+        /* Use container units where supported */
+        font-size: clamp(1.2rem, 6cqi, 3rem);
+      }
+    }
+
+    .card-content {
+      font-size: 1rem;
+      color: #4a4a4a;
+      line-height: 1.5;
+    }
+
+    .instruction {
+      margin-bottom: 1rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="instruction">
+    Drag the bottom-right corner of the card to resize it and see the title font size scale smoothly.
+  </div>
+
+  <div class="card-wrapper">
+    <h1 class="card-title">This Title Scales Fluently</h1>
+    <p class="card-content">
+      The font size of the title above is determined by the width of this white card container, not the width of the entire screen. Resize the card to see it in action.
+    </p>
+  </div>
+
+</body>
+</html>
