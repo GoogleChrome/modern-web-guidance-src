@@ -1,68 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Stencil Cutouts</title>
+  <title>Stencil Cutouts Demo</title>
   <style>
     body {
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: sans-serif;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
+      height: 100vh;
       margin: 0;
-      background: #f0f2f5;
+      background-color: #f0f0f0;
     }
-
-    .avatar-container {
-      position: relative;
-      width: 100px;
-      height: 100px;
-    }
-
-    .avatar {
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
-      border-radius: 50%;
-      mask-image:
-        radial-gradient(circle at center, black 100%, transparent 100%),
-        radial-gradient(circle at 82% 82%, black 18px, transparent 19px);
-      mask-composite: exclude;
-    }
-
-    .status-badge {
-      position: absolute;
-      bottom: 5px;
-      right: 5px;
-      width: 24px;
-      height: 24px;
-      background: #2ecc71;
-      border-radius: 50%;
-      border: 2px solid #f0f2f5;
-    }
-
-    .avatar-label {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+    
+    .notched-card {
+      width: 300px;
+      height: 200px;
+      background-color: #3498db;
       color: white;
-      font-weight: bold;
-      font-size: 24px;
-      pointer-events: none;
+      padding: 20px;
+      box-sizing: border-box;
+      
+      /* Apply the mask */
+      -webkit-mask-image: url(#notch-stencil);
+      mask-image: url(#notch-stencil);
+    }
+    
+    /* Hide the SVG from view */
+    svg {
+      position: absolute;
+      width: 0;
+      height: 0;
     }
   </style>
 </head>
-
 <body>
-  <div class="avatar-container">
-    <div class="avatar"></div>
-    <div class="avatar-label">JD</div>
-    <div class="status-badge"></div>
-  </div>
-</body>
 
+  <!-- SVG Mask Definition -->
+  <svg>
+    <defs>
+      <!-- Use objectBoundingBox to make the mask scale with the element -->
+      <mask id="notch-stencil" maskContentUnits="objectBoundingBox">
+        <!-- Fill the entire area with white (fully visible) -->
+        <rect width="1" height="1" fill="white" />
+        <!-- Draw a black circle at the top center to cut it out -->
+        <circle cx="0.5" cy="0" r="0.1" fill="black" />
+      </mask>
+    </defs>
+  </svg>
+
+  <div class="notched-card">
+    <h2>Card Title</h2>
+    <p>This card has a circular notch cut out at the top center using an SVG mask.</p>
+  </div>
+
+</body>
 </html>

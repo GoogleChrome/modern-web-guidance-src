@@ -1,0 +1,5 @@
+- The element with class `.notched-card` has the `mask-image` property applied.
+- The element with class `.notched-card` has the `-webkit-mask-image` property applied for older browser support.
+- The mask references a valid SVG mask ID or uses a gradient to create a cutout.
+- The mask creates a distinct "knockout" or cutout effect where content is not visible.
+- A fallback strategy is included or described for browsers that do not support masking.
