@@ -149,20 +149,10 @@ If you are not using a package manager, dynamically import the polyfill directly
 ```
 
 **Popover Polyfill Limitations & Styling Caveats**
-MANDATORY: When styling the open state of a popover, you must provide a separate CSS declaration for the polyfill's CSS class (`.\:popover-open`).
+MANDATORY: Use `:is()` or `:where()` to combine `:popover-open` with the corresponding polyfill class, otherwise browsers that do not support `:popover-open` will throw away the entire rule.
 
 ```css
-/* DO NOT combine these into a single comma-separated list.
-   If a browser does not understand the native :popover-open pseudo-class,
-   it will throw away the entire rule, breaking the polyfill styling. */
-
-[popover]:popover-open {
-  /* Native styling */
-  display: block;
-}
-
-[popover].\:popover-open {
-  /* Polyfill styling */
+[popover]:is(:popover-open, \:popover-open) {
   display: block;
 }
 ```
