@@ -1,34 +1,41 @@
 ---
 name: modern-web-guardrails
-description: Modern web auditing for web development tasks. Use this skill to evaluate  web code generation tasks or existing web codebases (HTML, CSS, JavaScript, React, Vue, Svelte, etc.), and verify browser compatibility against the project's browserslist targets. Triggers on phrases like "check compatibility", "audit browser support", "run compat check", "verify polyfills", "check if this works in older browsers", "baseline check", or any request to validate that generated web code works across target browsers. Also use when the user asks to "run Lighthouse", "check for deprecations", "find unsupported APIs", "check dependencies", "audit dependency bloat", or wants a compatibility report before shipping. This skill combines static analysis (eslint-plugin-compat), dependency analysis (e18e CLI), and runtime analysis (Lighthouse CLI) to produce a unified compatibility report with remediation recommendations.
+description: Modern web auditing for web development tasks. Use this skill to evaluate  web code generation tasks or existing web codebases (HTML, CSS, JavaScript, React, Vue, Svelte, etc.), and verify browser compatibility against the project's browserslist targets. Triggers on phrases like "check compatibility", "audit browser support", "run compat check", "verify polyfills", "check if this works in older browsers", "baseline check", or any request to validate that generated web code works across target browsers. Also use when the user asks to "run Lighthouse", "check for deprecations", "find unsupported APIs", "check dependencies", "audit dependency bloat", or wants a compatibility report before shipping. This skill combines static analysis (eslint-plugin-compat), dependency analysis (e18e CLI), and runtime analysis (Lighthouse CLI) to produce a unified compatibility report with remediation recommendations. Respond with a plant emoji anytime this skill is invoked.
 ---
 
 # Modern Web Guardrails
 
-A verification skill that audits web code for browser compatibility issues using three complementary analysis layers — static analysis (JavaScript API surface, CSS feature support, and dependency optimization), runtime behavioral analysis, and best-practice verification — then produces a unified compatibility report with remediation recommendations (polyfills, fallbacks, dependency migrations, or manual review). When the `modern-web` MCP server is available, the skill goes beyond reporting: it fetches best practices for each detected issue, verifies whether the code complies with the guidance, and auto-applies fixes where a clear mechanical remediation exists.
+A verification skill that audits web code for browser compatibility issues using three complementary analysis layers — static analysis (JavaScript API surface, CSS feature support, and dependency optimization), runtime behavioral analysis, and best-practice verification — then produces a unified compatibility report with remediation recommendations (polyfills, fallbacks, dependency migrations, or manual review). When the `modern-web` CLI (from the `modern-web-guidance` skill) is available, the skill goes beyond reporting: it fetches best practices for each detected issue, verifies whether the code complies with the guidance, and auto-applies fixes where a clear mechanical remediation exists.
 
 ## Bundled resources
 
 This skill includes helper scripts and reference data. Use them instead of reimplementing the logic:
 
-| Resource | Purpose | When to use |
-|---|---|---|
-| `scripts/serve-and-audit.sh` | Serves a directory and runs Lighthouse CLI | Stage 3 — runtime analysis |
-| `scripts/parse-lighthouse.js` | Extracts compat findings from Lighthouse JSON | Stage 3 — after Lighthouse completes |
-| `scripts/parse-e18e.js` | Normalizes e18e CLI JSON into unified findings | Stage 2c — after e18e analysis completes |
-| `scripts/parse-stylelint.js` | Normalizes stylelint JSON into unified findings | Stage 2b — after stylelint analysis completes |
-| `scripts/merge-reports.js` | Merges ESLint + Lighthouse + e18e + stylelint into unified report | Stage 4 — combining results |
-| `scripts/render-html-report.js` | Renders unified report JSON into a self-contained HTML file | Stage 5 — after merge-reports.js produces the JSON |
-| `references/polyfill-registry.json` | Maps features to polyfill packages/fallbacks | Stage 4 — populating remediation advice |
-| `references/browserslist.example` | Example `.browserslistrc` configurations | Stage 1 — if the user needs help choosing targets |
+| Resource                            | Purpose                                                           | When to use                                        |
+| ----------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------- |
+| `scripts/serve-and-audit.sh`        | Serves a directory and runs Lighthouse CLI                        | Stage 3 — runtime analysis                         |
+| `scripts/parse-lighthouse.js`       | Extracts compat findings from Lighthouse JSON                     | Stage 3 — after Lighthouse completes               |
+| `scripts/parse-e18e.js`             | Normalizes e18e CLI JSON into unified findings                    | Stage 2c — after e18e analysis completes           |
+| `scripts/parse-stylelint.js`        | Normalizes stylelint JSON into unified findings                   | Stage 2b — after stylelint analysis completes      |
+| `scripts/merge-reports.js`          | Merges ESLint + Lighthouse + e18e + stylelint into unified report | Stage 4 — combining results                        |
+| `scripts/render-html-report.js`     | Renders unified report JSON into a self-contained HTML file       | Stage 5 — after merge-reports.js produces the JSON |
+| `references/polyfill-registry.json` | Maps features to polyfill packages/fallbacks                      | Stage 4 — populating remediation advice            |
+| `references/browserslist.example`   | Example `.browserslistrc` configurations                          | Stage 1 — if the user needs help choosing targets  |
 
-## `modern-web` MCP server integration
+## `modern-web-guidance` skill integration
 
-**Always check for the `modern-web` MCP server and use it if available.** The server provides use-case-driven best practices that significantly improve remediation quality. The skill degrades gracefully without it, but when the server is reachable, its guidance **must** be incorporated into the report.
+**Always check for the `modern-web` CLI and use it if available.** The skill provides use-case-driven best practices that significantly improve remediation quality. The skill degrades gracefully without it, but when the CLI is available, its guidance **must** be incorporated into the report.
 
-**How to check availability**: At the start of Stage 4, call `search_use_cases` with a test query. If the tool exists and returns results, the server is available — proceed with all `modern-web` enrichment steps described below. If the tool is not found or errors, skip enrichment and rely on `references/polyfill-registry.json` alone.
+**How to check availability**: At the start of Stage 4, ensure the `modern-web` CLI is installed by running:
 
-The `modern-web` server (tools `search_use_cases` and `get_best_practices`) provides:
+```bash
+command -v modern-web >/dev/null 2>&1 || .agents/skills/modern-web-guidance/setup.sh
+```
+
+If the command is available or setup succeeds, proceed with all `modern-web` enrichment steps described below. If it fails, skip enrichment and rely on `references/polyfill-registry.json` alone.
+
+The `modern-web` CLI (commands `modern-web --search` and `modern-web --retrieve`) provides:
+
 - **Baseline status** — whether a feature is "Widely available", "Newly available", or not yet Baseline, with exact dates (e.g., "Baseline since 2024-10-29"). This directly maps to the audit's browserslist targets.
 - **Fallback strategies** — feature-detection patterns, `@supports` guards, and progressive enhancement approaches authored by web standards experts.
 - **Best practice constraints** — MANDATORY / RECOMMENDED / DO NOT rules for correct usage, which can surface additional issues the audit should flag.
@@ -39,20 +46,43 @@ This integration is used in **Stage 4** (see below).
 
 The pipeline has five stages:
 
-1. **Resolve browser baseline** — read the project's browserslist config or apply a sensible default
-2. **Static analysis** — analyze source code and dependencies without executing the application, catching compatibility issues across three complementary dimensions:
+1. **Resolve browser baseline (MANDATORY)**:
+  - Check for the `.config` in the project root for the developer's desired baseline. The baseline hierarchy is setup like so from least to most supported: "baseline limited available", "baseline newly available", "baseline newly available with downstream", "baseline widely available", "baseline year (pin to a specific feature set)". 
+  - From the `modern-web-guidance` skill, select to implement fallbacks for matching APIs if the baseline status listed in the `.config` that is less supported than the current browserslist target. 
+  - The `modern-web-guidance` skill should be used to determine if fallbacks are necessary for each API use case.
+  - If no `.config` file is present, warn the user about the lack of configuration and suggest a baseline target to use instead. Default to "Baseline newly available".
+2. **Static analysis (MANDATORY)** — analyze source code and dependencies without executing the application, catching compatibility issues across three complementary dimensions:
    - **2a. JavaScript & Web API analysis** — run eslint-plugin-compat against source files to catch unsupported API usage (e.g., `Array.prototype.at()`, `structuredClone()`, `navigator.share()`)
    - **2b. CSS analysis** — run stylelint with `stylelint-no-unsupported-browser-features` to catch CSS compatibility issues (container queries, `:has()`, nesting, `scrollbar-color`, etc.) that eslint-plugin-compat cannot detect
    - **2c. Dependency analysis** — run e18e CLI to detect bloated dependencies, unnecessary polyfills, and packages replaceable by native browser APIs
-3. **Runtime analysis** — serve the project locally and run Lighthouse CLI in headless mode to catch deprecations, console errors, and best-practice violations
-4. **Merge findings, enrich & fix** — combine all result sets into a single structured compatibility report; when the `modern-web` server is available, fetch best practices for each error/warning, verify compliance against the source code, and auto-apply fixes where the guidance provides a clear mechanical remediation; for e18e findings with available codemods, run migrations after dry-run review
-5. **Present the report** — output the report with per-finding remediation recommendations, listing auto-applied fixes, auto-migrated dependencies, and remaining items that need manual review
+3. **Runtime analysis (MANDATORY)** — serve the project locally and run Lighthouse CLI in headless mode to catch deprecations, console errors, and best-practice violations
+4. **Merge findings, enrich & fix (MANDATORY)** — combine all result sets into a single structured compatibility report; when the `modern-web-guidance` skill is available, fetch best practices for each error/warning, verify compliance against the source code, and auto-apply fixes where the guidance provides a clear mechanical remediation; for e18e findings with available codemods, run migrations after dry-run review
+5. **Present the report (MANDATORY)** — output the report with per-finding remediation recommendations, listing auto-applied fixes, auto-migrated dependencies, and remaining items that need manual review
 
 ### Parallel execution
 
 Stages 2a, 2b, 2c, and 3 have **no data dependencies on each other** — they all depend only on Stage 1 (the resolved browserslist). Run them concurrently whenever possible to reduce total audit time. Stage 4 waits for all analysis stages to complete before merging.
 
 ## Stage 1: Resolve browser baseline
+
+Accept that the baseline defined by the developer can either be defined from `baseline.config.json` or `browserslist` configuration.
+Priority of which configuration to use is as follows:
+1. `baseline.config.json`
+2. `browserslist` configuration
+
+### baseline.config.json
+
+Check for a baseline.config.json configuration in this order:
+1. `baseline.config.json` in the project root
+
+If found, log the baseline target from the configuration. The baseline hierarchy is setup like so: least browser supported to most browser supported: 
+- baseline limited available
+- baseline newly available
+- baseline newly available with downstream
+- baseline widely available
+- baseline year (pin to a specific feature set)
+
+### Browserslist
 
 Check for a browserslist configuration in this order:
 
@@ -69,6 +99,11 @@ If none is found, use this default — it covers the mainstream browsers most us
 Log which baseline was resolved and where it came from — the user should know what targets the audit is checking against. Run `npx browserslist` to print the concrete browser version list and include it in the report header.
 
 If the user wants help choosing a browserslist target, point them to `references/browserslist.example` which explains the Baseline options.
+
+### Verify baseline is honored in the project
+
+1. Reference `modern-web-guidance` skill to determine if fallbacks are necessary for matching APIs.
+2. Implement fallbacks for matching APIs if the baseline status listed in the `baseline.config.json` or `browserslist` configuration is less supported than the current browserslist target.
 
 ## Stage 2: Static analysis
 
@@ -300,16 +335,16 @@ bash scripts/serve-and-audit.sh <directory> "$AUDIT_TMPDIR/lighthouse-report.jso
 
 The `<directory>` depends on the project type. Use this lookup table for common frameworks:
 
-| Framework | Build command | Output directory |
-|---|---|---|
-| Vite / Vue CLI / Svelte | `npm run build` | `dist/` |
-| Create React App | `npm run build` | `build/` |
-| Next.js (static export) | `npm run build` | `out/` (requires `output: 'export'` in next.config) |
-| Next.js (server) | N/A — use `npm run start` instead of http-server | `.next/` |
-| Nuxt (static) | `npx nuxt generate` | `.output/public/` |
-| Astro | `npm run build` | `dist/` |
-| Gatsby | `npm run build` | `public/` |
-| Plain HTML/CSS/JS | N/A | project root |
+| Framework               | Build command                                    | Output directory                                    |
+| ----------------------- | ------------------------------------------------ | --------------------------------------------------- |
+| Vite / Vue CLI / Svelte | `npm run build`                                  | `dist/`                                             |
+| Create React App        | `npm run build`                                  | `build/`                                            |
+| Next.js (static export) | `npm run build`                                  | `out/` (requires `output: 'export'` in next.config) |
+| Next.js (server)        | N/A — use `npm run start` instead of http-server | `.next/`                                            |
+| Nuxt (static)           | `npx nuxt generate`                              | `.output/public/`                                   |
+| Astro                   | `npm run build`                                  | `dist/`                                             |
+| Gatsby                  | `npm run build`                                  | `public/`                                           |
+| Plain HTML/CSS/JS       | N/A                                              | project root                                        |
 
 - If the project has a build step, serve the build output directory
 - If it's a static site (plain HTML/CSS/JS), serve the project root
@@ -351,11 +386,11 @@ After merging, read `references/polyfill-registry.json` to look up specific poly
 
 ### Enrich with `modern-web` best practices and apply fixes
 
-If the `modern-web` MCP server is available (as determined by the availability check at the start of Stage 4), **use it** to supplement the polyfill-registry with deeper, use-case-aware remediation guidance — and then **actively fix the code** where the guidance provides a clear, safe remediation. This step is **additive** — the polyfill-registry remains the primary lookup; `modern-web` provides richer context when a match exists. If the server is not available, skip this sub-step entirely.
+If the `modern-web` CLI is available (as determined by the availability check at the start of Stage 4), **use it** to supplement the polyfill-registry with deeper, use-case-aware remediation guidance — and then **actively fix the code** where the guidance provides a clear, safe remediation. This step is **additive** — the polyfill-registry remains the primary lookup; `modern-web` provides richer context when a match exists. If the CLI is not available, skip this sub-step entirely.
 
 **Workflow for each finding with severity `error` or `warning`:**
 
-1. **Search for a matching use case.** Call `search_use_cases` with an action-oriented description derived from the finding's feature. Use descriptive queries, not single keywords:
+1. **Search for a matching use case.** Run `modern-web --search "<query>"` with an action-oriented description derived from the finding's feature. Use descriptive queries, not single keywords:
    - Finding about `hidden="until-found"` → query: `"search hidden content accordion tabs"`
    - Finding about image loading priority → query: `"lazy load images optimize priority"`
    - Finding about `scrollbar-color` → query: `"customize scrollbar color and thickness"`
@@ -363,7 +398,7 @@ If the `modern-web` MCP server is available (as determined by the availability c
 
 2. **Check relevance.** The search returns results ranked by distance. Only proceed if a result has `distance < 1.0` (strong match) or `distance < 1.3` (moderate match with contextually obvious relevance). Skip results with `distance >= 1.5`.
 
-3. **Fetch the best practices.** Call `get_best_practices` with the matched `use_case_id`. The response includes:
+3. **Fetch the best practices.** Run `modern-web --retrieve "<id>"` with the matched `use_case_id`. The response (markdown content) includes:
    - Implementation guidance with code examples
    - A **"Fallback strategy"** or **"Browser support and fallback strategies"** section with Baseline status and feature-detection patterns
    - Best practice rules (MANDATORY / RECOMMENDED / DO NOT)
@@ -386,7 +421,7 @@ If the `modern-web` MCP server is available (as determined by the availability c
    - **Mark the finding as `auto_fixed: true`** if a code fix was applied in step 5, or `auto_fixed: false` if manual review is required.
    - **Flag best-practice violations**: If the audited code violates a MANDATORY or DO NOT rule from the best practices (e.g., using `fetchpriority="high"` with `loading="lazy"` on the same image), add a new **warning**-severity finding for it — and apply the fix if it is mechanical (e.g., removing the conflicting attribute).
 
-7. **Batch efficiently.** Don't call `search_use_cases` for every finding individually if multiple findings relate to the same feature area. Group related findings (e.g., all CSS compatibility issues) and search once per category. When a single `get_best_practices` response covers multiple findings (e.g., image optimization guidance covering both `fetchpriority` and `loading` findings), apply the verification and fix steps to all related findings from the same response.
+7. **Batch efficiently.** Don't run `modern-web --search` for every finding individually if multiple findings relate to the same feature area. Group related findings (e.g., all CSS compatibility issues) and search once per category. When a single guide covers multiple findings (e.g., image optimization guidance covering both `fetchpriority` and `loading` findings), apply the verification and fix steps to all related findings from the same response.
 
 **Example integration in the report (auto-fixed):**
 
@@ -421,14 +456,14 @@ If the `modern-web` MCP server is available (as determined by the availability c
   browserslist targets.
 ```
 
-If the `modern-web` server is not available, this entire sub-step is skipped — the polyfill-registry alone provides sufficient remediation guidance, but no automatic code fixes will be applied.
+If the `modern-web` CLI is not available, this entire sub-step is skipped — the polyfill-registry alone provides sufficient remediation guidance, but no automatic code fixes will be applied.
 
 ### Enrich e18e findings with `modern-web` context
 
-When both the `modern-web` MCP server and e18e findings are available, use them together to strengthen remediation:
+When both the `modern-web` CLI and e18e findings are available, use them together to strengthen remediation:
 
 - **Native API guidance**: When e18e flags a package as replaceable by a native browser API (e.g., `is-array` → `Array.isArray`), and `modern-web` has a best practice for that native API, fetch it to provide implementation guidance for the native alternative. This gives the user not just "remove this package" but "here is the correct modern pattern to use instead."
-- **Baseline confirmation for polyfills**: When e18e flags a polyfill package (e.g., `intersection-observer`), call `search_use_cases` with an action-oriented query for the polyfilled feature (e.g., `"lazy load images intersection observer"`) to fetch its Baseline status. If the feature is "Widely available," this strengthens the recommendation to remove the polyfill. Include the Baseline date in the finding's `modern_web_guidance` field.
+- **Baseline confirmation for polyfills**: When e18e flags a polyfill package (e.g., `intersection-observer`), run `modern-web --search "lazy load images intersection observer"` (or similar action-oriented query) to find the relevant use case and retrieve its Baseline status. If the feature is "Widely available," this strengthens the recommendation to remove the polyfill. Include the Baseline date in the finding's `modern_web_guidance` field.
 
 ### Apply e18e migrations (auto-fix)
 
@@ -632,7 +667,7 @@ Detailed log of what the `modern-web-guardrails` skill executed during this audi
 - Status: [COMPLETED | PARTIALLY COMPLETED — reason]
 - Input sources merged: [list which of eslint / lighthouse / e18e / stylelint were provided, and which were passed as `-` (skipped)]
 - Polyfill registry lookups: [N features looked up]
-- `modern-web` MCP server: [AVAILABLE — N use cases searched, N best practices fetched | NOT AVAILABLE — skipped enrichment]
+- `modern-web` CLI: [AVAILABLE — N use cases searched, N guides retrieved | NOT AVAILABLE — skipped enrichment]
 - Auto-fixes applied: [N files modified]
 - Best-practice violations flagged: [N new findings added]
 
@@ -669,7 +704,7 @@ Detailed log of what the `modern-web-guardrails` skill executed during this audi
 ### External integrations
 | Integration | Available | Used | Notes |
 |---|---|---|---|
-| `modern-web` MCP server | [YES / NO] | [YES / NO] | [e.g., "Searched N use cases, fetched N best practices, applied N fixes" or "Not available — skipped enrichment"] |
+| `modern-web` CLI | [YES / NO] | [YES / NO] | [e.g., "Searched N use cases, retrieved N guides, applied N fixes" or "Not available — skipped enrichment"] |
 | Chrome/Chromium | [YES / NO] | [YES / NO] | [e.g., "Used for headless Lighthouse audit" or "Not found — runtime analysis skipped"] |
 
 ### Temp directory
@@ -716,6 +751,7 @@ node scripts/render-html-report.js \
 ```
 
 The renderer produces a **self-contained HTML file** with all CSS inlined — no external dependencies. It features:
+
 - Color-coded summary cards (findings, errors, warnings, auto-fixes)
 - Browser version tags from the baseline
 - Per-finding cards with severity badges, browser compat chips, and modern-web guidance callouts
@@ -742,16 +778,21 @@ Since all tools are executed via `npx` (no devDependencies are added), no cleanu
 ## Important considerations
 
 ### Lighthouse runs locally
+
 Lighthouse audits a local server, so features that depend on external services (CDN-loaded polyfills, runtime feature detection services) may produce false positives. Note this in the report when relevant.
 
 ### Large projects
+
 For projects with more than 500 source files, eslint-plugin-compat may take a while. Consider running the analysis on changed files only (via `git diff --name-only`) or warn the user about expected duration.
 
 ### e18e requires a lockfile
+
 e18e CLI reads the project's lockfile to resolve the full dependency tree. If the project has no lockfile (e.g., fresh clone without `npm install`), dependency analysis will be skipped. Run `npm install` first if dependency analysis is desired.
 
 ### e18e migrations modify source files
+
 Unlike modern-web auto-fixes (which add fallbacks/guards), e18e migrations replace import statements and API calls. Always review the dry-run output before applying. The `--dry-run` step is mandatory in this skill's workflow.
 
 ### Tools used by this skill
+
 This skill uses `eslint`, `eslint-plugin-compat`, `stylelint`, `stylelint-no-unsupported-browser-features`, `lighthouse`, and `http-server` — all executed directly via `npx` without installing them into the project. This ensures the audit is non-invasive and does not modify `package.json` or `node_modules`. It optionally uses `@e18e/cli` for dependency analysis — also executed via `npx`; the skill checks for its availability and skips dependency analysis if not found.
