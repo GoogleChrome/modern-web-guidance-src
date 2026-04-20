@@ -5,7 +5,7 @@ web-feature-ids:
   - invoker-commands
   - popover
   - dialog
-sources: 
+sources:
   - https://developer.chrome.com/blog/command-and-commandfor
   - https://developer.mozilla.org/en-US/docs/Web/API/Invoker_Commands_API
   - https://open-ui.org/components/invokers.explainer/
@@ -46,7 +46,7 @@ If you need to control opening and closing with separate buttons, you can use th
 
 <div id="my-explicit-popover" popover>
   <p>This popover is explicitly opened and closed by separate buttons.</p>
-  
+
   <!-- MANDATORY: Use 'hide-popover' to explicitly close the targeted popover. -->
   <button commandfor="my-explicit-popover" command="hide-popover">
     Hide Popover
@@ -67,7 +67,7 @@ Unlike popovers, modal dialogs typically use separate buttons for opening and cl
 
 <dialog id="confirm-dialog">
   <p>Are you sure you want to proceed?</p>
-  
+
   <!-- MANDATORY: Use command="close" to dismiss the dialog safely. -->
   <button commandfor="confirm-dialog" command="close">
     Cancel
@@ -111,7 +111,7 @@ If you are not using a package manager, dynamically import the polyfill directly
 ```
 
 **Invokers Polyfill Limitations**
-Unlike the native Invoker Commands API, `invokers-polyfill` does not automatically handle ARIA attributes (such as `aria-expanded`) on the command button. 
+Unlike the native Invoker Commands API, `invokers-polyfill` does not automatically handle ARIA attributes (such as `aria-expanded`) on the command button.
 
 MANDATORY: You MUST manually manage these ARIA states to ensure your site remains fully accessible to screen readers in browsers relying on the polyfill.
 
