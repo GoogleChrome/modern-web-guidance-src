@@ -310,7 +310,6 @@ test.describe(`Forms Expectations: ${demoName}`, () => {
     const focusOk = await page.evaluate(() => {
       const input = document.querySelector('input:not([type="hidden"])') as HTMLInputElement;
       if (!input) return false;
-      const originalOutline = window.getComputedStyle(input).outlineStyle;
       input.focus();
       const style = window.getComputedStyle(input);
       // It should change something or not be 'none'

@@ -95,7 +95,7 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
     expect(result).toBe(true);
   });
 
-  test('LCP image is declared in static HTML for early discovery', async ({ page }) => {
+  test('LCP image is declared in static HTML for early discovery', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     expect(html).toMatch(/<img[^>]+fetchpriority=["']high["']/);
   });
@@ -121,7 +121,7 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
   });
 
   // 3. INP & Main Thread
-  test('Main thread tasks are broken up with scheduler.yield() or fallback', async ({ page }) => {
+  test('Main thread tasks are broken up with scheduler.yield() or fallback', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     
     // Check HTML
@@ -226,7 +226,7 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
   });
 
   // 6. Code Splitting
-  test('Implementation MUST use dynamic imports to load code on demand', async ({ page }) => {
+  test('Implementation MUST use dynamic imports to load code on demand', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     let hasDynamicImport = html.includes('import(');
     
