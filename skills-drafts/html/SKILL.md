@@ -30,13 +30,19 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 <body>
   <header>
     <h1>Analytics</h1>
-    <nav>...</nav>
+    <nav>
+      <ul>
+        <li><a href="#">About</a></li>
+        <li><a href="#">Contact</a></li>
+      </ul>
+    </nav>
   </header>
   <main>
     <search>
       <form action="/filter" method="GET">
         <label for="search-input">Scan items:</label>
         <input type="search" id="search-input" name="q">
+        <button type="submit">Search</button>
       </form>
     </search>
   </main>
