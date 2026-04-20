@@ -5,59 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Legacy Platform</title>
 
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
-    
-    * {
-      will-change: transform, opacity, top, left;
-    }
 
-    body {
-      margin: 0;
-      font-family: 'Roboto', sans-serif;
-      background-color: #ffffff;
-      color: #333;
-    }
-
-    .header {
-      height: 100px;
-      background: #333;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .hero-container {
-      background: #eee;
-      min-height: 400px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .content-block {
-      padding: 50px;
-    }
-
-    .gallery {
-      display: flex;
-      flex-wrap: wrap;
-    }
-
-    .gallery img {
-      margin: 10px;
-      border: 1px solid #ccc;
-    }
-
-    .footer {
-      background: #222;
-      color: #999;
-      padding: 20px;
-      text-align: center;
-    }
-  </style>
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
@@ -65,7 +13,7 @@
   <script>
     function blockMainThread(duration) {
       const start = Date.now();
-      while (Date.now() - start < duration) {
+      while (Date.now() - start < 300) {
         Math.sqrt(Math.random() * 1000000);
       }
     }
@@ -138,6 +86,59 @@
     script.src = heavyAnalytics;
     document.head.appendChild(script);
   </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+    
+    * {
+      will-change: transform, opacity, top, left;
+    }
 
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background-color: #ffffff;
+      color: #333;
+    }
+
+    .header {
+      height: 100px;
+      background: #333;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero-container {
+      background: #eee;
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      content-visibility: auto; /* Violates above-the-fold rule */
+    }
+
+    .content-block {
+      padding: 50px;
+    }
+
+    .gallery {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .gallery img {
+      margin: 10px;
+      border: 1px solid #ccc;
+    }
+
+    .footer {
+      background: #222;
+      color: #999;
+      padding: 20px;
+      text-align: center;
+    }
+  </style>
 </body>
 </html>

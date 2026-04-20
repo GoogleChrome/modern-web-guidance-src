@@ -280,7 +280,7 @@ test.describe(`Forms Expectations: ${demoName}`, () => {
     expect(fontSizeOk).toBe(true);
   });
 
-  test('Tap targets MUST be at least 44px', async ({ page }) => {
+  test('Tap targets MUST be at least 48px', async ({ page }) => {
     const tapTargetOk = await page.evaluate(() => {
       const buttons = Array.from(document.querySelectorAll('button, input[type="submit"]'));
       const inputs = Array.from(document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], textarea, select'));
@@ -291,14 +291,18 @@ test.describe(`Forms Expectations: ${demoName}`, () => {
         const style = window.getComputedStyle(b);
         if (style.display === 'none') return true;
         const rect = b.getBoundingClientRect();
-        return rect.width >= 40 && rect.height >= 40;
+        // Ignore elements that are currently hidden/not rendered (0x0)
+        if (rect.width === 0 && rect.height === 0) return true;
+        return rect.width >= 48 && rect.height >= 48;
       });
       
       const inputsOk = inputs.every(i => {
         const style = window.getComputedStyle(i);
         if (style.display === 'none') return true;
         const rect = i.getBoundingClientRect();
-        return rect.width >= 40 && rect.height >= 40;
+        // Ignore elements that are currently hidden/not rendered (0x0)
+        if (rect.width === 0 && rect.height === 0) return true;
+        return rect.width >= 48 && rect.height >= 48;
       });
       
       return buttonsOk && inputsOk;

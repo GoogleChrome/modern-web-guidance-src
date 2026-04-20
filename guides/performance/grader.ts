@@ -230,10 +230,10 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     let hasDynamicImport = html.includes('import(');
     
-    // Also check JS files
+    // 1. Scan all JS files in the folder too (excluding the grader itself)
     const files = fs.readdirSync(targetDir);
     for (const file of files) {
-      if (file.endsWith('.js')) {
+      if (file.endsWith('.js') && !file.startsWith('grader.')) {
         const jsContent = fs.readFileSync(path.join(targetDir, file), 'utf-8');
         if (jsContent.includes('import(')) {
           hasDynamicImport = true;
@@ -241,7 +241,11 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
         }
       }
     }
-    // For simple apps with no heavy JS, dynamic imports are optional.
-    expect(hasDynamicImport || true).toBe(true);
+    
+    // 2. Check if the app is non-trivial by looking for script tags in HTML
+    const hasExternalScripts = /<script[^>]+src=["'][^"']+\.js["']/.test(html);
+    
+    // 3. Pass if it has dynamic imports OR if it's a simple app with no JS files
+    expect(hasDynamicImport || !hasExternalScripts).toBe(true);
   });
 });
