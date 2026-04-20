@@ -61,14 +61,7 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm run setup:playwright
 
-      - name: Generate GitHub App token
-        uses: actions/create-github-app-token@v2
-        id: app-token
-        continue-on-error: true
-        with:
-          app-id: ${{ vars.GH_APP_ID }}
-          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
+
 
       - name: Configure git
         run: |
@@ -78,7 +71,6 @@ jobs:
       - name: Generate guide package (guide.md, demo.html, expectations.md)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
 
           # Use inputs or defaults for testing on push
