@@ -1,115 +1,197 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Shared Element Transitions</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      margin: 0;
-      padding: 0;
-      overflow-x: hidden;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <title>Shared Element Transitions</title>
+    <style>
+      @media (prefers-reduced-motion: reduce) {
+        ::view-transition-group(*),
+        ::view-transition-old(*),
+        ::view-transition-new(*) {
+          animation: none !important;
+        }
+      }
 
-    .content {
-      padding: 20px;
-    }
+      /* Dynamic `view-transition-name`s on selected item in list view */
+      .thumbnail.selected {
+        view-transition-name: hero;
+      }
+      .thumbnail.selected .title {
+        view-transition-name: title;
+      }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-    }
+      /* Static `view-transition-name`s on detail view */
+      #hero {
+        view-transition-name: hero;
+      }
+      #title {
+        view-transition-name: title;
+      }
 
-    /* DEMO: Page states */
-    #detail-page {
-      display: none;
-    }
+      /* Make text animation smoother */
+      #list-page .title {
+        width: fit-content;
+      }
+      #detail-page #title {
+        width: fit-content;
+      }
 
-    /* DEMO: List view styling (thumbnail) */
-    .thumbnail {
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      border-radius: 8px;
-      cursor: pointer;
-    }
+      /* Animate between different aspect ratios */
+      ::view-transition-old(hero),
+      ::view-transition-new(hero){
+        height: 100%;
+      }
 
-    /* DEMO: Detail view styling (full-bleed) */
-    .full-bleed {
-      width: 100vw;
-      height: 50vh;
-      cursor: pointer;
-    }
 
-    /* DEMO: Button styling */
-    button {
-      padding: 8px 16px;
-      font-size: 1rem;
-      background: #eee;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-top: 20px;
-    }
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+      }
+      body #list-page,
+      body.detail #detail-page {
+        display: block;
+      }
+      body.detail #list-page,
+      body #detail-page {
+        display: none;
+      }
 
-    /* CORE: Assign unique transition names to persist across states */
-    #product-1 { view-transition-name: p1; background: #0066cc; }
-    #product-2 { view-transition-name: p2; background: #cc3333; }
-    #product-3 { view-transition-name: p3; background: #33cc33; }
-  </style>
-</head>
-<body>
-  <!-- State 1: List View -->
-  <div id="list-page">
-    <div class="content">
-      <h1>Products</h1>
-      <p>Click a product thumbnail to see details.</p>
-      
-      <div class="grid">
-        <div id="product-1" class="thumbnail" onclick="navigate('detail', 'p1', '#0066cc')"></div>
-        <div id="product-2" class="thumbnail" onclick="navigate('detail', 'p2', '#cc3333')"></div>
-        <div id="product-3" class="thumbnail" onclick="navigate('detail', 'p3', '#33cc33')"></div>
+      .content {
+        padding: 20px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+      }
+
+      /* DEMO: Page states */
+      #detail-page {
+        display: none;
+      }
+
+      /* DEMO: List view styling (thumbnail) */
+      .thumbnail {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        border-radius: 8px;
+        cursor: pointer;
+        color: white;
+        display: grid;
+        place-items: center;
+      }
+
+      /* DEMO: Detail view styling (hero) */
+      #hero {
+        width: 100vw;
+        height: 50vh;
+        cursor: pointer;
+      }
+
+      /* DEMO: Button styling */
+      button {
+        padding: 8px 16px;
+        font-size: 1rem;
+        background: #eee;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- State 1: List View -->
+    <div id="list-page">
+      <div class="content">
+        <h1>Products</h1>
+        <p>Click a product thumbnail to see details.</p>
+
+        <div class="grid">
+          <button
+            class="thumbnail"
+            data-name="Blue Jay"
+            style="background: #0066cc"
+          >
+            <h2 class="title">Blue Jay</h2>
+          </button>
+          <button
+            class="thumbnail"
+            data-name="Cardinal"
+            style="background: #cc3333"
+          >
+            <h2 class="title">Cardinal</h2>
+          </button>
+          <button
+            class="thumbnail"
+            data-name="Parakeet"
+            style="background: #33cc33"
+          >
+            <h2 class="title">Parakeet</h2>
+          </button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- State 2: Detail View -->
-  <div id="detail-page">
-    <!-- The shared hero element, dynamically configured via JS -->
-    <div id="hero" class="full-bleed" onclick="navigate('list')"></div>
-    <div class="content">
-      <h1>Product Overview</h1>
-      <p>This is the full-bleed hero view.</p>
-      <button onclick="navigate('list')">Back to products</button>
+    <!-- State 2: Detail View -->
+    <div id="detail-page">
+      <!-- The shared hero element, dynamically configured via JS -->
+      <div id="hero" onclick="goFromDetailToList()"></div>
+      <div class="content">
+        <h1 id="title">Product Overview</h1>
+        <p>This is the full-bleed hero view.</p>
+        <button onclick="goFromDetailToList()">Back to products</button>
+      </div>
     </div>
-  </div>
 
-  <script>
-    function navigate(view, transitionName, color) {
-      // CORE: Wrap the DOM update in startViewTransition
-      if (!document.startViewTransition) {
-        updateDOM(view, transitionName, color);
-        return;
+    <script>
+      function goFromListToDetail(e) {
+        // Prepare current view for transition
+        const bgColor = getComputedStyle(e.currentTarget).backgroundColor;
+        const name = e.currentTarget.dataset.name;
+        // Apply class that applies view-transition-names to selected item
+        e.currentTarget.classList.add("selected");
+
+        // Replace the content on the detail page
+        const hero = document.getElementById("hero");
+        hero.style.background = bgColor;
+
+        const title = document.getElementById("title");
+        title.innerText = name;
+
+        if (!document.startViewTransition) {
+          document.body.classList.add("detail");
+          return;
+        }
+        document.startViewTransition(() =>
+          document.body.classList.add("detail"),
+        );
       }
-      document.startViewTransition(() => updateDOM(view, transitionName, color));
-    }
 
-    // DEMO: Update the DOM to display the requested view
-    function updateDOM(view, transitionName, color) {
-      const hero = document.getElementById('hero');
+      document.querySelectorAll(".thumbnail").forEach((thumbnail) => {
+        thumbnail.addEventListener("click", goFromListToDetail);
+      });
 
-      if (view === 'detail') {
-        // Connect the hero element to the clicked thumbnail
-        hero.style.viewTransitionName = transitionName;
-        hero.style.background = color;
-
-        document.getElementById('list-page').style.display = 'none';
-        document.getElementById('detail-page').style.display = 'block';
-      } else {
-        document.getElementById('list-page').style.display = 'block';
-        document.getElementById('detail-page').style.display = 'none';
+      function goFromDetailToList() {
+        if (!document.startViewTransition) {
+          document.body.classList.remove("detail");
+          return;
+        }
+        const transition = document.startViewTransition(() => {
+          document.body.classList.remove("detail");
+        });
+        transition.finished.finally(() => {
+          // Remove selected classList to remove view-transition-names
+          document.querySelectorAll("selected").forEach(
+            (element) => {
+              element.classList.remove("selected");
+            },
+          );
+        });
       }
-    }
-  </script>
-</body>
+    </script>
+  </body>
 </html>
