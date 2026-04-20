@@ -13,6 +13,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DO** use semantic landmarks (`<header>`, `<nav>`, `<main>`, `<aside>`, `<footer>`) to create regional navigation for assistive technologies.
 - **DO** use `<search>` to enclose search and filtering mechanisms (eliminates the need for `role="search"`).
 - **DO** use `<button>` for triggered actions (JS, Modals, Forms) and `<a>` strictly for URL navigation. Set `type="button"` for non-submit buttons in forms to prevent unintended submission.
+- **DO** use `<ul>`, `<ol>`, `<dl>`, and `<menu>` elements for list content. 
 
 - **DON'T** use generic `<div>` or `<span>` for interactive elements or headings.
 - **DON'T** use boolean attributes with redundant values (e.g., use `disabled`, not `disabled="disabled"`).
@@ -206,6 +207,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DO** utilize the `form="form-id"` attribute to decouple inputs from the physical `<form>` tree.
 - **DO** use `<datalist>` coupled with `<input list="id">` for lightweight auto-suggestions (note: visually unstylable and has screen-reader quirks).
 - **DO** distinguish between `autocomplete="current-password"` and `autocomplete="new-password"`.
+- **DO** ensure that all inputs in a form have a corresponding `<label>` element. 
 
 - **DON'T** use `autocomplete="off"` unless handling highly sensitive tracking tokens (violates standard password manager overrides). Use standard inputs `type="email"`, `type="tel"`.
 
