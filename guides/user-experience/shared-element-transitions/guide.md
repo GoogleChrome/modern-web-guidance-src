@@ -28,12 +28,6 @@ For Single-Page Applications (SPAs) or simple state changes, wrap the logic that
 
 ```javascript
 function navigate(view) {
-  // Check for browser support
-  if (!document.startViewTransition) {
-    updateDOM(view);
-    return;
-  }
-
   // MANDATORY: Wrap the update in startViewTransition
   document.startViewTransition(() => updateDOM(view));
 }
@@ -159,10 +153,12 @@ The pseudo-elements are snapshots of the live elements, so you can also use `obj
 The View Transitions API is designed for progressive enhancement. Browsers that do not support it will simply execute the DOM update immediately without animation.
 
 ```javascript
-if (!document.startViewTransition) {
-  // Fallback: Just update the DOM
-  updateDOM();
-} else {
-  document.startViewTransition(() => updateDOM());
+function navigate(){
+  if (!document.startViewTransition) {
+    // Fallback: Just update the DOM
+    updateDOM();
+  } else {
+    document.startViewTransition(() => updateDOM());
+  }
 }
 ```
