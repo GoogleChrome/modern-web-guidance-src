@@ -1,0 +1,65 @@
+# Browserslist Example Configuration
+# Copy this file to your project root as .browserslistrc
+# and uncomment the target that fits your needs.
+#
+# For more on Baseline targets:
+#   https://web.dev/articles/use-baseline-with-browserslist
+#   https://web-platform-dx.github.io/web-features/
+#
+# If no .browserslistrc or browserslist config exists in the project,
+# the web-compat-audit skill falls back to: > 0.5%, last 2 versions, not dead
+
+# --------------------------------------------------------------------------
+# OPTION 1: Baseline Newly Available
+#
+# Features that are interoperable across Chrome, Edge, Firefox, and Safari
+# but became so within the last 30 months. This is the "leading edge" of
+# safe cross-browser support — you get modern APIs, but you accept that
+# users on browsers older than ~2.5 years may not be covered.
+# --------------------------------------------------------------------------
+
+# baseline newly available
+
+# --------------------------------------------------------------------------
+# OPTION 2: Baseline Newly Available + downstream browsers
+#
+# Same as above, but also includes Chromium-based browsers beyond Chrome
+# and Edge (Opera, Samsung Internet, Brave, Arc, etc.) and WebKit-based
+# browsers on iOS beyond Safari.
+# --------------------------------------------------------------------------
+
+# baseline newly available with downstream
+
+# --------------------------------------------------------------------------
+# OPTION 3: Baseline Widely Available
+#
+# Features that have been interoperable for 30 months or more.
+# The conservative choice — broad compatibility, but you miss out on
+# newer APIs that haven't yet graduated to Widely Available.
+# --------------------------------------------------------------------------
+
+# baseline widely available
+
+# --------------------------------------------------------------------------
+# OPTION 4: Baseline year (pin to a specific feature set)
+#
+# Includes all features that were Newly Available at the end of the
+# specified year. Useful for reproducible builds and for teams that
+# want to adopt a fixed baseline and upgrade deliberately.
+#
+# Examples:
+#   baseline 2023  →  Chrome 120, Edge 120, Firefox 121, Safari 17.2
+#   baseline 2024  →  whatever was interoperable by end of 2024
+# --------------------------------------------------------------------------
+
+# baseline 2024
+
+# --------------------------------------------------------------------------
+# OPTION 5: Traditional browserslist query (non-Baseline)
+#
+# The classic approach using market share and version counts.
+# Still a valid choice, especially if you need to support specific
+# browsers or versions not covered by the Baseline model.
+# --------------------------------------------------------------------------
+
+# > 0.5%, last 2 versions, not dead

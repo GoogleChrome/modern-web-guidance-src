@@ -1,0 +1,137 @@
+{
+  "skill_name": "web-compat-audit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just finished building a landing page with some modern CSS (container queries, :has() selectors, nesting) and JS (structuredClone, Array.at). Can you check if this will work in older browsers? The project is in the current directory, it's plain HTML/CSS/JS with no build step.",
+      "expected_output": "A compatibility report identifying container queries, :has(), CSS nesting, structuredClone, and Array.at as potential issues, with polyfill/fallback recommendations for each. CSS issues should be caught by the stylelint CSS analysis layer (Stage 2c), JS issues by eslint-plugin-compat (Stage 2).",
+      "files": ["fixtures/index.html", "fixtures/modern-apis.js", "fixtures/modern-css.css"]
+    },
+    {
+      "id": 2,
+      "prompt": "Run a browser compat audit on this React project. We target 'last 2 versions' in our .browserslistrc. The build output is in dist/ — I already ran npm run build.",
+      "expected_output": "The audit should detect the .browserslistrc config, run both static (eslint-plugin-compat) and runtime (Lighthouse) analysis against dist/, and produce a unified report with the resolved browser targets shown in the header.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Hey can you check if the code you just wrote will work in Safari 14 and Chrome 90? I'm worried about some of the newer APIs we used. No browserslist config in the project.",
+      "expected_output": "Should use the default browserslist fallback, run the audit, and flag any APIs unsupported in Safari 14 or Chrome 90 specifically. Report should note the default baseline was used since no config was found.",
+      "files": ["fixtures/modern-apis.js"]
+    },
+    {
+      "id": 4,
+      "prompt": "Run a compat audit on this project. It uses custom scrollbar styling with scrollbar-color and hidden='until-found' for accordion sections.",
+      "expected_output": "The audit should identify scrollbar-color (via CSS analysis) and hidden='until-found' as compatibility findings. If the modern-web MCP server is available, it should call search_use_cases with descriptive queries (e.g., 'customize scrollbar color and thickness', 'search hidden content accordion tabs'), fetch best practices for matching use cases, and include a 'Modern Web Guidance' field in each finding with Baseline status and specific fallback strategies (e.g., @supports not (scrollbar-color: auto) guard, beforematch event listener pattern). If the modern-web MCP server is not available, findings should still include remediation from polyfill-registry.json without 'Modern Web Guidance' fields.",
+      "files": ["fixtures/index.html", "fixtures/modern-css.css"]
+    },
+    {
+      "id": 5,
+      "prompt": "Audit the browser compatibility of this landing page. It has images with fetchpriority='high' and loading='lazy' on the hero image, and uses the <details> element for toggling content.",
+      "expected_output": "If the modern-web MCP server is available, the audit should detect the fetchpriority='high' + loading='lazy' combination on the hero image as a MANDATORY rule violation from modern-web best practices and add it as a new warning-severity finding. For the <details> element, modern-web should confirm it is Baseline Widely available and no fallback is needed. The report should include 'Modern Web Guidance' fields sourced from get_best_practices. If the modern-web MCP server is not available, the audit should still complete and report findings using polyfill-registry.json alone.",
+      "files": ["fixtures/index.html"]
+    },
+    {
+      "id": 6,
+      "prompt": "Check compat for this project — it has several CSS issues: scrollbar-color, custom scrollbar styling with -webkit-scrollbar, and uses prefers-color-scheme for dark mode.",
+      "expected_output": "If the modern-web MCP server is available, the audit should batch related CSS findings and call search_use_cases efficiently — grouping scrollbar-color and -webkit-scrollbar into one search rather than separate calls per finding. The enriched report should include Baseline dates (e.g., 'Baseline since 2025-12-12' for scrollbar-color) and specific remediation from modern-web (e.g., wrap legacy WebKit fallbacks in @supports not (scrollbar-color: auto), pair with scrollbar-width: thin for macOS). If the modern-web MCP server is not available, remediation should come from polyfill-registry.json without 'Modern Web Guidance' fields.",
+      "files": ["fixtures/modern-css.css"]
+    },
+    {
+      "id": 7,
+      "prompt": "Run a browser compat audit on this project. It uses fetch() and IntersectionObserver.",
+      "expected_output": "The audit should complete successfully regardless of whether the modern-web MCP server is available. It should check for modern-web MCP server availability and use it if present, but if the server is not available, no further calls to search_use_cases or get_best_practices should be attempted. All findings should have remediation recommendations — sourced from polyfill-registry.json at minimum, and enriched with 'Modern Web Guidance' fields only if the server was reachable.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "Run a browser compat audit on this project. It has several dependencies in package.json including is-number, is-plain-object, and whatwg-fetch. The browserslist targets 'baseline widely available'.",
+      "expected_output": "If e18e CLI is available, the audit should detect is-number and is-plain-object as replaceable by native functionality, and whatwg-fetch as a polyfill that may be removable since all 'baseline widely available' browsers support fetch natively. Findings should appear with source 'dependency analysis' and include a 'Dependency Optimization' section in the report. The report should include Dependency Stats (install size, dependency counts). If e18e CLI is not available, the audit should note that dependency analysis was skipped and complete with static + runtime analysis only.",
+      "files": ["fixtures/package.json"]
+    },
+    {
+      "id": 9,
+      "prompt": "Run a compat audit on this project and automatically fix everything you can. The project uses chalk, is-number, and Array.prototype.at() which is flagged by eslint-plugin-compat.",
+      "expected_output": "The audit should produce findings from both static analysis (Array.prototype.at) and dependency analysis (chalk, is-number). For Array.prototype.at, it should apply the polyfill or modern-web guided fix. For chalk and is-number, if e18e CLI is available and the packages have migrate codemods (fixableBy: 'migrate'), it should run e18e-cli migrate with --dry-run first, then apply the migration. The report should show 'Auto-migrated: YES' for successfully migrated packages. All analysis sources (static, css, runtime, dependency) should be represented in the summary.",
+      "files": ["fixtures/modern-apis.js", "fixtures/package.json"]
+    },
+    {
+      "id": 10,
+      "prompt": "Audit this project for browser compatibility. We target 'last 2 versions' and the project depends on core-js, whatwg-fetch, and intersection-observer. Are any of these polyfills unnecessary for our targets?",
+      "expected_output": "The audit should cross-reference e18e dependency findings (if e18e CLI is available) with the resolved browserslist. Since 'last 2 versions' covers only modern browsers, the audit should note that whatwg-fetch (fetch is Baseline Widely available) and intersection-observer (IntersectionObserver is Baseline Widely available) are likely unnecessary polyfills for the target set. core-js provides many polyfills so it should recommend auditing which core-js features are actually imported. The dependency_replacements section in polyfill-registry.json (including min_browser_versions) should be used to look up browser support data for cross-referencing. If e18e CLI is not available, the audit should still attempt this analysis using package.json inspection and polyfill-registry.json.",
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "Run a compat audit on this project. There are no JavaScript or CSS source files — it's an empty directory with just a package.json.",
+      "expected_output": "The audit should handle the empty-project case gracefully. eslint-plugin-compat and stylelint should produce zero findings (no files to scan). Lighthouse may also produce nothing meaningful. The report should clearly state that no compatibility issues were found, and note which analysis stages were skipped or produced no results. The audit should NOT error out.",
+      "files": ["fixtures/package.json"]
+    },
+    {
+      "id": 12,
+      "prompt": "Run a browser compat audit. The project has TypeScript files with advanced syntax (decorators, enums) that standard ESLint can't parse.",
+      "expected_output": "The audit should detect the TypeScript parse failure, install @typescript-eslint/parser, reconfigure the temp ESLint config to use it, and retry. If parsing still fails, the audit should skip static analysis gracefully and note in the report that ESLint could not parse the files, while still completing runtime and dependency analysis.",
+      "files": []
+    },
+    {
+      "id": 13,
+      "prompt": "Run a compat audit. Chrome is not installed on this machine, so Lighthouse cannot run.",
+      "expected_output": "The audit should detect that Chrome/Chromium is not available, skip runtime analysis (Stage 3) gracefully, and complete the audit with static analysis + CSS analysis + dependency analysis only. The report should note that runtime analysis was skipped due to missing Chrome/Chromium and show findings from the other stages.",
+      "files": ["fixtures/modern-apis.js", "fixtures/modern-css.css"]
+    },
+    {
+      "id": 14,
+      "prompt": "Audit this landing page for compatibility. It uses only widely-supported features: flexbox, querySelector, addEventListener, and ES5 syntax.",
+      "expected_output": "The audit should complete and report zero compatibility findings (clean audit). The report should clearly state that no issues were found across all analysis stages and that the code is compatible with the target browsers. This is a positive result — a clean audit is valuable confirmation.",
+      "files": []
+    },
+    {
+      "id": 15,
+      "prompt": "Run a compat audit on this Vite + React project. The source is in src/ and I haven't run the build yet.",
+      "expected_output": "The audit should detect the Vite framework from package.json dependencies, run npm run build to produce the dist/ output, then serve dist/ for Lighthouse runtime analysis. Static analysis should scan src/**/*.{js,jsx,ts,tsx}. The framework-specific build detection should identify Vite and use the correct output directory (dist/).",
+      "files": []
+    },
+    {
+      "id": 16,
+      "prompt": "Run a compat audit on this project. It has several HTML forms for address, sign-in, sign-up, and payment. Check if the forms follow browser autofill best practices.",
+      "expected_output": "If the modern-web MCP server is available, the audit should match use cases: autofill-address-form, autofill-sign-in-form, autofill-sign-up-form, autofill-payment-form. Should flag: missing autocomplete attributes on address form fields (street-address, address-level2, postal-code, country), wrong autocomplete='password' on sign-in form (MANDATORY: must be 'current-password'), wrong autocomplete='password' on sign-up form (MANDATORY: must be 'new-password'), type='number' on card number input (DO NOT rule: must use type='text' inputmode='numeric'), type='password' on CSC input (DO NOT per best practices). Should also flag :auto-fill as wrong pseudo-class name (MANDATORY: use :autofill). If the modern-web MCP server is not available, the audit should still complete using static analysis and polyfill-registry.json.",
+      "files": ["fixtures/forms.html", "fixtures/forms.css", "fixtures/forms.js"]
+    },
+    {
+      "id": 17,
+      "prompt": "Audit this project for compatibility. The forms use :user-invalid and :user-valid CSS pseudo-classes for validation feedback, field-sizing: content for auto-resizing textareas, and :has(:user-invalid) for parent styling.",
+      "expected_output": "Stylelint should flag :user-invalid, :user-valid, field-sizing, and :has() as compatibility findings. If the modern-web MCP server is available, it should match use cases: required-field-feedback, form-fields-automatically-fit-contents, style-parent-with-has, and accessible-error-announcement. Should flag: missing min-inline-size on field-sizing elements (prevents collapse to zero width), width: 100% overriding field-sizing behavior, incomplete aria-invalid sync in forms.js (only handles input event, missing blur/focus capture-phase listeners per modern-web guidance), and missing .has-error-fallback class-based CSS fallback for browsers without :has() support.",
+      "files": ["fixtures/forms.html", "fixtures/forms.css", "fixtures/forms.js"]
+    },
+    {
+      "id": 18,
+      "prompt": "Run a compat audit on this project. It uses the Fetch API for analytics, PerformanceObserver for long animation frames, web-vitals for INP tracking, and navigator.sendBeacon for session analytics.",
+      "expected_output": "If the modern-web MCP server is available, it should match use cases: deprioritize-background-fetches, identify-inp-causes, identify-heavy-scripts, and full-session-analytics. Should flag: analytics fetch() calls missing priority: 'low' option, INP data logged to console instead of beaconed to analytics service, LoAF data logged via console.table instead of sent to analytics, navigator.sendBeacon used instead of fetchLater() for session analytics (less reliable on mobile, can prevent bfcache). Long Animation Frames API should be noted as Limited availability. fetchLater() should be noted as Limited availability with polyfill recommendation.",
+      "files": ["fixtures/performance.html", "fixtures/performance.js", "fixtures/performance.css"]
+    },
+    {
+      "id": 19,
+      "prompt": "Check compat for this project. It uses speculation rules for prerendering next pages, link preload for critical resources, and content-visibility for deferred rendering of heavy sections.",
+      "expected_output": "If the modern-web MCP server is available, it should match use cases: improve-next-page-load-performance, optimize-preload-priority, and defer-rendering-heavy-content. Should flag: speculation rules speculating /logout (DO NOT rule: do not speculate state-changing URLs), <link rel='preload'> for LCP image missing fetchpriority='high' (MANDATORY), font preload missing crossorigin attribute, content-visibility: auto on above-fold .hero-section (DO NOT rule: delays critical page rendering), .feed-item missing contain-intrinsic-size (MANDATORY: must pair with content-visibility: auto). Speculation Rules API should be noted as Limited availability.",
+      "files": ["fixtures/performance.html", "fixtures/performance.css"]
+    },
+    {
+      "id": 20,
+      "prompt": "Audit this project for compatibility. It customizes scrollbar colors, adapts scrollbar styling for high-contrast user preferences, and animates scrollbar color on scroll using scroll-driven animations and @property.",
+      "expected_output": "Stylelint should flag scrollbar-color, @property, animation-timeline: scroll(), and prefers-contrast as compatibility findings. If the modern-web MCP server is available, it should match use cases: customize-scrollbar-color-and-thickness, adapt-scrollbar-to-contrast-preferences, and animate-scrollbar-color-on-scroll. Should note scroll-driven animations are Limited availability and not polyfillable. Should flag missing @supports not (scrollbar-color: auto) WebKit fallback on .scroller-animated. Report should include Baseline dates (e.g., scrollbar-color Baseline since 2025-12-12, registered custom properties Baseline since 2024-07-09).",
+      "files": ["fixtures/modern-css.css"]
+    },
+    {
+      "id": 21,
+      "prompt": "Run a compat audit. The project uses CSS :has() selectors to style parent elements based on child form field validity states like :user-invalid.",
+      "expected_output": "If the modern-web MCP server is available, it should match the style-parent-with-has use case. Should identify the .card-section:has(:user-invalid) pattern and verify that a JavaScript fallback exists for browsers without :has() support. Should flag: missing .has-error-fallback class-based CSS fallback, and recommend the WeakMap-based UserInvalidFallback utility pattern from modern-web guidance. The :has() selector should be noted as Baseline since 2023-12-07. :user-invalid should be noted as Baseline since 2023.",
+      "files": ["fixtures/forms.html", "fixtures/forms.css", "fixtures/modern-css.css"]
+    },
+    {
+      "id": 22,
+      "prompt": "Run a comprehensive browser compat audit on this entire project. Check all HTML, CSS, and JS files for compatibility issues.",
+      "expected_output": "Should produce findings spanning all analysis layers (static JS, CSS, dependency, and modern-web enrichment). Should trigger modern-web searches across all categories: forms (autofill, validation, field-sizing), performance (fetch priority, speculation rules, content-visibility, LoAF, fetchLater), UX (scrollbar customization, scroll-driven animations, high-contrast), and accessibility (aria-invalid sync). Should demonstrate efficient batching of search_use_cases calls — grouping related form findings, scrollbar findings, and performance findings rather than making individual calls per finding. Total findings should span all 22 modern-web use cases.",
+      "files": ["fixtures/index.html", "fixtures/modern-css.css", "fixtures/modern-apis.js", "fixtures/package.json", "fixtures/forms.html", "fixtures/forms.css", "fixtures/forms.js", "fixtures/performance.html", "fixtures/performance.js", "fixtures/performance.css"]
+    }
+  ]
+}

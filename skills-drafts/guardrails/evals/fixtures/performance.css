@@ -1,0 +1,26 @@
+/* Fixture: CSS for performance patterns with known compatibility issues.
+   Covers use case: defer-rendering-heavy-content */
+
+/* ============================================================
+   USE CASE: defer-rendering-heavy-content
+   VIOLATION: content-visibility: auto on above-fold hero section.
+   DO NOT rule: Do not apply content-visibility: auto to elements
+   inside the initial fold viewport — it delays critical page rendering.
+   ============================================================ */
+.hero-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto none auto 400px;
+  /* VIOLATION: above-the-fold element should NOT use content-visibility: auto */
+}
+
+/* ============================================================
+   USE CASE: defer-rendering-heavy-content (correct usage below fold)
+   VIOLATION: Missing contain-intrinsic-size.
+   MANDATORY rule: You MUST pair content-visibility: auto with
+   contain-intrinsic-size to prevent layout shifting.
+   ============================================================ */
+.feed-item {
+  content-visibility: auto;
+  /* VIOLATION: missing contain-intrinsic-size — causes layout shifting
+     and scrollbar jumping as the user scrolls */
+}

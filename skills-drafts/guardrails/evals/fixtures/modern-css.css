@@ -1,0 +1,95 @@
+/* Fixture: CSS file with known compatibility issues for eval testing
+   Expected findings: container queries, :has(), CSS nesting, scrollbar-color,
+   @property, scroll-driven animations, prefers-contrast */
+
+.sidebar {
+  container-type: inline-size;
+  container-name: sidebar;
+}
+
+@container sidebar (min-width: 300px) {
+  .card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* :has() selector — Chrome 105+, Firefox 121+, Safari 15.4+ */
+.form:has(input:invalid) {
+  border-color: red;
+}
+
+/* CSS nesting — Chrome 120+, Firefox 117+, Safari 17.2+ */
+.nav {
+  background: white;
+
+  & .link {
+    color: blue;
+
+    &:hover {
+      color: darkblue;
+    }
+  }
+}
+
+/* scrollbar-color — Chrome 121+, Firefox 64+, Safari 18.2+ */
+.scrollable {
+  scrollbar-color: #888 #f1f1f1;
+  scrollbar-width: thin;
+}
+
+/* backdrop-filter — Chrome 76+, Firefox 103+, Safari 9+ */
+.modal-overlay {
+  backdrop-filter: blur(10px);
+}
+
+/* ============================================================
+   USE CASE: adapt-scrollbar-to-contrast-preferences
+   Uses @media (prefers-contrast: more) to enforce high-contrast
+   scrollbar styling. OPTIONAL per modern-web guidance.
+   ============================================================ */
+.scroller {
+  --scrollbar-thumb: #bbb;
+  --scrollbar-track: #f1f1f1;
+
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+
+@media (prefers-contrast: more) {
+  .scroller {
+    --scrollbar-thumb: #000000;
+    --scrollbar-track: #ffffff;
+  }
+}
+
+/* ============================================================
+   USE CASE: animate-scrollbar-color-on-scroll
+   MANDATORY: Must use @property to register an interpolatable <color>
+   variable so the browser can smoothly transition scrollbar-color.
+   Uses scroll-driven animations (Limited availability).
+   VIOLATION: Missing @supports not (scrollbar-color: auto) WebKit fallback
+   for the animated variable.
+   ============================================================ */
+@property --thumb-color {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: hotpink;
+}
+
+@keyframes scrollbar-shift {
+  0%   { --thumb-color: hotpink; }
+  50%  { --thumb-color: purple; }
+  100% { --thumb-color: blue; }
+}
+
+.scroller-animated {
+  scrollbar-color: var(--thumb-color, hotpink) #f1f1f1;
+  scrollbar-width: thin;
+
+  animation: scrollbar-shift linear;
+  animation-timeline: scroll(self);
+  /* VIOLATION: Missing @supports not (scrollbar-color: auto) block
+     with ::-webkit-scrollbar-thumb fallback using var(--thumb-color, hotpink) */
+}

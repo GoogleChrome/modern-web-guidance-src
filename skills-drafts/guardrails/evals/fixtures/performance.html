@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Fixture — Performance</title>
+
+  <!-- ============================================================
+       USE CASE: optimize-preload-priority
+       VIOLATION: Missing fetchpriority="high" on LCP image preload.
+       MANDATORY rule: Use fetchpriority="high" on LCP images.
+       ============================================================ -->
+  <link rel="preload" href="hero.jpg" as="image">
+
+  <!-- VIOLATION: Font preload missing crossorigin attribute.
+       Best practice: font preloads always need crossorigin (even if same-origin). -->
+  <link rel="preload" href="secondary-font.woff2" as="font" type="font/woff2">
+
+  <link rel="stylesheet" href="performance.css">
+</head>
+<body>
+
+  <!-- ============================================================
+       USE CASE: defer-rendering-heavy-content
+       VIOLATION: content-visibility: auto on above-the-fold hero section.
+       DO NOT rule: Do not apply content-visibility: auto to elements inside
+       the initial fold viewport — it delays critical page rendering.
+       ============================================================ -->
+  <section class="hero-section">
+    <!-- USE CASE: optimize-image-priority (fetchpriority present and correct here) -->
+    <img src="hero.jpg" alt="Hero Banner" fetchpriority="high" width="1200" height="600">
+    <h1>Performance Fixture Page</h1>
+  </section>
+
+  <!-- Main content area with lazy-loaded below-fold image -->
+  <main>
+    <section class="content-area">
+      <h2>Featured Content</h2>
+      <!-- VIOLATION: loading="lazy" on above-fold image without fetchpriority.
+           DO NOT rule: Never use loading="lazy" on the LCP image. -->
+      <img src="banner.jpg" alt="Banner" loading="lazy" width="800" height="400">
+    </section>
+
+    <!-- ============================================================
+         USE CASE: defer-rendering-heavy-content (correct usage)
+         Below-fold heavy content properly deferred.
+         ============================================================ -->
+    <section class="feed-item">
+      <h3>Feed Item 1</h3>
+      <p>Long form content that benefits from deferred rendering.</p>
+    </section>
+
+    <section class="feed-item">
+      <h3>Feed Item 2</h3>
+      <p>More heavy content below the fold.</p>
+    </section>
+
+    <!-- ============================================================
+         USE CASE: search-hidden-content (hidden="until-found" variant)
+         VIOLATION: Missing beforematch event listener.
+         Best practice says to use beforematch to sync state (e.g.,
+         toggling aria-expanded, rotating chevron icons).
+         ============================================================ -->
+    <details>
+      <summary>FAQ Section</summary>
+      <div hidden="until-found" id="faq-content">
+        <h3>Frequently Asked Questions</h3>
+        <p>Answer to the first question goes here.</p>
+        <p>Answer to the second question goes here.</p>
+      </div>
+    </details>
+  </main>
+
+  <!-- ============================================================
+       USE CASE: improve-next-page-load-performance
+       VIOLATION: Speculating /logout — a state-changing URL.
+       DO NOT rule: Do not speculate URLs that trigger state changes
+       like /logout or /add-to-cart.
+       ============================================================ -->
+  <script type="speculationrules">
+  {
+    "prerender": [
+      {
+        "urls": ["/about", "/logout", "/products"]
+      }
+    ]
+  }
+  </script>
+
+  <script type="module" src="performance.js"></script>
+</body>
+</html>

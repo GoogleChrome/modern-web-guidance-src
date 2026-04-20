@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Fixture — Compat Issues</title>
+  <link rel="stylesheet" href="modern-css.css">
+</head>
+<body>
+  <!-- fetchpriority + loading=lazy conflict (DO NOT per modern-web best practices) -->
+  <img src="hero.jpg" alt="Hero" fetchpriority="high" loading="lazy" width="1200" height="600">
+
+  <!-- hidden="until-found" — limited browser support -->
+  <div hidden="until-found" id="accordion-content">
+    <p>This content is searchable but hidden until found.</p>
+  </div>
+
+  <!-- details element — Baseline Widely available, should produce no finding -->
+  <details>
+    <summary>More info</summary>
+    <p>Additional information here.</p>
+  </details>
+
+  <script type="module" src="modern-apis.js"></script>
+</body>
+</html>

@@ -1,0 +1,435 @@
+{
+  "_meta": {
+    "description": "Mapping of web platform features to recommended polyfill packages and fallback patterns. Used by the web-compat-audit skill to populate remediation recommendations.",
+    "last_updated": "2026-03-26",
+    "notes": "Entries are organized by category. Each entry includes the feature name as used by eslint-plugin-compat and MDN compat data, a recommended polyfill package (if one exists), and a fallback pattern (if no polyfill is suitable or as an alternative).",
+    "checked_against_baseline_date": "2026-03-26"
+  },
+
+  "javascript_builtins": {
+    "Array.prototype.at": {
+      "polyfill": "core-js/features/array/at",
+      "fallback": "arr[arr.length - 1] instead of arr.at(-1)",
+      "notes": "Widely supported since 2022. Polyfill is trivial."
+    },
+    "Array.prototype.findLast": {
+      "polyfill": "core-js/features/array/find-last",
+      "fallback": "[...arr].reverse().find(fn)",
+      "notes": "Available since Chrome 97, Firefox 104, Safari 15.4."
+    },
+    "Array.prototype.flat": {
+      "polyfill": "core-js/features/array/flat",
+      "fallback": "recursive reduce-concat pattern",
+      "notes": "Not available in IE 11."
+    },
+    "Array.prototype.flatMap": {
+      "polyfill": "core-js/features/array/flat-map",
+      "fallback": "arr.map(fn).flat()",
+      "notes": "Not available in IE 11."
+    },
+    "Array.prototype.includes": {
+      "polyfill": "core-js/features/array/includes",
+      "fallback": "arr.indexOf(item) !== -1",
+      "notes": "Not available in IE 11."
+    },
+    "Object.entries": {
+      "polyfill": "core-js/features/object/entries",
+      "fallback": "Object.keys(obj).map(k => [k, obj[k]])",
+      "notes": "Not available in IE 11."
+    },
+    "Object.fromEntries": {
+      "polyfill": "core-js/features/object/from-entries",
+      "fallback": "entries.reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {})",
+      "notes": "Relatively modern — Chrome 73+, Firefox 63+, Safari 12.1+."
+    },
+    "Object.hasOwn": {
+      "polyfill": "core-js/features/object/has-own",
+      "fallback": "Object.prototype.hasOwnProperty.call(obj, key)",
+      "notes": "Chrome 93+, Firefox 92+, Safari 15.4+."
+    },
+    "Object.values": {
+      "polyfill": "core-js/features/object/values",
+      "fallback": "Object.keys(obj).map(k => obj[k])",
+      "notes": "Not available in IE 11."
+    },
+    "String.prototype.replaceAll": {
+      "polyfill": "core-js/features/string/replace-all",
+      "fallback": "str.split(search).join(replacement) or regex with /g flag",
+      "notes": "Chrome 85+, Firefox 77+, Safari 13.1+."
+    },
+    "String.prototype.matchAll": {
+      "polyfill": "core-js/features/string/match-all",
+      "fallback": "loop with regex.exec()",
+      "notes": "Chrome 73+, Firefox 67+, Safari 13+."
+    },
+    "String.prototype.trimStart": {
+      "polyfill": "core-js/features/string/trim-start",
+      "fallback": "str.replace(/^\\s+/, '')",
+      "notes": "Not available in IE 11."
+    },
+    "String.prototype.trimEnd": {
+      "polyfill": "core-js/features/string/trim-end",
+      "fallback": "str.replace(/\\s+$/, '')",
+      "notes": "Not available in IE 11."
+    },
+    "Promise.allSettled": {
+      "polyfill": "core-js/features/promise/all-settled",
+      "fallback": "Promise.all(promises.map(p => p.then(v => ({status:'fulfilled',value:v}), e => ({status:'rejected',reason:e}))))",
+      "notes": "Chrome 76+, Firefox 71+, Safari 13+."
+    },
+    "Promise.any": {
+      "polyfill": "core-js/features/promise/any",
+      "fallback": "custom implementation using Promise.allSettled",
+      "notes": "Chrome 85+, Firefox 79+, Safari 14+."
+    },
+    "globalThis": {
+      "polyfill": "core-js/features/global-this",
+      "fallback": "typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : self",
+      "notes": "Chrome 71+, Firefox 65+, Safari 12.1+."
+    },
+    "structuredClone": {
+      "polyfill": "@ungap/structured-clone",
+      "fallback": "JSON.parse(JSON.stringify(obj)) for simple objects (loses functions, Date, RegExp, etc.)",
+      "notes": "Chrome 98+, Firefox 94+, Safari 15.4+. The JSON workaround doesn't handle circular refs or special types."
+    },
+    "crypto.randomUUID": {
+      "polyfill": null,
+      "fallback": "Use uuid package: import { v4 as uuidv4 } from 'uuid'",
+      "notes": "Chrome 92+, Firefox 95+, Safari 15.4+. Requires secure context (HTTPS)."
+    },
+    "AbortController": {
+      "polyfill": "abortcontroller-polyfill",
+      "fallback": null,
+      "notes": "Not available in IE 11. Polyfill is the recommended approach."
+    },
+    "queueMicrotask": {
+      "polyfill": "core-js/features/queue-microtask",
+      "fallback": "Promise.resolve().then(fn)",
+      "notes": "Chrome 71+, Firefox 69+, Safari 12.1+."
+    },
+    "AggregateError": {
+      "polyfill": "core-js/features/aggregate-error",
+      "fallback": "custom Error subclass",
+      "notes": "Chrome 85+, Firefox 79+, Safari 14+."
+    },
+    "Array.prototype.group": {
+      "polyfill": "core-js/features/array/group",
+      "fallback": "reduce-based grouping pattern",
+      "notes": "Chrome 117+, Firefox 119+, Safari 17.4+. Very recent."
+    },
+    "Iterator.prototype.flatMap": {
+      "polyfill": "core-js/features/iterator/flat-map",
+      "fallback": "Convert to array first: [...iterator].flatMap(fn)",
+      "notes": "Chrome 122+, Firefox 131+, Safari 18.2+. Very recent — iterator helpers are Stage 4 but not yet widely deployed."
+    },
+    "Set.prototype.union": {
+      "polyfill": "core-js/features/set/union",
+      "fallback": "new Set([...setA, ...setB])",
+      "notes": "Chrome 122+, Firefox 127+, Safari 17+. Set methods are very recent."
+    }
+  },
+
+  "web_apis": {
+    "IntersectionObserver": {
+      "polyfill": "intersection-observer",
+      "fallback": "if ('IntersectionObserver' in window) { /* use it */ } else { /* fallback: load all, or use scroll event listener with getBoundingClientRect */ }",
+      "notes": "Not available in IE 11. Polyfill from W3C is well-maintained."
+    },
+    "ResizeObserver": {
+      "polyfill": "resize-observer-polyfill",
+      "fallback": "if ('ResizeObserver' in window) { /* use it */ } else { /* fallback: window resize event */ }",
+      "notes": "Chrome 64+, Firefox 69+, Safari 13.1+."
+    },
+    "MutationObserver": {
+      "polyfill": "mutationobserver-shim",
+      "fallback": null,
+      "notes": "Widely supported. Only IE 9-10 need the polyfill."
+    },
+    "fetch": {
+      "polyfill": "whatwg-fetch",
+      "fallback": "XMLHttpRequest wrapper",
+      "notes": "Not available in IE 11. whatwg-fetch is the standard polyfill."
+    },
+    "URL": {
+      "polyfill": "url-polyfill",
+      "fallback": "anchor element parsing pattern",
+      "notes": "Not available in IE 11."
+    },
+    "URLSearchParams": {
+      "polyfill": "url-search-params-polyfill",
+      "fallback": "manual query string parsing",
+      "notes": "Not available in IE 11."
+    },
+    "CustomEvent": {
+      "polyfill": "custom-event-polyfill",
+      "fallback": "document.createEvent('CustomEvent') pattern",
+      "notes": "Constructor not available in IE 11. The fallback uses the older createEvent API."
+    },
+    "requestIdleCallback": {
+      "polyfill": "requestidlecallback-polyfill",
+      "fallback": "if ('requestIdleCallback' in window) { requestIdleCallback(fn) } else { setTimeout(fn, 1) }",
+      "notes": "Not available in Safari (any version). setTimeout fallback is the standard approach."
+    },
+    "navigator.clipboard": {
+      "polyfill": null,
+      "fallback": "if (navigator.clipboard) { navigator.clipboard.writeText(text) } else { document.execCommand('copy') with textarea }",
+      "notes": "Chrome 66+, Firefox 63+, Safari 13.1+. Requires secure context. execCommand is deprecated but works as fallback."
+    },
+    "BroadcastChannel": {
+      "polyfill": "broadcast-channel",
+      "fallback": "localStorage event-based cross-tab communication",
+      "notes": "Chrome 54+, Firefox 38+, Safari 15.4+. Not in IE."
+    },
+    "Web Animations API": {
+      "polyfill": "web-animations-js",
+      "fallback": "CSS animations or requestAnimationFrame",
+      "notes": "Element.animate() — Chrome 36+, Firefox 48+, Safari 13.1+."
+    },
+    "Dialog element": {
+      "polyfill": "dialog-polyfill",
+      "fallback": "custom modal implementation",
+      "notes": "<dialog> — Chrome 37+, Firefox 98+, Safari 15.4+."
+    },
+    "FormData (iterator methods)": {
+      "polyfill": "formdata-polyfill",
+      "fallback": null,
+      "notes": "FormData itself is widely supported, but iterator methods (entries, keys, values) are not in IE 11."
+    },
+    "TextEncoder": {
+      "polyfill": "text-encoding",
+      "fallback": "if ('TextEncoder' in window) { new TextEncoder().encode(str) } else { /* manual UTF-8 encoding */ }",
+      "notes": "Chrome 38+, Firefox 19+, Safari 10.1+. Not in IE 11."
+    },
+    "TextDecoder": {
+      "polyfill": "text-encoding",
+      "fallback": "if ('TextDecoder' in window) { new TextDecoder().decode(buf) } else { /* manual UTF-8 decoding */ }",
+      "notes": "Chrome 38+, Firefox 19+, Safari 10.1+. Not in IE 11."
+    },
+    "Element.scrollIntoView (smooth)": {
+      "polyfill": "smoothscroll-polyfill",
+      "fallback": "if ('scrollBehavior' in document.documentElement.style) { el.scrollIntoView({ behavior: 'smooth' }) } else { el.scrollIntoView() }",
+      "notes": "Smooth scrolling: Chrome 61+, Firefox 36+, Safari 15.4+. The basic scrollIntoView() is widely supported."
+    },
+    "CSS.supports": {
+      "polyfill": null,
+      "fallback": "if (window.CSS && window.CSS.supports) { CSS.supports('display', 'grid') } else { /* assume unsupported or use feature detection */ }",
+      "notes": "Chrome 28+, Firefox 22+, Safari 9+. Not in IE 11."
+    },
+    "PointerEvent": {
+      "polyfill": "pepjs",
+      "fallback": "if (window.PointerEvent) { /* use pointer events */ } else { /* fallback to mouse + touch events */ }",
+      "notes": "Chrome 55+, Firefox 59+, Safari 13+. PEP.js is the recommended polyfill."
+    },
+    "matchMedia": {
+      "polyfill": "matchmedia-polyfill",
+      "fallback": "if (window.matchMedia) { matchMedia('(max-width: 768px)').matches } else { /* fallback to window.innerWidth check */ }",
+      "notes": "Chrome 9+, Firefox 6+, Safari 5.1+. Widely supported; only IE 9 needs the polyfill."
+    },
+    "Intl.NumberFormat (formatRange)": {
+      "polyfill": null,
+      "fallback": "Manual string concatenation with formatted parts",
+      "notes": "Chrome 106+, Firefox 116+, Safari 15.4+. formatRange is relatively new.",
+      "remediation_type": "manual-review"
+    },
+    "Intl.DateTimeFormat (formatRange)": {
+      "polyfill": null,
+      "fallback": "Format start and end dates separately and concatenate",
+      "notes": "Chrome 76+, Firefox 91+, Safari 14.1+.",
+      "remediation_type": "manual-review"
+    }
+  },
+
+  "css_features": {
+    "CSS Grid": {
+      "polyfill": null,
+      "fallback": "Flexbox-based layout as fallback, with @supports (display: grid) { } progressive enhancement",
+      "notes": "Supported in all modern browsers. IE 11 has partial support with -ms- prefix and old spec."
+    },
+    "CSS Custom Properties": {
+      "polyfill": null,
+      "fallback": "Hardcoded values with CSS custom properties as progressive enhancement using @supports",
+      "notes": "Not available in IE 11. No viable polyfill — use build-time replacement (PostCSS plugin) or hardcoded fallbacks."
+    },
+    "CSS Container Queries": {
+      "polyfill": "container-query-polyfill",
+      "fallback": "Media queries with assumed container sizes",
+      "notes": "Chrome 105+, Firefox 110+, Safari 16+. Google's polyfill covers most use cases."
+    },
+    "CSS :has() selector": {
+      "polyfill": null,
+      "fallback": "JavaScript-based class toggling on parent elements",
+      "notes": "Chrome 105+, Firefox 121+, Safari 15.4+. No CSS-only fallback exists.",
+      "remediation_type": "manual-review"
+    },
+    "CSS Nesting": {
+      "polyfill": null,
+      "fallback": "Use a CSS preprocessor (Sass/Less) at build time, or flatten selectors manually",
+      "notes": "Chrome 120+, Firefox 117+, Safari 17.2+. Very recent — many target lists will exclude it.",
+      "remediation_type": "manual-review"
+    },
+    "gap (in Flexbox)": {
+      "polyfill": null,
+      "fallback": "margin-based spacing on flex children",
+      "notes": "Flex gap: Chrome 84+, Firefox 63+, Safari 14.1+. Grid gap is more widely supported."
+    },
+    "aspect-ratio": {
+      "polyfill": null,
+      "fallback": "padding-top percentage trick: .container { position: relative; padding-top: 56.25%; } .content { position: absolute; inset: 0; }",
+      "notes": "Chrome 88+, Firefox 89+, Safari 15+."
+    },
+    "backdrop-filter": {
+      "polyfill": null,
+      "fallback": "Solid semi-transparent background color as fallback",
+      "notes": "Chrome 76+, Firefox 103+, Safari 9+ (-webkit- prefix). Use @supports for progressive enhancement."
+    },
+    "scrollbar-color": {
+      "polyfill": null,
+      "fallback": "@supports not (scrollbar-color: auto) { ::-webkit-scrollbar pseudo-elements for WebKit browsers }",
+      "notes": "Chrome 121+, Firefox 64+, Safari 18.2+ (Newly available Baseline since 2025-12-12). Pair with scrollbar-width: thin."
+    },
+    "color-mix()": {
+      "polyfill": null,
+      "fallback": "Pre-computed color values as fallback, with @supports (color: color-mix(in srgb, red, blue)) guard",
+      "notes": "Chrome 111+, Firefox 113+, Safari 16.2+."
+    },
+    "CSS Subgrid": {
+      "polyfill": null,
+      "fallback": "Nested grids with explicit track definitions as fallback",
+      "notes": "Chrome 117+, Firefox 71+, Safari 16+.",
+      "remediation_type": "manual-review"
+    },
+    "view-transition-name": {
+      "polyfill": null,
+      "fallback": "if (document.startViewTransition) { document.startViewTransition(fn) } else { fn() }",
+      "notes": "Chrome 111+, Firefox 126+, Safari 18+. Use feature detection; gracefully degrades to instant transitions.",
+      "remediation_type": "fallback"
+    },
+    "CSS @layer": {
+      "polyfill": null,
+      "fallback": "Source order specificity management; no CSS-only fallback exists",
+      "notes": "Chrome 99+, Firefox 97+, Safari 15.4+.",
+      "remediation_type": "manual-review"
+    }
+  },
+
+  "dependency_replacements": {
+    "is-number": {
+      "native_alternative": "typeof x === 'number' && !Number.isNaN(x)",
+      "browser_support": "All browsers (typeof is universal)",
+      "notes": "Micro-utility; native typeof is universally supported. Always safe to remove.",
+      "e18e_category": "native"
+    },
+    "is-plain-object": {
+      "native_alternative": "Object.prototype.toString.call(obj) === '[object Object]'",
+      "browser_support": "All browsers",
+      "notes": "Micro-utility replaceable by native check.",
+      "e18e_category": "micro-utilities"
+    },
+    "is-regexp": {
+      "native_alternative": "obj instanceof RegExp",
+      "browser_support": "All browsers",
+      "notes": "Micro-utility; instanceof RegExp is universally supported.",
+      "e18e_category": "native"
+    },
+    "is-even": {
+      "native_alternative": "n % 2 === 0",
+      "browser_support": "All browsers",
+      "notes": "Micro-utility; modulo operator is universally supported.",
+      "e18e_category": "native"
+    },
+    "is-odd": {
+      "native_alternative": "n % 2 !== 0",
+      "browser_support": "All browsers",
+      "notes": "Micro-utility; modulo operator is universally supported.",
+      "e18e_category": "native"
+    },
+    "chalk": {
+      "replacement_package": "picocolors",
+      "browser_support": null,
+      "notes": "picocolors is ~14x smaller. Server-side only, no direct browser compat impact but reduces install size.",
+      "e18e_category": "preferred"
+    },
+    "whatwg-fetch": {
+      "native_alternative": "window.fetch",
+      "browser_support": "Chrome 42+, Firefox 39+, Safari 10.1+, Edge 14+",
+      "min_browser_versions": { "chrome": 42, "firefox": 39, "safari": 10.1, "edge": 14 },
+      "notes": "Polyfill for fetch API. Check browserslist — if all targets support fetch, this can be removed.",
+      "e18e_category": "native"
+    },
+    "intersection-observer": {
+      "native_alternative": "IntersectionObserver",
+      "browser_support": "Chrome 51+, Firefox 55+, Safari 12.1+, Edge 15+",
+      "min_browser_versions": { "chrome": 51, "firefox": 55, "safari": 12.1, "edge": 15 },
+      "notes": "Polyfill for IntersectionObserver. Check browserslist — if all targets support it natively, this can be removed.",
+      "e18e_category": "native"
+    },
+    "resize-observer-polyfill": {
+      "native_alternative": "ResizeObserver",
+      "browser_support": "Chrome 64+, Firefox 69+, Safari 13.1+, Edge 79+",
+      "min_browser_versions": { "chrome": 64, "firefox": 69, "safari": 13.1, "edge": 79 },
+      "notes": "Polyfill for ResizeObserver. Baseline Widely available since 2023.",
+      "e18e_category": "native"
+    },
+    "url-polyfill": {
+      "native_alternative": "URL, URLSearchParams",
+      "browser_support": "Chrome 32+, Firefox 19+, Safari 7+, Edge 12+",
+      "min_browser_versions": { "chrome": 32, "firefox": 19, "safari": 7, "edge": 12 },
+      "notes": "Polyfill for URL API. Only needed for IE 11.",
+      "e18e_category": "native"
+    },
+    "abortcontroller-polyfill": {
+      "native_alternative": "AbortController",
+      "browser_support": "Chrome 66+, Firefox 57+, Safari 12.1+, Edge 16+",
+      "min_browser_versions": { "chrome": 66, "firefox": 57, "safari": 12.1, "edge": 16 },
+      "notes": "Polyfill for AbortController. Baseline Widely available.",
+      "e18e_category": "native"
+    },
+    "object-assign": {
+      "native_alternative": "Object.assign() or spread syntax",
+      "browser_support": "Chrome 45+, Firefox 34+, Safari 9+, Edge 12+",
+      "min_browser_versions": { "chrome": 45, "firefox": 34, "safari": 9, "edge": 12 },
+      "notes": "Polyfill for Object.assign. Only needed for IE 11.",
+      "e18e_category": "native"
+    },
+    "array-includes": {
+      "native_alternative": "Array.prototype.includes()",
+      "browser_support": "Chrome 47+, Firefox 43+, Safari 9+, Edge 14+",
+      "min_browser_versions": { "chrome": 47, "firefox": 43, "safari": 9, "edge": 14 },
+      "notes": "Polyfill for Array.includes. Only needed for IE 11.",
+      "e18e_category": "native"
+    }
+  },
+
+  "es_syntax": {
+    "Optional chaining (?.)": {
+      "polyfill": null,
+      "fallback": "Babel plugin: @babel/plugin-transform-optional-chaining. Or manual checks: obj && obj.prop && obj.prop.nested",
+      "notes": "Chrome 80+, Firefox 72+, Safari 13.1+. This is a syntax feature — it needs a build-time transform, not a runtime polyfill.",
+      "remediation_type": "manual-review"
+    },
+    "Nullish coalescing (??)": {
+      "polyfill": null,
+      "fallback": "Babel plugin: @babel/plugin-transform-nullish-coalescing-operator. Or manual: value !== null && value !== undefined ? value : fallback",
+      "notes": "Chrome 80+, Firefox 72+, Safari 13.1+. Syntax feature — needs build-time transform.",
+      "remediation_type": "manual-review"
+    },
+    "Logical assignment (&&=, ||=, ??=)": {
+      "polyfill": null,
+      "fallback": "Babel plugin: @babel/plugin-transform-logical-assignment-operators",
+      "notes": "Chrome 85+, Firefox 79+, Safari 14+. Syntax feature.",
+      "remediation_type": "manual-review"
+    },
+    "Private class fields (#)": {
+      "polyfill": null,
+      "fallback": "Babel plugin: @babel/plugin-transform-class-properties. Or WeakMap-based privacy pattern.",
+      "notes": "Chrome 74+, Firefox 90+, Safari 14.1+. Syntax feature.",
+      "remediation_type": "manual-review"
+    },
+    "Top-level await": {
+      "polyfill": null,
+      "fallback": "Wrap in async IIFE: (async () => { const data = await fetch(...); })();",
+      "notes": "Chrome 89+, Firefox 89+, Safari 15+. Only works in ES modules.",
+      "remediation_type": "manual-review"
+    }
+  }
+}

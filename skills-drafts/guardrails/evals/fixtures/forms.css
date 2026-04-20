@@ -1,0 +1,82 @@
+/* Fixture: CSS for forms with known compatibility issues for eval testing.
+   Covers use cases: autofill-highlight-inputs, required-field-feedback,
+   form-fields-automatically-fit-contents, style-parent-with-has */
+
+/* ============================================================
+   USE CASE: autofill-highlight-inputs
+   VIOLATION: Uses :auto-fill (wrong pseudo-class name).
+   MANDATORY rule: Use :autofill — :auto-fill is incorrect.
+   ============================================================ */
+input:auto-fill {
+  border-color: green;
+  box-shadow: 0 0 0 100vmax #efe inset;
+}
+
+/* ============================================================
+   USE CASE: required-field-feedback
+   Uses :user-invalid and :user-valid pseudo-classes.
+   :user-invalid — Baseline since 2023 (widely supported).
+   ============================================================ */
+.error-msg {
+  display: none;
+  color: #d93025;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+input:user-invalid {
+  border-color: #d93025;
+  background-color: #fce8e6;
+}
+
+input:user-invalid + .error-msg {
+  display: block;
+}
+
+input:required:user-valid {
+  border-color: #188038;
+  border-width: 2px;
+}
+
+/* ============================================================
+   USE CASE: form-fields-automatically-fit-contents
+   VIOLATION: field-sizing: content without min-inline-size guard.
+   Best practice says to always pair with min-inline-size to prevent
+   the input from collapsing to zero width when empty.
+   VIOLATION: width: 100% on input overrides field-sizing behavior.
+   ============================================================ */
+textarea {
+  field-sizing: content;
+  /* VIOLATION: missing min-block-size and explicit width or height: auto */
+}
+
+input[type="text"] {
+  field-sizing: content;
+  /* VIOLATION: width overrides field-sizing behavior */
+  width: 100%;
+}
+
+/* ============================================================
+   USE CASE: style-parent-with-has
+   Uses :has(:user-invalid) to style parent containers based on
+   child form field validity. Requires :has() support.
+   ============================================================ */
+.card-section {
+  border: 1px solid #ccc;
+  border-left: 4px solid #ccc;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.card-section:has(:user-invalid) {
+  border-left-color: #d93025;
+  background-color: #fff8f8;
+}
+
+.card-section:has(:user-invalid) .status-icon::after {
+  content: "\26A0\FE0F";
+}
+
+.card-section:has(:user-valid:not(:user-invalid)) .status-icon::after {
+  content: "\2705";
+}

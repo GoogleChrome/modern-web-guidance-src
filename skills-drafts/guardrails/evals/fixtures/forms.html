@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Fixture — Forms & Accessibility</title>
+  <link rel="stylesheet" href="forms.css">
+</head>
+<body>
+
+  <!-- ============================================================
+       USE CASE: autofill-address-form
+       VIOLATION: Missing autocomplete attributes on address fields.
+       Best practice says every input SHOULD have appropriate autocomplete.
+       ============================================================ -->
+  <form id="address-form">
+    <h2>Shipping Address</h2>
+
+    <label for="addr-name">Full Name</label>
+    <input type="text" id="addr-name" name="name" required>
+
+    <label for="addr-street">Street Address</label>
+    <!-- VIOLATION: should use autocomplete="street-address" -->
+    <textarea id="addr-street" name="street" required></textarea>
+
+    <label for="addr-city">City</label>
+    <!-- VIOLATION: should use autocomplete="address-level2" -->
+    <input type="text" id="addr-city" name="city" required>
+
+    <label for="addr-zip">ZIP Code</label>
+    <!-- VIOLATION: should use autocomplete="postal-code" -->
+    <input type="text" id="addr-zip" name="zip" inputmode="numeric" required>
+
+    <label for="addr-country">Country</label>
+    <!-- VIOLATION: should use autocomplete="country" -->
+    <select id="addr-country" name="country">
+      <option value="us">United States</option>
+      <option value="uk">United Kingdom</option>
+    </select>
+
+    <button type="submit">Proceed to Payment</button>
+  </form>
+
+  <!-- ============================================================
+       USE CASE: autofill-sign-in-form
+       VIOLATION: Uses autocomplete="password" instead of "current-password".
+       MANDATORY rule: Use autocomplete="current-password" for sign-in.
+       ============================================================ -->
+  <form id="sign-in-form">
+    <h2>Sign In</h2>
+
+    <label for="signin-email">Email</label>
+    <input type="email" id="signin-email" name="email" autocomplete="username" required>
+
+    <label for="signin-password">Password</label>
+    <!-- VIOLATION: should be autocomplete="current-password" -->
+    <input type="password" id="signin-password" name="password" autocomplete="password" required>
+
+    <button type="submit">Sign In</button>
+  </form>
+
+  <!-- ============================================================
+       USE CASE: autofill-sign-up-form
+       VIOLATION: Uses autocomplete="password" instead of "new-password".
+       MANDATORY rule: Use autocomplete="new-password" for sign-up.
+       ============================================================ -->
+  <form id="sign-up-form">
+    <h2>Create Account</h2>
+
+    <label for="signup-email">Email</label>
+    <input type="email" id="signup-email" name="email" autocomplete="username" required>
+
+    <label for="signup-password">Password</label>
+    <!-- VIOLATION: should be autocomplete="new-password" -->
+    <input type="password" id="signup-password" name="password" autocomplete="password" required>
+
+    <button type="submit">Create account</button>
+  </form>
+
+  <!-- ============================================================
+       USE CASE: autofill-payment-form
+       VIOLATION: Uses type="number" on card number input.
+       DO NOT rule: DO NOT use type="number" for card numbers — it adds
+       increment/decrement controls and strips leading zeros.
+       Should use type="text" inputmode="numeric".
+       ============================================================ -->
+  <form id="payment-form">
+    <h2>Payment Details</h2>
+
+    <label for="cc-name">Name on Card</label>
+    <input type="text" id="cc-name" name="cc-name" autocomplete="cc-name" required>
+
+    <label for="cc-number">Card Number</label>
+    <!-- VIOLATION: should be type="text" inputmode="numeric" -->
+    <input type="number" id="cc-number" name="cc-number" autocomplete="cc-number" required>
+
+    <label for="cc-exp">Expiration</label>
+    <input type="text" id="cc-exp" name="cc-exp" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5" required>
+
+    <label for="cc-csc">Security Code</label>
+    <!-- VIOLATION: should NOT use type="password" for CSC per best practices -->
+    <input type="password" id="cc-csc" name="cc-csc" autocomplete="cc-csc" inputmode="numeric" maxlength="4" required>
+
+    <button type="submit">Pay Now</button>
+  </form>
+
+  <!-- ============================================================
+       USE CASE: required-field-feedback + style-parent-with-has
+                 + accessible-error-announcement
+       This section uses :user-invalid, :has(), and aria-errormessage
+       to demonstrate validation feedback patterns.
+       ============================================================ -->
+  <form id="profile-form">
+    <h2>Profile Settings</h2>
+
+    <div class="card-section">
+      <div class="header">
+        <h3>Contact Info</h3>
+        <span class="status-icon"></span>
+      </div>
+
+      <div class="field">
+        <label for="profile-email">Email</label>
+        <input type="email" id="profile-email" name="email" required
+               aria-errormessage="email-error">
+        <span id="email-error" class="error-msg">Please enter a valid email address.</span>
+      </div>
+
+      <div class="field">
+        <label for="profile-phone">Phone</label>
+        <input type="tel" id="profile-phone" name="phone" required
+               aria-errormessage="phone-error">
+        <span id="phone-error" class="error-msg">This field is required.</span>
+      </div>
+    </div>
+
+    <!-- USE CASE: form-fields-automatically-fit-contents -->
+    <div class="field">
+      <label for="profile-bio">Bio</label>
+      <!-- field-sizing: content is applied via CSS -->
+      <textarea id="profile-bio" name="bio" placeholder="Tell us about yourself..."></textarea>
+    </div>
+
+    <div class="field">
+      <label for="profile-username">Username</label>
+      <!-- field-sizing: content is applied via CSS -->
+      <input type="text" id="profile-username" name="username" placeholder="@handle">
+    </div>
+
+    <button type="submit">Save Profile</button>
+  </form>
+
+  <script type="module" src="forms.js"></script>
+</body>
+</html>
