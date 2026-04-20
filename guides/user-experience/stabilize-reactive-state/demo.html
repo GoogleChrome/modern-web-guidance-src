@@ -6,8 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stabilize Reactive State: Temporal vs Standard Date</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Load Temporal Polyfill for browser support during demo -->
-  <script src="https://cdn.jsdelivr.net/npm/@js-temporal/polyfill@0.4.4/dist/index.umd.js"></script>
   <style>
     :root {
       --bg-color: #0f172a;
@@ -271,7 +269,7 @@
 
     <div id="unsupportedBanner" class="banner">
       <div class="banner-icon">🚫</div>
-      <div>This demo requires a browser with native Temporal support</div>
+      <div>This demo requires a browser with native Temporal support. Polyfill has been added.</div>
     </div>
 
     <div class="dashboard">
@@ -361,135 +359,127 @@
   </div>
 
   <script>
-    // Elements
-    const dateValue = document.getElementById('date-value');
-    const datePointer = document.getElementById('date-pointer');
-    const extendDateBtn = document.getElementById('extend-date-btn');
-    const dateRefChanged = document.getElementById('date-ref-changed');
-    const dateRenderCount = document.getElementById('date-render-count');
-    const datePrevRef = document.getElementById('date-prev-ref');
-    const dateCurrRef = document.getElementById('date-curr-ref');
+              (async () => {
+                // 1. Element selections
+                const dateValue = document.getElementById('date-value');
+                const datePointer = document.getElementById('date-pointer');
+                const extendDateBtn = document.getElementById('extend-date-btn');
+                const dateRefChanged = document.getElementById('date-ref-changed');
+                const dateRenderCount = document.getElementById('date-render-count');
+                const datePrevRef = document.getElementById('date-prev-ref');
+                const dateCurrRef = document.getElementById('date-curr-ref');
 
-    const temporalValue = document.getElementById('temporal-value');
-    const temporalPointer = document.getElementById('temporal-pointer');
-    const extendTemporalBtn = document.getElementById('extend-temporal-btn');
-    const temporalRefChanged = document.getElementById('temporal-ref-changed');
-    const temporalRenderCount = document.getElementById('temporal-render-count');
-    const temporalPrevRef = document.getElementById('temporal-prev-ref');
-    const temporalCurrRef = document.getElementById('temporal-curr-ref');
+              const temporalValue = document.getElementById('temporal-value');
+              const temporalPointer = document.getElementById('temporal-pointer');
+              const extendTemporalBtn = document.getElementById('extend-temporal-btn');
+              const temporalRefChanged = document.getElementById('temporal-ref-changed');
+              const temporalRenderCount = document.getElementById('temporal-render-count');
+              const temporalPrevRef = document.getElementById('temporal-prev-ref');
+              const temporalCurrRef = document.getElementById('temporal-curr-ref');
 
-    const logContent = document.getElementById('log-content');
+              const logContent = document.getElementById('log-content');
 
-    // Helper to generate a unique ID based on memory reference (simulated)
-    const pointerMap = new WeakMap();
-    let currentId = 1;
-    function getPointerId(obj) {
-      if (!pointerMap.has(obj)) {
-        pointerMap.set(obj, `0x${currentId.toString(16).padStart(4, '0')}`);
-        currentId++;
-      }
-      return pointerMap.get(obj);
-    }
+              // 2. Polyfill Check and Load
+              if (typeof Temporal === 'undefined') {
+                const unsupportedBanner = document.getElementById('unsupportedBanner');
+                unsupportedBanner.style.display = 'flex';
+                try {
+                  const module = await import('https://esm.sh/@js-temporal/polyfill');
+                  globalThis.Temporal = module.Temporal;
+                } catch (e) {
+                  console.error('Failed to load Temporal polyfill:', e);
+                  return;
+                }
+              }
 
-    // --- Standard Date Setup ---
-    let dateState = { deadline: new Date() };
-    let prevDateStateValue = dateState.deadline; // Reference tracker
-    let dateRenders = 0;
+              // 3. Helper Functions
+              const pointerMap = new WeakMap();
+              let currentId = 1;
+              function getPointerId(obj) {
+                if (!pointerMap.has(obj)) {
+                  pointerMap.set(obj, `0x${currentId.toString(16).padStart(4, '0')}`);
+                  currentId++;
+                }
+                return pointerMap.get(obj);
+              }
 
-    function renderDateView() {
-      // simulate state reading
-      dateValue.textContent = dateState.deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      datePointer.textContent = `Ref ID: ${getPointerId(dateState.deadline)}`;
+              function logEntry(message, type) {
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                logContent.prepend(entry);
+              }
 
-      datePrevRef.textContent = prevDateStateValue ? getPointerId(prevDateStateValue) : 'null';
-      dateCurrRef.textContent = getPointerId(dateState.deadline);
+              // 4. Standard Date Setup & Logic
+              let dateState = { deadline: new Date() };
+              let prevDateStateValue = dateState.deadline; // Reference tracker
+              let dateRenders = 0;
 
-      // Simulate framework update check: prev === next
-      const referenceChanged = prevDateStateValue !== dateState.deadline;
+              function renderDateView() {
+              dateValue.textContent = dateState.deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              datePointer.textContent = `Ref ID: ${getPointerId(dateState.deadline)}`;
+              datePrevRef.textContent = prevDateStateValue ? getPointerId(prevDateStateValue) : 'null';
+              dateCurrRef.textContent = getPointerId(dateState.deadline);
 
-      if (referenceChanged) {
-        dateRenders++;
-        dateRenderCount.textContent = dateRenders;
-        dateRefChanged.textContent = "Yes";
-        dateRefChanged.className = "metric-value success";
-        logEntry("Standard Date: Reference CHANGED. UI Updated.", "immutable");
-      } else {
-        // Framework would SKIP render here!
-        dateRefChanged.textContent = "No";
-        dateRefChanged.className = "metric-value error";
-        logEntry("Standard Date: Reference SAME. UI Re-render would be SKIPPED by React/Vue.", "mutation");
-      }
+              const referenceChanged = prevDateStateValue !== dateState.deadline;
+              if (referenceChanged) {
+                dateRenders++;
+                dateRenderCount.textContent = dateRenders;
+                dateRefChanged.textContent = "Yes";
+                dateRefChanged.className = "metric-value success";
+                logEntry("Standard Date: Reference CHANGED. UI Updated.", "immutable");
+              } else {
+              dateRefChanged.textContent = "No";
+              dateRefChanged.className = "metric-value error";
+              logEntry("Standard Date: Reference SAME. UI Re-render would be SKIPPED by React.", "mutation");
+            }
+              prevDateStateValue = dateState.deadline;
+            }
 
-      prevDateStateValue = dateState.deadline;
-    }
+              extendDateBtn.addEventListener('click', () => {
+              dateState.deadline.setHours(dateState.deadline.getHours() + 1);
+              logEntry(`Mutating Date setup: ${getPointerId(dateState.deadline)}`, "mutation");
+              renderDateView();
+            });
 
-    extendDateBtn.addEventListener('click', () => {
-      // MUTATION: Mutates object in place
-      dateState.deadline.setHours(dateState.deadline.getHours() + 1);
+              // 5. Temporal Setup & Logic
+              let temporalState = { deadline: Temporal.Now.plainDateTimeISO() };
+              let prevTemporalStateValue = temporalState.deadline;
+              let temporalRenders = 0;
 
-      // Trigger side-effect (simulating parent state update)
-      logEntry(`Mutating Date setup: ${getPointerId(dateState.deadline)}`, "mutation");
-      renderDateView();
-    });
+              function renderTemporalView() {
+                temporalValue.textContent = temporalState.deadline.toPlainTime().toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' });
+                temporalPointer.textContent = `Ref ID: ${getPointerId(temporalState.deadline)}`;
+              temporalPrevRef.textContent = prevTemporalStateValue ? getPointerId(prevTemporalStateValue) : 'null';
+              temporalCurrRef.textContent = getPointerId(temporalState.deadline);
 
-    // --- Temporal Setup ---
-    // Make sure Temporal is supported
-    if (typeof Temporal === 'undefined') {
-      const unsupportedBanner = document.getElementById('unsupportedBanner');
-      unsupportedBanner.style.display = 'flex';
-    }
+              const referenceChanged = prevTemporalStateValue !== temporalState.deadline;
+              if (referenceChanged) {
+                temporalRenders++;
+                temporalRenderCount.textContent = temporalRenders;
+                temporalRefChanged.textContent = "Yes";
+                temporalRefChanged.className = "metric-value success";
+                logEntry("Temporal: Reference CHANGED. UI Update triggered correctly.", "immutable");
+              } else {
+                temporalRefChanged.textContent = "No";
+                temporalRefChanged.className = "metric-value error";
+              }
+              prevTemporalStateValue = temporalState.deadline;
+            }
 
-    let temporalState = { deadline: Temporal.Now.plainDateTimeISO() };
-    let prevTemporalStateValue = temporalState.deadline;
-    let temporalRenders = 0;
+              extendTemporalBtn.addEventListener('click', () => {
+              temporalState.deadline = temporalState.deadline.add({ hours: 1 });
+              logEntry(`Creating new Temporal object: ${getPointerId(temporalState.deadline)}`, "immutable");
+              renderTemporalView();
+            });
 
-    function renderTemporalView() {
-      temporalValue.textContent = temporalState.deadline.toPlainTime().toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' });
-      temporalPointer.textContent = `Ref ID: ${getPointerId(temporalState.deadline)}`;
-
-      temporalPrevRef.textContent = prevTemporalStateValue ? getPointerId(prevTemporalStateValue) : 'null';
-      temporalCurrRef.textContent = getPointerId(temporalState.deadline);
-
-      const referenceChanged = prevTemporalStateValue !== temporalState.deadline;
-
-      if (referenceChanged) {
-        temporalRenders++;
-        temporalRenderCount.textContent = temporalRenders;
-        temporalRefChanged.textContent = "Yes";
-        temporalRefChanged.className = "metric-value success";
-        logEntry("Temporal: Reference CHANGED. UI Update triggered correctly.", "immutable");
-      } else {
-        temporalRefChanged.textContent = "No";
-        temporalRefChanged.className = "metric-value error";
-      }
-
-      prevTemporalStateValue = temporalState.deadline;
-    }
-
-    extendTemporalBtn.addEventListener('click', () => {
-      // IMMUTABLE UPDATE: Returns new object
-      temporalState.deadline = temporalState.deadline.add({ hours: 1 });
-
-      logEntry(`Creating new Temporal object: ${getPointerId(temporalState.deadline)}`, "immutable");
-      renderTemporalView();
-    });
-
-    function logEntry(message, type) {
-      const entry = document.createElement('div');
-      entry.className = `log-entry ${type}`;
-      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-      logContent.prepend(entry);
-    }
-
-    // Initial Render
-    // Force initial increment
-    prevDateStateValue = null;
-    prevTemporalStateValue = null;
-    renderDateView();
-    renderTemporalView();
-
-  </script>
-
+              // 6. Initial Render
+              // Force initial increment
+              prevDateStateValue = null;
+              prevTemporalStateValue = null;
+              renderDateView();
+              renderTemporalView();
+            })();
+          </script>
 </body>
-
 </html>

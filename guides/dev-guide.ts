@@ -233,7 +233,12 @@ async function generateTask(targetDir: string): Promise<void> {
 
     process.env.HOME = tempHome;
 
-    const userPrompt = `Read ${GUIDE_FILE} to understand what web development guidance is being provided.
+    let guideFileName = 'guide.md';
+    if (!fs.existsSync(path.join(targetDir, 'guide.md')) && fs.existsSync(path.join(targetDir, 'SKILL.md'))) {
+      guideFileName = 'SKILL.md';
+    }
+
+    const userPrompt = `Read ${guideFileName} to understand what web development guidance is being provided.
 Read base-app.html to understand the existing web app (the "${baseApp}" app) that the developer is working on.
 
 Generate a ${TASK_FILE} file containing 1–4 realistic test prompts that a web developer would send to an AI coding assistant to accomplish the goal described in this guide.
@@ -257,7 +262,7 @@ Rules:
 - Each prompt must be on its own line, prefixed with "- ", containing absolutely no internal line breaks.
 - When writing files, you MUST use your built-in structured file editing tools (e.g., \`write_file\` or \`replace\`). Do not use shell commands (like \`cat\`, \`echo\`, or heredocs \`<<\`) to create files in the terminal.
 
-Only create the ${TASK_FILE} file. Do not modify any other files.`;
+Only create the ${TASK_FILE} file in the root of your working directory. Do not modify any other files.`;
 
     console.log(`Generating ${TASK_FILE} via Gemini CLI...`);
 
@@ -271,7 +276,15 @@ Only create the ${TASK_FILE} file. Do not modify any other files.`;
       throw new Error(`Gemini CLI exited with code ${exitCode}`);
     }
 
-    const generatedFile = path.join(workDir, TASK_FILE);
+    let generatedFile = path.join(workDir, TASK_FILE);
+    if (!fs.existsSync(generatedFile)) {
+      // Check if the agent created it in tasks/ subdirectory
+      const fallbackFile = path.join(workDir, 'tasks', TASK_FILE);
+      if (fs.existsSync(fallbackFile)) {
+        generatedFile = fallbackFile;
+      }
+    }
+
     if (fs.existsSync(generatedFile)) {
       const targetPath = path.join(targetDir, 'tasks', TASK_FILE);
       fs.mkdirSync(path.dirname(targetPath), { recursive: true });
@@ -438,7 +451,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
   }
 
   const taskStatus = inv.hasTask ? 'exists' : (result?.success ? 'generated' : 'not generated');
-  console.log(`   ${'task'.padEnd(21)} ${inv.hasTask || result?.success ? '\u2705' : '\u274c'} ${taskStatus}`);
+  console.log(`   ${TASK_FILE.padEnd(21)} ${inv.hasTask || result?.success ? '\u2705' : '\u274c'} ${taskStatus}`);
 
   console.log(`\nAll generated files are in ${relDir}/`);
   if (result?.success) {
