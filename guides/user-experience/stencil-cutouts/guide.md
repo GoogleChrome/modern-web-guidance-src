@@ -74,4 +74,3 @@ If a browser does not support `mask-image` or the prefixed version:
   background-color: #f0f0f0; /* Fallback background */
 }
 ```
-```
