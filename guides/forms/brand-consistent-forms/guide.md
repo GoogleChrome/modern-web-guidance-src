@@ -245,11 +245,10 @@ input[type="range"]::-webkit-slider-runnable-track {
 
 2. **Add JavaScript**: Update the variable on the `input` event:
 ```javascript
-if (!CSS.supports('accent-color', '#6200ee')) {
+if (!CSS.supports('accent-color')) {
   const slider = document.getElementById('volume');
   slider.addEventListener('input', (e) => {
     e.target.style.setProperty('--progress', `${e.target.value}%`);
   });
 }
 ```
-
