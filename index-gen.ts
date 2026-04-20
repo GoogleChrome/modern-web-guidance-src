@@ -9,7 +9,7 @@
  * Defaults to json+md output. Output files go to the source directory.
  *
  * Requires gh CLI installed and authenticated.
- * To add a new source or output format, edit the `sourceBuilders` or `formats`
+ * To add a new source or output format, edit the `sources` or `formats`
  * registries near the top of this file.
  */
 
@@ -58,26 +58,31 @@ interface Skill {
   license: string | null;
 }
 
-interface GuideRow extends GitInfo {
-  guide: string;
+interface IssueMeta {
+  issueNumber: number | null;
+  issueOpen: boolean | null;
+}
+
+/** Row fields every source shares. Enables column definitions that work across sources. */
+interface BaseRow extends GitInfo, IssueMeta {
+  path: string;     // short display path (directory name)
+  pathUrl: string;  // clickable URL for the path cell (repo-tree or file link)
+}
+
+interface GuideRow extends BaseRow {
   name: string;
   category: string | null;
   description: string;
   featureIds: string[];
   status: GuideStatus;
   has: string[];
-  issueNumber: number | null;
-  issueOpen: boolean | null;
 }
 
-interface SkillRow extends GitInfo {
-  skill: string;
+interface SkillRow extends BaseRow {
   name: string;
   source: string;
   description: string;
   license: string | null;
-  issueNumber: number | null;
-  issueOpen: boolean | null;
 }
 
 type Column<R> = {
@@ -95,6 +100,19 @@ interface Source<R> {
   columns: Record<string, Column<R>>;
 }
 
+/** Per-source configuration. Everything the dispatcher needs lives here — no literal data in builder bodies. */
+interface SourceConfig<R extends BaseRow> {
+  dir: string;
+  title: string;
+  /** GitHub label used to find issues for this source. */
+  issueLabel: string;
+  /** Comparator applied to rows before rendering. */
+  sort: (a: R, b: R) => number;
+  columns: Record<string, Column<R>>;
+  /** Produce the raw rows. Sort + render happen in the dispatcher. */
+  build: () => Promise<R[]>;
+}
+
 type Format = {
   ext: string;
   render: (source: Source<any>) => string;
@@ -105,12 +123,6 @@ type Format = {
 // Implementations are below; function declarations are hoisted.
 // =================================================================
 
-/** Registered sources. Each builder produces one index. */
-const sourceBuilders: Record<string, () => Promise<Source<any>>> = {
-  guides: buildGuideSource,
-  skills: buildSkillSource,
-};
-
 /** Registered output formats. */
 const formats: Record<string, Format> = {
   json: {
@@ -120,7 +132,10 @@ const formats: Record<string, Format> = {
   md: {
     ext: 'md',
     render ({ rows, columns, title }) {
-      const keys = Object.keys(columns).filter(k => columns[k].md !== false);
+      const keys: string[] = [];
+      for (const k in columns) {
+        if (columns[k].md !== false) keys.push(k);
+      }
       const headings = keys.map(k => columns[k].heading ?? k);
       const separator = ', ';
       const empty = '—';
@@ -149,7 +164,8 @@ const formats: Record<string, Format> = {
   csv: {
     ext: 'csv',
     render ({ rows, columns }) {
-      const keys = Object.keys(columns);
+      const keys: string[] = [];
+      for (const k in columns) keys.push(k);
       const headings = keys.map(k => columns[k].heading ?? k);
       const separator = ', ';
       const escape = (s: string) =>
@@ -168,12 +184,108 @@ const formats: Record<string, Format> = {
   },
 };
 
-// --- Source builders ---
+// --- Shared column pieces (referenced by per-source configs) ---
 
-/** Build the guides index source. */
-async function buildGuideSource (): Promise<Source<GuideRow>> {
+// Fetched once at module load; referenced by shared column definitions.
+const authorMap = await buildAuthorMap();
+
+/**
+ * Column definitions shared across every source. Each source picks columns
+ * from here by key so rendering, headings, and MD/CSV behavior live in one
+ * place — fixes propagate to every index automatically.
+ */
+const sharedColumns: Record<string, Column<BaseRow>> = {
+  path: {
+    heading: 'Path',
+    md: r => `[\`${r.path}\`](${r.pathUrl})`,
+  },
+  lastUpdated: {
+    heading: 'Updated',
+    md: r => r.lastUpdated ? formatRelative(r.lastUpdated) : null,
+  },
+  lastAuthor: {
+    heading: 'Author',
+    md: r => {
+      if (!r.lastAuthor) return null;
+      const user = authorMap.get(r.lastAuthor);
+      return user ? `[${r.lastAuthor}](https://github.com/${user})` : r.lastAuthor;
+    },
+  },
+  issueNumber: {
+    heading: 'Issue',
+    md: r => {
+      const link = issueLink(r.issueNumber);
+      if (!link) return null;
+      return `${issueEmoji[r.issueOpen ? 'open' : 'closed']} ${link}`;
+    },
+  },
+  issueOpen: { heading: 'Issue Open', md: false },
+};
+
+const statusEmoji: Record<GuideStatus, string> = {
+  'eval-ready': '🟢',
+  'needs-test': '🟠',
+  'needs-calibration': '🟠',
+  'needs-expectations': '🟠',
+  'stub': '🟠',
+  'incomplete': '🔴',
+};
+
+const issueEmoji = {
+  open: '🟢',
+  closed: '🟣',
+};
+
+/** Shared comparator: newest commit first; nulls at the end. */
+const byLastUpdatedDesc = (a: BaseRow, b: BaseRow) =>
+  (b.lastUpdated ?? '').localeCompare(a.lastUpdated ?? '');
+
+/** Registered sources. Each entry is fully self-contained. */
+const sources: Record<string, SourceConfig<any>> = {
+  guides: ({
+    dir: 'guides',
+    title: 'Guide Index',
+    issueLabel: 'new-use-case',
+    sort: byLastUpdatedDesc,
+    columns: Object.assign(Object.create(sharedColumns), {
+      name: { md: false },
+      category: {
+        md: r => r.category ? `[${r.category}](https://github.com/${REPO}/tree/main/guides/${r.category})` : null,
+      },
+      description: {},
+      featureIds: {
+        heading: 'Feature IDs',
+        link: v => `https://webstatus.dev/features/${v}`,
+      },
+      status: {
+        md: r => `${statusEmoji[r.status] ?? ''} ${r.status}`,
+      },
+      has: {},
+    } satisfies Record<string, Column<GuideRow>>),
+    build: buildGuideRows,
+  } satisfies SourceConfig<GuideRow>),
+
+  skills: ({
+    dir: 'skills-drafts',
+    title: 'Skill Index',
+    issueLabel: 'new-skill',
+    sort: byLastUpdatedDesc,
+    columns: Object.assign(Object.create(sharedColumns), {
+      name: {},
+      source: {},
+      description: {},
+      license: {},
+    } satisfies Record<string, Column<SkillRow>>),
+    build: buildSkillRows,
+  } satisfies SourceConfig<SkillRow>),
+};
+
+// --- Row builders ---
+
+/** Produce the guides rows. */
+async function buildGuideRows (): Promise<GuideRow[]> {
   // Start async work early so it runs during sync scanning
-  const issuesPromise = fetchIssues('new-use-case');
+  const issuesPromise = fetchIssues(sources.guides.issueLabel);
 
   // Suppress the "dry run" log from sync-use-cases importing its env setup.
   // .finally guarantees console.log is restored even if the import throws.
@@ -187,15 +299,14 @@ async function buildGuideSource (): Promise<Source<GuideRow>> {
   const inventoryByName = new Map(guides.map(g => [g.name, g]));
 
   // Await remaining async work in parallel
-  const [allUseCases, gitInfoMap, authorMap] = await Promise.all([
+  const [allUseCases, gitInfoMap] = await Promise.all([
     issuesPromise,
     batchGitInfo(preparedGuides.map(g => g.relativeSubdir)),
-    buildAuthorMap(),
   ]);
 
   const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(allUseCases);
 
-  const rows: GuideRow[] = preparedGuides.map(g => {
+  return preparedGuides.map(g => {
     const issue = nameToIssueMap.get(g.name) || subdirToIssueMap.get(g.relativeSubdir);
     const inv = inventoryByName.get(g.name);
 
@@ -208,8 +319,10 @@ async function buildGuideSource (): Promise<Source<GuideRow>> {
       }
     }
 
+    const path = g.relativeSubdir.replace(/^guides\//, '');
     return {
-      guide: g.relativeSubdir.replace(/^guides\//, ''),
+      path,
+      pathUrl: `https://github.com/${REPO}/tree/main/guides/${path}`,
       name: g.name,
       category: inv?.category ?? null,
       description: g.description,
@@ -221,66 +334,12 @@ async function buildGuideSource (): Promise<Source<GuideRow>> {
       issueOpen: issue ? issue.state === 'OPEN' : null,
     };
   });
-
-  rows.sort((a, b) => (b.lastUpdated ?? '').localeCompare(a.lastUpdated ?? ''));
-
-  const statusEmoji: Record<GuideStatus, string> = {
-    'eval-ready': '🟢',
-    'needs-test': '🟠',
-    'needs-calibration': '🟠',
-    'needs-expectations': '🟠',
-    'stub': '🟠',
-    'incomplete': '🔴',
-  };
-
-  const columns: Record<string, Column<GuideRow>> = {
-    guide: {
-      md: r => `[\`${r.guide}\`](https://github.com/${REPO}/tree/main/guides/${r.guide})`,
-    },
-    name: { md: false },
-    category: {
-      md: r => r.category ? `[${r.category}](https://github.com/${REPO}/tree/main/guides/${r.category})` : null,
-    },
-    description: {},
-    featureIds: {
-      heading: 'Feature IDs',
-      link: v => `https://webstatus.dev/features/${v}`,
-    },
-    status: {
-      md: r => `${statusEmoji[r.status] ?? ''} ${r.status}`,
-    },
-    has: {},
-    lastUpdated: {
-      heading: 'Updated',
-      md: r => r.lastUpdated ? formatRelative(r.lastUpdated) : null,
-    },
-    lastAuthor: {
-      heading: 'Author',
-      md: r => {
-        if (!r.lastAuthor) return null;
-        const user = authorMap.get(r.lastAuthor);
-        return user ? `[${r.lastAuthor}](https://github.com/${user})` : r.lastAuthor;
-      },
-    },
-    issueNumber: {
-      heading: 'Issue',
-      md: r => {
-        const link = issueLink(r.issueNumber);
-        if (!link) return null;
-        const emoji = r.issueOpen ? '🟢' : '🟣';
-        return `${emoji} ${link}`;
-      },
-    },
-    issueOpen: { heading: 'Issue Open', md: false },
-  };
-
-  return { dir: 'guides', title: 'Guide Index', rows, columns };
 }
 
-/** Build the skills index source. */
-async function buildSkillSource (): Promise<Source<SkillRow>> {
+/** Produce the skills rows. */
+async function buildSkillRows (): Promise<SkillRow[]> {
   // Start async work early so it runs during sync scanning
-  const issuesPromise = fetchIssues('new-skill');
+  const issuesPromise = fetchIssues(sources.skills.issueLabel);
 
   const skills = [
     ...scanSkillsIn(guidesDir, 'guides'),
@@ -302,10 +361,11 @@ async function buildSkillSource (): Promise<Source<SkillRow>> {
     }
   }
 
-  const rows: SkillRow[] = skills.map(s => {
+  return skills.map(s => {
     const issue = dirToIssue.get(s.dir);
     return {
-      skill: s.dir,
+      path: s.dir,
+      pathUrl: `https://github.com/${REPO}/blob/main/${s.source}/${s.dir}/SKILL.md`,
       name: s.name,
       source: s.source,
       description: s.description,
@@ -315,27 +375,6 @@ async function buildSkillSource (): Promise<Source<SkillRow>> {
       issueOpen: issue ? issue.state === 'OPEN' : null,
     };
   });
-
-  rows.sort((a, b) => a.skill.localeCompare(b.skill));
-
-  const columns: Record<string, Column<SkillRow>> = {
-    skill: {
-      md: r => `[\`${r.skill}\`](https://github.com/${REPO}/blob/main/${r.source}/${r.skill}/SKILL.md)`,
-    },
-    name: {},
-    source: {},
-    description: {},
-    license: {},
-    lastUpdated: { heading: 'Updated' },
-    lastAuthor: { heading: 'Author' },
-    issueNumber: {
-      heading: 'Issue',
-      md: r => issueLink(r.issueNumber),
-    },
-    issueOpen: { heading: 'Issue Open' },
-  };
-
-  return { dir: 'skills-drafts', title: 'Skill Index', rows, columns };
 }
 
 /** Scan a directory for SKILL.md files and parse their frontmatter. */
@@ -534,12 +573,12 @@ const { values, positionals } = parseArgs({
   strict: false,
   allowPositionals: true,
 });
-const sourceNames = positionals.length > 0 ? positionals : Object.keys(sourceBuilders);
+const sourceNames = positionals.length > 0 ? positionals : Object.keys(sources);
 const outputTypes = (values.type as string).split(',').map(s => s.trim());
 
 for (const name of sourceNames) {
-  if (!(name in sourceBuilders)) {
-    console.error(`Unknown source "${name}". Use ${Object.keys(sourceBuilders).join(', ')}.`);
+  if (!(name in sources)) {
+    console.error(`Unknown source "${name}". Use ${Object.keys(sources).join(', ')}.`);
     process.exit(1);
   }
 }
@@ -554,19 +593,25 @@ for (const t of outputTypes) {
 // Build all sources in parallel
 console.log(`Building ${sourceNames.join(', ')}…`);
 const t0 = performance.now();
-const sources = await Promise.all(
-  sourceNames.map(async name => ({ name, source: await sourceBuilders[name]() })),
+const built = await Promise.all(
+  sourceNames.map(async name => {
+    const s = sources[name];
+    const rows = await s.build();
+    rows.sort(s.sort);
+    return { name, s, rows };
+  }),
 );
 const totalMs = performance.now() - t0;
 
-for (const { name, source } of sources) {
-  console.log(`  ${name}: ${source.rows.length} entries`);
+for (const { name, s, rows } of built) {
+  console.log(`  ${name}: ${rows.length} entries`);
+  const source: Source<any> = { dir: s.dir, title: s.title, columns: s.columns, rows };
   for (const t of outputTypes) {
     const format = formats[t];
     const file = `index.${format.ext}`;
-    const outPath = path.join(rootDir, source.dir, file);
+    const outPath = path.join(rootDir, s.dir, file);
     fs.writeFileSync(outPath, format.render(source));
-    console.log(`    → ${source.dir}/${file}`);
+    console.log(`    → ${s.dir}/${file}`);
   }
 }
 console.log(`Done in ${(totalMs / 1000).toFixed(1)}s`);
