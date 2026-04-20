@@ -1,0 +1,5 @@
+- The element with class `.shaped-element` has the `mask-image` property applied.
+- The element with class `.shaped-element` has the `-webkit-mask-image` property applied for older browser support.
+- The mask references a valid image URL or an SVG mask ID.
+- A fallback strategy is included, such as a simpler shape with `clip-path` or graceful degradation to a rectangular shape.
+- The layout does not break if the mask fails to load or is unsupported.
