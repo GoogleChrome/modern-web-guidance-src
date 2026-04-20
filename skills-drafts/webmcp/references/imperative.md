@@ -20,7 +20,8 @@ navigator.modelContext.registerTool({
   execute() {
     const prefs = localStorage.getItem("user_prefs");
     return prefs ? JSON.parse(prefs) : { theme: "light" };
-  }
+  },
+  annotations: { readOnlyHint: true }
 }, { signal: controller.signal });
 
 // To unregister the tool (e.g., on component unmount):
@@ -46,7 +47,8 @@ navigator.modelContext.registerTool({
   execute(input) {
     // input is { width: 10, height: 20 }
     return input.width * input.height;
-  }
+  },
+  annotations: { readOnlyHint: true }
 });
 ```
 
@@ -88,13 +90,16 @@ export function createInventoryTool(inventoryManager) {
     inputSchema: { type: "object", properties: {} },
     execute() {
       return inventoryManager.getItems();
-    }
+    },
+    annotations: { readOnlyHint: true }
   };
 }
 ```
 
 ## API Notes
 
+*   **annotations**: (Optional) A dictionary for tool metadata.
+    *   **readOnlyHint**: (Optional) Set to `true` if the tool does not modify any state and only reads data. This helps agents decide when it is safe to call the tool.
 *   **Return Format**: The `execute` function can return any JSON-serializable value (object, array, string, number, boolean).
 *   **Secure Context**: WebMCP requires HTTPS.
 *   **Deprecated/Removed**: `unregisterTool()`, `provideContext()`, and `clearContext()` are no longer supported.
