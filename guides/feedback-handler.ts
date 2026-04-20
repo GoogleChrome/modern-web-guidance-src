@@ -61,26 +61,16 @@ async function runGemini(prompt: string): Promise<string> {
 
 // ─── Main logic ─────────────────────────────────────────────────────────────
 
-async function main() {
-  const args = process.argv.slice(2);
-  const prNumber = args[0] || process.env.GITHUB_PR_NUMBER;
-
-  if (!prNumber) {
-    console.error('Usage: node guides/feedback-handler.ts <pr-number>');
-    process.exit(1);
-  }
-
-  console.log(`Processing feedback for PR #${prNumber}...`);
-
-  // 1. Fetch PR context
+async function fetchPRContext(prNumber: string): Promise<any> {
   console.log('Fetching PR context via gh CLI...');
   const prDataJson = await runCommand('gh', ['pr', 'view', prNumber, '--json', 'reviews,comments,headRefName,files']);
   const prData = JSON.parse(prDataJson);
-  
   console.log(`PR Branch: ${prData.headRefName}`);
   console.log(`Found ${prData.reviews.length} reviews and ${prData.comments.length} comments.`);
+  return prData;
+}
 
-  // Find affected guide directory
+function deriveGuideDirectory(prData: any): string {
   const guideFile = prData.files.find((f: any) => f.path.startsWith('guides/'));
   let guideDir = '';
   if (guideFile) {
@@ -90,8 +80,10 @@ async function main() {
       console.log(`Affected guide directory: ${guideDir}`);
     }
   }
+  return guideDir;
+}
 
-  // 2. Synthesize feedback and create TODO list
+async function synthesizeFeedback(prNumber: string, prData: any): Promise<string> {
   console.log('Synthesizing feedback with Gemini...');
   const prompt = `
 You are a coordinator for an AI coding agent. Below is the JSON data for PR #${prNumber}, including reviews and comments.
@@ -103,7 +95,7 @@ Tasks:
 4. Output a structured TODO list for the coding agent.
 
 PR Data:
-${prDataJson}
+${JSON.stringify(prData)}
 
 Output your response as a clear markdown summary and TODO list.
 `;
@@ -112,16 +104,18 @@ Output your response as a clear markdown summary and TODO list.
   console.log('\n--- Synthesis & Plan ---');
   console.log(synthesis);
   console.log('------------------------\n');
+  return synthesis;
+}
 
-  // 3. Post plan to PR
+async function postPlanToPR(prNumber: string, synthesis: string): Promise<void> {
   console.log('Posting plan to PR...');
   await runCommand('gh', ['pr', 'comment', prNumber, '-b', synthesis]);
   console.log('✅ Plan posted');
+}
 
-  // 4. Apply fixes to source files
+async function applyFixesToSourceFiles(guideDir: string, synthesis: string): Promise<void> {
   console.log('Applying fixes to source files...');
-  if (guideDir) {
-    const applyPrompt = `
+  const applyPrompt = `
 You are an AI coding agent. Your task is to apply the following fixes to the files in the guide directory \`${guideDir}\` to address PR feedback.
 
 Synthesized Plan:
@@ -131,68 +125,91 @@ Please read the files in \`${guideDir}\` and update them (e.g., \`demo.html\`, \
 Focus on the source files. Do not run \`gd dev\` or try to calibrate the grader, that will be done in a separate step.
 Use your file editing tools to make the changes.
 `;
-    try {
-      await runGemini(applyPrompt);
-      console.log('✅ Fixes applied to source files');
-    } catch (err) {
-      console.error(`❌ Failed to apply fixes: ${(err as Error).message}`);
-    }
+  try {
+    await runGemini(applyPrompt);
+    console.log('✅ Fixes applied to source files');
+  } catch (err) {
+    console.error(`❌ Failed to apply fixes: ${(err as Error).message}`);
+  }
+}
 
-    console.log(`Running gd dev for ${guideDir}...`);
-    try {
-      await runCommand('node', ['bin/gd.ts', 'dev', guideDir]);
-      console.log(`✅ gd dev completed`);
-    } catch (err) {
-      console.error(`❌ gd dev failed: ${(err as Error).message}`);
-    }
-  } else {
-    console.log('No specific guide directory identified from PR files. Skipping automatic gd dev.');
+async function runGraderDev(guideDir: string): Promise<void> {
+  console.log(`Running gd dev for ${guideDir}...`);
+  try {
+    await runCommand('node', ['bin/gd.ts', 'dev', guideDir]);
+    console.log(`✅ gd dev completed`);
+  } catch (err) {
+    console.error(`❌ gd dev failed: ${(err as Error).message}`);
+  }
+}
+
+async function pushChanges(prData: any, guideDir: string): Promise<void> {
+  console.log('Pushing changes...');
+  await runCommand('git', ['add', guideDir]);
+  const stagedFiles = await runCommand('git', ['diff', '--cached', '--name-only']);
+  if (!stagedFiles.trim()) {
+    console.log('No changes to commit.');
+    return;
   }
 
-  // 5. Push changes
-  console.log('Pushing changes...');
-  if (guideDir) {
-    await runCommand('git', ['add', guideDir]);
-    const stagedFiles = await runCommand('git', ['diff', '--cached', '--name-only']);
-    if (stagedFiles.trim()) {
-      await runCommand('git', ['commit', '-m', 'chore: apply feedback and regenerate artifacts']);
-      
-      const token = process.env.APP_TOKEN || process.env.GH_TOKEN;
-      const repo = process.env.GITHUB_REPOSITORY;
-      const pushUrl = token && repo ? `https://x-access-token:${token}@github.com/${repo}.git` : 'origin';
-      const branch = prData.headRefName;
-      
-      try {
-        console.log('Stashing any unstaged changes...');
-        await runCommand('git', ['stash', '-u']);
-        
-        console.log('Pulling latest changes...');
-        await runCommand('git', ['pull', '--rebase', pushUrl, branch]);
-        console.log('✅ Pulled latest changes');
-        
-        console.log('Restoring stashed changes...');
-        try {
-          await runCommand('git', ['stash', 'pop']);
-          console.log('✅ Stash restored');
-        } catch (popErr) {
-          console.warn(`⚠️ Failed to restore stash: ${(popErr as Error).message}`);
-        }
-      } catch (err) {
-        console.warn(`⚠️ Failed to pull latest changes: ${(err as Error).message}`);
-      }
-
-      await runCommand('git', ['push', pushUrl, `HEAD:${branch}`]);
-      console.log(`✅ Changes pushed to ${branch}`);
-    } else {
-      console.log('No changes to commit.');
+  await runCommand('git', ['commit', '-m', 'chore: apply feedback and regenerate artifacts']);
+  
+  const token = process.env.APP_TOKEN || process.env.GH_TOKEN;
+  const repo = process.env.GITHUB_REPOSITORY;
+  const pushUrl = token && repo ? `https://x-access-token:${token}@github.com/${repo}.git` : 'origin';
+  const branch = prData.headRefName;
+  
+  try {
+    console.log('Stashing any unstaged changes...');
+    await runCommand('git', ['stash', '-u']);
+    
+    console.log('Pulling latest changes...');
+    await runCommand('git', ['pull', '--rebase', pushUrl, branch]);
+    console.log('✅ Pulled latest changes');
+    
+    console.log('Restoring stashed changes...');
+    try {
+      await runCommand('git', ['stash', 'pop']);
+      console.log('✅ Stash restored');
+    } catch (popErr) {
+      console.warn(`⚠️ Failed to restore stash: ${(popErr as Error).message}`);
     }
+  } catch (err) {
+    console.warn(`⚠️ Failed to pull latest changes: ${(err as Error).message}`);
+  }
+
+  await runCommand('git', ['push', pushUrl, `HEAD:${branch}`]);
+  console.log(`✅ Changes pushed to ${branch}`);
+}
+
+export async function handleFeedback(prNumber: string): Promise<void> {
+  console.log(`Processing feedback for PR #${prNumber}...`);
+
+  const prData = await fetchPRContext(prNumber);
+  const guideDir = deriveGuideDirectory(prData);
+  
+  const synthesis = await synthesizeFeedback(prNumber, prData);
+  await postPlanToPR(prNumber, synthesis);
+  
+  if (guideDir) {
+    await applyFixesToSourceFiles(guideDir, synthesis);
+    await runGraderDev(guideDir);
+    await pushChanges(prData, guideDir);
   } else {
-    console.log('No guide directory identified, skipping push.');
+    console.log('No specific guide directory identified from PR files. Skipping automatic gd dev.');
   }
 }
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
-  main().catch(err => {
+  const args = process.argv.slice(2);
+  const prNumber = args[0] || process.env.GITHUB_PR_NUMBER;
+
+  if (!prNumber) {
+    console.error('Usage: node guides/feedback-handler.ts <pr-number>');
+    process.exit(1);
+  }
+
+  handleFeedback(prNumber).catch(err => {
     console.error(`Error: ${err.message}`);
     process.exit(1);
   });
