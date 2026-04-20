@@ -3,11 +3,15 @@ import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { Agents, type SuiteConfig } from '../config.ts';
-import { guidesDir } from '../../lib/paths.ts';
 import { getTaskMap } from '../../lib/guide-validation.ts';
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
+import { getGraderScriptContent } from './agent-shared.ts';
+
+function isTargetAppPresent(targetFile: string, targetPkgJson: string): boolean {
+  return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson);
+}
 
 export function extractModelFromResults(resultsDir: string, agent: string): string {
   if (agent === Agents.GEMINI_CLI) {
@@ -22,6 +26,16 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
 }
 
 function extractErrorMessage(dir: string, targetFile: string): string {
+  const failureFile = path.join(dir, 'generation_failed.json');
+  if (fs.existsSync(failureFile)) {
+    try {
+      const failureInfo = JSON.parse(fs.readFileSync(failureFile, 'utf-8'));
+      return `Generation failed: ${failureInfo.agentName} exited with ${failureInfo.exitCode}`;
+    } catch (e) {
+      return 'Generation failed (could not parse failure info)';
+    }
+  }
+
   const stderrPath = path.join(dir, 'agent_stderr.log');
   
   if (!fs.existsSync(stderrPath)) {
@@ -77,6 +91,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       }
       if (runType === 'base_app') continue; // Skip the base app setup folder
       const targetFile = path.join(dir, 'index.html');
+      const targetPkgJson = path.join(dir, 'package.json');
 
       const taskInfo = taskMap.get(`${guide}/${taskName}`);
       if (!taskInfo) continue;
@@ -84,46 +99,34 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
       const graderResults = path.join(dir, `${guide}_results.json`);
 
-      // If grader is missing, target file is missing, or results already exist, skip generating a runner.
-      if (!fs.existsSync(graderPath) || !fs.existsSync(targetFile) || fs.existsSync(graderResults)) {
+      const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson);
+
+      const failureFile = path.join(dir, 'generation_failed.json');
+      // If grader is missing, generation failed, target file is missing, or results already exist, skip generating a runner.
+      if (!fs.existsSync(graderPath) || fs.existsSync(failureFile) || !targetAppExists || fs.existsSync(graderResults)) {
         continue;
       }
 
       // Generate a runner script to be picked up by pnpm -r run-grader
       // We import runPlaywright directly from the guides code to leverage existing test execution logic
-      const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
-      const gradeScript = `
-import fs from 'fs';
-import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
-
-async function run() {
-  try {
-    const json = await runPlaywright(
-      ${JSON.stringify(targetFile)},
-      ${JSON.stringify(graderPath)},
-      ${JSON.stringify(path.join(dir, 'grade-report'))},
-      'inherit'
-    );
-    fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
-  } catch (err) {
-    console.error("Playwright test execution failed:", err);
-    process.exit(1); 
-  }
-}
-
-run();
-`.trim();
+      const gradeScript = getGraderScriptContent(dir, graderPath, guide);
       const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
       fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
-      fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      let pkgJsonObj: any = {
         name: `${guide.substring(0, 30)}-${runType}-grader`,
         type: "module",
-        scripts: {
-          // The --id flag is not used by grade.mjs, it is purely added here 
-          // so that the pnpm log output clearly identifies which test is running.
-          "run-grader": `node grade.mjs --id ${relativeId}`
+        scripts: {}
+      };
+      if (fs.existsSync(targetPkgJson)) {
+        try {
+          pkgJsonObj = JSON.parse(fs.readFileSync(targetPkgJson, 'utf-8'));
+          if (!pkgJsonObj.scripts) pkgJsonObj.scripts = {};
+        } catch (e) {
+          console.warn("Failed to parse existing package.json, overwriting...");
         }
-      }, null, 2));
+      }
+      pkgJsonObj.scripts["run-grader"] = `node grade.mjs --id ${relativeId}`;
+      fs.writeFileSync(targetPkgJson, JSON.stringify(pkgJsonObj, null, 2));
 
       pnpmWorkspacePackages.push(relativeId);
     }
@@ -186,22 +189,32 @@ run();
       }
 
       const targetFile = path.join(dir, 'index.html');
+      const targetPkgJson = path.join(dir, 'package.json');
       const taskInfo = taskMap.get(`${guide}/${taskName}`);
       if (!taskInfo) {
         console.warn(`Skipping grading: Task ${guide} not found in task map`);
         continue;
       }
-      const taskCategory = path.basename(path.dirname(taskInfo.guideDir));
-      const expectedToolPrefixes = ['modern-web', taskCategory].filter(Boolean);
+
+      let taskCategory = path.basename(path.dirname(taskInfo.guideDir));
+      const isSkill = taskCategory === 'guides';
+      let expectedToolPrefixes = ['modern-web'].filter(Boolean);
+      if (isSkill) {
+        taskCategory = path.basename(taskInfo.guideDir);
+        expectedToolPrefixes = [taskCategory].filter(Boolean);
+      }
 
       const graderPath = path.join(taskInfo.guideDir, 'grader.ts');
-
       let scenarioResults: any[] = [];
       const graderResults = path.join(dir, `${guide}_results.json`);
+
+      const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson);
 
       if (!fs.existsSync(graderPath)) {
         console.warn(`Grader not found for ${guide} at ${graderPath}`);
         scenarioResults.push({ name: 'Configuration', status: 'fail', message: 'Grader not found' });
+      } else if (!targetAppExists) {
+        scenarioResults.push({ name: 'File Check', status: 'fail', message: 'Target app missing' });
       } else if (!fs.existsSync(graderResults)) {
         const errorMessage = extractErrorMessage(dir, targetFile);
         scenarioResults.push({ passed: false, message: errorMessage, isEarlyFailure: true });
@@ -254,6 +267,8 @@ run();
         retrievedGuides: retrievedGuides,
         fileReadGuides: fileReadGuides,
         guidanceToolsUsed: guidanceToolsUsedResult,
+        discipline: taskCategory,
+        isSkill: isSkill,
         expectedToolPrefixes: expectedToolPrefixes,
         guideName: guide,
         taskName: taskName,

@@ -56,19 +56,16 @@ Note that the polyfill does not automatically assign the `Temporal` object to th
 
 ```javascript
 // Check if Temporal is supported natively
-if (typeof Temporal === 'undefined') {
-  // Load the polyfill conditionally (example using dynamic import)
-  import('@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill, toTemporalInstant }) => {
-    // Manually assign to global scope if needed
-    globalThis.Temporal = TemporalPolyfill;
-    // Extend Date.prototype as recommended by polyfill docs
-    Date.prototype.toTemporalInstant = toTemporalInstant;
+(async () => {
+  if (typeof Temporal === 'undefined') {
+    // Load the polyfill conditionally
+    const module = await import("https://esm.sh/@js-temporal/polyfill");
+    globalThis.Temporal = module.Temporal;
+    // Extend Date.prototype if needed
+    Date.prototype.toTemporalInstant = module.toTemporalInstant;
     initializeApp();
-  });
-} else {
-  // Native Temporal is available
-  initializeApp();
-}
+  }
+})();
 
 function initializeApp() {
   const plainDate = Temporal.PlainDate.from("1990-01-01");

@@ -3,115 +3,275 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Intrinsic Sizes with Constraints</title>
+    <title>Intrinsic Sizes Use Cases</title>
     <style>
+      :root {
+        --primary: #0066cc;
+        --bg: #f4f7f9;
+        --card-bg: #ffffff;
+        --text: #333;
+        --border: #d1d9e0;
+
+        /* 
+           MANDATORY: Enable keyword interpolation globally for simple animations.
+           This allows 0 -> auto transitions without using calc-size().
+        */
+        interpolate-size: allow-keywords;
+      }
+
       body {
-        font-family: system-ui, sans-serif;
+        font-family: system-ui, -apple-system, sans-serif;
+        background-color: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
         padding: 2rem;
-        background: #f8f9fa;
-      }
-      .demo-container {
-        background: white;
-        padding: 2rem;
-        border-radius: 8px;
-        border: 1px solid #dee2e6;
-        max-width: 600px;
-      }
-      .form-group {
+        margin: 0;
         display: flex;
         flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-        margin-top: 1rem;
+        gap: 3rem;
+        align-items: center;
       }
-      label {
-        font-weight: 500;
-        color: #495057;
-      }
-      textarea {
-        box-sizing: border-box;
+
+      section {
+        background: var(--card-bg);
+        padding: 2rem;
+        border-radius: 12px;
+        border: 1px solid var(--border);
         width: 100%;
-        padding: 0.5rem;
-        border: 1px solid #ced4da;
+        max-width: 700px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      }
+
+      h2 {
+        margin-top: 0;
+        color: var(--primary);
+        font-size: 1.5rem;
+      }
+
+      code {
+        background: #eee;
+        padding: 0.2rem 0.4rem;
         border-radius: 4px;
-        font-size: 1rem;
-        font-family: inherit;
-        resize: vertical;
+        font-family: monospace;
       }
-      textarea:focus {
-        outline: none;
-        border-color: #80bdff;
-        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+
+      /* --- Use Case 1: Simple Keyword Interpolation --- */
+      .simple-toggle-content {
+        block-size: 0;
+        overflow: hidden;
+        opacity: 0;
+        transition: block-size 0.3s ease, opacity 0.3s ease;
+        background: #f9f9f9;
+        border-radius: 4px;
       }
-      .display-container {
-        margin-top: 1.5rem;
+
+      .simple-toggle.open .simple-toggle-content {
+        /* 
+           DO: Use intrinsic size keywords like auto for animations when no calculation is needed.
+           This works because of interpolate-size: allow-keywords on :root.
+        */
+        block-size: auto;
+        opacity: 1;
+      }
+
+      /* --- Use Case 2: Constrained Dynamic Tag --- */
+      .tag-demo {
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 1rem;
       }
-      .preview-box {
-        box-sizing: border-box;
-        padding: 0.5rem;
-        background: #e9ecef;
-        border: 1px solid #ced4da;
-        border-radius: 4px;
-        font-size: 1rem;
-        min-height: 2.5rem;
+
+      .tag {
+        background: var(--primary);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        text-align: center;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        /*
-            Calculate size based on intrinsic fit-content,
-            constrained to be at least 150px, at most 100% of its container,
-            and padding 20px when it grows
+
+        /* MANDATORY: Always provide a fallback for browsers that do not support calc-size() */
+        inline-size: fit-content;
+        
+        /* 
+           DO: Use calc-size() to apply complex constraints to intrinsic sizes.
+           This example ensures a minimum of 100px, adds 40px of extra breathing room 
+           to the content's natural width, and prevents overflow beyond 100%.
         */
-        width: calc-size(fit-content, clamp(150px, size + 20px, 100%));
+        inline-size: calc-size(fit-content, clamp(100px, size + 40px, 100%));
       }
-      code {
-        background: #e9ecef;
-        padding: 0.2rem 0.4rem;
+
+      /* --- Use Case 3: Accordion with 'Breathing Room' --- */
+      .accordion {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .accordion-trigger, .toggle-trigger {
+        width: 100%;
+        padding: 1rem;
+        background: #eee;
+        border: none;
+        text-align: left;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      .accordion-content {
+        /* MANDATORY: Provide a fallback height for non-supporting browsers */
+        block-size: 0;
+        overflow: hidden;
+        opacity: 0;
+        transition: block-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+      }
+
+      .accordion.open .accordion-content {
+        /* MANDATORY: Fallback value for the open state */
+        block-size: auto;
+        opacity: 1;
+        
+        /* 
+           DO: Use calc-size(auto, ...) to animate to an intrinsic height 
+           while adding extra calculated spacing (2rem) for a better design.
+        */
+        block-size: calc-size(auto, size + 2rem);
+      }
+
+      .inner-text {
+        padding: 1rem;
+      }
+
+      /* --- Use Case 4: Proportional Prototyping --- */
+      .proportional-box {
+        background: #e1f5fe;
+        border: 2px dashed #03a9f4;
+        padding: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        /* MANDATORY: Fallback for max-content sizing */
+        inline-size: max-content;
+        
+        /* 
+           DO: Use mathematical operations (like multiplication) within calc-size()
+           to create proportional layouts based on the element's own content.
+        */
+        inline-size: calc-size(max-content, size * 1.25);
+      }
+
+      .controls {
+        margin-top: 1rem;
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      /* 
+         MANDATORY: Respect user motion preferences by simplifying animations 
+         for users who have requested reduced motion.
+      */
+      @media (prefers-reduced-motion: reduce) {
+        .simple-toggle-content,
+        .accordion-content {
+          /* 
+             EXAMPLE: Replacing disruptive layout animations with a subtle fade-in.
+             Setting the block-size instantly and transitioning opacity 
+             provides a clear state change without large-scale motion.
+          */
+          transition: opacity 1.5s ease;
+        }
+
+        .simple-toggle.open .simple-toggle-content,
+        .accordion.open .accordion-content {
+          block-size: auto;
+        }
+      }
+
+      input[type="text"] {
+        padding: 0.5rem;
+        border: 1px solid var(--border);
         border-radius: 4px;
-        font-size: 0.9em;
-        color: #d63384;
+        flex-grow: 1;
       }
     </style>
   </head>
   <body>
-    <div class="demo-container">
-      <h2>Constrained Intrinsic Sizing</h2>
-      <p>
-        Type into the <code>&lt;textarea&gt;</code> below. The preview box uses
-        <code>calc-size()</code> to calculate its width based on its intrinsic
-        size (<code>fit-content</code>).
-      </p>
-      <p>
-        It enforces design constraints by ensuring it never gets smaller than
-        <code>150px</code>, adds <code>20px</code> of extra width once the
-        content grows beyond that minimum size, and uses <code>clamp()</code> to
-        prevent it from growing larger than its <code>100%</code> container
-        width.
-      </p>
-      <div class="form-group">
-        <label for="input-text">Input:</label>
-        <textarea
-          id="input-text"
-          rows="3"
-          placeholder="Start typing..."
-        ></textarea>
-      </div>
-      <div class="display-container">
-        <label>Live Preview:</label>
-        <div id="preview" class="preview-box"></div>
-      </div>
 
-      <script>
-        const input = document.getElementById('input-text');
-        const preview = document.getElementById('preview');
+    <section>
+      <h2>1. Simple Keyword Interpolation</h2>
+      <p>This uses <code>interpolate-size: allow-keywords</code> on <code>:root</code> to enable smooth transitions from <code>0</code> to <code>auto</code> without any calculations.</p>
+      <div class="simple-toggle" id="simple-toggle">
+        <button class="toggle-trigger" id="simple-toggle-btn">Click to Toggle Simple</button>
+        <div class="simple-toggle-content">
+          <div class="inner-text">
+            This simple animation doesn't need <code>calc-size()</code> because it doesn't modify the intrinsic <code>auto</code> height.
+          </div>
+        </div>
+      </div>
+    </section>
 
-        input.addEventListener('input', () => {
-          preview.textContent = input.value;
-        });
-      </script>
-    </div>
+    <section>
+      <h2>2. Constrained Dynamic Tag</h2>
+      <p>This tag uses <code>calc-size(fit-content, ...)</code> to maintain a minimum presence while adding extra padding as it grows.</p>
+      <div class="tag-demo">
+        <input type="text" id="tag-input" placeholder="Type a tag name..." value="New Tag">
+        <div class="tag" id="tag-preview">New Tag</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Accordion with "Breathing Room"</h2>
+      <p>Uses <code>calc-size(auto, size + 2rem)</code> to animate to a height that includes dynamic extra padding.</p>
+      <div class="accordion" id="accordion">
+        <button class="accordion-trigger" id="accordion-toggle">Click to Toggle with Breathing Room</button>
+        <div class="accordion-content">
+          <div class="inner-text">
+            This content animates to its <code>auto</code> height plus an additional 2rem of calculated space. 
+            This ensures that no matter how much text is here, the "breathing room" remains consistent.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>4. Proportional Content Sizing</h2>
+      <p>Uses <code>calc-size(max-content, size * 1.25)</code> to ensure the container is always 25% larger than its longest line of text.</p>
+      <div class="tag-demo">
+        <input type="text" id="prop-input" placeholder="Type something..." value="Proportional Box">
+        <div class="proportional-box" id="prop-preview">Proportional Box</div>
+      </div>
+    </section>
+
+    <script>
+      // Simple Toggle
+      const simpleToggle = document.getElementById('simple-toggle');
+      const simpleBtn = document.getElementById('simple-toggle-btn');
+      simpleBtn.addEventListener('click', () => {
+        simpleToggle.classList.toggle('open');
+      });
+
+      // Tag Demo
+      const tagInput = document.getElementById('tag-input');
+      const tagPreview = document.getElementById('tag-preview');
+      tagInput.addEventListener('input', () => {
+        tagPreview.textContent = tagInput.value || 'Empty';
+      });
+
+      // Accordion Demo
+      const accordion = document.getElementById('accordion');
+      const toggle = document.getElementById('accordion-toggle');
+      toggle.addEventListener('click', () => {
+        accordion.classList.toggle('open');
+      });
+
+      // Proportional Demo
+      const propInput = document.getElementById('prop-input');
+      const propPreview = document.getElementById('prop-preview');
+      propInput.addEventListener('input', () => {
+        propPreview.textContent = propInput.value || 'Empty';
+      });
+    </script>
   </body>
 </html>

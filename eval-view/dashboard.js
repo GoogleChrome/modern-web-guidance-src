@@ -347,8 +347,8 @@ function renderSummary(data) {
 
     const unguidedEarlyFailureRate = summary.unguidedEarlyFailureRate || 0;
     const guidedEarlyFailureRate = summary.guidedEarlyFailureRate || 0;
-
     const completedGuidedRuns = summary.totalGuidedRuns - (summary.guidedEarlyFailures || 0);
+    const completedGuidedNonDisciplineRuns = summary.totalGuidedNonDisciplineRuns !== undefined ? summary.totalGuidedNonDisciplineRuns - (summary.guidedNonDisciplineEarlyFailures || 0) : completedGuidedRuns;
 
     container.innerHTML = `
         <div class="stat-card">
@@ -399,7 +399,7 @@ function renderSummary(data) {
             ${summary.guideUsageRate !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Guide Usage: <span style="font-weight: bold; color: ${getColor(summary.guideUsageRate)}">${summary.guideUsageRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${completedGuidedRuns} completed runs)</span>
+                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${completedGuidedNonDisciplineRuns} completed runs)</span>
             </div>
             ` : ''}
         </div>
@@ -407,7 +407,11 @@ function renderSummary(data) {
 }
 
 function renderGrid(data, testId) {
-    const grid = $('#dashboard-grid');
+    const disciplineGrid = $('#discipline-grid');
+    const guideGrid = $('#guide-grid');
+    const disciplineSection = $('#discipline-section');
+    const guideSection = $('#guide-section');
+
     const results = data.results;
     const stats = data.stats;
 
@@ -453,6 +457,8 @@ function renderGrid(data, testId) {
                 const card = document.createElement('div');
                 card.className = 'test-card';
 
+                const isSkill = runData[0] && runData[0].isSkill;
+
                 // Calculate Total/Average Pass Rate for this specific test configuration
                 const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
                 const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
@@ -472,7 +478,7 @@ function renderGrid(data, testId) {
                 }
 
                 let guideUsageHtml = '';
-                if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined) {
+                if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined && !isSkill) {
                     const count = testStats.runsUsingGuide;
                     const total = testStats.runCount;
                     const usageRate = total > 0 ? Math.round((count / total) * 100) : 0;
@@ -498,10 +504,22 @@ function renderGrid(data, testId) {
                     ${guideUsageHtml}
                 `;
 
-                grid.appendChild(card);
+                if (isSkill) {
+                    disciplineGrid.appendChild(card);
+                    disciplineSection.style.display = 'block';
+                } else {
+                    guideGrid.appendChild(card);
+                }
             });
         });
     });
+
+    // Hide Guide section if empty
+    if (guideGrid.children.length === 0) {
+        guideSection.style.display = 'none';
+    } else {
+        guideSection.style.display = 'block';
+    }
 }
 
 function openTrajectory(usedBasePath, sessionFile) {
@@ -616,8 +634,20 @@ async function showDetails(testName, runs, stats, testId) {
                             <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 90px;">Tools Used:</strong>
                             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                                 ${toolsUsed.length > 0 ? toolsUsed.map(t => {
+
                                     const isExpected = expectedToolPrefixes.some(p => t.startsWith(p));
-                                    return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(t)}</code>`;
+                                    const matchesDiscipline = t === run.discipline;
+
+                                    let style = '';
+                                    if (isExpected) {
+                                        style = 'background: rgba(0, 200, 0, 0.1); border: 1px solid var(--accent-success); color: var(--accent-success);';
+                                    } else if (matchesDiscipline) {
+                                        style = 'background: rgba(255, 204, 0, 0.2); border: 1px solid #ffcc00; color: #ffcc00;';
+                                    } else {
+                                        style = 'background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-primary);';
+                                    }
+
+                                    return `<code style="${style} padding: 3px 6px; border-radius: 4px; font-size: 0.85em;">${escapeHtml(t)}</code>`;
                                 }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
                             </div>
                         </div>` : ''}
