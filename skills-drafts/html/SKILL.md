@@ -187,6 +187,15 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 </aside>
 ```
 
+```css
+[inert], [inert] * {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: default;
+  user-select: none;
+}
+```
+
 ## 6. HTML APIs and Forms Grouping
 
 
