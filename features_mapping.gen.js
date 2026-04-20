@@ -138,9 +138,6 @@ window.__featuresMapping = {
     "color-scheme",
     "prefers-color-scheme"
   ],
-  "anchor-annotations-to-target-element": [
-    "anchor-positioning"
-  ],
   "anchor-positioning-tab-underline": [
     "anchor-positioning",
     "prefers-reduced-motion"
