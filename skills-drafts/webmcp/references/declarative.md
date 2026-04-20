@@ -7,8 +7,9 @@ The Declarative API transforms standard HTML `<form>` elements into WebMCP tools
 *   `toolname`: Unique name for the tool.
 *   `tooldescription`: Purpose of the tool.
 *   `toolautosubmit`: (Optional) If present, the agent can submit the form without waiting for user interaction. 
-*   `toolparamdescription`: (Optional, on input) Maps to the property description. Defaults to the `<label>` text.
-    *   *Note*: For `<input type="radio">` groups, place this on the *first* `<input>` element.
+*   `toolparamdescription`: (Optional) Provides a way to define a property description within the JSON Schema.
+    *   **Resolution Order**: The browser uses `toolparamdescription` if present. In its absence, it uses the `textContent` of the associated `<label>` (skipping labelable descendants). If no label exists, it falls back to the `aria-description`.
+    *   **Grouping (Fieldsets)**: To attach a description to a group of related elements (like `<input type="radio">` buttons), place `toolparamdescription` on the nearest parent `<fieldset>` element so it applies to the parameter group as a whole.
 
 ### Example
 
