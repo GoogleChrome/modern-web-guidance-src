@@ -73,7 +73,7 @@ interface GuideRow extends BaseRow {
   name: string;
   category: string | null;
   description: string;
-  featureIds: string[];
+  features: string[];
   status: GuideStatus;
   has: string[];
 }
@@ -256,7 +256,7 @@ const sources: Record<string, SourceConfig<any>> = {
     title: 'Guide Index',
     issueLabel: 'new-use-case',
     glob: 'guides/*/*/guide.md',
-    pathUrl: `https://github.com/${REPO}/tree/main/guides/{path}/guide.md`,
+    pathUrl: `https://github.com/${REPO}/blob/main/guides/{path}/guide.md`,
     sort: byLastUpdatedDesc,
     columns: Object.assign(Object.create(sharedColumns), {
       path: sharedColumns.path,  // pull Path to the front; other shared columns keep their default (trailing) position
@@ -265,8 +265,8 @@ const sources: Record<string, SourceConfig<any>> = {
         md: r => `[${r.category}](https://github.com/${REPO}/tree/main/guides/${r.category})`,
       },
       description: {},
-      featureIds: {
-        heading: 'Feature IDs',
+      features: {
+        heading: 'Features',
         link: v => `https://webstatus.dev/features/${v}`,
       },
       status: {
@@ -342,7 +342,7 @@ async function buildGuideRows (): Promise<GuideRow[]> {
       name: g.name,
       category: inv?.category ?? null,
       description: g.description,
-      featureIds: g.featureIds,
+      features: g.featureIds,
       status: inv ? classifyGuide(inv) : 'incomplete',
       has,
       ...(gitInfoMap.get(g.relativeSubdir) ?? nullGitInfo),
