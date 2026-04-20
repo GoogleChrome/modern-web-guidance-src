@@ -563,7 +563,12 @@ function mdCell (key: string, col: Column<any>, row: any, separator: string): st
   if (typeof raw === 'boolean') {
     return raw ? '✅' : '❌';
   }
-  return serialize(raw, separator).replaceAll('<', '&lt;');
+  // Escape characters that break MD table rendering: unescaped `|` splits
+  // columns, and newlines end the row entirely.
+  return serialize(raw, separator)
+    .replaceAll('<', '&lt;')
+    .replaceAll('|', '\\|')
+    .replace(/\r?\n/g, '<br>');
 }
 
 // --- Main ---
