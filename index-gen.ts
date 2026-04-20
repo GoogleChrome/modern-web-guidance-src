@@ -108,6 +108,12 @@ interface SourceConfig<R extends BaseRow> {
   issueLabel: string;
   /** Comparator applied to rows before rendering. */
   sort: (a: R, b: R) => number;
+  /**
+   * Column definitions and order. Own keys come first (in insertion order),
+   * followed by inherited keys from `sharedColumns`. To pull a shared column
+   * to a specific position (e.g. Path first), assign it as an own property:
+   * `path: sharedColumns.path`.
+   */
   columns: Record<string, Column<R>>;
   /** Produce the raw rows. Sort + render happen in the dispatcher. */
   build: () => Promise<R[]>;
@@ -248,6 +254,7 @@ const sources: Record<string, SourceConfig<any>> = {
     issueLabel: 'new-use-case',
     sort: byLastUpdatedDesc,
     columns: Object.assign(Object.create(sharedColumns), {
+      path: sharedColumns.path,  // pull Path to the front; other shared columns keep their default (trailing) position
       name: { md: false },
       category: {
         md: r => r.category ? `[${r.category}](https://github.com/${REPO}/tree/main/guides/${r.category})` : null,
@@ -271,6 +278,7 @@ const sources: Record<string, SourceConfig<any>> = {
     issueLabel: 'new-skill',
     sort: byLastUpdatedDesc,
     columns: Object.assign(Object.create(sharedColumns), {
+      path: sharedColumns.path,  // pull Path to the front; other shared columns keep their default (trailing) position
       name: {},
       source: {},
       description: {},
