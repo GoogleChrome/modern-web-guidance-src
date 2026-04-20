@@ -225,33 +225,7 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
     expect(result).toBe(true);
   });
 
-  // 6. Service Worker
-  test('Implementation MUST register a Service Worker', async ({ page }) => {
-    await page.goto(demoUrl);
-    // Wait for SW to be registered
-    const isRegistered = await page.evaluate(async () => {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      return regs.length > 0;
-    });
-    expect(isRegistered).toBe(true);
-  });
-
-  test('Service Worker MUST create expected caches', async ({ page }) => {
-    await page.goto(demoUrl);
-    // Wait for SW to install and create caches
-    const hasCaches = await page.evaluate(async () => {
-      // Poll for caches keys to be non-empty
-      for (let i = 0; i < 10; i++) {
-        const keys = await caches.keys();
-        if (keys.length > 0) return true;
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      return false;
-    });
-    expect(hasCaches).toBe(true);
-  });
-
-  // 7. Code Splitting
+  // 6. Code Splitting
   test('Implementation MUST use dynamic imports to load code on demand', async ({ page }) => {
     const html = fs.readFileSync(filePath, 'utf-8');
     let hasDynamicImport = html.includes('import(');

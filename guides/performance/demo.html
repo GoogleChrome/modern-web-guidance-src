@@ -224,14 +224,6 @@
       heavyTaskBtn.disabled = false;
     });
 
-    // Service Worker Registration
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-          .then(registration => console.log('SW registered:', registration))
-          .catch(error => console.error('SW registration failed:', error));
-      });
-    }
   </script>
 
   <script defer src="https://www.google-analytics.com/analytics.js"></script>
