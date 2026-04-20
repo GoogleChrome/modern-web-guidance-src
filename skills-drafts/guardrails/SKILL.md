@@ -65,10 +65,13 @@ Stages 2a, 2b, 2c, and 3 have **no data dependencies on each other** — they al
 
 ## Stage 1: Resolve browser baseline
 
-Accept that the baseline defined by the developer can either be defined from `baseline.config.json` or `browserslist` configuration.
+Accept that the baseline defined by the developer can either be defined from the root `.config`, `baseline.config.json` or `browserslist` configuration.
 Priority of which configuration to use is as follows:
-1. `baseline.config.json`
-2. `browserslist` configuration
+1. `.config` - this is a custom configuration file that is used to define the baseline target.
+2. `baseline.config.json` - this is a JSON file that is used to define the baseline target.
+3. `browserslist` configuration - this is a configuration file that is used to define the baseline target.
+
+If you don't find either of these, you should point out the lack of configuration and suggest that the developer use one of these configuration methods.
 
 ### baseline.config.json
 
@@ -729,7 +732,8 @@ If a report with the same base filename already exists (e.g., a second audit on 
 
 #### Markdown report
 
-Write the full report content (using the template above) to `${REPORT_BASE}.md`.
+Write the full report content (using the template above) to `${REPORT_BASE}.md`. This should be created in a separate `guardrails-results/` directory
+and should happen if skill was used.
 
 #### HTML report
 
