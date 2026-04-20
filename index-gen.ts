@@ -108,6 +108,9 @@ interface SourceConfig<R extends BaseRow> {
   issueLabel: string;
   /** Glob pattern(s) rooted at `rootDir`. Resolved via `fs.globSync`. */
   glob: string | string[];
+  /** URL template for the row's `pathUrl` field. `{field}` placeholders are
+   * substituted with the matching property from each row (e.g. `{path}`). */
+  pathUrl: string;
   /** Comparator applied to rows before rendering. */
   sort: (a: R, b: R) => number;
   /**
@@ -253,6 +256,7 @@ const sources: Record<string, SourceConfig<any>> = {
     title: 'Guide Index',
     issueLabel: 'new-use-case',
     glob: 'guides/*/*/guide.md',
+    pathUrl: `https://github.com/${REPO}/tree/main/guides/{path}`,
     sort: byLastUpdatedDesc,
     columns: Object.assign(Object.create(sharedColumns), {
       path: sharedColumns.path,  // pull Path to the front; other shared columns keep their default (trailing) position
@@ -278,6 +282,7 @@ const sources: Record<string, SourceConfig<any>> = {
     title: 'Skill Index',
     issueLabel: 'new-skill',
     glob: ['guides/*/SKILL.md', 'skills-drafts/*/SKILL.md'],
+    pathUrl: `https://github.com/${REPO}/blob/main/{source}/{path}/SKILL.md`,
     sort: byLastUpdatedDesc,
     columns: Object.assign(Object.create(sharedColumns), {
       path: sharedColumns.path,  // pull Path to the front; other shared columns keep their default (trailing) position
@@ -333,7 +338,7 @@ async function buildGuideRows (): Promise<GuideRow[]> {
     const path = g.relativeSubdir.replace(/^guides\//, '');
     return {
       path,
-      pathUrl: `https://github.com/${REPO}/tree/main/guides/${path}`,
+      pathUrl: interpolate(sources.guides.pathUrl, { path }),
       name: g.name,
       category: inv?.category ?? null,
       description: g.description,
@@ -388,7 +393,7 @@ async function buildSkillRows (): Promise<SkillRow[]> {
     const issue = dirToIssue.get(s.dir);
     return {
       path: s.dir,
-      pathUrl: `https://github.com/${REPO}/blob/main/${s.source}/${s.dir}/SKILL.md`,
+      pathUrl: interpolate(sources.skills.pathUrl, { path: s.dir, source: s.source }),
       name: s.name,
       source: s.source,
       description: s.description,
@@ -522,6 +527,11 @@ async function buildAuthorMap (): Promise<Map<string, string>> {
   await Promise.all(lookups);
 
   return map;
+}
+
+/** Substitute `{field}` placeholders in `template` with values from `fields`. */
+function interpolate (template: string, fields: Record<string, string>): string {
+  return template.replace(/\{(\w+)\}/g, (_, k) => fields[k] ?? '');
 }
 
 /** Serialize a raw value to a plain string. */
