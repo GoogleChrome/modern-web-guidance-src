@@ -152,7 +152,7 @@ If you are not using a package manager, dynamically import the polyfill directly
 MANDATORY: Use `:is()` or `:where()` to combine `:popover-open` with the corresponding polyfill class, otherwise browsers that do not support `:popover-open` will throw away the entire rule.
 
 ```css
-[popover]:is(:popover-open, \:popover-open) {
+[popover]:is(:popover-open, .\:popover-open) {
   display: block;
 }
 ```
