@@ -70,7 +70,6 @@ const localizedDisplay = targetDate.toLocaleString('en-u-ca-hebrew', {
 
 ## Strategic Implementation & Best Practices
 
-- **DO** use `Temporal.PlainDate.compare()` instead of manually comparing properties like `year` or `month` across different calendars.
 - **DO** use `monthsInYear` as the upper bound when looping through months, rather than assuming 12.
 - **DO** use `monthCode` for identifying specific months in calendars that use leap months (e.g., Hebrew or Chinese), regardless of the year.
 - **DO NOT** assume `date.month === 12` is the last month of the year. Use `date.month === date.monthsInYear`.
