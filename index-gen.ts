@@ -20,8 +20,8 @@ import { parseArgs, promisify } from 'node:util';
 
 const execFile = promisify(execFileCb);
 import matter from 'gray-matter';
-import { scanAllGuides, processGuideInventory, classifyGuide, type GuideStatus } from './lib/guide-validation.ts';
-import { rootDir, guidesDir } from './lib/paths.ts';
+import { inventoryGuide, processGuideInventory, classifyGuide, type GuideStatus } from './lib/guide-validation.ts';
+import { rootDir } from './lib/paths.ts';
 
 // --- Constants ---
 
@@ -106,6 +106,8 @@ interface SourceConfig<R extends BaseRow> {
   title: string;
   /** GitHub label used to find issues for this source. */
   issueLabel: string;
+  /** Glob pattern(s) rooted at `rootDir`. Resolved via `fs.globSync`. */
+  glob: string | string[];
   /** Comparator applied to rows before rendering. */
   sort: (a: R, b: R) => number;
   /**
@@ -207,22 +209,20 @@ const sharedColumns: Record<string, Column<BaseRow>> = {
   },
   lastUpdated: {
     heading: 'Updated',
-    md: r => r.lastUpdated ? formatRelative(r.lastUpdated) : null,
+    md: r => formatRelative(r.lastUpdated!),
   },
   lastAuthor: {
     heading: 'Author',
     md: r => {
-      if (!r.lastAuthor) return null;
-      const user = authorMap.get(r.lastAuthor);
-      return user ? `[${r.lastAuthor}](https://github.com/${user})` : r.lastAuthor;
+      const user = authorMap.get(r.lastAuthor!);
+      return user ? `[${r.lastAuthor}](https://github.com/${user})` : r.lastAuthor!;
     },
   },
   issueNumber: {
     heading: 'Issue',
     md: r => {
-      const link = issueLink(r.issueNumber);
-      if (!link) return null;
-      return `${issueEmoji[r.issueOpen ? 'open' : 'closed']} ${link}`;
+      const link = `[#${r.issueNumber}](https://github.com/${REPO}/issues/${r.issueNumber})`;
+      return r.issueOpen == null ? link : `${issueEmoji[r.issueOpen ? 'open' : 'closed']} ${link}`;
     },
   },
   issueOpen: { heading: 'Issue Open', md: false },
@@ -252,12 +252,13 @@ const sources: Record<string, SourceConfig<any>> = {
     dir: 'guides',
     title: 'Guide Index',
     issueLabel: 'new-use-case',
+    glob: 'guides/*/*/guide.md',
     sort: byLastUpdatedDesc,
     columns: Object.assign(Object.create(sharedColumns), {
       path: sharedColumns.path,  // pull Path to the front; other shared columns keep their default (trailing) position
       name: { md: false },
       category: {
-        md: r => r.category ? `[${r.category}](https://github.com/${REPO}/tree/main/guides/${r.category})` : null,
+        md: r => `[${r.category}](https://github.com/${REPO}/tree/main/guides/${r.category})`,
       },
       description: {},
       featureIds: {
@@ -276,6 +277,7 @@ const sources: Record<string, SourceConfig<any>> = {
     dir: 'skills-drafts',
     title: 'Skill Index',
     issueLabel: 'new-skill',
+    glob: ['guides/*/SKILL.md', 'skills-drafts/*/SKILL.md'],
     sort: byLastUpdatedDesc,
     columns: Object.assign(Object.create(sharedColumns), {
       path: sharedColumns.path,  // pull Path to the front; other shared columns keep their default (trailing) position
@@ -302,7 +304,8 @@ async function buildGuideRows (): Promise<GuideRow[]> {
   const { buildUseCaseMaps } = await import('./guides/sync-use-cases.ts')
     .finally(() => { console.log = origLog; });
 
-  const guides = scanAllGuides();
+  const guides = fs.globSync(sources.guides.glob, { cwd: rootDir })
+    .map(f => inventoryGuide(path.join(rootDir, path.dirname(f))));
   const { preparedGuides } = processGuideInventory(guides);
   const inventoryByName = new Map(guides.map(g => [g.name, g]));
 
@@ -349,10 +352,22 @@ async function buildSkillRows (): Promise<SkillRow[]> {
   // Start async work early so it runs during sync scanning
   const issuesPromise = fetchIssues(sources.skills.issueLabel);
 
-  const skills = [
-    ...scanSkillsIn(guidesDir, 'guides'),
-    ...scanSkillsIn(path.join(rootDir, 'skills-drafts'), 'skills-drafts'),
-  ];
+  const skills: Skill[] = fs.globSync(sources.skills.glob, { cwd: rootDir })
+    .map(file => {
+      const relativePath = path.dirname(file);  // e.g. 'skills-drafts/css' or 'guides/forms'
+      const slash = relativePath.indexOf('/');
+      const source = relativePath.slice(0, slash);
+      const dir = relativePath.slice(slash + 1);
+      const { data } = matter(fs.readFileSync(path.join(rootDir, file), 'utf-8'));
+      return {
+        dir,
+        source,
+        relativePath,
+        name: data.name ?? dir,
+        description: data.description ?? '',
+        license: data.license ?? null,
+      };
+    });
 
   // Await remaining async work in parallel
   const [allIssues, gitInfoMap] = await Promise.all([
@@ -383,32 +398,6 @@ async function buildSkillRows (): Promise<SkillRow[]> {
       issueOpen: issue ? issue.state === 'OPEN' : null,
     };
   });
-}
-
-/** Scan a directory for SKILL.md files and parse their frontmatter. */
-function scanSkillsIn (dir: string, source: string): Skill[] {
-  if (!fs.existsSync(dir)) {
-    return [];
-  }
-
-  return fs.readdirSync(dir, { withFileTypes: true })
-    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
-    .flatMap(d => {
-      const skillPath = path.join(dir, d.name, 'SKILL.md');
-      if (!fs.existsSync(skillPath)) {
-        return [];
-      }
-      const { data } = matter(fs.readFileSync(skillPath, 'utf-8'));
-      const relativePath = path.relative(rootDir, path.join(dir, d.name));
-      return [{
-        dir: d.name,
-        source,
-        relativePath,
-        name: data.name ?? d.name,
-        description: data.description ?? '',
-        license: data.license ?? null,
-      }];
-    });
 }
 
 // --- Shared helpers ---
@@ -535,11 +524,6 @@ async function buildAuthorMap (): Promise<Map<string, string>> {
   return map;
 }
 
-/** Markdown link helper for issue numbers. */
-function issueLink (issueNumber: number | null): string | null {
-  return issueNumber ? `[#${issueNumber}](https://github.com/${REPO}/issues/${issueNumber})` : null;
-}
-
 /** Serialize a raw value to a plain string. */
 function serialize (v: unknown, separator: string): string {
   if (Array.isArray(v)) {
@@ -558,12 +542,17 @@ function formatRelative (iso: string): string {
   return RELATIVE_TIME_FORMAT.format(0, 'second');
 }
 
-/** Render a Markdown table cell. */
+/** Render a Markdown table cell. Missing values render as the empty string
+ * (which the table renderer replaces with the empty placeholder) — column
+ * formatters are only invoked for present, non-empty values. */
 function mdCell (key: string, col: Column<any>, row: any, separator: string): string {
+  const raw = row[key];
+  if (raw == null || raw === '' || (Array.isArray(raw) && raw.length === 0)) {
+    return '';
+  }
   if (col.md) {
     return col.md(row) ?? '';
   }
-  const raw = row[key];
   if (col.link) {
     const items = Array.isArray(raw) ? raw : [raw];
     return items.filter(v => v != null && v !== '').map(v => `[${v}](${col.link!(String(v))})`).join(separator);
