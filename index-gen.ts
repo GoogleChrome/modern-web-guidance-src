@@ -256,7 +256,7 @@ const sources: Record<string, SourceConfig<any>> = {
     title: 'Guide Index',
     issueLabel: 'new-use-case',
     glob: 'guides/*/*/guide.md',
-    pathUrl: `https://github.com/${REPO}/tree/main/guides/{path}`,
+    pathUrl: `https://github.com/${REPO}/tree/main/guides/{path}/guide.md`,
     sort: byLastUpdatedDesc,
     columns: Object.assign(Object.create(sharedColumns), {
       path: sharedColumns.path,  // pull Path to the front; other shared columns keep their default (trailing) position
