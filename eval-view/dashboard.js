@@ -523,22 +523,7 @@ function renderGrid(data, testId) {
 }
 
 function openTrajectory(usedBasePath, sessionFile) {
-    if (api.source === 'remote') {
-        const finalPath = api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`);
-        api._fetch(finalPath)
-            .then(res => { if (!res.ok) throw new Error(); return res.blob(); })
-            .then(blob => {
-                const htmlBlob = new Blob([blob], { type: 'text/html' });
-                const url = URL.createObjectURL(htmlBlob);
-                window.open(url, '_blank');
-            })
-            .catch(e => {
-                console.error('Error loading trajectory:', e);
-                alert('Failed to load remote trajectory');
-            });
-    } else {
-        window.open(api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`), '_blank');
-    }
+    window.open(api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`), '_blank');
 }
 
 async function showDetails(testName, runs, stats, testId) {
@@ -702,7 +687,7 @@ async function showDetails(testName, runs, stats, testId) {
                         <span class="check-status">${check.passed ? '✅' : '❌'}</span>
                         <span class="check-message">${escapeHtml(check.message)}</span>
                         ${check.testId ? `
-                            <a href="${api.source === 'remote' ? `https://storage.mtls.cloud.google.com/guidance-evals/${usedBasePath}/grade-report/index.html` : api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`)}#?testId=${check.testId}" target="_blank" class="secondary-btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
+                            <a href="${api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`)}#?testId=${check.testId}" target="_blank" class="secondary-btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
                         ` : ''}
                     </li>
                 `).join('')}
@@ -765,12 +750,7 @@ async function showDetails(testName, runs, stats, testId) {
             const val = target.value;
             target.value = ''; // reset selection
             if (val === 'source') {
-                if (api.source === 'remote') {
-                    // Open directly via the mTLS domain which handles auth and serves raw HTML
-                    window.open(`https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`, '_blank');
-                } else {
-                    window.open(api.getAbsoluteUrl(resultPath), '_blank');
-                }
+                window.open(api.getAbsoluteUrl(resultPath), '_blank');
             } else if (val === 'diff') {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {
