@@ -11,7 +11,6 @@ sources:
   - https://github.com/WICG/scheduling-apis
   - https://developer.mozilla.org/en-US/docs/Web/API/Scheduling
   - https://www.w3.org/TR/task-scheduler/
-  - https://github.com/GoogleChromeLabs/scheduler-polyfill
 ---
 
 Heavy computations or long loops can block the main thread, causing the page to become unresponsive. To prevent this, you should yield control back to the browser periodically. The `scheduler.yield()` API allows you to pause a long task and let the browser handle user input or rendering before continuing.
