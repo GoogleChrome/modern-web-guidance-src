@@ -12,6 +12,7 @@ dist/
 # Test artifacts
 eval-view/test-results/
 harness/results/
+harness/results.bak/
 grade-report/
 test-app-results/
 

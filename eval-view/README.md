@@ -19,8 +19,6 @@ The dashboard fetches evaluation data from a static `./results/` directory hoste
 1.  **Run evaluations locally**: Generate your test metrics in `harness/results/`.
 2.  **Upload piecewise**: Use `pnpm run upload <suite>` in the `harness` directory to push your specific suite to the live site.
 3.  **App deployment**: Run `pnpm run deploy-pages` in `eval-view` to rebuild the app files and static `suites.gen.json` manifest.
-
-
 ## Local Development
 
 To run the dashboard locally and see local results (run from the root `guidance` directory):
@@ -39,7 +37,7 @@ pnpm run deploy-pages
 ```
 
 This will:
-1. Run `node generate-manifests.js` to generate the `features_mapping.gen.js`, `suites.gen.json`, and all `run-files.gen.json` manifests.
+1. Run `node generate-manifests.js` to generate the `features_mapping.gen.js` and `suites.gen.json` manifests.
 2. Copy `tasks/` and `base_apps/` for direct viewing.
 3. Merge them all using standard `gh-pages` module with `--add` flag (to avoid clobbering existing `results/` from remote).
 4. Push to the `gh-pages` branch on GitHub.

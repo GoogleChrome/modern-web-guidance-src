@@ -38,6 +38,7 @@ export class ApiClient {
     async _fetch(path, _isMetadataOnly = false, method = 'GET') {
         const url = this._formatUrl(path, _isMetadataOnly);
         const options = { method };
+
         return await fetch(url, options);
     }
 
@@ -227,13 +228,9 @@ export class ApiClient {
                     files = data.files || [];
                 }
             } else {
-                // Fetch from the static run-files.gen.json manifest
-                const url = this._formatUrl(`${basePath}/run-files.gen.json`);
-                const res = await fetch(url);
-                if (res.ok) {
-                    const data = await res.json();
-                    files = data.files || [];
-                }
+                // We cannot list run files on static GitHub Pages without a manifest.
+                // Fallback to relying on evals.json which should contain the file list.
+                files = [];
             }
         } catch (e) {
             console.log('Error checking run files:', e);
@@ -266,6 +263,7 @@ export class ApiClient {
 
     /** Returns absolute URL wrapper for opening links directly in new tabs (like trajectories). */
     getAbsoluteUrl(path) {
+
         return this._formatUrl(path);
     }
 }

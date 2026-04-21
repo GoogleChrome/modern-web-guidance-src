@@ -12,4 +12,4 @@
 - The `invokers-polyfill` is only loaded if `'commandForElement' in HTMLButtonElement.prototype` is false.
 - The document includes a fallback script that conditionally loads a `popover` polyfill.
 - The `popover` polyfill is only loaded if `'popover' in HTMLElement.prototype` is false.
-- If the open state of a popover is styled, `:popover-open` is not used by itself, combined with the polyfill class `.\:popover-open` via `:is()` or `:where()`
+- If the open state of a popover is styled, there are separate CSS rules for `:popover-open` and the polyfill class `.\:popover-open`.

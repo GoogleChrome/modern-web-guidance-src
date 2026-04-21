@@ -92,8 +92,32 @@ export function calculateChartData(results) {
 }
 
 
-export function formatTestName(name) {
+export function formatTestName(name, isSkill = false) {
     if (!name) return name;
+    const parts = name.split(' - ');
+    if (parts.length >= 2) {
+        const appName = parts[0];
+        const guideName = parts[1];
+        
+        const featuresMap = window.__featuresMapping || {};
+        let featureId = '';
+        
+        if (isSkill) {
+            // For skills, the first part is the discipline (e.g. performance)
+            return `${appName}: ${guideName}`; // discipline: task
+        }
+        
+        // For normal tasks, the second part is the guide name
+        if (featuresMap[guideName] && featuresMap[guideName].length > 0) {
+            featureId = featuresMap[guideName][0]; // take primary feature
+        }
+        
+        if (featureId) {
+            return `${featureId}: ${guideName}`;
+        }
+        
+        return `${appName}: ${guideName}`; // fallback
+    }
     return name.split(' - ').join(' / ');
 }
 

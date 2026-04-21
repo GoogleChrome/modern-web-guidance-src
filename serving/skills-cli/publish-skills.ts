@@ -86,7 +86,6 @@ async function main() {
       repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
       dotfiles: true,
       message: `Release v${newVersion}`,
-      tag: `v${newVersion}`,
       remove: "**/*"
     });
 

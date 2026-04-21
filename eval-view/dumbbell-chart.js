@@ -1,6 +1,6 @@
 export class DumbbellChart {
   constructor(containerId, options = {}) {
-    this.container = document.getElementById(containerId);
+    this.container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
     this.options = {
       size: options.size || 600,
       rowHeight: options.rowHeight || 30,
@@ -371,7 +371,7 @@ export class DumbbellChart {
                     <!-- Left Column -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                          <div style="color: #fff; font-weight: bold; font-size: 14px; white-space: nowrap;">${item.useCaseId || "Default"}</div>
-                         <div style="font-size: 11px; color: #8b949e;">feature: ${featureName}</div>
+                          <div style="font-size: 11px; color: #8b949e;">feature: ${featureName}</div>
                     </div>
                     <!-- Right Column -->
                     <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end; font-size: 12px;">

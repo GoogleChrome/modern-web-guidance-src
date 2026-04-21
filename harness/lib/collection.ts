@@ -261,7 +261,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         }
       }
 
-      const testName = `${taskName} - ${guide} - ${runType}`;
+      const testName = isSkill ? `${guide} - ${taskName} - ${runType}` : `${taskName} - ${guide} - ${runType}`;
       const actualBaseApp = taskInfo.baseApp;
 
       if (!allResults[testName]) {
