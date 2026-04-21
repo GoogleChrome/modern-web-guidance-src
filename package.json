@@ -22,6 +22,7 @@
     "report": "pnpm --filter harness report",
     "upload": "pnpm --filter harness upload",
     "dashboard": "pnpm --filter eval-view start",
+    "dashboard:static": "STRICT_STATIC=true pnpm --filter eval-view start",
     "build:mcp": "pnpm --filter serving build",
     "build:megaskill": "pnpm --filter serving build:megaskill",
     "test:mcp": "pnpm --filter serving test",

@@ -1,6 +1,7 @@
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
+import { pathToFileURL } from 'url';
 import { rootDir, harnessDir } from '../lib/paths.ts';
 
 try {
@@ -11,6 +12,7 @@ try {
 
 export const Agents = {
   JETSKI: 'jetski',
+  JETSKI_CLI: 'jetski_cli',
   GEMINI_CLI: 'gemini_cli',
   CLAUDE_CODE: 'claude_code',
   CODEX_CLI: 'codex_cli'
@@ -33,6 +35,7 @@ export const environmentConfig: EnvironmentConfig = {
   // Jetski Configuration
   jetskiDir: process.env.JETSKI_DIR || path.join(os.homedir(), '.gemini/jetski'),
   jetskiBin: process.env.JETSKI_BIN || '/Applications/Jetski.app/Contents/Resources/app/bin/jetski',
+  jetskiCliBin: process.env.JETSKI_CLI_BIN || '/google/bin/releases/jetski-devs/tools/cli',
   jetskiDebugPort: parseInt(process.env.JETSKI_DEBUG_PORT || '9226'),
   jetskiProfileDir: process.env.JETSKI_PROFILE_DIR || path.join(os.homedir(), '.gemini/jetski-profile'),
 
@@ -53,21 +56,46 @@ export const environmentConfig: EnvironmentConfig = {
 };
 
 export const defaultSuiteConfig: SuiteConfig = {
-  name: `full-${new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).replace(' ', 'T').replace(/:/g, '-')}`,
+  name: null,
   numRuns: 1,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
   mcpServersToEnable: ['modern-web'],
   serving: Serving.SKILLS_CLI,
-  agent: Agents.GEMINI_CLI,
+  agent: Agents.JETSKI_CLI,
 };
 
 export function mergeSuiteConfig(overrides: Partial<SuiteConfig>): SuiteConfig {
   return { ...defaultSuiteConfig, ...overrides };
 }
 
+export async function resolveSuiteConfig(configPath?: string): Promise<SuiteConfig> {
+  const resolvedConfigPath = configPath
+    ? path.resolve(process.cwd(), configPath)
+    : path.resolve(rootDir, 'config.ts');
+
+  let overrides: any = {};
+  try {
+    const fileUrl = pathToFileURL(resolvedConfigPath).href;
+    const customConfig = await import(fileUrl);
+    overrides = customConfig.default || customConfig;
+  } catch (err: any) {
+    if (err.code === 'ERR_MODULE_NOT_FOUND') {
+      if (configPath) {
+        console.error(`⚠️ Specified config file not found: ${resolvedConfigPath}`);
+        process.exit(1);
+      }
+    } else {
+      throw err;
+    }
+  }
+
+  return mergeSuiteConfig(overrides);
+}
+
 export interface EnvironmentConfig {
   jetskiDir: string;
   jetskiBin: string;
+  jetskiCliBin: string;
   jetskiDebugPort: number;
   jetskiProfileDir: string;
   geminiCliBin: string;

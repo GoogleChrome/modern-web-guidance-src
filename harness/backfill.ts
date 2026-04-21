@@ -20,19 +20,28 @@ import 'colors';
 import { evaluateSuite } from './evaluate.ts';
 import { resultsDir } from '../lib/paths.ts';
 
+export function resolveResultsDir(argv: string[], defaultDir: string): string {
+  const arg = argv[2];
+  if (arg === 'backfill') {
+    const customDir = argv[3];
+    if (customDir) return path.resolve(customDir);
+  } else if (arg) {
+    return path.resolve(arg);
+  }
+  return defaultDir;
+}
+
 async function backfillSuite(suiteResultsDir: string, suiteName: string) {
   await evaluateSuite(suiteResultsDir, suiteName);
 }
 
-async function main() {
+export async function runBackfill() {
   console.log('Starting Backfill of all results...'.cyan.bold);
+  console.log('process.argv:', process.argv);
 
   let mainResultsDir = resultsDir;
   
-  // Allow passing a custom results directory as an argument!
-  if (process.argv[2]) {
-    mainResultsDir = path.resolve(process.argv[2]);
-  }
+  mainResultsDir = resolveResultsDir(process.argv, resultsDir);
 
   if (!fs.existsSync(mainResultsDir)) {
     console.error(`Results directory not found at ${mainResultsDir}!`.red);
@@ -40,16 +49,29 @@ async function main() {
   }
 
   const entries = fs.readdirSync(mainResultsDir, { withFileTypes: true });
-  const suiteDirs = entries.filter(e => e.isDirectory()).map(e => e.name);
+  // Check if this is a single suite folder (contains numbered run directories)
+  const hasRunDirs = entries.some(e => e.isDirectory() && /^\d+$/.test(e.name));
 
-  console.log(`Found ${suiteDirs.length} potential suites in ${mainResultsDir}.`.cyan);
+  if (hasRunDirs) {
+    const suiteName = path.basename(mainResultsDir);
+    console.log(`Detected single suite folder. Backfilling ${suiteName}...`.cyan);
+    await backfillSuite(mainResultsDir, suiteName);
+  } else {
+    const suiteDirs = entries.filter(e => e.isDirectory()).map(e => e.name);
+    console.log(`Found ${suiteDirs.length} potential suites in ${mainResultsDir}.`.cyan);
 
-  for (const suiteName of suiteDirs) {
-    const suiteResultsDir = path.join(mainResultsDir, suiteName);
-    await backfillSuite(suiteResultsDir, suiteName);
+    for (const suiteName of suiteDirs) {
+      const suiteResultsDir = path.join(mainResultsDir, suiteName);
+      await backfillSuite(suiteResultsDir, suiteName);
+    }
   }
 
   console.log('Backfill completed!'.cyan.bold);
 }
 
-main().catch(console.error);
+import { fileURLToPath } from 'url';
+
+const isMain = process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url));
+if (isMain) {
+  runBackfill().catch(console.error);
+}

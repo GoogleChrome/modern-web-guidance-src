@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legacy Platform</title>
+
+
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+  
+  <script>
+    function blockMainThread(duration) {
+      const start = Date.now();
+      while (Date.now() - start < 300) {
+        Math.sqrt(Math.random() * 1000000);
+      }
+    }
+    blockMainThread(300);
+
+    window.addEventListener('load', function() {
+      const heroContainer = document.querySelector('.hero-container');
+      const img = document.createElement('img');
+      img.src = 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072';
+      img.className = 'hero-image';
+      img.loading = 'lazy';
+      heroContainer.appendChild(img);
+    });
+  </script>
+</head>
+<body>
+
+  <header class="header">
+    <h1>Welcome to Our Site</h1>
+  </header>
+
+  <div class="hero-container">
+    <h2>Discover Excellence</h2>
+  </div>
+
+  <div class="content-block">
+    <p>Loading the latest updates and analytics...</p>
+    <video autoplay muted loop preload="auto">
+      <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4">
+    </video>
+  </div>
+
+  <div class="gallery">
+    <img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800">
+    <img src="https://images.unsplash.com/photo-151877066853b-5e6c9f492113?w=800">
+    <img src="https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=800">
+    <img src="https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=800">
+    <img src="https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=800">
+    <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800">
+  </div>
+
+  <footer class="footer">
+    <p>&copy; 2026 Legacy Systems Inc.</p>
+  </footer>
+
+  <script>
+    window.addEventListener('scroll', function() {
+      const images = document.querySelectorAll('img');
+      images.forEach(img => {
+        const top = img.offsetTop;
+        const height = img.offsetHeight;
+        img.style.transform = 'rotate(' + (window.scrollY / 10) + 'deg)';
+        const newHeight = img.offsetHeight;
+      });
+      blockMainThread(50);
+    });
+
+    setInterval(function() {
+      const div = document.createElement('div');
+      div.style.position = 'absolute';
+      div.style.visibility = 'hidden';
+      document.body.appendChild(div);
+      const width = div.offsetWidth;
+      document.body.removeChild(div);
+      blockMainThread(20);
+    }, 100);
+
+    const heavyAnalytics = "https://www.google-analytics.com/analytics.js";
+    const script = document.createElement('script');
+    script.src = heavyAnalytics;
+    document.head.appendChild(script);
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+    
+    * {
+      will-change: transform, opacity, top, left;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background-color: #ffffff;
+      color: #333;
+    }
+
+    .header {
+      height: 100px;
+      background: #333;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero-container {
+      background: #eee;
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      content-visibility: auto; /* Violates above-the-fold rule */
+    }
+
+    .content-block {
+      padding: 50px;
+    }
+
+    .gallery {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .gallery img {
+      margin: 10px;
+      border: 1px solid #ccc;
+    }
+
+    .footer {
+      background: #222;
+      color: #999;
+      padding: 20px;
+      text-align: center;
+    }
+  </style>
+</body>
+</html>
