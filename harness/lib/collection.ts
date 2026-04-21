@@ -244,7 +244,8 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
               const lastResult = spec.tests[0].results[spec.tests[0].results.length - 1];
               return {
                 passed: lastResult.status === 'passed',
-                message: spec.title
+                message: spec.title,
+                testId: spec.id
               };
             });
           }

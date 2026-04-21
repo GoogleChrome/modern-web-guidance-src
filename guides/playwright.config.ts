@@ -14,9 +14,10 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   reporter: 'list',
-  outputDir: path.join(os.tmpdir(), 'playwright-results'),
+  outputDir: process.env.PLAYWRIGHT_OUTPUT_DIR || path.join(import.meta.dirname, 'test-results'),
   use: {
-    trace: 'off',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
   },
   projects: [
     {

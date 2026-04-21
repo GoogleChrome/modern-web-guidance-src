@@ -32,6 +32,18 @@ const MIME_TYPES = {
 
 const server = http.createServer(async (req, res) => {
   const reqUrl = req.url || '';
+  
+  // Handle CORS and Private Network Access for Playwright Trace Viewer
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
   // Ultra-strict raw URL check
   if (reqUrl.includes('..') || reqUrl.toLowerCase().includes('%2e')) {
     console.log(`403 Forbidden: Traversal/Encoded attempt - ${req.method} ${reqUrl}`);

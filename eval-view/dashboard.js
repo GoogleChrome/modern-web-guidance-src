@@ -699,6 +699,9 @@ async function showDetails(testName, runs, stats, testId) {
                     <li class="check-item">
                         <span class="check-status">${check.passed ? '✅' : '❌'}</span>
                         <span class="check-message">${escapeHtml(check.message)}</span>
+                        ${check.testId ? `
+                            <a href="${api.source === 'remote' ? `https://storage.mtls.cloud.google.com/guidance-evals/${usedBasePath}/grade-report/index.html` : api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`)}#?testId=${check.testId}" target="_blank" class="secondary-btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
+                        ` : ''}
                     </li>
                 `).join('')}
             </ul>
