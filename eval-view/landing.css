@@ -1,7 +1,7 @@
 
 /* Base Layout */
 .insights-drawer {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--color-surface-container-lowest);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   margin-bottom: 20px;
@@ -26,7 +26,7 @@
 .insights-panel {
   flex: 1;
   min-width: 250px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--color-surface-container-low);
   border-radius: 6px;
   padding: 12px;
 }
@@ -34,7 +34,7 @@
 .insights-panel-title {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--color-on-surface);
   margin-bottom: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -48,9 +48,9 @@
 .insights-table td {
   padding: 8px 4px;
   font-size: 0.85rem;
-  color: var(--text-primary);
+  color: var(--color-on-surface);
   vertical-align: middle;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--color-outline-variant);
   cursor: pointer;
 }
 
@@ -497,7 +497,7 @@
   top: 100%;
   right: 0;
   margin-top: 8px;
-  background: var(--bg-secondary);
+  background: var(--color-surface-container-lowest);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   width: 450px;

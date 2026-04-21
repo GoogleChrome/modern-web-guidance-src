@@ -34,6 +34,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const initialParams = new URLSearchParams(window.location.search);
     const initialTestID = initialParams.get('testId');
 
+    // Update "Back to Results" buttons to carry source param
+    const source = initialParams.get('source');
+    if (source) {
+        const backBtns = document.querySelectorAll('a[href="./"]');
+        backBtns.forEach(btn => {
+            btn.href = `./?source=${source}`;
+        });
+    }
+
     if (initialTestID) {
         await loadDashboardData(initialTestID);
     } else {
@@ -146,8 +155,10 @@ async function loadDashboardData(testId) {
             </div>`;
         }
 
-        const grid = $('#dashboard-grid');
-        grid.innerHTML = errorHtml;
+        const grid = document.getElementById('dashboard-grid') || document.getElementById('guide-grid') || document.getElementById('dumbbell-chart');
+        if (grid) {
+            grid.innerHTML = errorHtml;
+        }
     }
 }
 
@@ -444,7 +455,7 @@ function renderSummary(data) {
     const unguidedEarlyFailureRate = summary.unguidedEarlyFailureRate || 0;
 
     container.innerHTML = `
-        <div class="header-meta-item">
+        <div class="header-meta-item dog-ear-card">
             <div class="meta-item-header">
                 <span class="meta-label">AVERAGE UPLIFT</span>
                 <span class="meta-value-highlight">+${upliftDelta}%</span>
@@ -471,7 +482,7 @@ function renderSummary(data) {
         </div>
 
         <div class="summary-subgrid">
-        <div class="header-meta-item">
+        <div class="header-meta-item dog-ear-card">
             <div class="meta-item-header">
                 <span class="meta-label">ASSERTIONS PASSED</span>
             </div>
@@ -485,24 +496,28 @@ function renderSummary(data) {
             </div>
         </div>
 
-        <div class="header-meta-item">
+        <div class="header-meta-item dog-ear-card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span class="meta-label">ACTIVATION</span>
                 <span style="color: var(--text-secondary); font-size: 1rem;">${toolActivationRate}%</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
-                <meter value="${toolActivationRate}" min="0" max="100" style="width: 100%; height: 12px;"></meter>
+                <div class="custom-progress-bar">
+                    <div class="custom-progress-fill" style="width: ${toolActivationRate}%;"></div>
+                </div>
                 <div style="font-size: 0.8rem; color: var(--text-secondary);">(${tasksWithTools.size}/${tasksCount}) tasks</div>
             </div>
         </div>
 
-        <div class="header-meta-item">
+        <div class="header-meta-item dog-ear-card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span class="meta-label">GUIDANCE CONSUMED</span>
                 <span style="color: var(--text-secondary); font-size: 1rem;">${guideUsageRate}%</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
-                <meter value="${guideUsageRate}" min="0" max="100" style="width: 100%; height: 12px;"></meter>
+                <div class="custom-progress-bar">
+                    <div class="custom-progress-fill" style="width: ${guideUsageRate}%;"></div>
+                </div>
                 <div style="font-size: 0.8rem; color: var(--text-secondary);">(${tasksWithGuides.size}/${tasksCount}) tasks</div>
             </div>
         </div>
@@ -684,14 +699,14 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                 }
 
                 promptHtml = `
-                    <div style="display: flex; flex-direction: row; gap: 12px; align-items: flex-start;">
-                        <div style="background: rgba(255, 255, 255, 0.05); padding: 6px 10px; border-radius: 4px; font-size: 0.8rem; border: 1px solid var(--border-color); flex-shrink: 0;">
-                            <span style="color: var(--text-secondary); white-space: nowrap; display:block;">Base App:</span>
-                            <span style="color: var(--text-primary); font-weight: bold; white-space: nowrap;">${escapeHtml(baseApp)}</span>
+                    <div class="task-prompt-container">
+                        <div class="task-prompt-meta">
+                            <span class="task-prompt-meta-label">Base App:</span>
+                            <span class="task-prompt-meta-value">${escapeHtml(baseApp)}</span>
                         </div>
-                        <div style="flex: 1; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border-left: 4px solid var(--text-secondary); position: relative;">
-                            <div style="font-size: 4rem; position: absolute; top: -15px; left: 5px; opacity: 0.15; font-family: Georgia, serif; color: var(--text-secondary); user-select: none; pointer-events: none;">“</div>
-                            <p style="white-space: pre-wrap; font-family: Georgia, 'Times New Roman', serif; margin: 0; margin-left: 30px; color: var(--text-primary); font-size: 0.95rem; line-height: 1.5;">${formatPromptText(promptText)}</p>
+                        <div class="task-prompt-quote">
+                            <div class="quote-icon">“</div>
+                            <p class="task-prompt-text">${formatPromptText(promptText)}</p>
                         </div>
                     </div>
                 `;
@@ -806,11 +821,11 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                      <div style="display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 4px;">
                          <span style="font-weight: bold; font-size: 0.85rem; color: ${getColor(s.rate)};">${s.rate}%</span>
                          <div style="display: flex; flex-direction: column; gap: 2px; width: 100%;">
-                             ${sessionFile ? `<button class="secondary-btn tfoot-action-btn" onclick="openTrajectory('${escapeHtml(usedBasePath)}', '${escapeHtml(sessionFile)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}
-                             <button class="secondary-btn tfoot-action-btn" onclick="viewDiff('${escapeHtml(setupPath)}', '${escapeHtml(resultPath)}', '${escapeHtml(scenarioName)}', ${run.runNumber})"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>
-                             <button class="secondary-btn tfoot-action-btn" onclick="window.open('${escapeHtml(appUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>
-                             ${jsonFile ? `<button class="secondary-btn tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${jsonFile}`)}', '${escapeHtml(`${usedBasePath}/${jsonFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 11.5 2h-7zm0 1h7a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5z"/><path d="M4.5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg> JSON</button>` : ''}
-                             ${logFile ? `<button class="secondary-btn tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${logFile}`)}', '${escapeHtml(`${usedBasePath}/${logFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
+                             ${sessionFile ? `<button class="tfoot-action-btn" onclick="openTrajectory('${escapeHtml(usedBasePath)}', '${escapeHtml(sessionFile)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}
+                             <button class="tfoot-action-btn" onclick="viewDiff('${escapeHtml(setupPath)}', '${escapeHtml(resultPath)}', '${escapeHtml(scenarioName)}', ${run.runNumber})"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>
+                             <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(appUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>
+                             ${jsonFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${jsonFile}`)}', '${escapeHtml(`${usedBasePath}/${jsonFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 11.5 2h-7zm0 1h7a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5z"/><path d="M4.5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg> JSON</button>` : ''}
+                             ${logFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${logFile}`)}', '${escapeHtml(`${usedBasePath}/${logFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
                          </div>
                      </div>
                  `);
@@ -893,15 +908,18 @@ const guidedCards = await getRunCards(guidedRuns, 'Guided');
         const loadBtnId = `load-btn-${scenarioName.replace(/\s+/g, '-')}`;
 
         container.innerHTML = `
-            <div style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+            <div class="task-details-grid">
                 ${promptHtml}
                 ${truthMatrixHtml}
-                <div id="${escapeHtml(svgContainerId)}" class="stability-section" style="margin-top: 10px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
-                    <div class="stability-title" style="font-size: 0.9rem; font-weight: bold; color: var(--text-secondary); margin-bottom: 8px;">Reliability Trend Analysis</div>
-                    <button id="${escapeHtml(loadBtnId)}" class="secondary-btn">Compare task results across trials</button>
-                </div>
+
             </div>
         `;
+
+            //  i left this out of it for now.
+         // <div id="${escapeHtml(svgContainerId)}" class="stability-section blueprint-framed">
+         //            <div class="stability-title">Reliability Trend Analysis</div>
+         //            <button id="${escapeHtml(loadBtnId)}" class="secondary-btn">Compare task results across trials</button>
+         //        </div>
 
         const loadBtn = container.querySelector(`#${loadBtnId}`);
         if (loadBtn) {
@@ -1057,25 +1075,16 @@ async function viewContent(fileName, filePath) {
                 }
 
                 const details = document.createElement('details');
-                details.style.marginBottom = '12px';
-                details.style.background = 'rgba(255, 255, 255, 0.02)';
-                details.style.border = '1px solid var(--border-color)';
-                details.style.borderRadius = '6px';
-                details.style.padding = '8px 12px';
+                details.className = 'diff-file-details';
+                details.style.marginBottom = '12px'; // Keep margin for spacing
 
                 const summary = document.createElement('summary');
-                summary.style.fontWeight = 'bold';
-                summary.style.cursor = 'pointer';
-                summary.style.fontSize = '0.85rem';
-                summary.style.color = 'var(--text-primary)';
+                summary.className = 'diff-file-summary';
                 summary.textContent = fileHeader;
                 details.appendChild(summary);
 
                 const preEl = document.createElement('pre');
-                preEl.className = 'diff-container';
-                preEl.style.marginTop = '10px';
-                preEl.style.background = 'transparent';
-                preEl.style.border = 'none';
+                preEl.className = 'diff-container diff-file-pre';
                 preEl.style.padding = '0';
                 preEl.style.fontSize = '0.75rem';
 
@@ -1246,7 +1255,7 @@ function renderDashboardDumbbellChart(data) {
     // Apply CSS columns layout to balance heights
     container.style.display = 'block';
     container.style.columns = '2';
-    container.style.gap = '30px';
+    container.style.gap = '16px';
     container.style.width = '100%';
 
     // Group results by discipline
@@ -1277,8 +1286,17 @@ function renderDashboardDumbbellChart(data) {
 
         const chartDiv = document.createElement('div');
         chartDiv.className = 'discipline-chart-segment';
-        chartDiv.style.breakInside = 'avoid';
-        chartDiv.style.marginBottom = '30px';
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'meta-label';
+        titleEl.textContent = discipline;
+        titleEl.style.padding = '12px 16px 0'; // Padding top and horizontal
+        chartDiv.appendChild(titleEl);
+
+        const svgContainer = document.createElement('div');
+        svgContainer.className = 'chart-svg-container';
+        chartDiv.appendChild(svgContainer);
+
         container.appendChild(chartDiv);
 
         const handlePointClick = (index, type) => {
@@ -1312,11 +1330,10 @@ function renderDashboardDumbbellChart(data) {
             { label: 'Guided', data: guided, onClick: handlePointClick }
         ];
 
-        const chart = new DumbbellChart(chartDiv, {
-            title: discipline,
+        const chart = new DumbbellChart(svgContainer, {
             size: 500,
-            rowHeight: 30,
-            margin: { top: 40, right: 200, bottom: 20, left: 30 },
+            rowHeight: 28,
+            margin: { top: 5, right: 200, bottom: 40, left: 30 },
             hideLegend: true // Hide legend for individual charts to save space
         });
         chart.render({ labels, datasets });

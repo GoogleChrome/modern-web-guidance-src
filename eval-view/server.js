@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
-import { generateSuitesManifest } from './generate-manifests.js';
+import { runAllManifests } from './generate-manifests.js';
 
 const PORT = process.env.PORT || 8081;
 const STATIC = process.env.STATIC === 'true';
@@ -16,7 +16,7 @@ if (STATIC) {
   if (process.env.USE_MOCK_RESULTS !== 'true') {
     console.log('🔄 Generating static manifests for local parity...');
     try {
-      generateSuitesManifest('.');
+      await runAllManifests({ outputDir: '.' });
       console.log('✅ Static manifests generated.');
     } catch (e) {
       console.error('Failed to trigger manifest generation:', e);
