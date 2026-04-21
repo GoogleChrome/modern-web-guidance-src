@@ -33,16 +33,20 @@ try {
   // dereference: true resolves symlinks (mimicking cp -RL)
   fs.cpSync(baseAppsDir, appsDest, { recursive: true, dereference: true });
 
-  // 4. Staging evaluations results
+  // 4. Upload manifests and results to GCS
+  console.log(`\n📡 Uploading manifests and results to GCS...`);
+  runCommand('gcloud storage cp suites.gen.json gs://guidance-evals/suites.gen.json');
+  
   if (fs.existsSync(resultsDir)) {
-    console.log(`Copying evaluations results to ${resultsDest}...`);
-    fs.cpSync(resultsDir, resultsDest, { recursive: true });
+    console.log(`Uploading results from ${resultsDir} to GCS...`);
+    // Use rsync to sync results, ignoring .git just in case
+    runCommand(`gcloud storage rsync -r ${resultsDir} gs://guidance-evals/ --exclude="\.git/.*"`);
   } else {
-    console.log(`No results directory found in ${resultsDir}. Skipping copy.`);
+    console.log(`No results directory found in ${resultsDir}. Skipping GCS sync.`);
   }
 
-  // 5. Publish with gh-pages
-  console.log(`\n📡 Publishing to external repository (GoogleChrome/guidance-dash) gh-pages branch...`);
+  // 5. Publish with gh-pages (Viewer code only)
+  console.log(`\n📡 Publishing viewer to external repository (GoogleChrome/guidance-dash) gh-pages branch...`);
   runCommand('npx gh-pages --nojekyll --dist . --add --repo https://github.com/GoogleChrome/guidance-dash.git');
 
 } catch (e) {
@@ -52,5 +56,4 @@ try {
   console.log(`\n🧹 Cleaning up temporary directories...`);
   if (fs.existsSync(tasksDest)) fs.rmSync(tasksDest, { recursive: true });
   if (fs.existsSync(appsDest)) fs.rmSync(appsDest, { recursive: true });
-  if (fs.existsSync(resultsDest)) fs.rmSync(resultsDest, { recursive: true });
 }
