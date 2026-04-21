@@ -7,46 +7,124 @@ description: Action-oriented guidelines for modern CSS architecture, layouts, an
 
 These guidelines provide a high-density reference for writing maintainable, performant, and standard-compliant CSS.
 
-## 1. Architectural Foundations and The Cascade
-Effective CSS architecture focuses on managing the global namespace and controlling specificity natively.
+## 1. Foundations
 
-### DOs and DON'Ts
-- **DO** use a global `box-sizing: border-box` reset to ensure padding doesn't break layouts.
-- **DO** use keywords like `inherit`, `initial`, `unset`, or `revert` to explicitly control inheritance.
-- **DO** use **Cascade Layers** (`@layer`) to define explicit priority zones (e.g., `reset`, `base`, `theme`, `components`, `utilities`).
-- **DO** declare the layer order upfront in your main CSS file: `@layer reset, base, theme, components, utilities;`.
-- **DO** understand that `!important` declarations in a lower-priority layer override those in a higher-priority layer (precedence is reversed).
-- **DO** use specialized naming conventions like **BEM** (`.block__element--modifier`) to avoid namespace collisions.
-- **DO** use `isolation: isolate` to create a fresh stacking context without side-effects.
+Be allergic to knowledge duplication. Prefer variables over repetition, but whenever possible, prefer built-in conventions such as:
+- `currentColor` instead of defining a variable and setting `color` to it
+- The `inherit` keyword instead of defining a variable on the parent and using it on the same property across parent and child.
+- `em` units instead of `font-size: var(--size)`
+- `cqw`/`cqh` units instead of repeating box model values.
+- Code duplication is not knowledge duplication. The goal is robustness and maintainability, not saving characters.
+- Prefer **logical properties and values** over physical ones (e.g. `margin-inline-start` instead of `margin-left`) so that styles adapt to different writing modes and orientations. Even if the page author does not plan to localize, external translation tools often display translated text in context.
+- Do not use logical properties indiscriminately — ask yourself "would I want this to flip in RTL?" — if the answer is no, use the physical property instead.
+- Consider different viewing modes (dark mode, high contrast mode), different viewport sizes, and different input modes (touch, keyboard, pointer).
 
-### Code Example: Foundations & Reset
+## 2. Inheritance and The Cascade
+
+**Avoid** introducing BEM naming conventions to manage specificity.
+Instead, use modern CSS features such as cascade layers and `:where()` to make cascade behavior predictable and follow author intent.
+
+Use cascade layers (`@layer`) to define explicit priority zones (e.g., `reset`, `base`, `theme`, `components`, `utilities`), and declare their order upfront (e.g. `@layer reset, base, theme, components, utilities;`).
+Within each layer, use `:where()` to make selectors only compete based on meaningful signals, not incidental filters (`:not()` edge cases, remote ancestors, etc.) or for one-off easily overridable defaults..
+
+<!-- - **DO** use keywords like `inherit`, `initial`, `unset`, or `revert` to explicitly control inheritance.
+TODO too vague move this elsewhere and ground it on use cases
+-->
+
+## 3. Selectors and scoping
+
+Modern browser-native selectors reduce the need for preprocessors and complex state-tracking in JS.
+
+### Prefer CSS selectors over JS for complex element targeting
+
+- **DO** use `:has()` to style parents based on child state instead of managing classes in JS (e.g. `label:has(:checked)` instead of a manual `label.has-checked` class)
+- **DO NOT** nest `:has()` or use pseudo-elements inside it (browser API limitation)
+- Use `:nth-child(<An+B> of <selector>)` when you need to style every n-th element of a certain type. E.g. `details:nth-child(1 of [open])` will style the first open `<details>` element it finds, whereas `details[open]:first-child` would style only the first child iff it was open.
+
+### Use `:is()` (or `:where()`) instead of CSS rule duplication for fallbacks
+
+**DO NOT** duplicate CSS rules to provide fallbacks for pseudo-classes that may not be supported — use `:is()` or `:where()` instead and take advantage of their forgiving parsing rules.
+
 ```css
-/* Global Reset */
-*, *::before, *::after {
-  box-sizing: border-box;
+/* BAD: duplicate rules instead of using `:where()` */
+[popover]:popover-open {
+  /* styles for native popovers */
+}
+[popover].\:popover-open {
+  /* same styles again, for polyfilled popovers */
 }
 
-/* 1. Define order */
-@layer reset, theme, components;
-
-/* 2. Low priority foundational styles */
-@layer reset {
-  a { color: inherit; text-decoration: none; }
-}
-
-/* 3. Higher priority component styles */
-@layer components {
-  .btn {
-    background: var(--brand);
-    color: white;
-  }
-}
-
-/* Unlayered styles (Highest priority outside of !important) */
-.emergency-override {
-  display: block;
+/* GOOD */
+[popover]:where(:popover-open, .\:popover-open) {
+  /* same styles in one rule */
 }
 ```
+
+Do NOT use this for pseudo-elements, as they are not supported in `:is()` or `:where()`.
+
+### Avoid overmatching
+
+Use `:not()` to exclude states/elements instead of applying styles more widely than is needed and then undoing them.
+For example, don't do this:
+
+```css
+.fancy-list li {
+  border-bottom: 1px solid silver;
+}
+
+.fancy-list li:last-child {
+  border-bottom: none;
+}
+```
+
+Instead, do this:
+
+```css
+.fancy-list li:not(:last-child) {
+  border-bottom: 1px solid silver;
+}
+```
+
+While `:not()` + descendant selectors can exclude subtrees, this works poorly for deeply nested structures.
+For example, `.card :not(.content *)` will not work as expected for nested cards.
+`@scope` fixes this as it takes hierarchical proximity into account:
+
+```css
+@scope (.card) to (.content) {
+  /* styles for elements inside .card but not inside .content */
+}
+```
+
+This will work as expected even for nested cards.
+
+**DO NOT** use global resets (styles on `*`) as they cannot be overridden by web components or lower-priority cascade layers (without `!important`). Instead, apply reset styles to specific element types and/or conditions.
+
+
+### Nesting and scoping
+
+Use native CSS nesting to group related styles where this improves maintainability and readability.
+
+Prefer `@scope` over nesting when proximity should matter more than pure specificity. This is common in selectors that can be nested in any order, but the closest matching one (in element -> ancestor order) should win, e.g. theming classes.
+
+For example this will not work as expected:
+```css
+.dark .invert { color-scheme: light }
+.light .invert { color-scheme: dark }
+```
+
+If `.invert` is nested within _both_ `.dark` and `.light`, it will always resolve to dark mode as both rules have the same specificity.
+Using `@scope` fixes this:
+
+```css
+@scope (.dark) {
+  .invert { color-scheme: light }
+}
+
+@scope (.light) {
+  .invert { color-scheme: dark }
+}
+```
+
 
 ## 2. Advanced Visuals, Borders, and Blend Modes
 Modern CSS provides advanced effects for depth, textures, and non-rectangular geometries.
@@ -59,7 +137,6 @@ Modern CSS provides advanced effects for depth, textures, and non-rectangular ge
 - **DO** use keywords before length values in `background-position` (e.g., `bottom 10px right 20px`).
 - **DO** use `clip-path` and `mask-image` for custom geometric reveals and smooth fade-outs.
 - **DO** use `::selection` to customize highlighted text colors.
-- **DO** use CSS Counters (`counter-reset`, `counter-increment`) for automated numbering visible in `::before`/`::after`.
 
 ### Code Example: Advanced Visuals
 ```css
@@ -87,61 +164,15 @@ Modern CSS provides advanced effects for depth, textures, and non-rectangular ge
 }
 ```
 
+## 3. Focus management
 
-## 3. Native Selectors and Scoping
-Modern browser-native selectors reduce the need for preprocessors and complex state-tracking in JS.
-
-### DOs and DON'Ts
-- **DO** use native CSS nesting to group related styles (3 levels max).
-- **DO** use `:has()` to style parents based on child state (e.g., `.form-group:has(:invalid)`). For more information, see the guides at {{ GUIDE_REF("child-state-based-styling") }} and {{ GUIDE_REF("content-based-styling") }}.
-- **DON'T** nest `:has()` or use pseudo-elements inside `:has()` (browser API limitation).
-- **DO** use Attribute selectors (e.g., `[disabled]`) to style elements based on their state or metadata.
-- **DO** use `:where()` for baseline styles you want to be easily overridable (0 specificity).
-- **DO** use `:focus-visible` instead of `:focus` to hide focus rings for pointer interactions (mouse/touch) while preserving them for keyboard navigation and elements requiring text input.
-- **DO** pair focus outlines with `outline-offset` to separate the ring from the element.
-- **DON'T** use `outline: none` without providing a visible focus style.
-- **DON'T** rely on `box-shadow` for focus rings if you need to support Windows High Contrast Mode (use `outline` instead).
-- **DON'T** use `::before` or `::after` on replaced elements (`<img>`, `<input>`, `<video>`).
-
-### Code Example: Advanced Selectors
-```css
-.card {
-  position: relative;
-
-  /* Accessible focus visible state */
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 4px; /* Separate ring from border */
-  }
-
-  /* Conditional styling based on content */
-  &:has(img) { padding: 0; }
-
-  /* State management without extra classes */
-  &:has(input:checked) { border-color: var(--active); }
-
-  /* Shared styles without high specificity */
-  :is(.title, .subtitle) {
-    margin: 0;
-    font-weight: bold;
-  }
-}
-
-/* Zero-specificity reset */
-:where(a) { color: blue; }
-```
-
-### Functional Selectors Specificity Matrix
-
-| Selector | Specificity Weight | Primary Use Case |
-| :--- | :--- | :--- |
-| **`:where()`** | Exactly **0** | Baseline resets and design system defaults. |
-| **`:is()`** | Max specificity of its arguments | Reducing code duplication for shared styles. |
-| **`:has()`** | Max specificity of its arguments | Parent/relational styling based on child states or siblings. |
-
-**Single-Sentence Mental Model**: "`:where()` = Spec-neutral resets, `:is()` = Spec-heavy grouping, `:has()` = Relational state."
+- Use `:focus-visible` to define custom focus rings, not `:focus`.
+- Do not remove the browser's default focus rings (via `outline: none`) without providing an alternative visible focus style.
+- Prefer `outline` over other properties (e.g. `box-shadow`) for focus rings. If you must rely on `box-shadow` for focus rings, provide an `outline`-based fallback for High Contrast Mode using the `forced-colors` media query.
+- Pair focus outlines with `outline-offset` to visually separate the ring from the element.
 
 ## 4. Design Systems and Theming
+
 CSS Custom Properties (Variables) and modern color functions are the foundation of dynamic theming.
 
 ### DOs and DON'Ts
@@ -267,24 +298,4 @@ Leverage browser-native APIs for page navigations and viewport-bound animations.
   animation: progress-tint linear;
   animation-timeline: scroll(); /* Native, zero-JS */
 }
-```
-
-## 9. Scoping and Shadow DOM
-Keep CSS architecture clean by explicitly scoping styles to components.
-
-### DOs and DON'Ts
-- **DO** use native `@scope` to isolate styles to a component boundary (e.g., `@scope (.card) to (.content) { ... }`).
-- **DO** use `:host` to style the custom element wrapper in Shadow DOM.
-- **DON'T** use global resets if you are relying on Shadow DOM isolation, as they will override local component styles unless scoped.
-
-### Code Example: Scoped CSS
-```css
-/* Isolation without BEM side-effects */
-@scope (.media-object) {
-  .title {
-    font-weight: bold;
-  }
-}
-
-
 ```
