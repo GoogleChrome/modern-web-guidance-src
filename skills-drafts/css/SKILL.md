@@ -232,7 +232,7 @@ Use fluid and accessible typography that respects viewport widths and browser zo
 - **DO** use `@container` queries to create component-driven responsive layouts that adapt to their parent container's size rather than the viewport.
 - **DO** use dynamic viewport units (`dvh`, `dvw`) instead of `vh`/`vw` to prevent layout breakage when mobile browser UI elements (like address bars) appear or disappear.
 - **DO** use `aspect-ratio` for media elements (like `<img>` and `<video>`) to reserve space during loading and prevent Cumulative Layout Shift (CLS).
-- **DON'T** use `px` for font-size. Use `rem` to honor the user's browser font-size preferences (root font size), as `px` values are absolute and may ignore user-defined defaults.
+- **DON'T** use `px` for font-size. Prefer `rem` to honor the user's browser font-size preferences (root font size), as `px` values are absolute and may ignore user-defined defaults.
 - **DON'T** use `vw` alone for font-size without a min/max clamp, as it can scale text too small or too large on extreme screens.
 
 ### Code Example: Fluid Typography
