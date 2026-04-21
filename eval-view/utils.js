@@ -116,11 +116,10 @@ export function initGoogleAuth(onAuthSuccess) {
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn && accessToken) {
             authBtn.textContent = 'Authenticated ✓';
-                authBtn.disabled = true;
-                authBtn.style.backgroundColor = 'var(--accent-success)';
-                authBtn.style.color = 'white';
-                authBtn.style.borderColor = 'var(--accent-success)';
-            }
+            authBtn.disabled = true;
+            authBtn.style.backgroundColor = 'var(--accent-success)';
+            authBtn.style.color = 'white';
+            authBtn.style.borderColor = 'var(--accent-success)';
         }
 
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
