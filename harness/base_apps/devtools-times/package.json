@@ -19,7 +19,7 @@
     "@tailwindcss/vite": "^4.1.13",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
-    "astro": "^5.15.3",
+    "astro": "^6.1.6",
     "firebase-tools": "^14.16.0",
     "lexical": "^0.35.0",
     "quill": "^2.0.3",
