@@ -18,29 +18,40 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const params = new URLSearchParams(window.location.search);
         
-        await loadTests();
+        const finishInit = () => {
+            // Initialize with default states relative to compoundKeys instead of simple testIDs
+            selectedTestIds = new Set(Object.keys(allTestData));
 
-        // Initialize with default states relative to compoundKeys instead of simple testIDs
-        selectedTestIds = new Set(Object.keys(allTestData));
+            let initialTests = params.get('tests');
+            if (initialTests && initialTests.trim() !== '') {
+                const requestedIds = initialTests.split(',').filter(id => id.trim() !== '');
+                const matchIds = new Set();
+                requestedIds.forEach(req => {
+                    if (allTestData[req]) { matchIds.add(req); }
+                });
 
-        let initialTests = params.get('tests');
-        if (initialTests && initialTests.trim() !== '') {
-            const requestedIds = initialTests.split(',').filter(id => id.trim() !== '');
-            const matchIds = new Set();
-            requestedIds.forEach(req => {
-                if (allTestData[req]) { matchIds.add(req); }
-            });
-
-            if (matchIds.size > 0) {
-                selectedTestIds = matchIds;
+                if (matchIds.size > 0) {
+                    selectedTestIds = matchIds;
+                }
             }
+
+            // Update filter UI to match initial state
+            renderFilterMenuItems();
+
+            // Initial Render
+            renderSuites();
+        };
+
+        if (api.source === 'static') {
+            const { initGoogleAuth } = await import('./utils.js');
+            initGoogleAuth(async () => {
+                await loadTests();
+                finishInit();
+            });
+        } else {
+            await loadTests();
+            finishInit();
         }
-
-        // Update filter UI to match initial state
-        renderFilterMenuItems();
-
-        // Initial Render
-        renderSuites();
 
     } catch (error) {
         console.error('Error:', error);
