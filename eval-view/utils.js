@@ -114,10 +114,8 @@ export function initGoogleAuth(onAuthSuccess) {
         }
 
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
-        if (authBtn) {
-            authBtn.style.display = 'block';
-            if (accessToken) {
-                authBtn.textContent = 'Authenticated ✓';
+        if (authBtn && accessToken) {
+            authBtn.textContent = 'Authenticated ✓';
                 authBtn.disabled = true;
                 authBtn.style.backgroundColor = 'var(--accent-success)';
                 authBtn.style.color = 'white';

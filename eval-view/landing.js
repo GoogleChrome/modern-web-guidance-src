@@ -64,6 +64,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 (notification) => {
                     if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
                         console.log('One Tap skipped or not displayed.');
+                        const authBtn = document.getElementById('auth-btn');
+                        if (authBtn) authBtn.style.display = 'block';
                         triggerAuth();
                     }
                 }
