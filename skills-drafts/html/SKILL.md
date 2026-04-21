@@ -288,7 +288,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 </video>
 ```
 
-## 9. Critical Path and Dynamic State
+## 9. Dynamic Styles
 
 ### Guidelines
 - **DO** use the `style` attribute to pass state to CSS via **Custom Properties**. This keeps visual logic in your stylesheet while JavaScript provides the raw data.
