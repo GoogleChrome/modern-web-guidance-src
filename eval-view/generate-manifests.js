@@ -49,22 +49,38 @@ export function generateMapping(outputDir = '.') {
  * Generates suites.gen.json based on folders in harness/results that contain evals.json.
  */
 export function generateSuitesManifest(outputDir = '.', resultsSourceDir = resultsDir) {
-    const suites = [];
-    if (!fs.existsSync(resultsSourceDir)) return [];
+    const suites = new Set();
+    const outputPath = path.join(outputDir, 'suites.gen.json');
 
-    const items = fs.readdirSync(resultsSourceDir, { withFileTypes: true });
-    for (const item of items) {
-        if (item.isDirectory()) {
-            const suiteDir = path.join(resultsSourceDir, item.name);
-            if (fs.existsSync(path.join(suiteDir, 'evals.json'))) {
-                suites.push(item.name);
+    // 1. Read existing manifest to preserve historical data
+    if (fs.existsSync(outputPath)) {
+        try {
+            const existing = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+            if (Array.isArray(existing)) {
+                existing.forEach(s => suites.add(s));
+            }
+        } catch (e) {
+            const message = e instanceof Error ? e.message : String(e);
+            console.warn(`Failed to parse existing suites.gen.json:`, message);
+        }
+    }
+
+    // 2. Add new suites from results dir
+    if (fs.existsSync(resultsSourceDir)) {
+        const items = fs.readdirSync(resultsSourceDir, { withFileTypes: true });
+        for (const item of items) {
+            if (item.isDirectory()) {
+                const suiteDir = path.join(resultsSourceDir, item.name);
+                if (fs.existsSync(path.join(suiteDir, 'evals.json'))) {
+                    suites.add(item.name);
+                }
             }
         }
     }
-    suites.sort();
-    const outputPath = path.join(outputDir, 'suites.gen.json');
-    fs.writeFileSync(outputPath, JSON.stringify(suites, null, 2));
-    return suites;
+
+    const sortedSuites = Array.from(suites).sort();
+    fs.writeFileSync(outputPath, JSON.stringify(sortedSuites, null, 2));
+    return sortedSuites;
 }
 
 /** 
