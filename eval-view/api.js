@@ -11,7 +11,7 @@ export class ApiClient {
             }
         }
         this.source = sourceParam;
-        this.dataPrefix = './results/'; // Base path for hosted data on GitHub Pages
+        this.gcsPrefix = 'https://storage.googleapis.com/storage/v1/b/guidance-evals/o/';
 
         // Capabilities based on source
         this.capabilities = {
@@ -21,23 +21,29 @@ export class ApiClient {
         };
     }
 
-    _formatUrl(path, _isMetadataOnly = false) {
-        if (this.capabilities.useManifests) {
+    _formatUrl(path, isMetadataOnly = false) {
+        if (this.source === 'static') {
             if (path.startsWith('http')) return path;
 
-            let [basePath, query] = path.split('?');
-            // Bulletproof segment encoding (preserves / directory separators)
-            const encodedSegments = basePath.split('/').map(seg => encodeURIComponent(seg)).join('/');
-            const q = query ? `?${query}` : '';
-            return `${this.dataPrefix}${encodedSegments}${q}`;
+            let fixedPath = path.split('?')[0];
+            // Build the GCS JSON API endpoint
+            let url = `${this.gcsPrefix}${encodeURIComponent(fixedPath)}`;
+            if (!isMetadataOnly) {
+                url += '?alt=media';
+            }
+            return url;
         } else {
             return `${path}?source=${this.source}`;
         }
     }
 
-    async _fetch(path, _isMetadataOnly = false, method = 'GET') {
-        const url = this._formatUrl(path, _isMetadataOnly);
+    async _fetch(path, isMetadataOnly = false, method = 'GET') {
+        const url = this._formatUrl(path, isMetadataOnly);
         const options = { method };
+        if (this.source === 'static') {
+            const { authenticatedFetch } = await import('./utils.js');
+            return await authenticatedFetch(url, options);
+        }
         return await fetch(url, options);
     }
 
@@ -83,8 +89,8 @@ export class ApiClient {
     /** Fetches the overall array of test suites/runs listed for the dashboard. */
     async getSuites() {
         if (this.capabilities.useManifests) {
-            // Load from a static suites.gen.json manifest
-            const res = await fetch('./suites.gen.json');
+            // Load from a static suites.gen.json manifest from GCS
+            const res = await this._fetch('suites.gen.json');
             if (!res.ok) throw new Error('Failed to load remote suites (suites.gen.json not found)');
 
             const suites = await res.json();
