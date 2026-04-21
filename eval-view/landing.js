@@ -54,6 +54,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 (notification) => {
                     if (notification.isSkippedMoment()) {
                         console.log('One Tap skipped. Awaiting manual sign-in.');
+                        const btnContainer = document.getElementById('google-btn-container');
+                        if (btnContainer) btnContainer.style.display = 'block';
                     }
                 }
             );
