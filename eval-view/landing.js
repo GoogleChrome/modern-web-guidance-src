@@ -62,8 +62,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     triggerAuth();
                 },
                 (notification) => {
-                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                        console.log('One Tap skipped or not displayed.');
+                    if (notification.isSkippedMoment()) {
+                        console.log('One Tap skipped.');
                         const authBtn = document.getElementById('auth-btn');
                         if (authBtn) authBtn.style.display = 'block';
                         triggerAuth();
