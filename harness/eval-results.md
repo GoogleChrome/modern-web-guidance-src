@@ -69,13 +69,15 @@ After backfilling, you should push the updated summaries back to GCS.
 
 You can use the **`--summary-only`** flag to only upload `evals.json` and `evals.md`, making the sync extremely fast.
 
-To upload **all** suites in bulk from a custom directory, you can use a simple shell loop:
+To upload all suites in bulk from a custom directory, you can use a highly efficient shell loop with `gcloud storage cp`. This avoids the overhead of creating temp clones and only pushes the tiny summary files:
 
 ```bash
 # Bulk upload ONLY summaries for all suites in ~/guidance-evals
 for d in ~/guidance-evals/*/ ; do
     suite=$(basename "$d")
-    node harness/upload_suite.ts "$suite" ~/guidance-evals --summary-only
+    echo "Uploading summary for $suite..."
+    gcloud storage cp "$d/evals.json" "gs://guidance-evals/$suite/evals.json"
+    gcloud storage cp "$d/evals.md" "gs://guidance-evals/$suite/evals.md"
 done
 ```
 
