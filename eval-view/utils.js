@@ -159,6 +159,7 @@ export function initOneTap(onAuthSuccess, onPromptMoment) {
 
     window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
+        use_fedcm: true,
         callback: (response) => {
             console.log('One Tap login successful!');
             if (onAuthSuccess) onAuthSuccess(response.credential);
