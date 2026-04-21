@@ -9,13 +9,13 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 - **DO** use the standard HTML5 doctype `<!DOCTYPE html>` to prevent quirky rendering modes.
 - **DO** set the `lang` attribute on the `<html>` element for screen reader pronunciation and translation tools.
-- **DO** use a single `<h1>` per page representing the main topic. Maintain a sequential, non-skipping heading hierarchy (`<h2>` to `<h3>`).
+- **DO** use a single `<h1>` per page representing the main topic. Maintain a sequential, non-skipping heading hierarchy (`<h2>` to `<h3>`, but not `<h2>` to `<h4>`).
 - **DO** use semantic landmarks (`<header>`, `<nav>`, `<main>`, `<aside>`, `<footer>`) to create regional navigation for assistive technologies.
 - **DO** use `<search>` to enclose search and filtering mechanisms (eliminates the need for `role="search"`).
 - **DO** use `<button>` for triggered actions (JS, Modals, Forms) and `<a>` strictly for URL navigation. Set `type="button"` for non-submit buttons in forms to prevent unintended submission.
 - **DO** use `<ul>`, `<ol>`, `<dl>`, and `<menu>` elements for list content. 
 
-- **DON'T** use generic `<div>` or `<span>` for interactive elements or headings.
+- **DON'T** use generic `<div>` or `<span>` when semantic elements exist, for instance for interactive elements, headings, or independently reusable self-contained content.
 - **DON'T** use boolean attributes with redundant values (e.g., use `disabled`, not `disabled="disabled"`).
 - **DON'T** use inline styles; they violate CSP and bloat page weight.
 
@@ -46,6 +46,9 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
         <button type="submit">Search</button>
       </form>
     </search>
+    <article>
+      <h2>First post</h2>
+    </article>
   </main>
 </body>
 </html>
@@ -90,7 +93,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 ### Guidelines
 
 - **DO** use `<dialog>` for modal overlays (requires JS `.showModal()`) to automatically trap focus, dim backgrounds, and support dismissing via `Esc`.
-- **DO** utilize the Popover API (`popover` attribute) command for non-modal UI (menus, tooltips) that do not require focus traps.
+- **DO** utilize the Popover API (`popover` attribute) for non-modal UI (menus, tooltips) that do not require focus traps.
 - **DO** use `::backdrop` to style modal backgrounds.
 - **DO** use `<form method="dialog">` to dismiss dialogs without manual JS handlers. Combined button `formmethod="dialog"` yields the button's value to the dialog `.returnValue`.
 
@@ -147,6 +150,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DO** use `<details>` and `<summary>` for native accordions or revealable content without JS.
 - **DO** place `<summary>` as the *first* child of `<details>`.
 - **DO** use `details[open]` attribute for styling expanded states.
+- **DO** use `details::details-content` for styling the contents of the `<details>` element.
 - **DO** use the `name` attribute on multiple `<details>` elements to create exclusive accordions (opening one closes others).
 
 - **DON'T** nest other interactive elements (links, buttons) directly inside `<summary>` text as it acts as a button and breaks focus.
@@ -206,6 +210,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DO** group subsets of related fields using `<fieldset>` and `<legend>`.
 - **DO** utilize the `form="form-id"` attribute to decouple inputs from the physical `<form>` tree.
 - **DO** use `<datalist>` coupled with `<input list="id">` for lightweight auto-suggestions (note: visually unstylable and has screen-reader quirks).
+- **DO** use appropriate `autocomplete` attributes for inputs.
 - **DO** distinguish between `autocomplete="current-password"` and `autocomplete="new-password"`.
 - **DO** ensure that all inputs in a form have a corresponding `<label>` element. 
 
@@ -263,7 +268,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 - **DO** set `width` and `height` to prevent layout shifts (CLS) on `<video>` and `<audio>`.
 - **DO** provide a `poster` image fallback for videos.
-- **DO** include `<track>` for accessibility (subtitles/captions).
+- **DO** include subtitles and captions with `<track>`.
 - **DO** ensure background videos are `muted`, `autoplay`, `loop`, and use `role="none"` or `aria-hidden="true"`.
 
 - **DON'T** rely on JS for basic video controls if native `controls` attribute is sufficient.
@@ -282,4 +287,43 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
   <track src="caps.vtt" kind="captions" srclang="en" label="English">
 </video>
 ```
+
+## 9. Critical Path and Dynamic State
+
+### Guidelines
+- **DO** use the `style` attribute to pass state to CSS via **Custom Properties**. This keeps visual logic in your stylesheet while JavaScript provides the raw data.
+
+- **DON'T** use inline styles for static design (colors, padding, margins) that belong in a stylesheet.
+- **DON'T** use inline event handlers (e.g., `onclick`). Use `addEventListener` in script files to maintain a clean DOM and secure CSP.
+
+### Code Example
+
+```html
+<body>
+  <!-- Progress with style-driven color data -->
+  <label for="upload-progress">Upload status:</label>
+  <progress id="upload-progress" class="loading-bar" value="0" max="100" style="--brand-hue: 200;"></progress>
+
+
+  <script>
+    const updateProgress = (percent, hue) => {
+      const bar = document.querySelector('.loading-bar');
+      
+
+      bar.value = percent;
+      
+      // Update dynamic style variable 
+      if (hue) bar.style.setProperty('--brand-hue', hue);
+    };
+
+    // Example: Move to 85% and shift color to green (120)
+    setTimeout(() => updateProgress(85, 120), 1000);
+  </script>
+</body>
+```
+```css
+.loading-bar {
+  accent-color: hsl(var(--brand-hue, 200), 80%, 50%);
+  transition: accent-color 0.3s ease;
+}
 ```
