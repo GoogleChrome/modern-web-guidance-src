@@ -97,58 +97,12 @@ export function formatTestName(name) {
     return name.split(' - ').join(' / ');
 }
 
-// Google Identity Services (OAuth) Integration
+// Google Identity Services (One Tap & Button) Integration
 const GOOGLE_CLIENT_ID = '169412140096-fk4rtf6iqk982d43385s1ilucrda91g2.apps.googleusercontent.com';
-let accessToken = localStorage.getItem('gcs_access_token') || null;
+let idToken = localStorage.getItem('gsi_id_token') || null;
 
-export function getAccessToken() {
-    return accessToken;
-}
-
-export function initGoogleAuth(onAuthSuccess) {
-    const init = () => {
-        if (!window.google || !window.google.accounts) {
-            // Wait for script to load
-            setTimeout(init, 50);
-            return;
-        }
-
-        const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
-        if (authBtn && accessToken) {
-            authBtn.textContent = 'Authenticated ✓';
-            authBtn.disabled = true;
-            authBtn.style.backgroundColor = 'var(--accent-success)';
-            authBtn.style.color = 'white';
-            authBtn.style.borderColor = 'var(--accent-success)';
-        }
-
-        const tokenClient = window.google.accounts.oauth2.initTokenClient({
-            client_id: GOOGLE_CLIENT_ID,
-            scope: 'https://www.googleapis.com/auth/devstorage.read_only',
-            callback: (response) => {
-                if (response.error !== undefined) {
-                    console.error('OAuth Error:', response);
-                    return;
-                }
-                accessToken = response.access_token;
-                localStorage.setItem('gcs_access_token', accessToken);
-                console.log('Successfully authenticated with Google.');
-                if (authBtn) {
-                    authBtn.textContent = 'Authenticated ✓';
-                    authBtn.disabled = true;
-                    authBtn.style.backgroundColor = 'var(--accent-success)';
-                    authBtn.style.color = 'white';
-                    authBtn.style.borderColor = 'var(--accent-success)';
-                }
-                if (onAuthSuccess) onAuthSuccess();
-            },
-        });
-
-        if (authBtn) {
-            authBtn.addEventListener('click', () => tokenClient.requestAccessToken());
-        }
-    };
-    init();
+export function getIdToken() {
+    return idToken;
 }
 
 export function initOneTap(onAuthSuccess, onPromptMoment) {
@@ -157,30 +111,50 @@ export function initOneTap(onAuthSuccess, onPromptMoment) {
         return;
     }
 
+    const handleResponse = (response) => {
+        console.log('Logged in via Google Identity Services.');
+        idToken = response.credential;
+        localStorage.setItem('gsi_id_token', idToken);
+        
+        const authBtn = document.getElementById('auth-btn');
+        if (authBtn) {
+            authBtn.textContent = 'Authenticated ✓';
+            authBtn.disabled = true;
+            authBtn.style.backgroundColor = 'var(--accent-success)';
+            authBtn.style.color = 'white';
+            authBtn.style.borderColor = 'var(--accent-success)';
+        }
+        
+        if (onAuthSuccess) onAuthSuccess(idToken);
+    };
+
     window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         use_fedcm: true,
-        callback: (response) => {
-            console.log('One Tap login successful!');
-            if (onAuthSuccess) onAuthSuccess(response.credential);
-        }
+        callback: handleResponse
     });
     
+    // Render the fallback button if container exists
+    const btnContainer = document.getElementById('google-btn-container');
+    if (btnContainer) {
+        window.google.accounts.id.renderButton(btnContainer, { theme: "outline", size: "large" });
+    }
+
     window.google.accounts.id.prompt((notification) => {
         if (onPromptMoment) onPromptMoment(notification);
     });
 }
 
 export async function authenticatedFetch(url, options = {}) {
-    if (accessToken) {
+    if (idToken) {
         options.headers = options.headers || {};
-        options.headers['Authorization'] = `Bearer ${accessToken}`;
+        options.headers['Authorization'] = `Bearer ${idToken}`;
     }
     const res = await fetch(url, options);
     if (res.status === 401) {
-        console.warn('Google Access Token expired or invalid. Clearing token.');
-        localStorage.removeItem('gcs_access_token');
-        accessToken = null;
+        console.warn('ID Token expired or invalid. Clearing token.');
+        localStorage.removeItem('gsi_id_token');
+        idToken = null;
         
         // Reset button UI if available
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
