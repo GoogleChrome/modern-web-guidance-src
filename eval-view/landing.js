@@ -43,11 +43,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         if (api.source === 'static') {
-            const { initGoogleAuth } = await import('./utils.js');
-            initGoogleAuth(async () => {
-                await loadTests();
-                finishInit();
-            });
+            const { initOneTap, initGoogleAuth } = await import('./utils.js');
+            
+            let authTriggered = false;
+            const triggerAuth = () => {
+                if (authTriggered) return;
+                authTriggered = true;
+                initGoogleAuth(async () => {
+                    await loadTests();
+                    finishInit();
+                });
+            };
+
+            // Try One Tap first
+            initOneTap(
+                async (_idToken) => {
+                    console.log('Logged in via One Tap.');
+                    triggerAuth();
+                },
+                (notification) => {
+                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                        console.log('One Tap skipped or not displayed.');
+                        triggerAuth();
+                    }
+                }
+            );
         } else {
             await loadTests();
             finishInit();

@@ -154,6 +154,25 @@ export function initGoogleAuth(onAuthSuccess) {
     init();
 }
 
+export function initOneTap(onAuthSuccess, onPromptMoment) {
+    if (!window.google || !window.google.accounts) {
+        setTimeout(() => initOneTap(onAuthSuccess, onPromptMoment), 50);
+        return;
+    }
+
+    window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (response) => {
+            console.log('One Tap login successful!');
+            if (onAuthSuccess) onAuthSuccess(response.credential);
+        }
+    });
+    
+    window.google.accounts.id.prompt((notification) => {
+        if (onPromptMoment) onPromptMoment(notification);
+    });
+}
+
 export async function authenticatedFetch(url, options = {}) {
     if (accessToken) {
         options.headers = options.headers || {};
