@@ -1,6 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
 import * as path from 'path';
-import * as os from 'os';
 
 export default defineConfig({
   timeout: 10000,
