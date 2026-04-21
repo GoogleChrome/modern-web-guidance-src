@@ -48,21 +48,29 @@ export function generateMapping(outputDir = '.') {
 /** 
  * Generates suites.gen.json based on folders in harness/results that contain evals.json.
  */
-export function generateSuitesManifest(outputDir = '.', resultsSourceDir = resultsDir) {
+export async function generateSuitesManifest(outputDir = '.', resultsSourceDir = resultsDir, skipFetch = false) {
     const suites = new Set();
     const outputPath = path.join(outputDir, 'suites.gen.json');
 
-    // 1. Read existing manifest to preserve historical data
-    if (fs.existsSync(outputPath)) {
-        try {
-            const existing = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
-            if (Array.isArray(existing)) {
-                existing.forEach(s => suites.add(s));
+    // 1. Fetch live manifest from GitHub Pages to preserve historical data
+    if (!skipFetch) {
+    const liveManifestUrl = 'https://googlechrome.github.io/guidance-dash/suites.gen.json';
+    console.log(`Fetching live manifest from ${liveManifestUrl}...`);
+    try {
+        const response = await fetch(liveManifestUrl);
+        if (response.ok) {
+            const liveSuites = await response.json();
+            if (Array.isArray(liveSuites)) {
+                console.log(`Fetched ${liveSuites.length} suites from live manifest.`);
+                liveSuites.forEach(s => suites.add(s));
             }
-        } catch (e) {
-            const message = e instanceof Error ? e.message : String(e);
-            console.warn(`Failed to parse existing suites.gen.json:`, message);
+        } else {
+            console.warn(`Failed to fetch live manifest (Status ${response.status}). Starting fresh.`);
         }
+    } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        console.warn(`Failed to fetch live manifest:`, message);
+    }
     }
 
     // 2. Add new suites from results dir
@@ -128,7 +136,7 @@ export async function runAllManifests({ resultsOnly = false, outputDir = '.' } =
     }
 
     console.log('🔄 Generating suites manifests...');
-    generateSuitesManifest(outputDir);
+    await generateSuitesManifest(outputDir);
 }
 
 // CLI Runner
