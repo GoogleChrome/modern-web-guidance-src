@@ -38,9 +38,8 @@ pnpm run deploy-pages
 
 This will:
 1. Run `node generate-manifests.js` to generate the manifests.
-2. Upload `suites.gen.json` to GCS.
-3. Use `gcloud storage rsync` to sync results to GCS.
-4. Push the viewer code to the `gh-pages` branch on GitHub.
+2. Use `gcloud storage rsync` to sync results to GCS.
+3. Push the viewer code to the `gh-pages` branch on GitHub.
 
 ### Parity Testing
 To ensure your changes will work on the static GitHub Pages host, you can run the dashboard in a "Strict Static" mode that disables all dynamic APIs:

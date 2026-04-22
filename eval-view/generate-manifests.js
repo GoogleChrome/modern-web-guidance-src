@@ -45,51 +45,7 @@ export function generateMapping(outputDir = '.') {
     return mapping;
 }
 
-/** 
- * Generates suites.gen.json based on folders in harness/results that contain evals.json.
- */
-export async function generateSuitesManifest(outputDir = '.', resultsSourceDir = resultsDir, skipFetch = false) {
-    const suites = new Set();
-    const outputPath = path.join(outputDir, 'suites.gen.json');
 
-    // 1. Fetch live manifest from GitHub Pages to preserve historical data
-    if (!skipFetch) {
-    const liveManifestUrl = 'https://googlechrome.github.io/guidance-dash/suites.gen.json';
-    console.log(`Fetching live manifest from ${liveManifestUrl}...`);
-    try {
-        const response = await fetch(liveManifestUrl);
-        if (response.ok) {
-            const liveSuites = await response.json();
-            if (Array.isArray(liveSuites)) {
-                console.log(`Fetched ${liveSuites.length} suites from live manifest.`);
-                liveSuites.forEach(s => suites.add(s));
-            }
-        } else {
-            console.warn(`Failed to fetch live manifest (Status ${response.status}). Starting fresh.`);
-        }
-    } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
-        console.warn(`Failed to fetch live manifest:`, message);
-    }
-    }
-
-    // 2. Add new suites from results dir
-    if (fs.existsSync(resultsSourceDir)) {
-        const items = fs.readdirSync(resultsSourceDir, { withFileTypes: true });
-        for (const item of items) {
-            if (item.isDirectory()) {
-                const suiteDir = path.join(resultsSourceDir, item.name);
-                if (fs.existsSync(path.join(suiteDir, 'evals.json'))) {
-                    suites.add(item.name);
-                }
-            }
-        }
-    }
-
-    const sortedSuites = Array.from(suites).sort();
-    fs.writeFileSync(outputPath, JSON.stringify(sortedSuites, null, 2));
-    return sortedSuites;
-}
 
 /** 
  * Generates grouped-tasks.gen.json by scanning guides.
@@ -135,8 +91,7 @@ export async function runAllManifests({ resultsOnly = false, outputDir = '.' } =
         await generateGroupedTasksManifest(outputDir);
     }
 
-    console.log('🔄 Generating suites manifests...');
-    await generateSuitesManifest(outputDir);
+
 }
 
 // CLI Runner
