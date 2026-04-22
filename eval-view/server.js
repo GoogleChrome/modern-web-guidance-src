@@ -200,13 +200,15 @@ const server = http.createServer(async (req, res) => {
 
 
   let filePath;
-  // Map results and setup to the harness directory
-  if (decodedPath.startsWith('/base_apps/')) {
-    filePath = path.join('../harness/base_apps', decodedPath.substring(11));
-  } else if (decodedPath.startsWith('/tasks/')) {
-    filePath = path.join('../harness/tasks', decodedPath.substring(7));
-  } else if (decodedPath.startsWith('/guides/')) {
-    filePath = path.join('../guides', decodedPath.substring(8));
+  const routes = {
+    '/base_apps/': (p) => path.join('../harness/base_apps', p.substring(11)),
+    '/tasks/': (p) => path.join('../harness/tasks', p.substring(7)),
+    '/guides/': (p) => path.join('../guides', p.substring(8)),
+  };
+
+  const match = Object.keys(routes).find(prefix => decodedPath.startsWith(prefix));
+  if (match) {
+    filePath = routes[match](decodedPath);
   } else {
     const relativePath = decodedPath.startsWith('/') ? decodedPath.substring(1) : decodedPath;
     let localEvalViewPath = path.join('.', relativePath);
