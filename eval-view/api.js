@@ -89,6 +89,8 @@ export class ApiClient {
     /** Fetches the overall array of test suites/runs listed for the dashboard. */
     async getSuites() {
         if (this.source === 'static') {
+
+
             const gcsUrl = `${this.gcsPrefix}?delimiter=/`;
             const res = await this._fetch(gcsUrl);
             if (!res.ok) throw new Error('Failed to load remote suites');
