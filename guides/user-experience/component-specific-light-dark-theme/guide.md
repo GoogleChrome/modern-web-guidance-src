@@ -1,10 +1,11 @@
 ---
 name: component-specific-light-dark-theme
 description: Create component-specific themes by forcing explicit color schemes on individual UI elements, giving users theme choices that are decoupled from their global operating system preferences
-web-feature-ids: 
+web-feature-ids:
   - color-scheme
   - light-dark
-sources: 
+sources:
+  - https://web.dev/articles/light-dark
   - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme
   - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/light-dark
   - https://web.dev/articles/baseline-in-action-color-theme?hl=en
@@ -14,7 +15,6 @@ sources:
   - https://css-tricks.com/almanac/functions/l/light-dark/
   - https://www.bram.us/2020/04/26/the-quest-for-the-perfect-dark-mode-using-vanilla-javascript/
   - https://css-tricks.com/come-to-the-light-dark-side/
-  - https://web.dev/articles/light-dark
 ---
 
 # Component-Specific Light/Dark Themes
@@ -73,6 +73,21 @@ The `light-dark()` function allows you to define two colors for a single propert
     }
     ```
 
+## Critical Considerations
+
+- **Supported Types**: Currently, `light-dark()` is only used for color values. It cannot be used for lengths, numbers, or other non-color types (e.g., `padding`, `font-size`, `opacity`).
+- **MANDATORY: Two Arguments**: The function must always have exactly two arguments.
+
+```css
+/* 
+   DO NOT: Attempt to use light-dark() for non-color properties like padding.
+   This will result in an invalid property value.
+*/
+.themed-card {
+  padding: light-dark(10px, 20px); 
+}
+```
+
 ## Fallback strategies
 
 {{ BASELINE_STATUS("light-dark") }}
@@ -110,20 +125,5 @@ For browsers that do not support `light-dark()` or the `color-scheme` property, 
     --card-bg: light-dark(#ffffff, #2d2e31);
     --card-text: light-dark(#202124, #f8f9fa);
   }
-}
-```
-
-## Critical Considerations
-
-- **Supported Types**: Currently, `light-dark()` is only used for color values. It cannot be used for lengths, numbers, or other non-color types (e.g., `padding`, `font-size`, `opacity`).
-- **MANDATORY: Two Arguments**: The function must always have exactly two arguments.
-
-```css
-/* 
-   DO NOT: Attempt to use light-dark() for non-color properties like padding.
-   This will result in an invalid property value.
-*/
-.themed-card {
-  padding: light-dark(10px, 20px); 
 }
 ```
