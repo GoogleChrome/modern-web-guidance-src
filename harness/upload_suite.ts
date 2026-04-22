@@ -13,7 +13,7 @@ async function uploadToGCS(suiteName: string, resultsDir: string, summaryOnly: b
     execSync(`gcloud storage cp "${path.join(resultsDir, 'evals.md')}" "${bucketDest}evals.md"`, { stdio: 'inherit' });
   } else {
     console.log(cCyan(`Uploading full suite ${suiteName} to GCS...`));
-    execSync(`gcloud storage rsync -r "${resultsDir}" "${bucketDest}" --exclude="\.git/.*"`, { stdio: 'inherit' });
+    execSync(`gcloud storage rsync -r "${resultsDir}" "${bucketDest}" --exclude="\\\\.git/.*"`, { stdio: 'inherit' });
   }
 }
 

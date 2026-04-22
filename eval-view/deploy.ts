@@ -40,7 +40,7 @@ try {
   if (fs.existsSync(resultsDir)) {
     console.log(`Uploading results from ${resultsDir} to GCS...`);
     // Use rsync to sync results, ignoring .git just in case
-    runCommand(`gcloud storage rsync -r ${resultsDir} gs://guidance-evals/ --exclude="\.git/.*"`);
+    runCommand(`gcloud storage rsync -r ${resultsDir} gs://guidance-evals/ --exclude="\\\\.git/.*"`);
   } else {
     console.log(`No results directory found in ${resultsDir}. Skipping GCS sync.`);
   }
