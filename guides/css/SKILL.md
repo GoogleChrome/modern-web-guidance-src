@@ -13,7 +13,7 @@ Be allergic to knowledge duplication. Prefer variables over repetition, but when
 - `currentColor` instead of defining a variable and setting `color` to it
 - The `inherit` keyword instead of defining a variable on the parent and using it on the same property across parent and child.
 - `em` units instead of `font-size: var(--size)`
-- `cqw`/`cqh` units instead of repeating box model values.
+- `cqw`/`cqh` (or their logical versions — `cqi`/`cqb`) units instead of repeating box model values.
 - Code duplication is not knowledge duplication. The goal is robustness and maintainability, not saving characters.
 - Prefer **logical properties and values** over physical ones (e.g. `margin-inline-start` instead of `margin-left`) so that styles adapt to different writing modes and orientations. Even if the page author does not plan to localize, external translation tools often display translated text in context.
 - Do not use logical properties indiscriminately — ask yourself "would I want this to flip in RTL?" — if the answer is no, use the physical property instead.
@@ -25,7 +25,7 @@ Be allergic to knowledge duplication. Prefer variables over repetition, but when
 Instead, use modern CSS features such as cascade layers and `:where()` to make cascade behavior predictable and follow author intent.
 
 Use cascade layers (`@layer`) to define explicit priority zones (e.g., `reset`, `base`, `theme`, `components`, `utilities`), and declare their order upfront (e.g. `@layer reset, base, theme, components, utilities;`).
-Within each layer, use `:where()` to make selectors only compete based on meaningful signals, not incidental filters (`:not()` edge cases, remote ancestors, etc.) or for one-off easily overridable defaults..
+Within each layer, use `:where()` to make selectors only compete based on meaningful signals, not incidental filters (`:not()` edge cases, remote ancestors, etc.) or for one-off easily overridable defaults.
 
 <!-- - **DO** use keywords like `inherit`, `initial`, `unset`, or `revert` to explicitly control inheritance.
 TODO too vague move this elsewhere and ground it on use cases
@@ -39,7 +39,7 @@ Modern browser-native selectors reduce the need for preprocessors and complex st
 
 - **DO** use `:has()` to style parents based on child state instead of managing classes in JS (e.g. `label:has(:checked)` instead of a manual `label.has-checked` class)
 - **DO NOT** nest `:has()` or use pseudo-elements inside it (browser API limitation)
-- Use `:nth-child(<An+B> of <selector>)` when you need to style every n-th element of a certain type. E.g. `details:nth-child(1 of [open])` will style the first open `<details>` element it finds, whereas `details[open]:first-child` would style only the first child iff it was open.
+- Use `:nth-child(<An+B> of <selector>)` when you need to style every n-th element of a certain type. E.g. `details:nth-child(1 of [open])` will style the first open `<details>` element it finds, whereas `details[open]:first-child` would style only the first child if and only if it was open.
 
 ### Use `:is()` (or `:where()`) instead of CSS rule duplication for fallbacks
 
