@@ -763,7 +763,12 @@ async function showDetails(testName, runs, stats, testId) {
             const val = target.value;
             target.value = ''; // reset selection
             if (val === 'source') {
-                window.open(api.getAbsoluteUrl(resultPath), '_blank');
+                if (api.source === 'remote') {
+                    // Open directly via the mTLS domain which handles auth and serves raw HTML
+                    window.open(`https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`, '_blank');
+                } else {
+                    window.open(api.getAbsoluteUrl(resultPath), '_blank');
+                }
             } else if (val === 'diff') {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {
