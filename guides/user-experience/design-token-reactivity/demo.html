@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <style>
-		:root {
-			--style-queries-supported: check;
-		}
+    :root {
+      --style-queries-supported: check;
+    }
 
     .container {
       --density: compact;
@@ -27,15 +27,15 @@
       }
     }
 
-		#toggle-spacious {
-			display: none;
-		}
+    #toggle-spacious {
+      display: none;
+    }
 
-		@container style(--style-queries-supported) {
-			#toggle-spacious {
-				display: revert;
-			}
-		}
+    @container style(--style-queries-supported) {
+      #toggle-spacious {
+        display: revert;
+      }
+    }
   </style>
 </head>
 <body>
