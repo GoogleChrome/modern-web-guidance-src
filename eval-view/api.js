@@ -1,5 +1,3 @@
-import { authenticatedFetch } from './utils.js';
-
 export class ApiClient {
     constructor() {
         const params = new URLSearchParams(window.location.search);
@@ -7,56 +5,63 @@ export class ApiClient {
         if (!sourceParam) {
             // Auto-detect static Github Pages deployment
             if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-                sourceParam = 'remote';
+                sourceParam = 'static';
             } else {
                 sourceParam = 'local';
             }
         }
         this.source = sourceParam;
-        this.gcsPrefix = 'https://storage.googleapis.com/storage/v1/b/guidance-evals/o/';
+        this.dataPrefix = './results/'; // Base path for hosted data on GitHub Pages
+
+        // Capabilities based on source
+        this.capabilities = {
+            useManifests: this.source === 'static',
+            canListFiles: this.source === 'local',
+            canProbeExists: this.source === 'local'
+        };
     }
 
-    _formatUrl(path, isMetadataOnly = false) {
-        if (this.source === 'remote') {
+    _formatUrl(path, _isMetadataOnly = false) {
+        if (this.capabilities.useManifests) {
             if (path.startsWith('http')) return path;
 
-            // Clean local prefixes from logical GCS path
-            let fixedPath = path.split('?')[0];
-
-            // Build the GCS JSON API endpoint
-            let url = `${this.gcsPrefix}${encodeURIComponent(fixedPath)}`;
-            if (!isMetadataOnly) {
-                url += '?alt=media';
-            }
-            return url;
+            let [basePath, query] = path.split('?');
+            // Bulletproof segment encoding (preserves / directory separators)
+            const encodedSegments = basePath.split('/').map(seg => encodeURIComponent(seg)).join('/');
+            const q = query ? `?${query}` : '';
+            return `${this.dataPrefix}${encodedSegments}${q}`;
         } else {
             return `${path}?source=${this.source}`;
         }
     }
 
-    async _fetch(path, isMetadataOnly = false, method = 'GET') {
-        const url = this._formatUrl(path, isMetadataOnly);
+    async _fetch(path, _isMetadataOnly = false, method = 'GET') {
+        const url = this._formatUrl(path, _isMetadataOnly);
         const options = { method };
-        if (this.source === 'remote') {
-            return await authenticatedFetch(url, options);
-        }
         return await fetch(url, options);
     }
 
     /** 
-     * Silently checks if a file exists on GCS using a prefix search.
-     * This avoids native browser fetch() 404 console logs.
+     * Checks if a file exists.
+     */
+    async _checkFileExists(path) {
+        if (this.capabilities.canProbeExists) {
+            return await this._checkLocalFileExists(path);
+        }
+        return await this._checkRemoteFileExists(path);
+    }
+
+    /** 
+     * Checks if a file exists on GitHub Pages via a simple fetch test.
      */
     async _checkRemoteFileExists(path) {
-        const listUrl = `${this.gcsPrefix}?prefix=${encodeURIComponent(path)}`;
-        const res = await authenticatedFetch(listUrl);
-        if (res.ok) {
-            const data = await res.json();
-            if (data.items && data.items.some(item => item.name === path)) {
-                return true;
-            }
+        const url = this._formatUrl(path);
+        try {
+            const res = await fetch(url, { method: 'HEAD' });
+            return res.ok;
+        } catch {
+            return false;
         }
-        return false;
     }
 
     /** 
@@ -77,18 +82,13 @@ export class ApiClient {
 
     /** Fetches the overall array of test suites/runs listed for the dashboard. */
     async getSuites() {
-        if (this.source === 'remote') {
-            // Check Google Cloud Storage via JSON API
-            const gcsUrl = `${this.gcsPrefix}?delimiter=/`;
-            const res = await authenticatedFetch(gcsUrl);
-            if (!res.ok) throw new Error('Failed to load remote suites');
+        if (this.capabilities.useManifests) {
+            // Load from a static suites.gen.json manifest
+            const res = await fetch('./suites.gen.json');
+            if (!res.ok) throw new Error('Failed to load remote suites (suites.gen.json not found)');
 
-            const data = await res.json();
-            const suites = (data.prefixes || [])
-                .map(prefix => prefix.replace(/\/$/, ''))
-                .filter(name => name !== 'single_task')
-                .map(id => ({ id, source: 'remote' }));
-            return { suites };
+            const suites = await res.json();
+            return { suites: suites.map(id => ({ id, source: 'static' })) };
         } else {
             // Fetch directly from server.js /api/suites endpoint
             const res = await fetch('/api/suites');
@@ -111,7 +111,7 @@ export class ApiClient {
         const path = `${testId}/jetski_info.json`;
         let exists = false;
         
-        if (this.source === 'remote') {
+        if (this.source === 'static') {
             exists = await this._checkRemoteFileExists(path);
         } else {
             exists = await this._checkLocalFileExists(path);
@@ -134,12 +134,7 @@ export class ApiClient {
     async checkLogExists(testId) {
         try {
             const path = `${testId}/test_suite.log`;
-            
-            if (this.source === 'remote') {
-                return await this._checkRemoteFileExists(path);
-            } else {
-                return await this._checkLocalFileExists(path);
-            }
+            return await this._checkFileExists(path);
         } catch {
             return false;
         }
@@ -171,7 +166,7 @@ export class ApiClient {
         const localBaseAppPath = `${testId}/${run.runNumber}/${guideName}/${taskName}/base_app/${relativePath}`;
         let exists = false;
 
-        if (this.source === 'remote') {
+        if (!this.capabilities.canProbeExists) {
             exists = await this._checkRemoteFileExists(localBaseAppPath);
         } else {
             exists = await this._checkLocalFileExists(localBaseAppPath);
@@ -199,25 +194,15 @@ export class ApiClient {
         ];
 
         let bestCandidate = null;
-        if (this.source === 'remote') {
-            // Fetch the directory listing once to avoid multiple 404 network logs
-            const gcsPrefix = `${basePath}/`;
-            const listUrl = `${this.gcsPrefix}?prefix=${encodeURIComponent(gcsPrefix)}`;
-            const res = await authenticatedFetch(listUrl);
-            
-            if (res.ok) {
-                const data = await res.json();
-                if (data.items) {
-                    const availableFiles = new Set(data.items.map(item => item.name));
-                    for (const candidate of candidates) {
-                        const candidatePath = `${basePath}/${candidate}`;
-                        if (availableFiles.has(candidatePath)) {
-                            bestCandidate = candidatePath;
-                            break;
-                        }
-                    }
-                }
-            }
+        if (this.source === 'static') {
+            // Cannot list files on static servers. Guess by checking common candidates or fallback to index.html.
+            const checks = candidates.map(candidate =>
+                this._checkRemoteFileExists(`${basePath}/${candidate}`)
+                    .then(exists => exists ? `${basePath}/${candidate}` : null)
+                    .catch(() => null)
+            );
+            const results = await Promise.all(checks);
+            bestCandidate = results.find(result => result !== null);
         } else {
             const checks = candidates.map(candidate =>
                 this._checkLocalFileExists(`${basePath}/${candidate}`)
@@ -235,21 +220,19 @@ export class ApiClient {
     async getRunFiles(basePath) {
         let files = [];
         try {
-            if (this.source === 'local') {
+            if (this.capabilities.canListFiles) {
                 const res = await fetch(`/api/run-files?dir=${encodeURIComponent(basePath)}&source=local`);
                 if (res.ok) {
                     const data = await res.json();
                     files = data.files || [];
                 }
             } else {
-                const gcsPrefix = basePath.endsWith('/') ? basePath : basePath + '/';
-                const listUrl = `${this.gcsPrefix}?prefix=${encodeURIComponent(gcsPrefix)}`;
-                const res = await authenticatedFetch(listUrl);
+                // Fetch from the static run-files.gen.json manifest
+                const url = this._formatUrl(`${basePath}/run-files.gen.json`);
+                const res = await fetch(url);
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.items) {
-                        files = data.items.map(item => item.name.split('/').pop());
-                    }
+                    files = data.files || [];
                 }
             }
         } catch (e) {
@@ -264,7 +247,7 @@ export class ApiClient {
         const isBaseApp = path.startsWith('base_apps/');
         const isTasks = path.startsWith('tasks/');
 
-        if (this.source === 'remote' && !isBaseApp && !isTasks) {
+        if (!this.capabilities.canProbeExists && !isBaseApp && !isTasks) {
             const exists = await this._checkRemoteFileExists(path);
             if (!exists) throw new Error('File not found (404).');
         }
@@ -283,10 +266,6 @@ export class ApiClient {
 
     /** Returns absolute URL wrapper for opening links directly in new tabs (like trajectories). */
     getAbsoluteUrl(path) {
-        if (this.source === 'remote') {
-            let fixedPath = path.split('?')[0];
-            return `${this.gcsPrefix}${encodeURIComponent(fixedPath)}?alt=media`;
-        }
         return this._formatUrl(path);
     }
 }

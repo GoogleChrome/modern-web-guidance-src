@@ -1,0 +1,7 @@
+.gcloudignore
+.git
+.gitignore
+Dockerfile
+node_modules
+dist
+.astro
