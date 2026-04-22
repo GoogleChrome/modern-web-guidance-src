@@ -30,6 +30,10 @@ function inferSuiteConfig(suiteResultsDir: string): SuiteConfig {
   return { agent, serving, tasks: [], name: null, numRuns: 1, mcpServersToEnable: [] };
 }
 
+export function mergeResults(oldResults: Record<string, any>, newResults: Record<string, any>): Record<string, any> {
+  return { ...oldResults, ...newResults };
+}
+
 export async function evaluateSuite(suiteResultsDir: string, suiteName: string) {
   console.log(`Evaluating suite: ${suiteName}`.cyan);
   console.log(`Results directory: ${suiteResultsDir}`.cyan);
@@ -64,22 +68,28 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string) 
     const { allResults, numRuns } = await collectResults(suiteResultsDir, suiteConfig);
     console.log(`Found ${numRuns} test run(s)`.cyan);
 
-    const metrics = calculateMetrics(allResults, numRuns);
-    const mdReport = generateMarkdownReport(metrics, allResults);
-    
     let timestamp = new Date().toISOString();
     const evalsPath = path.join(suiteResultsDir, 'evals.json');
+    let mergedResults = allResults;
+
     if (fs.existsSync(evalsPath)) {
       try {
         const oldEvals = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
         if (oldEvals.timestamp) timestamp = oldEvals.timestamp;
+        if (oldEvals.results) {
+          console.log(`Merging with existing results in evals.json to preserve historical data...`.cyan);
+          mergedResults = mergeResults(oldEvals.results, allResults);
+        }
       } catch {
         // Ignore
       }
     }
 
+    const metrics = calculateMetrics(mergedResults, numRuns);
+    const mdReport = generateMarkdownReport(metrics, mergedResults);
+    
     const model = extractModelFromResults(suiteResultsDir, suiteConfig.agent);
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model);
+    const jsonReport = generateJsonReport(metrics, mergedResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model);
 
     saveReports(suiteResultsDir, mdReport, jsonReport);
 

@@ -1,16 +1,14 @@
-import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
+import { getRunStats, getColor, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
+import { ApiClient } from './api.js';
 
+const api = new ApiClient();
 let allTestData = {}; // Cache all test data by testId
 let selectedTestIds = new Set(); // Set of test IDs to show
 let currentSourceFilter = 'all';
 let currentAgentFilter = 'all';
 let currentServingFilter = 'all';
 let currentModelFilter = 'all';
-
-function isRemoteDashboard() {
-    return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-}
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -20,15 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const params = new URLSearchParams(window.location.search);
         
-        // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
-        initGoogleAuth(async () => {
-             await loadRemoteTests();
-        });
-
-        await loadLocalTests();
-        if (getAccessToken()) {
-             await loadRemoteTests();
-        }
+        await loadTests();
 
         // Initialize with default states relative to compoundKeys instead of simple testIDs
         selectedTestIds = new Set(Object.keys(allTestData));
@@ -247,80 +237,25 @@ function renderAll() {
     renderSuites();
 }
 
-async function loadLocalTests() {
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        return; // Avoid 404s by skipping local network fetches when hosted on Github Pages
-    }
-    
+async function loadTests() {
     try {
-        const response = await fetch(`/api/suites?t=${Date.now()}`);
-        if (!response.ok) return; // Silent fail for local if we are on gh-pages
-        const manifest = await response.json();
+        const manifest = await api.getSuites();
 
         if (manifest.suites && manifest.suites.length > 0) {
             document.getElementById('empty-state').style.display = 'none';
         }
 
-        // Load local test data
-        for (const suite of manifest.suites) {
-            if (suite.source !== 'local') continue;
-            
-            const testId = suite.id;
-            const suiteTimestamp = suite.timestamp;
+        // Load all test data in parallel
+        await Promise.all(manifest.suites.map(async (suite) => {
             try {
-                const response = await fetch(`${testId}/evals.json?source=local&t=${Date.now()}`);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, 'local', parsed, suiteTimestamp);
-                }
+                const parsed = await api.getEvals(suite.id);
+                registerTestData(suite.id, suite.source, parsed, suite.timestamp);
             } catch (e) {
-                console.warn(`Failed to load local test ${testId}:`, e);
-            }
-        }
-    } catch {
-        console.warn('Local proxy not available');
-    }
-}
-
-async function loadRemoteTests() {
-    try {
-        // Fetch from GCS JSON API directly instead of our node proxy
-        const response = await authenticatedFetch(`https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/`);
-        if (!response.ok) throw new Error('Failed to fetch remote suites');
-        
-        const data = await response.json();
-        const prefixes = data.prefixes || [];
-        
-        if (prefixes.length > 0) {
-             document.getElementById('empty-state').style.display = 'none';
-        }
-
-        // Load remote test data in parallel
-        await Promise.all(prefixes.map(async (prefix) => {
-            const testId = prefix.slice(0, -1); // Remove trailing slash
-            try {
-                const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(prefix + 'evals.json')}?alt=media`;
-                const response = await authenticatedFetch(fileUrl);
-                if (response.ok) {
-                    const parsed = await response.json();
-                    registerTestData(testId, 'remote', parsed);
-                }
-            } catch (e) {
-                console.warn(`Failed to load remote test ${testId}:`, e);
+                console.warn(`Failed to load test ${suite.id} (${suite.source}):`, e);
             }
         }));
-        
-        // Re-render UI now that we have remote data
-        const params = new URLSearchParams(window.location.search);
-        let initialTests = params.get('tests');
-        if (!initialTests || initialTests.trim() === '') {
-            selectedTestIds = new Set(Object.keys(allTestData));
-        }
-        renderFilterMenuItems();
-        renderAll();
-
-    } catch (error) {
-        console.error('Error loading remote suites:', error);
+    } catch (e) {
+        console.warn('Failed to load suites:', e);
     }
 }
 
@@ -374,7 +309,7 @@ function renderSuites() {
     const container = $('#suites-list');
     const headerSource = document.getElementById('header-source');
     if (headerSource) {
-        headerSource.style.display = isRemoteDashboard() ? 'none' : '';
+        headerSource.style.display = api.capabilities.useManifests ? 'none' : '';
     }
 
     const servingDisplayNames = {
@@ -436,7 +371,7 @@ function renderSuites() {
                     <div class="rate-bar" style="width: ${uRate}%;"></div>
                     <div class="rate-value"><span style="font-weight: 700; color: ${getColor(uRate)};">${uRate}%</span></div>
                 </td>
-                ${isRemoteDashboard() ? '' : `<td style="text-transform: capitalize;">${testInfo.source}</td>`}
+                ${api.capabilities.useManifests ? '' : `<td style="text-transform: capitalize;">${testInfo.source}</td>`}
             </tr>
         `;
     });
@@ -556,6 +491,8 @@ function hideTooltipChart() {
 function calculateGroupTotalStats(results, groupType) {
     let passed = 0;
     let total = 0;
+
+    if (!results) return { passed, total }; // Guard against missing results
 
     Object.keys(results).forEach(key => {
         // key format: "scenario - prompt - agent"
