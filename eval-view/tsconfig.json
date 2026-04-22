@@ -16,7 +16,6 @@
     "node_modules",
     "test-results",
     "mock-results",
-    "features_mapping.gen.js",
-    "../dist"
+    "features_mapping.gen.js"
   ]
 }
