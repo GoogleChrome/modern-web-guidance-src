@@ -60,8 +60,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             const handleOneTapSuccess = async (_idToken) => {
-                console.log('Logged in via One Tap.');
-                onAuthResolved();
+                console.log('Logged in via One Tap. Getting Access Token...');
+                initGoogleAuth(onAuthResolved);
             };
 
             const handleOneTapFallback = (notification) => {
