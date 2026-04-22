@@ -316,21 +316,24 @@
       { zone: 'UTC', name: 'UTC', flag: '🌐' }
     ];
 
-    // Check Support
-    if (typeof Temporal === 'undefined') {
-      import('@js-temporal/polyfill').then(({ Temporal: TemporalPolyfill }) => {
-        globalThis.Temporal = TemporalPolyfill;
+    (async () => {
+      // Check Support and load polyfill if needed
+      if (typeof Temporal === 'undefined') {
+        try {
+          const module = await import("https://esm.sh/@js-temporal/polyfill");
+          globalThis.Temporal = module.Temporal;
+          initializeDemo();
+        } catch (e) {
+          console.error("Failed to load Temporal polyfill:", e);
+          unsupportedBanner.style.display = 'flex';
+          dateInput.disabled = true;
+          timeInput.disabled = true;
+          hostTzSelect.disabled = true;
+        }
+      } else {
         initializeDemo();
-      }).catch(err => {
-        console.error("Failed to load Temporal polyfill:", err);
-        unsupportedBanner.style.display = 'flex';
-        dateInput.disabled = true;
-        timeInput.disabled = true;
-        hostTzSelect.disabled = true;
-      });
-    } else {
-      initializeDemo();
-    }
+      }
+    })();
 
     function initializeDemo() {
       [dateInput, timeInput, hostTzSelect].forEach(el => {

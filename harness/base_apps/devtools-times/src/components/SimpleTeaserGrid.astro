@@ -1,0 +1,20 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import ArticleTeaser from '../components/ArticleTeaser.astro';
+
+export interface Props {
+    title: string;
+    articles: CollectionEntry<'articles'>[];
+}
+
+const { title, articles } = Astro.props;
+---
+<section class="p-4 md:p-6">
+    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+        {title}
+    </h2>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      {articles.map(article => <ArticleTeaser article={article} />)}
+    </div>
+</section>
