@@ -209,25 +209,10 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     }
 
     if (!options.skipEval) {
-      await evaluateSuite(testDir, testID);
-      
-      const absoluteTotalRuntime = Date.now() - suiteStart;
-      console.log(`Total runtime: ${absoluteTotalRuntime}ms`);
-      
-      // Post-process evals.json to include the true total runtime
-      const evalsPath = path.join(testDir, 'evals.json');
-      if (fs.existsSync(evalsPath)) {
-        try {
-          const evals = JSON.parse(fs.readFileSync(evalsPath, 'utf-8'));
-          evals.totalRuntime = absoluteTotalRuntime;
-          fs.writeFileSync(evalsPath, JSON.stringify(evals, null, 2));
-        } catch (e) {
-          console.error('⚠️ Failed to update evals.json with total runtime:', e);
-        }
-      }
+      await evaluateSuite(testDir, testID, suiteStart);
     } else {
-      const absoluteTotalRuntime = Date.now() - suiteStart;
-      console.log(`Total runtime: ${absoluteTotalRuntime}ms`);
+      const totalRuntime = Date.now() - suiteStart;
+      console.log(`Total runtime: ${totalRuntime}ms`);
     }
 
     if (hasErrors) {

@@ -34,7 +34,7 @@ export function mergeResults(oldResults: Record<string, any>, newResults: Record
   return { ...oldResults, ...newResults };
 }
 
-export async function evaluateSuite(suiteResultsDir: string, suiteName: string, totalRuntime?: number) {
+export async function evaluateSuite(suiteResultsDir: string, suiteName: string, suiteStartTime?: number) {
   console.log(`Evaluating suite: ${suiteName}`.cyan);
   console.log(`Results directory: ${suiteResultsDir}`.cyan);
 
@@ -87,9 +87,13 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string, 
 
     const metrics = calculateMetrics(mergedResults, numRuns);
     const mdReport = generateMarkdownReport(metrics, mergedResults);
-    
     const model = extractModelFromResults(suiteResultsDir, suiteConfig.agent);
+    const totalRuntime = suiteStartTime ? Date.now() - suiteStartTime : undefined;
     const jsonReport = generateJsonReport(metrics, mergedResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model, totalRuntime);
+
+    if (totalRuntime) {
+      console.log(`Total runtime: ${totalRuntime}ms`);
+    }
 
     saveReports(suiteResultsDir, mdReport, jsonReport);
 
