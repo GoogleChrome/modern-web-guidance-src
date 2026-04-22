@@ -11,3 +11,4 @@
 - The implementation MUST NOT assume that a leap year only adds a single day (it may add a leap month in some calendars).
 - The implementation MUST NOT use the legacy `Date` object for calculations involving non-Gregorian calendars.
 - The implementation MUST use `Temporal.PlainDate.compare()` (or equivalent Temporal compare method) to compare dates instead of manual property comparison.
+- The implementation MUST account for era names when formatting dates in systems that rely on eras (e.g., Japanese or Buddhist calendar systems) using `toLocaleString()`.
