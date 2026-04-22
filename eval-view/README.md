@@ -35,8 +35,8 @@ pnpm dashboard
 To ensure your changes will work on the static deployment host, you can run the dashboard in a "Static" mode that serves files via `statikk` to mimic static deployment structure:
 
 ```bash
-# From the root directory
-pnpm dashboard:static
+# From the project root directory
+STATIC=true gd dashboard
 ```
 
 ## Deploying Changes
