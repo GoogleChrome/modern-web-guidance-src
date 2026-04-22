@@ -3,11 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node generate-manifests.js && node server.js",
-    "test": "node --test --test-reporter ${TEST_REPORTER:-dot} **/*.test.ts",
+    "start": "node generate-mapping.js && node server.js",
     "test:e2e": "playwright test",
     "typecheck": "tsc",
-    "deploy-pages": "node deploy.ts"
+    "deploy-pages": "node generate-mapping.js && gh-pages --nojekyll --add --dist ."
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

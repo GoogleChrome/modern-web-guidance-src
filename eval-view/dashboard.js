@@ -558,16 +558,14 @@ async function showDetails(testName, runs, stats, testId) {
         const { setupPath, resultPath, usedBasePath } = await getResultPaths(testId, run, testName);
 
         let sessionFile = null;
-        let files = run.files || [];
-        if (files.length === 0) {
-            try {
-                files = await api.getRunFiles(usedBasePath);
-            } catch (e) {
-                console.log('Error checking run files:', e);
+        let files = [];
+        try {
+            files = await api.getRunFiles(usedBasePath);
+            if (files && files.length > 0) {
+                sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
             }
-        }
-        if (files && files.length > 0) {
-            sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
+        } catch (e) {
+            console.log('Error checking run files:', e);
         }
 
         if (run === runs[0]) {

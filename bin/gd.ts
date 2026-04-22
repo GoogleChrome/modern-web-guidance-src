@@ -329,8 +329,7 @@ async function main() {
     }
 
     case 'backfill': {
-      const { runBackfill } = await import('../harness/backfill.ts');
-      await runBackfill();
+      await import('../harness/backfill.ts');
       break;
     }
 
