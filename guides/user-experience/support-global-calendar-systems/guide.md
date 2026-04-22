@@ -78,12 +78,11 @@ const localizedDisplay = targetDate.toLocaleString('en-u-ca-hebrew', {
 - **DO** verify that the target calendar system is supported by the environment using `Intl.supportedValuesOf('calendar')` before creating calendar-specific Temporal objects.
 - **DO** be aware that some calendars (like variants of the Islamic calendar) may rely on visual observation rather than fixed calculations. The `Temporal` API follows the environment's `Intl` implementation, which usually uses calculated approximations. For critical cultural or religious date calculations, verify with domain experts or use specialized libraries.
 - **DO** account for era names when using calendars that use eras (e.g., Japanese, Buddhist), using `toLocaleString()`.
-∂
 ## Fallback Strategy
 
 {{ BASELINE_STATUS("temporal") }}
 
-The Temporal API is currently a proposal and is not yet part of "Baseline Widely Available". For production use in browsers that do not support it natively, you must use a polyfill.
+For production use in browsers that do not support it natively, you must use a polyfill.
 
 The recommended approach is to progressively enhance by checking for native support and dynamically loading a polyfill like `@js-temporal/polyfill` if needed.
 
@@ -97,8 +96,9 @@ async function getTemporal() {
   }
   
   try {
-    // Load polyfill dynamically
-    const module = await import('@js-temporal/polyfill');
+    // Load polyfill dynamically from CDN
+    const module = await import('https://esm.sh/@js-temporal/polyfill');
+    globalThis.Temporal = module.Temporal;
     return module.Temporal;
   } catch (e) {
     console.error('Failed to load Temporal polyfill:', e);
