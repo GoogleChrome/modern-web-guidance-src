@@ -23,6 +23,7 @@ To support global calendar systems using Temporal:
 1. **Associate a Calendar (Mandatory):** When creating or converting a Temporal object (like `Temporal.PlainDate`), you must specify the desired calendar system using `withCalendar()` to perform calendar-sensitive operations.
 2. **Use Stable Identifiers (Mandatory for Lunisolar Calendars):** You must use `monthCode` rather than the numeric `month` index to identify specific months across years in lunisolar calendars. Only use this for calendars that use leap months, such as the Hebrew and Chinese calendars.
 3. **Respect Calendar Invariants (Mandatory):** When iterating through months or days, you must not assume fixed values (like 12 months in a year or 31 days in a month). Use properties like `monthsInYear` and `daysInMonth` to ensure your code works across all calendars.
+4. **Use Calendar-Aware Comparisons (Mandatory):** When comparing dates within a specific calendar system, you must use `Temporal.PlainDate.compare()` instead of comparing year/month/day properties manually. This correctly handles chronological ordering within the calendar rules.
 
 ## Example Code: Converting and Iterating Calendars
 
@@ -60,7 +61,13 @@ for (let m = 1; m <= targetDate.monthsInYear; m++) {
   console.log(`Month ${m} has ${targetDate.with({ month: m }).daysInMonth} days.`);
 }
 
-// 6. Format for display using toLocaleString
+// 6. Compare dates within the same calendar
+const today = Temporal.Now.plainDateISO().withCalendar(calendarId);
+const comparison = Temporal.PlainDate.compare(targetDate, today);
+const relative = comparison < 0 ? 'Past' : comparison > 0 ? 'Future' : 'Today';
+console.log(`Timeline: ${relative}`);
+
+// 7. Format for display using toLocaleString
 const localizedDisplay = targetDate.toLocaleString('en-u-ca-hebrew', {
   day: 'numeric',
   month: 'long',
@@ -74,6 +81,7 @@ const localizedDisplay = targetDate.toLocaleString('en-u-ca-hebrew', {
 - **DO** use `monthCode` for identifying specific months in calendars that use leap months (e.g., Hebrew or Chinese), regardless of the year.
 - **DO NOT** assume `date.month === 12` is the last month of the year. Use `date.month === date.monthsInYear`.
 - **DO NOT** assume `inLeapYear === true` implies the year is only one day longer. In lunisolar calendars, it may add a full leap month.
+- **DO** use `Temporal.PlainDate.compare()` when comparing two dates in a specific calendar system instead of comparing Year/Month/Day properties manually.
 - **DO** use `toLocaleString()` to format dates for users instead of manual string concatenation.
 - **DO** verify that the target calendar system is supported by the environment using `Intl.supportedValuesOf('calendar')` before creating calendar-specific Temporal objects.
 - **DO** be aware that some calendars (like variants of the Islamic calendar) may rely on visual observation rather than fixed calculations. The `Temporal` API follows the environment's `Intl` implementation, which usually uses calculated approximations. For critical cultural or religious date calculations, verify with domain experts or use specialized libraries.

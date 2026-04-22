@@ -199,6 +199,9 @@
         <div class="stat-row"><span>Year:</span> <span class="stat-value" id="islamic-year">-</span></div>
         <div class="stat-row"><span>Month:</span> <span class="stat-value" id="islamic-month">-</span></div>
         <div class="stat-row"><span>Month Code:</span> <span class="stat-value" id="islamic-monthCode">-</span></div>
+        <div class="stat-row"><span>Months in Year:</span> <span class="stat-value" id="islamic-monthsInYear">-</span></div>
+        <div class="stat-row"><span>Timeline:</span> <span class="stat-value" id="islamic-relative">-</span></div>
+        <div class="stat-row"><span>Breakdown:</span> <span class="stat-value" id="islamic-breakdown">-</span></div>
       </div>
     </div>
 
@@ -212,6 +215,9 @@
         <div class="stat-row"><span>Year:</span> <span class="stat-value" id="hebrew-year">-</span></div>
         <div class="stat-row"><span>Month:</span> <span class="stat-value" id="hebrew-month">-</span></div>
         <div class="stat-row"><span>Month Code:</span> <span class="stat-value" id="hebrew-monthCode">-</span></div>
+        <div class="stat-row"><span>Months in Year:</span> <span class="stat-value" id="hebrew-monthsInYear">-</span></div>
+        <div class="stat-row"><span>Timeline:</span> <span class="stat-value" id="hebrew-relative">-</span></div>
+        <div class="stat-row"><span>Breakdown:</span> <span class="stat-value" id="hebrew-breakdown">-</span></div>
       </div>
       <div id="hebrew-note" class="highlight-note" style="display: none;">
         💡 <strong>Leap Month</strong>: This month uses a leap code (e.g., Adar I).
@@ -228,6 +234,9 @@
         <div class="stat-row"><span>Year:</span> <span class="stat-value" id="chinese-year">-</span></div>
         <div class="stat-row"><span>Month:</span> <span class="stat-value" id="chinese-month">-</span></div>
         <div class="stat-row"><span>Month Code:</span> <span class="stat-value" id="chinese-monthCode">-</span></div>
+        <div class="stat-row"><span>Months in Year:</span> <span class="stat-value" id="chinese-monthsInYear">-</span></div>
+        <div class="stat-row"><span>Timeline:</span> <span class="stat-value" id="chinese-relative">-</span></div>
+        <div class="stat-row"><span>Breakdown:</span> <span class="stat-value" id="chinese-breakdown">-</span></div>
       </div>
       <div id="chinese-note" class="highlight-note" style="display: none;">
         💡 <strong>Leap Month</strong>: Chinese calendar uses 'L' suffix for leap months.
@@ -308,6 +317,21 @@
             document.getElementById(`${cal.id}-year`).innerText = converted.year;
             document.getElementById(`${cal.id}-month`).innerText = converted.month;
             document.getElementById(`${cal.id}-monthCode`).innerText = converted.monthCode;
+            document.getElementById(`${cal.id}-monthsInYear`).innerText = converted.monthsInYear;
+
+            // Use Temporal.PlainDate.compare() to compare against converted today
+            const todayInCalendar = Temporal.Now.plainDateISO().withCalendar(cal.name);
+            const comparison = Temporal.PlainDate.compare(converted, todayInCalendar);
+            const relative = comparison < 0 ? 'Past' : comparison > 0 ? 'Future' : 'Today';
+            document.getElementById(`${cal.id}-relative`).innerText = relative;
+
+            // Iterating through months in the current year using monthsInYear
+            let breakdown = [];
+            for (let m = 1; m <= converted.monthsInYear; m++) {
+              const temp = converted.with({ month: m });
+              breakdown.push(`${temp.monthCode}`);
+            }
+            document.getElementById(`${cal.id}-breakdown`).innerText = breakdown.join(', ');
 
             // Handle Note highlights for Leap Months (usually end with 'L')
             const note = document.getElementById(`${cal.id}-note`);
