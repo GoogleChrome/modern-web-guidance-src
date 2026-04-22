@@ -52,29 +52,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             const { initOneTap, initGoogleAuth } = await import('./utils.js');
             
             let authTriggered = false;
-            const triggerAuth = () => {
+            const onAuthResolved = async () => {
                 if (authTriggered) return;
                 authTriggered = true;
-                initGoogleAuth(async () => {
-                    await loadTests();
-                    finishInit();
-                });
+                await loadTests();
+                finishInit();
             };
 
-            initOneTap(
-                async (_idToken) => {
-                    console.log('Logged in via One Tap.');
-                    triggerAuth();
-                },
-                (notification) => {
-                    if (notification.isSkippedMoment()) {
-                        console.log('One Tap skipped.');
-                        const authBtn = document.getElementById('auth-btn');
-                        if (authBtn) authBtn.style.display = 'block';
-                        triggerAuth();
-                    }
+            const handleOneTapSuccess = async (_idToken) => {
+                console.log('Logged in via One Tap.');
+                onAuthResolved();
+            };
+
+            const handleOneTapFallback = (notification) => {
+                if (notification.isSkippedMoment()) {
+                    console.log('One Tap skipped.');
+                    const authBtn = document.getElementById('auth-btn');
+                    if (authBtn) authBtn.style.display = 'block';
+                    
+                    // Fallback to manual login or silent refresh
+                    initGoogleAuth(onAuthResolved);
                 }
-            );
+            };
+
+            initOneTap(handleOneTapSuccess, handleOneTapFallback);
         };
 
         await initializeAuthAndLoadData();
