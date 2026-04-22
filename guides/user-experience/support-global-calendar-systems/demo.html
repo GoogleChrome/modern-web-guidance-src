@@ -199,6 +199,12 @@
         <div class="stat-row"><span>Year:</span> <span class="stat-value" id="islamic-year">-</span></div>
         <div class="stat-row"><span>Month:</span> <span class="stat-value" id="islamic-month">-</span></div>
         <div class="stat-row"><span>Month Code:</span> <span class="stat-value" id="islamic-monthCode">-</span></div>
+        <div class="stat-row"><span>Months in Year:</span> <span class="stat-value" id="islamic-monthsInYear">-</span></div>
+        <div class="stat-row"><span>Timeline:</span> <span class="stat-value" id="islamic-relative">-</span></div>
+        <div class="stat-row"><span>Breakdown:</span> <span class="stat-value" id="islamic-breakdown">-</span></div>
+      </div>
+      <div id="islamic-leap-year-note" class="highlight-note" style="display: none;">
+        💡 Due to their calendars using leap months, leap years will have one more month than common years.
       </div>
     </div>
 
@@ -212,6 +218,12 @@
         <div class="stat-row"><span>Year:</span> <span class="stat-value" id="hebrew-year">-</span></div>
         <div class="stat-row"><span>Month:</span> <span class="stat-value" id="hebrew-month">-</span></div>
         <div class="stat-row"><span>Month Code:</span> <span class="stat-value" id="hebrew-monthCode">-</span></div>
+        <div class="stat-row"><span>Months in Year:</span> <span class="stat-value" id="hebrew-monthsInYear">-</span></div>
+        <div class="stat-row"><span>Timeline:</span> <span class="stat-value" id="hebrew-relative">-</span></div>
+        <div class="stat-row"><span>Breakdown:</span> <span class="stat-value" id="hebrew-breakdown">-</span></div>
+      </div>
+      <div id="hebrew-leap-year-note" class="highlight-note" style="display: none;">
+        💡 Due to their calendars using leap months, leap years will have one more month than common years.
       </div>
       <div id="hebrew-note" class="highlight-note" style="display: none;">
         💡 <strong>Leap Month</strong>: This month uses a leap code (e.g., Adar I).
@@ -228,6 +240,12 @@
         <div class="stat-row"><span>Year:</span> <span class="stat-value" id="chinese-year">-</span></div>
         <div class="stat-row"><span>Month:</span> <span class="stat-value" id="chinese-month">-</span></div>
         <div class="stat-row"><span>Month Code:</span> <span class="stat-value" id="chinese-monthCode">-</span></div>
+        <div class="stat-row"><span>Months in Year:</span> <span class="stat-value" id="chinese-monthsInYear">-</span></div>
+        <div class="stat-row"><span>Timeline:</span> <span class="stat-value" id="chinese-relative">-</span></div>
+        <div class="stat-row"><span>Breakdown:</span> <span class="stat-value" id="chinese-breakdown">-</span></div>
+      </div>
+      <div id="chinese-leap-year-note" class="highlight-note" style="display: none;">
+        💡 Due to their calendars using leap months, leap years will have one more month than common years.
       </div>
       <div id="chinese-note" class="highlight-note" style="display: none;">
         💡 <strong>Leap Month</strong>: Chinese calendar uses 'L' suffix for leap months.
@@ -236,10 +254,29 @@
   </div>
 
   <script>
-    if (typeof Temporal !== 'undefined') {
+      (async function () {
+        if (typeof Temporal === 'undefined') {
+          try {
+            const module = await import('https://esm.sh/@js-temporal/polyfill');
+            globalThis.Temporal = module.Temporal;
+          } catch (e) {
+            console.error('Failed to load Temporal polyfill:', e);
+            return;
+          }
+        }
+    
       document.getElementById('unsupported-warning').style.display = 'none';
       initializeDemo();
-    }
+    })();
+
+      function isCalendarSupported(calendarId) {
+        try {
+          return Intl.supportedValuesOf('calendar').includes(calendarId);
+        } catch (e) {
+          // Fallback for environments where supportedValuesOf is not available
+          return false;
+        }
+      }
 
     function initializeDemo() {
       const input = document.getElementById('date-input');
@@ -269,6 +306,12 @@
 
         calendars.forEach(cal => {
           try {
+            // Verify support
+            if (!isCalendarSupported(cal.name)) {
+              document.getElementById(`${cal.id}-date`).innerText = `Not supported in this environment`;
+              return;
+            }
+
             const converted = baseDate.withCalendar(cal.name);
 
             // Update Display Date
@@ -283,6 +326,21 @@
             document.getElementById(`${cal.id}-year`).innerText = converted.year;
             document.getElementById(`${cal.id}-month`).innerText = converted.month;
             document.getElementById(`${cal.id}-monthCode`).innerText = converted.monthCode;
+            document.getElementById(`${cal.id}-monthsInYear`).innerText = converted.monthsInYear;
+
+            // Use Temporal.PlainDate.compare() to compare against converted today
+            const todayInCalendar = Temporal.Now.plainDateISO().withCalendar(cal.name);
+            const comparison = Temporal.PlainDate.compare(converted, todayInCalendar);
+            const relative = comparison < 0 ? 'Past' : comparison > 0 ? 'Future' : 'Today';
+            document.getElementById(`${cal.id}-relative`).innerText = relative;
+
+            // Iterating through months in the current year using monthsInYear
+            let breakdown = [];
+            for (let m = 1; m <= converted.monthsInYear; m++) {
+              const temp = converted.with({ month: m });
+              breakdown.push(`${temp.monthCode} (${temp.daysInMonth}d)`);
+            }
+            document.getElementById(`${cal.id}-breakdown`).innerText = breakdown.join(', ');
 
             // Handle Note highlights for Leap Months (usually end with 'L')
             const note = document.getElementById(`${cal.id}-note`);
@@ -292,6 +350,12 @@
               } else {
                 note.style.display = 'none';
               }
+            }
+
+            // Leap Year banner when monthsInYear === 13
+            const leapYearNote = document.getElementById(`${cal.id}-leap-year-note`);
+            if (leapYearNote) {
+              leapYearNote.style.display = converted.monthsInYear === 13 ? 'block' : 'none';
             }
 
           } catch (err) {

@@ -1,56 +1,70 @@
-import { Storage } from '@google-cloud/storage';
+import { execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { cRed, cGreen, cCyan, cBold } from '../lib/colors.ts';
 import { resultsDir as baseResultsDir } from '../lib/paths.ts';
 
-const PROJECT_ID = 'chrome-kiwi-air-force-dev';
-const BUCKET_NAME = 'guidance-evals';
+const CLONE_DIR = path.resolve('../.clones/suite-upload');
+const REMOTE_URL = 'https://github.com/GoogleChrome/guidance-dash.git';
 
-async function uploadDirectory(bucket: any, dirPath: string, gcsPrefix: string, summaryOnly = false) {
-  const uploadTasks: (() => Promise<void>)[] = [];
-
-  function collectFiles(currentDir: string, currentPrefix: string) {
-    const files = fs.readdirSync(currentDir, { withFileTypes: true });
-
-    for (const file of files) {
-      const fullPath = path.join(currentDir, file.name);
-      const destinationPath = path.join(currentPrefix, file.name);
-
-      if (file.name === 'node_modules') continue;
-
-      if (file.isDirectory()) {
-        if (!summaryOnly) {
-          collectFiles(fullPath, destinationPath);
-        }
-      } else {
-        if (file.name === '.DS_Store' || file.name === 'pnpm-workspace.yaml') continue;
-
-        if (summaryOnly) {
-          // Only upload summary files at the root
-          if (file.name !== 'evals.json' && file.name !== 'evals.md') continue;
-        }
-
-        uploadTasks.push(async () => {
-          console.log(`Uploading ${fullPath} to gs://${BUCKET_NAME}/${destinationPath}...`);
-          await bucket.upload(fullPath, {
-            destination: destinationPath,
-          });
-        });
-      }
+function runGit(cmd: string, cwd: string = CLONE_DIR) {
+  try {
+    return execSync(cmd, { cwd, encoding: 'utf-8', stdio: 'pipe' }).trim();
+  } catch (err: any) {
+    if (err.stderr) {
+       console.error(cRed(`Git Error [${cmd}]: \n${err.stderr}`));
     }
+    throw err;
+  }
+}
+
+async function uploadToGit(suiteName: string, resultsDir: string) {
+  console.log(cCyan(`Checking out temp git clone at ${CLONE_DIR}...`));
+  
+  // Create clone if it doesn't exist
+  if (!fs.existsSync(CLONE_DIR)) {
+    console.log(cCyan(`Cloning external repository to ${CLONE_DIR}...`));
+    runGit(`git clone --depth 1 ${REMOTE_URL} ${CLONE_DIR}`, baseResultsDir);
+  } else {
+    console.log(cCyan(`Clone exists, fetching and pulling latest...`));
+    runGit(`git fetch origin`, CLONE_DIR);
+    runGit(`git reset --hard origin/main`, CLONE_DIR);
   }
 
-  collectFiles(dirPath, gcsPrefix);
-
-  console.log(`Discovered ${uploadTasks.length} files to upload. Uploading concurrently...`);
-
-  // Run uploads in concurrent chunks to avoid hitting network/file-descriptor limits
-  const concurrencyLevel = 50;
-  for (let i = 0; i < uploadTasks.length; i += concurrencyLevel) {
-    const chunk = uploadTasks.slice(i, i + concurrencyLevel);
-    await Promise.all(chunk.map(task => task()));
+  const destDir = path.join(CLONE_DIR, 'results', suiteName);
+  console.log(cCyan(`Copying results to worktree's ${destDir}...`));
+  
+  // Copy results into the worktree results folder
+  if (!fs.existsSync(destDir)) {
+     fs.mkdirSync(destDir, { recursive: true });
   }
+  fs.cpSync(resultsDir, destDir, { recursive: true });
+
+  // Update scripts manifest inside worktree
+  console.log(cCyan(`Updating suites.gen.json manifest inside worktree...`));
+  const worktreeResults = path.join(CLONE_DIR, 'results');
+  let suites: string[] = [];
+  if (fs.existsSync(worktreeResults)) {
+     suites = fs.readdirSync(worktreeResults, { withFileTypes: true })
+       .filter(item => item.isDirectory())
+       .filter(item => fs.existsSync(path.join(worktreeResults, item.name, 'evals.json')))
+       .map(item => item.name);
+  }
+  suites.sort();
+  fs.writeFileSync(path.join(CLONE_DIR, 'suites.gen.json'), JSON.stringify(suites, null, 2));
+
+  console.log(cCyan(`Committing and pushing to gh-pages...`));
+  runGit(`git add .`, CLONE_DIR);
+  
+  // Only commit if there are changes to prevent empty commit failures
+  const status = runGit(`git status --short`, CLONE_DIR);
+  if (!status) {
+     console.log(cGreen(`✅ Results are already up to date on gh-pages!`));
+     return;
+  }
+
+  runGit(`git commit -m "feat(results): upload suite ${suiteName}"`, CLONE_DIR);
+  runGit(`git push origin gh-pages`, CLONE_DIR);
 }
 
 async function main() {
@@ -92,12 +106,9 @@ async function main() {
 
   console.log(cBold(cCyan(`Starting upload for suite: ${suiteName}${summaryOnly ? ' (Summary Only)' : ''}`)));
 
-  const storage = new Storage({ projectId: PROJECT_ID });
-  const bucket = storage.bucket(BUCKET_NAME);
-
   try {
-    await uploadDirectory(bucket, resultsDir, suiteName, summaryOnly);
-    console.log(cBold(cGreen(`\n✅ Successfully uploaded suite '${suiteName}' to gs://${BUCKET_NAME}/${suiteName}`)));
+    await uploadToGit(suiteName, resultsDir);
+    console.log(cBold(cGreen(`\n✅ Successfully uploaded suite '${suiteName}' to GitHub Pages.`)));
   } catch (error: any) {
     console.error(cRed(`❌ Upload failed: ${error.message}`));
     process.exit(1);
