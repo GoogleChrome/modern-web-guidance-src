@@ -12,13 +12,11 @@ The `eval-view` codebase contains complexity to support both views.
 ## Viewing the Dashboard
 
 The dashboard is continuously deployed to GitHub Pages and can be accessed at:
-**[https://googlechrome.github.io/guidance/](https://googlechrome.github.io/guidance/)**
-
-The dashboard fetches evaluation data from a static `./results/` directory hosted directly on GitHub Pages. There is no longer a dependency on Google Cloud Storage for remote viewing.
+The dashboard fetches evaluation data from Google Cloud Storage (GCS) at `gs://guidance-evals/`. It requires Google Authentication to read from the bucket.
 
 1.  **Run evaluations locally**: Generate your test metrics in `harness/results/`.
-2.  **Upload piecewise**: Use `pnpm run upload <suite>` in the `harness` directory to push your specific suite to the live site.
-3.  **App deployment**: Run `pnpm run deploy-pages` in `eval-view` to rebuild the app files and static `suites.gen.json` manifest.
+2.  **Upload piecewise**: Use `pnpm run upload <suite>` in the `harness` directory to push your specific suite to GCS.
+3.  **App deployment**: Run `pnpm run deploy-pages` in `eval-view` to upload static manifests to GCS and push the viewer to GitHub Pages.
 
 
 ## Local Development
@@ -39,10 +37,10 @@ pnpm run deploy-pages
 ```
 
 This will:
-1. Run `node generate-manifests.js` to generate the `features_mapping.gen.js`, `suites.gen.json`, and all `run-files.gen.json` manifests.
-2. Copy `tasks/` and `base_apps/` for direct viewing.
-3. Merge them all using standard `gh-pages` module with `--add` flag (to avoid clobbering existing `results/` from remote).
-4. Push to the `gh-pages` branch on GitHub.
+1. Run `node generate-manifests.js` to generate the manifests.
+2. Upload `suites.gen.json` to GCS.
+3. Use `gcloud storage rsync` to sync results to GCS.
+4. Push the viewer code to the `gh-pages` branch on GitHub.
 
 ### Parity Testing
 To ensure your changes will work on the static GitHub Pages host, you can run the dashboard in a "Strict Static" mode that disables all dynamic APIs:
