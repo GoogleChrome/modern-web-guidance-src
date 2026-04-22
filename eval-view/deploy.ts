@@ -33,9 +33,8 @@ try {
   // dereference: true resolves symlinks (mimicking cp -RL)
   fs.cpSync(baseAppsDir, appsDest, { recursive: true, dereference: true });
 
-  // 4. Upload manifests and results to GCS
-  console.log(`\n📡 Uploading manifests and results to GCS...`);
-  runCommand('gcloud storage cp suites.gen.json gs://guidance-evals/suites.gen.json');
+  // 4. Upload results to GCS
+  console.log(`\n📡 Uploading results to GCS...`);
   
   if (fs.existsSync(resultsDir)) {
     console.log(`Uploading results from ${resultsDir} to GCS...`);
