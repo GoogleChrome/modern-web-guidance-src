@@ -11,7 +11,7 @@ const STATIC = process.env.STATIC === 'true';
 if (STATIC) {
   console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
   
-  const distDir = path.resolve('dist/dashboard');
+  const distDir = path.resolve('../dist/dashboard');
   if (fs.existsSync(distDir)) {
     fs.rmSync(distDir, { recursive: true, force: true });
   }
@@ -21,7 +21,7 @@ if (STATIC) {
   for (const f of sourceFiles) {
     const destPath = path.join(distDir, f);
     try {
-      fs.symlinkSync(`../../${f}`, destPath);
+      fs.symlinkSync(`../../eval-view/${f}`, destPath);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.error(`Failed to create symlink for ${f}:`, message);
@@ -29,9 +29,9 @@ if (STATIC) {
   }
 
   const links = [
-    { target: '../../../harness/results', name: 'results' },
-    { target: '../../../harness/tasks', name: 'tasks' },
-    { target: '../../../harness/base_apps', name: 'base_apps' }
+    { target: '../../harness/results', name: 'results' },
+    { target: '../../harness/tasks', name: 'tasks' },
+    { target: '../../harness/base_apps', name: 'base_apps' }
   ];
 
   for (const link of links) {
@@ -44,8 +44,8 @@ if (STATIC) {
     }
   }
 
-  console.log(`🚀 Spawning statikk on port ${PORT} serving dist/dashboard...`);
-  const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString(), 'dist/dashboard'], { stdio: 'inherit' });
+  console.log(`🚀 Spawning statikk on port ${PORT} serving ../dist/dashboard...`);
+  const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString(), '../dist/dashboard'], { stdio: 'inherit' });
   
   const url = `http://localhost:${PORT}/?source=static`;
   console.log(`Server running at ${url}`);
