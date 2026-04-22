@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessible & Secure Forms</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #151c2c;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #10b981;
+      --error-color: #ef4444;
+      --border-color: #334155;
+      --input-bg: #1e293b;
+      --focus-outline: 3px solid #3b82f6;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 600px;
+      width: 100%;
+      background: var(--card-bg);
+      padding: 2.5rem;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.description {
+      color: var(--text-secondary);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    /* Progress Tracker */
+    .progress-container {
+      margin-bottom: 2rem;
+    }
+
+    .progress-tracker {
+      display: flex;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .progress-tracker::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--border-color);
+      z-index: 1;
+      transform: translateY(-50%);
+    }
+
+    .step {
+      background: var(--input-bg);
+      border: 2px solid var(--border-color);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.875rem;
+      z-index: 2;
+      transition: all 0.3s ease;
+    }
+
+    .step.active {
+      border-color: var(--accent-primary);
+      background: var(--accent-primary);
+      color: white;
+    }
+
+    .step.done {
+      border-color: var(--accent-secondary);
+      background: var(--accent-secondary);
+      color: white;
+    }
+
+    /* Form Layout */
+    .form-group {
+      margin-block-end: 1.5rem; /* Logical property */
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-block-end: 0.5rem; /* Gestalt Proximity: margin between label and input is small */
+      font-size: 0.95rem;
+      display: inline-block;
+    }
+
+    .form-group + .form-group {
+      margin-block-start: 1.5rem; /* Margin between groups is larger */
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="tel"],
+    textarea,
+    select {
+      font-size: 1rem; /* 16px to prevent iOS zoom */
+      padding: 0.75rem;
+      min-height: 48px; /* Tap target */
+      box-sizing: border-box;
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible {
+      outline: var(--focus-outline);
+      outline-offset: 2px;
+    }
+
+    /* Non-intrusive validation styling */
+    input:invalid:user-invalid,
+    textarea:invalid:user-invalid {
+      border-color: var(--error-color);
+    }
+
+    .hint {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-block-start: 0.25rem;
+    }
+
+    .error-message {
+      font-size: 0.8rem;
+      color: var(--error-color);
+      margin-block-start: 0.25rem;
+      display: none;
+    }
+
+    /* Checkbox & Radio */
+    .checkbox-group,
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .control-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+      accent-color: var(--accent-primary);
+      width: 1.25rem;
+      height: 1.25rem;
+      min-height: auto; /* Override general input min-height */
+    }
+
+    /* Visually Hidden for accessible custom controls */
+    .visually-hidden {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      z-index: -1;
+    }
+
+    /* Custom dropdown appearance */
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      background-size: 1rem;
+      padding-inline-end: 2.5rem;
+    }
+
+    /* Buttons */
+    .button-group {
+      display: flex;
+      justify-content: space-between;
+      margin-block-start: 2rem;
+      gap: 1rem;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    button.primary {
+      background-color: var(--accent-primary);
+      color: white;
+      border: none;
+      flex: 2;
+    }
+
+    button.primary:hover {
+      background-color: #2563eb;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    button.secondary {
+      background-color: transparent;
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      flex: 1;
+    }
+
+    button.secondary:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Password toggle */
+    .password-wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 0.75rem;
+      top: 2.2rem; /* Align with input, considering label height */
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      height: 48px;
+      width: 48px;
+      padding: 0;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+
+    /* Datalist */
+    .datalist-wrapper {
+      position: relative;
+    }
+
+    /* Required indicator */
+    .required-indicator {
+      color: var(--error-color);
+      margin-inline-start: 0.25rem;
+    }
+
+    /* Accessibility summary */
+    .error-summary {
+      background-color: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--error-color);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+
+    .error-summary h2 {
+      font-size: 1rem;
+      margin: 0 0 0.5rem 0;
+      color: var(--error-color);
+    }
+
+    .error-summary ul {
+      margin: 0;
+      padding-inline-start: 1.5rem;
+      font-size: 0.9rem;
+    }
+
+    .error-summary li a {
+      color: var(--error-color);
+      text-decoration: none;
+    }
+
+    .error-summary li a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Create Your Account</h1>
+      <p class="description">Join our premium service. Please fill out the form below.</p>
+    </header>
+
+    <!-- Progress Tracker -->
+    <div class="progress-container" aria-label="Form Progress">
+      <ol class="progress-tracker">
+        <li class="step active" aria-current="step" id="step1">1</li>
+        <li class="step" id="step2">2</li>
+        <li class="step" id="step3">3</li>
+      </ol>
+      <div class="visually-hidden">Step 1 of 3: Account Details</div>
+    </div>
+
+    <!-- Accessibility Error Summary -->
+    <div id="errorSummary" class="error-summary" role="alert" aria-labelledby="summaryTitle">
+      <h2 id="summaryTitle">Please correct the following errors:</h2>
+      <ul id="errorList"></ul>
+    </div>
+
+    <!-- Semantic Form -->
+    <form id="registrationForm" action="/submit-registration" method="POST" novalidate>
+      <!-- Anti-CSRF Token -->
+      <input type="hidden" name="csrf_token" value="dGhpcyBpcyBhIHNlY3VyZSB0b2tlbg==">
+
+      <!-- Step 1: Account Details -->
+      <div id="step1Content">
+        <fieldset style="border: none; padding: 0; margin: 0;">
+          <legend class="visually-hidden">Account Details</legend>
+          
+          <!-- Single Name Field -->
+          <div class="form-group">
+            <label for="fullName">Full Name <span class="required-indicator" aria-hidden="true">*</span></label>
+            <input type="text" id="fullName" name="fullName" autocomplete="name" required minlength="2" aria-required="true">
+            <span id="nameHint" class="hint">Enter your full name as it appears on official documents.</span>
+            <span id="fullNameError" class="error-message" role="alert"></span>
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label for="email">Email Address <span class="required-indicator" aria-hidden="true">*</span></label>
+            <input type="email" id="email" name="email" autocomplete="email" required aria-required="true">
+            <span id="emailError" class="error-message" role="alert"></span>
+          </div>
+
+          <!-- Password with Toggle -->
+          <div class="form-group password-wrapper">
+            <label for="password">Password <span class="required-indicator" aria-hidden="true">*</span></label>
+            <input type="password" id="password" name="password" autocomplete="new-password" required minlength="8" aria-required="true" aria-describedby="passwordHint">
+            <button type="button" id="togglePassword" class="password-toggle" aria-label="Show password">Show</button>
+            <span id="passwordHint" class="hint">Must be at least 8 characters long.</span>
+            <span id="passwordError" class="error-message" role="alert"></span>
+          </div>
+        </fieldset>
+      </div>
+
+      <!-- Step 2: Preferences (Hidden by default for demo flow) -->
+      <div id="step2Content" style="display: none;">
+        <fieldset style="border: none; padding: 0; margin: 0;">
+          <legend class="visually-hidden">Preferences</legend>
+
+          <!-- Radio Buttons (1-5 options) -->
+          <div class="form-group">
+            <label id="frequencyLabel">Notification Frequency</label>
+            <div class="radio-group" role="radiogroup" aria-labelledby="frequencyLabel">
+              <label class="control-item">
+                <input type="radio" name="frequency" value="daily" checked>
+                <span>Daily</span>
+              </label>
+              <label class="control-item">
+                <input type="radio" name="frequency" value="weekly">
+                <span>Weekly</span>
+              </label>
+              <label class="control-item">
+                <input type="radio" name="frequency" value="monthly">
+                <span>Monthly</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Select (6+ options) -->
+          <div class="form-group">
+            <label for="timeZone">Time Zone</label>
+            <select id="timeZone" name="timeZone" required>
+              <option value="" disabled selected>Select your time zone</option>
+              <option value="UTC-12">UTC-12</option>
+              <option value="UTC-11">UTC-11</option>
+              <option value="UTC-10">UTC-10</option>
+              <option value="UTC-9">UTC-9</option>
+              <option value="UTC-8">UTC-8 (Pacific)</option>
+              <option value="UTC-7">UTC-7 (Mountain)</option>
+              <option value="UTC-6">UTC-6 (Central)</option>
+              <option value="UTC-5">UTC-5 (Eastern)</option>
+              <option value="UTC-4">UTC-4</option>
+              <option value="UTC-3">UTC-3</option>
+            </select>
+          </div>
+
+          <!-- Datalist (10+ / Dynamic) -->
+          <div class="form-group datalist-wrapper">
+            <label for="country">Country</label>
+            <input list="countries" id="country" name="country" autocomplete="country-name" placeholder="Start typing...">
+            <datalist id="countries">
+              <option value="United States">
+              <option value="Canada">
+              <option value="United Kingdom">
+              <option value="Australia">
+              <option value="Germany">
+              <option value="France">
+              <option value="Japan">
+              <option value="Brazil">
+              <option value="India">
+              <option value="South Africa">
+              <option value="Mexico">
+              <option value="Spain">
+              <option value="Italy">
+            </datalist>
+          </div>
+
+          <!-- Checkboxes (Multi-select) -->
+          <div class="form-group">
+            <label id="interestsLabel">Interests</label>
+            <div class="checkbox-group" aria-labelledby="interestsLabel">
+              <label class="control-item">
+                <input type="checkbox" name="interests" value="tech">
+                <span>Technology</span>
+              </label>
+              <label class="control-item">
+                <input type="checkbox" name="interests" value="design">
+                <span>Design</span>
+              </label>
+              <label class="control-item">
+                <input type="checkbox" name="interests" value="business">
+                <span>Business</span>
+              </label>
+            </div>
+          </div>
+        </fieldset>
+      </div>
+
+      <!-- Step 3: Payment & Address (Hidden by default) -->
+      <div id="step3Content" style="display: none;">
+        <fieldset style="border: none; padding: 0; margin: 0;">
+          <legend class="visually-hidden">Payment and Address</legend>
+
+          <!-- Address Textarea (Multi-country) -->
+          <div class="form-group">
+            <label for="address">Billing Address <span class="required-indicator" aria-hidden="true">*</span></label>
+            <textarea id="address" name="address" autocomplete="street-address" required minlength="10" aria-required="true" placeholder="Enter your full address..."></textarea>
+            <span id="addressError" class="error-message" role="alert"></span>
+          </div>
+
+          <!-- ZIP (Text with inputmode numeric) -->
+          <div class="form-group">
+            <label for="zip">ZIP / Postal Code <span class="required-indicator" aria-hidden="true">*</span></label>
+            <input type="text" id="zip" name="zip" autocomplete="postal-code" inputmode="numeric" pattern="[0-9]*" required aria-required="true">
+            <span id="zipError" class="error-message" role="alert"></span>
+          </div>
+
+          <!-- Complex Number (Credit Card) as single field -->
+          <div class="form-group">
+            <label for="ccNumber">Credit Card Number <span class="required-indicator" aria-hidden="true">*</span></label>
+            <input type="text" id="ccNumber" name="ccNumber" autocomplete="cc-number" inputmode="numeric" pattern="[0-9\s]*" required aria-required="true">
+            <span id="ccError" class="error-message" role="alert"></span>
+          </div>
+        </fieldset>
+      </div>
+
+      <!-- Controls -->
+      <div class="button-group">
+        <button type="button" id="prevBtn" class="secondary" style="display: none;" enterkeyhint="previous">Previous</button>
+        <button type="button" id="nextBtn" class="primary" enterkeyhint="next">Next</button>
+        <button type="submit" id="submitBtn" class="primary" style="display: none;">Complete Registration</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    // Strict CSP: No inline handlers used, all attached via JS.
+    
+    const form = document.getElementById('registrationForm');
+    const nextBtn = document.getElementById('nextBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const errorSummary = document.getElementById('errorSummary');
+    const errorList = document.getElementById('errorList');
+    
+    let currentStep = 1;
+    
+    // Step Navigation
+    function updateStep(step) {
+      document.getElementById(`step${currentStep}Content`).style.display = 'none';
+      document.getElementById(`step${step}Content`).style.display = 'block';
+      
+      document.getElementById(`step${currentStep}`).classList.remove('active');
+      if (currentStep < step) {
+        document.getElementById(`step${currentStep}`).classList.add('done');
+      }
+      document.getElementById(`step${step}`).classList.add('active');
+      
+      // Update ARIA live region or description for screen readers
+      const trackerDesc = document.querySelector('.progress-container .visually-hidden');
+      const stepNames = { 1: 'Account Details', 2: 'Preferences', 3: 'Payment and Address' };
+      trackerDesc.textContent = `Step ${step} of 3: ${stepNames[step]}`;
+      
+      currentStep = step;
+      
+      if (currentStep === 1) {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'flex';
+        submitBtn.style.display = 'none';
+      } else if (currentStep === 2) {
+        prevBtn.style.display = 'flex';
+        nextBtn.style.display = 'flex';
+        submitBtn.style.display = 'none';
+      } else if (currentStep === 3) {
+        prevBtn.style.display = 'flex';
+        nextBtn.style.display = 'none';
+        submitBtn.style.display = 'flex';
+        submitBtn.textContent = 'Complete Registration - $10.00'; // Explicit amount
+      }
+    }
+    
+    nextBtn.addEventListener('click', () => {
+      if (validateStep(currentStep)) {
+        updateStep(currentStep + 1);
+        errorSummary.style.display = 'none';
+      } else {
+        showErrorSummary(currentStep);
+      }
+    });
+    
+    prevBtn.addEventListener('click', () => {
+      updateStep(currentStep - 1);
+      errorSummary.style.display = 'none';
+    });
+    
+    // Password Toggle
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    
+    togglePassword.addEventListener('click', () => {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      togglePassword.textContent = type === 'password' ? 'Show' : 'Hide';
+      togglePassword.setAttribute('aria-label', type === 'password' ? 'Show password' : 'Hide password');
+    });
+    
+    // Validation Logic
+    function validateStep(step) {
+      const content = document.getElementById(`step${step}Content`);
+      const inputs = content.querySelectorAll('input, select, textarea');
+      let isValid = true;
+      
+      inputs.forEach(input => {
+        if (!validateInput(input)) {
+          isValid = false;
+        }
+      });
+      
+      return isValid;
+    }
+    
+    function validateInput(input) {
+      const errorSpan = document.getElementById(`${input.id}Error`);
+      
+      // Native validation check
+      if (!input.checkValidity()) {
+        if (errorSpan) {
+          errorSpan.textContent = getCustomErrorMessage(input);
+          errorSpan.style.display = 'block';
+        }
+        return false;
+      } else {
+        if (errorSpan) {
+          errorSpan.textContent = '';
+          errorSpan.style.display = 'none';
+        }
+        return true;
+      }
+    }
+    
+    function getCustomErrorMessage(input) {
+      // ValidityState API
+      const validity = input.validity;
+      
+      if (validity.valueMissing) {
+        return 'This field is required.';
+      }
+      if (validity.tooShort) {
+        return `Must be at least ${input.minLength} characters long.`;
+      }
+      if (validity.patternMismatch) {
+        if (input.id === 'zip') return 'Please enter a valid numeric ZIP code.';
+        if (input.id === 'ccNumber') return 'Please enter a valid credit card number.';
+        return 'Invalid format.';
+      }
+      if (validity.typeMismatch && input.type === 'email') {
+        return 'Please enter a valid email address.';
+      }
+      
+      return input.validationMessage; // Fallback to browser message
+    }
+    
+    function showErrorSummary(step) {
+      const content = document.getElementById(`step${step}Content`);
+      const inputs = content.querySelectorAll('input, select, textarea');
+      
+      errorList.innerHTML = '';
+      let count = 0;
+      
+      inputs.forEach(input => {
+        if (!input.checkValidity()) {
+          count++;
+          const label = document.querySelector(`label[for="${input.id}"]`).textContent.replace('*', '').trim();
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = `#${input.id}`;
+          a.textContent = `${label}: ${getCustomErrorMessage(input)}`;
+          
+          // Click summary link to focus input
+          a.addEventListener('click', (e) => {
+            e.preventDefault();
+            input.focus();
+          });
+          
+          li.appendChild(a);
+          errorList.appendChild(li);
+        }
+      });
+      
+      if (count > 0) {
+        errorSummary.style.display = 'block';
+        // Route focus to error summary
+        errorSummary.setAttribute('tabindex', '-1');
+        errorSummary.focus();
+      }
+    }
+    
+    // Event Listeners for timing matrix
+    // Validate on Blur
+    form.addEventListener('blur', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+        // Only validate if the user has attempted to leave a field
+        validateInput(e.target);
+      }
+    }, true); // Use capture to catch blur on inputs
+    
+    // Reset errors on Input (active typing)
+    form.addEventListener('input', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        const errorSpan = document.getElementById(`${e.target.id}Error`);
+        // If field becomes valid or user is typing, we can clear the error message
+        // "Clear existing errors only" heuristic
+        if (e.target.checkValidity() && errorSpan) {
+          errorSpan.textContent = '';
+          errorSpan.style.display = 'none';
+        }
+      }
+    });
+    
+    // Submit Handler
+    form.addEventListener('submit', (e) => {
+      // Prevent default navigation for AJAX
+      e.preventDefault();
+      
+      if (validateStep(3)) {
+        // Disable button after valid submission to prevent double-posts
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Processing...';
+        
+        // Simulate AJAX submission
+        setTimeout(() => {
+          alert('Registration Complete!');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Complete Registration - $10.00';
+          updateStep(1);
+          form.reset();
+        }, 2000);
+      } else {
+        showErrorSummary(3);
+      }
+    });
+  </script>
+</body>
+</html>
