@@ -68,6 +68,7 @@ export interface EvalsReport {
   agent: string;
   serving: string;
   model: string;
+  totalRuntime?: number;
 }
 
 export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPerTest: number): Metrics {

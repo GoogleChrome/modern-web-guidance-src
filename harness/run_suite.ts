@@ -104,6 +104,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
   // Setup logging to file
   const logFilePath = path.join(testDir, 'test_suite.log');
   const originalConsoleMethods = setupLogging(logFilePath);
+  const suiteStart = Date.now();
 
   console.log(`\n=== Test Suite Starting with ID: ${testID} ===`);
   console.log(`Results will be saved to: ${testDir}\n`);
@@ -117,7 +118,6 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     console.log(`\nStarting execution for ${numRuns} runs`);
 
     for (let runNumber = 1; runNumber < endRun; runNumber++) {
-
       console.log(`\n${'='.repeat(60)}`);
       console.log(`>>> STARTING RUN ${runNumber} <<<`);
       console.log(`${'='.repeat(60)}\n`);
@@ -184,6 +184,8 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           const pnpmArgs = ['-r', '--no-bail'];
           if (agent === Agents.JETSKI) {
             pnpmArgs.push('--workspace-concurrency', '1');
+          } else if (suiteConfig.workerCount) {
+            pnpmArgs.push('--workspace-concurrency', suiteConfig.workerCount.toString());
           }
           pnpmArgs.push('run-agent');
           const suiteConfigPath = path.resolve(testDir, 'suite_config.json');
@@ -208,6 +210,24 @@ export async function runSuite(options: RunSuiteOptions = {}) {
 
     if (!options.skipEval) {
       await evaluateSuite(testDir, testID);
+      
+      const absoluteTotalRuntime = Date.now() - suiteStart;
+      console.log(`Total runtime: ${absoluteTotalRuntime}ms`);
+      
+      // Post-process evals.json to include the true total runtime
+      const evalsPath = path.join(testDir, 'evals.json');
+      if (fs.existsSync(evalsPath)) {
+        try {
+          const evals = JSON.parse(fs.readFileSync(evalsPath, 'utf-8'));
+          evals.totalRuntime = absoluteTotalRuntime;
+          fs.writeFileSync(evalsPath, JSON.stringify(evals, null, 2));
+        } catch (e) {
+          console.error('⚠️ Failed to update evals.json with total runtime:', e);
+        }
+      }
+    } else {
+      const absoluteTotalRuntime = Date.now() - suiteStart;
+      console.log(`Total runtime: ${absoluteTotalRuntime}ms`);
     }
 
     if (hasErrors) {
@@ -403,14 +423,28 @@ const args = [
   workspaceBaseAppDir
 ])}
 ];
-const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())} });
+const start = Date.now();
+const result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000 });
+const runtime = Date.now() - start;
+
+let graderRuntime = null;
+let graderStatus = null;
 
 if (result.status === 0) {
-  console.log("Agent finished successfully. Running grader immediately...");
+  const gradeStart = Date.now();
   const gradeResult = spawnSync(process.execPath, ['grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)} });
-  process.exit(gradeResult.status ?? 0);
+  graderRuntime = Date.now() - gradeStart;
+  graderStatus = gradeResult.status;
 }
-process.exit(result.status ?? 0);
+
+fs.writeFileSync(path.join(${JSON.stringify(targetDir)}, 'runtime.json'), JSON.stringify({
+  agentRuntime: runtime,
+  graderRuntime: graderRuntime,
+  agentStatus: result.status,
+  graderStatus: graderStatus
+}, null, 2));
+
+process.exit(graderStatus !== null ? graderStatus : result.status ?? 0);
 `.trim();
 
   fs.writeFileSync(path.join(targetDir, 'run.mjs'), runnerContent);
