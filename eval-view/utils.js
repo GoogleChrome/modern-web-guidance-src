@@ -131,6 +131,8 @@ export function initGoogleAuth(onAuthSuccess) {
                 authBtn.style.backgroundColor = 'var(--accent-success)';
                 authBtn.style.color = 'white';
                 authBtn.style.borderColor = 'var(--accent-success)';
+                
+                if (onAuthSuccess) onAuthSuccess();
             }
         }
 
