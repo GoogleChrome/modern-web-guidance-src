@@ -12,3 +12,4 @@
 - The implementation MUST NOT use the legacy `Date` object for calculations involving non-Gregorian calendars.
 - The implementation MUST use `Temporal.PlainDate.compare()` (or equivalent Temporal compare method) to compare dates instead of manual property comparison.
 - The implementation MUST account for era names when formatting dates in systems that rely on eras (e.g., Japanese or Buddhist calendar systems) using `toLocaleString()`.
+- The implementation MUST use `daysInMonth` when checking month invariants or doing day iterations instead of hardcoding fixed values like 30 or 31.

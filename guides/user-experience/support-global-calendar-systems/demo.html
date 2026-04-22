@@ -338,7 +338,7 @@
             let breakdown = [];
             for (let m = 1; m <= converted.monthsInYear; m++) {
               const temp = converted.with({ month: m });
-              breakdown.push(`${temp.monthCode}`);
+              breakdown.push(`${temp.monthCode} (${temp.daysInMonth}d)`);
             }
             document.getElementById(`${cal.id}-breakdown`).innerText = breakdown.join(', ');
 
