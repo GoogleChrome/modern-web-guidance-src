@@ -18,13 +18,13 @@ Web sites often provide multiple views of an object, for instance a list of prod
 
 ## The Solution
 
-The **View Transitions API** allows you to specify element pairs that exist in different states before and after a transition. When a transition occurs, the browser identifies these shared elements by their shared unique `view-transition-name`. It then automatically calculates the difference in their position, size, and styling, and animates them smoothly from the old state to the new state. 
+The **View Transitions API** allows you to specify element pairs that exist in different states before and after a transition. When a transition occurs, the browser identifies these shared elements by their shared unique `view-transition-name`. It then automatically calculates the difference in their position, size, and styling, and animates them smoothly from the old state to the new state. This transition occurs in the top layer, above even elements with high `z-index` values.
 
 ## Implementation Guide
 
 ### Step 1: Wrap State Changes in `startViewTransition`
 
-For Single-Page Applications (SPAs) or simple state changes, wrap the logic that updates the DOM in `document.startViewTransition`. The browser captures a snapshot of the current state, runs the update, and then captures the new state.
+For Single-Page Applications (SPAs) or simple state changes, wrap the logic that updates the DOM in `document.startViewTransition`. The browser captures a snapshot of the current state, runs the update, and then captures the new state. 
 
 ```javascript
 function navigate(view) {
@@ -35,7 +35,9 @@ function navigate(view) {
 
 ### Step 2: Assign Shared Transition Names
 
-Use the `view-transition-name` CSS property to tell the browser which elements should be morphed. The name can be anything (except `none`), but there must be no more than 1 element before and after with a given `view-transition-name`. You can use multiple `view-transition-name`s to morph multiple pairs of elements. For example, you may want to transition both the product image and title with separate transitions.
+Use the `view-transition-name` CSS property to tell the browser which elements should be morphed. The name can be anything (except `none`). **MANDATORY**: there must be no more than 1 element before and after with a given `view-transition-name`. If there are 2 or more elements with a given `view-transition-name`, the DOM will be updated to the new state immediately, without a transition.
+
+You can use multiple `view-transition-name`s to morph multiple pairs of elements. For example, you may want to transition both the product image and title with separate transitions.
 
 Because there are multiple items on the list view, you can not give the all of them the same `view-transition-name`. This can be solved in two ways in a SPA.
 
@@ -72,7 +74,7 @@ When a thumbnail is clicked, we need to prepare the list view by assigning the `
 
 Then, you can call `document.startViewTransition()`, and apply the changes to transition the page from the detail to list view.
 
-After navigating back to the list view, you must clean up the view transition classes to prevent the next navigation from erroring. You can perform this cleanup after the transition's `finished` promise resolves
+After navigating back to the list view, you must clean up the view transition classes to prevent the next navigation from erroring. You can perform this cleanup after the transition's `finished` promise resolves.
 
 ```javascript
 // Function called when a thumbnail is clicked
@@ -84,15 +86,16 @@ function goFromListToDetail(e){
 
   // Trigger the transition, checking for support
   if (!document.startViewTransition) {
-    document.body.classList.remove("detail");
+    document.body.classList.add("detail");
+    return; // MANDATORY: End function execution if view transitions are not supported.  
   }
   const transition = document.startViewTransition(() => {
-    document.body.classList.remove("detail");
+    document.body.classList.add("detail");
   });
   // Clean up the list view
   transition.finished.finally(() => {
     // Remove selected classList to remove view-transition-names
-    document.querySelectorAll("selected").forEach(
+    document.querySelectorAll(".selected").forEach(
       (element) => {
         element.classList.remove("selected");
       },
