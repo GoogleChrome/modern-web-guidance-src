@@ -89,6 +89,14 @@ export class ApiClient {
     /** Fetches the overall array of test suites/runs listed for the dashboard. */
     async getSuites() {
         if (this.source === 'static') {
+            // For local parity in static mode, read the generated manifest
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                const res = await fetch('./suites.gen.json');
+                if (!res.ok) throw new Error('Failed to load local suites manifest (suites.gen.json missing)');
+                const suites = await res.json();
+                return { suites: suites.map(id => ({ id, source: 'static' })) };
+            }
+
             const gcsUrl = `${this.gcsPrefix}?delimiter=/`;
             const res = await this._fetch(gcsUrl);
             if (!res.ok) throw new Error('Failed to load remote suites');
