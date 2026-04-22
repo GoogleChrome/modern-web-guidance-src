@@ -123,12 +123,15 @@ export function initGoogleAuth(onAuthSuccess) {
         }
 
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
-        if (authBtn && accessToken) {
-            authBtn.textContent = 'Authenticated ✓';
-            authBtn.disabled = true;
-            authBtn.style.backgroundColor = 'var(--accent-success)';
-            authBtn.style.color = 'white';
-            authBtn.style.borderColor = 'var(--accent-success)';
+        if (authBtn) {
+            authBtn.style.display = 'block';
+            if (accessToken) {
+                authBtn.textContent = 'Authenticated ✓';
+                authBtn.disabled = true;
+                authBtn.style.backgroundColor = 'var(--accent-success)';
+                authBtn.style.color = 'white';
+                authBtn.style.borderColor = 'var(--accent-success)';
+            }
         }
 
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
@@ -166,25 +169,7 @@ export function initGoogleAuth(onAuthSuccess) {
     init();
 }
 
-export function initOneTap(onAuthSuccess, onPromptMoment) {
-    if (!window.google || !window.google.accounts) {
-        setTimeout(() => initOneTap(onAuthSuccess, onPromptMoment), 50);
-        return;
-    }
 
-    window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        use_fedcm: true,
-        callback: (response) => {
-            console.log('One Tap login successful!');
-            if (onAuthSuccess) onAuthSuccess(response.credential);
-        }
-    });
-    
-    window.google.accounts.id.prompt((notification) => {
-        if (onPromptMoment) onPromptMoment(notification);
-    });
-}
 
 export async function authenticatedFetch(url, options = {}) {
     if (accessToken) {

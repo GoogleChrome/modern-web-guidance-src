@@ -49,33 +49,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            const { initOneTap, initGoogleAuth } = await import('./utils.js');
+            const { initGoogleAuth } = await import('./utils.js');
             
-            let authTriggered = false;
-            const onAuthResolved = async () => {
-                if (authTriggered) return;
-                authTriggered = true;
+            initGoogleAuth(async () => {
                 await loadTests();
                 finishInit();
-            };
-
-            const handleOneTapSuccess = async (_idToken) => {
-                console.log('Logged in via One Tap. Getting Access Token...');
-                initGoogleAuth(onAuthResolved);
-            };
-
-            const handleOneTapFallback = (notification) => {
-                if (notification.isSkippedMoment()) {
-                    console.log('One Tap skipped.');
-                    const authBtn = document.getElementById('auth-btn');
-                    if (authBtn) authBtn.style.display = 'block';
-                    
-                    // Fallback to manual login or silent refresh
-                    initGoogleAuth(onAuthResolved);
-                }
-            };
-
-            initOneTap(handleOneTapSuccess, handleOneTapFallback);
+            });
         };
 
         await initializeAuthAndLoadData();
