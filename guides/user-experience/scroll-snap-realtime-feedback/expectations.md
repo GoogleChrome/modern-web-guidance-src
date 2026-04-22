@@ -4,6 +4,3 @@
 - The gallery contains child elements with class `.gallery-item`, one per photo.
 - The Nth `.thumbnail` element (in document order) corresponds to the Nth `.gallery-item` element (in document order).
 - The number of `.thumbnail` elements must equal the number of `.gallery-item` elements.
-
-> [!IMPORTANT]
-> Fallback implementations using scroll listeners or intersection observers are out of scope for this specific task and will fail the automated grader's anti-cheat checks.
