@@ -105,6 +105,30 @@ export function getIdToken() {
     return idToken;
 }
 
+export function decodeJwtResponse(token) {
+    try {
+        let base64Url = token.split('.')[1];
+        let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        let jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        console.error('Failed to decode JWT:', e);
+        return null;
+    }
+}
+
+export function isTokenValid() {
+    const token = localStorage.getItem('gsi_id_token');
+    const expiresAt = localStorage.getItem('gsi_token_expires_at');
+    
+    if (!token || !expiresAt) return false;
+    
+    // Add 5 minute buffer
+    return Date.now() < (parseInt(expiresAt) - 300000);
+}
+
 export function initOneTap(onAuthSuccess, onPromptMoment) {
     if (!window.google || !window.google.accounts) {
         setTimeout(() => initOneTap(onAuthSuccess, onPromptMoment), 50);
@@ -115,6 +139,12 @@ export function initOneTap(onAuthSuccess, onPromptMoment) {
         console.log('Logged in via Google Identity Services.');
         idToken = response.credential;
         localStorage.setItem('gsi_id_token', idToken);
+        
+        const payload = decodeJwtResponse(idToken);
+        if (payload && payload.exp) {
+            const expiresAt = payload.exp * 1000;
+            localStorage.setItem('gsi_token_expires_at', expiresAt.toString());
+        }
         
         const authBtn = document.getElementById('auth-btn');
         if (authBtn) {
