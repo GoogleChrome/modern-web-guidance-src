@@ -88,11 +88,10 @@ When navigating, pass the appropriate type to the `startViewTransition` method.
 const transitionType = yourTransitionTypeLogic();
 const updateDOM = yourUpdateDOMLogic();
 
-
-  document.startViewTransition({
-    update: updateDOM,
-    types: [transitionType] // Matches the CSS :active-view-transition-type() selectors
-  });
+document.startViewTransition({
+  update: updateDOM,
+  types: [transitionType] // Matches the CSS :active-view-transition-type() selectors
+});
 ```
 
 
