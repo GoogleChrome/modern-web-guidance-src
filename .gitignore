@@ -6,6 +6,8 @@ serving/vector_store/
 serving/build/
 serving/lib/use-cases.gen.ts
 eval-view/features_mapping.gen.js
+eval-view/grouped-tasks.gen.json
+eval-view/suites.gen.json
 dist/
 
 # Test artifacts
