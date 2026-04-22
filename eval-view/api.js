@@ -88,13 +88,17 @@ export class ApiClient {
 
     /** Fetches the overall array of test suites/runs listed for the dashboard. */
     async getSuites() {
-        if (this.capabilities.useManifests) {
-            // Load from a static suites.gen.json manifest from GCS
-            const res = await this._fetch('suites.gen.json');
-            if (!res.ok) throw new Error('Failed to load remote suites (suites.gen.json not found)');
+        if (this.source === 'static') {
+            const gcsUrl = `${this.gcsPrefix}?delimiter=/`;
+            const res = await this._fetch(gcsUrl);
+            if (!res.ok) throw new Error('Failed to load remote suites');
 
-            const suites = await res.json();
-            return { suites: suites.map(id => ({ id, source: 'static' })) };
+            const data = await res.json();
+            const suites = (data.prefixes || [])
+                .map(prefix => prefix.replace(/\/$/, ''))
+                .filter(name => name !== 'single_task')
+                .map(id => ({ id, source: 'static' }));
+            return { suites };
         } else {
             // Fetch directly from server.js /api/suites endpoint
             const res = await fetch('/api/suites');
