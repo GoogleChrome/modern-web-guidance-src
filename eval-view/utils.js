@@ -91,42 +91,79 @@ export function calculateChartData(results) {
     return { labels, guided: labels.map(l => getAvg(l, 'guided')), unguided: labels.map(l => getAvg(l, 'unguided')) };
 }
 
-
 export function formatTestName(name) {
     if (!name) return name;
     return name.split(' - ').join(' / ');
 }
 
-// Google Identity Services (One Tap & Button) Integration
+// Google Identity Services (OAuth) Integration
 const GOOGLE_CLIENT_ID = '169412140096-fk4rtf6iqk982d43385s1ilucrda91g2.apps.googleusercontent.com';
-let idToken = localStorage.getItem('gsi_id_token') || null;
+let accessToken = localStorage.getItem('gcs_access_token') || null;
 
-export function getIdToken() {
-    return idToken;
-}
-
-export function decodeJwtResponse(token) {
-    try {
-        let base64Url = token.split('.')[1];
-        let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        let jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        return JSON.parse(jsonPayload);
-    } catch (e) {
-        console.error('Failed to decode JWT:', e);
-        return null;
-    }
+export function getAccessToken() {
+    return accessToken;
 }
 
 export function isTokenValid() {
-    const token = localStorage.getItem('gsi_id_token');
-    const expiresAt = localStorage.getItem('gsi_token_expires_at');
+    const token = localStorage.getItem('gcs_access_token');
+    const expiresAt = localStorage.getItem('gcs_token_expires_at');
     
     if (!token || !expiresAt) return false;
     
     // Add 5 minute buffer
     return Date.now() < (parseInt(expiresAt) - 300000);
+}
+
+export function initGoogleAuth(onAuthSuccess) {
+    const init = () => {
+        if (!window.google || !window.google.accounts) {
+            // Wait for script to load
+            setTimeout(init, 50);
+            return;
+        }
+
+        const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
+        if (authBtn && accessToken) {
+            authBtn.textContent = 'Authenticated ✓';
+            authBtn.disabled = true;
+            authBtn.style.backgroundColor = 'var(--accent-success)';
+            authBtn.style.color = 'white';
+            authBtn.style.borderColor = 'var(--accent-success)';
+        }
+
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: 'https://www.googleapis.com/auth/devstorage.read_only',
+            callback: (response) => {
+                if (response.error !== undefined) {
+                    console.error('OAuth Error:', response);
+                    return;
+                }
+                accessToken = response.access_token;
+                localStorage.setItem('gcs_access_token', accessToken);
+                
+                if (response.expires_in) {
+                    const expiresAt = Date.now() + response.expires_in * 1000;
+                    localStorage.setItem('gcs_token_expires_at', expiresAt.toString());
+                    console.log(`Token expires at ${new Date(expiresAt).toLocaleString()}`);
+                }
+
+                if (authBtn) {
+                    authBtn.textContent = 'Authenticated ✓';
+                    authBtn.disabled = true;
+                    authBtn.style.backgroundColor = 'var(--accent-success)';
+                    authBtn.style.color = 'white';
+                    authBtn.style.borderColor = 'var(--accent-success)';
+                }
+                if (onAuthSuccess) onAuthSuccess();
+            },
+        });
+
+        if (authBtn) {
+            authBtn.addEventListener('click', () => tokenClient.requestAccessToken());
+        }
+    };
+    init();
 }
 
 export function initOneTap(onAuthSuccess, onPromptMoment) {
@@ -135,56 +172,31 @@ export function initOneTap(onAuthSuccess, onPromptMoment) {
         return;
     }
 
-    const handleResponse = (response) => {
-        console.log('Logged in via Google Identity Services.');
-        idToken = response.credential;
-        localStorage.setItem('gsi_id_token', idToken);
-        
-        const payload = decodeJwtResponse(idToken);
-        if (payload && payload.exp) {
-            const expiresAt = payload.exp * 1000;
-            localStorage.setItem('gsi_token_expires_at', expiresAt.toString());
-        }
-        
-        const authBtn = document.getElementById('auth-btn');
-        if (authBtn) {
-            authBtn.textContent = 'Authenticated ✓';
-            authBtn.disabled = true;
-            authBtn.style.backgroundColor = 'var(--accent-success)';
-            authBtn.style.color = 'white';
-            authBtn.style.borderColor = 'var(--accent-success)';
-        }
-        
-        if (onAuthSuccess) onAuthSuccess(idToken);
-    };
-
     window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         use_fedcm: true,
-        callback: handleResponse
+        callback: (response) => {
+            console.log('One Tap login successful!');
+            if (onAuthSuccess) onAuthSuccess(response.credential);
+        }
     });
     
-    // Render the fallback button if container exists
-    const btnContainer = document.getElementById('google-btn-container');
-    if (btnContainer) {
-        window.google.accounts.id.renderButton(btnContainer, { theme: "outline", size: "large" });
-    }
-
     window.google.accounts.id.prompt((notification) => {
         if (onPromptMoment) onPromptMoment(notification);
     });
 }
 
 export async function authenticatedFetch(url, options = {}) {
-    if (idToken) {
+    if (accessToken) {
         options.headers = options.headers || {};
-        options.headers['Authorization'] = `Bearer ${idToken}`;
+        options.headers['Authorization'] = `Bearer ${accessToken}`;
     }
     const res = await fetch(url, options);
     if (res.status === 401) {
-        console.warn('ID Token expired or invalid. Clearing token.');
-        localStorage.removeItem('gsi_id_token');
-        idToken = null;
+        console.warn('Google Access Token expired or invalid. Clearing token.');
+        localStorage.removeItem('gcs_access_token');
+        localStorage.removeItem('gcs_token_expires_at');
+        accessToken = null;
         
         // Reset button UI if available
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
@@ -220,4 +232,3 @@ export function $(query, context) {
   }
   return /** @type {ParseSelector<T>} */ (result);
 }
-

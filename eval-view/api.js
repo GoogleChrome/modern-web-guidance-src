@@ -11,7 +11,7 @@ export class ApiClient {
             }
         }
         this.source = sourceParam;
-        this.proxyPrefix = 'https://guidance-eval-proxy-169412140096.us-central1.run.app/';
+        this.gcsPrefix = 'https://storage.googleapis.com/storage/v1/b/guidance-evals/o/';
 
         // Capabilities based on source
         this.capabilities = {
@@ -26,8 +26,12 @@ export class ApiClient {
             if (path.startsWith('http')) return path;
 
             let fixedPath = path.split('?')[0];
-            // Use Cloud Run proxy
-            return `${this.proxyPrefix}${fixedPath}`;
+            // Build the GCS JSON API endpoint
+            let url = `${this.gcsPrefix}${encodeURIComponent(fixedPath)}`;
+            if (!isMetadataOnly) {
+                url += '?alt=media';
+            }
+            return url;
         } else {
             return `${path}?source=${this.source}`;
         }
