@@ -43,28 +43,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         if (api.source === 'static') {
-            const { initOneTap, isTokenValid } = await import('./utils.js');
+            const { initOneTap, initGoogleAuth } = await import('./utils.js');
             
-            if (isTokenValid()) {
-                console.log('Using existing valid ID token.');
-                await loadTests();
-                finishInit();
-            } else {
-                initOneTap(
-                    async (_idToken) => {
-                        console.log('Logged in via Google Identity Services.');
-                        await loadTests();
-                        finishInit();
-                    },
-                    (notification) => {
-                        if (notification.isSkippedMoment()) {
-                            console.log('One Tap skipped. Awaiting manual sign-in.');
-                            const btnContainer = document.getElementById('google-btn-container');
-                            if (btnContainer) btnContainer.style.display = 'block';
-                        }
+            let authTriggered = false;
+            const triggerAuth = () => {
+                if (authTriggered) return;
+                authTriggered = true;
+                initGoogleAuth(async () => {
+                    await loadTests();
+                    finishInit();
+                });
+            };
+
+            // Try One Tap first
+            initOneTap(
+                async (_idToken) => {
+                    console.log('Logged in via One Tap.');
+                    triggerAuth();
+                },
+                (notification) => {
+                    if (notification.isSkippedMoment()) {
+                        console.log('One Tap skipped.');
+                        const authBtn = document.getElementById('auth-btn');
+                        if (authBtn) authBtn.style.display = 'block';
+                        triggerAuth();
                     }
-                );
-            }
+                }
+            );
         } else {
             await loadTests();
             finishInit();
