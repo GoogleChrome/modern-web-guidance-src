@@ -2,6 +2,7 @@
 
 import { parseArgs } from "util";
 import { retrieveUseCase } from "../lib/retrieve.ts";
+import { ClearcutLogger } from "../skills-cli/telemetry/ClearcutLogger.ts";
 
 const { values } = parseArgs({
   args: process.argv.slice(2),
@@ -30,11 +31,18 @@ async function main() {
     process.exit(0);
   }
 
+  // Instantiate logger
+  const logger = new ClearcutLogger();
+
   if (values.search) {
     try {
       // Dynamic import to keep the CLI loading fast -- only load the embedder if needed.
       const { searchUseCases } = await import("../lib/search.ts");
       const results = await searchUseCases(values.search);
+      
+      // Log search results
+      await logger.logSearchResult(results.map(r => r.id));
+
       if (results.length === 0) {
         console.log("[]");
       } else {
@@ -53,6 +61,9 @@ async function main() {
       console.error("No IDs provided for retrieve.");
       process.exit(1);
     }
+
+    // Log retrieve results
+    await logger.logRetrieveResult(ids);
 
     for (const id of ids) {
       try {

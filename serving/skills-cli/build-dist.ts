@@ -198,9 +198,20 @@ async function main(version?: string): Promise<BuildResult | undefined> {
       metafile: true,
     });
 
+    console.log("Bundling watchdog main.js...");
+    const resultWatchdog = await esbuild.build({
+      entryPoints: [path.join(SERVING_DIR, "skills-cli/telemetry/watchdog/main.ts")],
+      bundle: true,
+      platform: "node",
+      format: "esm",
+      outfile: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/watchdog/main.js"),
+      loader: { ".node": "file" },
+      metafile: true,
+    });
+
     console.log("Generating THIRD_PARTY_NOTICES...");
     generateThirdPartyNotices(
-      [resultSearch.metafile, resultModernWeb.metafile],
+      [resultSearch.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
       path.join(PUBLISH_ROOT, "THIRD_PARTY_NOTICES")
     );
 
