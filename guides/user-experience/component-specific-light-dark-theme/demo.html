@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- 
-      To reduce the risk of FOUC (Flash of Unstyled Content) use the meta element 
+      MANDATORY: To reduce the risk of FOUC (Flash of Unstyled Content) use the meta element 
       `<meta name="color-scheme" content="light dark">` and the css root attribute.
     -->
   <meta name="color-scheme" content="light dark">
@@ -16,6 +16,7 @@
       The document defaults to the user's system preference. 
     */
     :root {
+      /* MANDATORY: Enable color-scheme support at the root to allow light-dark() to resolve. */
       color-scheme: light dark;
 
       /* Global base styles for the page body, strictly for contrast against the component */
@@ -51,34 +52,79 @@
       ===============================================================
       2. The Component-Specific Theme Definition
       ===============================================================
-      Instead of declaring `light-dark()` variables on the `:root`, 
-      we define a class containing our semantic variables!
     */
     .themed-card {
+      /* 
+         MANDATORY: Define base fallback values for browsers that don't support light-dark().
+         These will be overridden by @media (prefers-color-scheme: dark) or @supports (light-dark()).
+      */
+      --card-bg: #ffffff;
+      --card-border: #dadce0;
+      --card-shadow: rgba(0, 0, 0, 0.1);
+      --text-color: #202124;
+      --accent-color: #1a73e8;
+      --btn-text-color: white;
+      --header-bg: #f5f7fa;
 
-      --card-bg: light-dark(#ffffff, #2d2e31);
-      --card-border: light-dark(#dadce0, #5f6368);
-      --card-shadow: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.4));
-      --text-color: light-dark(#202124, #f8f9fa);
-      --accent-color: light-dark(#1a73e8, #8ab4f8);
-      --btn-text-color: light-dark(white, #202124);
-
-      /* Apply the local variables exclusively to this component */
       background-color: var(--card-bg);
       border: 1px solid var(--card-border);
       color: var(--text-color);
       box-shadow: 0 4px 12px var(--card-shadow);
       border-radius: 8px;
       padding: 2rem;
-      max-width: 400px;
+      max-width: 350px;
       width: 100%;
       box-sizing: border-box;
       transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s, color 0.3s;
+      
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* 
+       DO: Provide a @media fallback for older browsers that don't support light-dark() 
+       but DO support prefers-color-scheme.
+    */
+    @media (prefers-color-scheme: dark) {
+      .themed-card {
+        --card-bg: #2d2e31;
+        --card-border: #5f6368;
+        --card-shadow: rgba(0, 0, 0, 0.4);
+        --text-color: #f8f9fa;
+        --accent-color: #8ab4f8;
+        --btn-text-color: #202124;
+        --header-bg: #1c1c1e;
+      }
+    }
+
+    /* 
+       DO: Use progressive enhancement with @supports to enable light-dark().
+       This is the preferred method as it allows per-component 'color-scheme' overrides 
+       to automatically swap the variables, which @media queries cannot do.
+    */
+    @supports (color: light-dark(white, black)) {
+      .themed-card {
+        --card-bg: light-dark(#ffffff, #2d2e31);
+        --card-border: light-dark(#dadce0, #5f6368);
+        --card-shadow: light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.4));
+        --text-color: light-dark(#202124, #f8f9fa);
+        --accent-color: light-dark(#1a73e8, #8ab4f8);
+        --btn-text-color: light-dark(white, #202124);
+        --header-bg: light-dark(#f5f7fa, #1c1c1e);
+      }
+    }
+
+    .card-header {
+      height: 100px;
+      border-radius: 4px;
+      background-color: var(--header-bg);
     }
 
     .themed-card h2 {
-      margin-top: 0;
+      margin: 0;
       color: var(--accent-color);
+      font-size: 1.25rem;
     }
 
     .themed-card button {
@@ -90,7 +136,7 @@
       color: var(--btn-text-color);
       cursor: pointer;
       font-weight: 600;
-      margin-top: 1rem;
+      margin-top: auto;
       transition: background-color 0.3s, color 0.3s;
     }
 
@@ -98,12 +144,38 @@
       ===============================================================
       3. Component-Specific Override Classes 
       ===============================================================
-      By leveraging the `color-scheme` property purely scoped to the component,
-      we can manually force instances of the component to render in light or dark
-      mode independent of the page's `:root` system preference!
+    */
+    
+    /* 
+       DO: Set 'color-scheme: light' to force the first argument of light-dark() to resolve.
     */
     .themed-card.force-light {
       color-scheme: light;
+      
+      /* MANDATORY: Manual variable overrides for older browsers that don't support light-dark(). */
+      --card-bg: #ffffff;
+      --card-border: #dadce0;
+      --card-shadow: rgba(0, 0, 0, 0.1);
+      --text-color: #202124;
+      --accent-color: #1a73e8;
+      --btn-text-color: white;
+      --header-bg: #f5f7fa;
+    }
+
+    /* 
+       DO: Set 'color-scheme: dark' to force the second argument of light-dark() to resolve.
+    */
+    .themed-card.force-dark {
+      color-scheme: dark;
+      
+      /* MANDATORY: Manual variable overrides for older browsers that don't support light-dark(). */
+      --card-bg: #2d2e31;
+      --card-border: #5f6368;
+      --card-shadow: rgba(0, 0, 0, 0.4);
+      --text-color: #f8f9fa;
+      --accent-color: #8ab4f8;
+      --btn-text-color: #202124;
+      --header-bg: #1c1c1e;
     }
 
     .theme-toggle {
@@ -125,7 +197,6 @@
       color: var(--page-bg);
     }
 
-    /* Layout structure for the demo grid */
     .card-grid {
       display: flex;
       gap: 2rem;
@@ -141,9 +212,7 @@
 
   <h1>Component-Specific Themes</h1>
   <p class="description">
-    By scoping <code>light-dark()</code> variables and the <code>color-scheme</code> property directly to a component
-    class rather than the <code>:root</code>, you can force individual instances of that component to render in a
-    specific theme—regardless of the surrounding page's system preference!
+    This demo uses <code>light-dark()</code> for colors with mandatory fallbacks and per-component overrides.
   </p>
 
   <button id="themeToggleBtn" class="theme-toggle">
@@ -153,17 +222,25 @@
   <main class="card-grid">
     <!-- Card 1: Defaults to the system preference -->
     <div class="themed-card">
+      <div class="card-header"></div>
       <h2>System Preference</h2>
-      <p>This card organically inherits the <code>:root</code> color-scheme, toggling automatically between light and
-        dark modes.</p>
+      <p>This card automatically switches colors based on the <code>:root</code> color-scheme.</p>
       <button>Action</button>
     </div>
 
     <!-- Card 2: Exclusively forced to light mode -->
     <div class="themed-card force-light">
-      <h2>Forced Light Mode</h2>
-      <p>This card has <code>color-scheme: light;</code> applied to it directly. Its <code>light-dark()</code> math will
-        mathematically resolve to the light variables forever!</p>
+      <div class="card-header"></div>
+      <h2>Forced Light</h2>
+      <p>This card is locked to light mode using <code>color-scheme: light;</code>.</p>
+      <button>Action</button>
+    </div>
+
+    <!-- Card 3: Exclusively forced to dark mode -->
+    <div class="themed-card force-dark">
+      <div class="card-header"></div>
+      <h2>Forced Dark</h2>
+      <p>This card is locked to dark mode using <code>color-scheme: dark;</code>.</p>
       <button>Action</button>
     </div>
   </main>
@@ -177,6 +254,10 @@
 
     themeToggleBtn.addEventListener('click', () => {
       isDark = !isDark;
+      /* 
+         DO: Toggle the root color-scheme property to switch the global theme.
+         This will affect all elements using light-dark() that don't have their own override.
+      */
       root.style.colorScheme = isDark ? 'dark' : 'light';
       themeToggleBtn.textContent = `Toggle Page Theme (Forced ${isDark ? 'Dark' : 'Light'})`;
     });
