@@ -468,5 +468,5 @@ server.listen(PORT, () => {
 
     exec(`${startCommand} ${url}`);
   }
-}
 });
+}
