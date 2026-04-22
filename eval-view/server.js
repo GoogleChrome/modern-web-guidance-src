@@ -4,7 +4,6 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
-import { generateSuitesManifest } from './generate-manifests.js';
 
 const PORT = process.env.PORT || 8081;
 const STATIC = process.env.STATIC === 'true';
@@ -12,16 +11,7 @@ const STATIC = process.env.STATIC === 'true';
 if (STATIC) {
   console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
   
-  // Auto-generate manifests on startup to ensure local parity
-  if (process.env.USE_MOCK_RESULTS !== 'true') {
-    console.log('🔄 Generating static manifests for local parity...');
-    try {
-      generateSuitesManifest('.');
-      console.log('✅ Static manifests generated.');
-    } catch (e) {
-      console.error('Failed to trigger manifest generation:', e);
-    }
-  }
+
 
   // Create dist/dashboard directory to mimic deployment structure
   const distDir = path.resolve('dist/dashboard');
