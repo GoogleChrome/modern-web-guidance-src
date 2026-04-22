@@ -1,0 +1,4 @@
+- The invoker element (e.g. button) must have an `interestfor` attribute pointing to the target element's ID.
+- The target element must respond to the `interest` event to show the preview state (e.g. updating content or styles).
+- The target element must respond to the `loseinterest` event to revert the preview state.
+- The polyfill for interest invokers should be conditionally installed.

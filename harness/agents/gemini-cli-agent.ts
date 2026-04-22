@@ -227,6 +227,42 @@ export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   return Array.from(new Set(toolsUsed));
 }
 
+export function parseGeminiStreamOutput(outputStr: string, skillName: string = 'modern-web-use-cases'): {
+    skillActivated: boolean;
+    searchCalled: boolean;
+    retrieveCalled: boolean;
+} {
+    const lines = outputStr.split('\n');
+    let skillActivated = false;
+    let searchCalled = false;
+    let retrieveCalled = false;
+    
+    for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+            const event = JSON.parse(line);
+            if (event.type === 'tool_use') {
+                if (event.tool_name === 'activate_skill' && event.parameters?.name === skillName) {
+                    skillActivated = true;
+                }
+                if (event.tool_name === 'run_shell_command') {
+                    const command = event.parameters?.command || '';
+                    if (command.includes('--search')) {
+                        searchCalled = true;
+                    }
+                    if (command.includes('--retrieve')) {
+                        retrieveCalled = true;
+                    }
+                }
+            }
+        } catch (e) {
+            // Ignore parse errors
+        }
+    }
+    
+    return { skillActivated, searchCalled, retrieveCalled };
+}
+
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMain) {
   run();

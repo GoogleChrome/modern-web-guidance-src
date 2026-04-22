@@ -61,13 +61,51 @@
                 </div>
             </section>
 
-            <section class="tasks-section">
-                <div class="panel-header">
-                        <h3>Task Selector</h3>
+            <div class="panel-header">
+                <h3>Task Selector</h3>
+            </div>
+
+            <section class="tasks-section" style="margin-top: 0;">
+                <div class="glass-panel" style="margin-bottom: 30px;">
+                    <div class="panel-header">
+                        <h3 id="discipline-header">Discipline Tasks</h3>
                         <div class="quick-actions">
-                            <button type="button" class="btn-secondary" id="action-clear">Clear All</button>
+                            <button type="button" class="btn-secondary" id="action-clear-disciplines">Clear All</button>
                         </div>
+                    </div>
+                    <div class="table-container">
+                        <table id="disciplines-table">
+                            <thead>
+                                <tr id="disciplines-table-headers">
+                                    <th>Discipline</th>
+                                    <th class="checkbox-header">
+                                        <label class="custom-checkbox">
+                                            <input type="checkbox" class="header-check" data-task="task" checked>
+                                            <span class="checkmark"></span>
+                                        </label>
+                                    </th>
+                                    <th class="checkbox-header">
+                                        <label class="custom-checkbox">
+                                            <input type="checkbox" class="header-check" data-task="negative">
+                                            <span class="checkmark"></span>
+                                        </label>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Disciplines go here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+
+                <div class="glass-panel">
+                    <div class="panel-header">
+                        <h3 id="guide-header">Guide Tasks</h3>
+                        <div class="quick-actions">
+                            <button type="button" class="btn-secondary" id="action-clear-guides">Clear All</button>
+                        </div>
+                    </div>
 
                     <div class="table-container">
                         <table id="tasks-table">
@@ -77,9 +115,10 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Grouped tasks go here dynamically via eval-ui.js -->
+                                <!-- Grouped tasks go here -->
                             </tbody>
                         </table>
+                    </div>
                 </div>
             </section>
 

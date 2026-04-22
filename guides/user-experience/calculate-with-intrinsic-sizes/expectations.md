@@ -1,0 +1,11 @@
+- The element uses `calc-size()` to calculate its dimensions.
+- The `calc-size()` function correctly references an intrinsic keyword (like `fit-content`, `auto`, or `max-content`) as its basis.
+- The `calc-size()` function uses the `size` keyword within its second argument, and never within its first argument (`basis`).
+- The implementation demonstrates varied mathematical operations (e.g., addition, multiplication, or using functions like `clamp()`, `min()`, or `max()`).
+- The implementation uses logical properties (`inline-size` or `block-size`) for dimensions.
+- There is a fallback property provided for browsers that do not support `calc-size()`.
+- **MANDATORY**: The implementation uses `interpolate-size: allow-keywords` (ideally on `:root`) for simple keyword-based animations that do not require calculations.
+- **MANDATORY**: `calc-size()` is only used for sizing that requires mathematical operations or constraints on an intrinsic basis.
+- **MANDATORY**: If an animation is present, it includes a `prefers-reduced-motion` media query to provide a less disruptive experience (e.g., shorter duration, simpler easing, or replacing layout shifts with subtle fades).
+- If an animation is present and requires a calculation, it transitions to or from a `calc-size()` value.
+- The implementation notes that interpolation between two different keywords (e.g., `min-content` to `max-content`) is not supported and requires one end to be a length or percentage.

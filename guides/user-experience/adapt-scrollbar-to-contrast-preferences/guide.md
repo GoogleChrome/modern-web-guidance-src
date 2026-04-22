@@ -43,6 +43,8 @@ OPTIONAL: Use a `@media (prefers-contrast: more)` block to define dark, distinct
 }
 ```
 
+IMPORTANT: Do NOT animate or transition `scrollbar-color`. A [WebKit bug](https://bugs.webkit.org/show_bug.cgi?id=311752) causes the scrollbar to flicker every time `scrollbar-color` changes.
+
 ## Fallbacks & Browser Support
 
 {{ BASELINE_STATUS("scrollbar-color") }}
