@@ -203,6 +203,9 @@
         <div class="stat-row"><span>Timeline:</span> <span class="stat-value" id="islamic-relative">-</span></div>
         <div class="stat-row"><span>Breakdown:</span> <span class="stat-value" id="islamic-breakdown">-</span></div>
       </div>
+      <div id="islamic-leap-year-note" class="highlight-note" style="display: none;">
+        💡 Due to their calendars using leap months, leap years will have one more month than common years.
+      </div>
     </div>
 
     <!-- Hebrew Calendar -->
@@ -218,6 +221,9 @@
         <div class="stat-row"><span>Months in Year:</span> <span class="stat-value" id="hebrew-monthsInYear">-</span></div>
         <div class="stat-row"><span>Timeline:</span> <span class="stat-value" id="hebrew-relative">-</span></div>
         <div class="stat-row"><span>Breakdown:</span> <span class="stat-value" id="hebrew-breakdown">-</span></div>
+      </div>
+      <div id="hebrew-leap-year-note" class="highlight-note" style="display: none;">
+        💡 Due to their calendars using leap months, leap years will have one more month than common years.
       </div>
       <div id="hebrew-note" class="highlight-note" style="display: none;">
         💡 <strong>Leap Month</strong>: This month uses a leap code (e.g., Adar I).
@@ -237,6 +243,9 @@
         <div class="stat-row"><span>Months in Year:</span> <span class="stat-value" id="chinese-monthsInYear">-</span></div>
         <div class="stat-row"><span>Timeline:</span> <span class="stat-value" id="chinese-relative">-</span></div>
         <div class="stat-row"><span>Breakdown:</span> <span class="stat-value" id="chinese-breakdown">-</span></div>
+      </div>
+      <div id="chinese-leap-year-note" class="highlight-note" style="display: none;">
+        💡 Due to their calendars using leap months, leap years will have one more month than common years.
       </div>
       <div id="chinese-note" class="highlight-note" style="display: none;">
         💡 <strong>Leap Month</strong>: Chinese calendar uses 'L' suffix for leap months.
@@ -341,6 +350,12 @@
               } else {
                 note.style.display = 'none';
               }
+            }
+
+            // Leap Year banner when monthsInYear === 13
+            const leapYearNote = document.getElementById(`${cal.id}-leap-year-note`);
+            if (leapYearNote) {
+              leapYearNote.style.display = converted.monthsInYear === 13 ? 'block' : 'none';
             }
 
           } catch (err) {
