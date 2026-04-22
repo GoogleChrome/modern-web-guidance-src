@@ -6,6 +6,61 @@ import os from 'os';
 import { exec, spawn } from 'child_process';
 
 const PORT = process.env.PORT || 8081;
+const STATIC = process.env.STATIC === 'true';
+
+if (STATIC) {
+  console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
+  
+  const distDir = path.resolve('dist/dashboard');
+  if (fs.existsSync(distDir)) {
+    fs.rmSync(distDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(distDir, { recursive: true });
+
+  const sourceFiles = fs.readdirSync('.').filter(f => f !== 'dist' && f !== 'node_modules' && !f.startsWith('.'));
+  for (const f of sourceFiles) {
+    const destPath = path.join(distDir, f);
+    try {
+      fs.symlinkSync(`../../${f}`, destPath);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.error(`Failed to create symlink for ${f}:`, message);
+    }
+  }
+
+  const links = [
+    { target: '../../../harness/results', name: 'results' },
+    { target: '../../../harness/tasks', name: 'tasks' },
+    { target: '../../../harness/base_apps', name: 'base_apps' }
+  ];
+
+  for (const link of links) {
+    const destPath = path.join(distDir, link.name);
+    try {
+      fs.symlinkSync(link.target, destPath, 'dir');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.error(`Failed to create symlink for ${link.name}:`, message);
+    }
+  }
+
+  console.log(`🚀 Spawning statikk on port ${PORT} serving dist/dashboard...`);
+  const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString(), 'dist/dashboard'], { stdio: 'inherit' });
+  
+  const url = `http://localhost:${PORT}/?source=static`;
+  console.log(`Server running at ${url}`);
+
+  if (process.env.NO_OPEN !== 'true') {
+    const startCommand = process.platform === 'darwin' ? 'open' :
+      process.platform === 'win32' ? 'start' : 'xdg-open';
+
+    exec(`${startCommand} "${url}"`);
+  }
+
+  p.on('close', (code) => {
+    process.exit(code || 0);
+  });
+} else {
 
 /** @type {Record<string, string>} */
 const MIME_TYPES = {
@@ -413,4 +468,5 @@ server.listen(PORT, () => {
 
     exec(`${startCommand} ${url}`);
   }
+}
 });
