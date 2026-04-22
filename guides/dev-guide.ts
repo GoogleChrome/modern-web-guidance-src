@@ -233,7 +233,12 @@ async function generateTask(targetDir: string): Promise<void> {
 
     process.env.HOME = tempHome;
 
-    const userPrompt = `Read ${GUIDE_FILE} to understand what web development guidance is being provided.
+    let guideFileName = 'guide.md';
+    if (!fs.existsSync(path.join(targetDir, 'guide.md')) && fs.existsSync(path.join(targetDir, 'SKILL.md'))) {
+      guideFileName = 'SKILL.md';
+    }
+
+    const userPrompt = `Read ${guideFileName} to understand what web development guidance is being provided.
 Read base-app.html to understand the existing web app (the "${baseApp}" app) that the developer is working on.
 
 Generate a ${TASK_FILE} file containing 1–4 realistic test prompts that a web developer would send to an AI coding assistant to accomplish the goal described in this guide.
@@ -250,13 +255,14 @@ Rules:
 - The first prompt is the most important: it must be specific enough that an agent implementing it would produce a grader-testable result.
 - Vary specificity: include at least one vague/intent-based prompt and one specific/technical ask.
 - Assume the developer is working on the existing app seen in base-app.html. Reference its real assets and content where relevant.
+- Do NOT mention or mandate legacy fallbacks in the prompt. The RAG system handles fallbacks automatically.
 - Do NOT mention the guide itself or indicate that guidance exists.
 - Do NOT name the base app (e.g. "${baseApp}") — a real developer wouldn't refer to it that way.
-- Do NOT tell the agent which web API or CSS property to use unless a real developer would naturally do so.
-- Each prompt must be on its own line, prefixed with "- ".
+- Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS functions (e.g., do not command the agent to 'use the Temporal API' or 'use sibling-index()'). You MUST describe the desired user outcome instead. However, it is completely acceptable (and sometimes necessary) to include specific DOM IDs or class names if the grader requires them to locate elements.
+- Each prompt must be on its own line, prefixed with "- ", containing absolutely no internal line breaks.
 - When writing files, you MUST use your built-in structured file editing tools (e.g., \`write_file\` or \`replace\`). Do not use shell commands (like \`cat\`, \`echo\`, or heredocs \`<<\`) to create files in the terminal.
 
-Only create the ${TASK_FILE} file. Do not modify any other files.`;
+Only create the ${TASK_FILE} file in the root of your working directory. Do not modify any other files.`;
 
     console.log(`Generating ${TASK_FILE} via Gemini CLI...`);
 
@@ -270,7 +276,15 @@ Only create the ${TASK_FILE} file. Do not modify any other files.`;
       throw new Error(`Gemini CLI exited with code ${exitCode}`);
     }
 
-    const generatedFile = path.join(workDir, TASK_FILE);
+    let generatedFile = path.join(workDir, TASK_FILE);
+    if (!fs.existsSync(generatedFile)) {
+      // Check if the agent created it in tasks/ subdirectory
+      const fallbackFile = path.join(workDir, 'tasks', TASK_FILE);
+      if (fs.existsSync(fallbackFile)) {
+        generatedFile = fallbackFile;
+      }
+    }
+
     if (fs.existsSync(generatedFile)) {
       const targetPath = path.join(targetDir, 'tasks', TASK_FILE);
       fs.mkdirSync(path.dirname(targetPath), { recursive: true });
@@ -437,7 +451,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
   }
 
   const taskStatus = inv.hasTask ? 'exists' : (result?.success ? 'generated' : 'not generated');
-  console.log(`   ${'task'.padEnd(21)} ${inv.hasTask || result?.success ? '\u2705' : '\u274c'} ${taskStatus}`);
+  console.log(`   ${TASK_FILE.padEnd(21)} ${inv.hasTask || result?.success ? '\u2705' : '\u274c'} ${taskStatus}`);
 
   console.log(`\nAll generated files are in ${relDir}/`);
   if (result?.success) {
@@ -497,12 +511,12 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
 }
 
 const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
-  'incomplete':         { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
-  'stub':               { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
+  'incomplete': { label: 'Incomplete (missing guide.md or demo.html)', color: cRed },
+  'stub': { label: 'Stub (yaml frontmatter only, no content)', color: cYellow },
   'needs-expectations': { label: 'Needs expectations.md', color: cYellow },
-  'needs-calibration':  { label: 'Needs calibration (run gd dev)', color: cYellow },
-  'needs-test':         { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
-  'eval-ready':         { label: 'Ready for eval', color: cGreen },
+  'needs-calibration': { label: 'Needs calibration (run gd dev)', color: cYellow },
+  'needs-test': { label: 'Needs agent test run (missing prompts/task)', color: cCyan },
+  'eval-ready': { label: 'Ready for eval', color: cGreen },
 };
 
 export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
@@ -551,7 +565,7 @@ export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
       console.log(cBold(`\n${category}/`));
 
       const hdr = 'guide'.padEnd(6) + 'demo'.padEnd(6) + 'expct'.padEnd(6)
-        + '│ ' + 'neg'.padEnd(6) + 'grdr'.padEnd(6) + 'prmpt'.padEnd(6) + 'task';
+        + '│ ' + 'neg'.padEnd(6) + 'grdr'.padEnd(6) + 'task';
       console.log(cDim(`  ${'name'.padEnd(42)} ${hdr}`));
 
       for (const inv of guides.sort((a, b) => a.name.localeCompare(b.name))) {
@@ -562,7 +576,7 @@ export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
         const expctDot = inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations);
         const row = col(guideDot(inv)) + col(dot(inv.hasDemo)) + col(expctDot)
           + cDim('│') + ' ' + col(dot(inv.hasNegativeDemo)) + col(dot(inv.hasGrader))
-          + col(dot(inv.hasTask));
+          + dot(inv.hasTask);
         console.log(`  ${color(name.padEnd(42))} ${row}`);
       }
     }
@@ -633,7 +647,7 @@ function renderFeatureMatrix(allGuides: GuideInventory[]): void {
     return cDim('○');
   };
 
-  const hdr = 'guide'.padEnd(10) + 'demo'.padEnd(10) + 'expct'.padEnd(10) + '│ ' + 'neg'.padEnd(10) + 'grdr'.padEnd(10) + 'prmpt'.padEnd(10) + 'task';
+  const hdr = 'guide'.padEnd(10) + 'demo'.padEnd(10) + 'expct'.padEnd(10) + '│ ' + 'neg'.padEnd(10) + 'grdr'.padEnd(10) + 'task';
   console.log(cDim(`\n  ${'feature'.padEnd(32)} count ${hdr}`));
 
   const statusRank: Record<GuideStatus, number> = {
@@ -664,13 +678,12 @@ function renderFeatureMatrix(allGuides: GuideInventory[]): void {
     const expctDots = guides.map(inv => (inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations))).join('');
 
     const row = col(renderDots(guideDot)) +
-                col(renderDots(inv => dot(inv.hasDemo))) +
-                col(expctDots) +
-                cDim('│') + ' ' +
-                col(renderDots(inv => dot(inv.hasNegativeDemo))) +
-                col(renderDots(inv => dot(inv.hasGrader))) +
-                col(renderDots(inv => dot(inv.hasTask))) +
-                renderDots(inv => dot(inv.hasTask));
+      col(renderDots(inv => dot(inv.hasDemo))) +
+      col(expctDots) +
+      cDim('│') + ' ' +
+      col(renderDots(inv => dot(inv.hasNegativeDemo))) +
+      col(renderDots(inv => dot(inv.hasGrader))) +
+      renderDots(inv => dot(inv.hasTask));
 
     console.log(`  ${color(name.padEnd(32))} ${String(guides.length).padStart(5)}  ${row}`);
   }

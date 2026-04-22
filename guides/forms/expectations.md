@@ -1,0 +1,68 @@
+- The implementation MUST use a `<form>` element to wrap interactive controls for data collection.
+- The implementation MUST specify the `action` attribute for the destination URL on the `<form>` element.
+- The implementation MUST specify a `name` attribute for every form control (input, select, textarea).
+- The implementation MUST use semantic tags like `<button type="submit">`, `<textarea>`, and `<select>`.
+- The implementation MUST use `<fieldset>` and `<legend>` to group related controls.
+- The implementation MUST use actionable language on submit buttons (e.g., "Save changes").
+- The implementation MUST use `method="POST"` for sensitive data and mutations.
+- The implementation MUST use `method="GET"` for idempotent requests (e.g., search).
+- The implementation MUST NOT use generic `<div>` or `<span>` for form controls.
+- The implementation MUST NOT use `type="button"` for primary submission buttons.
+- The implementation MUST NOT disable textarea resizing without alternate layout provisions.
+- The implementation MUST use `<input type="radio">` when there are 1-5 mutually exclusive options.
+- The implementation MUST use `<select>` when there are 6 or more mutually exclusive options.
+- The implementation MUST use `<input list="id">` (`<datalist>`) for massive or dynamic sets of options (10+).
+- The implementation MUST use `<input type="checkbox">` for multi-select options.
+- The implementation MUST associate every `<label>` with its input using `for` and `id`.
+- The implementation MUST place labels visually above form controls, unless using a valid accessible wrapping pattern.
+- The implementation MUST use visible labels and NOT rely on `placeholder` alone.
+- The implementation MUST ensure the vertical margin between a label and its input is less than the margin between form groups.
+- The implementation MUST use `aria-describedby` to link inputs with help text or error messages.
+- The implementation MUST define the `lang` attribute on the `<html>` element.
+- The implementation MUST use non-color visual cues (icons, text) to communicate state.
+- The implementation MUST indicate clearly which fields are required.
+- The implementation MUST use `aria-live` for dynamic error announcements.
+- The implementation MUST NOT use `placeholder` as a replacement for labels.
+- The implementation MUST NOT disable focus outlines without providing a high-contrast alternative.
+- The implementation MUST use the `autocomplete` attribute to specify expected data (e.g., `email`, `tel`).
+- The implementation MUST use `inputmode` to optimize on-screen keyboards (e.g., `inputmode="numeric"` for PINs).
+- The implementation MUST use `enterkeyhint` to set the Enter key label.
+- The implementation MUST use single-field inputs for complex numbers (credit cards, phones).
+- The implementation MUST NOT use `type="number"` for credit cards or ZIP codes.
+- The implementation MUST use native constraints: `required`, `minlength`, `maxlength`, `pattern`.
+- The implementation MUST use CSS pseudo-classes like `:invalid:user-invalid` for non-intrusive styling.
+- The implementation MUST use the ValidityState API (`setCustomValidity`) for custom messaging.
+- The implementation MUST NOT disable submit buttons to block validation.
+- The implementation MUST disable the button *after* a valid submission is clicked.
+- The implementation MUST NOT show validation errors during active typing on the `input` event (except to clear errors).
+- The implementation MUST run checks and show errors on `blur` or `focusout`.
+- The implementation MUST block invalid payloads on `submit` and route focus to the error summary or first error field.
+- The implementation MUST use single-column layouts for scanning.
+- The implementation MUST set `font-size` to at least `1rem` (16px) for inputs.
+- The implementation MUST ensure tap targets are at least 40px.
+- The implementation MUST use units relative to root (`rem`) for typography and spacing.
+- The implementation SHOULD use CSS logical properties (e.g., `margin-inline-start`).
+- The implementation MUST use `appearance: none` for custom dropdown arrows without breaking semantics.
+- The implementation MUST ensure inputs are clearly visible with adequate border contrast.
+- The implementation MUST hide inputs visually using `position: absolute; opacity: 0` (NOT `display: none`) to keep them accessible.
+- The implementation MUST prevent default navigation on form submit for AJAX (`e.preventDefault()`).
+- The implementation MUST use `aria-expanded` and `aria-controls` for dynamic UI reveals.
+- The implementation MUST NOT block page submission if JavaScript fails (ensure server-side fallback).
+- The implementation MUST use `autocomplete="new-password"` for sign-up and `autocomplete="current-password"` for sign-in.
+- The implementation MUST allow pasting into password fields.
+- The implementation MUST provide a toggle capability allowing users to unmask password input.
+- The implementation MUST indicate exact amounts on pay buttons.
+- The implementation MUST use `autocomplete="cc-number"`, `cc-exp`, `cc-csc` for payment fields.
+- The implementation MUST include cryptographically secure anti-CSRF tokens for mutating actions.
+- The implementation MUST NOT use inline JavaScript (e.g., `onclick="..."`) directly within form markup.
+- The implementation MUST use a single field for names (not split).
+- The implementation MUST use `autocomplete="street-address"` for addresses.
+- The implementation MUST use a `<textarea>` element for addresses if supporting multi-country formats.
+- The implementation MUST make postal codes optional for international address forms.
+- The implementation MUST NOT split name inputs into rigid variables like "First" and "Last".
+- The implementation MUST NOT enforce Latin-only characters for names and usernames.
+- The implementation MUST support keyboard navigation (using `Tab` and `Shift+Tab`) with visual focus.
+- The implementation MUST NOT track sensitive personal data in standard event labels for analytics.
+- The implementation MUST clearly display progress in multi-page forms.
+- The implementation MUST allow users to navigate backwards and forwards between pages in multi-page forms.
+- The implementation MUST use context-specific `enterkeyhint` values (e.g., `"previous"`, `"next"`) in multi-page forms.

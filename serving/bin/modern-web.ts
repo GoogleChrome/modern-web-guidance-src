@@ -1,7 +1,6 @@
 #!/usr/bin/env node --experimental-strip-types
 
 import { parseArgs } from "util";
-import { searchUseCases } from "../lib/search.ts";
 import { retrieveUseCase } from "../lib/retrieve.ts";
 
 const { values } = parseArgs({
@@ -33,8 +32,17 @@ async function main() {
 
   if (values.search) {
     try {
+      // Dynamic import to keep the CLI loading fast -- only load the embedder if needed.
+      const { searchUseCases } = await import("../lib/search.ts");
       const results = await searchUseCases(values.search);
-      console.log(JSON.stringify(results, null, 2));
+      if (results.length === 0) {
+        console.log("[]");
+      } else {
+        // Do a ~compressed output so users can see some of the results in their coding agent.
+        // Also fewer tokens. :p
+        const jsonLines = results.map(r => JSON.stringify(r));
+        console.log("[" + jsonLines.join(",\n") + "]");
+      }
     } catch (error) {
       console.error("Search failed:", error);
       process.exit(1);

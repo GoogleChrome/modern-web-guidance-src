@@ -242,13 +242,27 @@
   </div>
 
   <script>
-    // 1. Check for Temporal support
-    if (typeof Temporal !== 'undefined') {
-      document.getElementById('unsupported-warning').style.display = 'none';
-      initializeDemo();
-    } else {
-      document.querySelectorAll('button').forEach(b => b.disabled = true);
-    }
+    const unsupportedWarning = document.getElementById('unsupported-warning');
+
+    // Check Support and load polyfill if needed
+    (async () => {
+      // Check Support and load polyfill if needed
+      if (typeof Temporal === 'undefined') {
+        try {
+          const module = await import("https://esm.sh/@js-temporal/polyfill");
+          globalThis.Temporal = module.Temporal;
+          unsupportedWarning.style.display = 'none';
+          initializeDemo();
+        } catch (e) {
+          console.error("Failed to load Temporal polyfill:", e);
+          unsupportedWarning.textContent = '🚫 Failed to load Temporal polyfill. Demo may not function.';
+          document.querySelectorAll('button').forEach(b => b.disabled = true);
+        }
+      } else {
+        unsupportedWarning.style.display = 'none';
+        initializeDemo();
+      }
+    })();
 
     function initializeDemo() {
       // Run initial calculation
@@ -278,8 +292,9 @@
         // Use explicit calendar to avoid calendar mismatch in polyfill
         const expiry = Temporal.PlainYearMonth.from({
           year: yearNum,
-          month: monthNum
-        }, { calendar: 'iso8601' });
+          month: monthNum,
+          calendar: 'iso8601'
+        });
 
         // Calculate Duration
         const duration = currentMonth.until(expiry, { largestUnit: 'years' });
@@ -320,7 +335,7 @@
         codeDiv.innerText = `const currentMonth = Temporal.Now.plainDateISO().toPlainYearMonth();
 
 // Use explicit calendar for polyfill safety
-const expiry = Temporal.PlainYearMonth.from({ year: ${yearNum}, month: ${monthNum} }, { calendar: 'iso8601' });
+const expiry = Temporal.PlainYearMonth.from({ year: ${yearNum}, month: ${monthNum}, calendar: 'iso8601' });
 
 const duration = currentMonth.until(expiry, { largestUnit: 'years' }); // Duration: ${duration.years}Y, ${duration.months}M`;
 

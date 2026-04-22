@@ -12,12 +12,11 @@
     "allowImportingTsExtensions": true,
     "lib": ["esnext", "dom", "dom.iterable"]
   },
-  "include": [
-    "server.js"
-  ],
   "exclude": [
     "node_modules",
     "test-results",
-    "mock-results"
+    "mock-results",
+    "features_mapping.gen.js",
+    "dist"
   ]
 }
