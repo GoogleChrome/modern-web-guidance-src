@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let allGuides = {};
 
   try {
-    const response = await fetch('/api/grouped-tasks');
+    const response = await fetch('./grouped-tasks.gen.json');
     const data = await response.json();
     allGuides = data.guides || {};
     renderGuides(allGuides);
