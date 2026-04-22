@@ -14,14 +14,12 @@ The `eval-view` codebase contains complexity to support both views.
 The dashboard is continuously deployed to GitHub Pages and can be accessed at:
 **[https://googlechrome.github.io/guidance/](https://googlechrome.github.io/guidance/)**
 
-### Authentication & Permissions
+The dashboard fetches evaluation data from a static `./results/` directory hosted directly on GitHub Pages. There is no longer a dependency on Google Cloud Storage for remote viewing.
 
-When you visit the site, there is a button to sign in with your Google account. Note that simply logging in does not grant you access to the data.
+1.  **Run evaluations locally**: Generate your test metrics in `harness/results/`.
+2.  **Upload piecewise**: Use `pnpm run upload <suite>` in the `harness` directory to push your specific suite to the live site.
+3.  **App deployment**: Run `pnpm run deploy-pages` in `eval-view` to rebuild the app files and static `suites.gen.json` manifest.
 
-The application fetches evaluation data directly from the private Google Cloud Storage bucket (`guidance-evals`) in the `chrome-kiwi-air-force-dev` GCP project.
-
-> [!IMPORTANT]
-> To view the suites and results on the dashboard, **your Google email address must be granted access** in the Google Cloud Console. You will need at minimum the `Storage Object Viewer` role on the `guidance-evals` bucket in the `chrome-kiwi-air-force-dev` project.
 
 ## Local Development
 
@@ -33,13 +31,32 @@ pnpm dashboard
 
 ## Deploying Changes
 
-If you make modifications to the `eval-view` code (HTML, CSS, JS), you can deploy your changes directly to the live GitHub Pages site using the built-in deploy script.
+If you make modifications to the `eval-view` code (HTML, CSS, JS), you can deploy your changes directly to the live GitHub Pages site.
 
-From the **project root directory**, run:
+From the **`eval-view` worktree directory**, run:
 ```bash
-gd deploy
+pnpm run deploy-pages
 ```
 
-This will automatically bundle the current `eval-view` directory and push it to the `gh-pages` branch on GitHub in the `eval-view` folder, which GitHub Pages uses to host the web app. It takes about 2-3 minutes for GitHub Actions to process the deployment and update the live URL.
+This will:
+1. Run `node generate-manifests.js` to generate the `features_mapping.gen.js`, `suites.gen.json`, and all `run-files.gen.json` manifests.
+2. Copy `tasks/` and `base_apps/` for direct viewing.
+3. Merge them all using standard `gh-pages` module with `--add` flag (to avoid clobbering existing `results/` from remote).
+4. Push to the `gh-pages` branch on GitHub.
 
-When deploying, you should also separately merge the changes into `main`.
+### Parity Testing
+To ensure your changes will work on the static GitHub Pages host, you can run the dashboard in a "Strict Static" mode that disables all dynamic APIs:
+
+```bash
+# From the root directory
+pnpm dashboard:static
+```
+
+### Piecewise Suite Upload
+If you just want to upload a new evaluation suite without redeploying the whole web app:
+
+From the **`harness` directory**, run:
+```bash
+pnpm run upload <test-suite-id>
+```
+This uses a temporary git worktree to pull `gh-pages` and push just your suite metrics to it, without polluting your active workspace branch!

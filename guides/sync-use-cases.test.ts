@@ -656,6 +656,20 @@ describe('getFeaturesNeedingSync', () => {
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsInvestigation);
   });
+
+  test('keeps feature open and marked Needs investigation when project status explicitly requires it', () => {
+    const featureMap = makeFeatureMap([['text-wrap-pretty', { number: 83, state: 'open' }]]);
+    const projectDetails = {
+      projectId: 'P1',
+      statusFieldId: 'F1',
+      statusOptions: [],
+      issueStatusMap: new Map([[83, ProjectStatus.NeedsInvestigation]]),
+    };
+    const result = getFeaturesNeedingSync(featureMap, new Set(), new Set(['text-wrap-pretty']), new Set(), projectDetails);
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].closeReason, null);
+    assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsInvestigation);
+  });
 });
 
 describe('buildUseCaseChecklist', () => {
