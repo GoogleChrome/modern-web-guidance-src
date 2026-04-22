@@ -27,7 +27,7 @@ Each element that needs to be tracked individually during a transition must have
 To apply shared styles, also assign a `view-transition-class`.
 
 ```css
-.item{
+.item {
   view-transition-class: list-item;
 }
 ```
@@ -45,7 +45,10 @@ Use the `::view-transition-group()` pseudo-element with the class selector to ap
 
 /* Handle accessibility by respecting motion preferences */
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(.list-item) {
+  /* Disable all group transitions, including the default `root` group. */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
     animation: none !important;
   }
 }
@@ -53,7 +56,7 @@ Use the `::view-transition-group()` pseudo-element with the class selector to ap
 
 3. **Optional: Define entry and exit animations**
 
-Use the `:only-child` selector to add specific transitions to the elements that are added or removed. `::view-transition-new()` and `::view-transition-old()` pseudo-elements are children of a `::view-transition-image-pair()` psuedo-element, so we can determine it is an added or removed element if it is the only child.
+Use the `:only-child` selector to add specific transitions to the elements that are added or removed. `::view-transition-new()` and `::view-transition-old()` pseudo-elements are children of a `::view-transition-image-pair()` pseudo-element, so we can determine it is an added or removed element if it is the only child.
 
 ```css
 /* A `::view-transition-new()` element is the only child if it wasn't present before the view transition, so it is an added element. */
@@ -64,18 +67,18 @@ Use the `:only-child` selector to add specific transitions to the elements that 
 ::view-transition-old(.list-item):only-child {
   animation-name: slide-out;
 }
-```
 
-The existing `prefers-reduced-motion` media query already disables these animations. However, the snapshot of the old view is not removed immediately, so we must add `display: none` to the media query to prevent it from staying on screen.
-
-```css
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(.list-item){
-    display: none;
+@keyframes slide-in {
+  from {
+    translate: -100vw 0;
+  }
+}
+@keyframes slide-out {
+  to {
+    translate: -100vw 0;
   }
 }
 ```
-
 
 4. **Trigger the transition**
 
@@ -83,16 +86,30 @@ Wrap the DOM update in `document.startViewTransition()`. The browser will captur
 
 ```javascript
 function updateList(newData) {
-  // Check for browser support before calling
-  if (!document.startViewTransition) {
-    render(newData);
-    return;
-  }
-
   document.startViewTransition(() => {
     // All DOM changes inside this callback will be transitioned
     render(newData);
   });
+}
+```
+
+5. **Maintain interactivity of non-transitioned elements**
+
+View transitions work by overlaying snapshots of the DOM elements, and then transitioning the snapshots. This means that during the transition, elements are not interactive. If there are interactive elements that are not transitioned, you can make them interactive by disabling touch events on the view transitions.
+
+```css
+::view-transition {
+  /* Non-transitioned elements below the view transitions remain interactive */
+  pointer-events: none;
+}
+```
+
+In addition, by default, the `:root` element has a view transition named `root`, which enables default full-page transitions. If there are no changes to the root element, this will be a transition between two identical snapshots, which are not interactive. Because we are only transitioning specific elements, and not the entire screen, we can disable the `root` transition. 
+
+```css
+:root {
+  /* Disable the root transition because we are only transitioning specific elements. */
+  view-transition-name: none;
 }
 ```
 

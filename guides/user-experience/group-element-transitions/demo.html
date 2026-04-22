@@ -9,38 +9,44 @@
         view-transition-class: list-item;
       }
 
+      /* Allow non-transitioned elements to be interactive */
+      ::view-transition {
+        pointer-events: none;
+      }
+      /* Disable the default animation on the root */
+      :root {
+        view-transition-name: none;
+      }
+
       ::view-transition-group(.list-item) {
         animation-duration: 0.5s;
         animation-timing-function: ease-in-out;
       }
       @media (prefers-reduced-motion: reduce) {
-        ::view-transition-group(.list-item) {
+        ::view-transition-group(*),
+        ::view-transition-old(*),
+        ::view-transition-new(*) {
           animation: none !important;
         }
-        ::view-transition-old(.list-item){
-          display: none;
-        }
       }
-      
-      ::view-transition-new(.list-item):only-child{
+
+      ::view-transition-new(.list-item):only-child {
         animation-name: slide-in;
       }
-      ::view-transition-old(.list-item):only-child{
+      ::view-transition-old(.list-item):only-child {
         animation-name: slide-out;
       }
 
       @keyframes slide-in {
-        from{
+        from {
           translate: -100vw 0;
         }
       }
       @keyframes slide-out {
-        to{
+        to {
           translate: -100vw 0;
         }
       }
-
-     
 
       /* DEMO: Styling */
       body {
@@ -90,7 +96,7 @@
     <h1>Group Element Transitions</h1>
     <button onclick="add()">Add Item</button>
     <button onclick="shuffle()">Shuffle</button>
-    <div id="list"></div>
+    <ul id="list"></ul>
 
     <script>
       function getRandomName() {
@@ -123,10 +129,10 @@
         const html = items
           .map(
             (item) => `
-        <div class="item" style="view-transition-name: item-${item.id}">
+        <li class="item" style="view-transition-name: item-${item.id}">
           <span>${item.name}</span>
           <button onclick="remove(${item.id})">Remove</button>
-        </div>
+        </li>
       `,
           )
           .join("");
