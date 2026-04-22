@@ -274,7 +274,10 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         guideName: guide,
         taskName: taskName,
         baseApp: actualBaseApp,
-        prompt: taskInfo.prompt
+        prompt: taskInfo.prompt,
+        runtime: fs.existsSync(path.join(dir, 'runtime.json')) 
+          ? JSON.parse(fs.readFileSync(path.join(dir, 'runtime.json'), 'utf-8'))
+          : null
       });
     }
   }

@@ -30,7 +30,7 @@ function inferSuiteConfig(suiteResultsDir: string): SuiteConfig {
   return { agent, serving, tasks: [], name: null, numRuns: 1, mcpServersToEnable: [] };
 }
 
-export async function evaluateSuite(suiteResultsDir: string, suiteName: string) {
+export async function evaluateSuite(suiteResultsDir: string, suiteName: string, suiteStartTime?: number) {
   console.log(`Evaluating suite: ${suiteName}`.cyan);
   console.log(`Results directory: ${suiteResultsDir}`.cyan);
 
@@ -79,7 +79,12 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string) 
     }
 
     const model = extractModelFromResults(suiteResultsDir, suiteConfig.agent);
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model);
+    const totalRuntime = suiteStartTime ? Date.now() - suiteStartTime : undefined;
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model, totalRuntime);
+
+    if (totalRuntime) {
+      console.log(`Total runtime: ${totalRuntime}ms`);
+    }
 
     saveReports(suiteResultsDir, mdReport, jsonReport);
 
