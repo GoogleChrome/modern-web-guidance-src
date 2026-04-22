@@ -42,7 +42,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderSuites();
         };
 
-        if (api.source === 'static') {
+        const initializeAuthAndLoadData = async () => {
+            if (api.source !== 'static') {
+                await loadTests();
+                finishInit();
+                return;
+            }
+
             const { initOneTap, initGoogleAuth } = await import('./utils.js');
             
             let authTriggered = false;
@@ -55,7 +61,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             };
 
-            // Try One Tap first
             initOneTap(
                 async (_idToken) => {
                     console.log('Logged in via One Tap.');
@@ -70,10 +75,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
             );
-        } else {
-            await loadTests();
-            finishInit();
-        }
+        };
+
+        await initializeAuthAndLoadData();
 
     } catch (error) {
         console.error('Error:', error);
