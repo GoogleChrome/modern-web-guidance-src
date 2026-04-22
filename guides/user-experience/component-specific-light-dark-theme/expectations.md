@@ -1,9 +1,10 @@
-- The component uses the `light-dark()` CSS function to define at least one property (e.g., `background-color`, `color`, or `background-image`).
-- The document or the component has `color-scheme` set to `light dark` (or includes both) to enable the resolution of `light-dark()`.
-- The component supports an override mechanism (e.g., a specific CSS class) that sets `color-scheme` to `light` to force light mode.
-- The component supports an override mechanism (e.g., a specific CSS class) that sets `color-scheme` to `dark` to force dark mode.
+- The component uses the `light-dark()` CSS function to define at least one color property (e.g., `background-color` or `color`).
+- **MANDATORY**: The document or the component has `color-scheme` set to `light dark` (or includes both) to enable the resolution of `light-dark()`.
+- The component supports an override mechanism (e.g., a specific CSS class or data attribute) that sets `color-scheme` to `light` to force light mode.
+- The component supports an override mechanism (e.g., a specific CSS class or data attribute) that sets `color-scheme` to `dark` to force dark mode.
 - When the component is forced to `color-scheme: light`, its computed values match the first argument of the `light-dark()` function, regardless of the system's `prefers-color-scheme`.
 - When the component is forced to `color-scheme: dark`, its computed values match the second argument of the `light-dark()` function, regardless of the system's `prefers-color-scheme`.
-- **MANDATORY**: If `light-dark()` is used for `<image>` values, a standard `background-image` fallback (using `@media (prefers-color-scheme)`) is provided to account for staggered browser support.
-- **MANDATORY**: Both arguments in any `light-dark()` call are of the same type (both colors or both images).
-- Fallback strategies for colors (e.g., manual variable overrides or `@media` queries) are provided for browsers that do not support `light-dark()`.
+- **MANDATORY**: Fallback strategies for colors (e.g., manual variable overrides and `@media (prefers-color-scheme)` queries) are provided for browsers that do not support `light-dark()`.
+- **MANDATORY**: The implementation uses progressive enhancement (e.g., `@supports (color: light-dark(white, black))`) to ensure that `light-dark()` logic is preferred over `@media` fallbacks, allowing per-component overrides to work correctly.
+- **MANDATORY**: `light-dark()` is only used for supported types (colors) and not for unsupported properties like `padding` or `font-size`.
+- **MANDATORY**: Each `light-dark()` call contains exactly two arguments.
