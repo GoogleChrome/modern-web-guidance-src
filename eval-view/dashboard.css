@@ -889,7 +889,7 @@ dialog#modal.diff-modal {
     align-items: stretch !important;
     gap: 30px !important;
   }
-  
+
   #dumbbell-chart {
     flex: 1 !important;
     width: 100% !important;
@@ -1000,6 +1000,7 @@ dialog#modal.diff-modal {
 .sparkline-bar.small {
   height: 4px;
   border-radius: 2px;
+  margin: 7px 0;
 }
 
 .sparkline-dot {
@@ -1026,14 +1027,14 @@ dialog#modal.diff-modal {
   width: 6px;
   height: 6px;
   border-width: 1.5px;
-  top: 3px;
+  top: 0px;
   transform: none; /* Reset vertical centered transform if needed or adjust */
 }
 
 .sparkline-dot.guided.small {
   width: 8px;
   height: 8px;
-  top: 2px;
+  top: -1px;
   transform: none;
 }
 
@@ -1047,7 +1048,7 @@ dialog#modal.diff-modal {
 
 .sparkline-range.small {
   height: 2px;
-  top: 5px;
+  top: 2px;
   transform: none;
 }
 
