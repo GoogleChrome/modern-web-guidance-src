@@ -281,13 +281,40 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         taskName: taskName,
         baseApp: actualBaseApp,
         prompt: taskInfo.prompt,
-        files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
-        runtime: fs.existsSync(path.join(dir, 'runtime.json')) 
-          ? JSON.parse(fs.readFileSync(path.join(dir, 'runtime.json'), 'utf-8'))
-          : null
+        files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory())
       });
     }
   }
 
-  return { allResults, numRuns: runDirs.length };
+  let estimatedRuntime: number | undefined = undefined;
+  const evalsJsonPath = path.join(resultsDir, 'evals.json');
+  if (fs.existsSync(evalsJsonPath)) {
+    try {
+      const evalsContent = fs.readFileSync(evalsJsonPath, 'utf-8');
+      const timestampMatch = evalsContent.match(/"timestamp":\s*"([^"]+)"/);
+      
+      let startTimestamp: Date | null = null;
+      if (timestampMatch) {
+        startTimestamp = new Date(timestampMatch[1]);
+      } else {
+        const logPath = path.join(resultsDir, 'test_suite.log');
+        if (fs.existsSync(logPath)) {
+          const logContent = fs.readFileSync(logPath, 'utf-8');
+          const firstLineMatch = logContent.match(/\[LOG\s([^\]]+)\]/);
+          if (firstLineMatch) {
+            startTimestamp = new Date(firstLineMatch[1]);
+          }
+        }
+      }
+
+      if (startTimestamp) {
+        const endTimestamp = fs.statSync(evalsJsonPath).mtime;
+        estimatedRuntime = endTimestamp.getTime() - startTimestamp.getTime();
+      }
+    } catch (e) {
+      console.error('Failed to estimate runtime during collection:', e);
+    }
+  }
+
+  return { allResults, numRuns: runDirs.length, totalRuntime: estimatedRuntime };
 }

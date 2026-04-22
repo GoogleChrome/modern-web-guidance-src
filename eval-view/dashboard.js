@@ -548,7 +548,22 @@ function renderGrid(data, testId) {
 }
 
 function openTrajectory(usedBasePath, sessionFile) {
-    window.open(api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`), '_blank');
+    if (api.source === 'remote') {
+        const finalPath = api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`);
+        api._fetch(finalPath)
+            .then(res => { if (!res.ok) throw new Error(); return res.blob(); })
+            .then(blob => {
+                const htmlBlob = new Blob([blob], { type: 'text/html' });
+                const url = URL.createObjectURL(htmlBlob);
+                window.open(url, '_blank');
+            })
+            .catch(e => {
+                console.error('Error loading trajectory:', e);
+                alert('Failed to load remote trajectory');
+            });
+    } else {
+        window.open(api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`), '_blank');
+    }
 }
 
 async function showDetails(testName, runs, stats, testId) {
@@ -784,7 +799,12 @@ async function showDetails(testName, runs, stats, testId) {
             const val = target.value;
             target.value = ''; // reset selection
             if (val === 'source') {
-                window.open(api.getAbsoluteUrl(resultPath), '_blank');
+                if (api.source === 'remote') {
+                    // Open directly via the mTLS domain which handles auth and serves raw HTML
+                    window.open(`https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`, '_blank');
+                } else {
+                    window.open(api.getAbsoluteUrl(resultPath), '_blank');
+                }
             } else if (val === 'diff') {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {
