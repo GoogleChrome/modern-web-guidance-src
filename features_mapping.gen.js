@@ -56,11 +56,11 @@ window.__featuresMapping = {
     "fetchlater",
     "aborting"
   ],
+  "break-up-long-tasks": [
+    "scheduler"
+  ],
   "calculate-total-foreground-time": [
     "page-visibility-state"
-  ],
-  "complex-computations-and-loops": [
-    "scheduler"
   ],
   "conditional-async-dependencies": [
     "top-level-await"
@@ -116,9 +116,6 @@ window.__featuresMapping = {
   ],
   "optimize-scroll-stability": [
     "contain-intrinsic-size"
-  ],
-  "prevent-incorrect-theme-flash": [
-    "color-scheme"
   ],
   "prioritized-preloading": [
     "scheduler"

@@ -287,6 +287,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+function formatRuntime(ms) {
+    if (!ms) return '-';
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    if (minutes > 0) {
+        return `${minutes}m ${remainingSeconds}s`;
+    }
+    return `${seconds}s`;
+}
+
 function renderTestHeader(testId, jetskiVersion, timestamp, data) {
     const container = $('#test-header');
     if (container) {
@@ -331,6 +342,7 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
                 <span>Agent: <strong>${escapeHtml(agent)}</strong></span>
                 <span>Model: <strong style="color: var(--text-secondary);">${escapeHtml(model)}</strong></span>
                 <span>Serving: <strong>${escapeHtml(serving)}</strong></span>
+                ${data.totalRuntime ? `<span>Total Runtime: <strong>${formatRuntime(data.totalRuntime)}</strong></span>` : ''}
             </div>`;
         }
 
@@ -464,6 +476,13 @@ function renderGrid(data, testId) {
                 const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
                 const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
 
+                // Calculate Average Runtime
+                const totalRuntime = runData.reduce((acc, run) => {
+                    const taskRun = run.runtime ? (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0) : 0;
+                    return acc + taskRun;
+                }, 0);
+                const avgRuntime = runData.length > 0 ? totalRuntime / runData.length : 0;
+
                 let toolActivationHtml = '';
                 if (runType === 'guided' && testStats && testStats.runsWithToolActivation !== undefined) {
                     const count = testStats.runsWithToolActivation;
@@ -491,6 +510,7 @@ function renderGrid(data, testId) {
                 }
 
                 card.onclick = () => showDetails(testName, runData, testStats, testId);
+                card.style.position = 'relative';
                 card.innerHTML = `
                     <h3>${formatTestName(testName)}</h3>
                     <div class="pass-rate-bar">
@@ -500,6 +520,11 @@ function renderGrid(data, testId) {
                         <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
                         <span>Runs: ${runData.length}${testStats && testStats.earlyFailures ? ` (<span style="color: var(--accent-failure); font-weight: bold;">${testStats.earlyFailures} failed</span>)` : ''}</span>
                     </div>
+                    ${avgRuntime > 0 ? `
+                    <div style="position: absolute; bottom: 10px; right: 15px; font-size: 0.85em; color: var(--text-secondary);">
+                        Runtime (Average): <strong style="color: var(--text-primary);">${formatRuntime(avgRuntime)}</strong>
+                    </div>
+                    ` : ''}
                     ${toolActivationHtml}
                     ${guideUsageHtml}
                 `;
@@ -573,14 +598,16 @@ async function showDetails(testName, runs, stats, testId) {
         const { setupPath, resultPath, usedBasePath } = await getResultPaths(testId, run, testName);
 
         let sessionFile = null;
-        let files = [];
-        try {
-            files = await api.getRunFiles(usedBasePath);
-            if (files && files.length > 0) {
-                sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
+        let files = run.files || [];
+        if (files.length === 0) {
+            try {
+                files = await api.getRunFiles(usedBasePath);
+            } catch (e) {
+                console.log('Error checking run files:', e);
             }
-        } catch (e) {
-            console.log('Error checking run files:', e);
+        }
+        if (files && files.length > 0) {
+            sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
         }
 
         if (run === runs[0]) {
@@ -687,9 +714,12 @@ async function showDetails(testName, runs, stats, testId) {
 
         const runDetail = document.createElement('div');
         runDetail.className = 'run-detail';
+        const taskRuntime = run.runtime ? (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0) : null;
+
         runDetail.innerHTML = `
             <div class="run-header">
                 <strong>Run ${run.runNumber}</strong>
+                ${taskRuntime ? `<span style="color: var(--text-secondary); font-size: 0.9em; margin-left: 10px;">(Runtime: ${formatRuntime(taskRuntime)})</span>` : ''}
                 <span style="color: ${getColor(s.rate)}; margin-left: auto; margin-right: 15px;">${s.rate}% Pass (${s.passed}/${s.total})</span>
                 <div class="run-actions">
                 </div>
@@ -699,6 +729,7 @@ async function showDetails(testName, runs, stats, testId) {
                     <li class="check-item">
                         <span class="check-status">${check.passed ? '✅' : '❌'}</span>
                         <span class="check-message">${escapeHtml(check.message)}</span>
+                        <a href="${api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`)}${check.testId ? `#?testId=${check.testId}` : ''}" target="_blank" class="secondary-btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
                     </li>
                 `).join('')}
             </ul>
@@ -743,6 +774,14 @@ async function showDetails(testName, runs, stats, testId) {
                     dropdown.appendChild(rawOpt);
                 }
 
+                const runtimeJson = files.find(f => f === 'runtime.json');
+                if (runtimeJson) {
+                    const runtimeOpt = document.createElement('option');
+                    runtimeOpt.value = 'runtime';
+                    runtimeOpt.textContent = 'Runtime Data';
+                    dropdown.appendChild(runtimeOpt);
+                }
+
                 if (sessionFile) {
                     const trajOpt = document.createElement('option');
                     trajOpt.value = 'trajectory';
@@ -773,6 +812,9 @@ async function showDetails(testName, runs, stats, testId) {
             } else if (val === 'raw') {
                 const rawPath = `${usedBasePath}/${guide}_results.json`;
                 viewContent(rawPath, rawPath);
+            } else if (val === 'runtime') {
+                const runtimePath = `${usedBasePath}/runtime.json`;
+                viewContent(runtimePath, runtimePath);
             }
         };
 
