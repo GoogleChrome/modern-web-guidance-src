@@ -837,19 +837,7 @@ async function showDetails(testName, runs, stats, testId) {
                     dropdown.appendChild(trajOpt);
                 }
 
-                if (run.tracePath) {
-                    const downloadTraceOpt = document.createElement('option');
-                    downloadTraceOpt.value = `download-trace:${run.tracePath}`;
-                    downloadTraceOpt.textContent = 'Download Trace File';
-                    dropdown.appendChild(downloadTraceOpt);
-                }
 
-                if (run.screenshotPath) {
-                    const screenshotOpt = document.createElement('option');
-                    screenshotOpt.value = `screenshot:${run.screenshotPath}`;
-                    screenshotOpt.textContent = 'View Failed Screenshot';
-                    dropdown.appendChild(screenshotOpt);
-                }
             }
         } catch (e) {
             console.log('Error displaying options:', e);
@@ -871,30 +859,7 @@ async function showDetails(testName, runs, stats, testId) {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {
                 openTrajectory(usedBasePath, sessionFile);
-            } else if (val.startsWith('trace:')) {
-                const traceRelativePath = val.substring(6);
-                const tracePath = `${usedBasePath}/${traceRelativePath}`;
-                const proxyUrl = 'https://gcs-proxy-169412140096.us-central1.run.app';
-                const traceUrl = `${proxyUrl}?path=${encodeURIComponent(tracePath)}`;
-                window.open(`https://trace.playwright.dev/?trace=${encodeURIComponent(traceUrl)}`, '_blank');
-            } else if (val.startsWith('download-trace:')) {
-                const traceRelativePath = val.substring(15);
-                const tracePath = `${usedBasePath}/${traceRelativePath}`;
-                const proxyUrl = 'https://gcs-proxy-169412140096.us-central1.run.app';
-                const downloadUrl = `${proxyUrl}?path=${encodeURIComponent(tracePath)}`;
-                window.open(downloadUrl, '_blank');
-            } else if (val.startsWith('screenshot:')) {
-                const screenshotRelativePath = val.substring(11);
-                const screenshotPath = `${usedBasePath}/${screenshotRelativePath}`;
-                const proxyUrl = 'https://gcs-proxy-169412140096.us-central1.run.app';
-                const imageUrl = `${proxyUrl}?path=${encodeURIComponent(screenshotPath)}`;
-                window.open(imageUrl, '_blank');
-            } else if (val.startsWith('download-screenshot:')) {
-                const screenshotRelativePath = val.substring(20);
-                const screenshotPath = `${usedBasePath}/${screenshotRelativePath}`;
-                const proxyUrl = 'https://gcs-proxy-169412140096.us-central1.run.app';
-                const downloadUrl = `${proxyUrl}?path=${encodeURIComponent(screenshotPath)}`;
-                window.open(downloadUrl, '_blank');
+
             } else if (val === 'raw') {
                 const rawPath = `${usedBasePath}/${guide}_results.json`;
                 viewContent(rawPath, rawPath);
