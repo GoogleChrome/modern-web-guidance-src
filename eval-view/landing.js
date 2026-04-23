@@ -253,9 +253,19 @@ async function loadLocalTests() {
     }
     
     try {
-        const response = await fetch(`/api/suites?t=${Date.now()}`);
-        if (!response.ok) return; // Silent fail for local if we are on gh-pages
-        const manifest = await response.json();
+        let response = await fetch(`/api/suites?t=${Date.now()}`);
+        let manifest;
+
+        if (!response.ok) {
+            // Try fetching suites.gen.json as fallback for static mode
+            const staticRes = await fetch(`/suites.gen.json?t=${Date.now()}`);
+            if (!staticRes.ok) return; // Silent fail if both fail
+            const suites = await staticRes.json();
+            // convert array of strings to expected format [{id: string, source: 'local'}]
+            manifest = { suites: suites.map(id => ({ id, source: 'local', timestamp: new Date().toISOString() })) };
+        } else {
+            manifest = await response.json();
+        }
 
         if (manifest.suites && manifest.suites.length > 0) {
             document.getElementById('empty-state').style.display = 'none';
