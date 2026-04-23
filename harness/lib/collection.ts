@@ -288,29 +288,53 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
           }
         }
 
-        // Codex sessions
-        const codexSessions = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
-        for (const file of codexSessions) {
+        // JSONL sessions (Codex or Claude Code)
+        const jsonlSessions = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
+        for (const file of jsonlSessions) {
           const filePath = path.join(dir, file);
           const content = fs.readFileSync(filePath, 'utf8');
           const lines = content.split('\n');
           let lastTokenCount = 0;
-          let fileHasTokens = false;
+          let lastCachedTokens = 0;
+          let fileHasCodexTokens = false;
+          let claudeTokens = 0;
+          let claudeCachedTokens = 0;
+          let fileHasClaudeTokens = false;
           
           for (const line of lines) {
-            if (!line.trim()) continue;
+            const trimmedLine = line.trim();
+            if (!trimmedLine) continue;
             try {
-              const obj = JSON.parse(line);
-              if (obj.type === 'event_msg' && obj.payload && obj.payload.type === 'token_count') {
-                lastTokenCount = obj.payload.total_tokens || 0;
-                fileHasTokens = true;
+              const obj = JSON.parse(trimmedLine);
+              // Codex format (direct)
+              if (obj.type === 'token_count' && obj.info && obj.info.total_token_usage) {
+                lastTokenCount = obj.info.total_token_usage.total_tokens || 0;
+                lastCachedTokens = obj.info.total_token_usage.cached_input_tokens || 0;
+                fileHasCodexTokens = true;
+              }
+              // Codex format (payload)
+              if (obj.type === 'event_msg' && obj.payload && obj.payload.type === 'token_count' && obj.payload.info && obj.payload.info.total_token_usage) {
+                lastTokenCount = obj.payload.info.total_token_usage.total_tokens || 0;
+                lastCachedTokens = obj.payload.info.total_token_usage.cached_input_tokens || 0;
+                fileHasCodexTokens = true;
+              }
+              // Claude Code format
+              if (obj.message && obj.message.usage) {
+                claudeTokens += (obj.message.usage.output_tokens || 0) + (obj.message.usage.input_tokens || 0);
+                claudeCachedTokens += obj.message.usage.cache_read_input_tokens || 0;
+                fileHasClaudeTokens = true;
               }
             } catch (e) {
               // Ignore parse errors
             }
           }
-          if (fileHasTokens) {
+          if (fileHasCodexTokens) {
             totalTokens += lastTokenCount;
+            cachedTokens += lastCachedTokens;
+            hasTokenData = true;
+          } else if (fileHasClaudeTokens) {
+            totalTokens += claudeTokens;
+            cachedTokens += claudeCachedTokens;
             hasTokenData = true;
           }
         }
