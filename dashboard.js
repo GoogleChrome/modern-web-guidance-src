@@ -822,6 +822,14 @@ async function showDetails(testName, runs, stats, testId) {
                     dropdown.appendChild(rawOpt);
                 }
 
+                const traceFile = files.find(f => f.endsWith('.zip'));
+                if (traceFile) {
+                    const traceOpt = document.createElement('option');
+                    traceOpt.value = `trace:${traceFile}`;
+                    traceOpt.textContent = 'Playwright Trace (Viewer)';
+                    dropdown.appendChild(traceOpt);
+                }
+
                 const runtimeJson = files.find(f => f === 'runtime.json');
                 if (runtimeJson) {
                     const runtimeOpt = document.createElement('option');
