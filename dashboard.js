@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $ } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $, getAccessToken } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
@@ -581,6 +581,36 @@ function openReport(usedBasePath, testId) {
                 modifiedText = modifiedText.replaceAll('\'data/', `'${basePathForAssets}/grade-report/data/`);
                 modifiedText = modifiedText.replaceAll('"../test-results/', `"${basePathForAssets}/test-results/`);
                 modifiedText = modifiedText.replaceAll('\'../test-results/', `'${basePathForAssets}/test-results/`);
+
+                // Inject auth header script for fetch calls in the report
+                const token = getAccessToken();
+                const scriptToInject = `
+<script>
+    (function() {
+        const token = '${token || ''}';
+        if (!token) return;
+        const originalFetch = window.fetch;
+        window.fetch = async function(input, init) {
+            let url = '';
+            if (typeof input === 'string') url = input;
+            else if (input instanceof Request) url = input.url;
+            else if (input instanceof URL) url = input.href;
+
+            if (url.includes('storage.googleapis.com') || url.includes('mtls.cloud.google.com')) {
+                init = init || {};
+                init.headers = init.headers || {};
+                if (init.headers instanceof Headers) {
+                    init.headers.set('Authorization', \\\`Bearer \\\${token}\\\`);
+                } else {
+                    init.headers['Authorization'] = \\\`Bearer \\\${token}\\\`;
+                }
+            }
+            return originalFetch(input, init);
+        };
+    })();
+</script>
+`;
+                modifiedText = modifiedText.replace('<head>', `<head>${scriptToInject}`);
 
                 const htmlBlob = new Blob([modifiedText], { type: 'text/html' });
                 const url = URL.createObjectURL(htmlBlob);
