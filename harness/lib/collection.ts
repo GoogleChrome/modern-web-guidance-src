@@ -278,12 +278,12 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
           const content = fs.readFileSync(filePath, 'utf8');
           const session = JSON.parse(content);
           if (session.messages) {
-            for (const msg of session.messages) {
-              if (msg.tokens) {
-                totalTokens += msg.tokens.total || 0;
-                cachedTokens += msg.tokens.cached || 0;
-                hasTokenData = true;
-              }
+            const messagesWithTokens = session.messages.filter((m: any) => m.tokens);
+            const lastMsg = messagesWithTokens[messagesWithTokens.length - 1];
+            if (lastMsg) {
+              totalTokens += lastMsg.tokens.total || 0;
+              cachedTokens += lastMsg.tokens.cached || 0;
+              hasTokenData = true;
             }
           }
         }
