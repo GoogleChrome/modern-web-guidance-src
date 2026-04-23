@@ -822,7 +822,7 @@ async function showDetails(testName, runs, stats, testId) {
                     dropdown.appendChild(rawOpt);
                 }
 
-                const traceFile = files.find(f => f.endsWith('.zip'));
+                const traceFile = run.tracePath;
                 if (traceFile) {
                     const traceOpt = document.createElement('option');
                     traceOpt.value = `trace:${traceFile}`;
