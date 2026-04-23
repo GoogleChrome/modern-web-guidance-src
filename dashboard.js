@@ -835,13 +835,19 @@ async function showDetails(testName, runs, stats, testId) {
                     dropdown.appendChild(trajOpt);
                 }
 
-                const zipFiles = files.filter(f => f.endsWith('.zip'));
-                zipFiles.forEach(zip => {
-                    const zipOpt = document.createElement('option');
-                    zipOpt.value = `trace:${zip}`;
-                    zipOpt.textContent = `Trace: ${zip}`;
-                    dropdown.appendChild(zipOpt);
-                });
+                if (run.tracePath) {
+                    const traceOpt = document.createElement('option');
+                    traceOpt.value = `trace:${run.tracePath}`;
+                    traceOpt.textContent = 'Playwright Trace';
+                    dropdown.appendChild(traceOpt);
+                }
+
+                if (run.screenshotPath) {
+                    const screenshotOpt = document.createElement('option');
+                    screenshotOpt.value = `screenshot:${run.screenshotPath}`;
+                    screenshotOpt.textContent = 'Failed Screenshot';
+                    dropdown.appendChild(screenshotOpt);
+                }
             }
         } catch (e) {
             console.log('Error displaying options:', e);
@@ -864,11 +870,17 @@ async function showDetails(testName, runs, stats, testId) {
             } else if (val === 'trajectory' && sessionFile) {
                 openTrajectory(usedBasePath, sessionFile);
             } else if (val.startsWith('trace:')) {
-                const zipName = val.substring(6);
-                const tracePath = `${usedBasePath}/grade-report/data/${zipName}`;
+                const traceRelativePath = val.substring(6);
+                const tracePath = `${usedBasePath}/${traceRelativePath}`;
                 const proxyUrl = 'https://gcs-proxy-169412140096.us-central1.run.app';
                 const traceUrl = `${proxyUrl}?path=${encodeURIComponent(tracePath)}`;
                 window.open(`https://trace.playwright.dev/?trace=${encodeURIComponent(traceUrl)}`, '_blank');
+            } else if (val.startsWith('screenshot:')) {
+                const screenshotRelativePath = val.substring(11);
+                const screenshotPath = `${usedBasePath}/${screenshotRelativePath}`;
+                const proxyUrl = 'https://gcs-proxy-169412140096.us-central1.run.app';
+                const imageUrl = `${proxyUrl}?path=${encodeURIComponent(screenshotPath)}`;
+                window.open(imageUrl, '_blank');
             } else if (val === 'raw') {
                 const rawPath = `${usedBasePath}/${guide}_results.json`;
                 viewContent(rawPath, rawPath);
