@@ -415,6 +415,19 @@ function renderSummary(data) {
             </div>
             ` : ''}
         </div>
+        ${summary.totalTokens ? `
+        <div class="stat-card">
+            <span class="stat-value" style="color: var(--text-primary)">
+                ${summary.totalTokens.total.toLocaleString()}
+            </span>
+            <span class="stat-label">Total Tokens Utilized</span>
+            ${summary.totalTokens.cached ? `
+            <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
+                Cached: <strong>${summary.totalTokens.cached.toLocaleString()}</strong>
+            </div>
+            ` : ''}
+        </div>
+        ` : ''}
     `;
 }
 
@@ -511,6 +524,16 @@ function renderGrid(data, testId) {
 
                 card.onclick = () => showDetails(testName, runData, testStats, testId);
                 card.style.position = 'relative';
+                let tokensHtml = '';
+                if (testStats && testStats.avgTokens) {
+                    tokensHtml = `
+                        <div style="font-size: 0.85em; margin-top: 6px; color: var(--text-secondary);">
+                            Tokens (Avg): <strong style="color: var(--text-primary);">${testStats.avgTokens.total.toLocaleString()}</strong>
+                            ${testStats.avgTokens.cached ? `<span style="opacity: 0.8;"> (Cached: ${testStats.avgTokens.cached.toLocaleString()})</span>` : ''}
+                        </div>
+                    `;
+                }
+
                 card.innerHTML = `
                     <h3>${formatTestName(testName)}</h3>
                     <div class="pass-rate-bar">
@@ -520,6 +543,7 @@ function renderGrid(data, testId) {
                         <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
                         <span>Runs: ${runData.length}${testStats && testStats.earlyFailures ? ` (<span style="color: var(--accent-failure); font-weight: bold;">${testStats.earlyFailures} failed</span>)` : ''}</span>
                     </div>
+                    ${tokensHtml}
                     ${avgRuntime > 0 ? `
                     <div style="position: absolute; bottom: 10px; right: 15px; font-size: 0.85em; color: var(--text-secondary);">
                         Runtime (Average): <strong style="color: var(--text-primary);">${formatRuntime(avgRuntime)}</strong>
@@ -720,6 +744,7 @@ async function showDetails(testName, runs, stats, testId) {
             <div class="run-header">
                 <strong>Run ${run.runNumber}</strong>
                 ${taskRuntime ? `<span style="color: var(--text-secondary); font-size: 0.9em; margin-left: 10px;">(Runtime: ${formatRuntime(taskRuntime)})</span>` : ''}
+                ${run.tokenUsage ? `<span style="color: var(--text-secondary); font-size: 0.9em; margin-left: 10px;">(Tokens: ${run.tokenUsage.total.toLocaleString()}${run.tokenUsage.cached ? `, Cached: ${run.tokenUsage.cached.toLocaleString()}` : ''})</span>` : ''}
                 <span style="color: ${getColor(s.rate)}; margin-left: auto; margin-right: 15px;">${s.rate}% Pass (${s.passed}/${s.total})</span>
                 <div class="run-actions">
                 </div>

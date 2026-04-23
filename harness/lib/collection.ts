@@ -264,6 +264,53 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       const testName = `${taskName} - ${guide} - ${runType}`;
       const actualBaseApp = taskInfo.baseApp;
 
+      let totalTokens = 0;
+      let cachedTokens = 0;
+      let hasTokenData = false;
+
+      try {
+        const files = fs.readdirSync(dir);
+        
+        // Gemini sessions
+        const geminiSessions = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
+        for (const file of geminiSessions) {
+          const filePath = path.join(dir, file);
+          const content = fs.readFileSync(filePath, 'utf8');
+          const session = JSON.parse(content);
+          if (session.messages) {
+            for (const msg of session.messages) {
+              if (msg.tokens) {
+                totalTokens += msg.tokens.total || 0;
+                cachedTokens += msg.tokens.cached || 0;
+                hasTokenData = true;
+              }
+            }
+          }
+        }
+
+        // Codex sessions
+        const codexSessions = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
+        for (const file of codexSessions) {
+          const filePath = path.join(dir, file);
+          const content = fs.readFileSync(filePath, 'utf8');
+          const lines = content.split('\n');
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const obj = JSON.parse(line);
+              if (obj.type === 'event_msg' && obj.payload && obj.payload.type === 'token_count') {
+                totalTokens += obj.payload.total_tokens || 0;
+                hasTokenData = true;
+              }
+            } catch (e) {
+              // Ignore parse errors
+            }
+          }
+        }
+      } catch (e) {
+        console.error(`Failed to extract token usage in ${dir}:`, e);
+      }
+
       if (!allResults[testName]) {
         allResults[testName] = [];
       }
@@ -281,7 +328,8 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         taskName: taskName,
         baseApp: actualBaseApp,
         prompt: taskInfo.prompt,
-        files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory())
+        files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
+        tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined
       });
     }
   }
