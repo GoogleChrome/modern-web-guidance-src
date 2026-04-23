@@ -117,11 +117,11 @@ window.__featuresMapping = {
   "optimize-scroll-stability": [
     "contain-intrinsic-size"
   ],
-  "prioritized-preloading": [
-    "scheduler"
-  ],
   "resolution-optimized-pseudo-elements": [
     "image-set"
+  ],
+  "schedule-tasks-by-priority": [
+    "scheduler"
   ],
   "sequence-distributed-events": [
     "temporal"
