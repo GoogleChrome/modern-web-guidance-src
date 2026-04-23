@@ -225,6 +225,16 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         const errorMessage = extractErrorMessage(dir, targetFile);
         scenarioResults.push({ passed: false, message: errorMessage, isEarlyFailure: true });
       } else {
+        const reportHtmlPath = path.join(dir, 'grade-report', 'index.html');
+        if (fs.existsSync(reportHtmlPath)) {
+          try {
+            let html = fs.readFileSync(reportHtmlPath, 'utf-8');
+            html = html.replaceAll('trace/index.html?trace=', 'https://storage.mtls.cloud.google.com/guidance-evals/trace/index.html?trace=');
+            fs.writeFileSync(reportHtmlPath, html);
+          } catch (e) {
+            console.error(`Error modifying report HTML for ${dir}:`, e);
+          }
+        }
         try {
           let json: any = null;
 
@@ -356,6 +366,23 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         }
       }
 
+      const gradeReportDataDir = path.join(dir, 'grade-report', 'data');
+      let tracePath = undefined;
+      let screenshotPath = undefined;
+
+      if (fs.existsSync(gradeReportDataDir)) {
+        const dataFiles = fs.readdirSync(gradeReportDataDir);
+        const zipFile = dataFiles.find(f => f.endsWith('.zip'));
+        const pngFile = dataFiles.find(f => f.endsWith('.png'));
+
+        if (zipFile) {
+          tracePath = `grade-report/data/${zipFile}`;
+        }
+        if (pngFile) {
+          screenshotPath = `grade-report/data/${pngFile}`;
+        }
+      }
+
       allResults[testName].push({
         runNumber: parseInt(runDir),
         results: scenarioResults,
@@ -372,7 +399,9 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         prompt: taskInfo.prompt,
         files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
         runtime: runtimeData,
-        tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined
+        tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
+        tracePath,
+        screenshotPath
       });
     }
   }

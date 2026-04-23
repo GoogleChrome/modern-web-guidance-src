@@ -782,6 +782,8 @@ async function showDetails(testName, runs, stats, testId) {
             }
         });
 
+
+
         const viewResourcesLink = runDetail.querySelector('.view-resources-link');
         if (viewResourcesLink instanceof HTMLElement) {
             viewResourcesLink.onclick = (e) => {
@@ -834,6 +836,13 @@ async function showDetails(testName, runs, stats, testId) {
                     trajOpt.textContent = 'Trajectory';
                     dropdown.appendChild(trajOpt);
                 }
+
+                if (run.screenshotPath) {
+                    const screenshotOpt = document.createElement('option');
+                    screenshotOpt.value = `screenshot:${run.screenshotPath}`;
+                    screenshotOpt.textContent = 'View Failed Screenshot';
+                    dropdown.appendChild(screenshotOpt);
+                }
             }
         } catch (e) {
             console.log('Error displaying options:', e);
@@ -855,6 +864,16 @@ async function showDetails(testName, runs, stats, testId) {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {
                 openTrajectory(usedBasePath, sessionFile);
+            } else if (val.startsWith('trace:')) {
+                const traceRelativePath = val.substring(6);
+                const tracePath = `${usedBasePath}/${traceRelativePath}`;
+                const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${tracePath}`;
+                window.open(`https://storage.mtls.cloud.google.com/guidance-evals/trace/index.html?trace=${encodeURIComponent(mtlsUrl)}`, '_blank');
+            } else if (val.startsWith('screenshot:')) {
+                const screenshotRelativePath = val.substring(11);
+                const screenshotPath = `${usedBasePath}/${screenshotRelativePath}`;
+                const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${screenshotPath}`;
+                window.open(mtlsUrl, '_blank');
             } else if (val === 'raw') {
                 const rawPath = `${usedBasePath}/${guide}_results.json`;
                 viewContent(rawPath, rawPath);

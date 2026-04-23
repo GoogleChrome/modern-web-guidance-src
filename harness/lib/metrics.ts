@@ -17,6 +17,8 @@ export interface RunResult {
   baseApp?: string;
   prompt?: string;
   tokenUsage?: { total: number; cached: number };
+  tracePath?: string;
+  screenshotPath?: string;
 }
 
 export interface Metrics {
