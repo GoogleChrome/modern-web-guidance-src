@@ -976,7 +976,6 @@ function openTrajectory(usedBasePath, sessionFile) {
         window.open(api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`), '_blank');
     }
 }
-}
 
 // Global helper to open details from task list
 // @ts-expect-error global export
