@@ -294,17 +294,24 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
           const filePath = path.join(dir, file);
           const content = fs.readFileSync(filePath, 'utf8');
           const lines = content.split('\n');
+          let lastTokenCount = 0;
+          let fileHasTokens = false;
+          
           for (const line of lines) {
             if (!line.trim()) continue;
             try {
               const obj = JSON.parse(line);
               if (obj.type === 'event_msg' && obj.payload && obj.payload.type === 'token_count') {
-                totalTokens += obj.payload.total_tokens || 0;
-                hasTokenData = true;
+                lastTokenCount = obj.payload.total_tokens || 0;
+                fileHasTokens = true;
               }
             } catch (e) {
               // Ignore parse errors
             }
+          }
+          if (fileHasTokens) {
+            totalTokens += lastTokenCount;
+            hasTokenData = true;
           }
         }
       } catch (e) {
