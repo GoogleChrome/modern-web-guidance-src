@@ -592,23 +592,9 @@ function openTrajectory(usedBasePath, sessionFile) {
 function openReport(usedBasePath, testId) {
     const path = `${usedBasePath}/grade-report/index.html`;
     if (api.source === 'remote') {
-        const finalPath = api.getAbsoluteUrl(path);
-        api._fetch(finalPath)
-            .then(res => { if (!res.ok) throw new Error(); return res.text(); })
-            .then(text => {
-                let modifiedText = text;
-                
-                // Targeted replacement for broken trace viewer link
-                modifiedText = modifiedText.replaceAll('trace/index.html?trace=', 'https://trace.playwright.dev/?trace=');
-
-                const htmlBlob = new Blob([modifiedText], { type: 'text/html' });
-                const url = URL.createObjectURL(htmlBlob);
-                window.open(url + (testId ? `#?testId=${testId}` : ''), '_blank');
-            })
-            .catch(e => {
-                console.error('Error loading report:', e);
-                alert('Failed to load remote report');
-            });
+        // Use mTLS domain which handles auth and serves raw HTML, preserving relative paths
+        const url = `https://storage.mtls.cloud.google.com/guidance-evals/${path}${testId ? `#?testId=${testId}` : ''}`;
+        window.open(url, '_blank');
     } else {
         window.open(api.getAbsoluteUrl(path) + (testId ? `#?testId=${testId}` : ''), '_blank');
     }
@@ -848,6 +834,14 @@ async function showDetails(testName, runs, stats, testId) {
                     trajOpt.textContent = 'Trajectory';
                     dropdown.appendChild(trajOpt);
                 }
+
+                const zipFiles = files.filter(f => f.endsWith('.zip'));
+                zipFiles.forEach(zip => {
+                    const zipOpt = document.createElement('option');
+                    zipOpt.value = `trace:${zip}`;
+                    zipOpt.textContent = `Trace: ${zip}`;
+                    dropdown.appendChild(zipOpt);
+                });
             }
         } catch (e) {
             console.log('Error displaying options:', e);
@@ -869,6 +863,11 @@ async function showDetails(testName, runs, stats, testId) {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {
                 openTrajectory(usedBasePath, sessionFile);
+            } else if (val.startsWith('trace:')) {
+                const zipName = val.substring(6);
+                const tracePath = `${usedBasePath}/grade-report/data/${zipName}`;
+                const traceUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${tracePath}`;
+                window.open(`https://trace.playwright.dev/?trace=${encodeURIComponent(traceUrl)}`, '_blank');
             } else if (val === 'raw') {
                 const rawPath = `${usedBasePath}/${guide}_results.json`;
                 viewContent(rawPath, rawPath);
