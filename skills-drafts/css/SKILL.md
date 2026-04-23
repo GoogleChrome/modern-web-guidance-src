@@ -97,7 +97,7 @@ Modern browser-native selectors reduce the need for preprocessors and complex st
 - **DON'T** nest `:has()` or use pseudo-elements inside `:has()` (browser API limitation).
 - **DO** use Attribute selectors (e.g., `[disabled]`) to style elements based on their state or metadata.
 - **DO** use `:where()` for baseline styles you want to be easily overridable (0 specificity).
-- **DO** use `:focus-visible` instead of `:focus` for mouse users to hide focus rings while preserving them for keyboard users.
+- **DO** use `:focus-visible` instead of `:focus` to hide focus rings for pointer interactions (mouse/touch) while preserving them for keyboard navigation and elements requiring text input.
 - **DO** pair focus outlines with `outline-offset` to separate the ring from the element.
 - **DON'T** use `outline: none` without providing a visible focus style.
 - **DON'T** rely on `box-shadow` for focus rings if you need to support Windows High Contrast Mode (use `outline` instead).
@@ -178,6 +178,7 @@ Rendering performance is critical for smooth user experiences, especially in hea
 
 ### DOs and DON'Ts
 - **DO** only animate `transform` and `opacity` to ensure animations stay on the compositor thread.
+- **DO** use `translate` (or `transform: translate()`) instead of animating `top`/`left`/`right`/`bottom` to avoid triggering layout reflows and ensure smoother animations.
 - **DO** use `transition-behavior: allow-discrete` to animate layout properties like `display` or `<dialog>` state natively.
 - **DO** always pair `content-visibility` with `contain-intrinsic-size` to prevent scrollbar jumps (CLS).
 - **DO** use `contain: layout style paint` to isolate component rendering updates.
@@ -228,7 +229,10 @@ Use fluid and accessible typography that respects viewport widths and browser zo
 - **DO** use standalone `min()` and `max()` to constrain values responsively.
 - **DO** use `text-wrap: balance` for short headlines (up to 4-6 lines) to prevent uneven orphans.
 - **DO** use `overflow-wrap: break-word` (or `anywhere`) to contain long URLs.
-- **DON'T** use `px` for font-size. Use `rem` to honor user default zoom.
+- **DO** use `@container` queries to create component-driven responsive layouts that adapt to their parent container's size rather than the viewport.
+- **DO** use dynamic viewport units (`dvh`, `dvw`) instead of `vh`/`vw` to prevent layout breakage when mobile browser UI elements (like address bars) appear or disappear.
+- **DO** use `aspect-ratio` for media elements (like `<img>` and `<video>`) to reserve space during loading and prevent Cumulative Layout Shift (CLS).
+- **DON'T** use `px` for font-size. Prefer `rem` to honor the user's browser font-size preferences (root font size), as `px` values are absolute and may ignore user-defined defaults.
 - **DON'T** use `vw` alone for font-size without a min/max clamp, as it can scale text too small or too large on extreme screens.
 
 ### Code Example: Fluid Typography

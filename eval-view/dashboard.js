@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $ } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
@@ -9,6 +9,10 @@ let sortedScenarios = [];
 let currentRunTypes = [];
 let currentTestID = null;
 let api;
+
+// Module-scoped state
+let dashboardLoaded = false;
+let dumbbellChartInstance = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize API Client
@@ -38,8 +42,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadDashboardData(testId) {
     // Prevent double loading
-    if (window.dashboardLoaded) return;
-    window.dashboardLoaded = true;
+    if (dashboardLoaded) return;
+    dashboardLoaded = true;
 
     try {
         const data = await api.getEvals(testId);
@@ -114,9 +118,11 @@ async function loadDashboardData(testId) {
                         const checkItems = document.querySelectorAll('.check-item');
                         for (const item of checkItems) {
                             if (item.textContent.includes(checkId)) {
-                                item.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                item.style.backgroundColor = 'rgba(255, 255, 0, 0.2)'; // Highlight
-                                item.style.transition = 'background-color 0.5s';
+                                if (item instanceof HTMLElement) {
+                                    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    item.style.backgroundColor = 'rgba(255, 255, 0, 0.2)'; // Highlight
+                                    item.style.transition = 'background-color 0.5s';
+                                }
                                 break;
                             }
                         }
@@ -126,7 +132,7 @@ async function loadDashboardData(testId) {
         }
     } catch (error) {
         console.error('Error:', error);
-        window.dashboardLoaded = false;
+        dashboardLoaded = false;
 
         let errorHtml = `<div style="text-align:center; padding: 50px; color: red;">
             <h3>Error loading dashboard data</h3>
@@ -139,28 +145,23 @@ async function loadDashboardData(testId) {
             </div>`;
         }
         
-        const grid = document.getElementById('dashboard-grid');
-        if (grid) {
-            grid.innerHTML = errorHtml;
-        } else {
-            document.body.innerHTML = errorHtml;
-        }
+        const grid = $('#dashboard-grid');
+        grid.innerHTML = errorHtml;
     }
 }
 
 // Modal control
 document.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById('modal');
-    if (!modal) return;
+    const modal = $('dialog#modal');
 
-    const closeBtn = document.querySelector('.close-modal');
+    const closeBtn = $('.close-modal');
 
     // Close function that also cleans up URL
     const closeModal = () => {
         if (modal.open) modal.close();
     };
 
-    if (closeBtn) closeBtn.onclick = closeModal;
+    closeBtn.onclick = closeModal;
 
     // Close on backdrop click
     modal.addEventListener('click', (event) => event.target === modal && closeModal());
@@ -207,9 +208,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         viewLogBtn.style.display = 'none';
                     } else {
                         viewLogBtn.onclick = async () => {
-                            const modal = document.getElementById('modal');
-                            const title = document.getElementById('modal-title');
-                            const body = document.getElementById('modal-body');
+                            const modal = $('dialog#modal');
+                            const title = $('#modal-title');
+                            const body = $('#modal-body');
 
                             title.textContent = 'Test Suite Run Log';
                             body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading log...</div>';
@@ -236,8 +237,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Arrow key navigation
     document.addEventListener('keydown', (e) => {
-        const modal = document.getElementById('modal');
-        if (!modal || !modal.open || modal.dataset.view !== 'details') return;
+        const modal = $('dialog#modal');
+        if (!modal.open || modal.dataset.view !== 'details') return;
 
         if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
             if (!currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
@@ -268,11 +269,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const nextRunType = currentRunTypes[rIdx];
             const nextTestName = `${nextScenario} - ${nextRunType}`;
 
-            if (nextTestName !== currentDetails.testName && allTestData.results[nextTestName]) {
+            const results = allTestData.results;
+            if (nextTestName !== currentDetails.testName && results[nextTestName]) {
                 e.preventDefault();
                 showDetails(
                     nextTestName,
-                    allTestData.results[nextTestName],
+                    results[nextTestName],
                     allTestData.stats[nextTestName],
                     currentTestID
                 );
@@ -285,8 +287,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+function formatRuntime(ms) {
+    if (!ms) return '-';
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    if (minutes > 0) {
+        return `${minutes}m ${remainingSeconds}s`;
+    }
+    return `${seconds}s`;
+}
+
 function renderTestHeader(testId, jetskiVersion, timestamp, data) {
-    const container = document.getElementById('test-header');
+    const container = $('#test-header');
     if (container) {
         let html = `Test ID: <strong>${escapeHtml(testId)}</strong>`;
 
@@ -329,6 +342,7 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
                 <span>Agent: <strong>${escapeHtml(agent)}</strong></span>
                 <span>Model: <strong style="color: var(--text-secondary);">${escapeHtml(model)}</strong></span>
                 <span>Serving: <strong>${escapeHtml(serving)}</strong></span>
+                ${data.totalRuntime ? `<span>Total Runtime: <strong>${formatRuntime(data.totalRuntime)}</strong></span>` : ''}
             </div>`;
         }
 
@@ -337,11 +351,16 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
 }
 
 function renderSummary(data) {
-    const container = document.getElementById('summary-stats');
+    const container = $('#summary-stats');
     const summary = data.summary;
 
     const unguidedRate = summary.unguidedPassRate;
     const guidedRate = summary.guidedPassRate;
+
+    const unguidedEarlyFailureRate = summary.unguidedEarlyFailureRate || 0;
+    const guidedEarlyFailureRate = summary.guidedEarlyFailureRate || 0;
+    const completedGuidedRuns = summary.totalGuidedRuns - (summary.guidedEarlyFailures || 0);
+    const completedGuidedNonDisciplineRuns = summary.totalGuidedNonDisciplineRuns !== undefined ? summary.totalGuidedNonDisciplineRuns - (summary.guidedNonDisciplineEarlyFailures || 0) : completedGuidedRuns;
 
     container.innerHTML = `
         <div class="stat-card">
@@ -352,6 +371,17 @@ function renderSummary(data) {
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
                 ${summary.unguidedPassed}/${summary.unguidedTotal} checks passed
             </div>
+            ${summary.expectedTotalRuns !== undefined ? `
+            <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-secondary);">
+                Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} tasks x ${summary.runCountPerTask} runs)` : ''}</span>
+            </div>
+            ` : ''}
+            ${summary.unguidedEarlyFailures !== undefined ? `
+            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
+                Generation Errors: <span style="font-weight: bold; color: ${getColor(100 - unguidedEarlyFailureRate)}">${unguidedEarlyFailureRate}%</span>
+                <span style="opacity: 0.8; color: ${getColor(100 - unguidedEarlyFailureRate)}">(${summary.unguidedEarlyFailures} runs)</span>
+            </div>
+            ` : ''}
         </div>
         <div class="stat-card">
             <span class="stat-value" style="color: ${getColor(guidedRate)}">
@@ -361,16 +391,27 @@ function renderSummary(data) {
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
                 ${summary.guidedPassed}/${summary.guidedTotal} checks passed
             </div>
+            ${summary.expectedTotalRuns !== undefined ? `
+            <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-secondary);">
+                Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} tasks x ${summary.runCountPerTask} runs)` : ''}</span>
+            </div>
+            ` : ''}
+            ${summary.guidedEarlyFailures !== undefined ? `
+            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
+                Generation Errors: <span style="font-weight: bold; color: ${getColor(100 - guidedEarlyFailureRate)}">${guidedEarlyFailureRate}%</span>
+                <span style="opacity: 0.8; color: ${getColor(100 - guidedEarlyFailureRate)}">(${summary.guidedEarlyFailures} runs)</span>
+            </div>
+            ` : ''}
             ${summary.toolActivationRate !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Tool Activation: <span style="font-weight: bold; color: ${getColor(summary.toolActivationRate)}">${summary.toolActivationRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(summary.toolActivationRate)}">(${summary.toolActivationCount}/${summary.totalGuidedRuns} runs)</span>
+                <span style="opacity: 0.8; color: ${getColor(summary.toolActivationRate)}">(${summary.toolActivationCount}/${completedGuidedRuns} completed runs)</span>
             </div>
             ` : ''}
             ${summary.guideUsageRate !== undefined ? `
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Guide Usage: <span style="font-weight: bold; color: ${getColor(summary.guideUsageRate)}">${summary.guideUsageRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${summary.totalGuidedRuns} runs)</span>
+                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${completedGuidedNonDisciplineRuns} completed runs)</span>
             </div>
             ` : ''}
         </div>
@@ -378,7 +419,11 @@ function renderSummary(data) {
 }
 
 function renderGrid(data, testId) {
-    const grid = document.getElementById('dashboard-grid');
+    const disciplineGrid = $('#discipline-grid');
+    const guideGrid = $('#guide-grid');
+    const disciplineSection = $('#discipline-section');
+    const guideSection = $('#guide-section');
+
     const results = data.results;
     const stats = data.stats;
 
@@ -424,10 +469,19 @@ function renderGrid(data, testId) {
                 const card = document.createElement('div');
                 card.className = 'test-card';
 
+                const isSkill = runData[0] && runData[0].isSkill;
+
                 // Calculate Total/Average Pass Rate for this specific test configuration
                 const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
                 const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
                 const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
+
+                // Calculate Average Runtime
+                const totalRuntime = runData.reduce((acc, run) => {
+                    const taskRun = run.runtime ? (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0) : 0;
+                    return acc + taskRun;
+                }, 0);
+                const avgRuntime = runData.length > 0 ? totalRuntime / runData.length : 0;
 
                 let toolActivationHtml = '';
                 if (runType === 'guided' && testStats && testStats.runsWithToolActivation !== undefined) {
@@ -443,7 +497,7 @@ function renderGrid(data, testId) {
                 }
 
                 let guideUsageHtml = '';
-                if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined) {
+                if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined && !isSkill) {
                     const count = testStats.runsUsingGuide;
                     const total = testStats.runCount;
                     const usageRate = total > 0 ? Math.round((count / total) * 100) : 0;
@@ -456,6 +510,7 @@ function renderGrid(data, testId) {
                 }
 
                 card.onclick = () => showDetails(testName, runData, testStats, testId);
+                card.style.position = 'relative';
                 card.innerHTML = `
                     <h3>${formatTestName(testName)}</h3>
                     <div class="pass-rate-bar">
@@ -463,16 +518,33 @@ function renderGrid(data, testId) {
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 0.9em; color: var(--text-secondary);">
                         <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
-                        <span>Runs: ${runData.length}</span>
+                        <span>Runs: ${runData.length}${testStats && testStats.earlyFailures ? ` (<span style="color: var(--accent-failure); font-weight: bold;">${testStats.earlyFailures} failed</span>)` : ''}</span>
                     </div>
+                    ${avgRuntime > 0 ? `
+                    <div style="position: absolute; bottom: 10px; right: 15px; font-size: 0.85em; color: var(--text-secondary);">
+                        Runtime (Average): <strong style="color: var(--text-primary);">${formatRuntime(avgRuntime)}</strong>
+                    </div>
+                    ` : ''}
                     ${toolActivationHtml}
                     ${guideUsageHtml}
                 `;
 
-                grid.appendChild(card);
+                if (isSkill) {
+                    disciplineGrid.appendChild(card);
+                    disciplineSection.style.display = 'block';
+                } else {
+                    guideGrid.appendChild(card);
+                }
             });
         });
     });
+
+    // Hide Guide section if empty
+    if (guideGrid.children.length === 0) {
+        guideSection.style.display = 'none';
+    } else {
+        guideSection.style.display = 'block';
+    }
 }
 
 function openTrajectory(usedBasePath, sessionFile) {
@@ -505,10 +577,10 @@ async function showDetails(testName, runs, stats, testId) {
     // Store current details for back navigation
     currentDetails = { testName, runs, stats, testId };
 
-    const modal = document.getElementById('modal');
-    const title = document.getElementById('modal-title');
-    const contentDiv = document.querySelector('.modal-content');
-    const body = document.getElementById('modal-body');
+    const modal = $('dialog#modal');
+    const title = $('#modal-title');
+    const contentDiv = $('.modal-content');
+    const body = $('#modal-body');
     const [taskName, guide, runType] = testName.split(' - ');
 
     // Reset modifier classes
@@ -526,14 +598,16 @@ async function showDetails(testName, runs, stats, testId) {
         const { setupPath, resultPath, usedBasePath } = await getResultPaths(testId, run, testName);
 
         let sessionFile = null;
-        let files = [];
-        try {
-            files = await api.getRunFiles(usedBasePath);
-            if (files && files.length > 0) {
-                sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
+        let files = run.files || [];
+        if (files.length === 0) {
+            try {
+                files = await api.getRunFiles(usedBasePath);
+            } catch (e) {
+                console.log('Error checking run files:', e);
             }
-        } catch (e) {
-            console.log('Error checking run files:', e);
+        }
+        if (files && files.length > 0) {
+            sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
         }
 
         if (run === runs[0]) {
@@ -565,7 +639,7 @@ async function showDetails(testName, runs, stats, testId) {
 
         let usageSection = '';
         const toolsUsed = run.guidanceToolsUsed || [];
-        const expectedTool = run.expectedGuidanceTool;
+        const expectedToolPrefixes = run.expectedToolPrefixes || [];
         const hasToolData = run.guidanceToolsUsed !== undefined;
 
         const guidesUsed = run.guidesUsed || 
@@ -587,21 +661,47 @@ async function showDetails(testName, runs, stats, testId) {
                             <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 90px;">Tools Used:</strong>
                             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                                 ${toolsUsed.length > 0 ? toolsUsed.map(t => {
-                                    const isExpected = t === expectedTool;
-                                    return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(t)}</code>`;
+
+                                    const isExpected = expectedToolPrefixes.some(p => t.startsWith(p));
+                                    const matchesDiscipline = t === run.discipline;
+
+                                    let style = '';
+                                    if (isExpected) {
+                                        style = 'background: rgba(0, 200, 0, 0.1); border: 1px solid var(--accent-success); color: var(--accent-success);';
+                                    } else if (matchesDiscipline) {
+                                        style = 'background: rgba(255, 204, 0, 0.2); border: 1px solid #ffcc00; color: #ffcc00;';
+                                    } else {
+                                        style = 'background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-primary);';
+                                    }
+
+                                    return `<code style="${style} padding: 3px 6px; border-radius: 4px; font-size: 0.85em;">${escapeHtml(t)}</code>`;
                                 }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
                             </div>
                         </div>` : ''}
 
                         ${hasGuideData ? `
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 90px;">Guides Used:</strong>
-                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                ${guidesUsed.length > 0 ? guidesUsed.map(g => {
-                                    const isExpected = g === expectedGuide;
-                                    return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
-                                }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
-                            </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                          <div style="display: flex; align-items: center; gap: 8px;">
+                              <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 120px;">Retrieved Guides:</strong>
+                              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                  ${(() => {
+                                      const retrieved = run.fileReadGuides === undefined ? (run.retrievedGuides || guidesUsed) : run.retrievedGuides;
+                                      return retrieved && retrieved.length > 0 ? retrieved.map(g => {
+                                          const isExpected = g === expectedGuide;
+                                          return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
+                                      }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>';
+                                  })()}
+                              </div>
+                          </div>
+                          <div style="display: flex; align-items: center; gap: 8px;">
+                              <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 120px;">File Read Guides:</strong>
+                              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                  ${run.fileReadGuides && run.fileReadGuides.length > 0 ? run.fileReadGuides.map(g => {
+                                      const isExpected = g === expectedGuide;
+                                      return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
+                                  }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
+                              </div>
+                          </div>
                         </div>` : ''}
 
                         <div style="margin-top: 5px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: flex-end;">
@@ -614,9 +714,12 @@ async function showDetails(testName, runs, stats, testId) {
 
         const runDetail = document.createElement('div');
         runDetail.className = 'run-detail';
+        const taskRuntime = run.runtime ? (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0) : null;
+
         runDetail.innerHTML = `
             <div class="run-header">
                 <strong>Run ${run.runNumber}</strong>
+                ${taskRuntime ? `<span style="color: var(--text-secondary); font-size: 0.9em; margin-left: 10px;">(Runtime: ${formatRuntime(taskRuntime)})</span>` : ''}
                 <span style="color: ${getColor(s.rate)}; margin-left: auto; margin-right: 15px;">${s.rate}% Pass (${s.passed}/${s.total})</span>
                 <div class="run-actions">
                 </div>
@@ -626,6 +729,7 @@ async function showDetails(testName, runs, stats, testId) {
                     <li class="check-item">
                         <span class="check-status">${check.passed ? '✅' : '❌'}</span>
                         <span class="check-message">${escapeHtml(check.message)}</span>
+                        <a href="${api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`)}${check.testId ? `#?testId=${check.testId}` : ''}" target="_blank" class="secondary-btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
                     </li>
                 `).join('')}
             </ul>
@@ -633,7 +737,7 @@ async function showDetails(testName, runs, stats, testId) {
         `;
 
         const viewResourcesLink = runDetail.querySelector('.view-resources-link');
-        if (viewResourcesLink) {
+        if (viewResourcesLink instanceof HTMLElement) {
             viewResourcesLink.onclick = (e) => {
                 e.preventDefault();
                 if (shouldUseTrajectory) {
@@ -670,6 +774,14 @@ async function showDetails(testName, runs, stats, testId) {
                     dropdown.appendChild(rawOpt);
                 }
 
+                const runtimeJson = files.find(f => f === 'runtime.json');
+                if (runtimeJson) {
+                    const runtimeOpt = document.createElement('option');
+                    runtimeOpt.value = 'runtime';
+                    runtimeOpt.textContent = 'Runtime Data';
+                    dropdown.appendChild(runtimeOpt);
+                }
+
                 if (sessionFile) {
                     const trajOpt = document.createElement('option');
                     trajOpt.value = 'trajectory';
@@ -682,8 +794,10 @@ async function showDetails(testName, runs, stats, testId) {
         }
 
         dropdown.onchange = (e) => {
-            const val = e.target.value;
-            e.target.value = ''; // reset selection
+            const target = e.target;
+            if (!(target instanceof HTMLSelectElement)) return;
+            const val = target.value;
+            target.value = ''; // reset selection
             if (val === 'source') {
                 if (api.source === 'remote') {
                     // Open directly via the mTLS domain which handles auth and serves raw HTML
@@ -698,6 +812,9 @@ async function showDetails(testName, runs, stats, testId) {
             } else if (val === 'raw') {
                 const rawPath = `${usedBasePath}/${guide}_results.json`;
                 viewContent(rawPath, rawPath);
+            } else if (val === 'runtime') {
+                const runtimePath = `${usedBasePath}/runtime.json`;
+                viewContent(runtimePath, runtimePath);
             }
         };
 
@@ -725,9 +842,9 @@ function renderBackButton() {
 }
 
 async function viewContent(fileName, filePath) {
-    const title = document.getElementById('modal-title');
-    const body = document.getElementById('modal-body');
-    const modal = document.getElementById('modal');
+    const title = $('#modal-title');
+    const body = $('#modal-body');
+    const modal = $('dialog#modal');
 
     title.textContent = fileName;
     modal.dataset.view = 'content';
@@ -765,10 +882,10 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     url.searchParams.set('run', runNumber);
     window.history.replaceState({}, '', url);
 
-    const modal = document.getElementById('modal');
-    const title = document.getElementById('modal-title');
-    const body = document.getElementById('modal-body');
-    const contentDiv = document.querySelector('.modal-content');
+    const modal = $('dialog#modal');
+    const title = $('#modal-title');
+    const body = $('#modal-body');
+    const contentDiv = $('.modal-content');
 
     modal.dataset.runNumber = runNumber;
 
@@ -802,6 +919,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
             </div>`;
             diffHtml += `<pre style="white-space: pre-wrap; margin: 0; color: var(--text-primary); font-family: monospace;">${escapeHtml(resultText)}</pre>`;
         } else {
+            // @ts-expect-error global library
             const diff = Diff.diffLines(setupText, resultText);
 
             diff.forEach((part, index) => {
@@ -882,7 +1000,8 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 }
 
 function renderDashboardDumbbellChart(data, testId) {
-    const { labels, guided, unguided } = calculateChartData(data.results);
+    const results = data.results;
+    const { labels, guided, unguided } = calculateChartData(results);
 
     if (labels.length < 1) {
         document.getElementById('chart-section').classList.add('hidden');
@@ -895,14 +1014,14 @@ function renderDashboardDumbbellChart(data, testId) {
         const runType = type.toLowerCase(); // "guided" or "unguided"
 
         // Find the original key in the results
-        const originalKey = Object.keys(data.results).find(key => {
+        const originalKey = Object.keys(results).find(key => {
             const parts = key.split(' - ');
             return `${parts[0]} (${parts[1]})` === scenarioName && parts[2] === runType;
         });
 
         if (originalKey) {
             const testName = originalKey;
-            const runData = data.results[testName];
+            const runData = results[testName];
             const testStats = data.stats[testName];
             showDetails(testName, runData, testStats, testId);
         }
@@ -922,13 +1041,13 @@ function renderDashboardDumbbellChart(data, testId) {
     ];
 
     // Render the Dumbbell Chart
-    if (window.dumbbellChart) window.dumbbellChart.container.innerHTML = '';
-    window.dumbbellChart = new DumbbellChart('dumbbell-chart', {
+    if (dumbbellChartInstance) dumbbellChartInstance.container.innerHTML = '';
+    dumbbellChartInstance = new DumbbellChart('dumbbell-chart', {
         size: 700,
         rowHeight: 30,
         margin: { top: 20, right: 200, bottom: 20, left: 30 }
     });
-    window.dumbbellChart.render({ labels, datasets });
+    dumbbellChartInstance.render({ labels, datasets });
 }
 
 async function getResultPaths(testId, run, testName) {

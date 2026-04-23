@@ -1,13 +1,20 @@
 import fs from "fs";
 import path from "path";
+import zlib from "zlib";
 import matter from "gray-matter";
 import { marked } from "marked";
-import { Embedder } from "../mcp-server/lib/embedder.ts";
-import { Store, type UseCase as StoreUseCase } from "../lib/store.ts";
-import { Gpt4AllEmbedder } from "../benchmarks/rag/gpt4all-embedder.ts";
-import { replaceMacros } from "../mcp-server/lib/macros.ts";
-import { scanAllGuides } from "../../lib/guide-validation.ts";
-import { getFeatureName } from "../mcp-server/data/baseline.ts";
+export interface StoreUseCase {
+  id: string;
+  description: string;
+  category: string;
+  featuresUsed: string[];
+  chunkContent?: string;
+  vector?: number[];
+  distance?: number;
+}
+import { replaceMacros } from "../lib/macros.ts";
+import { scanAllGuides, type GuideInventory } from "../../lib/guide-validation.ts";
+import { getFeatureName } from "../lib/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
 const BUILD_GUIDES_DIR = path.join(ROOT_DIR, "build/guides");
@@ -25,12 +32,15 @@ async function processGuides() {
   const force = process.argv.includes("--force");
 
   // Scan guides first to see if we even need to run
-  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
+  let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
 
-  const LANCE_DB_DIR = path.join(ROOT_DIR, "vector_store");
+  const VECTORS_FILE = path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
 
-  if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(LANCE_DB_DIR) && fs.readdirSync(LANCE_DB_DIR).length > 0) {
-    const outputFileMTime = fs.statSync(OUTPUT_FILE).mtimeMs;
+  if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(VECTORS_FILE)) {
+    const outputFileMTime = Math.min(
+      fs.statSync(OUTPUT_FILE).mtimeMs,
+      fs.statSync(VECTORS_FILE).mtimeMs
+    );
     let anyGuideNewer = false;
 
     if (fs.statSync(import.meta.filename).mtimeMs > outputFileMTime) {
@@ -46,7 +56,8 @@ async function processGuides() {
     }
 
     if (!anyGuideNewer) {
-      console.log("No guides or script modified since last build. Skipping guide build.");
+      // No guides or script modified since last build. Skipping guide build
+      console.log("👌");
       return;
     }
   }
@@ -68,22 +79,14 @@ async function processGuides() {
     console.log(`Using custom embedding model: ${modelName}`);
   }
   
-  let embedder: any;
-  if (modelName && (modelName.includes(".gguf") || modelName.includes("nomic"))) {
-    embedder = Gpt4AllEmbedder.getInstance(modelName);
-  } else {
-    embedder = Embedder.getInstance(modelName);
-  }
+  const { Embedder } = await import("../lib/transformers-embedder.ts");
+  const embedder = Embedder.getInstance(modelName);
   await embedder.init();
-
-  console.log("Initializing Store...");
-  const store = new Store("use_cases");
-
 
 
   if (targetGuidePath) {
     // Single guide mode
-    let absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
+    const absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
     console.log(`Building single guide from: ${absoluteTargetPath}`);
 
     const guidePath = path.join(absoluteTargetPath, "guide.md");
@@ -92,23 +95,14 @@ async function processGuides() {
     }
 
     const category = path.basename(path.dirname(absoluteTargetPath));
-    const id = path.basename(absoluteTargetPath);
-    await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
-  } else {
-    // Batch process all guides
+    const name = path.basename(absoluteTargetPath);
+    readyGuides = [{dir: absoluteTargetPath, name, category, hasGuide: true} as GuideInventory];
+  }
 
-    if (readyGuides.length === 0) {
-      console.log("No guides found.");
-    }
-
-    for (const inv of readyGuides) {
-      const guideDir = inv.dir;
-      const guidePath = path.join(guideDir, "guide.md");
-      const id = inv.name;
-      const category = inv.category;
-
-      await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
-    }
+  console.log("Generating embeddings…");
+  for (const inv of readyGuides) {
+    const guidePath = path.join(inv.dir, "guide.md");
+    await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder);
   }
 
   // Generate TypeScript file
@@ -126,9 +120,11 @@ export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
   fs.writeFileSync(OUTPUT_FILE, tsContent);
   console.log(`Generated ${useCases.length} use cases to ${OUTPUT_FILE}`);
 
-  console.log("Upserting to LanceDB...");
-  await store.upsert(storeUseCases);
-  console.log("Vector store updated.");
+
+  const jsonContent = JSON.stringify(storeUseCases);
+  const compressed = zlib.gzipSync(jsonContent);
+  fs.writeFileSync(VECTORS_FILE, compressed);
+  console.log(`Vector storage updated at ${VECTORS_FILE}`);
 
 }
 
@@ -161,7 +157,8 @@ async function processSingleGuideFile(
   category: string,
   id: string,
   useCases: UseCase[],
-  storeUseCases: StoreUseCase[]
+  storeUseCases: StoreUseCase[],
+  embedder: any
 ) {
   const content = fs.readFileSync(filePath, "utf-8");
   const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
@@ -191,8 +188,6 @@ async function processSingleGuideFile(
   const chunks = isNoChunking 
     ? [`${frontmatter}\n\n${processedMarkdown}`] 
     : [...chunkMarkdown(processedMarkdown), frontmatter];
-
-  const embedder = Embedder.getInstance(); // Singleton, already init
 
   for (const chunk of chunks) {
     const embeddingText = `${id} (${category})\n\n${chunk}`;

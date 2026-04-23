@@ -5,6 +5,7 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { createIsolatedHome, copySkills, cleanupIsolatedHome } from '../lib/agent-shared.ts';
 import { Agents } from '../config.ts';
+import { parseGeminiStreamOutput } from '../agents/gemini-cli-agent.ts';
 function assertSearchResults(output: string) {
     const results = JSON.parse(output);
     assert.ok(Array.isArray(results), 'Output should be a JSON array');
@@ -39,10 +40,10 @@ test('copySkills sets up the isolated environment with the skill and its data', 
 
         // 3. Verify guides and vector_store were copied (they should be inside the skill dir now)
         const guidesDir = path.join(skillDir, 'guides');
-        const vectorStoreDir = path.join(skillDir, 'vector_store');
+        const vectorFile = path.join(skillDir, 'use-cases.vectors.gen.json.gz');
         
         assert.ok(fs.existsSync(guidesDir), 'guides/ should be inside the skill directory');
-        assert.ok(fs.existsSync(vectorStoreDir), 'vector_store/ should be inside the skill directory');
+        assert.ok(fs.existsSync(vectorFile), 'use-cases.vectors.gen.json.gz should be inside the skill directory');
 
         // 3.5 Run pnpm install in the skill directory to resolve dependencies (like @lancedb/lancedb)
         // This simulates what a real installer or environment would do.
@@ -103,33 +104,7 @@ test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', { skip:
         assert.ok(fs.existsSync(logPath), 'chat_log.txt should exist');
         
         const logContent = fs.readFileSync(logPath, 'utf8');
-        const lines = logContent.split('\n').filter(line => line.trim() !== '');
-        
-        let skillActivated = false;
-        let searchCalled = false;
-        let retrieveCalled = false;
-        
-        for (const line of lines) {
-            try {
-                const event = JSON.parse(line);
-                if (event.type === 'tool_use') {
-                    if (event.tool_name === 'activate_skill' && event.parameters?.name === 'modern-web-use-cases') {
-                        skillActivated = true;
-                    }
-                    if (event.tool_name === 'run_shell_command') {
-                        const command = event.parameters?.command || '';
-                        if (command.includes('--search')) {
-                            searchCalled = true;
-                        }
-                        if (command.includes('--retrieve')) {
-                            retrieveCalled = true;
-                        }
-                    }
-                }
-            } catch (e) {
-                // Ignore parse errors for partial lines if any
-            }
-        }
+        const { skillActivated, searchCalled, retrieveCalled } = parseGeminiStreamOutput(logContent);
         
         console.log(`\n[Validation State]`);
         console.log(`- Skill Activated: ${skillActivated}`);

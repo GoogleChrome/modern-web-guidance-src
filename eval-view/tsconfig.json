@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "allowImportingTsExtensions": true,
+    "lib": ["esnext", "dom", "dom.iterable"]
+  },
+  "exclude": [
+    "node_modules",
+    "test-results",
+    "mock-results",
+    "features_mapping.gen.js"
+  ]
+}

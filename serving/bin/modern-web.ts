@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-strip-types
 
 import { parseArgs } from "util";
-import { searchUseCases, searchBaseline } from "../lib/search.ts";
+
 import { retrieveUseCase } from "../lib/retrieve.ts";
 import { getFeatureStatus, checkBaseline } from "../mcp-server/data/baseline.ts";
 
@@ -79,14 +79,24 @@ async function main() {
 
   if (values.search) {
     try {
-      const results = await searchUseCases(values.search, limit);
-      console.log(JSON.stringify(results, null, 2));
+      // Dynamic import to keep the CLI loading fast -- only load the embedder if needed.
+      const { searchUseCases } = await import("../lib/search.ts");
+      const results = await searchUseCases(values.search);
+      if (results.length === 0) {
+        console.log("[]");
+      } else {
+        // Do a ~compressed output so users can see some of the results in their coding agent.
+        // Also fewer tokens. :p
+        const jsonLines = results.map(r => JSON.stringify(r));
+        console.log("[" + jsonLines.join(",\n") + "]");
+      }
     } catch (error) {
       console.error("Search failed:", error);
       process.exit(1);
     }
   } else if (values['baseline-search']) {
     try {
+      const { searchBaseline } = await import("../lib/search.ts");
       const results = await searchBaseline(values['baseline-search'], limit);
       console.log(JSON.stringify(results, null, 2));
     } catch (error) {
