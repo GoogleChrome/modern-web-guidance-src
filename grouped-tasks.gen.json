@@ -1,0 +1,278 @@
+{
+  "guides": {
+    "accessibility": {
+      "accessible-error-announcement": [
+        "task",
+        "negative"
+      ]
+    },
+    "forms": {
+      "animated-select-picker": [
+        "task",
+        "negative"
+      ],
+      "autofill-address-form": [
+        "task",
+        "negative"
+      ],
+      "autofill-highlight-inputs": [
+        "task",
+        "negative"
+      ],
+      "autofill-payment-form": [
+        "task",
+        "negative"
+      ],
+      "autofill-sign-in-form": [
+        "task",
+        "negative"
+      ],
+      "autofill-sign-up-form": [
+        "task",
+        "negative"
+      ],
+      "branded-select-styling": [
+        "task",
+        "negative"
+      ],
+      "custom-select-picker-layouts": [
+        "task",
+        "negative"
+      ],
+      "form-fields-automatically-fit-contents": [
+        "task",
+        "negative"
+      ],
+      "required-field-feedback": [
+        "task",
+        "negative"
+      ],
+      "rich-media-picker": [
+        "task",
+        "negative"
+      ],
+      "select-menu-interaction": [
+        "task",
+        "negative"
+      ],
+      "validate-input-after-interaction": [
+        "task",
+        "negative"
+      ]
+    },
+    "performance": {
+      "batch-analytics-events": [
+        "task",
+        "negative"
+      ],
+      "defer-rendering-heavy-content": [
+        "task",
+        "negative"
+      ],
+      "deprioritize-background-fetches": [
+        "task",
+        "negative"
+      ],
+      "full-session-analytics": [
+        "task",
+        "negative"
+      ],
+      "identify-heavy-scripts": [
+        "task",
+        "negative"
+      ],
+      "identify-inp-causes": [
+        "task",
+        "negative"
+      ],
+      "improve-next-page-load-performance": [
+        "task",
+        "negative"
+      ],
+      "optimize-image-priority": [
+        "task",
+        "negative"
+      ],
+      "optimize-preload-priority": [
+        "task",
+        "negative"
+      ],
+      "optimize-script-priority": [
+        "task",
+        "negative"
+      ],
+      "sequence-distributed-events": [
+        "task",
+        "negative"
+      ]
+    },
+    "user-experience": {
+      "adapt-scrollbar-to-contrast-preferences": [
+        "task",
+        "negative"
+      ],
+      "adapt-scrollbar-to-light-dark-preferences": [
+        "task",
+        "negative"
+      ],
+      "anchor-positioning-tab-underline": [
+        "task",
+        "negative"
+      ],
+      "animate-element-entry-exit": [
+        "task",
+        "negative"
+      ],
+      "animate-to-intrinsic-sizes": [
+        "task",
+        "negative"
+      ],
+      "calculate-event-differentials": [
+        "task",
+        "negative"
+      ],
+      "capture-location-agnostic-data": [
+        "task",
+        "negative"
+      ],
+      "carousel-slide-effects": [
+        "task",
+        "negative"
+      ],
+      "child-state-based-styling": [
+        "task",
+        "negative"
+      ],
+      "consistent-cross-document-transitions": [
+        "task",
+        "negative"
+      ],
+      "content-based-styling": [
+        "task",
+        "negative"
+      ],
+      "customize-scrollbar-color-and-thickness": [
+        "task",
+        "negative"
+      ],
+      "declarative-button-actions": [
+        "task",
+        "negative"
+      ],
+      "declarative-dialog-popover-control": [
+        "task",
+        "negative"
+      ],
+      "dynamic-sibling-animations": [
+        "task",
+        "negative"
+      ],
+      "dynamic-sibling-styling": [
+        "task",
+        "negative"
+      ],
+      "flicker-free-client-side-ab-testing": [
+        "task",
+        "negative"
+      ],
+      "improve-body-text-layout-and-legibility": [
+        "task",
+        "negative"
+      ],
+      "improve-heading-text-layout-and-legibility": [
+        "task",
+        "negative"
+      ],
+      "interest-triggered-tooltips": [
+        "task",
+        "negative"
+      ],
+      "light-dismiss-a-dialog": [
+        "task",
+        "negative"
+      ],
+      "light-dismiss-content-overlay": [
+        "task",
+        "negative"
+      ],
+      "model-partial-time-concepts": [
+        "task",
+        "negative"
+      ],
+      "move-dom-element-without-losing-state": [
+        "task",
+        "negative"
+      ],
+      "parallax-scroll-effects": [
+        "task",
+        "negative"
+      ],
+      "persistent-app-tours": [
+        "task",
+        "negative"
+      ],
+      "persistent-toast-notifications": [
+        "task",
+        "negative"
+      ],
+      "precise-text-alignment": [
+        "task",
+        "negative"
+      ],
+      "prevent-text-wrapping": [
+        "task",
+        "negative"
+      ],
+      "pull-to-reveal": [
+        "task",
+        "negative"
+      ],
+      "scroll-entry-exit-effects": [
+        "task",
+        "negative"
+      ],
+      "scroll-progress-indicator": [
+        "task",
+        "negative"
+      ],
+      "scroll-target-on-load": [
+        "task",
+        "negative"
+      ],
+      "scrollytelling": [
+        "task",
+        "negative"
+      ],
+      "search-hidden-content": [
+        "task",
+        "negative"
+      ],
+      "shrinking-header-on-scroll": [
+        "task",
+        "negative"
+      ],
+      "style-parent-with-has": [
+        "task",
+        "negative"
+      ],
+      "visually-stable-font-fallbacks": [
+        "task",
+        "negative"
+      ],
+      "visually-stable-mixed-fonts": [
+        "task",
+        "negative"
+      ]
+    }
+  },
+  "disciplines": {
+    "forms": [
+      "task",
+      "negative"
+    ],
+    "performance": [
+      "task",
+      "negative"
+    ]
+  }
+}

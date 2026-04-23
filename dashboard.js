@@ -382,12 +382,6 @@ function renderSummary(data) {
                 <span style="opacity: 0.8; color: ${getColor(100 - unguidedEarlyFailureRate)}">(${summary.unguidedEarlyFailures} runs)</span>
             </div>
             ` : ''}
-            ${summary.unguidedTotalTokens ? `
-            <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
-                Tokens: <strong>${summary.unguidedTotalTokens.total.toLocaleString()}</strong>
-                ${summary.unguidedTotalTokens.cached ? `<span style="opacity: 0.8;"> (Cached: ${summary.unguidedTotalTokens.cached.toLocaleString()})</span>` : ''}
-            </div>
-            ` : ''}
         </div>
         <div class="stat-card">
             <span class="stat-value" style="color: ${getColor(guidedRate)}">
@@ -418,12 +412,6 @@ function renderSummary(data) {
             <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
                 Guide Usage: <span style="font-weight: bold; color: ${getColor(summary.guideUsageRate)}">${summary.guideUsageRate}%</span>
                 <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${completedGuidedNonDisciplineRuns} completed runs)</span>
-            </div>
-            ` : ''}
-            ${summary.guidedTotalTokens ? `
-            <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
-                Tokens: <strong>${summary.guidedTotalTokens.total.toLocaleString()}</strong>
-                ${summary.guidedTotalTokens.cached ? `<span style="opacity: 0.8;"> (Cached: ${summary.guidedTotalTokens.cached.toLocaleString()})</span>` : ''}
             </div>
             ` : ''}
         </div>
@@ -523,16 +511,6 @@ function renderGrid(data, testId) {
 
                 card.onclick = () => showDetails(testName, runData, testStats, testId);
                 card.style.position = 'relative';
-                let tokensHtml = '';
-                if (testStats && testStats.avgTokens) {
-                    tokensHtml = `
-                        <div style="font-size: 0.85em; margin-top: 6px; color: var(--text-secondary);">
-                            Tokens (Avg): <strong style="color: var(--text-primary);">${testStats.avgTokens.total.toLocaleString()}</strong>
-                            ${testStats.avgTokens.cached ? `<span style="opacity: 0.8;"> (Cached: ${testStats.avgTokens.cached.toLocaleString()})</span>` : ''}
-                        </div>
-                    `;
-                }
-
                 card.innerHTML = `
                     <h3>${formatTestName(testName)}</h3>
                     <div class="pass-rate-bar">
@@ -542,7 +520,6 @@ function renderGrid(data, testId) {
                         <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
                         <span>Runs: ${runData.length}${testStats && testStats.earlyFailures ? ` (<span style="color: var(--accent-failure); font-weight: bold;">${testStats.earlyFailures} failed</span>)` : ''}</span>
                     </div>
-                    ${tokensHtml}
                     ${avgRuntime > 0 ? `
                     <div style="position: absolute; bottom: 10px; right: 15px; font-size: 0.85em; color: var(--text-secondary);">
                         Runtime (Average): <strong style="color: var(--text-primary);">${formatRuntime(avgRuntime)}</strong>
@@ -586,6 +563,35 @@ function openTrajectory(usedBasePath, sessionFile) {
             });
     } else {
         window.open(api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`), '_blank');
+    }
+}
+
+function openReport(usedBasePath, testId) {
+    const path = `${usedBasePath}/grade-report/index.html`;
+    if (api.source === 'remote') {
+        const finalPath = api.getAbsoluteUrl(path);
+        api._fetch(finalPath)
+            .then(res => { if (!res.ok) throw new Error(); return res.text(); })
+            .then(text => {
+                const basePathForAssets = `https://storage.mtls.cloud.google.com/guidance-evals/${usedBasePath}`;
+                let modifiedText = text;
+                
+                // Replace relative paths in the report with absolute mTLS URLs
+                modifiedText = modifiedText.replaceAll('"data/', `"${basePathForAssets}/grade-report/data/`);
+                modifiedText = modifiedText.replaceAll('\'data/', `'${basePathForAssets}/grade-report/data/`);
+                modifiedText = modifiedText.replaceAll('"../test-results/', `"${basePathForAssets}/test-results/`);
+                modifiedText = modifiedText.replaceAll('\'../test-results/', `'${basePathForAssets}/test-results/`);
+
+                const htmlBlob = new Blob([modifiedText], { type: 'text/html' });
+                const url = URL.createObjectURL(htmlBlob);
+                window.open(url + (testId ? `#?testId=${testId}` : ''), '_blank');
+            })
+            .catch(e => {
+                console.error('Error loading report:', e);
+                alert('Failed to load remote report');
+            });
+    } else {
+        window.open(api.getAbsoluteUrl(path) + (testId ? `#?testId=${testId}` : ''), '_blank');
     }
 }
 
@@ -743,7 +749,6 @@ async function showDetails(testName, runs, stats, testId) {
             <div class="run-header">
                 <strong>Run ${run.runNumber}</strong>
                 ${taskRuntime ? `<span style="color: var(--text-secondary); font-size: 0.9em; margin-left: 10px;">(Runtime: ${formatRuntime(taskRuntime)})</span>` : ''}
-                ${run.tokenUsage ? `<span style="color: var(--text-secondary); font-size: 0.9em; margin-left: 10px;">(Tokens: ${run.tokenUsage.total.toLocaleString()}${run.tokenUsage.cached ? `, Cached: ${run.tokenUsage.cached.toLocaleString()}` : ''})</span>` : ''}
                 <span style="color: ${getColor(s.rate)}; margin-left: auto; margin-right: 15px;">${s.rate}% Pass (${s.passed}/${s.total})</span>
                 <div class="run-actions">
                 </div>
@@ -753,12 +758,23 @@ async function showDetails(testName, runs, stats, testId) {
                     <li class="check-item">
                         <span class="check-status">${check.passed ? '✅' : '❌'}</span>
                         <span class="check-message">${escapeHtml(check.message)}</span>
-                        <a href="${api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`)}${check.testId ? `#?testId=${check.testId}` : ''}" target="_blank" class="secondary-btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
+                        <a href="#" class="secondary-btn report-link" data-test-id="${check.testId || ''}" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
                     </li>
                 `).join('')}
             </ul>
             ${usageSection}
         `;
+
+        const reportLinks = runDetail.querySelectorAll('.report-link');
+        reportLinks.forEach(link => {
+            if (link instanceof HTMLElement) {
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    const testId = link.dataset.testId;
+                    openReport(usedBasePath, testId);
+                };
+            }
+        });
 
         const viewResourcesLink = runDetail.querySelector('.view-resources-link');
         if (viewResourcesLink instanceof HTMLElement) {
@@ -1025,7 +1041,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 
 function renderDashboardDumbbellChart(data, testId) {
     const results = data.results;
-    const { labels, guided, unguided, guided_tokens, unguided_tokens } = calculateChartData(results);
+    const { labels, guided, unguided } = calculateChartData(results);
 
     if (labels.length < 1) {
         document.getElementById('chart-section').classList.add('hidden');
@@ -1055,13 +1071,11 @@ function renderDashboardDumbbellChart(data, testId) {
         {
             label: 'Unguided',
             data: unguided,
-            tokens: unguided_tokens,
             onClick: handlePointClick
         },
         {
             label: 'Guided',
             data: guided,
-            tokens: guided_tokens,
             onClick: handlePointClick
         }
     ];
