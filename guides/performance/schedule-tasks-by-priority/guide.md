@@ -45,7 +45,7 @@ scheduler.postTask(() => {
 
 {{ BASELINE_STATUS("scheduler") }}
 
-To support browsers that do not have the Prioritized Task Scheduling API, you must use a polyfill to maintain task prioritization. Do not rely solely on `requestIdleCallback` or `setTimeout` as they do not support multiple priorities.
+To support browsers that do not have the Prioritized Task Scheduling API, you must use a polyfill to maintain task prioritization.
 
 ```javascript
 // Feature detect the scheduler API
