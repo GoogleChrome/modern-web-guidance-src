@@ -72,26 +72,8 @@ import './app.js';
 
 {{ BASELINE_STATUS("top-level-await") }}
 
-If you must support older browsers that lack top-level `await` support entirely, you cannot use it to block module execution. Instead, you must use standard asynchronous functions or dynamic `import()` and orchestrate the initialization manually:
+Top-level `await` has been supported in all major browsers since 2021 (Chrome 89, Firefox 89, Safari 15). Because of this broad support, **you do not need to implement a fallback strategy for modern web applications.**
 
-```javascript
-// fallback.js
-// Instead of top-level await, wrap the dynamic import in an async function
-export async function initializeDependencies() {
-  if (!('popover' in HTMLElement.prototype)) {
-    await import('/path/to/popover-polyfill.js');
-  }
-}
+As long as you follow the guidance in the previous section to **avoid the Safari execution order bug**, you can safely rely on top-level `await` directly to manage your async dependencies.
 
-// main.js
-import { initializeDependencies } from './fallback.js';
-
-// You must manually await the initialization before running your app logic
-initializeDependencies().then(() => {
-  // Safe to use the polyfilled feature here
-  const myPopover = document.getElementById('my-popover');
-  if (myPopover) {
-    myPopover.showPopover();
-  }
-});
-```
+You only need to avoid top-level `await` and fall back to standard asynchronous functions or dynamic `import()` orchestration if your application is explicitly required to support legacy browsers released before 2021.
