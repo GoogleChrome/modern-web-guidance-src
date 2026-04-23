@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $ } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $, getAccessToken } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
@@ -592,9 +592,71 @@ function openTrajectory(usedBasePath, sessionFile) {
 function openReport(usedBasePath, testId) {
     const path = `${usedBasePath}/grade-report/index.html`;
     if (api.source === 'remote') {
-        // Use mTLS domain which handles auth and serves raw HTML, preserving relative paths
-        const url = `https://storage.mtls.cloud.google.com/guidance-evals/${path}${testId ? `#?testId=${testId}` : ''}`;
-        window.open(url, '_blank');
+        const finalPath = api.getAbsoluteUrl(path);
+        api._fetch(finalPath)
+            .then(res => { if (!res.ok) throw new Error(); return res.text(); })
+            .then(text => {
+                const basePathForAssets = `https://storage.mtls.cloud.google.com/guidance-evals/${usedBasePath}`;
+                let modifiedText = text;
+                
+                // Inject auth header script for fetch calls and URL construction in the report
+                const token = getAccessToken();
+                const scriptToInject = `
+<script>
+    (function() {
+        // Auth for fetch
+        const token = '${token || ''}';
+        if (token) {
+            const originalFetch = window.fetch;
+            window.fetch = async function(input, init) {
+                let url = '';
+                if (typeof input === 'string') url = input;
+                else if (input instanceof Request) url = input.url;
+                else if (input instanceof URL) url = input.href;
+
+                if (url.includes('storage.googleapis.com') || url.includes('mtls.cloud.google.com')) {
+                    init = init || {};
+                    init.headers = init.headers || {};
+                    if (init.headers instanceof Headers) {
+                        init.headers.set('Authorization', 'Bearer ' + token);
+                    } else {
+                        init.headers['Authorization'] = 'Bearer ' + token;
+                    }
+                }
+                return originalFetch(input, init);
+            };
+        }
+
+        // URL construction for relative paths
+        const originalURL = window.URL;
+        const reportBasePath = '${basePathForAssets}/grade-report/';
+        
+        window.URL = function(url, base) {
+            if (typeof url === 'string') {
+                if (url.startsWith('data/')) {
+                    return new originalURL(reportBasePath + url);
+                }
+                if (url.startsWith('../test-results/')) {
+                    return new originalURL('${basePathForAssets}/test-results/' + url.substring(16));
+                }
+            }
+            return new originalURL(url, base);
+        };
+        window.URL.createObjectURL = originalURL.createObjectURL;
+        window.URL.revokeObjectURL = originalURL.revokeObjectURL;
+    })();
+</script>
+`;
+                modifiedText = modifiedText.replace('<head>', `<head>${scriptToInject}`);
+
+                const htmlBlob = new Blob([modifiedText], { type: 'text/html' });
+                const url = URL.createObjectURL(htmlBlob);
+                window.open(url + (testId ? `#?testId=${testId}` : ''), '_blank');
+            })
+            .catch(e => {
+                console.error('Error loading report:', e);
+                alert('Failed to load remote report');
+            });
     } else {
         window.open(api.getAbsoluteUrl(path) + (testId ? `#?testId=${testId}` : ''), '_blank');
     }
