@@ -110,6 +110,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     totalChecks: number;
     isSkill?: boolean;
     earlyFailures?: number;
+    avgTokens?: { total: number; cached: number };
   }> = {};
 
   for (const name of sortedKeys) {

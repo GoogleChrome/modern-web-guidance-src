@@ -373,16 +373,16 @@ export class DumbbellChart {
             const coinGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
             
             const coinCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            coinCircle.setAttribute("cx", coinX);
-            coinCircle.setAttribute("cy", y);
+            coinCircle.setAttribute("cx", coinX.toString());
+            coinCircle.setAttribute("cy", y.toString());
             coinCircle.setAttribute("r", "8");
             coinCircle.setAttribute("fill", "#da3633");
             coinCircle.setAttribute("filter", "url(#red-glow)");
             coinGroup.appendChild(coinCircle);
 
             const coinText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            coinText.setAttribute("x", coinX);
-            coinText.setAttribute("y", y + 4); // Center vertically
+            coinText.setAttribute("x", coinX.toString());
+            coinText.setAttribute("y", (y + 4).toString()); // Center vertically
             coinText.setAttribute("fill", "#ffffff");
             coinText.setAttribute("font-size", "10");
             coinText.setAttribute("font-weight", "bold");
