@@ -382,6 +382,12 @@ function renderSummary(data) {
                 <span style="opacity: 0.8; color: ${getColor(100 - unguidedEarlyFailureRate)}">(${summary.unguidedEarlyFailures} runs)</span>
             </div>
             ` : ''}
+            ${summary.unguidedTotalTokens ? `
+            <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
+                Tokens: <strong>${summary.unguidedTotalTokens.total.toLocaleString()}</strong>
+                ${summary.unguidedTotalTokens.cached ? `<span style="opacity: 0.8;"> (Cached: ${summary.unguidedTotalTokens.cached.toLocaleString()})</span>` : ''}
+            </div>
+            ` : ''}
         </div>
         <div class="stat-card">
             <span class="stat-value" style="color: ${getColor(guidedRate)}">
@@ -414,20 +420,13 @@ function renderSummary(data) {
                 <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${completedGuidedNonDisciplineRuns} completed runs)</span>
             </div>
             ` : ''}
-        </div>
-        ${summary.totalTokens ? `
-        <div class="stat-card">
-            <span class="stat-value" style="color: var(--text-primary)">
-                ${summary.totalTokens.total.toLocaleString()}
-            </span>
-            <span class="stat-label">Total Tokens Utilized</span>
-            ${summary.totalTokens.cached ? `
+            ${summary.guidedTotalTokens ? `
             <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
-                Cached: <strong>${summary.totalTokens.cached.toLocaleString()}</strong>
+                Tokens: <strong>${summary.guidedTotalTokens.total.toLocaleString()}</strong>
+                ${summary.guidedTotalTokens.cached ? `<span style="opacity: 0.8;"> (Cached: ${summary.guidedTotalTokens.cached.toLocaleString()})</span>` : ''}
             </div>
             ` : ''}
         </div>
-        ` : ''}
     `;
 }
 

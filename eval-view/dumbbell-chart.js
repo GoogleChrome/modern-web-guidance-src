@@ -137,6 +137,19 @@ export class DumbbellChart {
         linearGrad.appendChild(stop2);
         defs.appendChild(linearGrad);
     });
+
+    // Add Glow Filter for expensive token usage
+    const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+    filter.setAttribute("id", "red-glow");
+    const shadow = document.createElementNS("http://www.w3.org/2000/svg", "feDropShadow");
+    shadow.setAttribute("dx", "0");
+    shadow.setAttribute("dy", "0");
+    shadow.setAttribute("stdDeviation", "3");
+    shadow.setAttribute("flood-color", "#da3633");
+    shadow.setAttribute("flood-opacity", "0.8");
+    filter.appendChild(shadow);
+    defs.appendChild(filter);
+
     this.svg.appendChild(defs);
     this.svg.style.display = "block";
     this.svg.style.fontFamily = "inherit";
@@ -323,9 +336,7 @@ export class DumbbellChart {
           line.setAttribute("stroke", lineColor);
           line.setAttribute("stroke-width", "3"); // slightly thinner to fit multiple
           line.setAttribute("stroke-linecap", "round");
-          if (item.gTokens > item.uTokens) {
-            line.setAttribute("stroke-dasharray", "6 3");
-          }
+
           this.svg.appendChild(line);
 
           // To make it an "arrow", draw a triangle at the end - offset to sit clean of the dot
@@ -355,6 +366,33 @@ export class DumbbellChart {
           gDot.setAttribute("fill", lineColor);
           this.svg.appendChild(gDot);
 
+          // Draw Token Coin Icon (Only for more expensive runs)
+          if ((item.uTokens > 0 || item.gTokens > 0) && item.gTokens > item.uTokens) {
+            const coinX = Math.max(uX, gX) + (canDrawArrow ? 15 : 10);
+            
+            const coinGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            
+            const coinCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            coinCircle.setAttribute("cx", coinX);
+            coinCircle.setAttribute("cy", y);
+            coinCircle.setAttribute("r", "8");
+            coinCircle.setAttribute("fill", "#da3633");
+            coinCircle.setAttribute("filter", "url(#red-glow)");
+            coinGroup.appendChild(coinCircle);
+
+            const coinText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            coinText.setAttribute("x", coinX);
+            coinText.setAttribute("y", y + 4); // Center vertically
+            coinText.setAttribute("fill", "#ffffff");
+            coinText.setAttribute("font-size", "10");
+            coinText.setAttribute("font-weight", "bold");
+            coinText.setAttribute("text-anchor", "middle");
+            coinText.textContent = "$";
+            coinGroup.appendChild(coinText);
+
+            this.svg.appendChild(coinGroup);
+          }
+
           // Hit area for tooltip (covers the specific sub-line)
           const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "rect");
           hitArea.setAttribute("x", leftAxis); // only over the chart area
@@ -379,6 +417,8 @@ export class DumbbellChart {
             this.tooltip.style.display = 'block';
             this.tooltip.style.left = (e.clientX + 15) + 'px';
             this.tooltip.style.top = (e.clientY + 15) + 'px';
+            const costPct = uTokens > 0 ? Math.round((gTokens / uTokens) * 100) : 0;
+
             this.tooltip.innerHTML = `
                 <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 280px;">
                     <!-- Left Column -->
@@ -390,7 +430,8 @@ export class DumbbellChart {
                             Avg Tokens:<br/>
                             Guided: <strong>${gTokens.toLocaleString()}</strong><br/>
                             Unguided: <strong>${uTokens.toLocaleString()}</strong><br/>
-                            Diff: <strong style="color: ${tokenDeltaColor}">${tokenDeltaSign}${tokenDelta.toLocaleString()}</strong>
+                            Diff: <strong style="color: ${tokenDeltaColor}">${tokenDeltaSign}${tokenDelta.toLocaleString()}</strong><br/>
+                            Cost Ratio: <strong style="color: ${tokenDeltaColor}">${costPct}%</strong>
                          </div>
                          ` : ''}
                     </div>
