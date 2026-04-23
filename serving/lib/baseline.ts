@@ -127,14 +127,14 @@ export function checkBaseline(target: string, featureId: string): boolean {
   
   const normalizedTarget = target.toLowerCase();
 
-  const baselineStatus = getFeatureStatus(featureId);
-  if (!baselineStatus) {
-    throw new Error(`Feature '${featureId}' not found.`);
-  }
-
   // 1. Handle "Limited" - matches everything
   if (normalizedTarget.includes('limited')) {
     return true;
+  }
+
+  const baselineStatus = getFeatureStatus(featureId);
+  if (!baselineStatus) {
+    return false;
   }
 
   // 2. Handle specific historical checks first (Yearly or specific "Widely available on" dates)

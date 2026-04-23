@@ -21,7 +21,7 @@ describe('baseline data', () => {
 
   describe('getStatusMessage', () => {
     it('returns status message for a feature', () => {
-      assert.strictEqual(getStatusMessage('grid'), 'Grid is Widely. It\'s been Baseline since 2017-10-17.');
+      assert.strictEqual(getStatusMessage('grid'), 'Grid (grid) is Widely. It\'s been Baseline since 2017-10-17.');
     });
 
     it('returns status message for a BCD key', () => {
@@ -29,7 +29,7 @@ describe('baseline data', () => {
     });
 
     it('returns status message for a non-Baseline feature', () => {
-      assert.strictEqual(getStatusMessage('accelerometer'), 'Accelerometer is Limited.');
+      assert.strictEqual(getStatusMessage('accelerometer'), 'Accelerometer (accelerometer) is Limited.');
     });
 
     it('returns undefined for unknown features or keys', () => {
