@@ -958,6 +958,26 @@ function formatPromptText(text) {
     return escaped;
 }
 
+function openTrajectory(usedBasePath, sessionFile) {
+    if (api.source === 'remote') {
+        const finalPath = api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`);
+        api._fetch(finalPath)
+            .then(res => { if (!res.ok) throw new Error(); return res.blob(); })
+            .then(blob => {
+                const htmlBlob = new Blob([blob], { type: 'text/html' });
+                const url = URL.createObjectURL(htmlBlob);
+                window.open(url, '_blank');
+            })
+            .catch(e => {
+                console.error('Error loading trajectory:', e);
+                alert('Failed to load remote trajectory');
+            });
+    } else {
+        window.open(api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`), '_blank');
+    }
+}
+}
+
 // Global helper to open details from task list
 // @ts-expect-error global export
 window.openDetailsFromTask = (scenarioName, testId) => {
@@ -1027,14 +1047,6 @@ async function showDetails(testName, runs, stats, testId) {
         }
     }
 
-    const title = $('#modal-title');
-    const contentDiv = $('.modal-content');
-    // Reset modifier classes
-    modal.classList.remove('diff-modal');
-    contentDiv.classList.remove('diff-modal');
-    modal.dataset.view = 'details';
-
-    title.textContent = formatTestName(testName);
 }
 
 function renderBackButton() {
