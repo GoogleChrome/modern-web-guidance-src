@@ -2,44 +2,57 @@
 name: detect-initial-visibility-state
 description: Reliably determine whether a page was initially loaded in the background, even in cases where the script is loaded asynchronously after the user foregrounded the page.
 web-feature-ids:
-    - page-visibility-state
+  - page-visibility-state
+  - page-visibility
 sources:
-    - https://developer.mozilla.org/en-US/docs/Web/API/VisibilityStateEntry
+  - https://developer.mozilla.org/en-US/docs/Web/API/VisibilityStateEntry
+  - https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API
 ---
 
-Scripts that are loaded asynchronously or deferred often run after the user has already foregrounded the tab. If you only check `document.visibilityState` when the script executes, it will report `'visible'`, incorrectly suggesting the page was loaded in the foreground. This skews performance metrics and analytics.
+Determining if a page was initially loaded in the background (e.g., opened in a new background tab) is critical for accurate performance monitoring. Pages loaded in the background often have delayed rendering and longer metric times (like First Contentful Paint). Identifying these pages allows you to filter them out of performance analytics to avoid skewed data.
 
-The Performance Timeline API solves this by recording a `visibility-state` entry with a `startTime` of `0` that captures the true initial state of the document, allowing you to accurately look back in time.
+The most accurate way to measure this is by using the `VisibilityStateEntry` API, which reliably records visibility changes on the browser's performance timeline, regardless of when your script actually executes.
 
-### Implementation
+### Detecting initial visibility and background time
 
-MANDATORY: You must query the performance timeline for `'visibility-state'` entries. The first entry in the returned array represents the initial visibility state of the page.
+MANDATORY: Use `performance.getEntriesByType('visibility-state')` to access the exact visibility history. Do not rely solely on checking `document.visibilityState` at execution time, as it is susceptible to race conditions.
 
 ```javascript
 /**
- * Reliably retrieves the initial visibility state of the page.
- * @returns {string} The initial visibility state (e.g., 'hidden' or 'visible').
+ * Accurately determines visibility state history using the Performance API.
  */
-function getInitialVisibilityState() {
-  // DO check the performance timeline for the true initial state.
-  // This array will always contain an initial entry with a startTime of 0 
-  // in browsers that support VisibilityStateEntry.
-  const entries = performance.getEntriesByType('visibility-state');
-  
-  if (entries.length > 0) {
-    // Return the name property, which holds the initial state
-    return entries[0].name;
+function getVisibilityInfo() {
+  // Feature detect the VisibilityStateEntry API on the window object.
+  if ('VisibilityStateEntry' in window && 'getEntriesByType' in performance) {
+    const entries = performance.getEntriesByType('visibility-state');
+    
+    if (entries.length > 0) {
+      const firstEntry = entries[0];
+      
+      // If the first performance entry for visibility is 'hidden',
+      // the page was loaded in the background.
+      const initiallyBackgrounded = firstEntry.name === 'hidden';
+      
+      // Find the precise, high-resolution timestamp of when the page 
+      // was first backgrounded.
+      let timeBackgrounded = null;
+      for (const entry of entries) {
+        if (entry.name === 'hidden') {
+          // <!-- entry.startTime is used because it provides the exact browser 
+          // timestamp of the visibility change, which is required for precision -->
+          timeBackgrounded = entry.startTime;
+          break;
+        }
+      }
+
+      return {
+        initiallyBackgrounded,
+        timeBackgrounded
+      };
+    }
   }
-
-  // Fallback for browsers that don't support the API.
-  return document.visibilityState;
-}
-
-// Example usage for analytics or performance instrumentation:
-const initialState = getInitialVisibilityState();
-if (initialState === 'hidden') {
-  // Treat performance metrics differently, as background pages
-  // often face resource throttling or rendering delays.
+  
+  return getFallbackVisibilityInfo();
 }
 ```
 
@@ -47,4 +60,37 @@ if (initialState === 'hidden') {
 
 {{ BASELINE_STATUS("page-visibility-state") }}
 
-Because this feature is not yet fully Baseline, you MUST implement a fallback strategy. When `performance.getEntriesByType('visibility-state')` returns an empty array, gracefully degrade by returning the current `document.visibilityState`. While this fallback might incorrectly report `'visible'` for pages that started hidden and were subsequently foregrounded before the script ran, it guarantees you still receive a valid state string without breaking the application.
+The `VisibilityStateEntry` API is not universally supported in older browser versions. For unsupported environments, you may fall back to checking the `document.visibilityState` property and listening for the `visibilitychange` event.
+
+**MANDATORY:** You must understand that this fallback approach is often **highly inaccurate for determining initial background state**. Because scripts can load and execute asynchronously, a page could be opened in a background tab and then foregrounded by the user *before* your script has finished downloading and executing. When your script finally runs, `document.visibilityState` will synchronously read as `'visible'`, and you will incorrectly assume the page was loaded in the foreground, completely missing its initial hidden state. Furthermore, the fallback timestamp lacks the internal precision of the Performance API. If precision is a high priority, do not use the fallback.
+
+```javascript
+/**
+ * Fallback implementation using document.visibilityState.
+ * <!-- This approach is prone to race conditions if the script loads asynchronously. -->
+ */
+function getFallbackVisibilityInfo() {
+  // Check the state exactly when this script executes.
+  // This will fail to detect an initial background state if the user 
+  // foregrounded the page before this script executed.
+  let initiallyBackgrounded = document.visibilityState === 'hidden';
+  
+  // If it's hidden now, we approximate that it was hidden from load (time 0).
+  let timeBackgrounded = initiallyBackgrounded ? 0 : null;
+
+  // Listen for future visibility changes to capture if it is backgrounded later.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && timeBackgrounded === null) {
+      // <!-- performance.now() is used here as a fallback, but it only gives 
+      // us the time the event listener fired, not the precise internal 
+      // browser time the visibility actually changed. -->
+      timeBackgrounded = performance.now();
+    }
+  });
+
+  return {
+    get initiallyBackgrounded() { return initiallyBackgrounded; },
+    get timeBackgrounded() { return timeBackgrounded; }
+  };
+}
+```

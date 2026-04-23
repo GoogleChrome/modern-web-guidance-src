@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Visibility Check</title>
+</head>
+<body>
+    <div id="status"></div>
+    <script>
+        function checkVisibility() {
+            var isBackground = document.visibilityState === 'hidden';
+            var time = isBackground ? Date.now() : 0;
+            
+            document.getElementById('status').innerHTML = 'Background: ' + isBackground + ', Time: ' + time;
+            
+            return {
+                background: isBackground,
+                time: time
+            };
+        }
+
+        window.onload = function() {
+            checkVisibility();
+        };
+    </script>
+</body>
+</html>
