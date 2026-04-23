@@ -995,25 +995,6 @@ window.openDetailsFromTask = (scenarioName, testId) => {
     }
 };
 
-function openTrajectory(usedBasePath, sessionFile) {
-    if (api.source === 'remote') {
-        const finalPath = api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`);
-        api._fetch(finalPath)
-            .then(res => { if (!res.ok) throw new Error(); return res.blob(); })
-            .then(blob => {
-                const htmlBlob = new Blob([blob], { type: 'text/html' });
-                const url = URL.createObjectURL(htmlBlob);
-                window.open(url, '_blank');
-            })
-            .catch(e => {
-                console.error('Error loading trajectory:', e);
-                alert('Failed to load remote trajectory');
-            });
-    } else {
-        window.open(api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`), '_blank');
-    }
-}
-
 // Expose functions to window for onclick handlers
 // @ts-expect-error global export
 window.openTrajectory = openTrajectory;
