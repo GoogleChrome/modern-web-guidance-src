@@ -1,18 +1,17 @@
 import { features } from "web-features";
-import { Embedder } from "../mcp-server/lib/embedder.ts";
-import { Store, type WebFeature } from "../lib/store.ts";
+import { TfjsEmbedder } from "../lib/tfjs-embedder.ts";
+import fs from "fs";
+import path from "path";
+import zlib from "zlib";
 
-
+const ROOT_DIR = path.resolve(import.meta.dirname, "..");
+const VECTORS_FILE = path.join(ROOT_DIR, "lib/web-features.vectors.gen.json.gz");
 
 async function buildBaseline() {
-  console.log("Initializing Embedder...");
-  const embedder = Embedder.getInstance();
-  await embedder.init();
+  console.log("Initializing TfjsEmbedder...");
+  const embedder = TfjsEmbedder.getInstance();
 
-  console.log("Initializing Store for web_features...");
-  const store = new Store("web_features");
-
-  const storeFeatures: WebFeature[] = [];
+  const storeFeatures: any[] = [];
 
   console.log("Processing web features...");
   const keys = Object.keys(features);
@@ -35,12 +34,13 @@ async function buildBaseline() {
     });
   }
 
-  console.log(`Upserting ${storeFeatures.length} features to LanceDB...`);
-  await store.upsert(storeFeatures);
-  console.log("Vector store updated for web_features.");
+  console.log(`Saving ${storeFeatures.length} features to vectors file...`);
+  const jsonContent = JSON.stringify(storeFeatures);
+  const compressed = zlib.gzipSync(jsonContent);
+  fs.writeFileSync(VECTORS_FILE, compressed);
+  console.log(`Vector storage updated at ${VECTORS_FILE}`);
 }
 
-// Only run automatically if executed directly
 if (process.argv[1] === import.meta.filename) {
   buildBaseline().catch(console.error);
 }

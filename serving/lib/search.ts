@@ -89,7 +89,63 @@ export async function searchUseCases(query: string, limit = 5, maxDistance = 1.5
   return limitedResults;
 }
 
-export async function searchBaseline(query: string, limit?: number): Promise<any[]> {
-  console.warn("Baseline search is currently unavailable.");
-  return [];
+let cachedWebFeatureVectors: { id: string; name: string; description: string; vector: number[]; norm: number }[] | null = null;
+
+export async function searchBaseline(query: string, limit = 5, maxDistance = 1.5, embedder?: any): Promise<any[]> {
+  const actualEmbedder = embedder || TfjsEmbedder.getInstance();
+  const queryVector = await actualEmbedder.embed(query);
+  const queryNorm = calculateNorm(queryVector);
+
+  if (!cachedWebFeatureVectors) {
+    const VECTORS_FILE = path.join(import.meta.dirname, "web-features.vectors.gen.json.gz");
+    if (!fs.existsSync(VECTORS_FILE)) {
+      console.warn("Web features vectors file not found.");
+      return [];
+    }
+
+    const compressed = fs.readFileSync(VECTORS_FILE);
+    const jsonContent = zlib.gunzipSync(compressed).toString("utf-8");
+    const items: any[] = JSON.parse(jsonContent);
+
+    cachedWebFeatureVectors = items.map(item => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      vector: item.vector,
+      norm: item.vector ? calculateNorm(item.vector) : 0
+    })).filter(item => item.vector);
+  }
+
+  const resultsMap = new Map<string, { item: (typeof cachedWebFeatureVectors)[0]; distance: number }>();
+
+  for (const item of cachedWebFeatureVectors) {
+    if (item.norm === 0 || queryNorm === 0) continue;
+    
+    const sim = dotProduct(queryVector, item.vector) / (queryNorm * item.norm);
+    const distance = 1 - sim;
+    
+    if (distance > maxDistance) continue;
+
+    const existing = resultsMap.get(item.id);
+    if (!existing || distance < existing.distance) {
+      resultsMap.set(item.id, { item, distance });
+    }
+  }
+
+  const results = Array.from(resultsMap.values());
+
+  // Sort by distance ascending
+  results.sort((a, b) => a.distance - b.distance);
+
+  const limitedResults = results.slice(0, limit).map(r => ({
+    id: r.item.id,
+    name: r.item.name,
+    description: r.item.description,
+    distance: r.distance.toFixed(4)
+  }));
+
+  // Log the result
+  logToolResult("search_baseline", limitedResults.map(r => ({ id: r.id, distance: r.distance })));
+
+  return limitedResults;
 }
