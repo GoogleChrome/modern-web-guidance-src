@@ -255,6 +255,7 @@ async function loadLocalTests() {
     try {
         let response = await fetch(`/api/suites?t=${Date.now()}`);
         let manifest;
+        let useResultsPrefix = false;
 
         if (!response.ok) {
             // Try fetching suites.gen.json as fallback for static mode
@@ -263,6 +264,7 @@ async function loadLocalTests() {
             const suites = await staticRes.json();
             // convert array of strings to expected format [{id: string, source: 'local'}]
             manifest = { suites: suites.map(id => ({ id, source: 'local', timestamp: new Date().toISOString() })) };
+            useResultsPrefix = true;
         } else {
             manifest = await response.json();
         }
@@ -278,10 +280,11 @@ async function loadLocalTests() {
             const testId = suite.id;
             const suiteTimestamp = suite.timestamp;
             try {
-                const response = await fetch(`${testId}/evals.json?source=local&t=${Date.now()}`);
+                const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
+                const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
                 if (response.ok) {
                     const parsed = await response.json();
-                    registerTestData(testId, 'local', parsed, suiteTimestamp);
+                    registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp);
                 }
             } catch (e) {
                 console.warn(`Failed to load local test ${testId}:`, e);
