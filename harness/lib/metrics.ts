@@ -16,7 +16,6 @@ export interface RunResult {
   taskName?: string;
   baseApp?: string;
   prompt?: string;
-  files?: string[];
 }
 
 export interface Metrics {
@@ -68,6 +67,7 @@ export interface EvalsReport {
   agent: string;
   serving: string;
   model: string;
+  totalRuntime?: number;
 }
 
 export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPerTest: number): Metrics {

@@ -37,11 +37,8 @@ async function backfillSuite(suiteResultsDir: string, suiteName: string) {
 
 export async function runBackfill() {
   console.log('Starting Backfill of all results...'.cyan.bold);
-  console.log('process.argv:', process.argv);
 
-  let mainResultsDir = resultsDir;
-  
-  mainResultsDir = resolveResultsDir(process.argv, resultsDir);
+  let mainResultsDir = resolveResultsDir(process.argv, resultsDir);
 
   if (!fs.existsSync(mainResultsDir)) {
     console.error(`Results directory not found at ${mainResultsDir}!`.red);

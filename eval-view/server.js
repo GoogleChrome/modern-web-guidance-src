@@ -4,7 +4,6 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
-import { generateSuitesManifest } from './generate-manifests.js';
 
 const PORT = process.env.PORT || 8081;
 const STATIC = process.env.STATIC === 'true';
@@ -12,41 +11,27 @@ const STATIC = process.env.STATIC === 'true';
 if (STATIC) {
   console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
   
-  // Auto-generate manifests on startup to ensure local parity
-  if (process.env.USE_MOCK_RESULTS !== 'true') {
-    console.log('🔄 Generating static manifests for local parity...');
-    try {
-      generateSuitesManifest('.');
-      console.log('✅ Static manifests generated.');
-    } catch (e) {
-      console.error('Failed to trigger manifest generation:', e);
-    }
-  }
-
-  // Create dist/dashboard directory to mimic deployment structure
-  const distDir = path.resolve('dist/dashboard');
+  const distDir = path.resolve('../dist/dashboard');
   if (fs.existsSync(distDir)) {
     fs.rmSync(distDir, { recursive: true, force: true });
   }
   fs.mkdirSync(distDir, { recursive: true });
 
-  // Symlink eval-view files into dist/dashboard
   const sourceFiles = fs.readdirSync('.').filter(f => f !== 'dist' && f !== 'node_modules' && !f.startsWith('.'));
   for (const f of sourceFiles) {
     const destPath = path.join(distDir, f);
     try {
-      fs.symlinkSync(`../../${f}`, destPath);
+      fs.symlinkSync(`../../eval-view/${f}`, destPath);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.error(`Failed to create symlink for ${f}:`, message);
     }
   }
 
-  // Symlink data directories into dist/dashboard
   const links = [
-    { target: '../../../harness/results', name: 'results' },
-    { target: '../../../harness/tasks', name: 'tasks' },
-    { target: '../../../harness/base_apps', name: 'base_apps' }
+    { target: '../../harness/results', name: 'results' },
+    { target: '../../harness/tasks', name: 'tasks' },
+    { target: '../../harness/base_apps', name: 'base_apps' }
   ];
 
   for (const link of links) {
@@ -59,13 +44,12 @@ if (STATIC) {
     }
   }
 
-  console.log(`🚀 Spawning statikk on port ${PORT} serving dist/dashboard...`);
-  const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString(), 'dist/dashboard'], { stdio: 'inherit' });
+  console.log(`🚀 Spawning statikk on port ${PORT} serving ../dist/dashboard...`);
+  const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString(), '../dist/dashboard'], { stdio: 'inherit' });
   
   const url = `http://localhost:${PORT}/?source=static`;
   console.log(`Server running at ${url}`);
 
-  // Try to open the browser if not disabled
   if (process.env.NO_OPEN !== 'true') {
     const startCommand = process.platform === 'darwin' ? 'open' :
       process.platform === 'win32' ? 'start' : 'xdg-open';
@@ -147,15 +131,6 @@ const server = http.createServer(async (req, res) => {
 
   // Handle /api/suites endpoint
   if (decodedPath === '/api/suites') {
-
-
-    // Refresh manifests on every API call to keep local dev aligned with static manifests
-    try {
-      generateSuitesManifest('.');
-    } catch (e) {
-      console.error('Failed to refresh manifests during API call:', e);
-    }
-
     /** @type {SuiteInfo[]} */
     let suitesList = [];
 
@@ -173,14 +148,7 @@ const server = http.createServer(async (req, res) => {
           let timestamp = null;
           try {
             if (fs.existsSync(evalsJsonPath)) {
-              // Try reading internal canonical timestamp if it exists, fallback to mtime
-              const evalsContent = fs.readFileSync(evalsJsonPath, 'utf-8');
-              const match = evalsContent.match(/"timestamp":\s*"([^"]+)"/);
-              if (match) {
-                timestamp = match[1];
-              } else {
-                timestamp = fs.statSync(evalsJsonPath).mtime.toISOString();
-              }
+              timestamp = fs.statSync(evalsJsonPath).mtime.toISOString();
             } else {
               timestamp = fs.statSync(suiteDir).mtime.toISOString();
             }
@@ -290,7 +258,6 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (decodedPath === '/api/run-files') {
-
     const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
     const relativePath = parsedUrl.searchParams.get('dir');
     const source = parsedUrl.searchParams.get('source') || 'local';
@@ -328,7 +295,6 @@ const server = http.createServer(async (req, res) => {
   // --- Silent File Probing API ---
   // Avoids native browser 404 console errors by returning JSON { exists: boolean }
   if (decodedPath === '/api/exists') {
-
     const parsedUrl = new URL(reqUrl, `http://${req.headers.host}`);
     const checkPath = parsedUrl.searchParams.get('path');
     if (!checkPath) {
@@ -449,14 +415,13 @@ const server = http.createServer(async (req, res) => {
       if (err.code === 'EISDIR') {
         // It's a directory, try serving index.html
         const indexPath = path.join(filePath, 'index.html');
-        fs.readFile(indexPath, 'utf-8', (err2, content2) => {
+        fs.readFile(indexPath, (err2, content2) => {
           if (err2) {
             res.writeHead(404);
             res.end('404 Not Found (Directory index missing)');
           } else {
-            const finalContent = content2;
             res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end(finalContent, 'utf-8');
+            res.end(content2, 'utf-8');
           }
         });
         return;
@@ -485,9 +450,8 @@ const server = http.createServer(async (req, res) => {
         res.end(`Server Error: ${err.code}`);
       }
     } else {
-      const finalContent = content;
       res.writeHead(200, { 'Content-Type': contentType });
-      res.end(finalContent, 'utf-8');
+      res.end(content, 'utf-8');
     }
   });
 });
