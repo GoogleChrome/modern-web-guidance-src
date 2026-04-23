@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $, getAccessToken } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $ } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
@@ -596,46 +596,10 @@ function openReport(usedBasePath, testId) {
         api._fetch(finalPath)
             .then(res => { if (!res.ok) throw new Error(); return res.text(); })
             .then(text => {
-                const basePathForAssets = `https://storage.mtls.cloud.google.com/guidance-evals/${usedBasePath}`;
                 let modifiedText = text;
                 
-                // Inject auth header script for fetch calls
-                const token = getAccessToken();
-                const scriptToInject = `
-<script>
-    (function() {
-        const token = '${token || ''}';
-        if (token) {
-            const originalFetch = window.fetch;
-            window.fetch = async function(input, init) {
-                let url = '';
-                if (typeof input === 'string') url = input;
-                else if (input instanceof Request) url = input.url;
-                else if (input instanceof URL) url = input.href;
-
-                if (url.includes('storage.googleapis.com') || url.includes('mtls.cloud.google.com')) {
-                    init = init || {};
-                    init.headers = init.headers || {};
-                    if (init.headers instanceof Headers) {
-                        init.headers.set('Authorization', 'Bearer ' + token);
-                    } else {
-                        init.headers['Authorization'] = 'Bearer ' + token;
-                    }
-                }
-                return originalFetch(input, init);
-            };
-        }
-    })();
-</script>
-`;
-                // Insert base tag to resolve relative paths to mTLS domain
-                const baseTag = `<base href="${basePathForAssets}/grade-report/">`;
-                
-                // Remove any existing base tags first
-                modifiedText = modifiedText.replace(/<base[^>]*>/i, '');
-                
-                // Insert new base tag and script after <head>
-                modifiedText = modifiedText.replace('<head>', `<head>${baseTag}${scriptToInject}`);
+                // Targeted replacement for broken trace viewer link
+                modifiedText = modifiedText.replaceAll('trace/index.html?trace=', 'https://trace.playwright.dev/?trace=');
 
                 const htmlBlob = new Blob([modifiedText], { type: 'text/html' });
                 const url = URL.createObjectURL(htmlBlob);
