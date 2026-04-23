@@ -39,8 +39,8 @@ export class DumbbellChart {
     
     if (labels.length === 0) return;
 
-    let unguidedSet = datasets.find(d => d.label.toLowerCase() === 'unguided') || { data: Array.from({ length: labels.length }).fill(0) };
-    let guidedSet = datasets.find(d => d.label.toLowerCase() === 'guided') || { data: Array.from({ length: labels.length }).fill(0) };
+    let unguidedSet = datasets.find(d => d.label.toLowerCase() === 'unguided') || { data: Array.from({ length: labels.length }).fill(0), tokens: Array.from({ length: labels.length }).fill(0) };
+    let guidedSet = datasets.find(d => d.label.toLowerCase() === 'guided') || { data: Array.from({ length: labels.length }).fill(0), tokens: Array.from({ length: labels.length }).fill(0) };
 
     const width = this.options.size;
 
@@ -71,6 +71,8 @@ export class DumbbellChart {
 
         const uVal = unguidedSet.data[i] || 0;
         const gVal = guidedSet.data[i] || 0;
+        const uTokens = unguidedSet.tokens ? (unguidedSet.tokens[i] || 0) : 0;
+        const gTokens = guidedSet.tokens ? (guidedSet.tokens[i] || 0) : 0;
         
         if (this.options.hideZeros && uVal === 0 && gVal === 0) return;
 
@@ -79,6 +81,8 @@ export class DumbbellChart {
             useCaseId,
             uVal,
             gVal,
+            uTokens,
+            gTokens,
             originalIndex: i
         });
     });
@@ -363,15 +367,29 @@ export class DumbbellChart {
             const deltaColor = delta >= 0 ? "#7ee787" : "#ffa198";
             const deltaSign = delta > 0 ? "+" : "";
             
+            const uTokens = item.uTokens || 0;
+            const gTokens = item.gTokens || 0;
+            const tokenDelta = Math.round(gTokens - uTokens);
+            const tokenDeltaSign = tokenDelta > 0 ? "+" : "";
+            const tokenDeltaColor = tokenDelta <= 0 ? "#7ee787" : "#ffa198"; // Using fewer tokens is good (green)
+
             this.tooltip.style.display = 'block';
             this.tooltip.style.left = (e.clientX + 15) + 'px';
             this.tooltip.style.top = (e.clientY + 15) + 'px';
             this.tooltip.innerHTML = `
-                <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 250px;">
+                <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 280px;">
                     <!-- Left Column -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                          <div style="color: #fff; font-weight: bold; font-size: 14px; white-space: nowrap;">${item.useCaseId || "Default"}</div>
                          <div style="font-size: 11px; color: #8b949e;">feature: ${featureName}</div>
+                         ${uTokens > 0 || gTokens > 0 ? `
+                         <div style="font-size: 11px; color: #8b949e; margin-top: 8px;">
+                            Avg Tokens:<br/>
+                            Guided: <strong>${gTokens.toLocaleString()}</strong><br/>
+                            Unguided: <strong>${uTokens.toLocaleString()}</strong><br/>
+                            Diff: <strong style="color: ${tokenDeltaColor}">${tokenDeltaSign}${tokenDelta.toLocaleString()}</strong>
+                         </div>
+                         ` : ''}
                     </div>
                     <!-- Right Column -->
                     <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end; font-size: 12px;">

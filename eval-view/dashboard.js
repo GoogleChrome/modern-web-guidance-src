@@ -1026,7 +1026,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 
 function renderDashboardDumbbellChart(data, testId) {
     const results = data.results;
-    const { labels, guided, unguided } = calculateChartData(results);
+    const { labels, guided, unguided, guided_tokens, unguided_tokens } = calculateChartData(results);
 
     if (labels.length < 1) {
         document.getElementById('chart-section').classList.add('hidden');
@@ -1056,11 +1056,13 @@ function renderDashboardDumbbellChart(data, testId) {
         {
             label: 'Unguided',
             data: unguided,
+            tokens: unguided_tokens,
             onClick: handlePointClick
         },
         {
             label: 'Guided',
             data: guided,
+            tokens: guided_tokens,
             onClick: handlePointClick
         }
     ];
