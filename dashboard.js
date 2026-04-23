@@ -866,7 +866,8 @@ async function showDetails(testName, runs, stats, testId) {
             } else if (val.startsWith('trace:')) {
                 const zipName = val.substring(6);
                 const tracePath = `${usedBasePath}/grade-report/data/${zipName}`;
-                const traceUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${tracePath}`;
+                const proxyUrl = 'https://gcs-proxy-169412140096.us-central1.run.app';
+                const traceUrl = `${proxyUrl}?path=${encodeURIComponent(tracePath)}`;
                 window.open(`https://trace.playwright.dev/?trace=${encodeURIComponent(traceUrl)}`, '_blank');
             } else if (val === 'raw') {
                 const rawPath = `${usedBasePath}/${guide}_results.json`;
