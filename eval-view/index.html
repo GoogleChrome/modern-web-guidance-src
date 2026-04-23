@@ -58,20 +58,16 @@
               <th>
                 <select id="filter-agent" class="header-filter-select">
                   <option value="all">Agent</option>
-                  <optgroup label="Select Agent">
-                    <option value="jetski">jetski</option>
-                    <option value="gemini_cli">gemini_cli</option>
-                    <option value="claude_code">claude_code</option>
+                  <optgroup label="Select Agent" id="filter-agent-group">
+                    <!-- populated dynamically -->
                   </optgroup>
                 </select>
               </th>
               <th>
                 <select id="filter-serving" class="header-filter-select">
                   <option value="all">Serving</option>
-                  <optgroup label="Select Architecture">
-                    <option value="skills">Skills</option>
-                    <option value="skills_cli">Skills (CLI)</option>
-                    <option value="mcp">MCP</option>
+                  <optgroup label="Select Architecture" id="filter-serving-group">
+                    <!-- populated dynamically -->
                   </optgroup>
                 </select>
               </th>

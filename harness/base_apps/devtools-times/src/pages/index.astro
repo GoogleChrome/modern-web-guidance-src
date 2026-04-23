@@ -1,0 +1,84 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ArticleTeaser from '../components/ArticleTeaser.astro';
+import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+import Ad from '../components/AdSlotBanner';
+import { getCollection } from 'astro:content';
+import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+import type { RenderResult } from 'astro:content';
+
+const articles = await getCollection('articles');
+articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+// Slicing articles for different sections
+const topArticle = articles[0];
+const topStories = articles.slice(1, 4);
+const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+
+// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+politicsArticles[2] = {
+    id: 'wndt.md',
+    data: {
+      title: 'What\'s new in DevTools',
+      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+      author: 'Chrome DevTools Team',
+      date: new Date('2025-09-16T00:00:00.000Z'),
+      category: 'Web Development',
+      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+      image_caption: '',
+      readingTime: 3
+    },
+    body: '',
+    collection: 'articles',
+    slug: 'public-transit-overhaul',
+    render: async () => '' as unknown as RenderResult,
+  };
+---
+
+<Layout title="The DevTools Times">
+    <!-- Top Stories Bar -->
+    <div class="bg-white border-b border-gray-300">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {topStories.map(article => (
+                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+                        <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`}>
+                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+                        </a>
+                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+        <ArticleTeaser article={topArticle} large={true} />
+    </main>
+
+    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+        <section class="p-4 md:p-6 text-center">
+            <Ad client:visible />
+        </section>
+
+        <!-- "Top News" section with the new grid variant -->
+        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+
+        <section class="p-4 md:p-6 text-center">
+            <Ad client:visible />
+        </section>
+
+        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+
+        <section class="p-4 md:p-6 text-center">
+            <Ad client:visible />
+        </section>
+
+        <!-- "Politics" section with the new grid variant -->
+        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+        
+    </div>
+</Layout>

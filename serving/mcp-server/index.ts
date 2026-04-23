@@ -3,16 +3,18 @@ import path from 'path';
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { MODERN_WEB_LOG_FILE } from "../../constants.ts";
 
-const logDir = process.env.MODERN_WEB_LOG_DIR || process.cwd();
-const logPath = path.join(logDir, MODERN_WEB_LOG_FILE);
+if (process.env.ENABLE_FILE_LOGGING === 'true') {
+  const logDir = process.env.MODERN_WEB_LOG_DIR || process.cwd();
+  const logPath = path.join(logDir, MODERN_WEB_LOG_FILE);
 
-const originalConsoleError = console.error;
-console.error = (...args) => {
-  // Basic formatting for the log file
-  const message = args.map(a => (a instanceof Error ? a.stack : typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
-  fs.appendFileSync(logPath, message + '\n');
-  originalConsoleError(...args);
-};
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    // Basic formatting for the log file
+    const message = args.map(a => (a instanceof Error ? a.stack : typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+    fs.appendFileSync(logPath, message + '\n');
+    originalConsoleError(...args);
+  };
+}
 
 async function main() {
   try {

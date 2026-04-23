@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <style>
+    #feature { 
+      anchor-name: --feature; 
+      margin: 100px; 
+      padding: 20px; 
+      background: #eee; 
+      display: inline-block; 
+    }
+
+    #tour-step {
+      popover: manual;
+      position: fixed;
+      position-anchor: --feature;
+      position-area: right center;
+      inset: auto;
+      margin: 1rem;
+      padding: 1rem;
+      border: 1px solid blue;
+      border-radius: 0.5rem;
+      background: aliceblue;
+    }
+  </style>
+</head>
+<body>
+  <div id="feature">New Feature</div>
+  <div id="tour-step" popover="manual">
+    <h3>Step 1</h3>
+    <p>Interact with this feature!</p>
+    <button popovertarget="tour-step" popovertargetaction="hide">Got it</button>
+  </div>
+  <script>window.onload = () => document.getElementById('tour-step').showPopover();</script>
+</body>
+</html>

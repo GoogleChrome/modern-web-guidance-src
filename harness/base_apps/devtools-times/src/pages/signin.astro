@@ -1,0 +1,10 @@
+---
+import Layout from '../layouts/Layout.astro';
+import SignInForm from '../components/SignInForm';
+---
+
+<Layout title="Sign In | The DevTools Times">
+  <div class="py-12 px-4 sm:px-6 lg:px-8">
+    <SignInForm client:load />
+  </div>
+</Layout>

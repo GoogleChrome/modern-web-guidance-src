@@ -1,12 +1,12 @@
 # Guidance
 
-A unified repository for modern web development guidance, containing both an MCP server for AI-assisted development and an evaluation suite for measuring AI adoption of modern web APIs.
+A unified repository for modern web development guidance, containing both a Skill/CLI distribution and an MCP server for AI-assisted development, alongside an evaluation suite for measuring AI adoption of modern web APIs.
 
 ## Project Structure
 
 - **`guides/`**: All guide content, organized by discipline (performance, user-experience, etc.). Also contains the dev pipeline scripts (`dev-guide.ts`, `run-grader.ts`, `grader-gen.ts`, `negative-gen.ts`).
 - **`harness/`**: The Guidance eval harness for executing and scoring tests. Includes task definitions, agent runners, and base apps.
-- **`serving/`**: The Modern Web MCP server. This provides semantic search over curated web development guides and browser support data.
+- **`serving/`**: The Modern Web guidance server supporting both a standalone CLI (Skills) and an MCP server. This provides semantic search over curated web development guides and browser support data.
 - **`eval-view/`**: A static dashboard for visualizing and analyzing evaluation results.
 - **`bin/gd.ts`**: The unified CLI entry point.
 
@@ -35,17 +35,18 @@ pnpm link --global && gd setup-completion
 
 #### modern-web
 
-The MCP server allows AI agents to access high-quality implementation patterns and browser compatibility data.
+Guidance is primarily served to AI agents as a **Skill** via a standalone CLI distribution (`skills_cli`). This allows agents to execute semantic searches and retrieve implementation patterns directly within their local environment.
+
+Alternatively, an **MCP server** is available for agents that support the Model Context Protocol, providing dynamic, connection-based access to the same underlying data.
 
 ```bash
 cd serving
 pnpm run build
-pnpm start
 ```
 
-For more details, see the [Serving README](./serving/mcp-server/README.md).
+For MCP usage specifically, you can start the server with `pnpm start`. For more details on the server internals, see the [Serving README](./serving/mcp-server/README.md).
 
-This server can be enabled in the [`harness/config.ts`](./harness/config.ts) file by adding it to the `mcpServersToEnable` list.
+The primary serving mechanism is controlled by the `serving` setting in [`harness/config.ts`](./harness/config.ts), which defaults to `Serving.SKILLS_CLI`.
 
 #### google-developer-knowledge
 
@@ -70,9 +71,10 @@ gd dev [dir] [options]        # auto-generate/calibrate
 
 # Evaluation
 gd eval                       # run the full evaluation suite
-gd eval [task1] [task2]       # run specific tasks
+gd eval [task1] [task2]       # run specific tasks (which are the names of guides e.g. `batch-analytics-events`)
 gd eval --config <custom_config>       # run with config overrides (defaults to config.ts, or harness/config.ts)
 gd dashboard                  # start the evaluation dashboard
+gd backfill                   # backfill metrics for historical suites
 
 # To upload results to GCS (Project: chrome-kiwi-air-force-dev, Bucket: guidance-evals)
 gd upload <suite-name>

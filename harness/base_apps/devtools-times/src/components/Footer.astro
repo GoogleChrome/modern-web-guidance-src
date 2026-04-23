@@ -1,0 +1,105 @@
+---
+const baseUrl = import.meta.env.BASE_URL;
+---
+<footer class="bg-white text-black p-6 md:p-10 w-full relative z-50">
+        
+    <!-- Top section: Logo -->
+    <div class="border-b border-gray-300 pb-6 mb-6">
+        <a href={baseUrl}>
+            <img
+                src=`${baseUrl}logo.svg`
+                alt="The DevTools Times"
+                class="h-10"
+            />
+        </a>
+    </div>
+
+    <!-- Middle section: Main navigation links -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
+        
+        <!-- Column 1: NEWS -->
+        <div>
+            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">News</h3>
+            <ul class="space-y-2">
+                <li><a href="/category/national" class="text-sm hover:underline">National</a></li>
+                <li><a href="/category/politics" class="text-sm hover:underline">Politics</a></li>
+                <li><a href="/category/business" class="text-sm hover:underline">Business</a></li>
+            </ul>
+        </div>
+
+        <!-- Column 2: ARTS -->
+        <div>
+            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h3>
+            <ul class="space-y-2">
+                <li><a href="/category/culture" class="text-sm hover:underline">Culture</a></li>
+                <li><a href="/category/media" class="text-sm hover:underline">Media</a></li>
+            </ul>
+        </div>
+
+        <!-- Column 3: LIFESTYLE -->
+        <div>
+            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h3>
+            <ul class="space-y-2">
+                <li><a href="/category/lifestyle" class="text-sm hover:underline">Lifestyle</a></li>
+                <li><a href="/category/sports" class="text-sm hover:underline">Sports</a></li>
+                <li><a href="/category/urban%20development" class="text-sm hover:underline">Urban Development</a></li>
+            </ul>
+        </div>
+
+        <!-- Column 4: SCIENCE & TECH -->
+        <div>
+            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
+            <ul class="space-y-2">
+                <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
+            </ul>
+        </div>
+
+        <!-- Empty Spacer Columns -->
+        <div class="hidden lg:block"></div>
+        <div class="hidden lg:block"></div>
+
+        <!-- Column 7: ACCOUNT -->
+        <div class="col-span-2 sm:col-span-1">
+            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h3>
+            <ul class="space-y-2 mb-4">
+                <li>
+                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                        Subscribe
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        Manage My Account
+                    </a>
+                </li>
+            </ul>
+            
+            <!-- Secondary Account Links -->
+            <ul class="space-y-2 text-xs text-gray-600">
+                <li><a href="#" class="hover:underline">Email Newsletters</a></li>
+            </ul>
+        </div>
+
+    </div>
+
+    <!-- Bottom section: Legal, copyright, and privacy -->
+    <div class="border-t border-gray-300 mt-8 pt-6 text-xs text-gray-500">
+        <!-- Copyright and legal links -->
+        <div class="flex flex-wrap justify-center gap-x-4 gap-y-2">
+            <span>© 2025 The DevTools Times Company</span>
+            <a href="#" class="hover:underline">Contact Us</a>
+            <a href="#" class="hover:underline">Work with us</a>
+            <a href=`${baseUrl}legal/privacy` class="hover:underline">Privacy Policy</a>
+            <a href=`${baseUrl}legal/terms` class="hover:underline">Terms of Service</a>
+            <a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a>
+        </div>
+        
+        <!-- Privacy settings link -->
+        <div class="text-center mt-4">
+            <a href="#" class="hover:underline">Manage Privacy Preferences</a>
+        </div>
+    </div>
+
+</footer>
