@@ -13,9 +13,6 @@ if (STATIC) {
   console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
   
   const distDir = path.resolve('../dist/dashboard');
-  
-  console.log('🔄 Generating manifests for static mode...');
-  await runAllManifests({ outputDir: distDir });
 
   if (fs.existsSync(distDir)) {
     fs.rmSync(distDir, { recursive: true, force: true });
@@ -48,6 +45,9 @@ if (STATIC) {
       console.error(`Failed to create symlink for ${link.name}:`, message);
     }
   }
+
+  console.log('🔄 Generating manifests for static mode...');
+  await runAllManifests({ outputDir: distDir });
 
   console.log(`🚀 Spawning statikk on port ${PORT} serving ../dist/dashboard...`);
   const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString(), '../dist/dashboard'], { stdio: 'inherit' });
