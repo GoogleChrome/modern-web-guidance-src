@@ -12,7 +12,7 @@ sources:
   - https://github.com/GoogleChromeLabs/scheduler-polyfill
 ---
 
-When building complex web applications, tasks have different levels of urgency. Fetching data for the current view is more important than sending analytics or prefetching assets. The Prioritized Task Scheduling API allows you to schedule work with specific priorities, ensuring the browser remains responsive to user input.
+When building complex web applications, tasks have different levels of urgency. Completing tasks for the current view is more important than sending analytics or prefetching assets. The Prioritized Task Scheduling API allows you to schedule work with specific priorities, ensuring the browser remains responsive to user input.
 
 ### Scheduling tasks by priority
 
