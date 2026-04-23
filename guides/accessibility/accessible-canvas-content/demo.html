@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Demo: Accessible Canvas Content</title>
+    <style>
+        body { font-family: sans-serif; }
+        canvas { border: 1px solid #ccc; display: block; margin-bottom: 20px; }
+        #form_element {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            width: 100%;
+            height: 80px;
+            box-sizing: border-box;
+            font-family: sans-serif;
+            font-size: 16px;
+        }
+        #form_element input {
+            width: 150px;
+            height: 30px;
+            box-sizing: border-box;
+            padding: 5px;
+            border: 1px solid #999;
+            border-radius: 3px;
+        }
+        #form_element button {
+            width: 70px;
+            height: 30px;
+            box-sizing: border-box;
+            padding: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Accessible Canvas Content with HTML-in-Canvas</h1>
+    <p>This demo compares HTML-in-Canvas (accessible) with manual canvas rendering (opaque to accessibility). </p>
+    <p>Try to tab through the form elements in the first canvas. You should not be able to do it in the second canvas.</p>
+
+    <!-- Good practice for accessibility: Use layoutsubtree to expose content to assistive technologies -->
+    <!-- accessible canvas example begins -->
+    <h2>Canvas 1: Using HTML-in-Canvas</h2>
+    <canvas id="canvas" style="width: 400px; height: 100px;" layoutsubtree>
+        <form id="form_element">
+            <label for="name">Name:</label>
+            <input id="name" type="text" value="John Doe">
+            <button type="submit">Submit</button>
+        </form>
+    </canvas>
+    <script>
+        // Script for Canvas 1
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const form_element = document.getElementById('form_element');
+
+        canvas.onpaint = (event) => {
+            ctx.reset();
+            // Draw at (0, 10) to fill width but keep vertical margin
+            const transform = ctx.drawElementImage(form_element, 0, 10);
+            form_element.style.transform = transform.toString();
+        };
+
+        const observer = new ResizeObserver(([entry]) => {
+            canvas.width = entry.devicePixelContentBoxSize[0].inlineSize;
+            canvas.height = entry.devicePixelContentBoxSize[0].blockSize;
+            canvas.requestPaint();
+        });
+        observer.observe(canvas, {box: 'device-pixel-content-box'});
+    </script>
+    <!-- accessible canvas example ends -->
+    
+    <!-- Bad practice for accessibility: Manual rendering makes content opaque to browser features and assistive tools -->
+    <!-- manual canvas example begins -->
+    <h2>Canvas 2: Manual Rendering (No HTML-in-Canvas)</h2>
+    <canvas id="canvas_manual" style="width: 400px; height: 100px;"></canvas>
+    <script>
+        // Script for Canvas 2
+        const canvas_manual = document.getElementById('canvas_manual');
+        const ctx_manual = canvas_manual.getContext('2d');
+
+        function drawManual() {
+            ctx_manual.clearRect(0, 0, canvas_manual.width, canvas_manual.height);
+            
+            const dpr = window.devicePixelRatio || 1;
+            ctx_manual.save();
+            ctx_manual.scale(dpr, dpr);
+            
+            // Replicate the look of the first canvas
+            // Background for "form"
+            ctx_manual.fillStyle = '#f0f0f0';
+            // Use CSS width for the rectangle
+            const cssWidth = canvas_manual.width / dpr;
+            ctx_manual.fillRect(0, 10, cssWidth, 80);
+            
+            // Label "Name:"
+            ctx_manual.fillStyle = '#000';
+            ctx_manual.font = '16px sans-serif';
+            ctx_manual.fillText('Name:', 10, 55);
+            
+            // Input Box (width: 150, height: 30)
+            ctx_manual.fillStyle = '#fff';
+            ctx_manual.strokeStyle = '#999';
+            ctx_manual.lineWidth = 1;
+            ctx_manual.fillRect(70, 35, 150, 30);
+            ctx_manual.strokeRect(70, 35, 150, 30);
+            
+            // Input Text
+            ctx_manual.fillStyle = '#000';
+            ctx_manual.fillText('John Doe', 75, 55);
+            
+            // Button (width: 70, height: 30)
+            ctx_manual.fillStyle = '#007bff';
+            ctx_manual.fillRect(230, 35, 70, 30);
+            
+            // Button Text
+            ctx_manual.fillStyle = '#fff';
+            ctx_manual.fillText('Submit', 240, 55);
+            
+            ctx_manual.restore();
+        }
+
+        const observer_manual = new ResizeObserver(([entry]) => {
+            canvas_manual.width = entry.devicePixelContentBoxSize[0].inlineSize;
+            canvas_manual.height = entry.devicePixelContentBoxSize[0].blockSize;
+            drawManual();
+        });
+        observer_manual.observe(canvas_manual, {box: 'device-pixel-content-box'});
+    </script>
+    <!-- manual canvas example ends -->
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Demo: Canvas Browser Features</title>
+    <style>
+        body { font-family: sans-serif; }
+        canvas { border: 1px solid #ccc; }
+        .translatable-content {
+            font-size: 16px;
+            color: #333;
+            width: 300px;
+            padding: 10px;
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <h1> Browser Features for Canvas Content</h1>
+    <p>This demo shows how HTML-in-Canvas enables integration with browser features like Translation or Autofill.</p>
+    
+    <canvas id="canvas" style="width: 400px; height: 400px;" layoutsubtree>
+        <div id="content_element" class="translatable-content">
+            <p>This text is rendered inside the canvas but is present in the DOM tree. Browser features like translation services and reading mode can access this content because it is part of the layout subtree.</p>
+            <p>It even supports Autofill! If you have an email address saved in your browser, try to focus on the input field and trigger the Autofill dropdown.</p>
+            <input type="email" name="email" autocomplete="email" placeholder="enter your email">
+        </div>
+    </canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const content_element = document.getElementById('content_element');
+
+        canvas.onpaint = (event) => {
+            ctx.reset();
+            // Draw the text element into the canvas
+            const transform = ctx.drawElementImage(content_element, 10, 10);
+            // Synchronize DOM position
+            content_element.style.transform = transform.toString();
+        };
+
+        // Initialize canvas size
+        const observer = new ResizeObserver(([entry]) => {
+            canvas.width = entry.devicePixelContentBoxSize[0].inlineSize;
+            canvas.height = entry.devicePixelContentBoxSize[0].blockSize;
+            canvas.requestPaint();
+        });
+        observer.observe(canvas, {box: 'device-pixel-content-box'});
+    </script>
+</body>
+</html>
