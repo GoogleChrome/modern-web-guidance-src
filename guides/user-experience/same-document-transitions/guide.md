@@ -1,6 +1,6 @@
 ---
-name: shared-element-transitions
-description: Visually connect persisting elements across different page states or navigations (e.g. expanding a product thumbnail into a full-bleed hero image) by smoothly morphing their size, position, or other styling properties.
+name: same-document-transitions
+description: Visually connect persisting elements across different page states or navigations in a Single Page Application (SPA) (e.g. expanding a product thumbnail into a full-bleed hero image) by smoothly morphing their size, position, or other styling properties.
 web-feature-ids:
   - view-transitions
 sources:
@@ -10,7 +10,7 @@ sources:
   - https://web.dev/learn/css/view-transitions-spas
 ---
 
-# Shared Element Transitions
+# Same Document Transitions
 
 ## The Problem
 
@@ -18,7 +18,7 @@ Web sites often provide multiple views of an object, for instance a list of prod
 
 ## The Solution
 
-The **View Transitions API** allows you to specify element pairs that exist in different states before and after a transition. When a transition occurs, the browser identifies these shared elements by their shared unique `view-transition-name`. It then automatically calculates the difference in their position, size, and styling, and animates them smoothly from the old state to the new state. This transition occurs in the top layer, above even elements with high `z-index` values.
+The **View Transitions API** allows you to specify element pairs that exist in different states before and after a transition. When triggering a transition with `document.startViewTransition()` in a Single Page Navigation (SPA), the browser identifies these shared elements by their shared unique `view-transition-name`. It then automatically calculates the difference in their position, size, and styling, and animates them smoothly from the old state to the new state. This transition occurs in the top layer, above even elements with high `z-index` values.
 
 ## Implementation Guide
 
