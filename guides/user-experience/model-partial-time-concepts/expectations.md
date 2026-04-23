@@ -1,0 +1,9 @@
+- The implementation MUST feature-detect the `Temporal` API using `typeof Temporal === 'undefined'` before usage.
+- The implementation MUST conditionally load a Temporal polyfill only if native support is absent.
+- The implementation MUST manually assign the loaded polyfill to `globalThis.Temporal` to ensure it is globally accessible.
+- The implementation MUST use `Temporal.PlainYearMonth` for modeling concepts that only have a year and a month (like credit card expiry).
+- The implementation MUST use `Temporal.PlainMonthDay` for modeling annual recurring events without a specific year (like birthdays).
+- The implementation MUST use `Temporal.PlainTime` for modeling time of day without a date (like daily alarms).
+- The implementation MUST NOT attempt to perform arithmetic directly on `PlainMonthDay` without converting it to a `PlainDate` first by providing a year.
+- The implementation MUST include explicit calendar properties (e.g., `calendar: 'iso8601'`) when creating instances from objects to ensure safety across polyfill implementations.
+- The implementation MUST NOT use the legacy `Date` object for representing partial time concepts.

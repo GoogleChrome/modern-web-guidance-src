@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Individual Transform Properties</title>
+  <title>Individual Transform Properties Demo</title>
   <style>
     body {
       display: grid;
@@ -10,59 +10,71 @@
       min-height: 100vh;
       margin: 0;
       font-family: system-ui, sans-serif;
-      text-align: center;
+      background-color: #f4f4f9;
     }
 
     .container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 3rem;
-      max-width: 600px;
-      padding: 2rem;
-    }
-
-    p {
-      color: #333;
-      line-height: 1.5;
+      text-align: center;
+      max-width: 500px;
     }
 
     .target {
       width: 100px;
       height: 100px;
-      background-color: dodgerblue;
-      border-radius: 8px;
-      
-      /* Independent animations for individual transform properties */
-      animation: 
-        move 2s infinite alternate ease-in-out, 
-        spin 4s infinite linear;
-      
-      /* Transition specifically for the scale property */
-      transition: scale 0.2s ease;
+      background-color: #007bff;
+      margin: 2rem auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+
+      /* Initialize properties to identity values to maintain a stable stacking context */
+      translate: 0 0;
+      rotate: 0deg;
+      scale: 1;
+
+      /* Transition only the scale property */
+      transition: scale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    .target:hover {
-      scale: 1.5;
-      background-color: deepskyblue;
+    /* Fallback for browsers without individual transform support */
+    @supports not (translate: 0 0) {
+      .target {
+        transform: translate(0, 0) rotate(0deg) scale(1);
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .target:hover {
+        transform: translate(0, 0) rotate(0deg) scale(1.2);
+      }
     }
 
-    @keyframes move {
-      0% { translate: -100px 0; }
-      100% { translate: 100px 0; }
+    /* Modern implementation */
+    @supports (translate: 0 0) {
+      .target:hover {
+        scale: 1.2;
+      }
     }
+
+      .target {
+        animation: 
+          slide 3s infinite alternate ease-in-out,
+          spin 8s infinite linear;
+      }
     
+
+    @keyframes slide {
+      from { translate: -50px 0; }
+      to { translate: 50px 0; }
+    }
+
     @keyframes spin {
-      0% { rotate: 0deg; }
-      100% { rotate: 360deg; }
+      from { rotate: 0deg; }
+      to { rotate: 360deg; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <p>
-      Notice how hovering over the box smoothly scales it up without interrupting its translation or rotation animations. This independence is possible because <code>scale</code>, <code>translate</code>, and <code>rotate</code> are now individual CSS properties, avoiding the need to recalculate a single complex <code>transform</code> string.
-    </p>
+    <h1>Individual Transforms</h1>
+    <p>Hover over the box to see it scale without interrupting the translation or rotation animations.</p>
     <div class="target"></div>
   </div>
 </body>

@@ -13,7 +13,6 @@ sources:
 ---
 
 # Declarative Button Actions
-
 The Invoker Commands API allows buttons to trigger actions on target elements declaratively using HTML attributes. This approach reduces the need for manual event listeners and ensures interactivity as soon as the HTML is parsed.
 
 For custom, application-specific actions, you can define your own command names. Custom commands must be prefixed with a double dash (`--`) to avoid collisions with future built-in browser commands.
