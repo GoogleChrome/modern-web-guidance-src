@@ -3,7 +3,7 @@
 import { parseArgs } from "util";
 
 import { retrieveUseCase } from "../lib/retrieve.ts";
-import { getFeatureStatus, checkBaseline } from "../mcp-server/data/baseline.ts";
+import { getFeatureStatus, checkBaseline } from "../lib/baseline.ts";
 
 const { values } = parseArgs({
   args: process.argv.slice(2),
