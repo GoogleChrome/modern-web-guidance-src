@@ -14,23 +14,83 @@
       .adjusted {
         font-size-adjust: from-font;
       }
+      @supports not (font-size-adjust: from-font) {
+        .adjusted {
+          /* Manual adjustment for browsers without support (if needed) */
+          line-height: 1.6;
+          font-size: 1.2rem;
+        }
+      }
 
       span {
         font-family: Times;
       }
+      #independent-theme-container {
+        max-width: 30em;
+      }
+      [swap-font] p {
+        font-family: Times;
+      }
+      [swap-font] p.adjust {
+        font-size-adjust: 0.51;
+      }
+      @supports not (font-size-adjust: 0.51) {
+        [swap-font] p.adjust {
+          /* Manual adjustment for browsers without support (if needed) */
+          line-height: 1.6;
+          font-size: 1.25rem;
+        }
+      }
     </style>
+    <script type="module">
+      const button = document.getElementById("swap-font");
+      button.addEventListener("click", () => {
+        const paragraphs = document.getElementById("independent-theme-container");
+        paragraphs.toggleAttribute("swap-font");
+      });
+    </script>
   </head>
   <body>
-    <h2>Without <code>font-size-adjust</code></h2>
-    <p>
-      This <span>is</span> some <span>text</span> where <span>every</span> other
-      <span>word</span> is <span>in</span> a <span>different</span> font.
-    </p>
+    <section>
+      <h2>Mixed fonts in a text block</h2>
 
-    <h2>With <code>font-size-adjust: from-font</code></h2>
-    <p class="adjusted">
-      This <span>is</span> some <span>text</span> where <span>every</span> other
-      <span>word</span> is <span>in</span> a <span>different</span> font.
-    </p>
+      <h3>Without <code>font-size-adjust</code></h3>
+      <p>
+        This <span>is</span> some <span>text</span> where
+        <span>every</span> other <span>word</span> is <span>in</span> a
+        <span>different</span> font.
+      </p>
+
+      <h3>With <code>font-size-adjust: from-font</code></h3>
+      <p class="adjusted" id="mixed-fonts-container">
+        This <span>is</span> some <span>text</span> where
+        <span>every</span> other <span>word</span> is <span>in</span> a
+        <span>different</span> font.
+      </p>
+    </section>
+    <section id="independent-theme-container">
+      <h2>Font replacement</h2>
+      <button id="swap-font">Swap Font</button>
+      <h3>With <code>font-size-adjust</code></h3>
+      <p class="adjust">
+        My girl wove six dozen plaid jackets before she quit. Grumpy wizards
+        make a toxic brew for the jovial queen. A quivering Texas zombie fought
+        republic linked jewelry. All questions asked by five watched experts
+        amaze the judge. Back in June we delivered oxygen equipment of the same
+        size. The wizard quickly jinxed the gnomes before they vaporized. We
+        promptly judged antique ivory buckles for the next prize. Jim quickly
+        realized that the beautiful gowns are expensive.
+      </p>
+      <h3>Without <code>font-size-adjust</code></h3>
+      <p>
+        My girl wove six dozen plaid jackets before she quit. Grumpy wizards
+        make a toxic brew for the jovial queen. A quivering Texas zombie fought
+        republic linked jewelry. All questions asked by five watched experts
+        amaze the judge. Back in June we delivered oxygen equipment of the same
+        size. The wizard quickly jinxed the gnomes before they vaporized. We
+        promptly judged antique ivory buckles for the next prize. Jim quickly
+        realized that the beautiful gowns are expensive.
+      </p>
+    </section>
   </body>
 </html>

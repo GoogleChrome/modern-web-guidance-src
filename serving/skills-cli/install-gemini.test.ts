@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { createIsolatedHome, cleanupIsolatedHome } from '../../harness/lib/agent-shared.ts';
+import { parseGeminiStreamOutput } from '../../harness/agents/gemini-cli-agent.ts';
 
 test('Gemini CLI verifies extension install capability', { skip: !process.env.FULL }, async () => {
     let homeDir = '';
@@ -30,11 +31,24 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
 
         console.log(`\nRunning Gemini prompt using the skill...`);
         const promptCmd = `${geminiBin} -p "use the modern-web-use-cases skill and tell me best practices on implementing an address form" -o stream-json --yolo`;
-        execSync(promptCmd, { 
-            stdio: 'inherit', 
+        const output = execSync(promptCmd, { 
+            stdio: ['ignore', 'pipe', 'pipe'], 
             timeout: 90000,
             env: { ...process.env, HOME: homeDir }
         });
+
+        console.log(`\nVerifying Gemini used the skill...`);
+        const outputStr = output.toString();
+        const { skillActivated, searchCalled, retrieveCalled } = parseGeminiStreamOutput(outputStr);
+        
+        console.log(`\n[Validation State]`);
+        console.log(`- Skill Activated: ${skillActivated}`);
+        console.log(`- Search Called: ${searchCalled}`);
+        console.log(`- Retrieve Called: ${retrieveCalled}\n`);
+        
+        assert.ok(skillActivated, 'Skill should specify check for modern-web-use-cases activation');
+        assert.ok(searchCalled, 'Modern web search should be called');
+        assert.ok(retrieveCalled, 'Modern web retrieve should be called');
         
     } finally {
         if (homeDir) {

@@ -1,0 +1,12 @@
+- Moving the mouse over the card sets `--mouse-x` and `--mouse-y` custom properties for the x and y values of the mouse.
+- When the card is not hovered, there is a custom property `--inner-size` set to 0px.
+- When the card is not hovered, there is a custom property `--outer-size` set to 0px.
+- The `--inner-size` and `--outer-size` properties must be registered with `@property`.
+- When the card is hovered, `--inner-size` and `--outer-size` are a non-zero length.
+- The revealed content is not interactive, with `pointer-events: none`.
+- The revealed content has a `mask-image` property, which is a radial gradient from black to transparent. 
+- The position of the radial gradient is determined by the `--mouse-x` and `--mouse-y` custom properties from the mouse position.
+- The gradient stops are set by the `--inner-size` and `--outer-size` custom properties.
+- For users who prefer reduced motion, the `--inner-size` and `--outer-size` transition must happen immediately, by setting `transition-duration: 0`. 
+- The `--inner-size` and `--outer-size` custom properties must have a non-zero transition duration on the revealed content element.
+- The `--mouse-x` and `--mouse-y` must not have a transition on the revealed content element.

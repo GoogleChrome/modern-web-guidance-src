@@ -1,0 +1,10 @@
+---
+import Layout from '../layouts/Layout.astro';
+import SignUpForm from '../components/SignUpForm';
+---
+
+<Layout title="Sign Up | The DevTools Times">
+  <div class="py-12 px-4 sm:px-6 lg:px-8">
+    <SignUpForm client:load />
+  </div>
+</Layout>

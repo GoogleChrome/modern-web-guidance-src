@@ -1,0 +1,102 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { Image } from 'astro:assets';
+import { getArticleImage } from '../utils/images';
+import BookmarkButton from './BookmarkButton';
+import { BookOpenIcon } from '@heroicons/react/24/outline'
+
+export interface Props {
+    title: string;
+    articles: CollectionEntry<'articles'>[];
+}
+
+const { title, articles } = Astro.props;
+
+if (articles.length < 4) {
+    throw new Error("TeaserGridVariant requires at least 4 articles.");
+}
+
+const topArticle = articles[0];
+const bottomArticles = articles.slice(1, 4);
+
+const topArticleImage = await getArticleImage(topArticle);
+const bottomArticleImages = await Promise.all(bottomArticles.map(getArticleImage));
+
+const readingList = await Astro.session?.get('readingList') || [];
+
+const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+---
+<section class="p-4 md:p-6">
+    <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+        {title}
+    </h2>
+
+    <!-- Top Section: Large Article -->
+    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+            <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+                    {capitalizedCategory}
+                </a>
+                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.slug}`}>
+                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
+                        {topArticle.data.title}
+                    </h3>
+                </a>
+                <p class="text-gray-700 mb-4 text-base lg:text-lg">
+                    {topArticle.data.summary}
+                </p>
+                <div class="flex items-center text-gray-500 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                    <span>{topArticle.data.readingTime} Min Read</span>
+                </div>
+            </div>
+            <div class="w-full order-first lg:order-last">
+                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.slug}`}>
+                    <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Section: Three Smaller Articles -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+        {bottomArticles.map((article, index) => {
+            const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+            const isBookmarked = readingList.includes(article.slug);
+            return (
+                <div class="flex flex-col shadow-sm overflow-hidden h-full">
+                    {index === 1 && (
+                        <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`}>
+                            <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
+                        </a>
+                    )}
+                    <div class="p-4 sm:p-6 flex flex-col flex-grow">
+                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+                            {capitalizedBottomCategory}
+                        </a>
+                        <a href={`${import.meta.env.BASE_URL}articles/${article.slug}`}>
+                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
+                                {article.data.title}
+                            </h3>
+                        </a>
+                        {index !== 1 && (
+                             <p class="text-gray-700 mb-4 flex-grow">
+                                {article.data.summary}
+                            </p>
+                        )}
+                        <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+                            <span class="text-xs font-medium flex items-center">
+                                <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+                                {article.data.readingTime} Min.
+                            </span>
+                            <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
+                        </div>
+                    </div>
+                </div>
+            )
+        })}
+    </div>
+</section>

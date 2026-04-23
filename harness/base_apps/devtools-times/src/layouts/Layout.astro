@@ -1,0 +1,55 @@
+---
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+import "../styles/global.css";
+
+import { ClientRouter } from "astro:transitions";
+
+export interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+const baseUrl = import.meta.env.BASE_URL;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+
+    <link rel="icon" href=`${baseUrl}/favicon.svg` />
+
+    <ClientRouter />
+  </head>
+  <body class="bg-gray-100">
+    <div class="mx-auto">
+      <AdSlotFireplace client:load />
+      <div
+        class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+      >
+        <div>
+          <Header />
+        </div>
+        <main class="bg-white relative">
+          <slot />
+        </main>
+      </div>
+    </div>
+    <Footer />
+  </body>
+</html>

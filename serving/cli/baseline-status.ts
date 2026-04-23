@@ -1,5 +1,5 @@
 import { features } from 'web-features';
-import { getFeatureStatus } from '../mcp-server/data/baseline.ts';
+import { getFeatureStatus } from '../lib/baseline.ts';
 
 const args = process.argv.slice(2);
 

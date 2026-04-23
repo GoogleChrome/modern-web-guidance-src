@@ -7,9 +7,30 @@ import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
 import { resultsDir } from '../lib/paths.ts';
 
-import type { SuiteConfig } from './config.ts';
+import { Serving, type SuiteConfig } from './config.ts';
 
-export async function evaluateSuite(suiteResultsDir: string, suiteName: string) {
+function inferSuiteConfig(suiteResultsDir: string): SuiteConfig {
+  let agent = 'gemini-cli';
+  let serving: Serving = 'mcp';
+
+  const evalsPath = path.join(suiteResultsDir, 'evals.json');
+  if (fs.existsSync(evalsPath)) {
+    try {
+      const oldEvals = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+      if (oldEvals.agent) agent = oldEvals.agent;
+      if (oldEvals.serving) serving = oldEvals.serving;
+      else if (oldEvals.enableSkills !== undefined) {
+        serving = oldEvals.enableSkills ? 'skills' : 'mcp';
+      }
+    } catch {
+      // Ignore parse error
+    }
+  }
+
+  return { agent, serving, tasks: [], name: null, numRuns: 1, mcpServersToEnable: [] };
+}
+
+export async function evaluateSuite(suiteResultsDir: string, suiteName: string, suiteStartTime?: number) {
   console.log(`Evaluating suite: ${suiteName}`.cyan);
   console.log(`Results directory: ${suiteResultsDir}`.cyan);
 
@@ -29,19 +50,41 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string) 
   }
 
   if (!suiteConfig) {
-    console.error(`⚠️ No suite_config.json found or failed to parse in ${suiteResultsDir}. Aborting evaluation.`.red);
+    console.warn(`⚠️ No suite_config.json found in ${suiteResultsDir}. Inferring config...`.yellow);
+    suiteConfig = inferSuiteConfig(suiteResultsDir);
+    console.log(`Inferred: agent=${suiteConfig.agent}, serving=${suiteConfig.serving}`.cyan);
+  }
+
+  if (!suiteConfig) {
+    console.error(`⚠️ Failed to infer suite config for ${suiteResultsDir}. Aborting evaluation.`.red);
     return;
   }
 
   try {
-    const { allResults, numRuns } = await collectResults(suiteResultsDir, suiteConfig);
+    const { allResults, numRuns, totalRuntime: fallbackRuntime } = await collectResults(suiteResultsDir, suiteConfig);
     console.log(`Found ${numRuns} test run(s)`.cyan);
 
     const metrics = calculateMetrics(allResults, numRuns);
     const mdReport = generateMarkdownReport(metrics, allResults);
-    const timestamp = new Date().toISOString();
+    
+    let timestamp = new Date().toISOString();
+    const evalsPath = path.join(suiteResultsDir, 'evals.json');
+    if (fs.existsSync(evalsPath)) {
+      try {
+        const oldEvals = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+        if (oldEvals.timestamp) timestamp = oldEvals.timestamp;
+      } catch {
+        // Ignore
+      }
+    }
+
     const model = extractModelFromResults(suiteResultsDir, suiteConfig.agent);
-    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model);
+    const totalRuntime = suiteStartTime ? Date.now() - suiteStartTime : fallbackRuntime;
+    const jsonReport = generateJsonReport(metrics, allResults, timestamp, numRuns, suiteConfig.agent, suiteConfig.serving, model, totalRuntime);
+
+    if (totalRuntime) {
+      console.log(`Total runtime: ${totalRuntime}ms`);
+    }
 
     saveReports(suiteResultsDir, mdReport, jsonReport);
 
