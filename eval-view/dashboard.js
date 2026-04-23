@@ -566,6 +566,17 @@ function openTrajectory(usedBasePath, sessionFile) {
     }
 }
 
+function openReport(usedBasePath, testId) {
+    const path = `${usedBasePath}/grade-report/index.html`;
+    if (api.source === 'remote') {
+        // Use mTLS domain which handles auth and serves raw HTML, preserving relative paths
+        const url = `https://storage.mtls.cloud.google.com/guidance-evals/${path}${testId ? `#?testId=${testId}` : ''}`;
+        window.open(url, '_blank');
+    } else {
+        window.open(api.getAbsoluteUrl(path) + (testId ? `#?testId=${testId}` : ''), '_blank');
+    }
+}
+
 async function showDetails(testName, runs, stats, testId) {
     // Update URL without reloading
     const url = new URL(window.location.href);
@@ -729,12 +740,23 @@ async function showDetails(testName, runs, stats, testId) {
                     <li class="check-item">
                         <span class="check-status">${check.passed ? '✅' : '❌'}</span>
                         <span class="check-message">${escapeHtml(check.message)}</span>
-                        <a href="${api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`)}${check.testId ? `#?testId=${check.testId}` : ''}" target="_blank" class="secondary-btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
+                        <a href="#" class="secondary-btn report-link" data-test-id="${check.testId || ''}" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
                     </li>
                 `).join('')}
             </ul>
             ${usageSection}
         `;
+
+        const reportLinks = runDetail.querySelectorAll('.report-link');
+        reportLinks.forEach(link => {
+            if (link instanceof HTMLElement) {
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    const testId = link.dataset.testId;
+                    openReport(usedBasePath, testId);
+                };
+            }
+        });
 
         const viewResourcesLink = runDetail.querySelector('.view-resources-link');
         if (viewResourcesLink instanceof HTMLElement) {

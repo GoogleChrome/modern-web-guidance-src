@@ -267,6 +267,17 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       if (!allResults[testName]) {
         allResults[testName] = [];
       }
+
+      const runtimeJsonPath = path.join(dir, 'runtime.json');
+      let runtimeData = undefined;
+      if (fs.existsSync(runtimeJsonPath)) {
+        try {
+          runtimeData = JSON.parse(fs.readFileSync(runtimeJsonPath, 'utf-8'));
+        } catch (e) {
+          console.error(`Error parsing runtime.json for ${dir}:`, e);
+        }
+      }
+
       allResults[testName].push({
         runNumber: parseInt(runDir),
         results: scenarioResults,
@@ -281,7 +292,8 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         taskName: taskName,
         baseApp: actualBaseApp,
         prompt: taskInfo.prompt,
-        files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory())
+        files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
+        runtime: runtimeData
       });
     }
   }
