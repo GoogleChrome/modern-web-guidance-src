@@ -599,12 +599,11 @@ function openReport(usedBasePath, testId) {
                 const basePathForAssets = `https://storage.mtls.cloud.google.com/guidance-evals/${usedBasePath}`;
                 let modifiedText = text;
                 
-                // Inject auth header script for fetch calls and URL construction in the report
+                // Inject auth header script for fetch calls
                 const token = getAccessToken();
                 const scriptToInject = `
 <script>
     (function() {
-        // Auth for fetch
         const token = '${token || ''}';
         if (token) {
             const originalFetch = window.fetch;
@@ -626,28 +625,17 @@ function openReport(usedBasePath, testId) {
                 return originalFetch(input, init);
             };
         }
-
-        // URL construction for relative paths
-        const originalURL = window.URL;
-        const reportBasePath = '${basePathForAssets}/grade-report/';
-        
-        window.URL = function(url, base) {
-            if (typeof url === 'string') {
-                if (url.startsWith('data/')) {
-                    return new originalURL(reportBasePath + url);
-                }
-                if (url.startsWith('../test-results/')) {
-                    return new originalURL('${basePathForAssets}/test-results/' + url.substring(16));
-                }
-            }
-            return new originalURL(url, base);
-        };
-        window.URL.createObjectURL = originalURL.createObjectURL;
-        window.URL.revokeObjectURL = originalURL.revokeObjectURL;
     })();
 </script>
 `;
-                modifiedText = modifiedText.replace('<head>', `<head>${scriptToInject}`);
+                // Insert base tag to resolve relative paths to mTLS domain
+                const baseTag = `<base href="${basePathForAssets}/grade-report/">`;
+                
+                // Remove any existing base tags first
+                modifiedText = modifiedText.replace(/<base[^>]*>/i, '');
+                
+                // Insert new base tag and script after <head>
+                modifiedText = modifiedText.replace('<head>', `<head>${baseTag}${scriptToInject}`);
 
                 const htmlBlob = new Blob([modifiedText], { type: 'text/html' });
                 const url = URL.createObjectURL(htmlBlob);
