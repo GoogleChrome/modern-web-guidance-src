@@ -323,6 +323,9 @@ export class DumbbellChart {
           line.setAttribute("stroke", lineColor);
           line.setAttribute("stroke-width", "3"); // slightly thinner to fit multiple
           line.setAttribute("stroke-linecap", "round");
+          if (item.gTokens > item.uTokens) {
+            line.setAttribute("stroke-dasharray", "6 3");
+          }
           this.svg.appendChild(line);
 
           // To make it an "arrow", draw a triangle at the end - offset to sit clean of the dot
