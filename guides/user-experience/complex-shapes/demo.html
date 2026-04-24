@@ -36,6 +36,14 @@
       box-sizing: border-box;
     }
 
+    /* Fallback for browsers that support clip-path but not mask-image */
+    @supports (not (mask-image: url(x))) and (clip-path: inset(0)) {
+      .shaped-element {
+        /* Use a simple rounded rectangle as fallback */
+        clip-path: inset(5% round 15px);
+      }
+    }
+
     /* Hide the SVG from view */
     svg {
       position: absolute;

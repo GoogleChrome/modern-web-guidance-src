@@ -51,6 +51,20 @@
       mask-size: 10px 10px;
       mask-position: 0 0, 0 5px, 5px -5px, -5px 0px;
     }
+
+    /* Fallback using CSS pattern for browsers without mask support */
+    @supports not (mask-image: url(x)) {
+      .weathered-bg {
+        background-color: #2ecc71; /* Base color (light green) */
+        background-image: 
+          linear-gradient(45deg, #27ae60 25%, transparent 25%), 
+          linear-gradient(-45deg, #27ae60 25%, transparent 25%), 
+          linear-gradient(45deg, transparent 75%, #27ae60 75%), 
+          linear-gradient(-45deg, transparent 75%, #27ae60 75%);
+        background-size: 10px 10px;
+        background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+      }
+    }
     
     .content {
       position: relative;

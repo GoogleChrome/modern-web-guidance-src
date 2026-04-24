@@ -26,6 +26,14 @@
       -webkit-mask-image: url(#notch-stencil);
       mask-image: url(#notch-stencil);
     }
+
+    /* Fallback: Ensure content is visible even if mask fails */
+    @supports not (mask-image: url(#notch-stencil)) {
+      .notched-card {
+        background-color: #f0f0f0;
+        color: #333; /* Added to ensure contrast */
+      }
+    }
     
     /* Hide the SVG from view */
     svg {
