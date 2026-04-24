@@ -822,6 +822,14 @@ async function showDetails(testName, runs, stats, testId) {
                     dropdown.appendChild(rawOpt);
                 }
 
+                const traceFile = run.tracePath;
+                if (traceFile) {
+                    const traceOpt = document.createElement('option');
+                    traceOpt.value = `trace:${traceFile}`;
+                    traceOpt.textContent = 'Playwright Trace (Viewer)';
+                    dropdown.appendChild(traceOpt);
+                }
+
                 const runtimeJson = files.find(f => f === 'runtime.json');
                 if (runtimeJson) {
                     const runtimeOpt = document.createElement('option');
@@ -867,8 +875,12 @@ async function showDetails(testName, runs, stats, testId) {
             } else if (val.startsWith('trace:')) {
                 const traceRelativePath = val.substring(6);
                 const tracePath = `${usedBasePath}/${traceRelativePath}`;
-                const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${tracePath}`;
-                window.open(`https://storage.mtls.cloud.google.com/guidance-evals/trace/index.html?trace=${encodeURIComponent(mtlsUrl)}`, '_blank');
+                if (api.source === 'remote') {
+                    const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${tracePath}`;
+                    window.open(mtlsUrl, '_blank');
+                } else {
+                    window.open(api.getAbsoluteUrl(tracePath), '_blank');
+                }
             } else if (val.startsWith('screenshot:')) {
                 const screenshotRelativePath = val.substring(11);
                 const screenshotPath = `${usedBasePath}/${screenshotRelativePath}`;

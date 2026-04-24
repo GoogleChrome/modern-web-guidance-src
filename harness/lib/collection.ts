@@ -1,6 +1,7 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
+import { spawnSync } from 'child_process';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { Agents, type SuiteConfig } from '../config.ts';
 import { getTaskMap } from '../../lib/guide-validation.ts';
@@ -8,6 +9,7 @@ import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
 import { getGraderScriptContent } from './agent-shared.ts';
+import { rootDir } from '../../lib/paths.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string): boolean {
   return fs.existsSync(targetFile) || fs.existsSync(targetPkgJson);
@@ -122,6 +124,13 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       // Generate a runner script to be picked up by pnpm -r run-grader
       // We import runPlaywright directly from the guides code to leverage existing test execution logic
       const gradeScript = getGraderScriptContent(dir, graderPath, guide);
+      
+      // Copy trace generator script and template into test directory
+      const traceGeneratorScript = path.join(rootDir, 'harness/lib/generate-trace-report.ts');
+      const traceTemplateFile = path.join(rootDir, 'harness/lib/trace-template.html');
+      fs.copyFileSync(traceGeneratorScript, path.join(dir, 'generate-trace-report.ts'));
+      fs.copyFileSync(traceTemplateFile, path.join(dir, 'trace-template.html'));
+
       const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
       fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
       let pkgJsonObj: any = {
@@ -376,7 +385,19 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         const pngFile = dataFiles.find(f => f.endsWith('.png'));
 
         if (zipFile) {
-          tracePath = `grade-report/data/${zipFile}`;
+          const traceFileName = 'trace-' + zipFile.replace('.zip', '.html');
+          tracePath = traceFileName;
+          
+          // Generate standalone trace report in the non-isolated harness!
+          const traceFile = path.join(rootDir, 'harness/lib/generate-trace-report.ts');
+          const templateFile = path.join(rootDir, 'harness/lib/trace-template.html');
+          const outputHtml = path.join(dir, traceFileName);
+          
+          console.log('Generating standalone trace report in harness...');
+          spawnSync('node', [traceFile, templateFile, path.join(gradeReportDataDir, zipFile), outputHtml], {
+            stdio: 'inherit',
+            shell: true
+          });
         }
         if (pngFile) {
           screenshotPath = `grade-report/data/${pngFile}`;
