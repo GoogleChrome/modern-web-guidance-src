@@ -267,10 +267,46 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
 
             scenarioResults = specs.map((spec: any) => {
               const lastResult = spec.tests[0].results[spec.tests[0].results.length - 1];
+              const attachments = lastResult.attachments || [];
+
+              const screenshotAttachment = attachments.find((a: any) => a.name === 'screenshot');
+              const traceAttachment = attachments.find((a: any) => a.name === 'trace');
+
+              let screenshotPath = undefined;
+              let tracePath = undefined;
+
+              if (screenshotAttachment && screenshotAttachment.path) {
+                screenshotPath = path.relative(dir, screenshotAttachment.path);
+              }
+              if (traceAttachment && traceAttachment.path) {
+                const zipPath = traceAttachment.path;
+                if (fs.existsSync(zipPath)) {
+                  const traceFolder = path.dirname(zipPath);
+                  const outputHtml = path.join(traceFolder, 'trace.html');
+                  
+                  const traceFileScript = path.join(rootDir, 'harness/lib/generate-trace-report.ts');
+                  const templateFile = path.join(rootDir, 'harness/lib/trace-template.html');
+                  
+                  console.log(`Generating standalone trace report for ${spec.title}...`);
+                  const spawnResult = spawnSync('node', [traceFileScript, templateFile, zipPath, outputHtml], {
+                    stdio: 'inherit',
+                    shell: true
+                  });
+                  
+                  if (spawnResult.status === 0) {
+                    tracePath = path.relative(dir, outputHtml);
+                  } else {
+                    console.error(`Failed to generate trace report for ${spec.title}`);
+                  }
+                }
+              }
+
               return {
                 passed: lastResult.status === 'passed',
                 message: spec.title,
-                testId: spec.id
+                testId: spec.id,
+                screenshotPath,
+                tracePath
               };
             });
           }
@@ -375,35 +411,6 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         }
       }
 
-      const gradeReportDataDir = path.join(dir, 'grade-report', 'data');
-      let tracePath = undefined;
-      let screenshotPath = undefined;
-
-      if (fs.existsSync(gradeReportDataDir)) {
-        const dataFiles = fs.readdirSync(gradeReportDataDir);
-        const zipFile = dataFiles.find(f => f.endsWith('.zip'));
-        const pngFile = dataFiles.find(f => f.endsWith('.png'));
-
-        if (zipFile) {
-          const traceFileName = 'trace-' + zipFile.replace('.zip', '.html');
-          tracePath = traceFileName;
-          
-          // Generate standalone trace report in the non-isolated harness!
-          const traceFile = path.join(rootDir, 'harness/lib/generate-trace-report.ts');
-          const templateFile = path.join(rootDir, 'harness/lib/trace-template.html');
-          const outputHtml = path.join(dir, traceFileName);
-          
-          console.log('Generating standalone trace report in harness...');
-          spawnSync('node', [traceFile, templateFile, path.join(gradeReportDataDir, zipFile), outputHtml], {
-            stdio: 'inherit',
-            shell: true
-          });
-        }
-        if (pngFile) {
-          screenshotPath = `grade-report/data/${pngFile}`;
-        }
-      }
-
       allResults[testName].push({
         runNumber: parseInt(runDir),
         results: scenarioResults,
@@ -420,9 +427,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         prompt: taskInfo.prompt,
         files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
         runtime: runtimeData,
-        tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
-        tracePath,
-        screenshotPath
+        tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined
       });
     }
   }

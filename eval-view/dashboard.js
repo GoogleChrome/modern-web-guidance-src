@@ -764,7 +764,11 @@ async function showDetails(testName, runs, stats, testId) {
                     <li class="check-item">
                         <span class="check-status">${check.passed ? '✅' : '❌'}</span>
                         <span class="check-message">${escapeHtml(check.message)}</span>
-                        <a href="#" class="secondary-btn report-link" data-test-id="${check.testId || ''}" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
+                        <div style="display: flex; gap: 5px; margin-left: auto;">
+                            ${check.screenshotPath ? `<a href="#" class="secondary-btn screenshot-link" data-screenshot-path="${check.screenshotPath}" style="padding: 2px 8px; font-size: 0.8rem;">Screenshot</a>` : ''}
+                            ${check.tracePath ? `<a href="#" class="secondary-btn trace-link" data-trace-path="${check.tracePath}" style="padding: 2px 8px; font-size: 0.8rem;">Trace</a>` : ''}
+                            <a href="#" class="secondary-btn report-link" data-test-id="${check.testId || ''}" style="padding: 2px 8px; font-size: 0.8rem;">Report</a>
+                        </div>
                     </li>
                 `).join('')}
             </ul>
@@ -778,6 +782,40 @@ async function showDetails(testName, runs, stats, testId) {
                     e.preventDefault();
                     const testId = link.dataset.testId;
                     openReport(usedBasePath, testId);
+                };
+            }
+        });
+
+        const screenshotLinks = runDetail.querySelectorAll('.screenshot-link');
+        screenshotLinks.forEach(link => {
+            if (link instanceof HTMLElement) {
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    const screenshotRelativePath = link.dataset.screenshotPath;
+                    const screenshotPath = `${usedBasePath}/${screenshotRelativePath}`;
+                    if (api.source === 'remote') {
+                        const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${screenshotPath}`;
+                        window.open(mtlsUrl, '_blank');
+                    } else {
+                        window.open(api.getAbsoluteUrl(screenshotPath), '_blank');
+                    }
+                };
+            }
+        });
+
+        const traceLinks = runDetail.querySelectorAll('.trace-link');
+        traceLinks.forEach(link => {
+            if (link instanceof HTMLElement) {
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    const traceRelativePath = link.dataset.tracePath;
+                    const tracePath = `${usedBasePath}/${traceRelativePath}`;
+                    if (api.source === 'remote') {
+                        const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${tracePath}`;
+                        window.open(mtlsUrl, '_blank');
+                    } else {
+                        window.open(api.getAbsoluteUrl(tracePath), '_blank');
+                    }
                 };
             }
         });
@@ -822,14 +860,6 @@ async function showDetails(testName, runs, stats, testId) {
                     dropdown.appendChild(rawOpt);
                 }
 
-                const traceFile = run.tracePath;
-                if (traceFile) {
-                    const traceOpt = document.createElement('option');
-                    traceOpt.value = `trace:${traceFile}`;
-                    traceOpt.textContent = 'Playwright Trace (Viewer)';
-                    dropdown.appendChild(traceOpt);
-                }
-
                 const runtimeJson = files.find(f => f === 'runtime.json');
                 if (runtimeJson) {
                     const runtimeOpt = document.createElement('option');
@@ -844,14 +874,9 @@ async function showDetails(testName, runs, stats, testId) {
                     trajOpt.textContent = 'Trajectory';
                     dropdown.appendChild(trajOpt);
                 }
-
-                if (run.screenshotPath) {
-                    const screenshotOpt = document.createElement('option');
-                    screenshotOpt.value = `screenshot:${run.screenshotPath}`;
-                    screenshotOpt.textContent = 'View Failed Screenshot';
-                    dropdown.appendChild(screenshotOpt);
-                }
             }
+
+
         } catch (e) {
             console.log('Error displaying options:', e);
         }
@@ -872,20 +897,7 @@ async function showDetails(testName, runs, stats, testId) {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {
                 openTrajectory(usedBasePath, sessionFile);
-            } else if (val.startsWith('trace:')) {
-                const traceRelativePath = val.substring(6);
-                const tracePath = `${usedBasePath}/${traceRelativePath}`;
-                if (api.source === 'remote') {
-                    const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${tracePath}`;
-                    window.open(mtlsUrl, '_blank');
-                } else {
-                    window.open(api.getAbsoluteUrl(tracePath), '_blank');
-                }
-            } else if (val.startsWith('screenshot:')) {
-                const screenshotRelativePath = val.substring(11);
-                const screenshotPath = `${usedBasePath}/${screenshotRelativePath}`;
-                const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${screenshotPath}`;
-                window.open(mtlsUrl, '_blank');
+
             } else if (val === 'raw') {
                 const rawPath = `${usedBasePath}/${guide}_results.json`;
                 viewContent(rawPath, rawPath);

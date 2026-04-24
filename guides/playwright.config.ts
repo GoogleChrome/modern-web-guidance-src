@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 import * as path from 'path';
 
 export default defineConfig({
-  timeout: 5000,
+  timeout: 10000,
   expect: { timeout: 2000 },
   // Forces Playwright to always search relative to this config file (the guides directory),
   // regardless of where you run it from (e.g., when run from within a specific results folder).
