@@ -323,32 +323,7 @@ export class DumbbellChart {
           gDot.setAttribute("fill", "var(--color-primary)");
           this.svg.appendChild(gDot);
 
-          // Draw Token Coin Icon (Only for more expensive runs)
-          if ((item.uTokens > 0 || item.gTokens > 0) && item.gTokens > item.uTokens) {
-            const coinX = Math.max(uX, gX) + 10;
-            
-            const coinGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
-            
-            const coinCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            coinCircle.setAttribute("cx", coinX.toString());
-            coinCircle.setAttribute("cy", y.toString());
-            coinCircle.setAttribute("r", "8");
-            coinCircle.setAttribute("fill", "#da3633");
-            coinCircle.setAttribute("filter", "url(#red-glow)");
-            coinGroup.appendChild(coinCircle);
 
-            const coinText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            coinText.setAttribute("x", coinX.toString());
-            coinText.setAttribute("y", (y + 4).toString()); // Center vertically
-            coinText.setAttribute("fill", "#ffffff");
-            coinText.setAttribute("font-size", "10");
-            coinText.setAttribute("font-weight", "bold");
-            coinText.setAttribute("text-anchor", "middle");
-            coinText.textContent = "$";
-            coinGroup.appendChild(coinText);
-
-            this.svg.appendChild(coinGroup);
-          }
 
           // Hit area for tooltip (covers the specific sub-line)
           const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "rect");
