@@ -176,3 +176,83 @@ gd dev <path/to/guide_dir>/test-app-result/index.html --grade
 ```
 
 Use the results to validate guide quality, and make changes as needed. A useful sanity check is to examine the result of the agent run *without* guide access.
+
+## Pipeline V2 Architecture
+
+The `pipelinev2` in this repository is an automated system for generating, calibrating, and testing web platform guidance. It facilitates a multi-stage workflow that takes a web feature from initial use case identification to a fully tested and calibrated guidance package ready for evaluation.
+
+### Workflow Stages
+
+#### Stage 1 & 2: Use Case Identification and Scaffolding (`guide-gen.ts`)
+This stage is triggered by `gd gen-guide <feature-id>`.
+
+1.  **Feature Lookup**: Looks up the feature in the `web-features` package.
+2.  **Use Case Identification**: Uses Gemini to identify 2-5 distinct developer use cases for the feature.
+3.  **Scaffolding**: For each identified use case, it scaffolds:
+    *   `guide.md`: The guidance documentation.
+    *   `demo.html`: A minimal reference implementation.
+    *   `expectations.md`: Must pass/fail rules for verification.
+
+#### Stage 3: Calibration and Testing (`dev-guide.ts`)
+This stage is triggered by `gd dev <path/to/guide_dir>` or called automatically by Stage 1/2.
+
+1.  **Inventory**: Verifies that `guide.md`, `demo.html`, and `expectations.md` exist.
+2.  **Artifact Generation**:
+    *   **Negative Demo**: Generates `negative-demo.html` (violates guidance) using Gemini.
+    *   **Grader**: Generates `grader.ts` (Playwright tests) using Gemini based on `expectations.md`.
+3.  **Calibration**:
+    *   Runs `grader.ts` against `demo.html`. Expects 100% pass.
+    *   Runs `grader.ts` against `negative-demo.html`. Expects 100% fail (0% pass).
+    *   **Auto-Retry**: If calibration fails, it regenerates `grader.ts` with the failure context and retries (up to 2 times).
+4.  **Task Generation**: Generates `tasks/task.md` containing test prompts for the agent.
+5.  **Agent Testing** (Optional but default):
+    *   Runs the agent on a base app (e.g., `daily-grind`) in both unguided (no guide) and guided (with guide) modes.
+    *   Grades the outputs using `grader.ts`.
+    *   Compares results to assess guide impact.
+
+### ASCII Diagram
+
+```text
++--------------------------------------------------+
+| Stage 1 & 2: Identification & Scaffolding        |
+| (guide-gen.ts)                                  |
++--------------------------------------------------+
+        |
+        | 1. Lookup Feature (web-features)
+        | 2. Identify Use Cases (Gemini)
+        v
++--------------------------------------------------+
+| Scaffolded Files (per use case)                  |
+| - guide.md                                       |
+| - demo.html                                      |
+| - expectations.md                                |
++--------------------------------------------------+
+        |
+        | calls / triggered by gd dev
+        v
++--------------------------------------------------+
+| Stage 3: Calibration & Testing                   |
+| (dev-guide.ts)                                   |
++--------------------------------------------------+
+        |
+        |---[Generate missing artifacts]-->
+        |   - negative-demo.html (negative-gen.ts) |
+        |   - grader.ts (grader-gen.ts)            |
+        |
+        |---[Calibration Loop]-->
+        |   - Run grader on demo.html (100% pass)  |
+        |   - Run grader on neg-demo.html (0% pass)|
+        |   - If fail: Regenerate grader w/ context|
+        |
+        |---[Task Generation]-->
+        |   - tasks/task.md (Gemini)               |
+        |
+        |---[Agent Test (Optional)]-->
+        |   - Run agent (Unguided vs Guided)       |
+        |   - Grade outputs                        |
+        |   - Compare impact                       |
+        v
++--------------------------------------------------+
+| Final Output: Calibrated & Tested Guide Package |
++--------------------------------------------------+
+```
