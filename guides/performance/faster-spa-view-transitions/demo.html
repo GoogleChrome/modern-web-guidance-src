@@ -77,31 +77,23 @@
 
     /* SPA Page Container Logic */
     .page-container {
-      /* Optional fallback for unsupported browsers */
-      display: none;
-    }
-
-    @supports (content-visibility: hidden) {
-      .page-container {
-        /* content-visibility: hidden provides the fastest way to swap SPA pages
-         that have heavy DOM payloads because the browser engine parses them 
-         and keeps their internal state ready while skipping all rendering costs 
-         when inactive. */
-        content-visibility: hidden;
-        display: revert;
-      }
+      /* Default to hidden via content-visibility for inactive views */
+      content-visibility: hidden;
     }
 
     .page-container.active {
-      /* Fallback for unsupported browsers */
-      display: block;
+      /* Show the active page */
+      content-visibility: visible;
     }
 
-    @supports (content-visibility: visible) {
+    /* Fallback for browsers that do not support content-visibility */
+    @supports not (content-visibility: hidden) {
+      .page-container {
+        display: none;
+      }
+
       .page-container.active {
-        /* Show the active page */
-        content-visibility: visible;
-        display: revert;
+        display: block;
       }
     }
 
