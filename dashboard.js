@@ -589,17 +589,6 @@ function openTrajectory(usedBasePath, sessionFile) {
     }
 }
 
-function openReport(usedBasePath, testId) {
-    const path = `${usedBasePath}/grade-report/index.html`;
-    if (api.source === 'remote') {
-        // Use mTLS domain which handles auth and serves raw HTML, preserving relative paths
-        const url = `https://storage.mtls.cloud.google.com/guidance-evals/${path}${testId ? `#?testId=${testId}` : ''}`;
-        window.open(url, '_blank');
-    } else {
-        window.open(api.getAbsoluteUrl(path) + (testId ? `#?testId=${testId}` : ''), '_blank');
-    }
-}
-
 async function showDetails(testName, runs, stats, testId) {
     // Update URL without reloading
     const url = new URL(window.location.href);
@@ -764,25 +753,12 @@ async function showDetails(testName, runs, stats, testId) {
                     <li class="check-item">
                         <span class="check-status">${check.passed ? '✅' : '❌'}</span>
                         <span class="check-message">${escapeHtml(check.message)}</span>
-                        <a href="#" class="secondary-btn report-link" data-test-id="${check.testId || ''}" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
+                        <a href="${api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`)}${check.testId ? `#?testId=${check.testId}` : ''}" target="_blank" class="secondary-btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
                     </li>
                 `).join('')}
             </ul>
             ${usageSection}
         `;
-
-        const reportLinks = runDetail.querySelectorAll('.report-link');
-        reportLinks.forEach(link => {
-            if (link instanceof HTMLElement) {
-                link.onclick = (e) => {
-                    e.preventDefault();
-                    const testId = link.dataset.testId;
-                    openReport(usedBasePath, testId);
-                };
-            }
-        });
-
-
 
         const viewResourcesLink = runDetail.querySelector('.view-resources-link');
         if (viewResourcesLink instanceof HTMLElement) {
@@ -822,14 +798,6 @@ async function showDetails(testName, runs, stats, testId) {
                     dropdown.appendChild(rawOpt);
                 }
 
-                const traceFile = run.tracePath;
-                if (traceFile) {
-                    const traceOpt = document.createElement('option');
-                    traceOpt.value = `trace:${traceFile}`;
-                    traceOpt.textContent = 'Playwright Trace (Viewer)';
-                    dropdown.appendChild(traceOpt);
-                }
-
                 const runtimeJson = files.find(f => f === 'runtime.json');
                 if (runtimeJson) {
                     const runtimeOpt = document.createElement('option');
@@ -843,13 +811,6 @@ async function showDetails(testName, runs, stats, testId) {
                     trajOpt.value = 'trajectory';
                     trajOpt.textContent = 'Trajectory';
                     dropdown.appendChild(trajOpt);
-                }
-
-                if (run.screenshotPath) {
-                    const screenshotOpt = document.createElement('option');
-                    screenshotOpt.value = `screenshot:${run.screenshotPath}`;
-                    screenshotOpt.textContent = 'View Failed Screenshot';
-                    dropdown.appendChild(screenshotOpt);
                 }
             }
         } catch (e) {
@@ -872,16 +833,6 @@ async function showDetails(testName, runs, stats, testId) {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {
                 openTrajectory(usedBasePath, sessionFile);
-            } else if (val.startsWith('trace:')) {
-                const traceRelativePath = val.substring(6);
-                const tracePath = `${usedBasePath}/${traceRelativePath}`;
-                const mtlsUrl = `https://storage.googleapis.com/guidance-evals/${tracePath}`;
-                window.open(`https://storage.mtls.cloud.google.com/guidance-evals/trace/index.html?trace=${encodeURIComponent(mtlsUrl)}`, '_blank');
-            } else if (val.startsWith('screenshot:')) {
-                const screenshotRelativePath = val.substring(11);
-                const screenshotPath = `${usedBasePath}/${screenshotRelativePath}`;
-                const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${screenshotPath}`;
-                window.open(mtlsUrl, '_blank');
             } else if (val === 'raw') {
                 const rawPath = `${usedBasePath}/${guide}_results.json`;
                 viewContent(rawPath, rawPath);
