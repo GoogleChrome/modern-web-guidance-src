@@ -1,0 +1,10 @@
+- The implementation MUST the Popover API with `popovertarget` and the `popover` attribute.
+- The implementation MUST conditionally polyfill the Popover API.
+- The implementation MUST set an explicit anchor with `anchor-name` on the anchor and `position-anchor` on the tooltip.
+- The implementation MUST use `position-area` to define the default placement of the tooltip.
+- The implementation MUST define fallback positions using `position-try-fallbacks`.
+- The implementation MUST set `container-type: anchored` on the positioned element (the tooltip) to enable anchored container queries.
+- The implementation MUST use `@container anchored(fallback: <value>)` to update styles when the tooltip flips to a fallback position.
+- The implementation MUST NOT attempt to style the container element itself directly inside the `@container` block (must use descendants or pseudo-elements).
+- The implementation SHOULD use pseudo-elements (`::before` or `::after`) for decorative arrows to ensure they can be styled based on the position flip.
+- The implementation MUST NOT rely on JavaScript to detect the position flip or update the visual orientation of the tooltip components.
