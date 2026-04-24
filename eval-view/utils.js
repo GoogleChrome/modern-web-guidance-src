@@ -156,11 +156,7 @@ export function initGoogleAuth(onAuthSuccess) {
         if (authBtn) {
             authBtn.style.display = 'block';
             if (accessToken) {
-                authBtn.textContent = 'Authenticated ✓';
-                authBtn.disabled = true;
-                authBtn.style.backgroundColor = 'var(--accent-success)';
-                authBtn.style.color = 'white';
-                authBtn.style.borderColor = 'var(--accent-success)';
+                authBtn.style.display = 'none';
             }
         }
 
@@ -176,11 +172,7 @@ export function initGoogleAuth(onAuthSuccess) {
                 localStorage.setItem('gcs_access_token', accessToken);
                 console.log('Successfully authenticated with Google.');
                 if (authBtn) {
-                    authBtn.textContent = 'Authenticated ✓';
-                    authBtn.disabled = true;
-                    authBtn.style.backgroundColor = 'var(--accent-success)';
-                    authBtn.style.color = 'white';
-                    authBtn.style.borderColor = 'var(--accent-success)';
+                    authBtn.style.display = 'none';
                 }
                 if (onAuthSuccess) onAuthSuccess();
             },
@@ -207,6 +199,7 @@ export async function authenticatedFetch(url, options = {}) {
         // Reset button UI if available
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
+            authBtn.style.display = 'block';
             authBtn.textContent = 'Sign in with Google';
             authBtn.disabled = false;
             authBtn.style.backgroundColor = '';
