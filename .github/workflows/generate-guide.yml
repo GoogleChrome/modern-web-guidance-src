@@ -1,10 +1,5 @@
 name: Generate Guide
 
-
-# Triggered manually to generate a full guide package from a web-feature-id,
-# or automatically on guidance-bot/* branches to re-run affected pipeline stages
-# when an SME edits files in the PR.
-
 on:
   workflow_dispatch:
     inputs:
@@ -17,24 +12,47 @@ on:
         required: true
         type: string
 
-
-
 permissions:
   contents: write
   pull-requests: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  # Gemini CLI picks up GEMINI_API_KEY for non-OAuth auth in CI
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
   GEMINI_MODEL: gemini-3-flash-preview
 
 jobs:
-  # ── Manual trigger or Test trigger: generate a brand-new guide package ─────
-  generate:
-    if: github.event_name == 'workflow_dispatch'
+  identify:
     runs-on: ubuntu-latest
+    outputs:
+      usecases: ${{ steps.identify.outputs.usecases }}
+    steps:
+      - uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Identify Use Cases
+        id: identify
+        run: |
+          USECASES=$(node --experimental-strip-types guides/guide-gen.ts "${{ inputs.feature_id }}" --only-identify)
+          echo "usecases=$USECASES" >> $GITHUB_OUTPUT
+
+  process:
+    needs: identify
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        usecase: ${{ fromJSON(needs.identify.outputs.usecases) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -53,24 +71,52 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm run setup:playwright
 
+      - name: Process Use Case
+        run: |
+          node --experimental-strip-types guides/guide-gen.ts "${{ inputs.feature_id }}" --use-case='${{ JSON.stringify(matrix.usecase) }}'
 
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: usecase-${{ matrix.usecase.slug }}
+          path: guides/${{ matrix.usecase.category }}/${{ matrix.usecase.slug }}
+
+  create-pr:
+    needs: process
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: temp-artifacts/
+
+      - name: Merge artifacts
+        run: |
+          mkdir -p guides
+          for dir in temp-artifacts/usecase-*; do
+            if [ -d "$dir" ]; then
+              # Assuming the artifact content is the files inside the usecase dir
+              # We need to find the category and slug to reconstruct the path!
+              # Or we can just copy everything if the artifact preserved the structure!
+              # Let's try to copy everything recursively!
+              cp -R "$dir/." .
+            fi
+          done
 
       - name: Configure git
         run: |
           git config user.name "chrome-devrel-infra[bot]"
           git config user.email "124898761+chrome-devrel-infra[bot]@users.noreply.github.com"
 
-      - name: Generate guide package (guide.md, demo.html, expectations.md)
+      - name: Commit and Create PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-
-          # Use inputs or defaults for testing on push
-          FEATURE_ID="${{ inputs.feature_id || 'subgrid' }}"
-          node --experimental-strip-types guides/guide-gen.ts \
-            "${FEATURE_ID}"
-
-
-
-
-
+          branch="guidance-bot/${{ inputs.feature_id }}"
+          git checkout -b $branch
+          git add guides/
+          git commit -m "feat: scaffold guides for ${{ inputs.feature_id }}"
+          git push origin $branch --force
+          gh pr create --draft --title "guides: ${{ inputs.feature_id }}" --body "Scaffolded guides for ${{ inputs.feature_id }}." --head $branch --reviewer "${{ inputs.reviewer }}"

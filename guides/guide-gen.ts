@@ -347,7 +347,7 @@ async function handleGitAndPR(featureId: string, reviewer: string, useCases: Use
 // ─── Main generation function ────────────────────────────────────────────────
 
 
-export async function generateUseCases(featureId: string, reviewer: string = 'paulirish'): Promise<void> {
+export async function generateUseCases(featureId: string, reviewer: string = 'paulirish', options: { onlyIdentify?: boolean } = {}): Promise<UseCase[]> {
 
   console.log(`Looking up feature: ${featureId}`);
   const feature = lookupFeature(featureId);
@@ -378,6 +378,10 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
 
   cleanupIsolatedHome(path.dirname(workDir));
 
+  if (options.onlyIdentify) {
+    return useCases;
+  }
+
   console.log(`\nRunning pipelines in parallel for ${useCases.length} use cases...`);
   
   const promises = useCases.map(async (uc) => {
@@ -395,6 +399,8 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
   console.log(`\n🎉 All use cases scaffolded and processed!`);
 
   await handleGitAndPR(featureId, reviewer, useCases);
+  
+  return useCases;
 }
 
 
@@ -465,14 +471,34 @@ if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(imp
 
   const args = process.argv.slice(2);
   const featureId = args.find(a => !a.startsWith('--'));
+  const onlyIdentify = args.includes('--only-identify');
+  const useCaseJson = args.find(a => a.startsWith('--use-case='))?.split('=')[1];
 
   if (!featureId) {
     console.error('Usage: gd gen-guide <web-feature-id>');
     process.exit(1);
   }
 
-  generateUseCases(featureId).catch(err => {
-    console.error(`Error: ${err.message}`);
-    process.exit(1);
-  });
+  if (useCaseJson) {
+    const uc = JSON.parse(useCaseJson);
+    const feature = lookupFeature(featureId);
+    scaffoldUseCase(uc, feature, guidesDir).then(async (outputDir) => {
+      console.log(`Running gd dev for ${uc.slug}...`);
+      const success = await devGuide(outputDir, { test: false });
+      process.exit(success ? 0 : 1);
+    }).catch(err => {
+      console.error(`Error: ${err.message}`);
+      process.exit(1);
+    });
+  } else {
+    generateUseCases(featureId, 'paulirish', { onlyIdentify }).then(useCases => {
+      if (onlyIdentify) {
+        console.log(JSON.stringify(useCases));
+      }
+      process.exit(0);
+    }).catch(err => {
+      console.error(`Error: ${err.message}`);
+      process.exit(1);
+    });
+  }
 }
