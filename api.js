@@ -30,7 +30,8 @@ export class ApiClient {
             }
             return url;
         } else {
-            return `${path}?source=${this.source}`;
+            const separator = path.includes('?') ? '&' : '?';
+            return `${path}${separator}source=${this.source}`;
         }
     }
 
