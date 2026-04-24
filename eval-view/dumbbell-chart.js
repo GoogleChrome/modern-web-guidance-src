@@ -325,7 +325,7 @@ export class DumbbellChart {
 
           // Draw Token Coin Icon (Only for more expensive runs)
           if ((item.uTokens > 0 || item.gTokens > 0) && item.gTokens > item.uTokens) {
-            const coinX = Math.max(uX, gX) + (canDrawArrow ? 15 : 10);
+            const coinX = Math.max(uX, gX) + 10;
             
             const coinGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
             
