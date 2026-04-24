@@ -1,0 +1,5 @@
+- The application implements a mechanism to schedule tasks with different priorities using `scheduler.postTask()`.
+- The application demonstrates the use of different priorities (e.g., `user-blocking`, `user-visible`, `background`).
+- The application uses a polyfill to support task prioritization in browsers that do not support the Scheduler API natively.
+- The application conditionally loads the polyfill only when needed.
+- The application ensures that tasks are executed in priority order (higher priority tasks before lower priority ones).

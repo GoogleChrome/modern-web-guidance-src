@@ -1,20 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Conditional Async Dependencies</title>
+  <meta charset="UTF-8">
+  <title>Conditional Async Dependencies Demo</title>
 </head>
 <body>
-  <p id="status">Loading application dependencies...</p>
+  <h1>Conditional Async Dependencies</h1>
+  
+  <!-- A functional popover to demonstrate readiness -->
+  <button popovertarget="my-popover">Toggle Popover</button>
+  <div id="my-popover" popover>
+    <p>This is the content of the conditionally polyfilled popover.</p>
+  </div>
 
+  <div id="status">Initializing...</div>
+
+  <!-- Single entry point -->
   <script type="module">
-    if (!('interestForElement' in HTMLButtonElement.prototype)) {
-      await import('https://unpkg.com/interestfor/src/interestfor.min.js');
+    const status = document.getElementById('status');
+
+    // 1. Check if the feature is missing before doing work.
+    // MANDATORY: Prefer checking HTMLElement.prototype over window or document
+    if (!('popover' in HTMLElement.prototype)) {
+      status.textContent = 'Loading polyfill via top-level await...';
+      
+      // 2. Use top-level await to pause the execution of this module
+      // until the polyfill finishes downloading and executing.
+      // This guarantees downstream logic waits for readiness.
+      await import('data:text/javascript,console.log("Polyfill loaded");HTMLElement.prototype.showPopover=function(){this.style.display="block"};');
+      
+      status.textContent = 'Polyfill loaded successfully.';
+    } else {
+      status.textContent = 'Native support detected. No polyfill needed.';
     }
 
-    // The dependency is guaranteed to be loaded and evaluated from this line onward
-    document.getElementById('status').textContent = 'Initialization complete. Feature is ready to use.';
+    // Now it is safe to use the feature
+    // This executes ONLY after the conditional await above resolves
+    const myPopover = document.getElementById('my-popover');
+    if (myPopover) {
+      console.log('Popover feature is ready to use.');
+    }
   </script>
 </body>
 </html>
