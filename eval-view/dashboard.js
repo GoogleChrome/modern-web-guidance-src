@@ -458,7 +458,7 @@ function renderSummary(data) {
     container.innerHTML = `
         <div class="header-meta-item dog-ear-card">
             <div class="meta-item-header">
-                <span class="meta-label">AVERAGE UPLIFT</span>
+                <span class="meta-label">Average Uplift</span>
                 <span class="meta-value-highlight">+${upliftDelta}%</span>
             </div>
             <div class="sparkline-container">
@@ -486,7 +486,7 @@ function renderSummary(data) {
         <div class="summary-subgrid">
         <div class="header-meta-item dog-ear-card">
             <div class="meta-item-header">
-                <span class="meta-label">ASSERTIONS PASSED</span>
+                <span class="meta-label">Assertions Passed</span>
             </div>
             <div class="sparkline-container">
                 <div class="sparkline-bar small">
@@ -500,7 +500,7 @@ function renderSummary(data) {
 
         <div class="header-meta-item dog-ear-card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="meta-label">ACTIVATION</span>
+                <span class="meta-label">Activation</span>
                 <span style="color: var(--text-secondary); font-size: 1rem;">${toolActivationRate}%</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
@@ -513,7 +513,7 @@ function renderSummary(data) {
 
         <div class="header-meta-item dog-ear-card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="meta-label">GUIDANCE CONSUMED</span>
+                <span class="meta-label">Guidance Consumed</span>
                 <span style="color: var(--text-secondary); font-size: 1rem;">${guideUsageRate}%</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
@@ -527,7 +527,7 @@ function renderSummary(data) {
         ${summary.guidedTotalTokens || summary.unguidedTotalTokens ? `
         <div class="header-meta-item dog-ear-card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="meta-label">TOKENS CONSUMED</span>
+                <span class="meta-label">Tokens Consumed</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
                 ${summary.unguidedTotalTokens ? `
