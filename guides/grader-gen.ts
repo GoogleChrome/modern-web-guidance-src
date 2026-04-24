@@ -7,6 +7,7 @@ import { guidesDir } from '../lib/paths.ts';
 import config from '../harness/config.ts';
 import { createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders } from '../harness/lib/agent-shared.ts';
 import type { CalibrationResult } from './run-grader.ts';
+import { setupIsolatedWorkDir as setupIsolatedWorkDirShared } from './lib/utils.ts';
 
 function getBasePrompt(guideFileName: string) {
   return `
@@ -39,42 +40,23 @@ The final output must be exactly one file named \`grader.ts\`. You may create in
 }
 
 function setupIsolatedWorkDir(targetDir: string): string {
-  const tempHome = createIsolatedHome('ghh-grader-gen');
-  const workDir = path.join(tempHome, 'work');
-  fs.mkdirSync(workDir, { recursive: true });
+  const workDir = setupIsolatedWorkDirShared('ghh-grader-gen');
+  
+  const relativePath = path.relative(guidesDir, targetDir);
+  const isolatedGuidesDir = path.join(workDir, 'guides');
+  const isolatedUseCaseDir = path.join(isolatedGuidesDir, relativePath);
 
-  // Copy all files and folders from target dir to work dir
-  fs.cpSync(targetDir, workDir, { recursive: true });
+  fs.mkdirSync(isolatedUseCaseDir, { recursive: true });
+  fs.cpSync(targetDir, isolatedUseCaseDir, { recursive: true });
 
-  // Copy template.grader.ts from the guides directory
   copyFileIfExists(path.join(guidesDir, 'template.grader.ts'), path.join(workDir, 'template.grader.ts'));
 
-  // Provide testing config to the agent
-  copyFileIfExists(path.join(guidesDir, 'playwright.config.ts'), path.join(workDir, 'playwright.config.ts'));
+  copyFileIfExists(path.join(guidesDir, 'template.grader.ts'), path.join(isolatedGuidesDir, 'template.grader.ts'));
+  copyFileIfExists(path.join(guidesDir, 'test-fixture.ts'), path.join(isolatedGuidesDir, 'test-fixture.ts'));
+  copyFileIfExists(path.join(guidesDir, 'playwright.config.ts'), path.join(isolatedUseCaseDir, 'playwright.config.ts'));
+  copyFileIfExists(path.join(guidesDir, 'tsconfig.json'), path.join(isolatedUseCaseDir, 'tsconfig.json'));
 
-  // Provide tsconfig for typechecking
-  copyFileIfExists(path.join(guidesDir, 'tsconfig.json'), path.join(workDir, 'tsconfig.json'));
-
-  const geminiSource = path.join(path.resolve(process.env.HOME || process.cwd()), '.gemini');
-  const geminiDest = path.join(tempHome, '.gemini');
-  fs.mkdirSync(geminiDest, { recursive: true });
-
-  const filesToCopy = [
-    'oauth_creds.json',
-    'google_accounts.json',
-    'installation_id'
-  ];
-
-  for (const file of filesToCopy) {
-    const src = path.join(geminiSource, file);
-    copyFileIfExists(src, path.join(geminiDest, file));
-  }
-
-  createTrustedFolders(geminiDest, [workDir]);
-
-  process.env.HOME = tempHome;
-
-  return workDir;
+  return isolatedUseCaseDir;
 }
 
 async function runGraderGeneration(targetDir: string, prompt: string): Promise<void> {

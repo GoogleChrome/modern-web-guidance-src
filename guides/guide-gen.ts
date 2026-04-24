@@ -16,7 +16,7 @@ import { features } from 'web-features';
 
 import { guidesDir } from '../lib/paths.ts';
 import config from '../harness/config.ts';
-import { runCommand, runGemini } from './lib/utils.ts';
+import { runCommand, runGemini, setupIsolatedWorkDir } from './lib/utils.ts';
 import {
   createIsolatedHome,
   cleanupIsolatedHome,
@@ -226,23 +226,7 @@ Output ONLY the raw markdown content, with no outer code blocks or other text. D
 
 // ─── Isolated work dir setup ─────────────────────────────────────────────────
 
-function setupIsolatedWorkDir(): string {
-  const tempHome = createIsolatedHome('ghh-guide-gen');
-  const workDir = path.join(tempHome, 'work');
-  fs.mkdirSync(workDir, { recursive: true });
 
-  const geminiSource = path.join(path.resolve(process.env.HOME || process.cwd()), '.gemini');
-  const geminiDest = path.join(tempHome, '.gemini');
-  fs.mkdirSync(geminiDest, { recursive: true });
-
-  for (const file of ['oauth_creds.json', 'google_accounts.json', 'installation_id', 'settings.json']) {
-    copyFileIfExists(path.join(geminiSource, file), path.join(geminiDest, file));
-  }
-
-  createTrustedFolders(geminiDest, [workDir]);
-  process.env.HOME = tempHome;
-  return workDir;
-}
 
 
 
@@ -354,7 +338,7 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
   const feature = lookupFeature(featureId);
   console.log(`Found: ${feature.name}`);
 
-  const workDir = setupIsolatedWorkDir();
+  const workDir = setupIsolatedWorkDir('ghh-guide-gen');
   const prompt = buildUseCasesPrompt(feature);
 
   console.log(`Asking Gemini to identify use cases...`);

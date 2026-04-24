@@ -1,6 +1,12 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
+import fs from 'node:fs';
 import config from '../../harness/config.ts';
+import {
+  createIsolatedHome,
+  copyFileIfExists,
+  createTrustedFolders,
+} from '../../harness/lib/agent-shared.ts';
 
 export async function runCommand(command: string, args: string[], cwd?: string): Promise<string> {
   const child = spawn(command, args, {
@@ -27,4 +33,24 @@ export async function runGemini(prompt: string, workDir?: string): Promise<strin
   const command = config.environment.geminiCliBin;
   const commandArgs = ['-p', prompt, '--yolo'];
   return runCommand(command, commandArgs, workDir);
+}
+
+export function setupIsolatedWorkDir(prefix: string): string {
+  const tempHome = createIsolatedHome(prefix);
+  const workDir = path.join(tempHome, 'work');
+  fs.mkdirSync(workDir, { recursive: true });
+
+  const originalHome = process.env.HOME || process.cwd();
+  const geminiSource = path.join(originalHome, '.gemini');
+  const geminiDest = path.join(tempHome, '.gemini');
+  fs.mkdirSync(geminiDest, { recursive: true });
+
+  for (const file of ['oauth_creds.json', 'google_accounts.json', 'installation_id', 'settings.json']) {
+    copyFileIfExists(path.join(geminiSource, file), path.join(geminiDest, file));
+  }
+
+  createTrustedFolders(geminiDest, [workDir]);
+  process.env.HOME = tempHome;
+  
+  return workDir;
 }
