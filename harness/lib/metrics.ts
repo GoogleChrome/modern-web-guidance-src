@@ -3,6 +3,9 @@ export interface ScenarioCheck {
   passed: boolean;
   message: string;
   isEarlyFailure?: boolean;
+  tracePath?: string;
+  screenshotPath?: string;
+  reportPath?: string;
 }
 
 export interface RunResult {
