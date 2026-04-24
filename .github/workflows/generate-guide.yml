@@ -15,6 +15,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  workflows: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
