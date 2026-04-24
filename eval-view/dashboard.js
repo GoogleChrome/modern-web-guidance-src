@@ -39,7 +39,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (source) {
         const backBtns = document.querySelectorAll('a[href="./"]');
         backBtns.forEach(btn => {
-            btn.href = `./?source=${source}`;
+            if (btn instanceof HTMLAnchorElement) {
+                btn.href = `./?source=${source}`;
+            }
         });
     }
 
