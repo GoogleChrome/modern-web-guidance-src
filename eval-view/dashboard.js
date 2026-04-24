@@ -589,14 +589,12 @@ function openTrajectory(usedBasePath, sessionFile) {
     }
 }
 
-function openReport(usedBasePath, testId) {
-    const path = `${usedBasePath}/grade-report/index.html`;
+function openSecureLink(path) {
     if (api.source === 'remote') {
-        // Use mTLS domain which handles auth and serves raw HTML, preserving relative paths
-        const url = `https://storage.mtls.cloud.google.com/guidance-evals/${path}${testId ? `#?testId=${testId}` : ''}`;
-        window.open(url, '_blank');
+        const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${path}`;
+        window.open(mtlsUrl, '_blank');
     } else {
-        window.open(api.getAbsoluteUrl(path) + (testId ? `#?testId=${testId}` : ''), '_blank');
+        window.open(api.getAbsoluteUrl(path), '_blank');
     }
 }
 
@@ -767,7 +765,7 @@ async function showDetails(testName, runs, stats, testId) {
                         <div style="display: flex; gap: 5px; margin-left: auto;">
                             ${check.screenshotPath ? `<a href="#" class="secondary-btn screenshot-link" data-screenshot-path="${check.screenshotPath}" style="padding: 2px 8px; font-size: 0.8rem;">Screenshot</a>` : ''}
                             ${check.tracePath ? `<a href="#" class="secondary-btn trace-link" data-trace-path="${check.tracePath}" style="padding: 2px 8px; font-size: 0.8rem;">Trace</a>` : ''}
-                            <a href="#" class="secondary-btn report-link" data-test-id="${check.testId || ''}" style="padding: 2px 8px; font-size: 0.8rem;">Report</a>
+                            ${check.reportPath ? `<a href="#" class="secondary-btn report-link" data-report-path="${check.reportPath}" style="padding: 2px 8px; font-size: 0.8rem;">Report</a>` : ''}
                         </div>
                     </li>
                 `).join('')}
@@ -780,8 +778,8 @@ async function showDetails(testName, runs, stats, testId) {
             if (link instanceof HTMLElement) {
                 link.onclick = (e) => {
                     e.preventDefault();
-                    const testId = link.dataset.testId;
-                    openReport(usedBasePath, testId);
+                    const reportRelativePath = link.dataset.reportPath;
+                    openSecureLink(`${usedBasePath}/${reportRelativePath}`);
                 };
             }
         });
@@ -792,13 +790,7 @@ async function showDetails(testName, runs, stats, testId) {
                 link.onclick = (e) => {
                     e.preventDefault();
                     const screenshotRelativePath = link.dataset.screenshotPath;
-                    const screenshotPath = `${usedBasePath}/${screenshotRelativePath}`;
-                    if (api.source === 'remote') {
-                        const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${screenshotPath}`;
-                        window.open(mtlsUrl, '_blank');
-                    } else {
-                        window.open(api.getAbsoluteUrl(screenshotPath), '_blank');
-                    }
+                    openSecureLink(`${usedBasePath}/${screenshotRelativePath}`);
                 };
             }
         });
@@ -809,18 +801,10 @@ async function showDetails(testName, runs, stats, testId) {
                 link.onclick = (e) => {
                     e.preventDefault();
                     const traceRelativePath = link.dataset.tracePath;
-                    const tracePath = `${usedBasePath}/${traceRelativePath}`;
-                    if (api.source === 'remote') {
-                        const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${tracePath}`;
-                        window.open(mtlsUrl, '_blank');
-                    } else {
-                        window.open(api.getAbsoluteUrl(tracePath), '_blank');
-                    }
+                    openSecureLink(`${usedBasePath}/${traceRelativePath}`);
                 };
             }
         });
-
-
 
         const viewResourcesLink = runDetail.querySelector('.view-resources-link');
         if (viewResourcesLink instanceof HTMLElement) {
@@ -875,8 +859,6 @@ async function showDetails(testName, runs, stats, testId) {
                     dropdown.appendChild(trajOpt);
                 }
             }
-
-
         } catch (e) {
             console.log('Error displaying options:', e);
         }
@@ -887,17 +869,11 @@ async function showDetails(testName, runs, stats, testId) {
             const val = target.value;
             target.value = ''; // reset selection
             if (val === 'source') {
-                if (api.source === 'remote') {
-                    // Open directly via the mTLS domain which handles auth and serves raw HTML
-                    window.open(`https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`, '_blank');
-                } else {
-                    window.open(api.getAbsoluteUrl(resultPath), '_blank');
-                }
+                openSecureLink(resultPath);
             } else if (val === 'diff') {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {
                 openTrajectory(usedBasePath, sessionFile);
-
             } else if (val === 'raw') {
                 const rawPath = `${usedBasePath}/${guide}_results.json`;
                 viewContent(rawPath, rawPath);

@@ -1,7 +1,6 @@
 import { glob } from "glob";
 import path from 'path';
 import fs from 'fs';
-import { spawnSync } from 'child_process';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { Agents, type SuiteConfig } from '../config.ts';
 import { getTaskMap } from '../../lib/guide-validation.ts';
@@ -234,16 +233,6 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         const errorMessage = extractErrorMessage(dir, targetFile);
         scenarioResults.push({ passed: false, message: errorMessage, isEarlyFailure: true });
       } else {
-        const reportHtmlPath = path.join(dir, 'grade-report', 'index.html');
-        if (fs.existsSync(reportHtmlPath)) {
-          try {
-            let html = fs.readFileSync(reportHtmlPath, 'utf-8');
-            html = html.replaceAll('trace/index.html?trace=', 'https://storage.mtls.cloud.google.com/guidance-evals/trace/index.html?trace=');
-            fs.writeFileSync(reportHtmlPath, html);
-          } catch (e) {
-            console.error(`Error modifying report HTML for ${dir}:`, e);
-          }
-        }
         try {
           let json: any = null;
 
@@ -301,12 +290,19 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
                 }
               }
 
+              const reportFileExists = fs.existsSync(path.join(dir, 'grade-report', 'index.html'));
+              let reportPath = undefined;
+              if (reportFileExists) {
+                reportPath = spec.id ? `grade-report/index.html?testId=${spec.id}` : 'grade-report/index.html';
+              }
+
               return {
                 passed: lastResult.status === 'passed',
                 message: spec.title,
                 testId: spec.id,
                 screenshotPath,
-                tracePath
+                tracePath,
+                reportPath
               };
             });
           }

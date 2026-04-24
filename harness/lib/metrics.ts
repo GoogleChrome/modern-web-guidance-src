@@ -5,6 +5,7 @@ export interface ScenarioCheck {
   isEarlyFailure?: boolean;
   tracePath?: string;
   screenshotPath?: string;
+  reportPath?: string;
 }
 
 export interface RunResult {
@@ -19,8 +20,6 @@ export interface RunResult {
   baseApp?: string;
   prompt?: string;
   tokenUsage?: { total: number; cached: number };
-  tracePath?: string;
-  screenshotPath?: string;
 }
 
 export interface Metrics {

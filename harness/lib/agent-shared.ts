@@ -666,8 +666,6 @@ export function getGraderScriptContent(
   const targetFile = path.join(targetDir, 'index.html');
   const gradeReportDir = path.join(targetDir, 'grade-report');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
-  const traceGeneratorScript = path.join(rootDir, 'harness/lib/generate-trace-report.js');
-  const traceTemplateFile = path.join(rootDir, 'harness/lib/trace-template.html');
 
   return `import fs from 'fs';
 import { spawnSync } from 'child_process';
@@ -696,8 +694,6 @@ async function run() {
       'inherit'
     );
     fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
-
-
   } catch (err) {
     console.error("Playwright test execution failed:", err);
     process.exit(1); 

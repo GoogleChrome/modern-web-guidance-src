@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import * as path from 'path';
 
 // Usage: npx ts-node generate-trace-report.ts <template_path> <trace_zip_path> <output_path>
 const [,, templatePath, tracePath, outputPath] = process.argv;
