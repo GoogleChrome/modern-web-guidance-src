@@ -333,7 +333,7 @@ function parseUseCasesResponse(response: string): UseCase[] {
   }
 }
 
-function constructPRBody(featureId: string, useCases: UseCase[], prNumber: number): string {
+function constructPRBody(featureId: string, useCases: UseCase[]): string {
   const branch = `guidance-bot/${featureId}`;
   const repo = process.env.GITHUB_REPOSITORY || 'paulirish/guidance';
   
@@ -345,13 +345,9 @@ usecases:
 
   for (const uc of useCases) {
     const previewUrl = `https://github-preview-proxy-847799827363.us-central1.run.app/${repo}/${branch}/guides/${uc.category}/${uc.slug}/demo.html`;
-    const prFilesUrl = `https://github.com/${repo}/pull/${prNumber}/files`;
-    
-    const guideUrl = `${prFilesUrl}#guides/${uc.category}/${uc.slug}/guide.md`;
-    const expectationsUrl = `${prFilesUrl}#guides/${uc.category}/${uc.slug}/expectations.md`;
 
     body += `- \`${uc.slug}\` - ${uc.description}\n`;
-    body += `   - [demo](${previewUrl}), [guide](${guideUrl}), [expectations](${expectationsUrl})\n`;
+    body += `   - [demo](${previewUrl})\n`;
   }
 
   body += `\n---\n\nEnsure \`guide\` usecase is valid, and details are technically accurate, \`expectations\` criteria is accurate.  Leave comments then **add a PR review** to trigger a feedback iteration, where the agent will handle your feedback and push new commits.  (You are also free to push to the branch if you prefer.)\n`;
@@ -359,26 +355,13 @@ usecases:
   return body;
 }
 
-async function guessNextPRNumber(): Promise<number> {
-  try {
-    const prDataJson = await runCommand('gh', ['pr', 'list', '--limit', '1', '--json', 'number']);
-    const prData = JSON.parse(prDataJson);
-    if (prData.length > 0) {
-      return prData[0].number + 1;
-    }
-    return 1;
-  } catch (err) {
-    console.warn(`Warning: Failed to guess next PR number: ${err}`);
-    return 0;
-  }
-}
+
 
 async function handleGitAndPR(featureId: string, reviewer: string, useCases: UseCase[]): Promise<void> {
   if (process.env.GITHUB_ACTIONS) {
     const pushed = await commitAndPush(featureId);
     if (pushed) {
-      const prNumber = await guessNextPRNumber();
-      const body = constructPRBody(featureId, useCases, prNumber);
+      const body = constructPRBody(featureId, useCases);
       await createPullRequest(featureId, reviewer, body);
     }
   } else {
