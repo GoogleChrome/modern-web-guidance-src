@@ -269,6 +269,16 @@ function printFinalCalibrationSummary(result: CalibrationResult, demoFailed: boo
   }
 }
 
+/**
+ * Runs the grader against a completely different, unmodified base application
+ * (e.g., cards-app) to detect spurious passes (false positives).
+ * 
+ * If tests pass on an unrelated app, it indicates the grader is checking for
+ * generic app structure (like "a button exists") rather than feature-specific outcomes.
+ * This helps identify graders that are too lenient or poorly targeted.
+ * 
+ * We expect a 100% failure rate on this unrelated app.
+ */
 async function runCrossAppCheck(targetDirAbs: string, graderPath: string, result: CalibrationResult): Promise<void> {
   const crossAppName = 'cards-app';
   const crossAppIndex = path.join(baseAppsDir, crossAppName, 'index.html');
