@@ -523,15 +523,6 @@ function renderGrid(data, testId) {
 
                 card.onclick = () => showDetails(testName, runData, testStats, testId);
                 card.style.position = 'relative';
-                let tokensHtml = '';
-                if (testStats && testStats.avgTokens) {
-                    tokensHtml = `
-                        <div style="font-size: 0.85em; margin-top: 6px; color: var(--text-secondary);">
-                            Tokens (Avg): <strong style="color: var(--text-primary);">${testStats.avgTokens.total.toLocaleString()}</strong>
-                            ${testStats.avgTokens.cached ? `<span style="opacity: 0.8;"> (Cached: ${testStats.avgTokens.cached.toLocaleString()})</span>` : ''}
-                        </div>
-                    `;
-                }
 
                 card.innerHTML = `
                     <h3>${formatTestName(testName)}</h3>
@@ -542,10 +533,15 @@ function renderGrid(data, testId) {
                         <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
                         <span>Runs: ${runData.length}${testStats && testStats.earlyFailures ? ` (<span style="color: var(--accent-failure); font-weight: bold;">${testStats.earlyFailures} failed</span>)` : ''}</span>
                     </div>
-                    ${tokensHtml}
                     ${avgRuntime > 0 ? `
-                    <div style="position: absolute; bottom: 10px; right: 15px; font-size: 0.85em; color: var(--text-secondary);">
-                        Runtime (Average): <strong style="color: var(--text-primary);">${formatRuntime(avgRuntime)}</strong>
+                    <div style="position: absolute; bottom: 10px; right: 15px; font-size: 0.85em; color: var(--text-secondary); text-align: right;">
+                        Runtime (Avg): <strong style="color: var(--text-primary);">${formatRuntime(avgRuntime)}</strong>
+                        ${testStats && testStats.avgTokens ? `
+                        <div style="margin-top: 2px;">
+                            Tokens (Avg): <strong style="color: var(--text-primary);">${testStats.avgTokens.total.toLocaleString()}</strong>
+                            ${testStats.avgTokens.cached ? `<span style="opacity: 0.8;"> (Cached: ${testStats.avgTokens.cached.toLocaleString()})</span>` : ''}
+                        </div>
+                        ` : ''}
                     </div>
                     ` : ''}
                     ${toolActivationHtml}
