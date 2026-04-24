@@ -68,7 +68,7 @@ In DevTools, applying layout heavy tasks inside the `scroll` callbacks will satu
 
 {{ BASELINE_STATUS("scrollend") }}
 
-For unsupported browsers, conditionally load standard dynamic polyfills like `scrollyfills` dynamically from a CDN resource:
+For unsupported browsers, conditionally load standard dynamic polyfills like `scrollyfills` dynamically from a CDN resource. As a last resort fallback, use a debounced `scroll` event with `setTimeout` to dispatch a `scrollend` event if the polyfill fails to load.
 
 ```javascript
 function initializeDemo() {
@@ -79,16 +79,26 @@ function initializeDemo() {
 }
 
 (async () => {
-  if (!('onscrollend' in window)) {
+  if ('onscrollend' in window) {
+    initializeDemo();
+  } else {
     try {
       // Dynamic import from standard CDN 
       await import("https://esm.sh/scrollyfills");
       initializeDemo();
     } catch (e) {
       console.error("Failed to load fallback polyfill", e);
+      
+      // Last resort fallback: debounced scroll event
+      initializeDemo();
+      const scroller = document.querySelector('#scroller');
+      scroller.addEventListener('scroll', () => {
+        clearTimeout(window.scrollendtimer);
+        window.scrollendtimer = setTimeout(() => {
+          scroller.dispatchEvent(new CustomEvent('scrollend'));
+        }, 100);
+      });
     }
-  } else {
-    initializeDemo();
   }
 })();
 ```

@@ -3,4 +3,6 @@
 - The implementation MUST conditionally load a dynamic polyfill (e.g., `scrollyfills` dynamically imported from a CDN) if the `scrollend` interaction is natively missing.
 - The implementation MUST execute an asynchronous conditional IIFE structure that supports dual paths (native support and dynamic polyfill import fallback) to robustly initialize the application.
 - The implementation MUST NOT execute heavy layout recalculations or data analytics updates inside the visual `scroll` event listener.
-- The implementation MUST NOT use legacy debounced `scroll` events with `setTimeout` to guess and trigger scroll completion.
+- The implementation MUST NOT use legacy debounced `scroll` events with `setTimeout` as the primary strategy to guess and trigger scroll completion.
+- The implementation MUST fall back to using a debounced `scroll` event with `window.scrollendtimer` to dispatch a `scrollend` event if the polyfill fails to load.
+- The implementation MUST use a scrollable container with `overflow: auto` or `overflow: scroll`.
