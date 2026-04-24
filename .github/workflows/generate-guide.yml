@@ -45,7 +45,7 @@ jobs:
       - name: Identify Use Cases
         id: identify
         run: |
-          USECASES=$(node --experimental-strip-types guides/guide-gen.ts "${{ inputs.feature_id }}" --only-identify)
+          USECASES=$(node --experimental-strip-types guides/guide-gen.ts "${{ inputs.feature_id }}" --only-identify | tail -n 1)
           echo "usecases=$USECASES" >> $GITHUB_OUTPUT
 
   process:
