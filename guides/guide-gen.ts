@@ -113,9 +113,18 @@ function buildUseCasesPrompt(feature: FeatureInfo): string {
   const useCasesSkill = getSkillContent('project-use-cases');
   const researchSkill = getSkillContent('project-use-cases-research');
 
+  const researchPath = path.resolve('feature', feature.id, 'research.md');
+  let researchContent = '';
+  if (fs.existsSync(researchPath)) {
+    console.log(`Found research file at ${researchPath}. Including in prompt.`);
+    researchContent = fs.readFileSync(researchPath, 'utf8');
+  }
+
   return `
 You are researching the web platform feature "${feature.name}" (ID: ${feature.id}).
 Your task is to identify 2-5 distinct developer use cases for this feature.
+
+${researchContent ? `Here is the deep research report for this feature to read primarily:\n===\n${researchContent}\n===\n` : ''}
 
 Follow the guidelines in these skill files:
 
