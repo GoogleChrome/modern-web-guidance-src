@@ -490,8 +490,8 @@ function renderSuites() {
         const timeAgoStr = timeAgo(_date);
 
         const scenarioKeys = Object.keys(data.results || {});
-        const distinctScenarios = new Set(scenarioKeys.map(k => k.split(' - ')[0]));
-        const taskCount = distinctScenarios.size;
+        const distinctScenarios = new Set(scenarioKeys.map(k => k.replace(' - guided', '').replace(' - unguided', '')));
+        const taskCount = data.summary && data.summary.taskCount ? data.summary.taskCount : distinctScenarios.size;
         let maxRuns = 1;
         scenarioKeys.forEach(k => { if (data.results[k].length > maxRuns) maxRuns = data.results[k].length; });
 
