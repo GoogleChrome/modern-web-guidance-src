@@ -8,56 +8,12 @@
  */
 
 import path from 'node:path';
-
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import config from '../harness/config.ts';
+import { runCommand, runGemini } from './lib/utils.ts';
 
-// ─── Helper to run commands ─────────────────────────────────────────────────
 
-async function runCommand(command: string, args: string[]): Promise<string> {
-  const child = spawn(command, args, {
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-
-  let stdoutData = '';
-  let stderrData = '';
-  child.stdout.on('data', (d) => { stdoutData += d; });
-  child.stderr.on('data', (d) => { stderrData += d; });
-
-  const exitCode = await new Promise<number | null>(resolve => child.on('close', resolve));
-
-  if (exitCode !== 0) {
-    throw new Error(`Command "${command} ${args.join(' ')}" exited with code ${exitCode}. Stderr: ${stderrData}`);
-  }
-
-  return stdoutData.trim();
-}
-
-// ─── Helper to run Gemini ───────────────────────────────────────────────────
-
-async function runGemini(prompt: string): Promise<string> {
-  const command = config.environment.geminiCliBin;
-  const commandArgs = ['-p', prompt, '--yolo'];
-
-  const child = spawn(command, commandArgs, {
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-
-  let stdoutData = '';
-  let stderrData = '';
-  child.stdout.on('data', (d) => { stdoutData += d; });
-  child.stderr.on('data', (d) => { stderrData += d; });
-
-  const exitCode = await new Promise<number | null>(resolve => child.on('close', resolve));
-
-  if (exitCode !== 0) {
-    throw new Error(`Gemini CLI exited with code ${exitCode}. Stderr: ${stderrData}`);
-  }
-
-  return stdoutData.trim();
-}
 
 // ─── Main logic ─────────────────────────────────────────────────────────────
 

@@ -11,12 +11,12 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { features } from 'web-features';
 
 import { guidesDir } from '../lib/paths.ts';
 import config from '../harness/config.ts';
+import { runCommand, runGemini } from './lib/utils.ts';
 import {
   createIsolatedHome,
   cleanupIsolatedHome,
@@ -244,32 +244,7 @@ function setupIsolatedWorkDir(): string {
   return workDir;
 }
 
-async function runCommand(command: string, args: string[], cwd?: string): Promise<string> {
-  const child = spawn(command, args, {
-    cwd,
-    env: { ...process.env },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
 
-  let stdoutData = '';
-  let stderrData = '';
-  child.stdout.on('data', (d) => { stdoutData += d; });
-  child.stderr.on('data', (d) => { stderrData += d; });
-
-  const exitCode = await new Promise<number | null>(resolve => child.on('close', resolve));
-
-  if (exitCode !== 0) {
-    throw new Error(`Command ${command} failed with code ${exitCode}. Stderr: ${stderrData}`);
-  }
-
-  return stdoutData.trim();
-}
-
-async function runGemini(prompt: string, workDir: string): Promise<string> {
-  const command = config.environment.geminiCliBin;
-  const commandArgs = ['-p', prompt, '--yolo'];
-  return runCommand(command, commandArgs, workDir);
-}
 
 
 async function scaffoldUseCase(uc: { slug: string; description: string; category: string }, feature: FeatureInfo, workDir: string, guidesDir: string): Promise<string> {
