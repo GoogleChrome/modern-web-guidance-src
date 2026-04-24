@@ -589,6 +589,17 @@ function openTrajectory(usedBasePath, sessionFile) {
     }
 }
 
+function openReport(usedBasePath, testId) {
+    const path = `${usedBasePath}/grade-report/index.html`;
+    if (api.source === 'remote') {
+        // Use mTLS domain which handles auth and serves raw HTML, preserving relative paths
+        const url = `https://storage.mtls.cloud.google.com/guidance-evals/${path}${testId ? `#?testId=${testId}` : ''}`;
+        window.open(url, '_blank');
+    } else {
+        window.open(api.getAbsoluteUrl(path) + (testId ? `#?testId=${testId}` : ''), '_blank');
+    }
+}
+
 async function showDetails(testName, runs, stats, testId) {
     // Update URL without reloading
     const url = new URL(window.location.href);
@@ -753,12 +764,63 @@ async function showDetails(testName, runs, stats, testId) {
                     <li class="check-item">
                         <span class="check-status">${check.passed ? '✅' : '❌'}</span>
                         <span class="check-message">${escapeHtml(check.message)}</span>
-                        <a href="${api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`)}${check.testId ? `#?testId=${check.testId}` : ''}" target="_blank" class="secondary-btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
+                        <div style="display: flex; gap: 5px; margin-left: auto;">
+                            ${check.screenshotPath ? `<a href="#" class="secondary-btn screenshot-link" data-screenshot-path="${check.screenshotPath}" style="padding: 2px 8px; font-size: 0.8rem;">Screenshot</a>` : ''}
+                            ${check.tracePath ? `<a href="#" class="secondary-btn trace-link" data-trace-path="${check.tracePath}" style="padding: 2px 8px; font-size: 0.8rem;">Trace</a>` : ''}
+                            <a href="#" class="secondary-btn report-link" data-test-id="${check.testId || ''}" style="padding: 2px 8px; font-size: 0.8rem;">Report</a>
+                        </div>
                     </li>
                 `).join('')}
             </ul>
             ${usageSection}
         `;
+
+        const reportLinks = runDetail.querySelectorAll('.report-link');
+        reportLinks.forEach(link => {
+            if (link instanceof HTMLElement) {
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    const testId = link.dataset.testId;
+                    openReport(usedBasePath, testId);
+                };
+            }
+        });
+
+        const screenshotLinks = runDetail.querySelectorAll('.screenshot-link');
+        screenshotLinks.forEach(link => {
+            if (link instanceof HTMLElement) {
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    const screenshotRelativePath = link.dataset.screenshotPath;
+                    const screenshotPath = `${usedBasePath}/${screenshotRelativePath}`;
+                    if (api.source === 'remote') {
+                        const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${screenshotPath}`;
+                        window.open(mtlsUrl, '_blank');
+                    } else {
+                        window.open(api.getAbsoluteUrl(screenshotPath), '_blank');
+                    }
+                };
+            }
+        });
+
+        const traceLinks = runDetail.querySelectorAll('.trace-link');
+        traceLinks.forEach(link => {
+            if (link instanceof HTMLElement) {
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    const traceRelativePath = link.dataset.tracePath;
+                    const tracePath = `${usedBasePath}/${traceRelativePath}`;
+                    if (api.source === 'remote') {
+                        const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${tracePath}`;
+                        window.open(mtlsUrl, '_blank');
+                    } else {
+                        window.open(api.getAbsoluteUrl(tracePath), '_blank');
+                    }
+                };
+            }
+        });
+
+
 
         const viewResourcesLink = runDetail.querySelector('.view-resources-link');
         if (viewResourcesLink instanceof HTMLElement) {
@@ -813,6 +875,8 @@ async function showDetails(testName, runs, stats, testId) {
                     dropdown.appendChild(trajOpt);
                 }
             }
+
+
         } catch (e) {
             console.log('Error displaying options:', e);
         }
@@ -833,6 +897,7 @@ async function showDetails(testName, runs, stats, testId) {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {
                 openTrajectory(usedBasePath, sessionFile);
+
             } else if (val === 'raw') {
                 const rawPath = `${usedBasePath}/${guide}_results.json`;
                 viewContent(rawPath, rawPath);

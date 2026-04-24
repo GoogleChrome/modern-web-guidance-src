@@ -220,9 +220,6 @@ window.__featuresMapping = {
     "popover",
     "dialog"
   ],
-  "deliver-optimized-decorative-images": [
-    "image-set"
-  ],
   "serve-alternative-image-formats": [
     "image-set"
   ],
