@@ -84,3 +84,9 @@ button:tool-submit-active {
   animation: pulse 2s infinite;
 }
 ```
+
+## Browser Support
+
+{{ BASELINE_STATUS("declarative-webmcp") }}
+
+The WebMCP Declarative API is safe to use in all browsers. Browsers that do not support WebMCP will ignore the `tool*` attributes, and the `<form>` will continue to function as a normal HTML form. No feature detection is required.

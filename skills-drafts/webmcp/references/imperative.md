@@ -103,3 +103,15 @@ export function createInventoryTool(inventoryManager) {
 *   **Return Format**: The `execute` function can return any JSON-serializable value (object, array, string, number, boolean).
 *   **Secure Context**: WebMCP requires HTTPS.
 *   **Deprecated/Removed**: `unregisterTool()`, `provideContext()`, and `clearContext()` are no longer supported.
+
+## Browser Support
+
+{{ BASELINE_STATUS("navigator-modelcontext") }}
+
+The WebMCP Imperative API should be used with feature detection to ensure compatibility with browsers that do not yet support WebMCP.
+
+```javascript
+if ('modelContext' in navigator && 'registerTool' in navigator.modelContext) {
+  // Register tools
+}
+```
