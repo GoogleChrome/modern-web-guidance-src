@@ -276,7 +276,6 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
                   const traceFileScript = path.join(rootDir, 'harness/lib/generate-trace-report.ts');
                   const templateFile = path.join(rootDir, 'harness/lib/trace-template.html');
                   
-                  console.log(`Generating standalone trace report for ${spec.title}...`);
                   const spawnResult = spawnSync('node', [traceFileScript, templateFile, zipPath, outputHtml], {
                     stdio: 'inherit',
                     shell: true
@@ -293,7 +292,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
               const reportFileExists = fs.existsSync(path.join(dir, 'grade-report', 'index.html'));
               let reportPath = undefined;
               if (reportFileExists) {
-                reportPath = spec.id ? `grade-report/index.html?testId=${spec.id}` : 'grade-report/index.html';
+                reportPath = spec.id ? `grade-report/index.html#?testId=${spec.id}` : 'grade-report/index.html';
               }
 
               return {
