@@ -240,13 +240,15 @@ Output ONLY the raw markdown content, with no outer code blocks or other text. D
 
 
 
-async function scaffoldUseCase(uc: { slug: string; description: string; category: string }, feature: FeatureInfo, workDir: string, guidesDir: string): Promise<string> {
+async function scaffoldUseCase(uc: { slug: string; description: string; category: string }, feature: FeatureInfo, guidesDir: string): Promise<string> {
+  const workDir = setupIsolatedWorkDir('ghh-guide-gen');
   const outputDir = path.join(guidesDir, uc.category, uc.slug);
   console.log(`\nScaffolding ${uc.slug} in ${outputDir}...`);
 
   fs.mkdirSync(outputDir, { recursive: true });
 
-  // 1. Write guide.md with generated content
+  try {
+    // 1. Write guide.md with generated content
     const frontmatter = `---
 name: ${uc.slug}
 description: ${uc.description}
@@ -267,23 +269,27 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
     fs.writeFileSync(path.join(outputDir, 'guide.md'), frontmatter + cleanGuideContent);
     console.log(`✅ Generated guide.md`);
 
-  // 2. Generate demo.html
-  console.log(`Generating demo.html for ${uc.slug}...`);
-  const demoPrompt = buildDemoPrompt(feature, uc);
-  const demoHtml = await runGemini(demoPrompt, workDir);
+    // 2. Generate demo.html
+    console.log(`Generating demo.html for ${uc.slug}...`);
+    const demoPrompt = buildDemoPrompt(feature, uc);
+    const demoHtml = await runGemini(demoPrompt, workDir);
 
-  const cleanHtml = demoHtml.replace(/^```html\n?/, '').replace(/\n?```$/, '').trim();
-  fs.writeFileSync(path.join(outputDir, 'demo.html'), cleanHtml);
-  console.log(`✅ Generated demo.html`);
+    const cleanHtml = demoHtml.replace(/^```html\n?/, '').replace(/\n?```$/, '').trim();
+    fs.writeFileSync(path.join(outputDir, 'demo.html'), cleanHtml);
+    console.log(`✅ Generated demo.html`);
 
-  // 3. Generate expectations.md
-  console.log(`Generating expectations.md for ${uc.slug}...`);
-  const expectationsPrompt = buildExpectationsPrompt(feature, uc);
-  const expectationsMd = await runGemini(expectationsPrompt, workDir);
+    // 3. Generate expectations.md
+    console.log(`Generating expectations.md for ${uc.slug}...`);
+    const expectationsPrompt = buildExpectationsPrompt(feature, uc);
+    const expectationsMd = await runGemini(expectationsPrompt, workDir);
 
-  const cleanExpectations = expectationsMd.replace(/^```markdown\n?/, '').replace(/\n?```$/, '').trim();
-  fs.writeFileSync(path.join(outputDir, 'expectations.md'), cleanExpectations);
-  console.log(`✅ Generated expectations.md`);
+    const cleanExpectations = expectationsMd.replace(/^```markdown\n?/, '').replace(/\n?```$/, '').trim();
+    fs.writeFileSync(path.join(outputDir, 'expectations.md'), cleanExpectations);
+    console.log(`✅ Generated expectations.md`);
+
+  } finally {
+    cleanupIsolatedHome(path.dirname(workDir));
+  }
 
   return outputDir;
 }
@@ -370,18 +376,23 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
     console.log(`- [${uc.category}] ${uc.slug}: ${uc.description}`);
   }
 
-  for (const uc of useCases) {
-    const outputDir = await scaffoldUseCase(uc, feature, workDir, guidesDir);
+  cleanupIsolatedHome(path.dirname(workDir));
+
+  console.log(`\nRunning pipelines in parallel for ${useCases.length} use cases...`);
+  
+  const promises = useCases.map(async (uc) => {
+    const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
 
     console.log(`Running gd dev for ${uc.slug}...`);
     const success = await devGuide(outputDir, { test: false });
     if (!success) {
       throw new Error(`devGuide failed for ${uc.slug}`);
     }
-  }
+  });
 
-  cleanupIsolatedHome(path.dirname(workDir));
-  console.log(`\n🎉 All use cases scaffolded!`);
+  await Promise.all(promises);
+
+  console.log(`\n🎉 All use cases scaffolded and processed!`);
 
   await handleGitAndPR(featureId, reviewer, useCases);
 }
