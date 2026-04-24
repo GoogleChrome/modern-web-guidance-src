@@ -73,7 +73,7 @@ jobs:
 
       - name: Process Use Case
         run: |
-          node --experimental-strip-types guides/guide-gen.ts "${{ inputs.feature_id }}" --use-case='${{ JSON.stringify(matrix.usecase) }}'
+          node --experimental-strip-types guides/guide-gen.ts "${{ inputs.feature_id }}" --use-case='${{ toJSON(matrix.usecase) }}'
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
