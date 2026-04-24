@@ -281,8 +281,6 @@ export interface TaskInfo {
   baseApp: string;
   prompt: string;
   guideDir: string;
-  evalType?: 'capability' | 'regression';
-  graduationThreshold?: number;
 }
 
 /**
@@ -314,8 +312,6 @@ export function getTaskMap(): Map<string, TaskInfo> {
         baseApp: data?.base_app || 'daily-grind',
         prompt: prompt,
         guideDir: guideDir,
-        evalType: data?.eval_type === 'regression' ? 'regression' : 'capability',
-        graduationThreshold: data?.graduation_threshold ?? 0.95,
       };
 
       if (taskName === 'task') {

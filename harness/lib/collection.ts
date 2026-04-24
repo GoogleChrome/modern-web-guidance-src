@@ -358,8 +358,6 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         guideName: guide,
         baseApp: actualBaseApp,
         taskName: taskName,
-        evalType: taskInfo.evalType === 'regression' ? 'regression' : 'capability',
-
         prompt: taskInfo.prompt,
         files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
         tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,

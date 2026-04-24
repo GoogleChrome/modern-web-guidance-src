@@ -12,7 +12,6 @@ export interface RunResult {
   guidanceToolsUsed?: string[];
   expectedToolPrefixes?: string[];
   guideName?: string;
-  evalType?: 'capability' | 'regression';
   isSkill?: boolean;
   taskName?: string;
   baseApp?: string;
@@ -20,14 +19,7 @@ export interface RunResult {
   tokenUsage?: { total: number; cached: number };
 }
 
-export interface EvalTypeSummary {
-  guidedPassRate: number;
-  guidedPassed: number;
-  guidedTotal: number;
-  unguidedPassRate: number;
-  unguidedPassed: number;
-  unguidedTotal: number;
-}
+
 
 export interface Metrics {
   summary: {
@@ -49,8 +41,7 @@ export interface Metrics {
     totalGuidedNonDisciplineRuns?: number;
     toolActivationRate?: number;
     toolActivationCount?: number;
-    capability?: EvalTypeSummary;
-    regression?: EvalTypeSummary;
+
     unguidedEarlyFailures?: number;
     unguidedEarlyFailureRate?: number;
     guidedEarlyFailures?: number;
@@ -68,7 +59,7 @@ export interface Metrics {
     runCount?: number;
     passedChecks: number;
     totalChecks: number;
-    evalType?: 'capability' | 'regression';
+
     isSkill?: boolean;
     earlyFailures?: number;
     avgTokens?: { total: number; cached: number };
@@ -160,8 +151,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       });
     }
 
-    // Derive evalType from the first run that has it set (all runs for a key share the same task)
-    const evalType = runs.find(r => r.evalType)?.evalType;
+
 
     let totalTokensForConfig = 0;
     let cachedTokensForConfig = 0;
@@ -183,7 +173,6 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       isSkill: runs[0]?.isSkill,
       passedChecks,
       totalChecks,
-      evalType,
       earlyFailures,
       avgTokens: runsWithTokenData > 0 ? {
         total: Math.round(totalTokensForConfig / runsWithTokenData),
@@ -282,20 +271,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
   const totalTokensSum = (uStats.totalTokens?.total || 0) + (gStats.totalTokens?.total || 0);
   const cachedTokensSum = (uStats.totalTokens?.cached || 0) + (gStats.totalTokens?.cached || 0);
 
-  const buildEvalTypeSummary = (evalType: 'capability' | 'regression'): EvalTypeSummary | undefined => {
-    const matchingKeys = sortedKeys.filter(k => testStats[k]?.evalType === evalType);
-    if (matchingKeys.length === 0) return undefined;
-    const guided = calcSummary(matchingKeys.filter(k => k.includes(' - guided')));
-    const unguided = calcSummary(matchingKeys.filter(k => k.includes(' - unguided')));
-    return {
-      guidedPassRate: guided.rate,
-      guidedPassed: guided.passed,
-      guidedTotal: guided.total,
-      unguidedPassRate: unguided.rate,
-      unguidedPassed: unguided.passed,
-      unguidedTotal: unguided.total,
-    };
-  };
+
 
   return {
     summary: {
@@ -317,8 +293,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       totalGuidedNonDisciplineRuns: gStats.totalGuidedNonDisciplineRuns,
       toolActivationRate: gStats.toolActivationRate,
       toolActivationCount: gStats.toolActivationCount,
-      capability: buildEvalTypeSummary('capability'),
-      regression: buildEvalTypeSummary('regression'),
+
       unguidedEarlyFailures: uStats.earlyFailures,
       unguidedEarlyFailureRate: uStats.earlyFailureRate,
       guidedEarlyFailures: gStats.earlyFailures,
