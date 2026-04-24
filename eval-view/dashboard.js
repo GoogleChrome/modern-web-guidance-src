@@ -480,12 +480,7 @@ function renderSummary(data) {
                 <span style="opacity: 0.8; color: ${getColor(100 - unguidedEarlyFailureRate)}">(${summary.unguidedEarlyFailures} runs)</span>
             </div>
             ` : ''}
-            ${summary.unguidedTotalTokens ? `
-            <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
-                Tokens: <strong>${summary.unguidedTotalTokens.total.toLocaleString()}</strong>
-                ${summary.unguidedTotalTokens.cached ? `<span style="opacity: 0.8;"> (Cached: ${summary.unguidedTotalTokens.cached.toLocaleString()})</span>` : ''}
-            </div>
-            ` : ''}
+
         </div>
 
         <div class="summary-subgrid">
@@ -529,14 +524,24 @@ function renderSummary(data) {
             </div>
         </div>
 
-        ${summary.guidedTotalTokens ? `
+        ${summary.guidedTotalTokens || summary.unguidedTotalTokens ? `
         <div class="header-meta-item dog-ear-card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span class="meta-label">TOKENS CONSUMED</span>
-                <span style="color: var(--text-secondary); font-size: 1rem;">${summary.guidedTotalTokens.total.toLocaleString()}</span>
             </div>
-            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
-                ${summary.guidedTotalTokens.cached ? `Cached: ${summary.guidedTotalTokens.cached.toLocaleString()}` : ''}
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
+                ${summary.unguidedTotalTokens ? `
+                <div style="display: flex; justify-content: space-between; font-size: 0.85em;">
+                    <span style="color: var(--text-secondary);">Unguided</span>
+                    <span style="color: var(--text-primary); font-weight: bold;">${(summary.unguidedTotalTokens.total - (summary.unguidedTotalTokens.cached || 0)).toLocaleString()}</span>
+                </div>
+                ` : ''}
+                ${summary.guidedTotalTokens ? `
+                <div style="display: flex; justify-content: space-between; font-size: 0.85em;">
+                    <span style="color: var(--text-secondary);">Guided</span>
+                    <span style="color: var(--text-primary); font-weight: bold;">${(summary.guidedTotalTokens.total - (summary.guidedTotalTokens.cached || 0)).toLocaleString()}</span>
+                </div>
+                ` : ''}
             </div>
         </div>
         ` : ''}
