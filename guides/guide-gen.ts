@@ -14,7 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { features } from 'web-features';
 
-import { guidesDir } from '../lib/paths.ts';
+import { guidesDir, rootDir } from '../lib/paths.ts';
 import config from '../harness/config.ts';
 import { runCommand, runGemini, setupIsolatedWorkDir } from './lib/utils.ts';
 import {
@@ -346,6 +346,16 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
   console.log(`Looking up feature: ${featureId}`);
   const feature = lookupFeature(featureId);
   console.log(`Found: ${feature.name}`);
+
+  const researchPath = path.resolve('feature', feature.id, 'research.md');
+  if (!fs.existsSync(researchPath)) {
+    console.log(`Research file not found at ${researchPath}. Invoking deep research...`);
+    const scriptPath = path.join(rootDir, '.agents/skills/project-use-cases-research/scripts/deep_research.js');
+    await runCommand('node', [scriptPath, '--feature-id', feature.id]);
+    console.log(`✅ Deep research completed and saved to ${researchPath}`);
+  } else {
+    console.log(`Found existing research file at ${researchPath}. Skipping deep research.`);
+  }
 
   const workDir = setupIsolatedWorkDir('ghh-guide-gen');
   const prompt = buildUseCasesPrompt(feature);
