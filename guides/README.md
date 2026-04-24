@@ -187,8 +187,9 @@ The `pipelinev2` in this repository is an automated system for generating, calib
 This stage is triggered by `gd gen-guide <feature-id>`.
 
 1.  **Feature Lookup**: Looks up the feature in the `web-features` package.
-2.  **Use Case Identification**: Uses Gemini to identify 2-5 distinct developer use cases for the feature.
-3.  **Scaffolding**: For each identified use case, it scaffolds:
+2.  **Deep Research**: Checks if `feature/<feature-id>/research.md` exists. If not, it automatically invokes the deep research script (using the specialized `deep-research-pro` model) to generate a comprehensive research report.
+3.  **Use Case Identification**: Uses Gemini to identify 2-5 distinct developer use cases for the feature, reading the deep research report primarily if available.
+4.  **Scaffolding**: For each identified use case, it scaffolds:
     *   `guide.md`: The guidance documentation.
     *   `demo.html`: A minimal reference implementation.
     *   `expectations.md`: Must pass/fail rules for verification.
@@ -219,7 +220,8 @@ This stage is triggered by `gd dev <path/to/guide_dir>` or called automatically 
 +--------------------------------------------------+
         |
         | 1. Lookup Feature (web-features)
-        | 2. Identify Use Cases (Gemini)
+        | 2. Deep Research (Auto if missing) ------> [feature/<feature-id>/research.md]
+        | 3. Identify Use Cases (Gemini)
         v
 +--------------------------------------------------+
 | Scaffolded Files (per use case)                  |
