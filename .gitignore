@@ -50,7 +50,8 @@ GEMINI.md
 
 # Research drafts
 skills-drafts/.research/
-/docs/# Generated vector and benchmark evaluation files
+
+# Generated vector and benchmark evaluation files
 serving/lib/use-cases.vectors.gen.json
 serving/lib/use-cases.vectors.gen.json.gz
 serving/benchmarks/data/eval-queries.gen.json
