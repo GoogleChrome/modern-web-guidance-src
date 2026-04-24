@@ -76,11 +76,16 @@ jobs:
         run: |
           node --experimental-strip-types guides/guide-gen.ts "${{ inputs.feature_id }}" --use-case='${{ toJSON(matrix.usecase) }}'
 
+      - name: Stage files for upload
+        run: |
+          mkdir -p dist/guides/${{ matrix.usecase.category }}/${{ matrix.usecase.slug }}
+          cp -R guides/${{ matrix.usecase.category }}/${{ matrix.usecase.slug }}/. dist/guides/${{ matrix.usecase.category }}/${{ matrix.usecase.slug }}/
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: usecase-${{ matrix.usecase.slug }}
-          path: guides/${{ matrix.usecase.category }}/${{ matrix.usecase.slug }}
+          path: dist/
 
   create-pr:
     needs: process
