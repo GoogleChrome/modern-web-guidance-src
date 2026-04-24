@@ -16,15 +16,7 @@ on:
         description: 'GitHub username to assign as PR reviewer'
         required: true
         type: string
-      category:
-        description: 'Guide category (performance, user-experience, accessibility, security)'
-        required: false
-        default: 'user-experience'
-        type: string
-      slug:
-        description: 'Guide directory name (defaults to feature_id)'
-        required: false
-        type: string
+
 
 
 permissions:
@@ -75,15 +67,8 @@ jobs:
 
           # Use inputs or defaults for testing on push
           FEATURE_ID="${{ inputs.feature_id || 'subgrid' }}"
-          CATEGORY="${{ inputs.category || 'user-experience' }}"
-          SLUG="${{ inputs.slug }}"
-          
-          SLUG_ARG=""
-          if [ -n "${SLUG}" ]; then SLUG_ARG="--slug ${SLUG}"; fi
           node --experimental-strip-types guides/guide-gen.ts \
-            "${FEATURE_ID}" \
-            --category "${CATEGORY}" \
-            ${SLUG_ARG}
+            "${FEATURE_ID}"
 
 
 
