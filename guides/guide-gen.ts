@@ -293,9 +293,9 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
     console.log(`Generating content for guide.md for ${uc.slug}...`);
     const guidePrompt = buildGuidePrompt(feature, uc);
     const guideContent = await runGemini(guidePrompt, workDir);
-    
+
     const cleanGuideContent = guideContent.replace(/^```markdown\n?/, '').replace(/\n?```$/, '').trim();
-    
+
     fs.writeFileSync(path.join(outputDir, 'guide.md'), frontmatter + cleanGuideContent);
     console.log(`✅ Generated guide.md`);
 
@@ -303,7 +303,7 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
   console.log(`Generating demo.html for ${uc.slug}...`);
   const demoPrompt = buildDemoPrompt(feature, uc);
   const demoHtml = await runGemini(demoPrompt, workDir);
-  
+
   const cleanHtml = demoHtml.replace(/^```html\n?/, '').replace(/\n?```$/, '').trim();
   fs.writeFileSync(path.join(outputDir, 'demo.html'), cleanHtml);
   console.log(`✅ Generated demo.html`);
@@ -312,7 +312,7 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
   console.log(`Generating expectations.md for ${uc.slug}...`);
   const expectationsPrompt = buildExpectationsPrompt(feature, uc);
   const expectationsMd = await runGemini(expectationsPrompt, workDir);
-  
+
   const cleanExpectations = expectationsMd.replace(/^```markdown\n?/, '').replace(/\n?```$/, '').trim();
   fs.writeFileSync(path.join(outputDir, 'expectations.md'), cleanExpectations);
   console.log(`✅ Generated expectations.md`);
@@ -336,10 +336,11 @@ function parseUseCasesResponse(response: string): UseCase[] {
 function constructPRBody(featureId: string, useCases: UseCase[]): string {
   const branch = `guidance-bot/${featureId}`;
   const repo = process.env.GITHUB_REPOSITORY || 'paulirish/guidance';
-  
-  let body = `\`${featureId}\` has been researched, usecases identified, guides & artifacts generated. And adverserially reviewed.  
+  const emoji  = '😀 😁 😂 🤣 😃 😄 😅 😆 😉 😊 😋 😎 😍 🥰 😘'.split('').at(Math.floor(Math.random() * 16));
 
-usecases:  
+  let body = `\`${featureId}\` has been researched, usecases identified, guides & artifacts generated. And adverserially reviewed. ${emoji}
+
+### usecases
 
 `;
 
@@ -350,7 +351,7 @@ usecases:
     body += `   - [demo](${previewUrl})\n`;
   }
 
-  body += `\n---\n\nEnsure \`guide\` usecase is valid, and details are technically accurate, \`expectations\` criteria is accurate.  Leave comments then **add a PR review** to trigger a feedback iteration, where the agent will handle your feedback and push new commits.  (You are also free to push to the branch if you prefer.)\n`;
+  body += `\n---\n\nReviewer: Please ensure \`guide\` usecase is valid, and details are technically accurate, \`expectations\` criteria is accurate.  \n\n**Add a PR review** (after optionally leaving comments) to trigger a feedback iteration, where the agent will handle your feedback and push new commits.  (If you prefer, you can just push changes to the branch.)\n`;
 
   return body;
 }
@@ -430,12 +431,12 @@ async function commitAndPush(featureId: string): Promise<boolean> {
 
   await runCommand('git', ['add', 'guides/']);
   await runCommand('git', ['commit', '-m', `feat: scaffold guide for ${featureId}`]);
-  
+
   const token = process.env.APP_TOKEN || process.env.GH_TOKEN;
   const repo = process.env.GITHUB_REPOSITORY;
   const pushUrl = token && repo ? `https://x-access-token:${token}@github.com/${repo}.git` : 'origin';
 
-  
+
   await runCommand('git', ['push', pushUrl, `${branch}:${branch}`, '--force']);
   console.log(`✅ Pushed to ${branch}`);
   return true;
@@ -458,7 +459,7 @@ async function createPullRequest(featureId: string, reviewer: string, body: stri
   }
 
   const title = `guides: ${featureId}`;
-  
+
   await runCommand('gh', [
     'pr', 'create',
     '--draft',
@@ -467,7 +468,7 @@ async function createPullRequest(featureId: string, reviewer: string, body: stri
     '--body', body,
     '--reviewer', reviewer
   ]);
-  
+
   console.log(`✅ PR created for ${branch}`);
 }
 
