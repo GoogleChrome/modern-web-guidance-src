@@ -67,7 +67,7 @@ export function calculateChartData(results) {
 
         if (!['guided', 'unguided'].includes(runType)) return;
         const scenario = `${taskName} (${guide})`;
-        if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [] };
+        if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [], guided_tokens: [], unguided_tokens: [] };
         
         const runs = results[key];
         if (runs.length > 0 && runs[0].taskName) {
@@ -77,6 +77,11 @@ export function calculateChartData(results) {
         const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
         const total = runs.reduce((acc, r) => acc + r.results.length, 0);
         apps[scenario][runType].push(total > 0 ? (passed / total) * 100 : 0);
+
+        const totalTokens = runs.reduce((acc, r) => acc + (r.tokenUsage?.total || 0), 0);
+        const avgTokens = runs.length > 0 ? Math.round(totalTokens / runs.length) : 0;
+        if (!apps[scenario][runType + '_tokens']) apps[scenario][runType + '_tokens'] = [];
+        apps[scenario][runType + '_tokens'].push(avgTokens);
     });
     
     const labels = Object.keys(apps).sort((a, b) => {
@@ -88,7 +93,17 @@ export function calculateChartData(results) {
         const s = apps[l][type];
         return s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;
     };
-    return { labels, guided: labels.map(l => getAvg(l, 'guided')), unguided: labels.map(l => getAvg(l, 'unguided')) };
+    const getAvgTokens = (l, type) => {
+        const s = apps[l][type + '_tokens'];
+        return s && s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;
+    };
+    return { 
+        labels, 
+        guided: labels.map(l => getAvg(l, 'guided')), 
+        unguided: labels.map(l => getAvg(l, 'unguided')),
+        guided_tokens: labels.map(l => getAvgTokens(l, 'guided')),
+        unguided_tokens: labels.map(l => getAvgTokens(l, 'unguided'))
+    };
 }
 
 
