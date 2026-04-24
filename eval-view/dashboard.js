@@ -13,7 +13,6 @@ let api;
 
 // Module-scoped state
 let dashboardLoaded = false;
-let dumbbellChartInstance = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize API Client
@@ -601,24 +600,7 @@ function renderGrid(data, testId) {
                 return totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
             };
 
-            function formatRuntime(ms) {
-                if (!ms) return '-';
-                const seconds = Math.floor(ms / 1000);
-                const minutes = Math.floor(seconds / 60);
-                const remainingSeconds = seconds % 60;
-                if (minutes > 0) {
-                    return `${minutes}m ${remainingSeconds}s`;
-                }
-                return `${seconds}s`;
-            }
 
-          // Calculate Average Runtime
-            const allRuns = [...(unguidedRuns || []), ...(guidedRuns || [])];
-            const totalRuntime = allRuns.reduce((acc, run) => {
-                const taskRun = run.runtime ? (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0) : 0;
-                return acc + taskRun;
-            }, 0);
-            const avgRuntime = allRuns.length > 0 ? totalRuntime / allRuns.length : 0;
 
 
             const unguidedAvg = getAvg(unguidedRuns);
@@ -939,7 +921,7 @@ const guidedCards = await getRunCards(guidedRuns, 'Guided');
 
         truthMatrixHtml = truthMatrixHtml.replace('</tbody></table></div>', `</tbody>${tfootHtml}</table></div>`);
 
-        const svgContainerId = `stability-trend-${scenarioName.replace(/\s+/g, '-')}`;
+
         const loadBtnId = `load-btn-${scenarioName.replace(/\s+/g, '-')}`;
 
         container.innerHTML = `

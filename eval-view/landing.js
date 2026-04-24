@@ -1,4 +1,4 @@
-import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
+import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
 let allTestData = {}; // Cache all test data by testId
