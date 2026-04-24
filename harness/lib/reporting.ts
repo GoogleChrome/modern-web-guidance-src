@@ -68,7 +68,7 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
   return md;
 }
 
-export function generateJsonReport(metrics: Metrics, allResults: Record<string, RunResult[]>, timestamp: string, runCount: number, agent: string, serving: string, model: string): EvalsReport {
+export function generateJsonReport(metrics: Metrics, allResults: Record<string, RunResult[]>, timestamp: string, runCount: number, agent: string, serving: string, model: string, totalRuntime?: number): EvalsReport {
   return {
     summary: metrics.summary,
     results: allResults,
@@ -77,7 +77,8 @@ export function generateJsonReport(metrics: Metrics, allResults: Record<string, 
     runCount,
     agent,
     serving,
-    model
+    model,
+    totalRuntime
   };
 }
 

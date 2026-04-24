@@ -39,8 +39,8 @@ export class DumbbellChart {
     
     if (labels.length === 0) return;
 
-    let unguidedSet = datasets.find(d => d.label.toLowerCase() === 'unguided') || { data: Array.from({ length: labels.length }).fill(0) };
-    let guidedSet = datasets.find(d => d.label.toLowerCase() === 'guided') || { data: Array.from({ length: labels.length }).fill(0) };
+    let unguidedSet = datasets.find(d => d.label.toLowerCase() === 'unguided') || { data: Array.from({ length: labels.length }).fill(0), tokens: Array.from({ length: labels.length }).fill(0) };
+    let guidedSet = datasets.find(d => d.label.toLowerCase() === 'guided') || { data: Array.from({ length: labels.length }).fill(0), tokens: Array.from({ length: labels.length }).fill(0) };
 
     const width = this.options.size;
 
@@ -71,6 +71,8 @@ export class DumbbellChart {
 
         const uVal = unguidedSet.data[i] || 0;
         const gVal = guidedSet.data[i] || 0;
+        const uTokens = unguidedSet.tokens ? (unguidedSet.tokens[i] || 0) : 0;
+        const gTokens = guidedSet.tokens ? (guidedSet.tokens[i] || 0) : 0;
         
         if (this.options.hideZeros && uVal === 0 && gVal === 0) return;
 
@@ -79,6 +81,8 @@ export class DumbbellChart {
             useCaseId,
             uVal,
             gVal,
+            uTokens,
+            gTokens,
             originalIndex: i
         });
     });
@@ -133,6 +137,19 @@ export class DumbbellChart {
         linearGrad.appendChild(stop2);
         defs.appendChild(linearGrad);
     });
+
+    // Add Glow Filter for expensive token usage
+    const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+    filter.setAttribute("id", "red-glow");
+    const shadow = document.createElementNS("http://www.w3.org/2000/svg", "feDropShadow");
+    shadow.setAttribute("dx", "0");
+    shadow.setAttribute("dy", "0");
+    shadow.setAttribute("stdDeviation", "3");
+    shadow.setAttribute("flood-color", "#da3633");
+    shadow.setAttribute("flood-opacity", "0.8");
+    filter.appendChild(shadow);
+    defs.appendChild(filter);
+
     this.svg.appendChild(defs);
     this.svg.style.display = "block";
     this.svg.style.fontFamily = "inherit";
@@ -319,6 +336,7 @@ export class DumbbellChart {
           line.setAttribute("stroke", lineColor);
           line.setAttribute("stroke-width", "3"); // slightly thinner to fit multiple
           line.setAttribute("stroke-linecap", "round");
+
           this.svg.appendChild(line);
 
           // To make it an "arrow", draw a triangle at the end - offset to sit clean of the dot
@@ -348,6 +366,33 @@ export class DumbbellChart {
           gDot.setAttribute("fill", lineColor);
           this.svg.appendChild(gDot);
 
+          // Draw Token Coin Icon (Only for more expensive runs)
+          if ((item.uTokens > 0 || item.gTokens > 0) && item.gTokens > item.uTokens) {
+            const coinX = Math.max(uX, gX) + (canDrawArrow ? 15 : 10);
+            
+            const coinGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            
+            const coinCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            coinCircle.setAttribute("cx", coinX.toString());
+            coinCircle.setAttribute("cy", y.toString());
+            coinCircle.setAttribute("r", "8");
+            coinCircle.setAttribute("fill", "#da3633");
+            coinCircle.setAttribute("filter", "url(#red-glow)");
+            coinGroup.appendChild(coinCircle);
+
+            const coinText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            coinText.setAttribute("x", coinX.toString());
+            coinText.setAttribute("y", (y + 4).toString()); // Center vertically
+            coinText.setAttribute("fill", "#ffffff");
+            coinText.setAttribute("font-size", "10");
+            coinText.setAttribute("font-weight", "bold");
+            coinText.setAttribute("text-anchor", "middle");
+            coinText.textContent = "$";
+            coinGroup.appendChild(coinText);
+
+            this.svg.appendChild(coinGroup);
+          }
+
           // Hit area for tooltip (covers the specific sub-line)
           const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "rect");
           hitArea.setAttribute("x", leftAxis); // only over the chart area
@@ -363,15 +408,32 @@ export class DumbbellChart {
             const deltaColor = delta >= 0 ? "#7ee787" : "#ffa198";
             const deltaSign = delta > 0 ? "+" : "";
             
+            const uTokens = item.uTokens || 0;
+            const gTokens = item.gTokens || 0;
+            const tokenDelta = Math.round(gTokens - uTokens);
+            const tokenDeltaSign = tokenDelta > 0 ? "+" : "";
+            const tokenDeltaColor = tokenDelta <= 0 ? "#7ee787" : "#ffa198"; // Using fewer tokens is good (green)
+
             this.tooltip.style.display = 'block';
             this.tooltip.style.left = (e.clientX + 15) + 'px';
             this.tooltip.style.top = (e.clientY + 15) + 'px';
+            const costPct = uTokens > 0 ? Math.round((gTokens / uTokens) * 100) : 0;
+
             this.tooltip.innerHTML = `
-                <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 250px;">
+                <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 280px;">
                     <!-- Left Column -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                          <div style="color: #fff; font-weight: bold; font-size: 14px; white-space: nowrap;">${item.useCaseId || "Default"}</div>
                          <div style="font-size: 11px; color: #8b949e;">feature: ${featureName}</div>
+                         ${uTokens > 0 || gTokens > 0 ? `
+                         <div style="font-size: 11px; color: #8b949e; margin-top: 8px;">
+                            Avg Tokens:<br/>
+                            Guided: <strong>${gTokens.toLocaleString()}</strong><br/>
+                            Unguided: <strong>${uTokens.toLocaleString()}</strong><br/>
+                            Diff: <strong style="color: ${tokenDeltaColor}">${tokenDeltaSign}${tokenDelta.toLocaleString()}</strong><br/>
+                            Cost Ratio: <strong style="color: ${tokenDeltaColor}">${costPct}%</strong>
+                         </div>
+                         ` : ''}
                     </div>
                     <!-- Right Column -->
                     <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end; font-size: 12px;">

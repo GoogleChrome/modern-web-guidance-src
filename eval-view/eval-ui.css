@@ -444,7 +444,7 @@ tr:hover td {
 .btn-toggle-group {
   display: flex;
   gap: 0.5rem; /* smaller gap */
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   margin-top: 0.5rem;
 }
 
@@ -458,6 +458,7 @@ tr:hover td {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .btn-toggle:hover {

@@ -21,26 +21,27 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
 
 1. **Define the visible state**: Set the final property values (e.g., `opacity: 1`) on the base class.
 2. **Define the entry starting state**: Use `@starting-style` to specify the values to transition *from* when the element becomes visible.
-3. **Enable discrete transitions**: Include `display` in the `transition` property and use the `allow-discrete` keyword.
+3. **Enable discrete transitions**: Include `display` in the `transition` property and use `transition-behavior: allow-discrete`.
 4. **Define the exit state**: Set the target values in the `hidden` attribute.
 
 ```css
 .card {
   display: block;
   opacity: 1;
-  transform: translateY(0);
-  /* MANDATORY: Use allow-discrete for display transition */
+  translate: 0;
+  /* MANDATORY: Use transition-behavior: allow-discrete for display transition */
   transition:
-    display 0.4s allow-discrete,
+    display 0.4s,
     opacity 0.4s ease-out,
-    transform 0.4s ease-out;
+    translate 0.4s ease-out;
+  transition-behavior: allow-discrete;
 }
 
 /* Entry animation: transition FROM these values when first rendered */
 @starting-style {
   .card {
     opacity: 0;
-    transform: translateY(-20px);
+    translate: 0 -20px;
   }
 }
 
@@ -48,25 +49,25 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
 .card:where(.hidden, [hidden]) {
   display: none;
   opacity: 0;
-  transform: translateY(-20px);
+  translate: 0 -20px;
 }
 
 /* Respect user preference for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .card {
     /* Disable movement and shorten duration for a simple fade */
-    transform: none;
+    translate: none;
     transition-duration: 0.1s;
   }
 
   @starting-style {
     .card {
-      transform: none;
+      translate: none;
     }
   }
 
   .card:where(.hidden, [hidden]) {
-    transform: none;
+    translate: none;
   }
 }
 ```
@@ -82,11 +83,15 @@ For elements added via `appendChild()` or removed via `remove()`:
 // Trigger exit transition
 element.setAttribute('hidden', true);
 
-// 2. Wait for all active transitions/animations to finish
+// 2. Wait for all active transitions/animations to finish,
+//    with a failsafe timeout in case an animation never ends (e.g. for looping animations)
 const animations = element.getAnimations();
 if (animations.length > 0) {
-  // Promise.allSettled ensures we wait even if some animations fail
-  await Promise.allSettled(animations.map(a => a.finished));
+  await Promise.race([
+    // Promise.allSettled ensures we wait even if some animations fail
+    Promise.allSettled(animations.map(a => a.finished)),
+    new Promise(r => setTimeout(r, 2000))
+  ]);
 }
 
 // 3. Finally remove the node from the DOM
@@ -95,7 +100,8 @@ element.remove();
 
 ## Constraints & Accessibility
 
-- **MANDATORY**: Use `allow-discrete` (either via `transition-behavior: allow-discrete` or the `allow-discrete` keyword in the `transition` shorthand) when transitioning `display`. Without it, the element will instantly disappear during exit.
+- **MANDATORY**: Use `transition-behavior: allow-discrete` when transitioning `display`. Without it, the element will instantly disappear during exit.
+- **DO NOT** use `allow-discrete` in the `transition` shorthand — it will make older browsers ignore the entire `transition` declaration. Except in use cases where that is desirable, use a separate `transition-behavior: allow-discrete` declaration.
 - **MANDATORY**: Use `@starting-style` for entry animations. Browsers skip transitions on an element's first style update (initial render or `display: none` change) unless this is provided.
 - **DO**: Include `overlay` in the `transition` list if animating top-layer elements like `<dialog>` or `popover` to ensure they stay in the top layer during the exit animation.
 - **DO**: Respect user preferences for reduced motion using the `prefers-reduced-motion` media query.
@@ -109,8 +115,8 @@ For browsers that do not support these features, elements will toggle `display: 
 
 ```javascript
 // Detect support for discrete transitions and starting-style
-const supportsModernTransitions = 
-  window.CSS && 
+const supportsModernTransitions =
+  window.CSS &&
   CSS.supports('transition-behavior', 'allow-discrete');
 
 if (!supportsModernTransitions) {
@@ -122,7 +128,7 @@ if (!supportsModernTransitions) {
 
 ```javascript
 // To show:
-el.style.display = 'block';
+el.style.display = '';
 requestAnimationFrame(() => {
   requestAnimationFrame(() => {
     el.classList.remove('hidden');
