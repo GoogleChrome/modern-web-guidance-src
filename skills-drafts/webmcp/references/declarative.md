@@ -36,15 +36,23 @@ document.querySelector('form').addEventListener('submit', (event) => {
   event.preventDefault();
 
   // Validate the form
-  if (!myFormIsValid()) {
-    if (event.agentInvoked) { 
-      event.respondWith(Promise.resolve({ error: "Validation failed" })); 
+  const formValidationErrors = myFormIsValid();
+
+  if (formValidationErrors.length > 0) {
+    if (event.agentInvoked) {
+      const errorString =
+        'Validation failed: ' +
+        formValidationErrors
+          .map((err) => `${err.field} (${err.message})`)
+          .join(', ');
+
+      event.respondWith(Promise.resolve(errorString));
     }
     return;
   }
 
   const resultPromise = performAsyncSearch(new FormData(event.target));
-  
+
   // Return the result directly to the agent without navigation
   if (event.agentInvoked) {
     event.respondWith(resultPromise);
