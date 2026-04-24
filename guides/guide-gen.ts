@@ -348,32 +348,33 @@ async function handleGitAndPR(featureId: string, reviewer: string, useCases: Use
 
 
 export async function generateUseCases(featureId: string, reviewer: string = 'paulirish', options: { onlyIdentify?: boolean } = {}): Promise<UseCase[]> {
+  const log = options.onlyIdentify ? console.error : console.log;
 
-  console.log(`Looking up feature: ${featureId}`);
+  log(`Looking up feature: ${featureId}`);
   const feature = lookupFeature(featureId);
-  console.log(`Found: ${feature.name}`);
+  log(`Found: ${feature.name}`);
 
   const researchPath = path.resolve('feature', feature.id, 'research.md');
   if (!fs.existsSync(researchPath)) {
-    console.log(`Research file not found at ${researchPath}. Invoking deep research...`);
+    log(`Research file not found at ${researchPath}. Invoking deep research...`);
     const scriptPath = path.join(rootDir, '.agents/skills/project-use-cases-research/scripts/deep_research.js');
     await runCommand('node', [scriptPath, '--feature-id', feature.id]);
-    console.log(`✅ Deep research completed and saved to ${researchPath}`);
+    log(`✅ Deep research completed and saved to ${researchPath}`);
   } else {
-    console.log(`Found existing research file at ${researchPath}. Skipping deep research.`);
+    log(`Found existing research file at ${researchPath}. Skipping deep research.`);
   }
 
   const workDir = setupIsolatedWorkDir('ghh-guide-gen');
   const prompt = buildUseCasesPrompt(feature);
 
-  console.log(`Asking Gemini to identify use cases...`);
+  log(`Asking Gemini to identify use cases...`);
   const response = await runGemini(prompt, workDir);
 
   const useCases = parseUseCasesResponse(response);
 
-  console.log(`\nIdentified ${useCases.length} use cases:`);
+  log(`\nIdentified ${useCases.length} use cases:`);
   for (const uc of useCases) {
-    console.log(`- [${uc.category}] ${uc.slug}: ${uc.description}`);
+    log(`- [${uc.category}] ${uc.slug}: ${uc.description}`);
   }
 
   cleanupIsolatedHome(path.dirname(workDir));
