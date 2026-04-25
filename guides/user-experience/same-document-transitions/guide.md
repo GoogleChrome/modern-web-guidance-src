@@ -92,6 +92,17 @@ function goFromListToDetail(e){
   const transition = document.startViewTransition(() => {
     document.body.classList.add("detail");
   });
+}
+
+// Function called when navigating from detail back to list view
+function goFromDetailToList() {
+  if (!document.startViewTransition) {
+    document.body.classList.remove("detail");
+    return;
+  }
+  const transition = document.startViewTransition(() => {
+    document.body.classList.remove("detail");
+  });
   // Clean up the list view
   transition.finished.finally(() => {
     // Remove selected classList to remove view-transition-names
