@@ -29,17 +29,16 @@
         .tooltip-content::before {
           content: "▼";
           position: absolute;
-          inset-block-end: 0;
+          inset-block-end: -0.3rem;
           inset-inline-start: 1rem;
           color: black;
-          text-box: trim-both ex alphabetic;
         }
       }
 
       @container anchored(fallback: flip-block) {
         .tooltip-content::before {
           content: "▲";
-          inset-block-start: 0;
+          inset-block-start: -0.3rem;
           inset-block-end: auto;
         }
         .tooltip-content {
@@ -89,16 +88,15 @@
     <div class="spacer">↑ Scroll up ↑</div>
 
     <script type="module">
-      document.getElementById("anchor").click();
-
       // Fallback strategy: Dynamically import the popover-polyfill for browsers that do not support the popover attribute natively.
       if (!("popover" in HTMLElement.prototype)) {
-        import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover-fn.js").then(
+        await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover-fn.js").then(
           ({ apply }) => {
             apply();
           },
         );
       }
+      document.getElementById("anchor").click();
     </script>
   </body>
 </html>

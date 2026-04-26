@@ -3,15 +3,15 @@ name: position-aware-tooltips
 description: Build tooltips and popovers with directional arrows (or other visual styling) that automatically point the correct way when the element flips to a fallback position.
 web-feature-ids:
   - container-anchor-position-queries
+  - popover
 sources:
   - https://developer.chrome.com/blog/anchored-container-queries
   - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Anchor_positioning/Anchored_container_queries
   - https://oidaisdes.org/blog/anchored-container-queries/
+  - https://developer.mozilla.org/en-US/docs/Web/API/Popover_API
 ---
 
-# Position-aware tooltips
-
-When building tooltips or popovers with [CSS Anchor Positioning](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Anchor_Positioning), the browser can automatically "flip" the element to a fallback position if it would otherwise overflow the viewport. When this happens, you may want to adjust the style of the positioned content, for instance to reposition an arrow that points from the positioned content to the anchor.
+When building tooltips or popovers with CSS Anchor Positioning, the browser can automatically "flip" the element to a fallback position if it would otherwise overflow the viewport. When this happens, you may want to adjust the style of the positioned content, for instance to reposition an arrow that points from the positioned content to the anchor.
 
 **Anchored Container Queries** solve this by allowing you to query the active positioning state of an element and apply styles accordingly.
 
