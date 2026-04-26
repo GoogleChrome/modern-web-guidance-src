@@ -1,6 +1,5 @@
 - The implementation MUST the Popover API with `popovertarget` and the `popover` attribute.
 - The implementation MUST conditionally polyfill the Popover API.
-- The implementation MUST set an explicit anchor with `anchor-name` on the anchor and `position-anchor` on the tooltip.
 - The implementation MUST use `position-area` to define the default placement of the tooltip.
 - The implementation MUST define fallback positions using `position-try-fallbacks`.
 - The implementation MUST set `container-type: anchored` on the positioned element (the tooltip) to enable anchored container queries.

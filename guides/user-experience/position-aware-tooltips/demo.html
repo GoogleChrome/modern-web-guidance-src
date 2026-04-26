@@ -5,14 +5,12 @@
     <title>Position-Aware Tooltips</title>
     <style>
       #anchor {
-        anchor-name: --my-anchor;
         background: #e0e0e0;
         padding: 0.1em 0.3em;
         border-radius: 0.25em;
       }
 
       #tooltip {
-        position-anchor: --my-anchor;
         position-area: block-start;
         position-try-fallbacks: flip-block;
         container-type: anchored;
@@ -23,6 +21,7 @@
         margin-block-end: 0.25rem;
         color: white;
         background: black;
+        border-radius: 0.5rem 0.5rem 0 0;
       }
 
       @supports (container-type: anchored) {
@@ -47,9 +46,15 @@
         }
       }
 
+      /* Reset popover styles if anchor positioning is available. */
+      @supports (anchor-name: --my-anchor) {
+        [popover] {
+          inset: auto;
+          margin: unset;
+        }
+      }
+
       [popover] {
-        inset: auto;
-        margin: unset;
         border: none;
       }
 

@@ -32,13 +32,14 @@ Use the Popover API to create a tooltip. This creates an implicit anchor connect
 <div id="tooltip" popover></div>
 ```
 
-Reset the popover styles.
+Reset the popover inset and margin styles for use with anchor positioning, but only if anchor positioning is supported.
 
 ```css
-[popover] {
-  inset: auto;
-  margin: unset;
-  border: none;
+@supports (anchor-name: --my-anchor) {
+  [popover] {
+    inset: auto;
+    margin: unset;
+  }
 }
 ```
 
@@ -49,7 +50,6 @@ Apply `container-type: anchored` to the element being positioned. This element m
 ```css
 #tooltip {
   position: fixed;
-  position-anchor: --my-anchor;
   position-area: block-start;
   position-try-fallbacks: flip-block;
 
@@ -161,4 +161,4 @@ If you are not using a package manager, dynamically import the polyfill directly
 </script>
 ```
 
-The Popover polyfill does not create an implicit anchor, so you must explicitly create one with `anchor-name` on the trigger, and use it on the tooltip with `position-anchor`.
+Browsers without support for the Popover API also do not support anchor positioning, so the tooltip will appear in the center of the screen.
