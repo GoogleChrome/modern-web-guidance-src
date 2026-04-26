@@ -12,6 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawn } from 'node:child_process';
 import { features } from 'web-features';
 
 import { guidesDir, rootDir } from '../lib/paths.ts';
@@ -347,51 +348,59 @@ async function handleGitAndPR(featureId: string, reviewer: string, useCases: Use
 // ─── Main generation function ────────────────────────────────────────────────
 
 
-export async function generateUseCases(featureId: string, reviewer: string = 'paulirish', options: { onlyIdentify?: boolean } = {}): Promise<UseCase[]> {
-  const log = options.onlyIdentify ? console.error : console.log;
+export async function generateUseCases(featureId: string, reviewer: string = 'paulirish'): Promise<void> {
 
-  log(`Looking up feature: ${featureId}`);
+  console.log(`Looking up feature: ${featureId}`);
   const feature = lookupFeature(featureId);
-  log(`Found: ${feature.name}`);
+  console.log(`Found: ${feature.name}`);
 
   const researchPath = path.resolve('feature', feature.id, 'research.md');
   if (!fs.existsSync(researchPath)) {
-    log(`Research file not found at ${researchPath}. Invoking deep research...`);
+    console.log(`Research file not found at ${researchPath}. Invoking deep research...`);
     const scriptPath = path.join(rootDir, '.agents/skills/project-use-cases-research/scripts/deep_research.js');
     await runCommand('node', [scriptPath, '--feature-id', feature.id]);
-    log(`✅ Deep research completed and saved to ${researchPath}`);
+    console.log(`✅ Deep research completed and saved to ${researchPath}`);
   } else {
-    log(`Found existing research file at ${researchPath}. Skipping deep research.`);
+    console.log(`Found existing research file at ${researchPath}. Skipping deep research.`);
   }
 
   const workDir = setupIsolatedWorkDir('ghh-guide-gen');
   const prompt = buildUseCasesPrompt(feature);
 
-  log(`Asking Gemini to identify use cases...`);
+  console.log(`Asking Gemini to identify use cases...`);
   const response = await runGemini(prompt, workDir);
 
   const useCases = parseUseCasesResponse(response);
 
-  log(`\nIdentified ${useCases.length} use cases:`);
+  console.log(`\nIdentified ${useCases.length} use cases:`);
   for (const uc of useCases) {
-    log(`- [${uc.category}] ${uc.slug}: ${uc.description}`);
+    console.log(`- [${uc.category}] ${uc.slug}: ${uc.description}`);
   }
 
   cleanupIsolatedHome(path.dirname(workDir));
-
-  if (options.onlyIdentify) {
-    return useCases;
-  }
 
   console.log(`\nRunning pipelines in parallel for ${useCases.length} use cases...`);
   
   const promises = useCases.map(async (uc) => {
     const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
-
-    console.log(`Running gd dev for ${uc.slug}...`);
-    const success = await devGuide(outputDir, { test: false });
-    if (!success) {
-      throw new Error(`devGuide failed for ${uc.slug}`);
+    const logFile = path.join(outputDir, 'dev.log');
+    console.log(`[Usecase: ${uc.slug}] Running calibration. Logs redirected to ${logFile}`);
+    
+    const logStream = fs.createWriteStream(logFile);
+    
+    const child = spawn('node', ['--experimental-strip-types', 'guides/dev-guide.ts', outputDir, '--no-test'], {
+      cwd: rootDir,
+      env: { ...process.env },
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    
+    child.stdout.pipe(logStream);
+    child.stderr.pipe(logStream);
+    
+    const exitCode = await new Promise<number>((resolve) => child.on('close', resolve));
+    
+    if (exitCode !== 0) {
+      throw new Error(`devGuide failed for ${uc.slug}. See logs at ${logFile}`);
     }
   });
 
@@ -400,12 +409,7 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
   console.log(`\n🎉 All use cases scaffolded and processed!`);
 
   await handleGitAndPR(featureId, reviewer, useCases);
-  
-  return useCases;
 }
-
-
-// ─── CLI entry point ─────────────────────────────────────────────────────────
 
 async function commitAndPush(featureId: string): Promise<boolean> {
   const branch = `guidance-bot/${featureId}`;
@@ -472,34 +476,14 @@ if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(imp
 
   const args = process.argv.slice(2);
   const featureId = args.find(a => !a.startsWith('--'));
-  const onlyIdentify = args.includes('--only-identify');
-  const useCaseJson = args.find(a => a.startsWith('--use-case='))?.split('=')[1];
 
   if (!featureId) {
     console.error('Usage: gd gen-guide <web-feature-id>');
     process.exit(1);
   }
 
-  if (useCaseJson) {
-    const uc = JSON.parse(useCaseJson);
-    const feature = lookupFeature(featureId);
-    scaffoldUseCase(uc, feature, guidesDir).then(async (outputDir) => {
-      console.log(`Running gd dev for ${uc.slug}...`);
-      const success = await devGuide(outputDir, { test: false });
-      process.exit(success ? 0 : 1);
-    }).catch(err => {
-      console.error(`Error: ${err.message}`);
-      process.exit(1);
-    });
-  } else {
-    generateUseCases(featureId, 'paulirish', { onlyIdentify }).then(useCases => {
-      if (onlyIdentify) {
-        console.log(JSON.stringify(useCases));
-      }
-      process.exit(0);
-    }).catch(err => {
-      console.error(`Error: ${err.message}`);
-      process.exit(1);
-    });
-  }
+  generateUseCases(featureId).catch(err => {
+    console.error(`Error: ${err.message}`);
+    process.exit(1);
+  });
 }

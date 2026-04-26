@@ -26,6 +26,7 @@ serving/mcp-server/data/use-cases.gen.ts
 # Environment and Logs
 .env
 *.log
+dev.log
 .vscode
 
 # OS Junk

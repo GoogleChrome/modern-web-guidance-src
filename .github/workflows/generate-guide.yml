@@ -23,37 +23,8 @@ env:
   GEMINI_MODEL: gemini-3-flash-preview
 
 jobs:
-  identify:
+  generate:
     runs-on: ubuntu-latest
-    outputs:
-      usecases: ${{ steps.identify.outputs.usecases }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Identify Use Cases
-        id: identify
-        run: |
-          USECASES=$(node --experimental-strip-types guides/guide-gen.ts "${{ inputs.feature_id }}" --only-identify | tail -n 1)
-          echo "usecases=$USECASES" >> $GITHUB_OUTPUT
-
-  process:
-    needs: identify
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        usecase: ${{ fromJSON(needs.identify.outputs.usecases) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -72,57 +43,14 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm run setup:playwright
 
-      - name: Process Use Case
-        run: |
-          node --experimental-strip-types guides/guide-gen.ts "${{ inputs.feature_id }}" --use-case='${{ toJSON(matrix.usecase) }}'
-
-      - name: Stage files for upload
-        run: |
-          mkdir -p dist/guides/${{ matrix.usecase.category }}/${{ matrix.usecase.slug }}
-          cp -R guides/${{ matrix.usecase.category }}/${{ matrix.usecase.slug }}/. dist/guides/${{ matrix.usecase.category }}/${{ matrix.usecase.slug }}/
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: usecase-${{ matrix.usecase.slug }}
-          path: dist/
-
-  create-pr:
-    needs: process
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: temp-artifacts/
-
-      - name: Merge artifacts
-        run: |
-          mkdir -p guides
-          for dir in temp-artifacts/usecase-*; do
-            if [ -d "$dir" ]; then
-              # Assuming the artifact content is the files inside the usecase dir
-              # We need to find the category and slug to reconstruct the path!
-              # Or we can just copy everything if the artifact preserved the structure!
-              # Let's try to copy everything recursively!
-              cp -R "$dir/." .
-            fi
-          done
-
-      - name: Configure git
-        run: |
-          git config user.name "chrome-devrel-infra[bot]"
-          git config user.email "124898761+chrome-devrel-infra[bot]@users.noreply.github.com"
-
-      - name: Commit and Create PR
+      - name: Generate Guide
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          branch="guidance-bot/${{ inputs.feature_id }}"
-          git checkout -b $branch
-          git add guides/
-          git commit -m "feat: scaffold guides for ${{ inputs.feature_id }}"
-          git push origin $branch --force
-          gh pr create --draft --title "guides: ${{ inputs.feature_id }}" --body "Scaffolded guides for ${{ inputs.feature_id }}." --head $branch --reviewer "${{ inputs.reviewer }}"
+          node --experimental-strip-types guides/guide-gen.ts "${{ inputs.feature_id }}"
+
+      - name: Upload Logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: calibration-logs-${{ inputs.feature_id }}
+          path: guides/**/dev.log
