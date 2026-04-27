@@ -131,7 +131,7 @@ When the hidden content is focusable (skip links, focus-receiving wrappers), the
 - **Update document title on Page Transitions in SPAs**: Shift focus to updated titles.
 
 #### DON'Ts
-- **Don't Disable Scrolling**: Never use `scrolling="no"` on iframes to allow standard zoom levels.
+- **Don't Disable iframe Scrolling**: Avoid `scrolling="no"` (deprecated) or `overflow: hidden` on iframes. Users who zoom in or enlarge text need to scroll to reach content that overflows.
 
 ### Code Examples
 
@@ -416,7 +416,7 @@ Modern browsers provide native mechanisms for focus trapping and modal overlays 
 - **Use the `inert` Attribute for Custom Overlays**: Apply the `inert` attribute to background app-shells if you must build a custom viewport container to isolate focus.
 
 #### DON'Ts
-- **Don't rely on complex manual JS focus traps**: Avoid using manual `keydown` listeners for focus loops if the native `<dialog>` element is available.
+- **Don't rebuild focus traps manually**: Avoid using manual `keydown` listeners for focus loops.
 
 ### Code Examples
 
@@ -444,7 +444,7 @@ Modern browsers provide native mechanisms for focus trapping and modal overlays 
 
 #### DOs
 - **Run Automated checks via axe-core or Lighthouse audits**: Catch missing alt texts or low contrasts (e.g., via Lighthouse in Chrome DevTools MCP).
-- **Validate Sequential Navigations using keyboards alone**: Disconnect mouse traps to verify logic.
+- **Validate Sequential Navigations using keyboards alone**: Using only keyboard shortcuts, such as Tab/Shift+Tab, arrow keys, Enter, Space, and Esc, confirm every interactive element is reachable and operable, and that focus never gets stuck.
 - **Test on Screen Readers with calibrated browsers**: Rely on standard bindings (e.g., VoiceOver with Safari).
 
 #### DON'Ts
