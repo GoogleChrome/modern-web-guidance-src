@@ -7,6 +7,11 @@ description: Actionable coding guidelines for building accessible web applicatio
 
 This guide provides actionable DOs and DON'Ts for AI coding agents to ensure web applications are accessible to all users, including those using assistive technologies.
 
+Keep these principles in mind throughout:
+
+- **Accessibility is the minimum, not the ceiling.** Conformance to standards is the floor; aim for genuine usability.
+- **Patterns are use-case specific.** No checklist replaces real testing — including testing with disabled users — to confirm a given implementation is actually accessible in context.
+
 ## 1. Semantic HTML and Landmarks
 
 ### Actionable Guidelines
@@ -92,7 +97,7 @@ This guide provides actionable DOs and DON'Ts for AI coding agents to ensure web
 - **Skip Navigation Links**: Provide a "Skip to content" link at the top of the page.
 - **Lock Modal Focus**: Ensure focus cannot leave open modal dialogs.
 - **Custom Trigger Keyboards**: Attach Enter/Space handlers for custom simulated interactive elements.
-- **Custom tabindex focus elements usages**: Use `tabindex="0"` for non natively focusable elements.
+- **Use `tabindex` deliberately**: Anything focusable — by keyboard or programmatically — should have an implicit or explicit ARIA role, so don't make every element focusable. When focus is needed, choose `tabindex="0"` to add the element to the tab order or `tabindex="-1"` to make it programmatically focusable only (e.g., a skip-link target).
 - **Manage Toggle States**: Utilize `aria-expanded` and `aria-pressed` to communicate toggle states for custom controls.
 
 #### DON'Ts
@@ -104,7 +109,7 @@ This guide provides actionable DOs and DON'Ts for AI coding agents to ensure web
 
 ```css
 /* Good: High contrast focus border */
-a:focus, button:focus {
+:where(a:any-link, button):focus-visible {
   outline: 3px solid #ff0055;
   outline-offset: 3px;
 }
@@ -113,7 +118,7 @@ a:focus, button:focus {
 ```html
 <!-- Good: Skip to main content -->
 <a href="#main" class="skip-link">Skip to main content</a>
-<main id="main">...</main>
+<main id="main" tabindex="-1">...</main>
 ```
 
 ```javascript
@@ -138,7 +143,7 @@ customWidget.addEventListener('keydown', (e) => {
 
 #### DOs
 - **Informative Visual Descriptions**: Describe the purpose of the image (e.g., "Search", not "Magnifying glass").
-- **Empty Alt properties for decorative visuals**: Use `alt=""` or `role="presentation"` to hide decorative images.
+- **Empty Alt properties for decorative visuals**: Use `alt=""` or `role="presentation"` to hide decorative images from screen readers.
 - **Synchronous Captions for videos**: Supply WebVTT captions for video tracks.
 - **Transcripts for audio**: Provide text transcripts for purely audio podcasts.
 - **Informative View Descriptions for inline SVGs**: Apply `role="img"` and a nested `<title>` tag for informative visuals.
@@ -178,8 +183,8 @@ customWidget.addEventListener('keydown', (e) => {
 </figure>
 
 <!-- Audio with expandable transcript details -->
-<audio controls src="podcast.mp3"></audio>
-<details>
+<audio controls src="podcast.mp3" aria-details="podcast-transcript"></audio>
+<details id="podcast-transcript">
   <summary>View Transcript</summary>
   <div class="transcript-content">
     Welcome to the show...
@@ -219,8 +224,8 @@ customWidget.addEventListener('keydown', (e) => {
 <!-- Good: Semantic forms with hints for passwords -->
 <form>
   <label for="pwd">Password:</label>
-  <input id="pwd" type="password" aria-describedby="pwd-hint" autocomplete="current-password" required aria-required="true">
   <span id="pwd-hint">Must contain at least 8 characters.</span>
+  <input id="pwd" type="password" aria-describedby="pwd-hint" autocomplete="current-password" required>
 </form>
 ```
 
@@ -250,13 +255,17 @@ customWidget.addEventListener('keydown', (e) => {
 - **Minimum contrast standards**: Maintain 4.5:1 for normal text and 3:1 for large text or icons.
 - **Use multiple state indicators**: Do not denote success/errors ONLY with color. Use icons or text.
 - **Relative font size units**: Use `rem` or `em` for font sizes instead of `px`.
-- **Consistent or Start alignment (avoid justify)**: Cap paragraph blocks to a maximum of 80 characters width.
-- **Support user preference media queries**: Implement `@media (prefers-color-scheme: dark)` and `@media (prefers-contrast: high)`.
+- **Consistent or Start alignment**: Avoid `justify` alignment as it can be more difficult to read.
+- **Avoid long lines of text**: Cap paragraph blocks to a maximum of 80 characters width.
+- **Support user zoom preferences**: Allow users to resize text up to 200% without loss of content or functionality.
+- **Support light and dark color schemes**: Honor `@media (prefers-color-scheme: dark)` and pair it with the `color-scheme` CSS property so form controls, scrollbars, and other UA-rendered surfaces match.
+- **Use `prefers-contrast` only when warranted**: Reach for `@media (prefers-contrast: more)` when the design uses low-contrast accents (e.g., subtle borders, muted secondary text) that need to be reinforced; most sites that already meet baseline contrast won't need it.
 
 #### DON'Ts
 - **Don't use Justified Text Alignment**: Avoid `text-align: justify`.
 - **Don't use Ornate fonts**: Omit cursive typefaces for main reading content.
-- **Don't rely on italics or all-caps for emphasis**: Use bolding sparingly as it is generally more readable for dense text.
+- **Don't rely on all-caps for emphasis**: Prefer bolding for visual emphasis, and use `<em>`/`<strong>` when the emphasis is semantic.
+- **Limit emphasis overall**: Emphasis loses meaning when it's everywhere — apply it only where it changes how the content should be read.
 
 ### Code Examples
 
@@ -268,7 +277,7 @@ body {
   text-align: start; /* Supports LTR and RTL */
 }
 article {
-  max-width: 65ch; /* Caps character lengths */
+  max-width: 80ch; /* Caps line length to ~80 characters for readability */
 }
 ```
 
@@ -300,7 +309,7 @@ article {
 
 #### DOs
 - **Support Reduced Motion media queries**: Support `@media (prefers-reduced-motion: reduce)` media queries.
-- **Provide Pause mechanism**: Allow users to stop auto-running carousels banners.
+- **Provide Pause mechanism**: Allow users to stop auto-running carousels banners or other persistent animations.
 - **Default to static views**: Consider defaulting to static states and allowing users to opt-in to motion.
 
 #### DON'Ts
@@ -325,7 +334,7 @@ article {
 #### DOs
 - **Run Automated checks via axe-core or Lighthouse audits**: Catch missing alt texts or low contrasts (e.g., via Lighthouse in Chrome DevTools MCP).
 - **Validate Sequential Navigations using keyboards alone**: Disconnect mouse traps to verify logic.
-- **Use Screen Readers with calibrated browsers**: Rely on standard bindings (e.g., VoiceOver with Safari).
+- **Test on Screen Readers with calibrated browsers**: Rely on standard bindings (e.g., VoiceOver with Safari).
 
 #### DON'Ts
 - **Don't rely purely on scores**: A 100% score does not guarantee real usability.
