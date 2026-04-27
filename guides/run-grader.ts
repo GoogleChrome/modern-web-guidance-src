@@ -37,6 +37,8 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
 
   if (opts.htmlOutputDir) {
     env.PLAYWRIGHT_HTML_OUTPUT_DIR = opts.htmlOutputDir;
+    // Set output dir to be relative to the target file!
+    env.PLAYWRIGHT_OUTPUT_DIR = path.join(path.dirname(opts.targetFileAbs), 'test-results');
   }
 
   if (opts.jsonOutputName) {

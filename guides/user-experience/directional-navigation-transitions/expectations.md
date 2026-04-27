@@ -1,0 +1,12 @@
+- Clicking the "Next" button triggers a view transition.
+- Clicking the "Previous" button triggers a view transition.
+- During the "Next" transition, the `forward` transition type is active on the document element.
+- During the "Previous" transition, the `backward` transition type is active on the document element.
+- During a `forward` transition, the `::view-transition-old(root)` element has an animation that translates it to -100% on the X-axis.
+- During a `forward` transition, the `::view-transition-new(root)` element has an animation that translates it from 100% on the X-axis.
+- During a `backward` transition, the `::view-transition-old(root)` element has an animation that translates it to 100% on the X-axis.
+- During a `backward` transition, the `::view-transition-new(root)` element has an animation that translates it from -100% on the X-axis.
+- The animations use the `transform` or `translate` property, and do not use `left`, `right`, `inset-inline-start` or `inset-inline-end`.
+- The `::view-transition-group(root)` element has an animation duration of 0.4 seconds.
+- The `::view-transition-group(root)` element uses an `ease-in-out` timing function.
+- All view transition animations are disabled when `prefers-reduced-motion` is set to `reduce`.
