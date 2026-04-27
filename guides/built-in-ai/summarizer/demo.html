@@ -18,6 +18,9 @@
       have been impossible with previous generations of space observatories. Researchers around the world continue to
       analyze its data, expecting many more groundbreaking revelations in the years to come.</p>
   </article>
+  <form id="summarize-form">
+    <button type="submit">Summarize</button>
+  </form>
   <div id="summary"></div>
 
   <script type="module">
@@ -25,7 +28,11 @@
       type: 'tldr',
       format: 'plain-text',
       length: 'short',
+      expectedInputLanguages: ['en'],
+      outputLanguage: 'en',
     };
+
+    let summarizer;
 
     try {
       if (!('Summarizer' in window)) {
@@ -35,26 +42,33 @@
       if (availability === 'unavailable') {
         throw new Error('Summarizer is not available');
       }
-      const summarizer = await Summarizer.create({
+      summarizer = await Summarizer.create({
         ...options,
+
         monitor(m) {
           m.addEventListener('downloadprogress', (e) => {
             console.log(`Downloaded ${e.loaded * 100}%`);
           });
         },
       });
+    } catch (e) {
+      console.error(e);
+    }
+
+    document.getElementById('summarize-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!summarizer) return;
       const text = document.getElementById('article').textContent.trim();
       const stream = summarizer.summarizeStreaming(text);
       const div = document.getElementById('summary');
+      div.textContent = '';
       let summary = '';
       for await (const chunk of stream) {
         summary += chunk;
         div.append(chunk);
       }
       console.log('Summary:', summary);
-    } catch (e) {
-      console.error(e);
-    }
+    });
   </script>
 </body>
 

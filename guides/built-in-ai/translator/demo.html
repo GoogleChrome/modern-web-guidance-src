@@ -9,6 +9,9 @@
 <body>
   <h1>Translator</h1>
   <p id="source" lang="en">The quick brown fox jumps over the lazy dog.</p>
+  <form id="translate-form">
+    <button type="submit">Translate</button>
+  </form>
   <p id="translation"></p>
 
   <script type="module">
@@ -16,6 +19,8 @@
       sourceLanguage: 'en',
       targetLanguage: 'es',
     };
+
+    let translator;
 
     try {
       if (!('Translator' in window)) {
@@ -25,7 +30,7 @@
       if (availability === 'unavailable') {
         throw new Error('Translator is not available');
       }
-      const translator = await Translator.create({
+      translator = await Translator.create({
         ...options,
         monitor(m) {
           m.addEventListener('downloadprogress', (e) => {
@@ -33,18 +38,24 @@
           });
         },
       });
-      const text = document.getElementById('source').textContent;
-      const stream = translator.translateStreaming(text);
-      const div = document.getElementById('translation');
-      let translation = '';
-      for await (const chunk of stream) {
-        translation += chunk;
-        div.append(chunk);
-      }
-      console.log('Translation:', translation);
     } catch (e) {
       console.error(e);
     }
+
+    document.getElementById('translate-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!translator) return;
+      const text = document.getElementById('source').textContent;
+      const stream = translator.translateStreaming(text);
+      const p = document.getElementById('translation');
+      p.textContent = '';
+      let translation = '';
+      for await (const chunk of stream) {
+        translation += chunk;
+        p.append(chunk);
+      }
+      console.log('Translation:', translation);
+    });
   </script>
 </body>
 

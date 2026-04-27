@@ -10,8 +10,14 @@
   <h1>Language Detection</h1>
   <p lang="es">Hola, ¿cómo estás?</p>
   <p lang="de">Hallo, wie geht's?</p>
+  <form id="detect-form">
+    <button type="submit">Detect Language</button>
+  </form>
+  <div id="results"></div>
 
   <script type="module">
+    let languageDetector;
+
     try {
       if (!('LanguageDetector' in window)) {
         throw new Error('LanguageDetector not found');
@@ -23,21 +29,30 @@
       if (availability === 'unavailable') {
         throw new Error('LanguageDetector is not available');
       }
-      const languageDetector = await LanguageDetector.create({
+      languageDetector = await LanguageDetector.create({
         monitor(m) {
           m.addEventListener('downloadprogress', (e) => {
             console.log(`Downloaded ${e.loaded * 100}%`);
           });
         },
       });
+    } catch (e) {
+      console.error(e);
+    }
+
+    document.getElementById('detect-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!languageDetector) return;
+      const div = document.getElementById('results');
+      div.textContent = '';
       for (const p of document.querySelectorAll('p')) {
         const result = await languageDetector.detect(p.textContent);
         const mostLikely = result[0];
         console.log(p.textContent, mostLikely.detectedLanguage, mostLikely.confidence);
+        div.append(`${p.textContent} → ${mostLikely.detectedLanguage} (${mostLikely.confidence.toFixed(2)})`);
+        div.append(document.createElement('br'));
       }
-    } catch (e) {
-      console.error(e);
-    }
+    });
   </script>
 </body>
 
