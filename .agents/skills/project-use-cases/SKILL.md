@@ -39,6 +39,9 @@ A "use case" in this project is not a description of a feature; it's a task that
 * **Drop niche use cases**: If a use case is unlikely to match real developer prompts (e.g., very specific visual effects, obscure layout tricks), omit it. Prefer use cases that represent common, everyday developer needs.
 * **Merge rather than split**: If two proposed use cases would result in guides that are 99% identical, combine them into one, more general use case. Duplicate guides bloat context windows and create confusing contradictions.
 * **Break down complex features**: Conversely, do not cram multi-step, intricate features (like passkeys) into a single generic guide. Split them into logical, detailed use cases.
+* **UX-Driven, Not Feature-Driven**: Do not simply list every method, property, or option of an API as a separate use case. A use case must represent a distinct user experience goal or a distinct developer problem, not just a variation in API usage. If the implementation across proposed use cases is 90% identical, consolidate them.
+* **Avoid Forcing Use Cases on Low-Level Utilities**: If a feature is a low-level utility (like a new Promise method or a general object cloning function) that primarily acts as a drop-in replacement for legacy patterns, avoid forcing it into multiple outcome-oriented use cases. Instead, consider recommending a single 'Fundamental Guide' (e.g., "Deep cloning complex objects") or placing it in a top-level discipline skill file.
+
 
 ## Minimizing overlap
 
