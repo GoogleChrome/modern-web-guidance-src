@@ -523,6 +523,15 @@ function renderGrid(data, testId) {
 
                 card.onclick = () => showDetails(testName, runData, testStats, testId);
                 card.style.position = 'relative';
+                let tokensHtml = '';
+                if (testStats && testStats.avgTokens) {
+                    tokensHtml = `
+                        <div style="font-size: 0.85em; margin-top: 6px; color: var(--text-secondary);">
+                            Tokens (Avg): <strong style="color: var(--text-primary);">${testStats.avgTokens.total.toLocaleString()}</strong>
+                            ${testStats.avgTokens.cached ? `<span style="opacity: 0.8;"> (Cached: ${testStats.avgTokens.cached.toLocaleString()})</span>` : ''}
+                        </div>
+                    `;
+                }
 
                 card.innerHTML = `
                     <h3>${formatTestName(testName)}</h3>
@@ -533,15 +542,10 @@ function renderGrid(data, testId) {
                         <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
                         <span>Runs: ${runData.length}${testStats && testStats.earlyFailures ? ` (<span style="color: var(--accent-failure); font-weight: bold;">${testStats.earlyFailures} failed</span>)` : ''}</span>
                     </div>
+                    ${tokensHtml}
                     ${avgRuntime > 0 ? `
-                    <div style="position: absolute; bottom: 10px; right: 15px; font-size: 0.85em; color: var(--text-secondary); text-align: right;">
-                        Runtime (Avg): <strong style="color: var(--text-primary);">${formatRuntime(avgRuntime)}</strong>
-                        ${testStats && testStats.avgTokens ? `
-                        <div style="margin-top: 2px;">
-                            Tokens (Avg): <strong style="color: var(--text-primary);">${testStats.avgTokens.total.toLocaleString()}</strong>
-                            ${testStats.avgTokens.cached ? `<span style="opacity: 0.8;"> (Cached: ${testStats.avgTokens.cached.toLocaleString()})</span>` : ''}
-                        </div>
-                        ` : ''}
+                    <div style="position: absolute; bottom: 10px; right: 15px; font-size: 0.85em; color: var(--text-secondary);">
+                        Runtime (Average): <strong style="color: var(--text-primary);">${formatRuntime(avgRuntime)}</strong>
                     </div>
                     ` : ''}
                     ${toolActivationHtml}
@@ -582,15 +586,6 @@ function openTrajectory(usedBasePath, sessionFile) {
             });
     } else {
         window.open(api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`), '_blank');
-    }
-}
-
-function openSecureLink(path) {
-    if (api.source === 'remote') {
-        const mtlsUrl = `https://storage.mtls.cloud.google.com/guidance-evals/${path}`;
-        window.open(mtlsUrl, '_blank');
-    } else {
-        window.open(api.getAbsoluteUrl(path), '_blank');
     }
 }
 
@@ -758,49 +753,12 @@ async function showDetails(testName, runs, stats, testId) {
                     <li class="check-item">
                         <span class="check-status">${check.passed ? '✅' : '❌'}</span>
                         <span class="check-message">${escapeHtml(check.message)}</span>
-                        <div style="display: flex; gap: 5px; margin-left: auto;">
-                            ${check.screenshotPath ? `<a href="#" class="secondary-btn screenshot-link" data-screenshot-path="${check.screenshotPath}" style="padding: 2px 8px; font-size: 0.8rem;">Screenshot</a>` : ''}
-                            ${check.tracePath ? `<a href="#" class="secondary-btn trace-link" data-trace-path="${check.tracePath}" style="padding: 2px 8px; font-size: 0.8rem;">Trace</a>` : ''}
-                            ${check.reportPath ? `<a href="#" class="secondary-btn report-link" data-report-path="${check.reportPath}" style="padding: 2px 8px; font-size: 0.8rem;">Report</a>` : ''}
-                        </div>
+                        <a href="${api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`)}${check.testId ? `#?testId=${check.testId}` : ''}" target="_blank" class="secondary-btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
                     </li>
                 `).join('')}
             </ul>
             ${usageSection}
         `;
-
-        const reportLinks = runDetail.querySelectorAll('.report-link');
-        reportLinks.forEach(link => {
-            if (link instanceof HTMLElement) {
-                link.onclick = (e) => {
-                    e.preventDefault();
-                    const reportRelativePath = link.dataset.reportPath;
-                    openSecureLink(`${usedBasePath}/${reportRelativePath}`);
-                };
-            }
-        });
-
-        const screenshotLinks = runDetail.querySelectorAll('.screenshot-link');
-        screenshotLinks.forEach(link => {
-            if (link instanceof HTMLElement) {
-                link.onclick = (e) => {
-                    e.preventDefault();
-                    const screenshotRelativePath = link.dataset.screenshotPath;
-                    openSecureLink(`${usedBasePath}/${screenshotRelativePath}`);
-                };
-            }
-        });
-
-        const traceLinks = runDetail.querySelectorAll('.trace-link');
-        traceLinks.forEach(link => {
-            if (link instanceof HTMLElement) {
-                link.onclick = (e) => {
-                    e.preventDefault();
-                    const traceRelativePath = link.dataset.tracePath;
-                    openSecureLink(`${usedBasePath}/${traceRelativePath}`);
-                };
-            }
-        });
 
         const viewResourcesLink = runDetail.querySelector('.view-resources-link');
         if (viewResourcesLink instanceof HTMLElement) {
@@ -865,7 +823,12 @@ async function showDetails(testName, runs, stats, testId) {
             const val = target.value;
             target.value = ''; // reset selection
             if (val === 'source') {
-                openSecureLink(resultPath);
+                if (api.source === 'remote') {
+                    // Open directly via the mTLS domain which handles auth and serves raw HTML
+                    window.open(`https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`, '_blank');
+                } else {
+                    window.open(api.getAbsoluteUrl(resultPath), '_blank');
+                }
             } else if (val === 'diff') {
                 viewDiff(setupPath, resultPath, testName, run.runNumber);
             } else if (val === 'trajectory' && sessionFile) {

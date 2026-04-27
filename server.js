@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
+import { runAllManifests } from './generate-manifests.js';
 
 const PORT = process.env.PORT || 8081;
 const STATIC = process.env.STATIC === 'true';
@@ -12,6 +13,7 @@ if (STATIC) {
   console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
   
   const distDir = path.resolve('../dist/dashboard');
+
   if (fs.existsSync(distDir)) {
     fs.rmSync(distDir, { recursive: true, force: true });
   }
@@ -43,6 +45,9 @@ if (STATIC) {
       console.error(`Failed to create symlink for ${link.name}:`, message);
     }
   }
+
+  console.log('🔄 Generating manifests for static mode...');
+  await runAllManifests({ outputDir: distDir });
 
   console.log(`🚀 Spawning statikk on port ${PORT} serving ../dist/dashboard...`);
   const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString(), '../dist/dashboard'], { stdio: 'inherit' });
