@@ -1,65 +1,18 @@
----
-name: chrome-webstore
-description: >
-  Maintain a CHROMEWEBSTORE.md file tracking all Chrome Web Store publishing metadata for a
-  Chrome extension. Trigger on: 'Chrome Web Store', 'publish extension', 'store listing',
-  'webstore', 'CWS', 'extension submission', 'permissions justification', 'privacy policy'
-  (in extension context), 'store screenshots', 'extension review', 'publish to Chrome',
-  'update store listing'. Also trigger when preparing an extension for publishing, updating
-  its store listing, responding to a review rejection, tracking a release, writing permission
-  justifications, drafting a privacy policy, or managing store assets. Trigger even if the
-  user just says "let's publish this" or "prepare for the store" in a Chrome extension
-  context. Complements the chrome-extension skill — chrome-extension builds extensions,
-  this skill handles getting them into and maintaining them on the Chrome Web Store.
----
+# Write a Store Listing
 
-# Chrome Web Store Publishing Skill
+Use this guide when creating or updating the store-facing copy for a Chrome extension.
 
-Manage `CHROMEWEBSTORE.md` — the single source of truth for all Chrome Web Store listing
-metadata, permissions justifications, privacy disclosures, version history, and publishing
-readiness for a Chrome extension project.
-
-## Core Workflow
-
-Every time you touch a Chrome extension project in a way that affects its store presence,
-update (or create) `CHROMEWEBSTORE.md` in the project root.
-
-### When to create CHROMEWEBSTORE.md
-
-Create it the moment any of these happen:
-- The user says they want to publish an extension
-- The user asks to "prepare for the store" or "get ready to publish"
-- You're building a new extension that will clearly end up on the store
-- The user asks about store listing requirements
-
-Use the template below. To fill it out:
-
-1. Read `manifest.json` to extract name, version, description, permissions, host_permissions
-2. Scan the codebase for data collection (storage, fetch calls, analytics)
-3. Check for icon files and their dimensions
-4. Look at the extension's UI to understand features for the description
-
-### When to update CHROMEWEBSTORE.md
-
-- **User-facing changes**: Bump "Last Updated", update the feature list, add a Version History entry
-- **manifest.json changes**: If permissions, host_permissions, or content_scripts changed,
-  update the Permissions Justification section
-- **New release**: Add a Version History entry with version, date, and summary
-- **Privacy-relevant changes**: If data collection, storage, or transmission changed,
-  update Privacy & Data Use and the privacy policy
-- **Asset changes**: Note which screenshots need refreshing
-- **Rejection**: Update the file with the fix and add a note to Rejection History
-
-## Store Listing Fields
+## Required Fields
 
 ### Extension Name
-Must match `manifest.json` `name` exactly. Max 75 characters. Make it descriptive and
-memorable, not generic ("Tab Manager" is weak; "OneTab — Tab Groups & Saver" is better).
+Must match `manifest.json` `name` exactly. Max 75 characters. The name is your primary
+identifier — make it descriptive and memorable, not generic ("Tab Manager" is weak;
+"OneTab — Tab Groups & Saver" is better).
 
 ### Short Description (132 chars max)
-Shown in search results, category pages, and install prompts:
+Shown in search results, category pages, and install prompts. Rules:
 - Start with the function, not the brand: "Highlights and saves text on any webpage" not "HighlightPro"
-- Be specific: "Translates selected text into 50+ languages" beats "Translation tool"
+- Be specific. "Translates selected text into 50+ languages" beats "Translation tool"
 - No "Chrome extension" — the user already knows
 - Include the primary keyword naturally
 
@@ -254,25 +207,3 @@ Copy this into the project root as `CHROMEWEBSTORE.md`:
 ### Rejection History
 <!-- | Date | Reason | Fix Applied | Resubmitted | -->
 ```
-
-## Quick Pre-Publish Checklist
-
-Before submitting, verify:
-- [ ] `manifest.json` `version` bumped
-- [ ] CHROMEWEBSTORE.md "Last Updated" date is current
-- [ ] All descriptions are specific and accurate (no vague marketing)
-- [ ] Single Purpose field is filled in and narrow
-- [ ] Every permission has a justification
-- [ ] `host_permissions` scoped as tightly as possible
-- [ ] Privacy & Data Use section matches actual data practices
-- [ ] Privacy policy URL is live and accessible
-- [ ] Store icon is 128×128 PNG
-- [ ] At least 1 screenshot at correct dimensions
-- [ ] No placeholder text or TODO items remain
-- [ ] Version History has an entry for this release
-- [ ] ZIP contains only necessary files
-- [ ] Extension tested in Chrome with no console errors
-- [ ] 2-Step Verification enabled on the developer account
-
-See `guides/package-and-submit.md` for the full checklist with explanations.
-

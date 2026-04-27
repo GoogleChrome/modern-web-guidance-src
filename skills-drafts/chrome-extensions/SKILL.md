@@ -34,25 +34,15 @@ These address the most common causes of broken extensions. Violating any produce
    (just remove the "icons" and "default_icon" fields — Chrome uses a default icon)
 ```
 
-**If you include icon references, you MUST create the actual image files.** Generate them with a script (see `references/icons.md`) or leave them out. Never reference non-existent files.
+**If you include icon references, you MUST create the actual image files.** Generate them with a script (see "Generating Extension Icons" below) or leave them out. Never reference non-existent files.
 
 ### 2. Side panel: you MUST provide a way to open it
 
-Defining `"side_panel": {"default_path": "..."}` does NOT make it openable. Add a trigger:
-
-```js
-// In service-worker.js — open side panel on extension icon click
-// IMPORTANT: chrome.action.onClicked ONLY fires when there is NO default_popup
-chrome.action.onClicked.addListener(async (tab) => {
-  await chrome.sidePanel.open({ windowId: tab.windowId });
-});
-```
-
-If the extension has both a popup AND side panel, add a button in the popup that calls `chrome.sidePanel.open()`.
+Defining `"side_panel": {"default_path": "..."}` does NOT make it openable. Use `chrome.action.onClicked` + `sidePanel.open()`, or `sidePanel.setPanelBehavior({ openPanelOnActionClick: true })`. See the Side Panel reference below for all trigger options. If the extension has both a popup AND side panel, add a button in the popup that calls `chrome.sidePanel.open()`.
 
 ### 3. Code execution: sandboxed iframes ONLY
 
-Extension CSP blocks `eval()`, `new Function()`, inline `<script>` in all extension pages.
+Extension CSP blocks `eval()`, `new Function()`, inline `<script>` in all extension pages. You CANNOT relax this. Two critical errors to avoid:
 
 ```js
 // ❌ BROKEN — direct iframe DOM access throws SecurityError
@@ -61,21 +51,9 @@ iframe.contentDocument.write(html);
 
 // ❌ BROKEN — eval in extension page
 eval(userCode); // CSP blocks this
-
-// ✅ OPTION A: Sandbox in manifest + postMessage
-// manifest.json: { "sandbox": { "pages": ["sandbox.html"] } }
-// extension page sends code:
-iframe.contentWindow.postMessage({ html, css, js }, '*');
-// sandbox.html receives and runs:
-window.addEventListener('message', (e) => { eval(e.data.js); /* allowed in sandbox */ });
-
-// ✅ OPTION B: Blob URL (creates separate origin, bypasses extension CSP)
-const doc = `<style>${css}</style>${html}<script>${js}<\/script>`;
-iframe.src = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
-
-// ✅ OPTION C: srcdoc
-iframe.srcdoc = `<style>${css}</style>${html}<script>${js}<\/script>`;
 ```
+
+Use sandbox + `postMessage`, blob URLs, or `srcdoc` instead. See "CSP & Sandboxed Code Execution" below for full examples.
 
 ### 4. `tab.url` requires the `tabs` permission
 
@@ -113,20 +91,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 ### 6. Content scripts: don't block the main thread
 
-When modifying many DOM elements, batch with `requestAnimationFrame` and yield between batches:
-
-```js
-async function highlightAll(elements) {
-  const BATCH = 20;
-  for (let i = 0; i < elements.length; i += BATCH) {
-    await new Promise(r => requestAnimationFrame(() => {
-      elements.slice(i, i + BATCH).forEach(el => el.style.backgroundColor = 'yellow');
-      r();
-    }));
-    if (globalThis.scheduler?.yield) await scheduler.yield();
-  }
-}
-```
+When modifying many DOM elements, batch with `requestAnimationFrame` and yield between batches with `scheduler.yield()`. See "Content Scripts & DOM Manipulation" below for the full batching pattern.
 
 ### 7. Service workers are ephemeral — never store state in variables
 
@@ -148,14 +113,7 @@ Use `chrome.alarms` instead of `setTimeout`/`setInterval`.
 
 ### 8. chrome.identity: extension ID differs between dev and production
 
-When using Google sign-in, the OAuth client_id is tied to a specific extension ID. The ID changes between unpacked development and the Chrome Web Store.
-
-To stabilize the ID during development, add a `"key"` field to manifest.json:
-1. Pack the extension once (chrome://extensions → Pack)
-2. Extract the public key from the .crx
-3. Add `"key": "MIIBIjANBgkqh..."` to manifest.json
-
-Always document: "After publishing to the Chrome Web Store, update the OAuth client with the store-assigned extension ID."
+The OAuth `client_id` is tied to a specific extension ID which changes between unpacked development and the Chrome Web Store. Stabilize it by adding a `"key"` field to manifest.json (pack once → extract key from .crx → add to manifest). See "Authentication with chrome.identity" below for full steps. Always remind users to update the OAuth client after publishing.
 
 ### 9. Context menus: show user feedback after action
 
@@ -183,62 +141,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 ```
 
-### 10. Prompt API: use the current global API with language param
-
-The Chrome Prompt API namespace has changed. Use the current version:
-
-```js
-// ❌ OLD — deprecated
-const session = await self.ai.languageModel.create();
-
-// ✅ CURRENT (Chrome 138+) — always specify expectedInputs/expectedOutputs languages
-const availability = await LanguageModel.availability({
-  expectedInputs: [{ type: "text", languages: ["en"] }],
-  expectedOutputs: [{ type: "text", languages: ["en"] }]
-});
-const session = await LanguageModel.create({
-  expectedInputs: [{ type: "text", languages: ["en"] }],
-  expectedOutputs: [{ type: "text", languages: ["en"] }],
-  monitor(m) { m.addEventListener('downloadprogress', e => {
-    const pct = e.total ? Math.floor((e.loaded / e.total) * 100) : 0;
-    console.log(pct + '%');
-  }); }
-});
-```
-
-**Streaming: append each chunk — do NOT replace content:**
-
-```js
-// ❌ BAD — replaces already-shown content, causing visible flicker/loss
-for await (const chunk of session.promptStreaming('...')) {
-  outputEl.textContent = chunk; // WRONG — overrides existing streamed content
-}
-
-// ✅ GOOD — append each streamed chunk
-outputEl.textContent = ''; // clear before starting
-for await (const chunk of session.promptStreaming('...')) {
-  outputEl.textContent += chunk;
-}
-```
-
-Download progress — use `e.loaded` and `e.total` to compute percentage:
-
-```js
-const session = await LanguageModel.create({
-  expectedInputs: [{ type: "text", languages: ["en"] }],
-  expectedOutputs: [{ type: "text", languages: ["en"] }],
-  monitor(m) {
-    m.addEventListener('downloadprogress', (e) => {
-      const pct = e.total ? Math.floor((e.loaded / e.total) * 100) : 0;
-      statusEl.textContent = `Downloading model: ${pct}%`;
-    });
-  }
-});
-```
-
-Always check `if (!globalThis.LanguageModel)` before using. Remove `"aiLanguageModelOriginTrial"` from permissions.
-
-### 11. `chrome.action` API requires `action` in manifest
+### 10. `chrome.action` API requires `action` in manifest
 
 Using `chrome.action.setBadgeText`, `chrome.action.setIcon`, or `chrome.action.onClicked` requires
 an `"action"` key in manifest.json — even if it's empty. Without it, `chrome.action` is `undefined`.
@@ -255,7 +158,7 @@ await chrome.action.setBadgeText({ text: '5' });
 { "action": { "default_popup": "popup/popup.html" } }
 ```
 
-### 12. `activeTab` only works on direct user gestures — not from side panels
+### 11. `activeTab` only works on direct user gestures — not from side panels
 
 `activeTab` grants temporary access to the current tab ONLY when triggered by:
 - Clicking the extension action icon
@@ -282,7 +185,7 @@ document.getElementById('summarize').addEventListener('click', async () => {
 
 If the extension needs to read/modify page content from a side panel or on tab change, use `tabs` + `host_permissions` instead of `activeTab`.
 
-### 13. DevTools panel URLs are relative to the extension root
+### 12. DevTools panel URLs are relative to the extension root
 
 When creating a DevTools panel, the panel HTML path is relative to the **extension root**, NOT
 relative to the devtools page that calls `chrome.devtools.panels.create()`.
@@ -309,7 +212,7 @@ my-extension/
 │       └── panel.js
 ```
 
-### 14. Offscreen documents have NO access to most chrome.* APIs
+### 13. Offscreen documents have NO access to most chrome.* APIs
 
 Offscreen documents (`chrome.offscreen`) run in a DOM context for tasks like audio playback,
 media recording, or DOM parsing — but they are **severely restricted**. Most `chrome.*` APIs
@@ -357,7 +260,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 The service worker does all chrome.* API work (downloads, badge updates, notifications).
 Always use `chrome.runtime.sendMessage` to bridge between them.
 
-### 15. Notifications and badge icons must reference real image files
+### 14. Notifications and badge icons must reference real image files
 
 `chrome.notifications.create()` requires a valid `iconUrl` pointing to an actual image file
 in your extension. If the file doesn't exist or the path is wrong, the call fails with
@@ -416,7 +319,7 @@ chrome.notifications.create('reminder', {
 This applies to ALL image references in chrome.* APIs — notifications, `chrome.action.setIcon`,
 context menu icons, etc. **If you reference a file, it must exist.**
 
-### 16. Tab capture: guard against double-start with state locking
+### 15. Tab capture: guard against double-start with state locking
 
 `chrome.tabCapture.getMediaStreamId()` fails with `"Cannot capture a tab with an active stream"`
 if called while a previous capture is still active. Fast double-clicks on the extension icon
@@ -472,7 +375,7 @@ This pattern applies to any chrome API that manages exclusive resources:
 `chrome.tabCapture`, `chrome.desktopCapture`, `chrome.offscreen.createDocument` (only one
 offscreen document allowed at a time).
 
-### 17. `chrome.desktopCapture` requires a target tab with URL access
+### 16. `chrome.desktopCapture` requires a target tab with URL access
 
 When calling `chrome.desktopCapture.chooseDesktopMedia()` from a service worker, you must pass
 the active tab as the `targetTab` parameter. The tab object must have its `url` field populated,
@@ -501,7 +404,7 @@ chrome.desktopCapture.chooseDesktopMedia(['screen', 'window'], tab, (streamId) =
 only need the current tab's audio/video. Use `chrome.desktopCapture` only when the user
 should choose which screen/window to capture.
 
-### 18. `chrome.windows` has NO `.query()` method — use `getAll`, `getLastFocused`, or `getCurrent`
+### 17. `chrome.windows` has NO `.query()` method — use `getAll`, `getLastFocused`, or `getCurrent`
 
 Unlike `chrome.tabs.query()`, the `chrome.windows` API does NOT have a `.query()` method.
 This is a common confusion because `tabs.query()` is used so frequently.
@@ -528,26 +431,16 @@ const tabs = win.tabs; // array of Tab objects
 - `get(windowId, { populate })` — specific window by ID
 - `create()`, `update()`, `remove()` — modify windows
 
-### 19. `sidePanel.setPanelBehavior`: the property is `openPanelOnActionClick` — no "Icon"
-
-The property name in `chrome.sidePanel.setPanelBehavior()` is `openPanelOnActionClick`.
-A common mistake is writing `openPanelOnActionIconClick` (with "Icon"), which causes a
-synchronous TypeError that aborts the service worker.
+### 18. `sidePanel.setPanelBehavior`: the property is `openPanelOnActionClick` — no "Icon"
 
 ```js
-// ❌ BROKEN — "Icon" is not part of the property name
+// ❌ BROKEN — "Icon" is not part of the property name; causes synchronous TypeError that aborts the SW
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionIconClick: true });
-// TypeError: Error in invocation of sidePanel.setPanelBehavior(...):
-//   Unexpected property: 'openPanelOnActionIconClick'
+// TypeError: Unexpected property: 'openPanelOnActionIconClick'
 
-// ✅ CORRECT — openPanelOnActionClick (no "Icon")
+// ✅ CORRECT
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 ```
-
-Note: `setPanelBehavior` is an alternative to using `chrome.action.onClicked` + `sidePanel.open()`.
-Both work, but `setPanelBehavior` is simpler when the side panel is the extension's primary UI.
-When using it, do NOT also define `default_popup` in the action — the popup takes priority and
-the side panel won't open.
 
 ## Always Manifest V3
 
@@ -558,29 +451,6 @@ Never generate Manifest V2 code.
 - `host_permissions` is separate from `permissions`
 - No inline scripts in HTML — use `<script src="file.js">`
 - No inline event handlers — use `addEventListener`
-
-## Reference Files
-
-For detailed API patterns, read the relevant file BEFORE writing code:
-
-| Use Case | Reference |
-|----------|-----------|
-| Side panels | `references/side-panel.md` |
-| Content scripts & DOM | `references/content-scripts.md` |
-| Popups | `references/popup-ui.md` |
-| Service worker lifetime | `references/service-worker.md` |
-| Code execution & CSP | `references/csp-sandbox.md` |
-| API calls | `references/api-calling.md` |
-| Declarative Net Request | `references/declarative-net-request.md` |
-| Chrome Prompt API | `references/prompt-api.md` |
-| DevTools panels | `references/devtools.md` |
-| Authentication | `references/auth-identity.md` |
-| Context menus | `references/context-menus.md` |
-| Omnibox | `references/omnibox.md` |
-| Storage | `references/storage.md` |
-| Tab management | `references/tab-management.md` |
-| Message passing | `references/message-passing.md` |
-| Icons | `references/icons.md` |
 
 ## Output Checklist
 
@@ -596,8 +466,6 @@ Verify EVERY item before delivering:
 - [ ] Service worker stores NO state in global variables — uses `chrome.storage`
 - [ ] No inline scripts or event handlers in HTML
 - [ ] Context menu actions show user confirmation
-- [ ] Prompt API uses `LanguageModel.create()` with `expectedInputs`/`expectedOutputs` languages
-- [ ] Prompt API streaming appends chunks (not replaces) — clear output before starting, then `+=`
 - [ ] `"action": {}` (or more) present in manifest if using `chrome.action.*` APIs
 - [ ] If reading/scripting tabs from a side panel: use `tabs` + `host_permissions` (NOT `activeTab`)
 - [ ] DevTools panel paths in `chrome.devtools.panels.create()` are relative to extension root
