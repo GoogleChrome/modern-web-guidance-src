@@ -1,0 +1,7 @@
+- The implementation MUST demonstrate multiple values for `overflow-clip-margin`, including at least one box edge (e.g., `content-box`) and one length value (e.g., `20px`).
+- The implementation MUST feature-detect support for `overflow: clip` using JavaScript (`CSS.supports`).
+- The implementation MUST display a notification banner if `overflow: clip` is not supported.
+- The implementation MUST apply a fallback class (e.g., `.overflow-fallback`) to the target containers if `overflow: clip` is not supported.
+- The implementation MUST use `overflow: hidden` as the fallback style inside the fallback class.
+- The implementation MUST NOT show the fallback banner if `overflow: clip` is supported.
+- The implementation MUST NOT use `overflow: scroll` or `overflow: auto` on the target containers when the intent is to strictly clip content without scrolling.

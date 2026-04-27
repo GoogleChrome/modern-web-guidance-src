@@ -3,30 +3,209 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Overflow Clipping Control</title>
+  <title>Overflow Clipping Control Demo</title>
   <style>
     body {
       font: 1em/1.5 system-ui, sans-serif;
       padding: 2rem;
+      background: #f5f5f5;
     }
 
-    .container {
-      background: #eee;
-      width: 10em;
-      height: 10em;
-      padding: 1em;
+    h1 {
+      margin-bottom: 0.5rem;
+    }
 
-      /* Essential CSS */
-      overflow: clip;
+    .intro {
+      margin-bottom: 2rem;
+      color: #555;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 2.5rem;
+      margin-top: 2rem;
+    }
+
+    .demo-item {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .demo-item h3 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      font-family: monospace;
+      background: #eee;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.25rem;
+      display: inline-block;
+    }
+
+    .description {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 1rem;
+      min-height: 3em; /* Ensure alignment */
+    }
+
+    .box {
+      border: 5px solid #333; /* Thicker border to see clipping through it */
+      width: 200px;
+      height: 100px;
+      padding: 30px; /* Larger padding to see difference */
+      box-sizing: content-box;
+      position: relative;
+      background: #fff;
+      overflow: clip; /* Base property */
+    }
+
+    /* Visual aid to see padding box */
+    .box::before {
+      content: 'Padding Box';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      border: 2px dashed red;
+      pointer-events: none;
+      font-size: 0.75rem;
+      color: red;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      padding: 5px;
+      z-index: 10; /* Ensure on top of image */
+    }
+
+    /* Visual aid to see content box */
+    .box::after {
+      content: 'Content Box';
+      position: absolute;
+      top: 30px; left: 30px; right: 30px; bottom: 30px;
+      border: 2px dashed blue;
+      pointer-events: none;
+      font-size: 0.75rem;
+      color: blue;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      padding: 5px;
+      z-index: 10;
+    }
+
+    /* The image that will overflow */
+    .demo-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 300px; /* Larger than box */
+      height: 200px; /* Larger than box */
+      opacity: 0.8; /* Slight opacity to see lines through it */
+    }
+
+    /* Essential CSS - Modern */
+    .clip-content {
       overflow-clip-margin: content-box;
+    }
+
+    .clip-padding {
+      overflow-clip-margin: padding-box;
+    }
+
+    .clip-border {
+      overflow-clip-margin: border-box;
+    }
+
+    .clip-20px {
+      overflow-clip-margin: 20px;
+    }
+
+    .clip-content-15px {
+      overflow-clip-margin: content-box 15px;
+    }
+
+    /* Fallback Class */
+    .overflow-fallback {
+      overflow: hidden !important;
+    }
+
+    /* Banner Styles */
+    #fallback-banner {
+      display: none;
+      background: #fff3cd;
+      color: #856404;
+      padding: 1rem;
+      border: 1px solid #ffeeba;
+      border-radius: 0.25rem;
+      margin-bottom: 1rem;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc pretium, diam id vehicula blandit, mauris risus condimentum nunc, sit amet vehicula dui sem in orci. Praesent ac lectus mattis, varius nunc non, commodo nulla. Phasellus viverra, est nec pharetra blandit, sem ipsum porta lacus, non sodales erat purus id nisl. Suspendisse condimentum tellus a nibh mattis, ut tempor orci cursus. Pellentesque nulla quam, finibus at nunc sed, euismod tincidunt orci. Mauris eu ipsum nec mi aliquam ultrices. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Sed quis sapien vitae elit venenatis tincidunt in ac orci. Mauris cursus lacus vel velit laoreet imperdiet. Nulla facilisi. Duis eu orci mauris.
-    </p>
+
+  <h1>Overflow Clipping Control</h1>
+  
+  <div id="fallback-banner">
+    <strong>Notice:</strong> Your browser does not support <code>overflow: clip</code>. A fallback (<code>overflow: hidden</code>) has been applied.
   </div>
-  <p>The overflow in the above box is clipped to the content box rather than the usual padding box, allowing the padding border to be present on all sides without requiring extra wrapper elements.</p>
+
+  <p class="intro">This demo uses a high-contrast test image to clearly show where clipping occurs. The blue dashed line is the content box edge, and the red dashed line is the padding box edge. The image is 300x200px, starting at the top-left of the padding box.</p>
+
+  <div class="grid">
+    <div class="demo-item">
+      <h3>content-box</h3>
+      <div class="description">Clips content strictly at the content box boundary (blue line). The padding area remains white.</div>
+      <div class="box clip-content">
+        <img class="demo-image" src="test_pattern.svg" alt="Test Pattern">
+      </div>
+    </div>
+
+    <div class="demo-item">
+      <h3>padding-box</h3>
+      <div class="description">Clips content at the padding box boundary (red line). The image fills the padding area but stops at the border.</div>
+      <div class="box clip-padding">
+        <img class="demo-image" src="test_pattern.svg" alt="Test Pattern">
+      </div>
+    </div>
+
+    <div class="demo-item">
+      <h3>border-box</h3>
+      <div class="description">Clips content at the outer edge of the border. You might see the image bleed into the border area if the border has some transparency or if we used a thinner border, but here it stops at the outer edge.</div>
+      <div class="box clip-border">
+        <img class="demo-image" src="test_pattern.svg" alt="Test Pattern">
+      </div>
+    </div>
+
+    <div class="demo-item">
+      <h3>20px (Length)</h3>
+      <div class="description">Clips content 20px outside the padding box edge. The image extends 20px into the border and beyond.</div>
+      <div class="box clip-20px">
+        <img class="demo-image" src="test_pattern.svg" alt="Test Pattern">
+      </div>
+    </div>
+
+    <div class="demo-item">
+      <h3>content-box 15px</h3>
+      <div class="description">Clips content 15px outside the content box edge (halfway through the 30px padding).</div>
+      <div class="box clip-content-15px">
+        <img class="demo-image" src="test_pattern.svg" alt="Test Pattern">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Feature detection
+    if (!CSS.supports('overflow', 'clip')) {
+      // Show banner
+      document.getElementById('fallback-banner').style.display = 'block';
+      
+      // Apply fallback class to all boxes
+      const boxes = document.querySelectorAll('.box');
+      boxes.forEach(box => {
+        box.classList.add('overflow-fallback');
+      });
+    }
+  </script>
 </body>
 </html>
