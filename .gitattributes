@@ -1,0 +1,4 @@
+# Collapse some artifacts in PR diffs for better signal:noise
+features/**/research.md        linguist-generated
+
+
