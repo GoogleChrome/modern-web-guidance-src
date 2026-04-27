@@ -95,7 +95,19 @@ function getSkillContent(skillName: string): string {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
   const skillPath = path.join(currentDir, '../.agents/skills', skillName, 'SKILL.md');
   try {
-    return fs.readFileSync(skillPath, 'utf8');
+    let content = fs.readFileSync(skillPath, 'utf8');
+
+    if (skillName === 'project-use-cases') {
+      // Replace human research steps with automated instructions
+      content = content.replace(
+        /## Research and discovery[\s\S]*?## Identifying action-oriented tasks/,
+        `## Research and discovery
+In this automated pipeline, the research has already been conducted by a specialized model and saved to a file (e.g., \`feature/\<feature-id\>/research.md\`). You must read that research report primarily to identify use cases, rather than attempting to run research tools yourself.
+
+## Identifying action-oriented tasks`
+      );
+    }
+    return content;
   } catch (err) {
     console.warn(`Warning: Could not read skill file at ${skillPath}`);
     return '';

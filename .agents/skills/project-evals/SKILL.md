@@ -41,8 +41,7 @@ None of the following are ever seen by real-world coding agents:
 Write a natural language, bulleted list of assertions that must be true if an agent implements the `guide.md` correctly (e.g., "The input element is styled with a red border only AFTER a blur event").
 
 * **1:1 with grader tests** — Each bullet becomes exactly one test. Write one bullet per assertion. Do not combine multiple checks into a single bullet.
-* **Concrete and testable** — A grader must be able to write a Playwright assertion for it. Bullets like "Keep form pages visually simple" are best practices, not expectations.
-* **Testable criteria, not API facts** — Expectations must be verifiable and testable criteria (e.g., checking browser behavior with Playwright), not just factual statements about an API.
+* **Concrete, Testable Criteria (No API Facts)** — Expectations must be verifiable browser behaviors we can check with Playwright (e.g., computed styles, DOM layout), not just factual statements about an API or code structure.
 * **Scoped to this use case** — Only include expectations that apply to the specific use case being graded. Do not copy generic expectations from other guides if they describe behavior that won't appear in an implementation of this guide (e.g., don't include URL input expectations in a sign-in form grader).
 * **No external links** — The grader generator cannot resolve them.
 * **Avoid over-constraining** — Don't assert implementation details that don't affect correctness (e.g., don't require a direct child relationship if a descendant also works).

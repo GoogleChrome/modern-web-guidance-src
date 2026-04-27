@@ -101,7 +101,6 @@ The following steps are REQUIRED for creating a new use case:
   Because it is not shown to agents, \`demo.html\` does not need to be a polished or production-ready example. It just needs to be a correct, minimal implementation of the use case. Keep it self-contained with inline scripts and styles. Use placeholder URLs for any subresources like images or videos.
 
   **Quality Rules for Demos:**
-  * **Visual Quality**: Demos must be **visually attractive** with modern typography, layout, and good UI feedback, not just functionally correct. This helps reviewers visualize the outcome and AI agents understand the quality bar.
   * **Identifiable Test Targets**: Make target elements in HTML demos explicitly identifiable using clear data attributes like \`data-testid\` and specific class names to aid in grading.
 
   See [demo.html](examples/demo.html) for an example from the \`deprioritize-background-fetches\` use case.
