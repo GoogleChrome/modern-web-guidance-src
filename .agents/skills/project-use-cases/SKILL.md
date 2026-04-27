@@ -34,10 +34,11 @@ A "use case" in this project is not a description of a feature; it's a task that
 * **Action-oriented thinking**: Frame every use case as a task, and make sure it starts with a verb. Instead of "Scroll-driven animations support horizontal scrolling," use something like "Synchronize an animation's progress with the horizontal scroll distance of a container."
 * **Bridge the knowledge gap**: Assume the developer knows *what* they want to build (e.g., "I need a sticky header that shrinks on scroll") but might not know *which* modern web feature is the best solution (e.g., scroll-driven animations). Your use cases should facilitate this discovery by focusing on the desired outcome.
 * **Don't get too specific**: The use case must be general enough to match a wide range of relevant user prompts. Try to be as general as possible, while still faithfully representing the use case. For example, instead of saying "Fade an image in/out..." say "Smoothly hide/show a component...".
-* **Focus on the WHAT not the HOW**: Do not mention the solution in the use case description. For example, avoid phrases like "...by doing..." or "...through the use of...". Ideally, the use case description should remain constant, even if the recommended features or best practices for implementing it change over time.
+* **Focus on the WHAT not the HOW**: Do not mention the solution in the use case description. **NEVER** mention the specific API methods, properties, or the target feature name in the description itself. For example, avoid phrases like "...by doing..." or "...through the use of...". Ideally, the use case description should remain constant, even if the recommended features or best practices for implementing it change over time.
 * **Scope**: Aim for 2-5 distinct use cases per feature. Each use case should represent a distinct implementation pattern or a significant variation in how the feature is applied. IMPORTANT: Not every sub-feature or feature variation needs a use case.
 * **Drop niche use cases**: If a use case is unlikely to match real developer prompts (e.g., very specific visual effects, obscure layout tricks), omit it. Prefer use cases that represent common, everyday developer needs.
 * **Merge rather than split**: If two proposed use cases would result in guides that are 99% identical, combine them into one, more general use case. Duplicate guides bloat context windows and create confusing contradictions.
+* **Break down complex features**: Conversely, do not cram multi-step, intricate features (like passkeys) into a single generic guide. Split them into logical, detailed use cases.
 
 ## Minimizing overlap
 
@@ -93,13 +94,17 @@ The following steps are REQUIRED for creating a new use case:
   ---
   ```
 
-* **Step 5: Create the `demo.html` file**
+* **Step 5: Create the \`demo.html\` file**
 
-  Create a `demo.html` file in the new subdirectory. This file is **eval infrastructure** — it is used by `grader.ts` to verify that a correct implementation passes all tests. Real-world coding agents never see this file.
+  Create a \`demo.html\` file in the new subdirectory. This file is **eval infrastructure** — it is used by \`grader.ts\` to verify that a correct implementation passes all tests. Real-world coding agents never see this file.
 
-  Because it is not shown to agents, `demo.html` does not need to be a polished or production-ready example. It just needs to be a correct, minimal implementation of the use case. Keep it self-contained with inline scripts and styles. Use placeholder URLs for any subresources like images or videos.
+  Because it is not shown to agents, \`demo.html\` does not need to be a polished or production-ready example. It just needs to be a correct, minimal implementation of the use case. Keep it self-contained with inline scripts and styles. Use placeholder URLs for any subresources like images or videos.
 
-  See [demo.html](examples/demo.html) for an example from the `deprioritize-background-fetches` use case.
+  **Quality Rules for Demos:**
+  * **Visual Quality**: Demos must be **visually attractive** with modern typography, layout, and good UI feedback, not just functionally correct. This helps reviewers visualize the outcome and AI agents understand the quality bar.
+  * **Identifiable Test Targets**: Make target elements in HTML demos explicitly identifiable using clear data attributes like \`data-testid\` and specific class names to aid in grading.
+
+  See [demo.html](examples/demo.html) for an example from the \`deprioritize-background-fetches\` use case.
 
 * **Step 6: Validate the use case**
 
