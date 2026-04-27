@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Negative Sibling Styling Demo</title>
+  <style>
+    .dynamic-list {
+      display: flex;
+      gap: 10px;
+    }
+
+    .swatch {
+      height: 100px;
+      /* FAILURE: Missing sibling-count() native function in CSS */
+      /* FAILURE: Hardcoding width or using incorrect variables */
+      width: 100px;
+      background-color: steelblue;
+    }
+  </style>
+</head>
+<body>
+  <ul class="dynamic-list">
+    <li class="swatch">1</li>
+    <li class="swatch">2</li>
+    <li class="swatch">3</li>
+  </ul>
+
+  <script type="module">
+    /* FAILURE: Missing CSS.supports() feature detection */
+    /* FAILURE: Using 0-based indexing for the fallback */
+    const items = document.querySelectorAll('.swatch');
+    items.forEach((item, index) => {
+      item.style.setProperty('--sibling-index', index);
+      item.style.setProperty('--sibling-count', items.length);
+    });
+  </script>
+</body>
+</html>

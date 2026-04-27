@@ -61,5 +61,25 @@
     </select>
     <button type="button">Button</button>
   </form>
+
+  <hr style="margin-block: 2rem;">
+
+  <section style="color-scheme: dark; background-color: #222; color: #eee; padding: 1.5rem; border-radius: 8px; max-width: 400px;">
+    <h2>Forced Dark Section</h2>
+    <p>This section is forced to <code>color-scheme: dark</code>, so its scrollbars and form controls will always use dark-themed UI regardless of your system preference.</p>
+    
+    <div class="scroll-container" style="width: auto; height: 80px; border-color: #444;">
+      <div class="scroll-content">
+        Notice my dark scrollbars!
+      </div>
+    </div>
+
+    <form>
+      <input type="text" placeholder="Dark input">
+      <label>
+        <input type="checkbox" checked> Dark checkbox
+      </label>
+    </form>
+  </section>
 </body>
 </html>

@@ -1,3 +1,0 @@
-- Implement a product listing page with 1000 products and infinite scroll, optimise the rendering so the page loads quickly and remains responsive.
-- Implement a complex dashboard with 100 widgets, the dashboard should be hidden on page load and revealed when the user clicks a button to view it, the dashboard should load quickly when visible.
-- Create a page with a long article that is split into sections, the sections should be hidden on page load and revealed when the user clicks a button to view them, the sections should load quickly when visible.

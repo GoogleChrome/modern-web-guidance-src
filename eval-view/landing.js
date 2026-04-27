@@ -1,5 +1,5 @@
-import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateRadarData } from './utils.js';
-import { RadarChart } from './radar.js';
+import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
+import { DumbbellChart } from './dumbbell-chart.js';
 
 let allTestData = {}; // Cache all test data by testId
 let selectedTestIds = new Set(); // Set of test IDs to show
@@ -79,12 +79,12 @@ window.addEventListener('popstate', () => {
 });
 
 function setupTestFilters() {
-    const filterBtn = document.getElementById('filter-btn');
-    const filterMenu = document.getElementById('filter-menu');
-    const selectAllBtn = document.getElementById('select-all-btn');
-    const deselectAllBtn = document.getElementById('deselect-all-btn');
-    const list = document.getElementById('filter-list');
-    const searchInput = document.getElementById('filter-search');
+    const filterBtn = $('#filter-btn');
+    const filterMenu = $('#filter-menu');
+    const selectAllBtn = $('#select-all-btn');
+    const deselectAllBtn = $('#deselect-all-btn');
+    const list = $('#filter-list');
+    const searchInput = $('#filter-search');
 
     // Make list scrollable
     list.style.maxHeight = '300px';
@@ -98,8 +98,11 @@ function setupTestFilters() {
 
     // Close menu when clicking outside
     document.addEventListener('click', (e) => {
-        if (!filterMenu.contains(e.target) && !filterBtn.contains(e.target)) {
-            filterMenu.classList.add('hidden');
+        const target = e.target;
+        if (target instanceof Node && filterMenu && filterBtn) {
+            if (!filterMenu.contains(target) && !filterBtn.contains(target)) {
+                filterMenu.classList.add('hidden');
+            }
         }
     });
 
@@ -121,11 +124,16 @@ function setupTestFilters() {
 
     // Search functionality
     searchInput.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
+        const target = e.target;
+        if (!(target instanceof HTMLInputElement)) return;
+        const term = target.value.toLowerCase();
         const items = list.querySelectorAll('.filter-item');
         items.forEach(item => {
-            const label = item.querySelector('.filter-item-label').textContent.toLowerCase();
-            item.style.display = label.includes(term) ? 'flex' : 'none';
+            if (item instanceof HTMLElement) {
+                const labelEl = item.querySelector('.filter-item-label');
+                const label = labelEl ? labelEl.textContent.toLowerCase() : '';
+                item.style.display = label.includes(term) ? 'flex' : 'none';
+            }
         });
     });
 
@@ -144,9 +152,12 @@ function setupTableFilters() {
         const el = document.getElementById(id);
         if (!el) return;
         el.addEventListener('change', (e) => {
-            updateFn(e.target.value);
-            syncSelectStyles(e.target);
-            renderSuites();
+            const target = e.target;
+            if (target instanceof HTMLSelectElement || target instanceof HTMLInputElement) {
+                updateFn(target.value);
+                syncSelectStyles(target);
+                renderSuites();
+            }
         });
         syncSelectStyles(el);
     });
@@ -158,12 +169,12 @@ function syncSelectStyles(el) {
 
 
 function renderFilterMenuItems() {
-    const list = document.getElementById('filter-list');
+    const list = $('#filter-list');
     list.innerHTML = '';
 
     // Get all tests sorted by date
     const sortedIds = Object.keys(allTestData).sort((a, b) => {
-        return new Date(allTestData[b].timestamp) - new Date(allTestData[a].timestamp);
+        return new Date(allTestData[b].timestamp).getTime() - new Date(allTestData[a].timestamp).getTime();
     });
 
     sortedIds.forEach(compoundKey => {
@@ -176,13 +187,16 @@ function renderFilterMenuItems() {
         checkbox.value = compoundKey;
 
         checkbox.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                selectedTestIds.add(compoundKey);
-            } else {
-                selectedTestIds.delete(compoundKey);
+            const target = e.target;
+            if (target instanceof HTMLInputElement) {
+                if (target.checked) {
+                    selectedTestIds.add(compoundKey);
+                } else {
+                    selectedTestIds.delete(compoundKey);
+                }
+                updateUrlParams();
+                renderAll();
             }
-            updateUrlParams();
-            renderAll();
         });
 
         const labelContent = document.createElement('div');
@@ -215,7 +229,7 @@ function renderFilterMenuItems() {
 }
 
 function updateUrlParams() {
-    const url = new URL(window.location);
+    const url = new URL(window.location.href);
     const allIds = Object.keys(allTestData);
 
     // If all are selected, remove param
@@ -239,9 +253,21 @@ async function loadLocalTests() {
     }
     
     try {
-        const response = await fetch(`/api/suites?t=${Date.now()}`);
-        if (!response.ok) return; // Silent fail for local if we are on gh-pages
-        const manifest = await response.json();
+        let response = await fetch(`/api/suites?t=${Date.now()}`);
+        let manifest;
+        let useResultsPrefix = false;
+
+        if (!response.ok) {
+            // Try fetching suites.gen.json as fallback for static mode
+            const staticRes = await fetch(`/suites.gen.json?t=${Date.now()}`);
+            if (!staticRes.ok) return; // Silent fail if both fail
+            const suites = await staticRes.json();
+            // convert array of strings to expected format [{id: string, source: 'local'}]
+            manifest = { suites: suites.map(id => ({ id, source: 'local', timestamp: new Date().toISOString() })) };
+            useResultsPrefix = true;
+        } else {
+            manifest = await response.json();
+        }
 
         if (manifest.suites && manifest.suites.length > 0) {
             document.getElementById('empty-state').style.display = 'none';
@@ -254,10 +280,11 @@ async function loadLocalTests() {
             const testId = suite.id;
             const suiteTimestamp = suite.timestamp;
             try {
-                const response = await fetch(`${testId}/evals.json?source=local&t=${Date.now()}`);
+                const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
+                const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
                 if (response.ok) {
                     const parsed = await response.json();
-                    registerTestData(testId, 'local', parsed, suiteTimestamp);
+                    registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp);
                 }
             } catch (e) {
                 console.warn(`Failed to load local test ${testId}:`, e);
@@ -332,26 +359,22 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
         guideUsageRate: parsed.summary?.guideUsageRate || 0
     };
     
-    updateModelFilterOptions();
+    updateFilterOptions('filter-model-group', 'model');
+    updateFilterOptions('filter-serving-group', 'serving');
+    updateFilterOptions('filter-agent-group', 'agent');
 }
 
-function updateModelFilterOptions() {
-    const modelGroup = document.getElementById('filter-model-group');
-    if (!modelGroup) return;
+function updateFilterOptions(groupId, key) {
+    const group = document.getElementById(groupId);
+    if (!group) return;
 
-    const models = new Set();
-    Object.values(allTestData).forEach(test => {
-        if (test.model) models.add(test.model);
-    });
-
-    const sortedModels = Array.from(models).sort();
+    const values = [...new Set(Object.values(allTestData).map(t => t[key]).filter(Boolean))].sort();
     
-    // Only update if changed to avoid unnecessary re-renders or losing selection
-    const currentOptions = Array.from(modelGroup.querySelectorAll('option')).map(o => o.value);
-    if (JSON.stringify(currentOptions) === JSON.stringify(sortedModels)) return;
+    const currentOptions = Array.from(group.querySelectorAll('option')).map(o => o.value);
+    if (JSON.stringify(currentOptions) === JSON.stringify(values)) return;
 
-    modelGroup.innerHTML = sortedModels.map(model => 
-        `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`
+    group.innerHTML = values.map(val => 
+        `<option value="${escapeHtml(val)}">${escapeHtml(val)}</option>`
     ).join('');
 }
 
@@ -361,7 +384,7 @@ function updateModelFilterOptions() {
 
 function renderSuites() {
     const testIds = getSortedTestIds();
-    const container = document.getElementById('suites-list');
+    const container = $('#suites-list');
     const headerSource = document.getElementById('header-source');
     if (headerSource) {
         headerSource.style.display = isRemoteDashboard() ? 'none' : '';
@@ -387,6 +410,7 @@ function renderSuites() {
         if (currentModelFilter !== 'all' && testInfo.model !== currentModelFilter) return;
 
         const data = testInfo.data;
+        const results = data.results;
         const _date = new Date(testInfo.timestamp);
 
         // Custom format to match "March 5, 2:25PM"
@@ -398,8 +422,8 @@ function renderSuites() {
             hour12: true
         }).replace(' at ', ', ');
 
-        const gStats = calculateGroupTotalStats(data.results, 'guided');
-        const uStats = calculateGroupTotalStats(data.results, 'unguided');
+        const gStats = calculateGroupTotalStats(results, 'guided');
+        const uStats = calculateGroupTotalStats(results, 'unguided');
 
         const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
         const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
@@ -434,16 +458,18 @@ function renderSuites() {
     setupRateCellHovers();
 }
 
-let radarChartInstance = null;
-let currentRadarKey = null;
+let tooltipChartInstance = null;
+let currentDumbbellKey = null;
 let hideTimeout = null;
-const tooltipContainer = document.getElementById('radar-tooltip-container');
+const tooltipContainer = $('#tooltip-container');
 
 function setupRateCellHovers() {
     const rateCells = document.querySelectorAll('.rate-cell');
     rateCells.forEach(cell => {
         cell.addEventListener('mouseenter', (e) => {
+            if (!(cell instanceof HTMLElement)) return;
             const compoundKey = cell.dataset.compoundKey;
+            if (!compoundKey) return;
             const testInfo = allTestData[compoundKey];
             if (!testInfo) return;
 
@@ -452,44 +478,51 @@ function setupRateCellHovers() {
                 hideTimeout = null;
             }
 
-            showRadarTooltip(testInfo, e.clientX, e.clientY, compoundKey);
+            if (e instanceof MouseEvent) {
+                showTooltipChart(testInfo, e.clientX, e.clientY, compoundKey);
+            }
         });
 
-        cell.addEventListener('mousemove', (e) => updateTooltipPosition(e.clientX, e.clientY));
+        cell.addEventListener('mousemove', (e) => {
+            if (e instanceof MouseEvent) {
+                updateTooltipPosition(e.clientX, e.clientY);
+            }
+        });
 
-        cell.addEventListener('mouseleave', () => hideRadarTooltip());
+        cell.addEventListener('mouseleave', () => hideTooltipChart());
     });
 }
 
-function showRadarTooltip(testInfo, x, y, compoundKey) {
-    if (currentRadarKey === compoundKey && !tooltipContainer.classList.contains('hidden')) {
+function showTooltipChart(testInfo, x, y, compoundKey) {
+    if (currentDumbbellKey === compoundKey && !tooltipContainer.classList.contains('hidden')) {
         updateTooltipPosition(x, y);
         return;
     }
 
-    currentRadarKey = compoundKey;
+    currentDumbbellKey = compoundKey;
 
-    const headerDiv = document.getElementById('radar-tooltip-header');
+    const headerDiv = $('#tooltip-header');
     if (headerDiv) {
         headerDiv.innerHTML = `
-            <div class="radar-tooltip-title">${escapeHtml(testInfo.testId)}</div>
-            <div class="radar-tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(testInfo.serving.replace('mcp', 'MCP'))}</div>
+            <div class="tooltip-title">${escapeHtml(testInfo.testId)}</div>
+            <div class="tooltip-subtitle">${escapeHtml(testInfo.agent)} • ${escapeHtml(testInfo.serving.replace('mcp', 'MCP'))}</div>
         `;
     }
 
-    const { labels, guided, unguided } = calculateRadarData(testInfo.data.results);
-    if (labels.length < 3) return;
+    const results = testInfo.data.results;
+    const { labels, guided, unguided } = calculateChartData(results);
+    if (labels.length < 1) return;
 
     tooltipContainer.classList.remove('hidden');
     updateTooltipPosition(x, y);
 
-    if (!radarChartInstance) {
-        radarChartInstance = new RadarChart('radar-tooltip-chart', {
-            size: 300, padding: 20, levels: 5, hideLabels: true, hideLegend: true
+    if (!tooltipChartInstance) {
+        tooltipChartInstance = new DumbbellChart('tooltip-chart', {
+            size: 400, height: 300, rowHeight: 20, margin: { top: 15, right: 15, bottom: 15, left: 15 }, hideLegend: true, hideLabels: true, hideSeparators: true, hideZeros: true, hideAxes: true
         });
     }
 
-    radarChartInstance.render({
+    tooltipChartInstance.render({
         labels,
         datasets: [
             { label: 'Unguided', data: unguided, backgroundColor: 'rgba(218, 54, 51, 0.2)', borderColor: '#da3633' },
@@ -504,8 +537,9 @@ function updateTooltipPosition(x, y) {
     let finalY = y + offset;
 
     // Boundary check
-    const tooltipWidth = 330; // 300px chart + padding
-    const tooltipHeight = 330;
+    // Boundary check using dynamic dimensions to avoid results being cut off
+    const tooltipWidth = tooltipContainer.clientWidth || 330; 
+    const tooltipHeight = tooltipContainer.clientHeight || 330;
     
     if (finalX + tooltipWidth > window.innerWidth) {
         finalX = x - tooltipWidth - offset;
@@ -518,10 +552,10 @@ function updateTooltipPosition(x, y) {
     tooltipContainer.style.top = `${finalY}px`;
 }
 
-function hideRadarTooltip() {
+function hideTooltipChart() {
     if (hideTimeout) clearTimeout(hideTimeout);
     hideTimeout = setTimeout(() => {
-        currentRadarKey = null;
+        currentDumbbellKey = null;
         tooltipContainer.classList.add('hidden');
         hideTimeout = null;
     }, 50);
@@ -555,6 +589,6 @@ function getSortedTestIds() {
     return Array.from(selectedTestIds).sort((a, b) => {
         // Safety check if id not in allTestData (shouldn't happen but good practice)
         if (!allTestData[a] || !allTestData[b]) return 0;
-        return new Date(allTestData[b].timestamp) - new Date(allTestData[a].timestamp);
+        return new Date(allTestData[b].timestamp).getTime() - new Date(allTestData[a].timestamp).getTime();
     });
 }

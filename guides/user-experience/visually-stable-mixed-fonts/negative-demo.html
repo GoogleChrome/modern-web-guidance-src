@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Typography Example</title>
+    <style>
+      body {
+        font-family: Verdana, sans-serif;
+        font-size: 1.25rem;
+        padding: 1rem;
+      }
+      .mixed-text span {
+        font-family: "Courier New", Courier, monospace;
+      }
+      .font-swap-container {
+        max-width: 30em;
+      }
+      .swapped p {
+        font-family: "Times New Roman", Times, serif;
+      }
+    </style>
+    <script type="module">
+      const button = document.getElementById("toggle-fonts");
+      button.addEventListener("click", () => {
+        const container = document.getElementById("font-swap-container");
+        container.classList.toggle("swapped");
+      });
+    </script>
+  </head>
+  <body>
+    <section>
+      <h2>Mixed Font Styles</h2>
+      <p class="mixed-text">
+        This <span>sentence</span> contains <span>multiple</span> different
+        <span>font</span> families <span>within</span> the <span>same</span>
+        block <span>of</span> text.
+      </p>
+    </section>
+    <section id="font-swap-container" class="font-swap-container">
+      <h2>Font Substitution</h2>
+      <button id="toggle-fonts">Change Font Family</button>
+      <p>
+        The quick brown fox jumps over the lazy dog. This paragraph is intended
+        to demonstrate how text behaves when the underlying font family is
+        switched dynamically. Multiple lines of text are necessary to see the
+        impact on the overall layout and line breaks. When the font changes, the
+        amount of space each character occupies will vary based on its unique
+        design and proportions.
+      </p>
+      <p>
+        A second paragraph provides more volume to observe the cumulative effect
+        of font metrics on the vertical rhythm of the page. Without any
+        normalization, the difference in height between various typefaces
+        becomes quite apparent, especially in dense blocks of prose.
+      </p>
+    </section>
+  </body>
+</html>

@@ -10,9 +10,10 @@
   },
   "scripts": {
     "test": "pnpm -r test",
-    "baselinestatus": "pnpm --filter modern-web-mcp baselinestatus",
+    "install:gray-matter": "pnpm add -D -w gray-matter",
+    "baselinestatus": "pnpm --filter serving baselinestatus",
     "lint": "oxlint --ignore-path .oxlintignore",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm --filter serving build && tsc && pnpm --filter eval-view typecheck",
     "preflight": "pnpm typecheck && pnpm lint && pnpm test",
     "suite": "pnpm build:mcp && pnpm --filter harness suite",
     "qsmoke": "pnpm --filter harness qsmoke",
@@ -21,9 +22,9 @@
     "report": "pnpm --filter harness report",
     "upload": "pnpm --filter harness upload",
     "dashboard": "pnpm --filter eval-view start",
-    "build:mcp": "pnpm --filter modern-web-mcp build",
-    "build:megaskill": "pnpm --filter modern-web-mcp build:megaskill",
-    "test:mcp": "pnpm --filter modern-web-mcp test",
+    "build:mcp": "pnpm --filter serving build",
+    "build:megaskill": "pnpm --filter serving build:megaskill",
+    "test:mcp": "pnpm --filter serving test",
     "setup:playwright": "pnpm --filter eval-view exec playwright install",
     "generate-negative": "node --env-file=.env --experimental-strip-types guides/negative-gen.ts",
     "generate-grader": "node --env-file=.env --experimental-strip-types guides/grader-gen.ts",
@@ -38,6 +39,7 @@
   "packageManager": "pnpm@10.30.3",
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@github/keytar",
       "esbuild",
       "gpt4all",
       "keytar",
@@ -59,6 +61,7 @@
     "@types/node": "^25.5.0",
     "@types/omelette": "^0.4.5",
     "gh-pages": "^6.3.0",
+    "gray-matter": "^4.0.3",
     "oxlint": "^1.55.0",
     "typescript": "^5.9.3"
   },

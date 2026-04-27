@@ -45,7 +45,7 @@ export function capitalize(s) {
 }
 
 export function timeAgo(date) {
-    const diff = Math.floor((new Date() - new Date(date)) / 1000);
+    const diff = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
     const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
     const units = [
         { name: 'year', s: 31536000 }, { name: 'month', s: 2592000 },
@@ -53,28 +53,59 @@ export function timeAgo(date) {
         { name: 'minute', s: 60 }, { name: 'second', s: 1 }
     ];
     const u = units.find(u => Math.abs(diff) >= u.s) || units[units.length - 1];
-    return rtf.format(-Math.floor(diff / u.s), u.name);
+    return rtf.format(-Math.floor(diff / u.s), /** @type {Intl.RelativeTimeFormatUnit} */ (u.name));
 }
 
-export function calculateRadarData(results) {
+export function calculateChartData(results) {
     const apps = {};
+    const taskNames = {};
+    
     Object.keys(results).forEach(key => {
-        const [appName, guide, runType] = key.split(' - ');
-        if (!runType) return;
-        const scenario = `${appName} (${guide})`;
-        if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [] };
+        const parts = key.split(' - ');
+        if (parts.length < 3) return;
+        const [taskName, guide, runType] = parts;
+
+        if (!['guided', 'unguided'].includes(runType)) return;
+        const scenario = `${taskName} (${guide})`;
+        if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [], guided_tokens: [], unguided_tokens: [] };
+        
         const runs = results[key];
+        if (runs.length > 0 && runs[0].taskName) {
+            taskNames[scenario] = runs[0].taskName;
+        }
+        
         const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
         const total = runs.reduce((acc, r) => acc + r.results.length, 0);
         apps[scenario][runType].push(total > 0 ? (passed / total) * 100 : 0);
+
+        const totalTokens = runs.reduce((acc, r) => acc + (r.tokenUsage?.total || 0), 0);
+        const avgTokens = runs.length > 0 ? Math.round(totalTokens / runs.length) : 0;
+        if (!apps[scenario][runType + '_tokens']) apps[scenario][runType + '_tokens'] = [];
+        apps[scenario][runType + '_tokens'].push(avgTokens);
     });
-    const labels = Object.keys(apps).sort();
+    
+    const labels = Object.keys(apps).sort((a, b) => {
+        const taskA = taskNames[a] || a;
+        const taskB = taskNames[b] || b;
+        return taskA.localeCompare(taskB);
+    });
     const getAvg = (l, type) => {
         const s = apps[l][type];
         return s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;
     };
-    return { labels, guided: labels.map(l => getAvg(l, 'guided')), unguided: labels.map(l => getAvg(l, 'unguided')) };
+    const getAvgTokens = (l, type) => {
+        const s = apps[l][type + '_tokens'];
+        return s && s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;
+    };
+    return { 
+        labels, 
+        guided: labels.map(l => getAvg(l, 'guided')), 
+        unguided: labels.map(l => getAvg(l, 'unguided')),
+        guided_tokens: labels.map(l => getAvgTokens(l, 'guided')),
+        unguided_tokens: labels.map(l => getAvgTokens(l, 'unguided'))
+    };
 }
+
 
 export function formatTestName(name) {
     if (!name) return name;
@@ -97,7 +128,7 @@ export function initGoogleAuth(onAuthSuccess) {
             return;
         }
 
-        const authBtn = document.getElementById('auth-btn');
+        const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
             authBtn.style.display = 'block';
             if (accessToken) {
@@ -150,7 +181,7 @@ export async function authenticatedFetch(url, options = {}) {
         accessToken = null;
         
         // Reset button UI if available
-        const authBtn = document.getElementById('auth-btn');
+        const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
             authBtn.textContent = 'Sign in with Google';
             authBtn.disabled = false;
@@ -161,3 +192,26 @@ export async function authenticatedFetch(url, options = {}) {
     }
     return res;
 }
+
+/**
+ * @template {string} T
+ * @typedef {T extends `${infer TagName}#${string}` 
+ *   ? TagName extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[TagName] : TagName extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[TagName] : HTMLElement 
+ *   : T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement} ParseSelector
+ */
+
+/**
+ * Guaranteed querySelector. Always returns an element or throws if nothing matches.
+ * @template {string} T
+ * @param {T} query
+ * @param {ParentNode=} context
+ * @return {ParseSelector<T>}
+ */
+export function $(query, context) {
+  const result = (context || document).querySelector(query);
+  if (result === null) {
+    throw new Error(`querySelector('${query}') not found`);
+  }
+  return /** @type {ParseSelector<T>} */ (result);
+}
+

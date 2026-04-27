@@ -18,7 +18,7 @@ Always refer to the [Use Cases](.agents/skills/project-use-cases/SKILL.md) skill
 Once the use cases are approved, the second stage is to complete the documentation and validate them through the evals pipeline.
 
 - **Goal:** Write the full content for the guides, define expectations, and generate the evaluation harness via `gd dev`.
-- **Deliverable:** A follow-up Pull Request with the complete `guide.md`, `expectations.md`, and `demo.html` for each use case, plus the auto-generated evaluation files (`grader.ts`, `negative-demo.html`, `prompts.md`, etc.).
+- **Deliverable:** A follow-up Pull Request with the complete `guide.md`, `expectations.md`, and `demo.html` for each use case, plus the auto-generated evaluation files (`grader.ts`, `negative-demo.html`, `task.md`, etc.).
 
 Always refer to the [Guides](.agents/skills/project-guides/SKILL.md) and [Evaluations](.agents/skills/project-evals/SKILL.md) skills for detailed instructions.
 

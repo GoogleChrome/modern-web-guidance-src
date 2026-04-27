@@ -1,0 +1,6 @@
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = "modern-web"
+decision = "ask_user"
+priority = 100
+modes = ["plan"]

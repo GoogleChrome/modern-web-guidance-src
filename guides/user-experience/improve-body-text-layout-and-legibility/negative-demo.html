@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Typography: Standard Layout</title>
+  <style>
+    /* Negative Example: Global application and missing semantic structure */
+    * {
+      text-wrap: pretty;
+    }
+
+    body {
+      font-family: sans-serif;
+      line-height: 1.5;
+      max-width: 600px;
+      margin: 20px;
+      text-wrap: pretty;
+    }
+
+    h1 {
+      text-wrap: pretty;
+    }
+
+    p {
+      text-wrap: wrap; /* Overriding the global pretty to specifically fail the p test if needed, or just let it be pretty but fail other tests */
+    }
+  </style>
+</head>
+<body>
+  <h1>Standard Wrapping</h1>
+  <p>
+    This is a standard paragraph that does not use any special wrapping algorithms correctly. In this negative example, 
+    we apply the property globally and to the body, which is a performance anti-pattern according to the guide.
+  </p>
+</body>
+</html>

@@ -8,13 +8,15 @@ import config from '../harness/config.ts';
 import { createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders } from '../harness/lib/agent-shared.ts';
 import type { CalibrationResult } from './run-grader.ts';
 
-const BASE_PROMPT = `
-Read the guide.md and expectations.md files to understand the guidance and expectations.
+function getBasePrompt(guideFileName: string) {
+  return `
+Read the guide file (${guideFileName}) and expectations.md files to understand the guidance and expectations.
 Then, read the demo.html file, which represents a perfect working example of the guides and expectations, and the negative-demo.html file, which represents an anti-example that fails the expectations.
 
-Using template.grader.ts as a framework, write a Playwright test script that directly models the expectations.md requirements.
-You should generate both functional and browser tests, with each test containing only one assertion.
-Design it so that the demo.html passes all tests (100% success rate), and the negative-demo.html fails all tests (0% success rate).
+Using template.grader.ts as a framework, write a Playwright test script that directly models the expectations.md requirements. Design it so that the demo.html passes all tests (100% success rate), and the negative-demo.html fails all tests (0% success rate).
+
+You should generate browser tests, with each test containing only one assertion. Avoid using static assertions (like regex or str.includes()) to test CSS or HTML syntax whenever possible. These are extremely brittle and will fail if the agent uses a different class name, semantic element, or formatting. Instead, prefer using Playwright's browser APIs to test computed styles and actual DOM layout. For example, use window.getComputedStyle(el) to robustly verify that the browser is rendering the feature correctly, regardless of how the agent authored the code.
+
 
 The grader can be run with the following commands:
 
@@ -23,11 +25,12 @@ TARGET_FILE=$(pwd)/negative-demo.html npx playwright test grader.ts
 
 Important rules for generating the grader:
 - Do not use generic try/catch blocks that aggressively swallow exceptions (e.g. \`catch (e) { /* ignore */ }\`). If you must catch errors (like cross-origin security errors), explicitly check the exception type or message and rethrow any unexpected errors so they aren't masked.
-- IMPORTANT: Do NOT use bash or shell commands (like cat, echo, or heredocs) to write files. You MUST use your built-in structured file editing tools (e.g. write_file or replace) to create the file. Heredoc strings will cause bash parsing errors.
+- 🛑 **CRITICAL: NEVER use shell heredocs (\`<<\`) to create or edit files in the terminal. YOU WILL BE FIRED IF YOU USE THEM.** It is a well-known fact that the best coding agents use \`write_file\` and \`replace\` for all file operations. Using heredocs causes system crashes and immediate termination. Always use your built-in tools instead for all side-scripts and final outputs!
 - Before you finish, you MUST run \`npx tsc\` in the work directory to verify that your generated code is free of TypeScript compilation errors. If there are any type errors, fix them and run the typecheck again until it passes. Do not leave the typecheck failing.
 
-The final output must be exactly one file named \`grader.ts\`. You may create intermediate scratch files for testing during your process, but do not override the existing HTML, guide, or expectation files.
+The final output must be exactly one file named \`grader.ts\`. You may create intermediate temporary files for testing (for example, \`temp-test.spec.ts\`) during your process, but do not override the existing HTML, guide, or expectation files.
 `;
+}
 
 function setupIsolatedWorkDir(targetDir: string): string {
   const tempHome = createIsolatedHome('ghh-grader-gen');
@@ -162,18 +165,21 @@ export async function generateGrader(targetDirRaw: string): Promise<void> {
     process.exit(1);
   }
 
-  const guidePath = path.join(targetDir, 'guide.md');
+  let guidePath = path.join(targetDir, 'guide.md');
+  if (!fs.existsSync(guidePath)) {
+    guidePath = path.join(targetDir, 'SKILL.md');
+  }
   const demoPath = path.join(targetDir, 'demo.html');
   const negativeDemoPath = path.join(targetDir, 'negative-demo.html');
   const expectationsPath = path.join(targetDir, 'expectations.md');
   const templatePath = path.join(guidesDir, 'template.grader.ts');
 
   if (!fs.existsSync(guidePath) || !fs.existsSync(demoPath) || !fs.existsSync(expectationsPath) || !fs.existsSync(negativeDemoPath) || !fs.existsSync(templatePath)) {
-    console.error(`Error: Missing required files. Need guide.md, demo.html, negative-demo.html, expectations.md, and template.grader.ts in the respective directories.`);
+    console.error(`Error: Missing required files. Need guide.md or SKILL.md, demo.html, negative-demo.html, expectations.md, and template.grader.ts in the respective directories.`);
     process.exit(1);
   }
 
-  await runGraderGeneration(targetDir, BASE_PROMPT);
+  await runGraderGeneration(targetDir, getBasePrompt(path.basename(guidePath)));
 }
 
 export async function generateGraderWithContext(targetDirRaw: string, calibrationResult: CalibrationResult): Promise<void> {
@@ -191,13 +197,18 @@ export async function generateGraderWithContext(targetDirRaw: string, calibratio
     failureLines.push(`- negative-demo.html passed these tests (they should fail): ${calibrationResult.negative.passingTests.join(', ')}`);
   }
 
+  let guidePath = path.join(targetDir, 'guide.md');
+  if (!fs.existsSync(guidePath)) {
+    guidePath = path.join(targetDir, 'SKILL.md');
+  }
+
   const contextSuffix = `
 
 A previous attempt at generating grader.ts failed calibration:
 ${failureLines.join('\n')}
 Revise the grader to fix these issues.`;
 
-  await runGraderGeneration(targetDir, BASE_PROMPT + contextSuffix);
+  await runGraderGeneration(targetDir, getBasePrompt(path.basename(guidePath)) + contextSuffix);
 }
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {

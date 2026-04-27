@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <style>
+    .toast {
+      position: absolute;
+      z-index: 10;
+      top: 20px;
+      right: 20px;
+      background: salmon;
+      padding: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <button onclick="document.getElementById('t1').style.display='block'; document.getElementById('t2').style.display='none'">Show 1</button>
+  <button onclick="document.getElementById('t2').style.display='block'; document.getElementById('t1').style.display='none'">Show 2</button>
+  
+  <div id="t1" class="toast">Error 1</div>
+  <div id="t2" class="toast">Error 2</div>
+
+  <script>
+    window.onclick = function(e) {
+      if(e.target.tagName !== 'BUTTON') {
+        document.getElementById('t1').style.display = 'none';
+        document.getElementById('t2').style.display = 'none';
+      }
+    };
+  </script>
+</body>
+</html>

@@ -315,13 +315,25 @@
     const unsupportedBanner = document.getElementById('unsupportedBanner');
 
     // Check Support
-    if (typeof Temporal === 'undefined') {
-      unsupportedBanner.style.display = 'flex';
-      birthdateInput.disabled = true;
-      timezoneSelect.disabled = true;
-    } else {
-      initializeDemo();
-    }
+      (async () => {
+      if (typeof Temporal === 'undefined') {
+        try {
+          const module = await import('https://esm.sh/@js-temporal/polyfill');
+        // Manually assign to global scope if needed
+          globalThis.Temporal = module.Temporal;
+          // Extend Date.prototype as recommended by polyfill docs
+          Date.prototype.toTemporalInstant = module.toTemporalInstant;
+          initializeDemo();
+        } catch (err) {
+          console.error("Failed to load polyfill:", err);
+          unsupportedBanner.style.display = 'flex';
+          birthdateInput.disabled = true;
+          timezoneSelect.disabled = true;
+        }
+      } else {
+        initializeDemo();
+      }
+        })(); 
 
     function initializeDemo() {
       // Event Listeners

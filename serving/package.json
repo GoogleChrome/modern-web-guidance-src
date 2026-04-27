@@ -1,7 +1,7 @@
 {
-  "name": "modern-web-mcp",
+  "name": "serving",
   "version": "1.0.0",
-  "description": "An MCP server for modern web development",
+  "private": true,
   "type": "module",
   "main": "mcp-server/index.ts",
   "exports": {
@@ -10,8 +10,8 @@
   },
   "files": [
     "mcp-server",
+    "lib",
     "build",
-    ".modern-web-data",
     "AGENTS.md",
     "README.md"
   ],
@@ -24,31 +24,29 @@
     "publish-skills": "node --experimental-strip-types skills-cli/publish-skills.ts",
     "start": "node mcp-server/index.ts",
     "dev": "node scripts/build-guides.ts && node --watch mcp-server/index.ts",
-    "test": "node scripts/build-guides.ts && vitest run && node --test skills-cli/test-dist.ts",
+    "test": "node scripts/build-guides.ts && node --test --test-reporter ${TEST_REPORTER:-dot} **/*.test.ts",
     "typecheck": "npm run build && tsc --noEmit",
     "benchmark:rag": "node --experimental-strip-types benchmarks/rag/eval-rag-suite.ts",
     "plot:serve": "npx serve benchmarks/data"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
-    "@lancedb/lancedb": "^0.26.2",
     "@modelcontextprotocol/sdk": "^1.27.1",
+    "@tensorflow/tfjs-backend-cpu": "^4.22.0",
+    "@tensorflow/tfjs-converter": "^4.22.0",
+    "@tensorflow/tfjs-core": "^4.22.0",
     "apache-arrow": "21.1.0",
     "marked": "^17.0.4",
-    "web-features": "^3.20.0",
+    "onnxruntime-node": "^1.24.3",
+    "web-features": "latest",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/gh-pages": "^6.1.0",
     "@types/node": "^25.5.0",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.27.4",
     "gh-pages": "^6.3.0",
-    "gpt4all": "^4.0.0",
     "gray-matter": "^4.0.3",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.0"
+    "typescript": "^5.9.3"
   }
 }

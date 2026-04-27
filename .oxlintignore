@@ -1,2 +1,3 @@
 harness/results/**
+harness/base_apps/devtools-times/**
 guides/template.grader.ts

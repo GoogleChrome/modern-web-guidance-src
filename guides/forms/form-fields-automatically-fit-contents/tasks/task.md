@@ -1,0 +1,6 @@
+---
+base_app: daily-grind
+---
+- Add a form with a text input, a textarea, and a select dropdown (with some options) and automatically size them based on their content so they don't have unnecessary whitespace.
+- I want my text areas and inputs to automatically grow as users type in them without needing Javascript.
+- Update my select dropdowns so they shrink to fit only the currently selected option.

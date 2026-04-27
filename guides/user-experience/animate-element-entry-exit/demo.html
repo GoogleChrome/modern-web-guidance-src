@@ -111,7 +111,7 @@
     }
 
     /* State when hidden/removing */
-    .card.hidden {
+    .card:where([hidden], .hidden) {
       display: none;
       opacity: 0;
       transform: translateY(-20px) scale(0.95);
@@ -122,6 +122,24 @@
       .card {
         opacity: 0;
         transform: translateY(-20px) scale(0.95);
+      }
+    }
+
+    /* Respect user preference for reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .card {
+        transform: none;
+        transition-duration: 0.1s;
+      }
+
+      @starting-style {
+        .card {
+          transform: none;
+        }
+      }
+
+      .card:where([hidden], .hidden) {
+        transform: none;
       }
     }
   </style>
@@ -135,7 +153,7 @@
 
   <div class="demo-section">
     <h2>Example 1: Display Toggling</h2>
-    <p>Toggling the <code>hidden</code> class which sets <code>display: none</code>.</p>
+    <p>Toggling the <code>hidden</code> attribute which sets <code>display: none</code>.</p>
     <div class="controls">
       <button id="toggleBtn">Toggle Display</button>
     </div>
@@ -162,7 +180,7 @@
     const toggleCard = document.getElementById('toggleCard');
 
     toggleBtn.addEventListener('click', () => {
-      toggleCard.classList.toggle('hidden');
+      toggleCard.toggleAttribute('hidden');
     });
 
     // Example 2: Adding and Removing from the DOM
@@ -183,12 +201,12 @@
 
     removeBtn.addEventListener('click', async () => {
       // Find the last card that isn't currently being removed
-      const cards = Array.from(domContainer.querySelectorAll('.card:not(.hidden)'));
+      const cards = Array.from(domContainer.querySelectorAll('.card:not([hidden])'));
       const lastCard = cards[cards.length - 1];
 
       if (lastCard) {
         // Trigger the transition out by adding the hidden class
-        lastCard.classList.add('hidden');
+        lastCard.setAttribute('hidden', true);
 
         // Wait for animations to finish before removing from the DOM
         const animations = lastCard.getAnimations();
