@@ -97,16 +97,16 @@ The following steps are REQUIRED for creating a new use case:
   ---
   ```
 
-* **Step 5: Create the \`demo.html\` file**
+* **Step 5: Create the `demo.html` file**
 
-  Create a \`demo.html\` file in the new subdirectory. This file is **eval infrastructure** — it is used by \`grader.ts\` to verify that a correct implementation passes all tests. Real-world coding agents never see this file.
+  Create a `demo.html` file in the new subdirectory. This file is **eval infrastructure** — it is used by `grader.ts` to verify that a correct implementation passes all tests. Real-world coding agents never see this file.
 
-  Because it is not shown to agents, \`demo.html\` does not need to be a polished or production-ready example. It just needs to be a correct, minimal implementation of the use case. Keep it self-contained with inline scripts and styles. Use placeholder URLs for any subresources like images or videos.
+  Because it is not shown to agents, `demo.html` does not need to be a polished or production-ready example. It just needs to be a correct, minimal implementation of the use case. Keep it self-contained with inline scripts and styles. Use placeholder URLs for any subresources like images or videos.
 
   **Quality Rules for Demos:**
-  * **Identifiable Test Targets**: Make target elements in HTML demos explicitly identifiable using clear data attributes like \`data-testid\` and specific class names to aid in grading.
+  * **Identifiable Test Targets**: Make target elements in HTML demos explicitly identifiable using clear data attributes like `data-testid` and specific class names to aid in grading.
 
-  See [demo.html](examples/demo.html) for an example from the \`deprioritize-background-fetches\` use case.
+  See [demo.html](examples/demo.html) for an example from the `deprioritize-background-fetches` use case.
 
 * **Step 6: Validate the use case**
 

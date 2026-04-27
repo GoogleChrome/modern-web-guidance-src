@@ -63,12 +63,12 @@ sources:
 * The guide is the agent's **only** source of truth. DO NOT reference `demo.html` or any other file — agents won't have access to them. Everything the agent needs to implement the use case must be in `guide.md`.
 
 ### 5. Fallback Strategies
-* You **MUST** include a \`### Fallback strategies\` section regardless of Baseline status, as developers may have older baseline targets.
-* **MANDATORY**: The \`{{ BASELINE_STATUS("feature-id") }}\` macro must *always* be placed as the first, standalone line inside the \`### Fallback strategies\` section. Do not place it at the top of the document.
-* **OPTIONAL** provide an optional second argument for specific BCD keys: \`{{ BASELINE_STATUS("feature-id", "bcd.key") }}\`. This is useful when a critical sub-feature's status differs from the overall feature status.
-* **MANDATORY**: You MUST explicitly describe the fallback experience for unsupported browsers. Explain if the feature is a progressive enhancement (and what the base experience looks like), or show explicit code for feature detection (e.g., \`CSS.supports()\`, \`if ('feature' in window)\`) and graceful degradation techniques.
+* You **MUST** include a `### Fallback strategies` section regardless of Baseline status, as developers may have older baseline targets.
+* **MANDATORY**: The `{{ BASELINE_STATUS("feature-id") }}` macro must *always* be placed as the first, standalone line inside the `### Fallback strategies` section. Do not place it at the top of the document.
+* **OPTIONAL** provide an optional second argument for specific BCD keys: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
+* **MANDATORY**: You MUST explicitly describe the fallback experience for unsupported browsers. Explain if the feature is a progressive enhancement (and what the base experience looks like), or show explicit code for feature detection (e.g., `CSS.supports()`, `if ('feature' in window)`) and graceful degradation techniques.
 * **Realistic Fallbacks**: Mandate that fallback recommendations be based on real-world **Baseline** support states, rather than arbitrary "legacy" assumptions.
-* When recommending feature detection, prefer checking \`HTMLElement.prototype\` (e.g., \`'onbeforematch' in HTMLElement.prototype\`) over \`window\` or \`document\`, as it is more reliable.
+* When recommending feature detection, prefer checking `HTMLElement.prototype` (e.g., `'onbeforematch' in HTMLElement.prototype`) over `window` or `document`, as it is more reliable.
 * When recommending a polyfill, ALWAYS show how to conditionally load it only for browsers that need it. Do not instruct agents to unconditionally load polyfills.
 * **DO NOT** recommend polyfills from polyfill.io.
 
