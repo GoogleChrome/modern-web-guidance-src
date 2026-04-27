@@ -156,6 +156,8 @@ Each object must have:
 - description: A single short sentence describing the task.
 - category: one of 'performance', 'accessibility', 'user-experience', 'security', or 'forms'.
 
+IMPORTANT: If the feature is a low-level utility (like a new Promise method or a general object cloning function) that primarily acts as a drop-in replacement for legacy patterns, avoid forcing it into multiple outcome-oriented use cases. Instead, generate a single 'Fundamental Guide' (e.g., 'Deep cloning complex objects') or place it in a top-level discipline skill file. In this case, return only 1 use case representing that fundamental guide.
+
 
 Example output:
 [
