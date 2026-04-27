@@ -391,6 +391,9 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
 
   cleanupIsolatedHome(path.dirname(workDir));
 
+  console.log(`\n[TEMPORARY] Stopping early for evaluation.`);
+  process.exit(0);
+
   console.log(`\nRunning pipelines in parallel for ${useCases.length} use cases...`);
   
   const promises = useCases.map(async (uc) => {
