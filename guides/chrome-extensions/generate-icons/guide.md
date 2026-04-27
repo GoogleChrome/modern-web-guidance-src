@@ -1,6 +1,7 @@
 ---
 name: generate-icons
 description: Generate and configure the PNG icon files required for a Chrome Extension to appear correctly in the browser UI.
+web-feature-ids: []
 ---
 
 # Generate Extension Icons

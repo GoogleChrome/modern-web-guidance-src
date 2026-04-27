@@ -1,3 +1,9 @@
+---
+name: write-store-listing
+description: Write the name, short description, detailed description, and category fields for a Chrome Web Store listing.
+web-feature-ids: []
+---
+
 # Write a Store Listing
 
 Use this guide when creating or updating the store-facing copy for a Chrome extension.

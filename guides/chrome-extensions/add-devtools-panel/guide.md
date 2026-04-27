@@ -1,6 +1,7 @@
 ---
 name: add-devtools-panel
 description: Add a custom panel to Chrome DevTools for inspecting application state, monitoring network activity, or debugging page behavior.
+web-feature-ids: []
 ---
 
 # Add a Custom DevTools Panel

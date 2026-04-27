@@ -1,6 +1,7 @@
 ---
 name: add-context-menu
 description: Add custom items to the browser right-click context menu that act on selected text, links, images, or the current page.
+web-feature-ids: []
 ---
 
 # Add Context Menu Actions

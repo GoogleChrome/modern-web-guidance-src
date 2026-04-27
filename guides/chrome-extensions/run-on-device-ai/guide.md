@@ -1,6 +1,7 @@
 ---
 name: run-on-device-ai
 description: Run AI text inference locally using Chrome's built-in Gemini Nano model without requiring an API key or network connection.
+web-feature-ids: []
 ---
 
 # Run On-Device AI

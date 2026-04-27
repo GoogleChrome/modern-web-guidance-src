@@ -1,3 +1,9 @@
+---
+name: prepare-graphics
+description: Create and size the icon, screenshots, and promotional images required for a Chrome Web Store listing.
+web-feature-ids: []
+---
+
 # Prepare Store Graphics
 
 Use this guide when creating or reviewing the visual assets required for a Chrome Web Store listing.

@@ -1,6 +1,7 @@
 ---
 name: extend-omnibox
 description: Provide custom suggestions in the Chrome address bar when users type a registered keyword shortcut.
+web-feature-ids: []
 ---
 
 # Extend the Chrome Address Bar

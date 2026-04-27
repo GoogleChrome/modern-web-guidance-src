@@ -1,3 +1,9 @@
+---
+name: manage-privacy
+description: Complete the Chrome Web Store privacy disclosure and write a policy that matches your extension's actual data handling.
+web-feature-ids: []
+---
+
 # Manage Privacy and Data Disclosure
 
 Use this guide when completing the privacy disclosure on the developer dashboard or writing

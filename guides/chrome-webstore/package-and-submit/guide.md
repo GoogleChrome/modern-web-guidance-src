@@ -1,3 +1,9 @@
+---
+name: package-and-submit
+description: Package a Chrome extension as a ZIP and submit it to the Chrome Web Store for the first time or as an update.
+web-feature-ids: []
+---
+
 # Package and Submit to the Chrome Web Store
 
 Use this guide when preparing to submit an extension for the first time or publishing an update.

@@ -1,6 +1,7 @@
 ---
 name: filter-network-requests
 description: Block, redirect, or modify network requests declaratively without observing individual requests at runtime.
+web-feature-ids: []
 ---
 
 # Filter Network Requests

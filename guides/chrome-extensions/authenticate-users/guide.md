@@ -1,6 +1,7 @@
 ---
 name: authenticate-users
 description: Authenticate users with Google accounts or third-party OAuth providers using chrome.identity.
+web-feature-ids: []
 ---
 
 # Authenticate Users

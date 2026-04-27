@@ -1,3 +1,9 @@
+---
+name: handle-rejection
+description: Fix and resubmit a Chrome extension rejected by the Web Store review team.
+web-feature-ids: []
+---
+
 # Handle a Rejection
 
 Use this guide when an extension has been rejected by the Chrome Web Store review team.

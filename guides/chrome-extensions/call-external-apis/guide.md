@@ -1,6 +1,7 @@
 ---
 name: call-external-apis
 description: Fetch data from external web services and APIs from any extension context.
+web-feature-ids: []
 ---
 
 # Call External APIs

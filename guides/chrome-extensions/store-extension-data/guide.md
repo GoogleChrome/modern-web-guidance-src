@@ -1,6 +1,7 @@
 ---
 name: store-extension-data
 description: Store and sync user settings and extension data that persists across browser sessions and service worker restarts.
+web-feature-ids: []
 ---
 
 # Store Extension Data

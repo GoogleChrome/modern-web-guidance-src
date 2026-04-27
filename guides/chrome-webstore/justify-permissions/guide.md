@@ -1,3 +1,9 @@
+---
+name: justify-permissions
+description: Write justifications for each extension permission that satisfy Chrome Web Store review requirements.
+web-feature-ids: []
+---
+
 # Justify Permissions
 
 Insufficient permission justifications are the most common reason for first-submission rejection.

@@ -1,6 +1,7 @@
 ---
 name: add-toolbar-popup
 description: Add a quick-action popup that appears when users click the extension toolbar button.
+web-feature-ids: []
 ---
 
 # Add a Toolbar Popup

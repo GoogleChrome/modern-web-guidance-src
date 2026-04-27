@@ -1,6 +1,7 @@
 ---
 name: add-side-panel
 description: Add a persistent side panel that stays open while users browse, enabling extended interactions alongside the web page.
+web-feature-ids: []
 ---
 
 # Add a Persistent Side Panel

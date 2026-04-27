@@ -1,6 +1,7 @@
 ---
 name: modify-web-pages
 description: Read and modify the content of web pages by injecting scripts and styles into browser tabs.
+web-feature-ids: []
 ---
 
 # Read and Modify Web Pages

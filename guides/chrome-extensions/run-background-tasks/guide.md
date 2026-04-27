@@ -1,6 +1,7 @@
 ---
 name: run-background-tasks
 description: Run background tasks reliably using extension service workers that terminate after inactivity and restart on demand.
+web-feature-ids: []
 ---
 
 # Run Background Tasks

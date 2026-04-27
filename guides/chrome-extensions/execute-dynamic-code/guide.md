@@ -1,6 +1,7 @@
 ---
 name: execute-dynamic-code
 description: Execute dynamic or user-provided code safely within Chrome Extension Content Security Policy restrictions.
+web-feature-ids: []
 ---
 
 # Execute Dynamic Code
