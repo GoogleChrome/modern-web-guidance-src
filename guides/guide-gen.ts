@@ -102,7 +102,7 @@ function getSkillContent(skillName: string): string {
       content = content.replace(
         /## Research and discovery[\s\S]*?## Identifying action-oriented tasks/,
         `## Research and discovery
-In this automated pipeline, the research has already been conducted by a specialized model and saved to a file (e.g., \`feature/\<feature-id\>/research.md\`). You must read that research report primarily to identify use cases, rather than attempting to run research tools yourself.
+In this automated pipeline, the research has already been conducted by a specialized model and saved to a file (e.g., \`features/\<feature-id\>/research.md\`). You must read that research report primarily to identify use cases, rather than attempting to run research tools yourself.
 
 ## Identifying action-oriented tasks`
       );
@@ -126,7 +126,7 @@ function buildUseCasesPrompt(feature: FeatureInfo): string {
   const useCasesSkill = getSkillContent('project-use-cases');
   const researchSkill = getSkillContent('project-use-cases-research');
 
-  const researchPath = path.resolve('feature', feature.id, 'research.md');
+  const researchPath = path.resolve('features', feature.id, 'research.md');
   let researchContent = '';
   if (fs.existsSync(researchPath)) {
     console.log(`Found research file at ${researchPath}. Including in prompt.`);
@@ -366,7 +366,7 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
   const feature = lookupFeature(featureId);
   console.log(`Found: ${feature.name}`);
 
-  const researchPath = path.resolve('feature', feature.id, 'research.md');
+  const researchPath = path.resolve('features', feature.id, 'research.md');
   if (!fs.existsSync(researchPath)) {
     console.log(`Research file not found at ${researchPath}. Invoking deep research...`);
     const scriptPath = path.join(rootDir, '.agents/skills/project-use-cases-research/scripts/deep_research.js');
