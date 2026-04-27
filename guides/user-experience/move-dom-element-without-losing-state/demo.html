@@ -1,1 +1,92 @@
-<!-- TODO -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Move DOM Element Preserving State Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+
+    .container {
+      border: 2px dashed #ccc;
+      padding: 1rem;
+      min-height: 200px;
+      min-width: 300px;
+    }
+
+    .controls {
+      margin-top: 1rem;
+    }
+
+    .card {
+      border: 1px solid #005fcc;
+      background: #e6f2ff;
+      padding: 1rem;
+    }
+
+    iframe {
+      width: 100%;
+      border: 1px solid #ccc;
+      margin-bottom: 0.5rem;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.5rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div>
+    <h2>Container A</h2>
+    <div id="container-a" class="container">
+      <div id="stateful-element" class="card">
+        <p>This element has state.</p>
+        <!-- Iframe with a test URL -->
+        <iframe src="https://www.youtube.com/embed/LXb3EKWsInQ?si=Zx3qCFtJeqP6Qrt2"
+          title="YouTube video player"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <h2>Container B</h2>
+    <div id="container-b" class="container"></div>
+  </div>
+
+  <div class="controls">
+    <button id="move-btn">Move Element</button>
+  </div>
+
+  <script>
+    const btn = document.getElementById('move-btn');
+    const statefulElement = document.getElementById('stateful-element');
+    const containerA = document.getElementById('container-a');
+    const containerB = document.getElementById('container-b');
+
+    btn.addEventListener('click', () => {
+      // Determine current parent and target parent
+      const currentParent = statefulElement.parentElement;
+      const targetParent = currentParent === containerA ? containerB : containerA;
+
+      // Feature detect moveBefore
+      if ('moveBefore' in Element.prototype) {
+        targetParent.moveBefore(statefulElement, null);
+      } else {
+        // Fallback that resets state
+        targetParent.insertBefore(statefulElement, null);
+      }
+    });
+  </script>
+</body>
+  </html>

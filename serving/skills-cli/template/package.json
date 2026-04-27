@@ -1,9 +1,9 @@
 {
-  "name": "modern-web",
-  "displayName": "Chrome Web Development Skills",
+  "name": "modern-web-guidance",
+  "displayName": "Modern Web Guidance",
   "private": true,
   "description": "Curated collection of agent skills for modern web development.",
-  "version": "0.0.12",
+  "version": "0.0.26",
   "publisher": "GoogleChrome",
   "engines": {
     "vscode": "^1.90.0",
@@ -22,9 +22,5 @@
   },
   "bin": {
     "modern-web": "./skills/modern-web-use-cases/modern-web.mjs"
-  },
-  "dependencies": {
-    "@huggingface/transformers": "^3.8.1",
-    "@lancedb/lancedb": "^0.26.2"
   }
 }

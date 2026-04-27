@@ -40,6 +40,8 @@ MANDATORY: Use `scrollbar-color` and `scrollbar-width` on the scrollable contain
 
 IMPORTANT: On macOS, the `scrollbar-color` (standard) and `::-webkit-scrollbar` (legacy) properties are ignored by default because macOS uses native "overlay" scrollbars. Therefore, you MUST apply `scrollbar-width` (e.g., `thin` or `auto`) to force macOS to render custom colors.
 
+IMPORTANT: Do NOT animate or transition `scrollbar-color`. A [WebKit bug](https://bugs.webkit.org/show_bug.cgi?id=311752) causes the scrollbar to flicker every time `scrollbar-color` changes.
+
 ## Fallback strategies
 
 {{ BASELINE_STATUS("scrollbar-color") }}
@@ -77,7 +79,7 @@ To prevent conflicts between standard properties and legacy WebKit selectors in 
     /* Use background to color the track */
     background: blue;
   }
-  
+
   .scroller-hidden::-webkit-scrollbar {
     display: none;
     width: 0;

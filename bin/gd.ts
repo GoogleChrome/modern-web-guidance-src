@@ -5,9 +5,8 @@ import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import omelette from 'omelette';
-import { pathToFileURL } from 'url';
 import { cRed, cCyan, cBold, cDim } from '../lib/colors.ts';
-import { Serving, mergeSuiteConfig, type SuiteConfig } from '../harness/config.ts';
+import { Serving, resolveSuiteConfig } from '../harness/config.ts';
 import { rootDir, guidesDir, baseAppsDir, evalViewDir } from '../lib/paths.ts';
 import { getTaskMap } from '../lib/guide-validation.ts';
 
@@ -44,6 +43,7 @@ const COMMAND_METADATA = {
   run: { desc: 'Run an ad-hoc agent test against a template', flags: ['config'] },
   deploy: { desc: 'Deploy the dashboard to GitHub Pages', flags: [] },
   upload: { desc: 'Upload generated evaluation suite to GCS', flags: [] },
+  backfill: { desc: 'Backfill metrics for historical suites', flags: [] },
   baselinestatus: { desc: 'Check browser support and Baseline status', flags: [] },
 
   'setup-completion': { desc: 'Install shell auto-completion', flags: [] },
@@ -138,29 +138,7 @@ const { positionals, values } = parseArgs({
 
 // --- Helpers ---
 
-async function resolveSuiteConfig(configPath?: string): Promise<SuiteConfig> {
-  const resolvedConfigPath = configPath
-    ? path.resolve(process.cwd(), configPath)
-    : path.resolve(rootDir, 'config.ts');
 
-  let overrides: any = {};
-  try {
-    const fileUrl = pathToFileURL(resolvedConfigPath).href;
-    const customConfig = await import(fileUrl);
-    overrides = customConfig.default || customConfig;
-  } catch (err: any) {
-    if (err.code === 'ERR_MODULE_NOT_FOUND') {
-      if (configPath) {
-        console.error(cRed('⚠️ Specified config file not found: ' + resolvedConfigPath));
-        process.exit(1);
-      }
-    } else {
-      throw err;
-    }
-  }
-
-  return mergeSuiteConfig(overrides);
-}
 
 function spawnChild(command: string, args: string[], options: import('child_process').SpawnOptions = {}): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -192,7 +170,7 @@ function showHelp() {
     },
     {
       title: 'Evaluation & Dashboard',
-      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload'],
+      commands: ['eval', 'run', 'dashboard', 'deploy', 'upload', 'backfill'],
     },
     {
       title: 'Utilities & Setup',
@@ -348,6 +326,12 @@ async function main() {
       const args = positionals.slice(1);
       const code = await runNpm(['upload', ...args]);
       process.exit(code);
+    }
+
+    case 'backfill': {
+      const { runBackfill } = await import('../harness/backfill.ts');
+      await runBackfill();
+      break;
     }
 
     case 'deploy': {

@@ -6,11 +6,15 @@ serving/vector_store/
 serving/build/
 serving/lib/use-cases.gen.ts
 eval-view/features_mapping.gen.js
+eval-view/grouped-tasks.gen.json
+eval-view/suites.gen.json
 dist/
 
 # Test artifacts
 eval-view/test-results/
 harness/results/
+harness/test-results/
+tasks/test-results/
 grade-report/
 test-app-results/
 
@@ -34,7 +38,7 @@ skills/modern-web/
 project-gleam/
 
 # Local configs
-config.ts
+/config.ts
 
 # Git worktrees directory
 .worktrees
@@ -47,3 +51,13 @@ GEMINI.md
 # Research drafts
 skills-drafts/.research/
 
+# Generated vector and benchmark evaluation files
+serving/lib/use-cases.vectors.gen.json
+serving/lib/use-cases.vectors.gen.json.gz
+serving/benchmarks/data/eval-queries.gen.json
+# ML Models
+serving/lib/tfjs_model_minilm/tfjs_model*/
+serving/lib/tfjs_model_minilm/saved_model*/
+
+# Caches
+**/.cache/
