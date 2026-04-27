@@ -12,21 +12,21 @@ Keep these principles in mind throughout:
 - **Accessibility is the minimum, not the ceiling.** Conformance to standards is the floor; aim for genuine usability.
 - **Patterns are use-case specific.** No checklist replaces real testing — including testing with disabled users — to confirm a given implementation is actually accessible in context.
 
-## 1. Semantic HTML and Landmarks
+## 1. Content Navigability and Structure
 
 ### Actionable Guidelines
 
 #### DOs
-- **Prioritize Native HTML Elements**: Use native tags like `<button>`, `<input>`, and `<nav>` instead of custom `<div>` constructions with ARIA.
-- **Use Section Landmarks**: Divide pages into regions using `<header>`, `<nav>`, `<main>`, `<aside>`, and `<footer>`.
-- **Maintain Heading Hierarchy**: Use headings sequentially (`<h1>` followed by `<h2>`, not jumping to `<h4>`).
+- **Place all content within landmarks**: Wrap the page in `<header>`, `<nav>`, `<main>`, `<aside>`, and `<footer>` so assistive-tech users can jump between regions.
+- **Structure main content with headings**: Use `<h1>`–`<h6>` sequentially (no jumping `<h1>` → `<h4>`) so screen-reader users get a navigable outline.
+- **Use lists for repeated, contiguous content**: `<ul>`/`<ol>` give assistive tech a count up front and let users skip the entire group.
+- **Provide skip links**: Add a "Skip to content" link at the top of the page so keyboard users can bypass repeated content like site headers or long/infinite lists. Make sure the target is focusable (e.g. `<main id="main" tabindex="-1">`).
 - **Semantic Tables**: Use `<caption>` and `<th scope="col">` (or `<th scope="row">`) for data tables.
 
 #### DON'Ts
-- **Don't use ARIA when native HTML exists**: Avoid `<a role="button">` if a `<button>` can be used.
+- **Don't use fake headings**: Never style `<div>` or `<span>` to look like headings without standard `<h1>`–`<h6>` tags.
 - **Don't use tables for layout**: Use CSS Grid/Flexbox for visual layouts.
-- **Don't use fake headings**: Never style `<div>` or `<span>` to look like headings without standard `<h1>`-`<h6>` tags.
-- **Don't add redundant ARIA roles**: Avoid using `<ul role="list">` or `<nav role="navigation">`.
+- **Don't overuse landmarks**: Too many landmarks dilute their value. In particular, avoid labeling a `<section>` (which turns it into a `region` landmark) — `region` should be a last resort when no other landmark fits.
 
 ### Code Examples
 
@@ -58,7 +58,68 @@ Keep these principles in mind throughout:
 </main>
 ```
 
-## 2. Document Metadata and Language
+## 2. Semantic HTML and ARIA
+
+### Actionable Guidelines
+
+#### DOs
+- **Prefer HTML elements and attributes to ARIA**: A native element comes with the right role and behavior. `<button>` already implies `role="button"`; `required` already implies `aria-required`.
+- **Match ARIA implementations to actual behavior**: If you set `role="tab"`, the element must behave like a tab — including keyboard interactions. Many ARIA patterns can't be implemented in CSS alone and need JavaScript.
+- **Be deliberate about `disabled` vs `aria-disabled`**: `disabled` removes the element from the focus order entirely (and `tabindex="0"` won't bring it back), which is often wrong for toolbar buttons or links. `aria-disabled="true"` keeps the element focusable so users can land on it and learn it's disabled.
+
+#### DON'Ts
+- **Don't use ARIA when native HTML exists**: Avoid `<div role="button">` or `<a role="button">` if `<button>` works.
+- **Don't add redundant ARIA roles or properties**: Avoid `<ul role="list">`, `<nav role="navigation">`, or `<input required aria-required="true">`.
+  - **Caveat**: Safari removes list semantics from `<ul>`/`<ol>` outside `<nav>` when `list-style: none` or `display: flex`/`grid` is applied. In that case `role="list"` is required to restore them. A similar effect impacts `<table>` with flex/grid across more browsers.
+- **Don't assume custom elements have no ARIA**: Custom elements can attach ARIA via `ElementInternals`, which some automated test tools can't see — so the absence of `role`/`aria-*` attributes in markup doesn't prove the element has no semantics. Verify with a screen reader or the browser's accessibility-tree inspector.
+
+## 3. Accessible Names and Descriptions
+
+Every interactive element needs an accessible name, and many benefit from an accessible description. Names are short and identify the control; descriptions add context.
+
+### Actionable Guidelines
+
+#### DOs
+- **Prefer native naming mechanisms**: `<label>` for form controls, `<caption>` for `<table>`, `<legend>` for `<fieldset>`, `<figcaption>` for `<figure>`.
+- **Explicitly associate `<label>` with its control via `for`/`id`**, even when nesting the input inside the label — explicit association improves assistive-tech support.
+- **Prefer `aria-labelledby` over `aria-label` when a visible label exists**: avoids duplication, improves maintainability, and translates better.
+- **Reuse the same accessible name for hyperlinks that share an `href`.**
+- **Use visually hidden text to disambiguate controls** that look identical visually but do different things (e.g. multiple "Edit" buttons in a list).
+
+#### DON'Ts
+- **Don't put `aria-label`/`aria-labelledby` on elements that shouldn't be named** — e.g. plain `<div>`, `<span>`, or custom elements without a role. Custom elements may have an implicit role set via `ElementInternals`, so the absence of a `role` attribute isn't conclusive.
+- **Don't reuse an accessible name across controls with different effects in the same context** (close buttons for two different open dialogs are fine because only one is reachable at a time; two "Submit" buttons on the same form are not).
+- **Don't reuse an accessible name across hyperlinks pointing to different `href`s.**
+- **Don't pack descriptions, error messages, or instructions into the label.**
+- **Don't repeat state already exposed via ARIA** (`aria-expanded`, `aria-checked`, `aria-selected`, `aria-pressed`) inside the accessible name — it creates redundancy and ambiguity.
+- **Don't include the role name in the label**: `<nav aria-label="Primary navigation">` reads as "Primary navigation navigation."
+- **Don't use `title` or `placeholder` as a naming mechanism.**
+- **Don't include interactive elements in an `aria-describedby` target** unless their text content reads sensibly as a description on its own.
+
+### Code Example: Visually Hidden Utility
+
+A `.visually-hidden` utility lets you provide text for screen readers without rendering it visually. It's commonly used for skip links, additional context on icon-only buttons, and supplementary labels.
+
+```css
+/* Hides content visually but keeps it in the accessibility tree.
+   :focus-within / :active opt elements out — useful for skip links and
+   any focusable content wrapped in this class. */
+.visually-hidden:where(:not(:focus-within, :active)) {
+  position: absolute !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+```
+
+When the hidden content is focusable (skip links, focus-receiving wrappers), the `:focus-within`/`:active` exception lets it become visible. Style the visible state per situation — a skip link typically wants fixed positioning at the top-left of the viewport so the rest of the page doesn't shift.
+
+## 4. Document Metadata and Language
 
 ### Actionable Guidelines
 
@@ -87,13 +148,13 @@ Keep these principles in mind throughout:
 </html>
 ```
 
-## 3. Keyboard and Focus Management
+## 5. Keyboard and Focus Management
 
 ### Actionable Guidelines
 
 #### DOs
 - **Logical Tab Order**: Ensure tab order matches visual layouts (top-to-bottom).
-- **Visible Focus Indicators**: Always style `:focus` states explicitly. If disabling defaults, provide high-contrast overrides.
+- **Visible Focus Indicators**: Always style `:focus-visible` states explicitly. If disabling defaults, provide high-contrast overrides.
 - **Skip Navigation Links**: Provide a "Skip to content" link at the top of the page.
 - **Lock Modal Focus**: Ensure focus cannot leave open modal dialogs.
 - **Custom Trigger Keyboards**: Attach Enter/Space handlers for custom simulated interactive elements.
@@ -137,7 +198,7 @@ customWidget.addEventListener('keydown', (e) => {
 });
 ```
 
-## 4. Alternate Text and Media
+## 6. Alternate Text and Media
 
 ### Actionable Guidelines
 
@@ -203,16 +264,16 @@ customWidget.addEventListener('keydown', (e) => {
 
 **Heuristic Rule**: If an element can receive keyboard focus, it must not be hidden via `aria-hidden="true"`.
 
-## 5. Forms and Inputs Controls
+## 7. Forms and Input Controls
 
 ### Actionable Guidelines
 
 #### DOs
 - **Connect Labels Programmatically**: Use `<label for="id">` linked to `<input id="id">`.
 - **Use Autocomplete**: Set valid standard `autocomplete` options (e.g., `"email"` or `"given-name"`) for user profiles.
-- **Link hints to inputs via aria-describedby**: Associate help text with inputs.
+- **Link hints to inputs via `aria-describedby`**: Associate help text with inputs, and place the hint above the input so autocomplete popovers don't cover it during editing.
 - **Announce dynamic errors via live regions**: Use `aria-live` or shift focus to error lists.
-- **Provide form validation constraints**: Use `required` or `aria-required="true"` to signal mandatory inputs.
+- **Provide form validation constraints**: Use `required` (or `aria-required="true"` only when `required` isn't applicable) to signal mandatory inputs.
 
 #### DON'Ts
 - **Don't rely on placeholders alone**: Placeholders are not persistent labels.
@@ -229,6 +290,10 @@ customWidget.addEventListener('keydown', (e) => {
 </form>
 ```
 
+## 8. Live Regions
+
+Live regions let assistive tech announce content updates that aren't tied to navigation or focus changes. They're easy to misuse — too many regions, or noisy ones, quickly become spam for screen-reader users.
+
 ### Live Region Urgency Table
 
 | Urgency | Visual Analogue | `aria-live` Value | Behavioral Impact | Example |
@@ -239,6 +304,19 @@ customWidget.addEventListener('keydown', (e) => {
 
 **Heuristic Rule**: Use `assertive` only for critical, time-sensitive updates that require immediate attention or prevent safe continuation (e.g., data loss, session timeouts, or network drops).
 
+### Actionable Guidelines
+
+#### DOs
+- **Centralize live regions for non-visible announcements**: A single `polite` region and a single `assertive` region per page (with whatever `aria-atomic` configuration you need) keeps announcements consistent and easier to maintain. Many frameworks ship their own announcer abstraction — use it.
+- **Debounce frequently-changing regions**: If a region can update many times per second (e.g. a combobox's result count as the user types), debounce so users aren't spammed.
+- **Delay slightly when other announcements may collide**: When the user is typing or focus is being managed, a small delay before announcing keeps live-region updates from overlapping other speech.
+
+#### DON'Ts
+- **Don't use live regions for interstitial states** like "Loading…" or "Updating…" unless they're meaningfully informative — they usually just create noise.
+- **Don't add live-region updates to inert DOM**: When dialogs open or sections become `inert`, queued or debounced messages can end up unannounced — or announced from DOM the user can't reach. Coordinate live-region updates with dialog/inert state changes.
+
+### Code Example
+
 ```html
 <!-- Session Timeout Warning with controls -->
 <div role="alert" aria-live="assertive" class="timeout-warning">
@@ -247,7 +325,7 @@ customWidget.addEventListener('keydown', (e) => {
 </div>
 ```
 
-## 6. Color, Contrast, and Typography
+## 9. Color, Contrast, and Typography
 
 ### Actionable Guidelines
 
@@ -303,7 +381,7 @@ article {
 }
 ```
 
-## 7. Motions and Preferences
+## 10. Motions and Preferences
 
 ### Actionable Guidelines
 
@@ -327,19 +405,7 @@ article {
 }
 ```
 
-## 8. Testing Validations
-
-### Actionable Guidelines
-
-#### DOs
-- **Run Automated checks via axe-core or Lighthouse audits**: Catch missing alt texts or low contrasts (e.g., via Lighthouse in Chrome DevTools MCP).
-- **Validate Sequential Navigations using keyboards alone**: Disconnect mouse traps to verify logic.
-- **Test on Screen Readers with calibrated browsers**: Rely on standard bindings (e.g., VoiceOver with Safari).
-
-#### DON'Ts
-- **Don't rely purely on scores**: A 100% score does not guarantee real usability.
-
-## 9. Modals and Native Dialogs
+## 11. Modals and Native Dialogs
 
 Modern browsers provide native mechanisms for focus trapping and modal overlays that bypass the need for heavy manual JavaScript event tracking.
 
@@ -348,7 +414,6 @@ Modern browsers provide native mechanisms for focus trapping and modal overlays 
 #### DOs
 - **Use the Native `<dialog>` Element**: Invoke the dialog using the `.showModal()` method to automatically lock focus into the popup and dim the background.
 - **Use the `inert` Attribute for Custom Overlays**: Apply the `inert` attribute to background app-shells if you must build a custom viewport container to isolate focus.
-- **Provide a Standard Visually Hidden Utility Class**: Utilize standard `clip-path` CSS properties to hide secondary text from view but retain it in the accessibility tree (the `.sr-only` pattern).
 
 #### DON'Ts
 - **Don't rely on complex manual JS focus traps**: Avoid using manual `keydown` listeners for focus loops if the native `<dialog>` element is available.
@@ -373,31 +438,14 @@ Modern browsers provide native mechanisms for focus trapping and modal overlays 
 </script>
 ```
 
-**CSS: Standard Visually Hidden for secondary text**
-```css
-.visually-hidden {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip-path: inset(50%) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
-}
+## 12. Testing Validations
 
-/* Reverse visually hidden on focus for interactive elements */
-.visually-hidden-focusable:focus,
-.visually-hidden-focusable:active {
-  position: absolute !important; /* Keep absolute to avoid layout shifts */
-  top: 0 !important;
-  left: 0 !important;
-  width: auto !important;
-  height: auto !important;
-  overflow: visible !important;
-  clip: auto !important;
-  clip-path: none !important;
-  white-space: normal !important;
-}
-```
+### Actionable Guidelines
+
+#### DOs
+- **Run Automated checks via axe-core or Lighthouse audits**: Catch missing alt texts or low contrasts (e.g., via Lighthouse in Chrome DevTools MCP).
+- **Validate Sequential Navigations using keyboards alone**: Disconnect mouse traps to verify logic.
+- **Test on Screen Readers with calibrated browsers**: Rely on standard bindings (e.g., VoiceOver with Safari).
+
+#### DON'Ts
+- **Don't rely purely on scores**: A 100% score does not guarantee real usability.
