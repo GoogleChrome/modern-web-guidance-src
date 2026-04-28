@@ -17,6 +17,6 @@
     "test-results",
     "mock-results",
     "features_mapping.gen.js",
-    "dist"
+    "**/grade-report"
   ]
 }

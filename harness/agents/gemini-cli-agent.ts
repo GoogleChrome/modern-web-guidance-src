@@ -12,6 +12,7 @@ export interface GuidedUsage {
   retrievedGuides: string[];
   fileReadGuides: string[];
 }
+
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
