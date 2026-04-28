@@ -17,7 +17,7 @@ import { features } from 'web-features';
 // Workaround for https://github.com/web-platform-dx/web-features/issues/1980
 type FeatureData = Extract<typeof features[string], { kind: 'feature' }>;
 
-import bcd from '@mdn/browser-compat-data' with { type: 'json' };
+import bcd, { Identifier } from '@mdn/browser-compat-data';
 
 import { guidesDir, rootDir } from '../lib/paths.ts';
 import { runCommand, runGemini, setupIsolatedWorkDir } from './lib/utils.ts';
@@ -488,36 +488,25 @@ async function createPullRequest(featureId: string, reviewer: string, body: stri
   console.log(`✅ PR created for ${branch}`);
 }
 
-interface BCDCompat {
-  __compat?: {
-    mdn_url?: string;
-  };
-}
-
-interface BCDNode {
-  [key: string]: BCDNode | BCDCompat | undefined;
-}
-
 export function getMdnUrlsForFeature(feature: FeatureData): string[] {
   const urls: string[] = [];
   for (const compatKey of (feature.compat_features || [])) {
     if (!compatKey) continue;
     const parts = compatKey.split('.');
-    let node: BCDNode | BCDCompat | undefined = bcd as unknown as BCDNode;
+    let node: Identifier | undefined = bcd as unknown as Identifier;
     
     for (const part of parts) {
       if (node && typeof node === 'object' && part in node) {
-        node = (node as BCDNode)[part];
+        node = node[part];
       } else {
         node = undefined;
         break;
       }
     }
 
-    if (node && typeof node === 'object' && '__compat' in node) {
-      const compatNode = node as BCDCompat;
-      const mdnUrl = compatNode.__compat?.mdn_url;
-      if (typeof mdnUrl === 'string' && !urls.includes(mdnUrl)) {
+    if (node && node.__compat?.mdn_url) {
+      const mdnUrl = node.__compat.mdn_url;
+      if (!urls.includes(mdnUrl)) {
         urls.push(mdnUrl);
       }
     }
