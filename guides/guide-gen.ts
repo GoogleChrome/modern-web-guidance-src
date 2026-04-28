@@ -30,7 +30,7 @@ import { devGuide } from './dev-guide.ts';
 
 // ─── MDN URL construction ────────────────────────────────────────────────────
 
-function mdnUrlFromCompatKey(compatKey: string): string | null {
+export function mdnUrlFromCompatKey(compatKey: string): string | null {
   if (compatKey.startsWith('css.properties.')) {
     const propName = compatKey.slice('css.properties.'.length);
     const propData = (mdnData.css.properties as any)[propName];
