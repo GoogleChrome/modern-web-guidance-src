@@ -5,11 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Overflow Clipping Control Demo</title>
   <style>
+    :root {
+      --scrollbar-thumb: rgba(0, 0, 0, 0.2);
+      --scrollbar-track: transparent;
+    }
+
     body {
       font: 1em/1.5 system-ui, sans-serif;
       padding: 2rem;
       background: #f5f5f5;
+      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+      scrollbar-width: thin;
     }
+
 
     h1 {
       margin-bottom: 0.5rem;
