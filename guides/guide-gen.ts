@@ -18,8 +18,7 @@ import { features } from 'web-features';
 type FeatureData = Extract<typeof features[string], { kind: 'feature' }>;
 
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
-
-import { guidesDir, rootDir } from '../lib/paths.ts';
+import type { Identifier } from '@mdn/browser-compat-data';import { guidesDir, rootDir } from '../lib/paths.ts';
 import { runCommand, runGemini, setupIsolatedWorkDir } from './lib/utils.ts';
 import {
   cleanupIsolatedHome,
@@ -490,7 +489,7 @@ async function createPullRequest(featureId: string, reviewer: string, body: stri
 
 const tagToUrls = new Map<string, string[]>();
 
-function scanBcd(node: any) {
+function scanBcd(node: Identifier) {
   if (!node || typeof node !== 'object') return;
   const { mdn_url, tags } = node.__compat || {};
   if (mdn_url && tags) {
@@ -506,7 +505,7 @@ function scanBcd(node: any) {
 }
 
 // Build the map once on startup
-scanBcd(bcd);
+scanBcd(bcd as unknown as Identifier);
 
 export function getMdnUrlsForFeature(featureId: string): string[] {
   return tagToUrls.get(featureId) || [];
