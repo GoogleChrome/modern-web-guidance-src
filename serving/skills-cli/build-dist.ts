@@ -265,6 +265,7 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     } catch {}
 
     const sortedFeatureIds = [...guide.featureIds].sort();
+    if (sortedFeatureIds.length === 0) continue;
     const signature = sortedFeatureIds.join(',');
 
     sortedFeatureIds.forEach(id => allFeatureIds.add(id));

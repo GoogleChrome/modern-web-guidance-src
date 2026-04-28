@@ -137,7 +137,8 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     const { hasGuide, hasDemo, hasGrader, hasTask } = inv;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const guideExists = hasGuide || inv.isStub;
-    if (guideExists !== hasDemo) {
+    const requiresDemo = inv.featureIds.length > 0;
+    if (requiresDemo && guideExists !== hasDemo) {
       const missingFile = guideExists ? DEMO_FILE : GUIDE_FILE;
       const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH ${GUIDE_FILE} and ${DEMO_FILE}.`;
       console.error(msg);
@@ -177,7 +178,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       }
     }
 
-    const isIncomplete = (!hasGuide && !inv.isStub) || !hasDemo;
+    const isIncomplete = (!hasGuide && !inv.isStub) || (requiresDemo && !hasDemo);
     const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
     const statusName = !isIncomplete && guideErrors.length === 0 ? getStatusName(guideBody, hasGrader, hasTask) : null;
     const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
