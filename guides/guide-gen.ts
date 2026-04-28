@@ -393,32 +393,54 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
 
   cleanupIsolatedHome(path.dirname(workDir));
 
-  console.log(`\nRunning pipelines in parallel for ${useCases.length} use cases...`);
-  
-  const promises = useCases.map(async (uc) => {
-    const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
-    const logFile = path.join(outputDir, 'dev.log');
-    console.log(`[Usecase: ${uc.slug}] Running calibration. Logs redirected to ${logFile}`);
-    
-    const logStream = fs.createWriteStream(logFile);
-    
-    const child = spawn('node', ['--experimental-strip-types', 'guides/dev-guide.ts', outputDir, '--no-test'], {
-      cwd: rootDir,
-      env: { ...process.env },
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
-    
-    child.stdout.pipe(logStream);
-    child.stderr.pipe(logStream);
-    
-    const exitCode = await new Promise<number>((resolve) => child.on('close', resolve));
-    
-    if (exitCode !== 0) {
-      throw new Error(`devGuide failed for ${uc.slug}. See logs at ${logFile}`);
-    }
-  });
+  const isCI = !!process.env.GITHUB_ACTIONS;
 
-  await Promise.all(promises);
+  if (isCI) {
+    console.log(`\nRunning pipelines sequentially for ${useCases.length} use cases in CI...`);
+    for (const uc of useCases) {
+      const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
+      console.log(`\n[Usecase: ${uc.slug}] Running calibration...`);
+      
+      const child = spawn('node', ['--experimental-strip-types', 'guides/dev-guide.ts', outputDir, '--no-test'], {
+        cwd: rootDir,
+        env: { ...process.env },
+        stdio: ['ignore', 'inherit', 'inherit'] // Stream directly to CI stdout/stderr
+      });
+      
+      const exitCode = await new Promise<number>((resolve) => child.on('close', resolve));
+      
+      if (exitCode !== 0) {
+        throw new Error(`devGuide failed for ${uc.slug}`);
+      }
+    }
+  } else {
+    console.log(`\nRunning pipelines in parallel for ${useCases.length} use cases...`);
+    
+    const promises = useCases.map(async (uc) => {
+      const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
+      const logFile = path.join(outputDir, 'dev.log');
+      console.log(`[Usecase: ${uc.slug}] Running calibration. Logs redirected to ${logFile}`);
+      
+      const logStream = fs.createWriteStream(logFile);
+      
+      const child = spawn('node', ['--experimental-strip-types', 'guides/dev-guide.ts', outputDir, '--no-test'], {
+        cwd: rootDir,
+        env: { ...process.env },
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+      
+      child.stdout.pipe(logStream);
+      child.stderr.pipe(logStream);
+      
+      const exitCode = await new Promise<number>((resolve) => child.on('close', resolve));
+      
+      if (exitCode !== 0) {
+        throw new Error(`devGuide failed for ${uc.slug}. See logs at ${logFile}`);
+      }
+    });
+
+    await Promise.all(promises);
+  }
 
   console.log(`\n🎉 All use cases scaffolded and processed!`);
 
