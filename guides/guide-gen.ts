@@ -40,39 +40,7 @@ import {
 import { devGuide } from './dev-guide.ts';
 
 
-// ─── MDN URL construction ────────────────────────────────────────────────────
 
-export function mdnUrlFromCompatKey(compatKey: string): string | null {
-  if (compatKey.startsWith('css.properties.')) {
-    const propName = compatKey.slice('css.properties.'.length);
-    const propData = (mdnCssProperties as any)[propName];
-    if (propData && propData.mdn_url) {
-      return propData.mdn_url;
-    }
-  }
-  if (compatKey.startsWith('css.at-rules.')) {
-    const ruleName = compatKey.slice('css.at-rules.'.length);
-    const ruleData = (mdnCssAtrules as any)[`@${ruleName}`];
-    if (ruleData && ruleData.mdn_url) {
-      return ruleData.mdn_url;
-    }
-  }
-
-  // Fallback to old custom mapping for non-CSS or missing keys
-  if (compatKey.startsWith('javascript.builtins.')) {
-    const rest = compatKey.slice('javascript.builtins.'.length).replace(/\./g, '/');
-    return `https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/${rest}`;
-  }
-  if (compatKey.startsWith('api.')) {
-    const rest = compatKey.slice('api.'.length).replace(/\./g, '/');
-    return `https://developer.mozilla.org/en-US/docs/Web/API/${rest}`;
-  }
-  if (compatKey.startsWith('html.elements.')) {
-    const rest = compatKey.slice('html.elements.'.length);
-    return `https://developer.mozilla.org/en-US/docs/Web/HTML/Element/${rest}`;
-  }
-  return null;
-}
 
 // ─── Feature lookup ──────────────────────────────────────────────────────────
 
@@ -546,6 +514,48 @@ async function createPullRequest(featureId: string, reviewer: string, body: stri
   ]);
 
   console.log(`✅ PR created for ${branch}`);
+}
+
+// ─── MDN URL construction ────────────────────────────────────────────────────
+
+const PREFIX_MAPPINGS: Record<string, { urlPrefix: string; transform: (rest: string) => string }> = {
+  'javascript.builtins.': {
+    urlPrefix: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/',
+    transform: (rest) => rest.replace(/\./g, '/')
+  },
+  'api.': {
+    urlPrefix: 'https://developer.mozilla.org/en-US/docs/Web/API/',
+    transform: (rest) => rest.replace(/\./g, '/')
+  },
+  'html.elements.': {
+    urlPrefix: 'https://developer.mozilla.org/en-US/docs/Web/HTML/Element/',
+    transform: (rest) => rest
+  }
+};
+
+export function mdnUrlFromCompatKey(compatKey: string): string | null {
+  if (compatKey.startsWith('css.properties.')) {
+    const propName = compatKey.slice('css.properties.'.length);
+    const propData = (mdnCssProperties as any)[propName];
+    if (propData && propData.mdn_url) {
+      return propData.mdn_url;
+    }
+  }
+  if (compatKey.startsWith('css.at-rules.')) {
+    const ruleName = compatKey.slice('css.at-rules.'.length);
+    const ruleData = (mdnCssAtrules as any)[`@${ruleName}`];
+    if (ruleData && ruleData.mdn_url) {
+      return ruleData.mdn_url;
+    }
+  }
+
+  for (const [prefix, mapping] of Object.entries(PREFIX_MAPPINGS)) {
+    if (compatKey.startsWith(prefix)) {
+      const rest = compatKey.slice(prefix.length);
+      return mapping.urlPrefix + mapping.transform(rest);
+    }
+  }
+  return null;
 }
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
