@@ -117,7 +117,7 @@ pnpm link --global && gd setup-completion
 
 | Command | What it does |
 |---|---|
-| `gd audit` | Prints a matrix of all 44 guides showing which artifacts each has, grouped by development stage. Suggests the next action to take. |
+| `gd audit` | Prints a matrix of all guides. |
 | `gd dev <dir>` | The main pipeline command. Takes a guide from "has guide.md + demo.html + expectations.md" to "grader calibrated, agent tests run." See section 4. |
 | `gd dev <dir> --gen-negative` | Generate only the `negative-demo.html` |
 | `gd dev <dir> --gen-grader` | Generate only the `grader.ts` |
@@ -189,9 +189,10 @@ The eval harness measures whether guides actually improve agent output.
 
 ### Agents
 
-Four agents are supported, configured in `harness/config.ts`:
+Five agents are supported, configured in `harness/config.ts`:
 
 - **Jetski** (default): Google's internal IDE agent. Requires the Jetski app.
+- **Jetski CLI**: CLI version of Jetski.
 - **Gemini CLI**: Uses `GEMINI_API_KEY` and `GEMINI_MODEL` env vars.
 - **Claude Code**: Uses Claude on Vertex AI. Requires GCP setup.
 - **Codex CLI**: Requires requesting an exception and PCounsel approval. See root README for details.
@@ -229,7 +230,7 @@ The code in `serving/` provides both the MCP server and standalone tools used by
 
 ### Guide inventory
 
-**44 total guides** across 2 categories (performance: 15, user-experience: 29).
+An evolving list of guides organized across multiple categories.
 
 | Stage | Status | Count | Description |
 |---|---|---|---|
