@@ -17,6 +17,9 @@ export default defineConfig({
     mode: "standalone",
   }),
   output: "server",
+  legacy: {
+    collectionsBackwardsCompat: true,
+  },
   image: {
     service: {
        entrypoint: 'astro/assets/services/sharp',
