@@ -14,19 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { features } from 'web-features';
-
-const mdnCssPropertiesPath = path.resolve(rootDir, 'node_modules/mdn-data/css/properties.json');
-const mdnCssAtrulesPath = path.resolve(rootDir, 'node_modules/mdn-data/css/at-rules.json');
-
-let mdnCssProperties = {};
-let mdnCssAtrules = {};
-
-try {
-  mdnCssProperties = JSON.parse(fs.readFileSync(mdnCssPropertiesPath, 'utf8'));
-  mdnCssAtrules = JSON.parse(fs.readFileSync(mdnCssAtrulesPath, 'utf8'));
-} catch (err) {
-  console.warn(`Warning: Could not read mdn-data files.`);
-}
+import bcd from '@mdn/browser-compat-data';
 
 import { guidesDir, rootDir } from '../lib/paths.ts';
 import config from '../harness/config.ts';
@@ -518,42 +506,22 @@ async function createPullRequest(featureId: string, reviewer: string, body: stri
 
 // ─── MDN URL construction ────────────────────────────────────────────────────
 
-const PREFIX_MAPPINGS: Record<string, { urlPrefix: string; transform: (rest: string) => string }> = {
-  'javascript.builtins.': {
-    urlPrefix: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/',
-    transform: (rest) => rest.replace(/\./g, '/')
-  },
-  'api.': {
-    urlPrefix: 'https://developer.mozilla.org/en-US/docs/Web/API/',
-    transform: (rest) => rest.replace(/\./g, '/')
-  },
-  'html.elements.': {
-    urlPrefix: 'https://developer.mozilla.org/en-US/docs/Web/HTML/Element/',
-    transform: (rest) => rest
-  }
-};
-
-const CSS_MAPPINGS = {
-  'css.properties.': { data: mdnCssProperties, prefix: '' },
-  'css.at-rules.': { data: mdnCssAtrules, prefix: '@' }
-};
+// ─── MDN URL construction ────────────────────────────────────────────────────
 
 export function mdnUrlFromCompatKey(compatKey: string): string | null {
-  for (const [prefix, mapping] of Object.entries(CSS_MAPPINGS)) {
-    if (compatKey.startsWith(prefix)) {
-      const name = compatKey.slice(prefix.length);
-      const data = (mapping.data as any)[mapping.prefix + name];
-      if (data && data.mdn_url) return data.mdn_url;
-    }
+  if (!compatKey) return null;
+
+  const parts = compatKey.split('.');
+  let node: any = bcd; 
+  
+  for (const part of parts) {
+    if (!node || typeof node !== 'object') return null;
+    node = node[part];
   }
 
-  for (const [prefix, mapping] of Object.entries(PREFIX_MAPPINGS)) {
-    if (compatKey.startsWith(prefix)) {
-      const rest = compatKey.slice(prefix.length);
-      return mapping.urlPrefix + mapping.transform(rest);
-    }
-  }
-  return null;
+  const mdnUrl = node?.__compat?.mdn_url;
+  
+  return typeof mdnUrl === 'string' ? mdnUrl : null;
 }
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
