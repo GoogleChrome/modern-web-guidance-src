@@ -178,6 +178,8 @@ async function main(version?: string): Promise<BuildResult | undefined> {
         },
       }],
     });
+    fs.writeFileSync(path.join(PUBLISH_ROOT, "search.meta.json"), JSON.stringify(resultSearch.metafile, null, 2));
+    console.log(`Generated metafile for search.mjs at ${path.join(PUBLISH_ROOT, "search.meta.json")}`);
 
     console.log("Bundling modern-web.mjs...");
     const resultModernWeb = await esbuild.build({
