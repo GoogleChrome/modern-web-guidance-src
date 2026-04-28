@@ -14,7 +14,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { features } from 'web-features';
-import bcd from '@mdn/browser-compat-data';
+import type { FeatureData } from 'web-features';
+
+const bcdPath = path.resolve(rootDir, 'node_modules/@mdn/browser-compat-data/data.json');
+let bcd = {};
+
+try {
+  bcd = JSON.parse(fs.readFileSync(bcdPath, 'utf8'));
+} catch (err) {
+  console.warn(`Warning: Could not read BCD data file.`);
+}
 
 import { guidesDir, rootDir } from '../lib/paths.ts';
 import config from '../harness/config.ts';
@@ -46,26 +55,12 @@ interface UseCase {
   category: string;
 }
 
-function lookupFeature(featureId: string): FeatureInfo {
+function lookupFeature(featureId: string): FeatureData {
   const feature = (features as Record<string, any>)[featureId];
   if (!feature || feature.kind !== 'feature') {
     throw new Error(`Feature "${featureId}" not found in web-features package.`);
   }
-
-  const mdnUrls: string[] = [];
-  for (const compatKey of (feature.compat_features || [])) {
-    const url = mdnUrlFromCompatKey(compatKey);
-    if (url && !mdnUrls.includes(url)) mdnUrls.push(url);
-    if (mdnUrls.length >= 2) break;
-  }
-
-  return {
-    id: featureId,
-    name: feature.name || featureId,
-    description: feature.description || '',
-    specUrls: feature.spec || [],
-    mdnUrls,
-  };
+  return feature;
 }
 
 function getSkillContent(skillName: string): string {
@@ -522,6 +517,17 @@ export function mdnUrlFromCompatKey(compatKey: string): string | null {
   const mdnUrl = node?.__compat?.mdn_url;
   
   return typeof mdnUrl === 'string' ? mdnUrl : null;
+}
+
+export function getMdnUrlsForFeature(feature: FeatureData): string[] {
+  const urls: string[] = [];
+  for (const compatKey of (feature.compat_features || [])) {
+    const url = mdnUrlFromCompatKey(compatKey);
+    if (url && !urls.includes(url)) {
+      urls.push(url);
+    }
+  }
+  return urls;
 }
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
