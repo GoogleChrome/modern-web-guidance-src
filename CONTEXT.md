@@ -78,16 +78,24 @@ base_app: daily-grind
 
 The task file connects a base application the agent will modify, and the prompt the agent receives (first prompt in the list). The grader is implicit (the same directory).
 
-### Guide maturity stages
+### Guide Development Stages
 
-A guide progresses through these stages:
+A guide progresses through three main stages:
 
-1. **Stub**: Directory exists with `guide.md` containing only YAML frontmatter (no body content). The SME has identified the use case but hasn't written the guidance yet.
-2. **Incomplete**: Has `guide.md` content but is missing `demo.html` and/or `expectations.md`.
-3. **Needs expectations**: Has guide + demo but no `expectations.md` (or it's empty). Cannot proceed to automated generation without this.
-4. **Needs calibration**: Has all three human-authored files. Ready for `gd dev` to generate `negative-demo.html`, `grader.ts`, and calibrate.
-5. **Needs test**: Grader is calibrated but missing `tasks/task.md`. Agent tests haven't been run.
-6. **Eval-ready**: All artifacts exist. The guide is included in `gd eval` runs.
+1. **Stage 1: Identifying use cases (Stub state)**
+   - **Goal**: Translate a web platform feature into distinct use cases.
+   - **Artifacts**: Directory structure, `guide.md` with only YAML frontmatter (stub), and a basic `demo.html`.
+   - SME contributes via PR for review.
+
+2. **Stage 2: Authoring guidance (Needs calibration state)**
+   - **Goal**: Flesh out the guidance and define testable expectations.
+   - **Artifacts**: Full `guide.md` content (DO/DO NOT directives, snippets, fallbacks), completed `demo.html`, and `expectations.md`.
+   - SME creates these files after use case approval.
+
+3. **Stage 3: Evaluating guidance (Eval-ready state)**
+   - **Goal**: Generate evaluation artifacts and prove the guidance works.
+   - **Artifacts**: `negative-demo.html`, `grader.ts`, `tasks/task.md`.
+   - Handled by `gd dev` pipeline for auto-generation and calibration.
 
 ---
 
@@ -109,7 +117,7 @@ pnpm link --global && gd setup-completion
 
 | Command | What it does |
 |---|---|
-| `gd audit` | Prints a matrix of all 44 guides showing which artifacts each has, grouped by maturity stage. Suggests the next action to take. |
+| `gd audit` | Prints a matrix of all 44 guides showing which artifacts each has, grouped by development stage. Suggests the next action to take. |
 | `gd dev <dir>` | The main pipeline command. Takes a guide from "has guide.md + demo.html + expectations.md" to "grader calibrated, agent tests run." See section 4. |
 | `gd dev <dir> --gen-negative` | Generate only the `negative-demo.html` |
 | `gd dev <dir> --gen-grader` | Generate only the `grader.ts` |
@@ -223,12 +231,12 @@ The code in `serving/` provides both the MCP server and standalone tools used by
 
 **44 total guides** across 2 categories (performance: 15, user-experience: 29).
 
-| Status | Count | Description |
-|---|---|---|
-| Eval-ready | 4 | All artifacts exist, included in suite runs |
-| Needs test | 1 | Grader calibrated, missing prompts/task |
-| Needs calibration | 3 | Has guide + demo + expectations, needs `gd dev` |
-| Stub | 36 | YAML frontmatter only, no guide content yet |
+| Stage | Status | Count | Description |
+|---|---|---|---|
+| **Stage 3** | Eval-ready | 4 | All artifacts exist, included in suite runs |
+| **Stage 3** | Needs test | 1 | Grader calibrated, missing prompts/task |
+| **Stage 2** | Needs calibration | 3 | Has guide + demo + expectations, needs `gd dev` |
+| **Stage 1** | Stub | 36 | YAML frontmatter only, no guide content yet |
 
 The 4 eval-ready guides: `batch-analytics-events`, `full-session-analytics`, `adapt-scrollbar-to-contrast-preferences`, `customize-scrollbar-color-and-thickness`.
 
