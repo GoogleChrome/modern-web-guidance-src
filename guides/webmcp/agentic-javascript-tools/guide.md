@@ -1,4 +1,10 @@
-# WebMCP Imperative API
+---
+name: agentic-javascript-tools
+description: Programmatically register client-side JavaScript functions as tools for AI agents using the WebMCP Imperative API.
+web-feature-ids:
+  - navigator-modelcontext
+sources: []
+---
 
 The Imperative API uses `navigator.modelContext.registerTool()` to programmatically define JavaScript tools. This is ideal for Single Page Applications (SPAs) where tools need to be added or removed based on the current route or user state.
 
@@ -104,7 +110,7 @@ export function createInventoryTool(inventoryManager) {
 *   **Secure Context**: WebMCP requires HTTPS.
 *   **Deprecated/Removed**: `unregisterTool()`, `provideContext()`, and `clearContext()` are no longer supported.
 
-## Browser Support
+## Fallback strategies
 
 {{ BASELINE_STATUS("navigator-modelcontext") }}
 

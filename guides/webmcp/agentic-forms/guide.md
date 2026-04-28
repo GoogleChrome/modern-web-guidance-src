@@ -1,4 +1,10 @@
-# WebMCP Declarative API
+---
+name: agentic-forms
+description: Expose client-side functionality as tools to AI agents by annotating standard HTML forms with WebMCP attributes.
+web-feature-ids:
+  - declarative-webmcp
+sources: []
+---
 
 The Declarative API transforms standard HTML `<form>` elements into WebMCP tools via attributes. The browser synthesizes a JSON Schema from the form inputs and handles agent interactions.
 
@@ -100,7 +106,7 @@ The Declarative API is best for self-contained, standard forms. It is a poor cho
 * **Custom UI Components**: Forms relying on non-standard inputs (e.g., canvas, rich text editors) that don't auto-serialize values.
 * **Multi-Step Wizards**: Complex workflows requiring multiple form submissions. The Imperative API or standard DOM interaction is better suited here.
 
-## Browser Support
+## Fallback strategies
 
 {{ BASELINE_STATUS("declarative-webmcp") }}
 
