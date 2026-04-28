@@ -1,19 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import { getMdnUrlsForFeature } from './guide-gen.ts';
+import { features } from 'web-features';
 
-test('getMdnUrlsForFeature returns arrays of URLs for a feature', () => {
-  const mockFeature: any = {
-    compat_features: [
-      'css.properties.appearance',
-      'api.Document.querySelector',
-      'unknown.key'
-    ]
-  };
-  
-  const urls = getMdnUrlsForFeature(mockFeature);
-  assert.deepStrictEqual(urls, [
-    'https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/appearance',
-    'https://developer.mozilla.org/docs/Web/API/Document/querySelector'
-  ]);
+test('getMdnUrlsForFeature returns arrays of URLs for a feature by tag', () => {
+  const urls = getMdnUrlsForFeature('subgrid');
+  assert.ok(urls.length > 0);
+  assert.ok(urls.includes('https://developer.mozilla.org/docs/Web/CSS/Guides/Grid_layout/Subgrid'));
+});
+
+test('web-features coverage to MDN URLs is above threshold', () => {
+  const featureIds = Object.keys(features).filter(k => features[k].kind === 'feature');
+  let foundUrls = 0;
+  for (const featureId of featureIds) {
+    const urls = getMdnUrlsForFeature(featureId);
+    if (urls.length > 0) foundUrls++;
+  }
+  const percentage = (foundUrls / featureIds.length) * 100;
+  console.log(`Feature coverage: ${percentage.toFixed(2)}% (${foundUrls}/${featureIds.length})`);
+  assert.ok(percentage > 85, `Coverage was ${percentage.toFixed(2)}%`);
 });

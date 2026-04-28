@@ -489,31 +489,41 @@ async function createPullRequest(featureId: string, reviewer: string, body: stri
   console.log(`✅ PR created for ${branch}`);
 }
 
-export function getMdnUrlsForFeature(feature: FeatureData): string[] {
-  const urls: string[] = [];
-  for (const compatKey of (feature.compat_features || [])) {
-    if (!compatKey) continue;
-    const parts = compatKey.split('.');
-    let node: Identifier | undefined = bcd as unknown as Identifier;
-    
-    for (const part of parts) {
-      if (node && typeof node === 'object' && part in node) {
-        node = node[part];
-      } else {
-        node = undefined;
-        break;
-      }
-    }
+const tagToUrls = new Map<string, string[]>();
 
-
-    if (node && node.__compat?.mdn_url) {
-      const mdnUrl = node.__compat.mdn_url;
-      if (!urls.includes(mdnUrl)) {
-        urls.push(mdnUrl);
+function scanBcd(node: any) {
+  if (!node || typeof node !== 'object') return;
+  
+  if (node.__compat) {
+    const compat = node.__compat;
+    const mdnUrl = compat.mdn_url;
+    const tags = compat.tags;
+    if (mdnUrl && tags) {
+      for (const tag of tags) {
+        if (tag.startsWith('web-features:')) {
+          const featureId = tag.substring('web-features:'.length);
+          const urls = tagToUrls.get(featureId) || [];
+          if (!urls.includes(mdnUrl)) {
+            urls.push(mdnUrl);
+            tagToUrls.set(featureId, urls);
+          }
+        }
       }
     }
   }
-  return urls;
+  
+  for (const key in node) {
+    if (key !== '__compat') {
+      scanBcd(node[key]);
+    }
+  }
+}
+
+// Build the map once on startup
+scanBcd(bcd);
+
+export function getMdnUrlsForFeature(featureId: string): string[] {
+  return tagToUrls.get(featureId) || [];
 }
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
