@@ -18,8 +18,9 @@ overrides:
   picomatch: ^4.0.4
   onnxruntime-web>protobufjs: ^7.5.5
   '@modelcontextprotocol/sdk>express-rate-limit': ^8.2.2
+  '@astrojs/db': ^0.20.1
 
-packageExtensionsChecksum: sha256-Z3wYlaR7euowtJTJFddLNgaViGuMjeQsCpIM4zqQ564=
+packageExtensionsChecksum: sha256-Dw8VRidI5AeEX8P8FFBd8ya5gPyux3UdJT3+zHBZ9mw=
 
 importers:
 

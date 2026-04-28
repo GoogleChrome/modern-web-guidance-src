@@ -10,7 +10,7 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/db": "^0.18.2",
+
     "@astrojs/node": "^10.0.6",
     "@astrojs/react": "^4.4.2",
     "@heroicons/react": "^2.2.0",
