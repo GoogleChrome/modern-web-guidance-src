@@ -11,6 +11,7 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GEMINI_CLI_TRUST_WORKSPACE: true
 
 jobs:
   handle-review:
