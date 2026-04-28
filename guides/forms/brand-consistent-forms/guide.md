@@ -74,7 +74,7 @@ body {
 ## Strategic Implementation & Best Practices
 
 - **DO** use `accent-color` to easily theme form controls to match your brand.
-- **DO** trust the browser to handle contrast. Browsers with `accent-color` support will automatically determine an eligible contrast color to be used alongside your custom accent color to ensure accessibility.
+- **DO NOT** blindly trust the browser to handle contrast. While browsers are supposed to automatically determine an eligible contrast color, known bugs in implementations like **Safari** (WebKit bug 244233) and **Android Chrome** (Chromium bug 343503163) can fail to invert checkmark colors, leading to invisible or hard-to-see controls when using colors that lack sufficient contrast against the background (e.g., light colors in light mode, or dark colors in dark mode).
 - **DO** combine `accent-color` with `color-scheme: light dark` to ensure form controls look good in both light and dark themes.
 - **DO NOT** use a color that is too close to the background color, even though browsers try to guarantee contrast, it's best to provide a color with good base contrast.
 - **DO NOT** assume `accent-color` works on all form elements. Currently, it only tints `checkbox`, `radio`, `range`, and `progress` elements.
