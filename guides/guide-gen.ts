@@ -17,7 +17,8 @@ import { features } from 'web-features';
 // Workaround for https://github.com/web-platform-dx/web-features/issues/1980
 type FeatureData = Extract<typeof features[string], { kind: 'feature' }>;
 
-import bcd, { Identifier } from '@mdn/browser-compat-data';
+import bcd from '@mdn/browser-compat-data';
+import type { Identifier } from '@mdn/browser-compat-data';
 
 import { guidesDir, rootDir } from '../lib/paths.ts';
 import { runCommand, runGemini, setupIsolatedWorkDir } from './lib/utils.ts';
