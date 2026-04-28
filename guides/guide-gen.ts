@@ -21,15 +21,10 @@ type FeatureData = Extract<AllFeatureData, { kind: 'feature' }>;
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 
 import { guidesDir, rootDir } from '../lib/paths.ts';
-import config from '../harness/config.ts';
 import { runCommand, runGemini, setupIsolatedWorkDir } from './lib/utils.ts';
 import {
-  createIsolatedHome,
   cleanupIsolatedHome,
-  copyFileIfExists,
-  createTrustedFolders,
 } from '../harness/lib/agent-shared.ts';
-import { devGuide } from './dev-guide.ts';
 
 
 
@@ -69,7 +64,7 @@ function getSkillContent(skillName: string): string {
       content = content.replace(
         /## Research and discovery[\s\S]*?## Identifying action-oriented tasks/,
         `## Research and discovery
-In this automated pipeline, the research has already been conducted by a specialized model and saved to a file (e.g., \`features/\<feature-id\>/research.md\`). You must read that research report primarily to identify use cases, rather than attempting to run research tools yourself.
+In this automated pipeline, the research has already been conducted by a specialized model and saved to a file (e.g., \`features/<feature-id>/research.md\`). You must read that research report primarily to identify use cases, rather than attempting to run research tools yourself.
 
 ## Identifying action-oriented tasks`
       );
