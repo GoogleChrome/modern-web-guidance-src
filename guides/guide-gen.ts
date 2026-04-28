@@ -396,15 +396,32 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
   const isCI = !!process.env.GITHUB_ACTIONS;
 
   if (isCI) {
-    console.log(`\nRunning pipelines sequentially for ${useCases.length} use cases in CI...`);
-    for (const uc of useCases) {
+    console.log(`\nRunning pipelines in parallel with prefixed logs for ${useCases.length} use cases in CI...`);
+    
+    const promises = useCases.map(async (uc) => {
       const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
-      console.log(`\n[Usecase: ${uc.slug}] Running calibration...`);
+      console.log(`[Usecase: ${uc.slug}] Running calibration...`);
       
       const child = spawn('node', ['--experimental-strip-types', 'guides/dev-guide.ts', outputDir, '--no-test'], {
         cwd: rootDir,
         env: { ...process.env },
-        stdio: ['ignore', 'inherit', 'inherit'] // Stream directly to CI stdout/stderr
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+      
+      const prefix = `[${uc.slug}] `;
+      
+      child.stdout.on('data', (data) => {
+        const lines = data.toString().split('\n');
+        for (const line of lines) {
+          if (line.trim()) console.log(prefix + line);
+        }
+      });
+      
+      child.stderr.on('data', (data) => {
+        const lines = data.toString().split('\n');
+        for (const line of lines) {
+          if (line.trim()) console.error(prefix + line);
+        }
       });
       
       const exitCode = await new Promise<number>((resolve) => child.on('close', resolve));
@@ -412,7 +429,9 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
       if (exitCode !== 0) {
         throw new Error(`devGuide failed for ${uc.slug}`);
       }
-    }
+    });
+
+    await Promise.all(promises);
   } else {
     console.log(`\nRunning pipelines in parallel for ${useCases.length} use cases...`);
     
