@@ -18,8 +18,7 @@ import { features } from 'web-features';
 type FeatureData = Extract<typeof features[string], { kind: 'feature' }>;
 
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
-
-
+import type { Identifier, CompatData } from '@mdn/browser-compat-data';
 import { guidesDir, rootDir } from '../lib/paths.ts';
 import { runCommand, runGemini, setupIsolatedWorkDir } from './lib/utils.ts';
 import {
@@ -491,36 +490,46 @@ async function createPullRequest(featureId: string, reviewer: string, body: stri
 
 const tagToUrls = new Map<string, string[]>();
 
-function scanBcd(node: any) {
-  if (!node || typeof node !== 'object') return;
-  
-  if (node.__compat) {
-    const compat = node.__compat;
-    const mdnUrl = compat.mdn_url;
-    const tags = compat.tags;
-    if (mdnUrl && tags) {
-      for (const tag of tags) {
-        if (tag.startsWith('web-features:')) {
-          const featureId = tag.substring('web-features:'.length);
-          const urls = tagToUrls.get(featureId) || [];
-          if (!urls.includes(mdnUrl)) {
-            urls.push(mdnUrl);
-            tagToUrls.set(featureId, urls);
-          }
+function scanNode(node: Identifier) {
+  const compat = node.__compat;
+  if (compat?.mdn_url && compat.tags) {
+    for (const tag of compat.tags) {
+      if (tag.startsWith('web-features:')) {
+        const featureId = tag.substring('web-features:'.length);
+        const urls = tagToUrls.get(featureId) || [];
+        if (!urls.includes(compat.mdn_url)) {
+          urls.push(compat.mdn_url);
+          tagToUrls.set(featureId, urls);
         }
       }
     }
   }
-  
+
   for (const key in node) {
     if (key !== '__compat') {
-      scanBcd(node[key]);
+      const child = node[key];
+      if (typeof child === 'object' && child !== null) {
+        scanNode(child as Identifier);
+      }
+    }
+  }
+}
+
+export function buildTagMap(bcdData: CompatData) {
+  const keys: (keyof CompatData)[] = [
+    'api', 'css', 'html', 'http', 'javascript', 'manifests',
+    'mathml', 'mediatypes', 'svg', 'webassembly', 'webdriver', 'webextensions'
+  ];
+  for (const key of keys) {
+    const node = bcdData[key];
+    if (typeof node === 'object' && node !== null) {
+      scanNode(node as unknown as Identifier);
     }
   }
 }
 
 // Build the map once on startup
-scanBcd(bcd);
+buildTagMap(bcd as unknown as CompatData);
 
 export function getMdnUrlsForFeature(featureId: string): string[] {
   return tagToUrls.get(featureId) || [];
