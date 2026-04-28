@@ -261,7 +261,9 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         }
       }
 
-      const testName = `${taskName} - ${guide} - ${runType}`;
+      // For skills, placing the discipline name (`guide`) first ensures it is correctly identified 
+      // and displayed as the main category in the dashboard's transposed layout.
+      const testName = isSkill ? `${guide} - ${taskName} - ${runType}` : `${taskName} - ${guide} - ${runType}`;
       const actualBaseApp = taskInfo.baseApp;
 
       let totalTokens = 0;

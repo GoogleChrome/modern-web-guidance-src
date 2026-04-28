@@ -1,12 +1,70 @@
+
 /* Base Layout */
+.insights-drawer {
+  background: var(--color-surface-container-lowest);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  padding: 15px;
+}
+
+.insights-summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  user-select: none;
+}
+
+.insights-grid {
+  display: flex;
+  gap: 20px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+.insights-panel {
+  flex: 1;
+  min-width: 250px;
+  background: var(--color-surface-container-low);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.insights-panel-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-on-surface);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.insights-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.insights-table td {
+  padding: 8px 4px;
+  font-size: 0.85rem;
+  color: var(--color-on-surface);
+  vertical-align: middle;
+  border-bottom: 1px solid var(--color-outline-variant);
+  cursor: pointer;
+}
+
+.insights-table tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .suites-table {
   width: 100%;
   border-collapse: collapse;
 }
 
 .suites-table th {
-  padding: 12px 10px;
-  background-color: var(--bg-tertiary);
+  padding: 6px 2px;
   border-bottom: 2px solid var(--border-color);
   color: var(--text-secondary);
   font-weight: 600;
@@ -14,7 +72,6 @@
 }
 
 .suites-table td {
-  padding: 0 10px;
   border-bottom: 1px solid var(--border-color);
   text-align: center;
 }
@@ -45,7 +102,7 @@
   background-position: right 8px center;
   background-size: 1em;
   padding-right: 28px;
-  width: auto;
+  width: 100px; /* if its auto then columns are way too wide */ 
   min-width: 90px;
 }
 
@@ -78,16 +135,14 @@
 .landing-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 0 20px;
 }
 
 .header-nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
 }
 
 .landing-title {
@@ -442,7 +497,7 @@
   top: 100%;
   right: 0;
   margin-top: 8px;
-  background: var(--bg-secondary);
+  background: var(--color-surface-container-lowest);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   width: 450px;
