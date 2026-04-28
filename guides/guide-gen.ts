@@ -490,46 +490,23 @@ async function createPullRequest(featureId: string, reviewer: string, body: stri
 
 const tagToUrls = new Map<string, string[]>();
 
-function scanNode(node: Identifier) {
-  const compat = node.__compat;
-  if (compat?.mdn_url && compat.tags) {
-    for (const tag of compat.tags) {
+function scanBcd(node: any) {
+  if (!node || typeof node !== 'object') return;
+  const { mdn_url, tags } = node.__compat || {};
+  if (mdn_url && tags) {
+    for (const tag of tags) {
       if (tag.startsWith('web-features:')) {
-        const featureId = tag.substring('web-features:'.length);
-        const urls = tagToUrls.get(featureId) || [];
-        if (!urls.includes(compat.mdn_url)) {
-          urls.push(compat.mdn_url);
-          tagToUrls.set(featureId, urls);
-        }
+        const id = tag.substring(13);
+        const urls = tagToUrls.get(id) || [];
+        if (!urls.includes(mdn_url)) tagToUrls.set(id, [...urls, mdn_url]);
       }
     }
   }
-
-  for (const key in node) {
-    if (key !== '__compat') {
-      const child = node[key];
-      if (typeof child === 'object' && child !== null) {
-        scanNode(child as Identifier);
-      }
-    }
-  }
-}
-
-export function buildTagMap(bcdData: CompatData) {
-  const keys: (keyof CompatData)[] = [
-    'api', 'css', 'html', 'http', 'javascript', 'manifests',
-    'mathml', 'mediatypes', 'svg', 'webassembly', 'webdriver', 'webextensions'
-  ];
-  for (const key of keys) {
-    const node = bcdData[key];
-    if (typeof node === 'object' && node !== null) {
-      scanNode(node as unknown as Identifier);
-    }
-  }
+  for (const k in node) if (k !== '__compat') scanBcd(node[k]);
 }
 
 // Build the map once on startup
-buildTagMap(bcd as unknown as CompatData);
+scanBcd(bcd);
 
 export function getMdnUrlsForFeature(featureId: string): string[] {
   return tagToUrls.get(featureId) || [];
