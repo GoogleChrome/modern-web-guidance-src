@@ -34,7 +34,7 @@ This pattern is particularly useful for preventing unwanted overflow on replaced
  * Container with clip margin to allow some overflow.
  * For this non-replaced element, declaring `overflow: clip` is MANDATORY.
  */
-.clipped-container {
+.box {
   width: 200px;
   height: 200px;
   padding: 20px;
@@ -52,7 +52,7 @@ This pattern is particularly useful for preventing unwanted overflow on replaced
  * Modern browsers default to content-box clipping for images.
  * For this replaced element, declaring `overflow: clip` is OPTIONAL.
  */
-.clipped-image {
+.demo-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
