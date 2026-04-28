@@ -19,16 +19,20 @@ This pattern is particularly useful for preventing unwanted overflow on replaced
 
 ## How to Implement
 
-1. **Apply `overflow: clip`**: The target element must have `overflow: clip` to enable the extended margin control. This value clips content to the padding box by default and prevents all scrolling (both user-initiated and programmatic).
-2. **Define the clipping margin**: Use `overflow-clip-margin` to extend the boundary.
-3. **Specify by length**: Use a length value (e.g., `20px`) to expand the clipping box by that amount.
-4. **Specify by box edge**: Use keywords like `content-box`, `padding-box`, or `border-box` to align the clip to specific box edges. This is especially relevant for replaced elements like `<img>` which default to `content-box` clipping in modern browsers.
+1. **Determine the Element Type**:
+   - **Non-Replaced Elements** (e.g., `<div>`, `<section>`): Setting `overflow: clip` is **mandatory** to enable extended margin control.
+   - **Replaced Elements** (e.g., `<img>`, `<video>`): In modern browsers, replaced elements default to `overflow: clip`, making the declaration **optional** but recommended for explicit code intent.
+2. **Apply `overflow: clip` (if applicable)**: Ensure the target element has `overflow: clip` enabled to allow `overflow-clip-margin` to take effect. This value clips content to the padding box by default and prevents all scrolling (both user-initiated and programmatic).
+3. **Define the clipping margin**: Use `overflow-clip-margin` to extend the boundary.
+4. **Specify by length**: Use a length value (e.g., `20px`) to expand the clipping box by that amount.
+5. **Specify by box edge**: Use keywords like `content-box`, `padding-box`, or `border-box` to align the clip to specific box edges. This is especially relevant for replaced elements like `<img>` which default to `content-box` clipping in modern browsers.
 
 ## Example Code: Controlled Image Clipping
 
 ```css
 /**
  * Container with clip margin to allow some overflow.
+ * For this non-replaced element, declaring `overflow: clip` is MANDATORY.
  */
 .clipped-container {
   width: 200px;
@@ -36,7 +40,7 @@ This pattern is particularly useful for preventing unwanted overflow on replaced
   padding: 20px;
   border: 5px solid #333;
   
-  /* MANDATORY: overflow must be 'clip' for margin to work */
+  /* MANDATORY: overflow must be 'clip' for margin to work on non-replaced elements */
   overflow: clip;
   
   /* Extend the clipping boundary 10px beyond the padding box */
@@ -46,11 +50,15 @@ This pattern is particularly useful for preventing unwanted overflow on replaced
 /**
  * Replaced element respecting overflow.
  * Modern browsers default to content-box clipping for images.
+ * For this replaced element, declaring `overflow: clip` is OPTIONAL.
  */
 .clipped-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  
+  /* OPTIONAL: Modern browsers default to overflow: clip for images */
+  overflow: clip;
   
   /* Override default content-box clip if needed */
   overflow-clip-margin: padding-box;
@@ -59,7 +67,8 @@ This pattern is particularly useful for preventing unwanted overflow on replaced
 
 ## Strategic Implementation & Best Practices
 
-- **DO** use `overflow: clip` when you want to ensure content is strictly contained and you do not want to support any form of scrolling (neither user-initiated nor programmatic).
+- **DO** use `overflow: clip` when you want to ensure content is strictly contained on non-replaced elements, as it is **mandatory** for `overflow-clip-margin` to take effect.
+- **DO** remember that replaced elements default to `overflow: clip`, so declaring it explicitly is **optional** but recommended for cross-browser consistency and readability.
 - **DO** use `overflow-clip-margin` to allow small visual elements (like box shadows or decorative elements) to overflow slightly without triggering scrollbars or being cut off abruptly.
 - **DO NOT** assume that setting `overflow: visible` on replaced elements like `<img>` will always behave as it did prior to Chrome 108. It may cause unexpected layout shifts if the image aspect ratio doesn't match the container.
 - **DO NOT** use `overflow: scroll` or `overflow: auto` on the target containers when the intent is to strictly clip content without scrolling.

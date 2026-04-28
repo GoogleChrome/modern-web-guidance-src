@@ -59,8 +59,10 @@
       box-sizing: content-box;
       position: relative;
       background: #fff;
-      overflow: clip; /* Base property */
+      /* MANDATORY: overflow: clip is required for non-replaced elements like this div */
+      overflow: clip;
     }
+
 
     /* Visual aid to see padding box */
     .box::before {
@@ -150,7 +152,7 @@
     <strong>Notice:</strong> Your browser does not support <code>overflow: clip</code>. A fallback (<code>overflow: hidden</code>) has been applied.
   </div>
 
-  <p class="intro">This demo uses a high-contrast test image to clearly show where clipping occurs. The blue dashed line is the content box edge, and the red dashed line is the padding box edge. The image is 300x200px, starting at the top-left of the padding box.</p>
+  <p class="intro">This demo uses a high-contrast test image to clearly show where clipping occurs. The blue dashed line is the content box edge, and the red dashed line is the padding box edge. For non-replaced elements (like the container <code>&lt;div&gt;</code>), declaring <code>overflow: clip</code> is <strong>mandatory</strong> for <code>overflow-clip-margin</code> to work. For replaced elements (like an <code>&lt;img&gt;</code>), modern browsers default to <code>overflow: clip</code>, making the declaration <strong>optional</strong>.</p>
 
   <div class="grid">
     <div class="demo-item">

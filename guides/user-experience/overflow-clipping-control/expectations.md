@@ -5,3 +5,6 @@
 - The implementation MUST use `overflow: hidden` as the fallback style inside the fallback class.
 - The implementation MUST NOT show the fallback banner if `overflow: clip` is supported.
 - The implementation MUST NOT use `overflow: scroll` or `overflow: auto` on the target containers when the intent is to strictly clip content without scrolling.
+- The implementation MUST document that `overflow: clip` is mandatory on non-replaced elements for `overflow-clip-margin` to take effect.
+- The implementation MUST document that `overflow: clip` is optional on replaced elements because they default to clipping in modern browsers.
+
