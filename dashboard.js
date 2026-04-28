@@ -1,6 +1,7 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $ } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $, formatTokens } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
+import { loadStabilityTrend } from './stability_trend.js';
 
 // Keep track of current details state for navigation
 let currentDetails = null;
@@ -12,7 +13,6 @@ let api;
 
 // Module-scoped state
 let dashboardLoaded = false;
-let dumbbellChartInstance = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize API Client
@@ -33,10 +33,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const initialParams = new URLSearchParams(window.location.search);
     const initialTestID = initialParams.get('testId');
 
+    // Update "Back to Results" buttons to carry source param
+    const source = initialParams.get('source');
+    if (source) {
+        const backBtns = document.querySelectorAll('a[href="./"]');
+        backBtns.forEach(btn => {
+            if (btn instanceof HTMLAnchorElement) {
+                btn.href = `./?source=${source}`;
+            }
+        });
+    }
+
     if (initialTestID) {
         await loadDashboardData(initialTestID);
     } else {
-        document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;">Error: No testId provided in query string.</div>`;
+        document.body.innerHTML = `<div class="error-message">Error: No testId provided in query string.</div>`;
     }
 });
 
@@ -48,7 +59,7 @@ async function loadDashboardData(testId) {
     try {
         const data = await api.getEvals(testId);
         if (!data) {
-            document.body.innerHTML = `<div style="text-align:center; padding: 50px; color: red;">Error: Failed to load evaluation data for ${testId}.</div>`;
+            document.body.innerHTML = `<div class="error-message">Error: Failed to load evaluation data for ${testId}.</div>`;
             return;
         }
 
@@ -78,7 +89,7 @@ async function loadDashboardData(testId) {
         renderTestHeader(testId, jetskiVersion, timestamp, data);
         renderSummary(data);
         renderGrid(data, testId);
-        renderDashboardDumbbellChart(data, testId);
+        renderDashboardDumbbellChart(data);
 
         // Check for deep link to modal
         const params = new URLSearchParams(window.location.search);
@@ -138,15 +149,17 @@ async function loadDashboardData(testId) {
             <h3>Error loading dashboard data</h3>
             <p>${error.message}</p>
         </div>`;
-        
+
         if (api && api.source === 'remote') {
             errorHtml += `<div style="text-align:center; color: var(--text-secondary); margin-top: -20px;">
                 <p>If your session has expired, please use the <strong>Sign in with Google</strong> button above to re-authenticate.</p>
             </div>`;
         }
-        
-        const grid = $('#dashboard-grid');
-        grid.innerHTML = errorHtml;
+
+        const grid = document.getElementById('dashboard-grid') || document.getElementById('guide-grid') || document.getElementById('dumbbell-chart');
+        if (grid) {
+            grid.innerHTML = errorHtml;
+        }
     }
 }
 
@@ -301,30 +314,35 @@ function formatRuntime(ms) {
 function renderTestHeader(testId, jetskiVersion, timestamp, data) {
     const container = $('#test-header');
     if (container) {
-        let html = `Test ID: <strong>${escapeHtml(testId)}</strong>`;
-
+        let timeStr = '-';
+        if (!timestamp) {
+            const dateMatch = testId.match(/(\d{4}-\d{2}-\d{2})/);
+            if (dateMatch) timestamp = dateMatch[1];
+        }
         if (timestamp) {
-            let timeStr = timestamp;
             try {
                 const _date = new Date(timestamp);
                 timeStr = _date.toLocaleString('en-US', {
-                    month: 'long',
+                    month: 'short',
                     day: 'numeric',
                     hour: 'numeric',
                     minute: '2-digit',
                     hour12: true
                 }).replace(' at ', ', ');
+                if (timeStr.includes('12:00 AM') || timeStr === 'Invalid Date' || isNaN(_date.getTime())) {
+                    /** @type {Intl.DateTimeFormatOptions} */
+                    const options = { month: 'short', day: 'numeric' };
+                    timeStr = _date.toLocaleDateString('en-US', options);
+                }
             } catch { }
-            html += ` — ${timeStr}`;
         }
 
-        if (jetskiVersion) {
-            html += ` — Jetski Version: <strong>${escapeHtml(jetskiVersion)}</strong>`;
-        }
+        let agent = 'unknown';
+        let model = 'unknown';
+        let serving = 'unknown';
 
         if (data) {
-            let agent = data.agent || 'unknown';
-            let serving = 'unknown';
+            agent = data.agent || 'unknown';
             if (data.serving !== undefined) {
                 serving = data.serving;
             } else if (data.enableSkills !== undefined) {
@@ -336,40 +354,120 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
                 'mcp': 'MCP'
             };
             serving = servingDisplayNames[serving] || serving;
-            let model = data.model || 'unknown';
-
-            html += `<div style="margin-top: 6px; display: flex; flex-direction: column; gap: 2px;">
-                <span>Agent: <strong>${escapeHtml(agent)}</strong></span>
-                <span>Model: <strong style="color: var(--text-secondary);">${escapeHtml(model)}</strong></span>
-                <span>Serving: <strong>${escapeHtml(serving)}</strong></span>
-                ${data.totalRuntime ? `<span>Total Runtime: <strong>${formatRuntime(data.totalRuntime)}</strong></span>` : ''}
-            </div>`;
+            model = data.model || 'unknown';
         }
 
-        container.innerHTML = html;
+        container.innerHTML = `
+            <div class="header-meta-grid">
+                <div class="header-meta-item">
+                    <span class="meta-value" title="${escapeHtml(testId)}">${escapeHtml(testId)}</span>
+                    <span class="meta-label">Test ID</span>
+                </div>
+                <div class="header-meta-item">
+                    <span class="meta-value">${escapeHtml(timeStr)}</span>
+                    <span class="meta-label">Action Date</span>
+                </div>
+                <div class="header-meta-item">
+                    <span class="meta-value">${escapeHtml(agent)}</span>
+                    <span class="meta-label">Agent</span>
+                </div>
+                <div class="header-meta-item">
+                    <span class="meta-value" title="${escapeHtml(model)}">${escapeHtml(model)}</span>
+                    <span class="meta-label">Model</span>
+                </div>
+                <div class="header-meta-item">
+                    <span class="meta-value">${escapeHtml(serving)}</span>
+                    <span class="meta-label">Serving Mode</span>
+                </div>
+                ${data.totalRuntime ?
+                `<div class="header-meta-item">
+                    <span class="meta-value">${formatRuntime(data.totalRuntime)}</span>
+                    <span class="meta-label">Total Runtime</span>
+                </div>` : ''}
+                ${jetskiVersion ? `
+                <div class="header-meta-item">
+                    <span class="meta-value">${escapeHtml(jetskiVersion)}</span>
+                    <span class="meta-label">Jetski Version</span>
+                </div>
+                ` : ''}
+            </div>
+        `;
     }
 }
 
 function renderSummary(data) {
-    const container = $('#summary-stats');
-    const summary = data.summary;
+    const container = document.getElementById('summary-side-panel');
+    if (!container) return;
+    const summary = data.summary || {};
 
-    const unguidedRate = summary.unguidedPassRate;
-    const guidedRate = summary.guidedPassRate;
+    if (!data || !data.results) {
+        console.error('Problematic data object in renderSummary:', data);
+        container.innerHTML = '<div style="padding: 15px; color: var(--text-secondary); font-style: italic;">No results available for summary.</div>';
+        return;
+    }
+
+    const results = data.results;
+    let totalUnguidedPassed = 0;
+    let totalUnguidedChecks = 0;
+    let totalGuidedPassed = 0;
+    let totalGuidedChecks = 0;
+    let guidedRunsCount = 0;
+
+
+    const baseKeys = new Set();
+    const tasksWithTools = new Set();
+    const tasksWithGuides = new Set();
+
+    Object.keys(results).forEach(key => {
+        const base = key.replace(' - guided', '').replace(' - unguided', '');
+        baseKeys.add(base);
+
+        const runs = results[key];
+        const isGuided = key.endsWith(' - guided');
+        if (isGuided) guidedRunsCount += runs.length;
+
+        runs.forEach(run => {
+            const hasTools = run.guidanceToolsUsed && run.guidanceToolsUsed.length > 0;
+            const hasGuides = (run.guidesUsed && run.guidesUsed.length > 0) || (run.guideUsed && typeof run.guideUsed === 'object' && run.guideUsed.guidesUsed && run.guideUsed.guidesUsed.length > 0);
+
+            if (isGuided && hasTools) tasksWithTools.add(base);
+            if (isGuided && hasGuides) tasksWithGuides.add(base);
+
+            const stats = getRunStats(run.results);
+            if (isGuided) {
+                totalGuidedPassed += stats.passed;
+                totalGuidedChecks += stats.total;
+
+            } else {
+                totalUnguidedPassed += stats.passed;
+                totalUnguidedChecks += stats.total;
+            }
+        });
+    });
+
+    const tasksCount = baseKeys.size;
+    const unguidedPassRate = totalUnguidedChecks > 0 ? Math.round((totalUnguidedPassed / totalUnguidedChecks) * 100) : 0;
+    const guidedPassRate = totalGuidedChecks > 0 ? Math.round((totalGuidedPassed / totalGuidedChecks) * 100) : 0;
+    const toolActivationRate = tasksCount > 0 ? Math.round((tasksWithTools.size / tasksCount) * 100) : 0;
+    const guideUsageRate = tasksCount > 0 ? Math.round((tasksWithGuides.size / tasksCount) * 100) : 0;
+
+    const upliftDelta = guidedPassRate - unguidedPassRate;
 
     const unguidedEarlyFailureRate = summary.unguidedEarlyFailureRate || 0;
-    const guidedEarlyFailureRate = summary.guidedEarlyFailureRate || 0;
-    const completedGuidedRuns = summary.totalGuidedRuns - (summary.guidedEarlyFailures || 0);
-    const completedGuidedNonDisciplineRuns = summary.totalGuidedNonDisciplineRuns !== undefined ? summary.totalGuidedNonDisciplineRuns - (summary.guidedNonDisciplineEarlyFailures || 0) : completedGuidedRuns;
 
     container.innerHTML = `
-        <div class="stat-card">
-            <span class="stat-value" style="color: ${getColor(unguidedRate)}">
-                ${unguidedRate}%
-            </span>
-            <span class="stat-label">Unguided Pass Rate</span>
-            <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
-                ${summary.unguidedPassed}/${summary.unguidedTotal} checks passed
+        <div class="header-meta-item dog-ear-card">
+            <div class="meta-item-header">
+                <span class="meta-label">Average Uplift</span>
+                <span class="meta-value-highlight">+${upliftDelta}%</span>
+            </div>
+            <div class="sparkline-container">
+                                <div class="sparkline-bar">
+                    <div class="sparkline-dot unguided" style="left: calc(${unguidedPassRate}% - 6px);" title="Unguided: ${unguidedPassRate}%"></div>
+                    <div class="sparkline-dot guided" style="left: calc(${guidedPassRate}% - 8px);" title="Guided: ${guidedPassRate}%"></div>
+                    <div class="sparkline-range" style="left: calc(${Math.min(unguidedPassRate, guidedPassRate)}% + 4px); width: calc(${Math.abs(guidedPassRate - unguidedPassRate)}% - 8px);"></div>
+                </div>
+                <span class="sparkline-labels">${unguidedPassRate}% → <span>${guidedPassRate}%</span></span>
             </div>
             ${summary.expectedTotalRuns !== undefined ? `
             <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-secondary);">
@@ -382,192 +480,500 @@ function renderSummary(data) {
                 <span style="opacity: 0.8; color: ${getColor(100 - unguidedEarlyFailureRate)}">(${summary.unguidedEarlyFailures} runs)</span>
             </div>
             ` : ''}
-            ${summary.unguidedTotalTokens ? `
-            <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
-                Tokens: <strong>${summary.unguidedTotalTokens.total.toLocaleString()}</strong>
-                ${summary.unguidedTotalTokens.cached ? `<span style="opacity: 0.8;"> (Cached: ${summary.unguidedTotalTokens.cached.toLocaleString()})</span>` : ''}
-            </div>
-            ` : ''}
+
         </div>
-        <div class="stat-card">
-            <span class="stat-value" style="color: ${getColor(guidedRate)}">
-                ${guidedRate}%
-            </span>
-            <span class="stat-label">Guided Pass Rate</span>
-            <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
-                ${summary.guidedPassed}/${summary.guidedTotal} checks passed
+
+        <div class="summary-subgrid">
+        <div class="header-meta-item dog-ear-card">
+            <div class="meta-item-header">
+                <span class="meta-label">Assertions Passed</span>
             </div>
-            ${summary.expectedTotalRuns !== undefined ? `
-            <div style="margin-top: 4px; font-size: 0.85em; color: var(--text-secondary);">
-                Expected Runs: <span style="font-weight: bold; color: var(--text-primary);">${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} tasks x ${summary.runCountPerTask} runs)` : ''}</span>
+            <div class="sparkline-container">
+                <div class="sparkline-bar small">
+                    <div class="sparkline-dot unguided small" style="left: calc(${(totalUnguidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100}% - 3px);" title="Unguided Count: ${totalUnguidedPassed}"></div>
+                    <div class="sparkline-dot guided small" style="left: calc(${(totalGuidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100}% - 4px);" title="Guided Count: ${totalGuidedPassed}"></div>
+                    <div class="sparkline-range small" style="left: calc(${Math.min((totalUnguidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100, (totalGuidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100)}% + 2px); width: calc(${Math.abs((totalGuidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100 - (totalUnguidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100)}% - 4px);"></div>
+                </div>
+                <span class="sparkline-labels-small">${totalUnguidedPassed} → <span>${totalGuidedPassed}</span> <span>/ ${Math.max(totalUnguidedChecks, totalGuidedChecks)}</span></span>
             </div>
-            ` : ''}
-            ${summary.guidedEarlyFailures !== undefined ? `
-            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
-                Generation Errors: <span style="font-weight: bold; color: ${getColor(100 - guidedEarlyFailureRate)}">${guidedEarlyFailureRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(100 - guidedEarlyFailureRate)}">(${summary.guidedEarlyFailures} runs)</span>
+        </div>
+
+        <div class="header-meta-item dog-ear-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="meta-label">Activation</span>
+                <span style="color: var(--text-secondary); font-size: 1rem;">${toolActivationRate}%</span>
             </div>
-            ` : ''}
-            ${summary.toolActivationRate !== undefined ? `
-            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
-                Tool Activation: <span style="font-weight: bold; color: ${getColor(summary.toolActivationRate)}">${summary.toolActivationRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(summary.toolActivationRate)}">(${summary.toolActivationCount}/${completedGuidedRuns} completed runs)</span>
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
+                <div class="custom-progress-bar">
+                    <div class="custom-progress-fill" style="width: ${toolActivationRate}%;"></div>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">(${tasksWithTools.size}/${tasksCount}) tasks</div>
             </div>
-            ` : ''}
-            ${summary.guideUsageRate !== undefined ? `
-            <div style="margin-top: 6px; font-size: 0.85em; color: var(--text-secondary);">
-                Guide Usage: <span style="font-weight: bold; color: ${getColor(summary.guideUsageRate)}">${summary.guideUsageRate}%</span>
-                <span style="opacity: 0.8; color: ${getColor(summary.guideUsageRate)}">(${summary.guideUsageCount}/${completedGuidedNonDisciplineRuns} completed runs)</span>
+        </div>
+
+        <div class="header-meta-item dog-ear-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="meta-label">Guidance Consumed</span>
+                <span style="color: var(--text-secondary); font-size: 1rem;">${guideUsageRate}%</span>
             </div>
-            ` : ''}
-            ${summary.guidedTotalTokens ? `
-            <div style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">
-                Tokens: <strong>${summary.guidedTotalTokens.total.toLocaleString()}</strong>
-                ${summary.guidedTotalTokens.cached ? `<span style="opacity: 0.8;"> (Cached: ${summary.guidedTotalTokens.cached.toLocaleString()})</span>` : ''}
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
+                <div class="custom-progress-bar">
+                    <div class="custom-progress-fill" style="width: ${guideUsageRate}%;"></div>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">(${tasksWithGuides.size}/${tasksCount}) tasks</div>
             </div>
-            ` : ''}
+        </div>
+
+        ${summary.guidedTotalTokens || summary.unguidedTotalTokens ? `
+        <div class="header-meta-item dog-ear-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="meta-label">Tokens Consumed</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
+                ${summary.unguidedTotalTokens ? `
+                <div style="display: flex; justify-content: space-between; font-size: 0.85em;">
+                    <span style="color: var(--text-secondary);">Unguided</span>
+                    <span style="color: var(--text-primary); font-weight: bold;">${(summary.unguidedTotalTokens.total - (summary.unguidedTotalTokens.cached || 0)).toLocaleString()}</span>
+                </div>
+                ` : ''}
+                ${summary.guidedTotalTokens ? `
+                <div style="display: flex; justify-content: space-between; font-size: 0.85em;">
+                    <span style="color: var(--text-secondary);">Guided</span>
+                    <span style="color: var(--text-primary); font-weight: bold;">${(summary.guidedTotalTokens.total - (summary.guidedTotalTokens.cached || 0)).toLocaleString()}</span>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+        ` : ''}
         </div>
     `;
 }
 
 function renderGrid(data, testId) {
-    const disciplineGrid = $('#discipline-grid');
-    const guideGrid = $('#guide-grid');
-    const disciplineSection = $('#discipline-section');
-    const guideSection = $('#guide-section');
+    const guideGrid = document.getElementById('guide-grid');
+    const disciplineGrid = document.getElementById('discipline-grid');
+    const grid = document.getElementById('dashboard-grid');
 
+    if (guideGrid) guideGrid.innerHTML = '';
+    if (disciplineGrid) disciplineGrid.innerHTML = '';
+    if (grid) grid.innerHTML = '';
     const results = data.results;
-    const stats = data.stats;
 
     sortedScenarios = [];
-    currentRunTypes = [];
 
     // Extract dimensions dynamically from data keys
     const keys = Object.keys(results);
-    const validParts = keys.map(k => {
-        const parts = k.split(' - ');
-        if (parts.length === 3) {
-            return { raw: k, taskName: parts[0], guide: parts[1], runType: parts[2] };
-        }
-        return null;
-    }).filter(p => p !== null);
+    const partsMap = keys.map(k => k.split(' - '));
+    const validParts = partsMap.filter(p => p.length === 3);
 
-    const sortedRunTypes = [...new Set(validParts.map(p => p.runType))].sort((a, b) => {
-        if (a === 'unguided' && b === 'guided') return -1;
-        if (a === 'guided' && b === 'unguided') return 1;
+    const sortedAppNames = [...new Set(validParts.map(p => p[0]))].sort();
+    const sortedGuides = [...new Set(validParts.map(p => p[1]))].sort((a, b) => {
+        const featA = window.__featuresMapping?.[a]?.[0] || '';
+        const featB = window.__featuresMapping?.[b]?.[0] || '';
+        if (featA !== featB) {
+            return featA.localeCompare(featB);
+        }
         return a.localeCompare(b);
     });
-    currentRunTypes = sortedRunTypes;
 
-    const sortedTasks = [...new Set(validParts.map(p => p.taskName))].sort();
-    const sortedGuides = [...new Set(validParts.map(p => p.guide))].sort();
+    console.log('sortedAppNames:', sortedAppNames);
+    console.log('sortedGuides count:', sortedGuides.length);
 
-    sortedGuides.forEach(guide => {
-        sortedTasks.forEach(taskName => {
-            // Check if this pair actually has any run data before rendering a row
-            const hasData = sortedRunTypes.some(rt => results[`${taskName} - ${guide} - ${rt}`]);
-            if (!hasData) return;
+    sortedAppNames.forEach(appName => {
+        sortedGuides.forEach(guide => {
+            const scenarioName = `${appName} - ${guide}`;
+            const unguidedKey = `${scenarioName} - unguided`;
+            const guidedKey = `${scenarioName} - guided`;
 
-            const scenarioKey = `${taskName} - ${guide}`;
-            sortedScenarios.push(scenarioKey);
+            const unguidedRuns = results[unguidedKey];
+            const guidedRuns = results[guidedKey];
 
-            sortedRunTypes.forEach(runType => {
-                const testName = `${taskName} - ${guide} - ${runType}`;
-                const runData = results[testName];
-                const testStats = stats[testName];
+            console.log(`Checking ${scenarioName}: unguided=${!!unguidedRuns}, guided=${!!guidedRuns}`);
 
-                if (!runData) return;
+            if (!unguidedRuns && !guidedRuns) return; // Skip if neither exists
 
-                const card = document.createElement('div');
-                card.className = 'test-card';
+            const sampleRun = (unguidedRuns && unguidedRuns[0]) || (guidedRuns && guidedRuns[0]);
+            const isSkill = sampleRun ? sampleRun.isSkill : false;
 
-                const isSkill = runData[0] && runData[0].isSkill;
+            sortedScenarios.push(scenarioName);
 
-                // Calculate Total/Average Pass Rate for this specific test configuration
-                const totalPassed = runData.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
-                const totalChecks = runData.reduce((acc, run) => acc + run.results.length, 0);
-                const avgRate = totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
+            // Calculate averages
+            const getAvg = (runs) => {
+                if (!runs || runs.length === 0) return 0;
+                const totalPassed = runs.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
+                const totalChecks = runs.reduce((acc, run) => acc + run.results.length, 0);
+                return totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
+            };
 
-                // Calculate Average Runtime
-                const totalRuntime = runData.reduce((acc, run) => {
-                    const taskRun = run.runtime ? (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0) : 0;
-                    return acc + taskRun;
-                }, 0);
-                const avgRuntime = runData.length > 0 ? totalRuntime / runData.length : 0;
 
-                let toolActivationHtml = '';
-                if (runType === 'guided' && testStats && testStats.runsWithToolActivation !== undefined) {
-                    const count = testStats.runsWithToolActivation;
-                    const total = testStats.runCount;
-                    const toolActivationRate = total > 0 ? Math.round((count / total) * 100) : 0;
-                    const color = getColor(toolActivationRate);
-                    toolActivationHtml = `
-                        <div style="font-size: 0.85em; margin-top: 4px; color: ${color}; font-weight: 500;">
-                            Tool Activated (${count}/${total} runs)
-                        </div>
-                    `;
-                }
 
-                let guideUsageHtml = '';
-                if (runType === 'guided' && testStats && testStats.runsUsingGuide !== undefined && !isSkill) {
-                    const count = testStats.runsUsingGuide;
-                    const total = testStats.runCount;
-                    const usageRate = total > 0 ? Math.round((count / total) * 100) : 0;
-                    const color = getColor(usageRate);
-                    guideUsageHtml = `
-                        <div style="font-size: 0.85em; margin-top: 6px; color: ${color}; font-weight: 500;">
-                            Guide Used (${count}/${total} runs)
-                        </div>
-                    `;
-                }
 
-                card.onclick = () => showDetails(testName, runData, testStats, testId);
-                card.style.position = 'relative';
-                let tokensHtml = '';
-                if (testStats && testStats.avgTokens) {
-                    tokensHtml = `
-                        <div style="font-size: 0.85em; margin-top: 6px; color: var(--text-secondary);">
-                            Tokens (Avg): <strong style="color: var(--text-primary);">${testStats.avgTokens.total.toLocaleString()}</strong>
-                            ${testStats.avgTokens.cached ? `<span style="opacity: 0.8;"> (Cached: ${testStats.avgTokens.cached.toLocaleString()})</span>` : ''}
-                        </div>
-                    `;
-                }
+            const unguidedAvg = getAvg(unguidedRuns);
+            const guidedAvg = getAvg(guidedRuns);
+            const uplift = guidedAvg - unguidedAvg;
 
-                card.innerHTML = `
-                    <h3>${formatTestName(testName)}</h3>
-                    <div class="pass-rate-bar">
-                        <div class="pass-rate-fill" style="width: ${avgRate}%; background-color: ${getColor(avgRate)}"></div>
+            const accordion = document.createElement('div');
+            accordion.className = 'task-accordion';
+            accordion.id = `item-${scenarioName.replace(/\s+/g, '-').toLowerCase()}`;
+
+            // Draw mini dumbbell slider track
+            const leftDot = Math.min(unguidedAvg, guidedAvg) + 2;
+            const rightDot = Math.max(unguidedAvg, guidedAvg);
+            const trackWidth = 250; // matches css
+            const scale = (val) => (val / 100) * trackWidth;
+
+            accordion.innerHTML = `
+                <div class="task-accordion-header">
+                    <div class="left-section">
+                        <span class="chevron" style="display: inline-block; transition: transform 0.2s; margin-right: 10px;">▶</span>
+                        <span class="feature-chip">${escapeHtml(formatTestName(scenarioName, isSkill).split(': ')[0])}</span>
+                        <span class="task-title">${escapeHtml(formatTestName(scenarioName, isSkill).split(': ')[1] || '')}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.9em; color: var(--text-secondary);">
-                        <span>Average: ${avgRate}% <span style="opacity: 0.8">(${totalPassed}/${totalChecks})</span></span>
-                        <span>Runs: ${runData.length}${testStats && testStats.earlyFailures ? ` (<span style="color: var(--accent-failure); font-weight: bold;">${testStats.earlyFailures} failed</span>)` : ''}</span>
+                    <div class="right-section">
+                        <div class="mini-dumbbell-track">
+                            <div class="connector" style="left: ${scale(leftDot)}px; width: ${scale(rightDot - leftDot)}px;"></div>
+                            <div class="dot unguided" style="left: ${scale(unguidedAvg)}px;"></div>
+                            <div class="dot guided" style="left: ${scale(guidedAvg)}px;"></div>
+                        </div>
+                        <div class="uplift-score ${uplift < 0 ? 'negative' : ''}" style="${uplift === 0 ? 'color: var(--text-secondary);' : ''}">
+                            ${uplift >= 0 ? '+' : ''}${uplift}%
+                        </div>
                     </div>
-                    ${tokensHtml}
-                    ${avgRuntime > 0 ? `
-                    <div style="position: absolute; bottom: 10px; right: 15px; font-size: 0.85em; color: var(--text-secondary);">
-                        Runtime (Average): <strong style="color: var(--text-primary);">${formatRuntime(avgRuntime)}</strong>
-                    </div>
-                    ` : ''}
-                    ${toolActivationHtml}
-                    ${guideUsageHtml}
-                `;
+                </div>
+                <div class="task-accordion-content">
+                    <div class="expansion-loading" style="color: var(--text-secondary);">Loading details...</div>
+                </div>
+            `;
 
+            const header = $('.task-accordion-header', accordion);
+            const content = $('.task-accordion-content', accordion);
+            const chevron = $('.chevron', accordion);
+
+            header.onclick = async () => {
+                const isOpen = accordion.classList.toggle('open');
+                chevron.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+
+                if (isOpen && content.querySelector('.expansion-loading')) {
+                    await fillAccordionDetails(content, scenarioName, unguidedRuns, guidedRuns, testId);
+                }
+            };
+
+            const targetGrid = isSkill ? disciplineGrid : guideGrid;
+            if (targetGrid) {
+                targetGrid.appendChild(accordion);
                 if (isSkill) {
-                    disciplineGrid.appendChild(card);
-                    disciplineSection.style.display = 'block';
-                } else {
-                    guideGrid.appendChild(card);
+                    const section = document.getElementById('discipline-section');
+                    if (section) section.style.display = 'block';
                 }
-            });
+            } else if (grid) {
+                grid.appendChild(accordion);
+            }
         });
     });
 
-    // Hide Guide section if empty
-    if (guideGrid.children.length === 0) {
-        guideSection.style.display = 'none';
-    } else {
-        guideSection.style.display = 'block';
+
+}
+
+async function fillAccordionDetails(container, scenarioName, unguidedRuns, guidedRuns, testId) {
+    try {
+        let promptHtml = '<div style="color: var(--text-secondary); margin-bottom: 20px;">Prompt fetch deferred or failed.</div>';
+        let baseApp = 'n/a';
+
+        // Fetch prompt from the first run (unguided or guided)
+        const sampleRun = (unguidedRuns && unguidedRuns[0]) || (guidedRuns && guidedRuns[0]);
+        if (sampleRun && sampleRun.taskName) {
+            try {
+                const typeLabel = (unguidedRuns && unguidedRuns[0]) ? 'unguided' : 'guided';
+                const { usedBasePath } = await getResultPaths(testId, sampleRun, `${scenarioName} - ${typeLabel}`);
+
+                let promptText = '';
+                try {
+                    const runScriptText = await api.getFileText(`${usedBasePath}/run.mjs`);
+                    const match = runScriptText.match(/\.\.\.\[([\s\S]+?)\]/);
+                    if (match) {
+                        const arrayStr = `[${match[1]}]`;
+                        const arr = JSON.parse(arrayStr);
+                        promptText = arr[1];
+                        const baseAppPath = arr[4];
+                        if (baseAppPath) baseApp = baseAppPath.split('/').pop();
+                    }
+                } catch (e) {
+                    console.log('Falling back to living guide file:', e);
+                }
+
+                // Fallback to HEAD guide if run.mjs parsing fails
+                if (!promptText) {
+                    const isNegative = sampleRun.taskName.endsWith('-negative');
+                    const taskPath = `tasks/${isNegative ? 'negative/' : ''}${sampleRun.taskName}.md`;
+                    const text = await api.getFileText(taskPath);
+
+                    const frontmatterMatch = text.match(/^---([\s\S]+?)---/);
+                    if (frontmatterMatch) {
+                        const yaml = frontmatterMatch[1];
+                        const baseAppMatch = yaml.match(/base_app:\s*([^\n\r]+)/);
+                        if (baseAppMatch) baseApp = baseAppMatch[1].trim();
+                    }
+                    promptText = text.replace(/^---[\s\S]+?---\n+/, '');
+                }
+
+                promptHtml = `
+                    <div class="task-prompt-container">
+                        <div class="task-prompt-meta">
+                            <span class="task-prompt-meta-label">Base App:</span>
+                            <span class="task-prompt-meta-value">${escapeHtml(baseApp)}</span>
+                        </div>
+                        <div class="task-prompt-quote">
+                            <div class="quote-icon">“</div>
+                            <p class="task-prompt-text">${formatPromptText(promptText)}</p>
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                console.log('Task prompt fetch failed:', e);
+            }
+        }
+
+        // 1. Truth Matrix (Combine all runs side-by-side if multiple)
+        const maxUnguided = unguidedRuns ? unguidedRuns.length : 0;
+        const maxGuided = guidedRuns ? guidedRuns.length : 0;
+        const maxRuns = Math.max(maxUnguided, maxGuided);
+
+        const assertionMap = new Map(); // message -> { unguided: [], guided: [] }
+        const processResultsToMap = (runs, type) => {
+            if (!runs) return;
+            runs.forEach((run, runIndex) => {
+                if (run && run.results) {
+                    run.results.forEach(check => {
+                        const existing = assertionMap.get(check.message) || { unguided: [], guided: [] };
+                        existing[type][runIndex] = check.passed;
+                        assertionMap.set(check.message, existing);
+                    });
+                }
+            });
+        };
+        processResultsToMap(unguidedRuns, 'unguided');
+        processResultsToMap(guidedRuns, 'guided');
+
+        let truthMatrixHtml = `<div style="margin-bottom: 16px;"><table class="truth-matrix"><thead>`;
+
+        if (maxRuns > 1) {
+            truthMatrixHtml += `
+                <tr>
+                    <th class="center" colspan="${maxRuns}">Unguided</th>
+                    <th class="center" colspan="${maxRuns}">Guided</th>
+                    <th rowspan="2">Assertion Requirement</th>
+                </tr>
+                <tr>
+            `;
+            for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th class="center">#${i+1}</th>`;
+            for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th class="center">#${i+1}</th>`;
+            truthMatrixHtml += `</tr>`;
+        } else {
+            truthMatrixHtml += `
+                <tr>
+                    <th class="center">Unguided</th>
+                    <th class="center">Guided</th>
+                    <th>Assertion Requirement</th>
+                </tr>
+            `;
+        }
+        truthMatrixHtml += `</thead><tbody>`;
+
+        assertionMap.forEach((status, message) => {
+            truthMatrixHtml += `<tr>`;
+            if (maxRuns > 1) {
+                for (let i = 0; i < maxRuns; i++) {
+                    const pass = status.unguided[i];
+                    truthMatrixHtml += `<td class="center ${pass !== undefined ? (pass ? 'pass' : 'fail') : ''}">${pass !== undefined ? (pass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
+                }
+                for (let i = 0; i < maxRuns; i++) {
+                    const pass = status.guided[i];
+                    truthMatrixHtml += `<td class="center ${pass !== undefined ? (pass ? 'pass' : 'fail') : ''}">${pass !== undefined ? (pass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
+                }
+            } else {
+                const uPass = status.unguided[0];
+                const gPass = status.guided[0];
+                truthMatrixHtml += `<td class="center ${uPass !== undefined ? (uPass ? 'pass' : 'fail') : ''}">${uPass !== undefined ? (uPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
+                truthMatrixHtml += `<td class="center ${gPass !== undefined ? (gPass ? 'pass' : 'fail') : ''}">${gPass !== undefined ? (gPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
+            }
+            truthMatrixHtml += `<td>${escapeHtml(message)}</td></tr>`;
+        });
+        truthMatrixHtml += '</tbody></table></div>';
+
+        // Compute run cards for separate horizontal grid
+        // Compute column chips for the footer transposed layout (Percent + Traj + Diff Table + Log)
+        const renderGuideChip = (g, run) => {
+            const isExpectedGuide = g === run.guideName;
+            const hasExpectedPrefix = run.expectedToolPrefixes && run.expectedToolPrefixes.some(p => g.startsWith(p));
+            const isGreen = isExpectedGuide || hasExpectedPrefix;
+
+            const className = isGreen ? 'matching-guide' : 'default-guide';
+
+            return `<span class="${className}" style="padding: 2px 4px; border-radius: 4px; font-family: monospace;">${escapeHtml(g)}</span>`;
+        };
+
+                const getTfootChips = async (runs, typeLabel) => {
+             const chips = [];
+             for (let i = 0; i < maxRuns; i++) {
+                 if (!runs || i >= runs.length) {
+                     chips.push('-');
+                     continue;
+                 }
+                 const run = runs[i];
+                 const s = getRunStats(run.results);
+                 const { setupPath, resultPath, usedBasePath } = await getResultPaths(testId, run, `${scenarioName} - ${typeLabel.toLowerCase()}`);
+                 let files = run.files || [];
+                 if (files.length === 0) {
+                     try { files = await api.getRunFiles(usedBasePath); } catch (e) {}
+                 }
+
+                 const sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
+                 const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : (files.includes('modern-web.log') ? 'modern-web.log' : null);
+                 const jsonFile = files.find(f => f.endsWith('_results.json'));
+                 const appUrl = api.source === 'remote'
+                     ? `https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`
+                      : api.getAbsoluteUrl ? api.getAbsoluteUrl(resultPath) : `${usedBasePath}/index.html`;
+
+                 const playWUrl = api.source === 'remote'
+                     ? `https://storage.mtls.cloud.google.com/guidance-evals/${usedBasePath}/grade-report/index.html`
+                     : api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`);
+
+                 const taskRuntime = run.runtime ? (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0) : null;
+
+                 chips.push(`
+                     <div style="display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 4px;">
+                         <span style="font-weight: bold; font-size: 0.85rem; color: ${getColor(s.rate)};">${s.rate}%</span>
+                         ${taskRuntime ? `<span style="font-size: 0.75rem; color: var(--text-secondary);">${formatRuntime(taskRuntime)}</span>` : ''}
+                         ${run.tokenUsage ? `<span style="font-size: 0.75rem; color: var(--text-secondary);">${formatTokens(run.tokenUsage.total)}</span>` : ''}
+                         <div style="display: flex; flex-direction: column; gap: 2px; width: 100%;">
+                             ${sessionFile ? `<button class="tfoot-action-btn" onclick="openTrajectory('${escapeHtml(usedBasePath)}', '${escapeHtml(sessionFile)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}
+                             <button class="tfoot-action-btn" onclick="viewDiff('${escapeHtml(setupPath)}', '${escapeHtml(resultPath)}', '${escapeHtml(scenarioName)}', ${run.runNumber})"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>
+                             <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(appUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>
+                             ${jsonFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${jsonFile}`)}', '${escapeHtml(`${usedBasePath}/${jsonFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 11.5 2h-7zm0 1h7a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5z"/><path d="M4.5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg> JSON</button>` : ''}
+                             ${files.includes('runtime.json') ? `<button class="tfoot-action-btn" onclick="viewContent('runtime.json', '${escapeHtml(`${usedBasePath}/runtime.json`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0a8 8 0 1 0 8 8A8 8 0 0 0 8 0zm0 14.5A6.5 6.5 0 1 1 14.5 8 6.51 6.51 0 0 1 8 14.5zm.5-10.5h-1v5l4.25 2.55.5-.85-3.75-2.2V4z"/></svg> Runtime</button>` : ''}
+                             ${logFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${logFile}`)}', '${escapeHtml(`${usedBasePath}/${logFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
+                             <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(playWUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> PlayW</button>
+                         </div>
+                     </div>
+                 `);
+             }
+             return chips;
+        };
+
+        // Compute separate horizontal run boxes for Tools Used & Guides Used Only
+                        const getRunCards = async (runs, typeLabel) => {
+             let html = '';
+             for (let i = 0; i < maxRuns; i++) {
+                 if (!runs || i >= runs.length) continue;
+                 const run = runs[i];
+                 const { usedBasePath } = await getResultPaths(testId, run, `${scenarioName} - ${typeLabel.toLowerCase()}`);
+                 let files = run.files || [];
+                 if (files.length === 0) {
+                     try { files = await api.getRunFiles(usedBasePath); } catch (e) {}
+                 }
+                 const toolsUsed = run.guidanceToolsUsed || [];
+                 const guidesUsed = run.guidesUsed || (run.guideUsed && run.guideUsed.guidesUsed) || [];
+                 const retrievedGuides = run.retrievedGuides || [];
+                 const fileReadGuides = run.fileReadGuides || [];
+
+                 if (toolsUsed.length === 0 && guidesUsed.length === 0 && retrievedGuides.length === 0 && fileReadGuides.length === 0) continue;
+
+                 html += `
+                     <div class="run-card">
+                         <span class="run-card-title">${typeLabel} Run ${i + 1}</span>
+
+                         ${toolsUsed.length > 0 ? `
+                         <div class="run-card-row">
+                             <span class="run-card-label">Tools Used:</span>
+                             <div class="run-card-row-inner" style="flex-wrap: wrap;">
+                                 ${toolsUsed.map(t => `<span style="background: rgba(255,255,255,0.05); padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); font-family: monospace;">${escapeHtml(t)}</span>`).join('')}
+                             </div>
+                         </div>` : ''}
+
+                         ${retrievedGuides.length > 0 ? `
+                         <div class="run-card-row">
+                             <span class="run-card-label">Retrieved Guides:</span>
+                             <div class="run-card-row-inner" style="flex-wrap: wrap;">
+                                 ${retrievedGuides.map(g => renderGuideChip(g, run)).join('')}
+                             </div>
+                         </div>` : ''}
+
+                         ${fileReadGuides.length > 0 ? `
+                         <div class="run-card-row">
+                             <span class="run-card-label">File Read Guides:</span>
+                             <div class="run-card-row-inner" style="flex-wrap: wrap;">
+                                 ${fileReadGuides.map(g => renderGuideChip(g, run)).join('')}
+                             </div>
+                         </div>` : ''}
+
+                         ${files.includes('runtime.json') ? `
+                        <div class="run-card-row">
+                            <span class="run-card-label">Runtime:</span>
+                            <div class="run-card-row-inner">
+                                <button class="tfoot-action-btn" onclick="viewContent('runtime.json', '${escapeHtml(`${usedBasePath}/runtime.json`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0a8 8 0 1 0 8 8A8 8 0 0 0 8 0zm0 14.5A6.5 6.5 0 1 1 14.5 8 6.51 6.51 0 0 1 8 14.5zm.5-10.5h-1v5l4.25 2.55.5-.85-3.75-2.2V4z"/></svg> Runtime</button>
+                            </div>
+                        </div>` : ''}
+                     </div>
+                 `;
+             }
+             return html;
+        };
+
+        const unguidedChips = await getTfootChips(unguidedRuns, 'Unguided');
+        const guidedChips = await getTfootChips(guidedRuns, 'Guided');
+
+        let tfootHtml = '<tfoot><tr>';
+        if (maxRuns > 1) {
+            unguidedChips.forEach(c => tfootHtml += `<td class="center" style="vertical-align: top;">${c}</td>`);
+            guidedChips.forEach(c => tfootHtml += `<td class="center" style="vertical-align: top;">${c}</td>`);
+        } else {
+            tfootHtml += `<td class="center" style="vertical-align: top;">${unguidedChips[0]}</td><td class="center" style="vertical-align: top;">${guidedChips[0]}</td>`;
+        }
+const guidedCards = await getRunCards(guidedRuns, 'Guided');
+        tfootHtml += `<td>
+<div style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px;">${guidedCards}</div>
+</td></tr></tfoot>`;
+
+        truthMatrixHtml = truthMatrixHtml.replace('</tbody></table></div>', `</tbody>${tfootHtml}</table></div>`);
+
+
+        const loadBtnId = `load-btn-${scenarioName.replace(/\s+/g, '-')}`;
+
+        container.innerHTML = `
+            <div class="task-details-grid">
+                ${promptHtml}
+                ${truthMatrixHtml}
+
+            </div>
+        `;
+
+            //  i left this out of it for now.
+         // <div id="${escapeHtml(svgContainerId)}" class="stability-section blueprint-framed">
+         //            <div class="stability-title">Reliability Trend Analysis</div>
+         //            <button id="${escapeHtml(loadBtnId)}" class="secondary-btn">Compare task results across trials</button>
+         //        </div>
+
+        const loadBtn = container.querySelector(`#${loadBtnId}`);
+        if (loadBtn) {
+            loadBtn.addEventListener('click', () => {
+                loadStabilityTrend(scenarioName, testId);
+            });
+        }
+
+    } catch (e) {
+        container.innerHTML = `<div style="color: var(--accent-failure);">Error loading details: ${e.message}</div>`;
     }
+}
+
+function formatPromptText(text) {
+    const escaped = escapeHtml(text);
+    const target = "\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.";
+    const escapedTarget = escapeHtml(target);
+
+    if (escaped.includes(escapedTarget)) {
+        return escaped.replace(escapedTarget, `<span style="font-size: 80%; opacity: 0.7;">${escapedTarget}</span>`);
+    }
+    return escaped;
 }
 
 function openTrajectory(usedBasePath, sessionFile) {
@@ -589,267 +995,55 @@ function openTrajectory(usedBasePath, sessionFile) {
     }
 }
 
+// Global helper to open details from task list
+// @ts-expect-error global export
+window.openDetailsFromTask = (scenarioName, testId) => {
+    // Attempt to find runData. We might need to fetch it or pass it.
+    // If we assume `allTestData` is available globally (it is), we can find it.
+    // Wait, and we need to call showDetails. Let's see if we can find any runType for this scenario to pass to showDetails.
+    // showDetails expects testName like "AppName - GuideName - RunType".
+    // Let's pass "AppName - GuideName - guided" as a default to showDetails if it exists, or unguided.
+    const guidedKey = `${scenarioName} - guided`;
+    const unguidedKey = `${scenarioName} - unguided`;
+    const finalKey = allTestData.results[guidedKey] ? guidedKey : unguidedKey;
+    if (allTestData.results[finalKey]) {
+        showDetails(finalKey, allTestData.results[finalKey], allTestData.stats[finalKey], testId);
+    } else {
+        alert('Could not find run data for this task.');
+    }
+};
+
+// Expose functions to window for onclick handlers
+// @ts-expect-error global export
+window.openTrajectory = openTrajectory;
+// @ts-expect-error global export
+window.viewContent = viewContent;
+// @ts-expect-error global export
+window.viewDiff = viewDiff;
+
 async function showDetails(testName, runs, stats, testId) {
+    const modal = $('dialog#modal');
+    if (modal.open) modal.close();
+
     // Update URL without reloading
     const url = new URL(window.location.href);
     url.searchParams.set('testName', testName);
-    url.searchParams.delete('view');
-    url.searchParams.delete('run');
     window.history.replaceState({ testName }, '', url);
 
-    // Store current details for back navigation
+    // Store for back navigation
     currentDetails = { testName, runs, stats, testId };
 
-    const modal = $('dialog#modal');
-    const title = $('#modal-title');
-    const contentDiv = $('.modal-content');
-    const body = $('#modal-body');
-    const [taskName, guide, runType] = testName.split(' - ');
+    const matchName = testName.split(' - ')[0];
+    const accordionId = `item-${matchName.replace(/\s+/g, '-').toLowerCase()}`;
+    const accordionEl = document.getElementById(accordionId);
 
-    // Reset modifier classes
-    modal.classList.remove('diff-modal');
-    contentDiv.classList.remove('diff-modal');
-    modal.dataset.view = 'details';
-
-    title.textContent = formatTestName(testName);
-
-    let promptHtml = ''; // Initialize promptHtml outside the map
-
-    const runDetailsPromises = runs.map(async (run) => {
-        const s = getRunStats(run.results);
-        // Determine file paths for this run
-        const { setupPath, resultPath, usedBasePath } = await getResultPaths(testId, run, testName);
-
-        let sessionFile = null;
-        let files = run.files || [];
-        if (files.length === 0) {
-            try {
-                files = await api.getRunFiles(usedBasePath);
-            } catch (e) {
-                console.log('Error checking run files:', e);
-            }
+    if (accordionEl) {
+        accordionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (!accordionEl.classList.contains('open')) {
+            const header = $('.task-accordion-header', accordionEl);
+            header.click();
         }
-        if (files && files.length > 0) {
-            sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
-        }
-
-        if (run === runs[0]) {
-            try {
-                let prompt = run.prompt || '';
-                const baseApp = run.baseApp || 'n/a';
-
-                if (!prompt) {
-                    try {
-                        const isNegative = taskName && taskName.endsWith('-negative');
-                        const taskPath = `tasks/${isNegative ? 'negative/' : ''}${taskName}.md`;
-                        const taskMd = await api.getFileText(taskPath);
-                        prompt = taskMd.replace(/^---[\s\S]+?---\n+/, '').trim();
-                    } catch {
-                        console.log(`Fallback failed: Could not resolve task file for ${run.taskName}`);
-                    }
-                }
-
-                promptHtml = `
-                    <div class="prompt-section" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--text-secondary);">
-                        <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px;">Base App: <strong style="color: var(--text-primary);">${escapeHtml(baseApp)}</strong></div>
-                        <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px;">Prompt: <strong style="color: var(--text-primary); white-space: pre-wrap; font-family: inherit;">${escapeHtml(prompt)}</strong></div>
-                    </div>
-                `;
-            } catch (e) {
-                console.log('Failed to render prompt:', e.message);
-            }
-        }
-
-        let usageSection = '';
-        const toolsUsed = run.guidanceToolsUsed || [];
-        const expectedToolPrefixes = run.expectedToolPrefixes || [];
-        const hasToolData = run.guidanceToolsUsed !== undefined;
-
-        const guidesUsed = run.guidesUsed || 
-               (run.guideUsed !== undefined ? 
-               (typeof run.guideUsed === 'object' && run.guideUsed !== null ? run.guideUsed.guidesUsed : []) 
-               : []);
-        const expectedGuide = run.guideName || run.expectedGuide || guide;
-        const hasGuideData = run.guidesUsed !== undefined || run.guideUsed !== undefined;
-
-        const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : 'modern-web.log';
-        const shouldUseTrajectory = (allTestData.serving ? (allTestData.serving === 'skills' || allTestData.serving === 'skills_cli') : allTestData.enableSkills) && sessionFile;
-
-        if (runType !== 'unguided' && (hasToolData || hasGuideData)) {
-            usageSection = `
-                <div class="usage-section" style="margin-top: 15px; padding: 12px 15px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--border-color);">
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        ${hasToolData ? `
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 90px;">Tools Used:</strong>
-                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                ${toolsUsed.length > 0 ? toolsUsed.map(t => {
-
-                                    const isExpected = expectedToolPrefixes.some(p => t.startsWith(p));
-                                    const matchesDiscipline = t === run.discipline;
-
-                                    let style = '';
-                                    if (isExpected) {
-                                        style = 'background: rgba(0, 200, 0, 0.1); border: 1px solid var(--accent-success); color: var(--accent-success);';
-                                    } else if (matchesDiscipline) {
-                                        style = 'background: rgba(255, 204, 0, 0.2); border: 1px solid #ffcc00; color: #ffcc00;';
-                                    } else {
-                                        style = 'background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-primary);';
-                                    }
-
-                                    return `<code style="${style} padding: 3px 6px; border-radius: 4px; font-size: 0.85em;">${escapeHtml(t)}</code>`;
-                                }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
-                            </div>
-                        </div>` : ''}
-
-                        ${hasGuideData ? `
-                        <div style="display: flex; flex-direction: column; gap: 6px;">
-                          <div style="display: flex; align-items: center; gap: 8px;">
-                              <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 120px;">Retrieved Guides:</strong>
-                              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                  ${(() => {
-                                      const retrieved = run.fileReadGuides === undefined ? (run.retrievedGuides || guidesUsed) : run.retrievedGuides;
-                                      return retrieved && retrieved.length > 0 ? retrieved.map(g => {
-                                          const isExpected = g === expectedGuide;
-                                          return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
-                                      }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>';
-                                  })()}
-                              </div>
-                          </div>
-                          <div style="display: flex; align-items: center; gap: 8px;">
-                              <strong style="font-size: 0.9em; font-weight: 600; color: var(--text-secondary); min-width: 120px;">File Read Guides:</strong>
-                              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                  ${run.fileReadGuides && run.fileReadGuides.length > 0 ? run.fileReadGuides.map(g => {
-                                      const isExpected = g === expectedGuide;
-                                      return `<code style="background: ${isExpected ? 'rgba(0, 200, 0, 0.1)' : 'rgba(255,255,255,0.05)'}; padding: 3px 6px; border-radius: 4px; font-size: 0.85em; border: 1px solid ${isExpected ? 'var(--accent-success)' : 'var(--border-color)'}; color: ${isExpected ? 'var(--accent-success)' : 'var(--text-primary)'}">${escapeHtml(g)}</code>`;
-                                  }).join('') : '<span style="color: var(--text-secondary); font-style: italic; font-size: 0.85em;">None</span>'}
-                              </div>
-                          </div>
-                        </div>` : ''}
-
-                        <div style="margin-top: 5px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: flex-end;">
-                            <a href="#" class="view-resources-link" style="font-size: 0.8em; color: var(--text-secondary); text-decoration: underline; opacity: 0.7;">${shouldUseTrajectory ? 'Agent Trajectory' : logFile}</a>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        const runDetail = document.createElement('div');
-        runDetail.className = 'run-detail';
-        const taskRuntime = run.runtime ? (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0) : null;
-
-        runDetail.innerHTML = `
-            <div class="run-header">
-                <strong>Run ${run.runNumber}</strong>
-                ${taskRuntime ? `<span style="color: var(--text-secondary); font-size: 0.9em; margin-left: 10px;">(Runtime: ${formatRuntime(taskRuntime)})</span>` : ''}
-                ${run.tokenUsage ? `<span style="color: var(--text-secondary); font-size: 0.9em; margin-left: 10px;">(Tokens: ${run.tokenUsage.total.toLocaleString()}${run.tokenUsage.cached ? `, Cached: ${run.tokenUsage.cached.toLocaleString()}` : ''})</span>` : ''}
-                <span style="color: ${getColor(s.rate)}; margin-left: auto; margin-right: 15px;">${s.rate}% Pass (${s.passed}/${s.total})</span>
-                <div class="run-actions">
-                </div>
-            </div>
-            <ul class="check-list">
-                ${run.results.map(check => `
-                    <li class="check-item">
-                        <span class="check-status">${check.passed ? '✅' : '❌'}</span>
-                        <span class="check-message">${escapeHtml(check.message)}</span>
-                        <a href="${api.getAbsoluteUrl(`${usedBasePath}/grade-report/index.html`)}${check.testId ? `#?testId=${check.testId}` : ''}" target="_blank" class="secondary-btn" style="padding: 2px 8px; font-size: 0.8rem; margin-left: auto;">Report</a>
-                    </li>
-                `).join('')}
-            </ul>
-            ${usageSection}
-        `;
-
-        const viewResourcesLink = runDetail.querySelector('.view-resources-link');
-        if (viewResourcesLink instanceof HTMLElement) {
-            viewResourcesLink.onclick = (e) => {
-                e.preventDefault();
-                if (shouldUseTrajectory) {
-                    openTrajectory(usedBasePath, sessionFile);
-                } else {
-                    const resourcesPath = `${usedBasePath}/${logFile}`;
-                    viewContent(resourcesPath, resourcesPath);
-                }
-            };
-        }
-
-        const dropdown = document.createElement('select');
-        dropdown.className = 'run-actions-dropdown';
-        dropdown.style.cssText = 'padding: 4px; font-size: 0.9em; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;';
-        dropdown.innerHTML = '<option value="" disabled selected>Artifacts</option>';
-
-        const sourceOpt = document.createElement('option');
-        sourceOpt.value = 'source';
-        sourceOpt.textContent = 'App';
-        dropdown.appendChild(sourceOpt);
-
-        const diffOpt = document.createElement('option');
-        diffOpt.value = 'diff';
-        diffOpt.textContent = 'Diff';
-        dropdown.appendChild(diffOpt);
-
-        try {
-            if (files && files.length > 0) {
-                const rawJson = files.find(f => f === `${guide}_results.json`);
-                if (rawJson) {
-                    const rawOpt = document.createElement('option');
-                    rawOpt.value = 'raw';
-                    rawOpt.textContent = 'Raw Test Results';
-                    dropdown.appendChild(rawOpt);
-                }
-
-                const runtimeJson = files.find(f => f === 'runtime.json');
-                if (runtimeJson) {
-                    const runtimeOpt = document.createElement('option');
-                    runtimeOpt.value = 'runtime';
-                    runtimeOpt.textContent = 'Runtime Data';
-                    dropdown.appendChild(runtimeOpt);
-                }
-
-                if (sessionFile) {
-                    const trajOpt = document.createElement('option');
-                    trajOpt.value = 'trajectory';
-                    trajOpt.textContent = 'Trajectory';
-                    dropdown.appendChild(trajOpt);
-                }
-            }
-        } catch (e) {
-            console.log('Error displaying options:', e);
-        }
-
-        dropdown.onchange = (e) => {
-            const target = e.target;
-            if (!(target instanceof HTMLSelectElement)) return;
-            const val = target.value;
-            target.value = ''; // reset selection
-            if (val === 'source') {
-                if (api.source === 'remote') {
-                    // Open directly via the mTLS domain which handles auth and serves raw HTML
-                    window.open(`https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`, '_blank');
-                } else {
-                    window.open(api.getAbsoluteUrl(resultPath), '_blank');
-                }
-            } else if (val === 'diff') {
-                viewDiff(setupPath, resultPath, testName, run.runNumber);
-            } else if (val === 'trajectory' && sessionFile) {
-                openTrajectory(usedBasePath, sessionFile);
-            } else if (val === 'raw') {
-                const rawPath = `${usedBasePath}/${guide}_results.json`;
-                viewContent(rawPath, rawPath);
-            } else if (val === 'runtime') {
-                const runtimePath = `${usedBasePath}/runtime.json`;
-                viewContent(runtimePath, runtimePath);
-            }
-        };
-
-        runDetail.querySelector('.run-actions').appendChild(dropdown);
-        return runDetail;
-    });
-
-    const runDetails = await Promise.all(runDetailsPromises);
-    body.innerHTML = promptHtml; // Insert promptHtml first
-    runDetails.forEach(detail => body.appendChild(detail));
-    modal.showModal();
+    }
 }
 
 function renderBackButton() {
@@ -872,6 +1066,7 @@ async function viewContent(fileName, filePath) {
 
     title.textContent = fileName;
     modal.dataset.view = 'content';
+    if (!modal.open) modal.showModal();
     body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading content...</div>';
 
     body.innerHTML = '';
@@ -883,6 +1078,49 @@ async function viewContent(fileName, filePath) {
 
     try {
         const text = await api.getFileText(filePath);
+
+        if (fileName.endsWith('diff.txt')) {
+            body.innerHTML = '';
+            body.appendChild(renderBackButton());
+
+            const files = text.split(/^diff --git /m);
+            let anyRendered = false;
+
+            for (let i = 0; i < files.length; i++) {
+                let fileDiff = files[i].trim();
+                if (!fileDiff) continue;
+
+                // Extract a nice file header
+                const lines = fileDiff.split('\n');
+                let fileHeader = lines[0];
+                if (fileHeader.startsWith('a/')) {
+                    fileHeader = fileHeader.split(' b/')[0].replace(/^a\//, '');
+                }
+
+                const details = document.createElement('details');
+                details.className = 'diff-file-details';
+                details.style.marginBottom = '12px'; // Keep margin for spacing
+
+                const summary = document.createElement('summary');
+                summary.className = 'diff-file-summary';
+                summary.textContent = fileHeader;
+                details.appendChild(summary);
+
+                const preEl = document.createElement('pre');
+                preEl.className = 'diff-container diff-file-pre';
+                preEl.style.padding = '0';
+                preEl.style.fontSize = '0.75rem';
+
+                preEl.textContent = 'diff --git ' + fileDiff;
+
+                details.appendChild(preEl);
+                body.appendChild(details);
+                anyRendered = true;
+            }
+
+            if (anyRendered) return; // intercepted successfully
+        }
+
         const lines = text.split('\n');
         const truncated = lines.length > 5000;
         const content = truncated ? lines.slice(0, 5000).join('\n') + '\n\n...[truncated for display]...' : text;
@@ -920,6 +1158,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     modal.classList.add('diff-modal');
     contentDiv.classList.add('diff-modal');
     modal.dataset.view = 'diff';
+    if (!modal.open) modal.showModal();
 
     try {
         let setupText = null;
@@ -949,12 +1188,12 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
             diff.forEach((part, index) => {
                 const colorClass = part.added ? 'diff-added' :
                     part.removed ? 'diff-removed' : 'diff-unchanged';
-    
+
                 if (part.added || part.removed) {
                     diffHtml += `<span class="${colorClass}">${escapeHtml(part.value)}</span>`;
                     return;
                 }
-    
+
                 // Unchanged part
                 let lines = part.value.split('\n');
             // If the last element is empty (common with trailing newline), temporarily remove it for counting
@@ -1023,57 +1262,106 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     }
 }
 
-function renderDashboardDumbbellChart(data, testId) {
+function renderDashboardDumbbellChart(data) {
     const results = data.results;
-    const { labels, guided, unguided, guided_tokens, unguided_tokens } = calculateChartData(results);
 
-    if (labels.length < 1) {
+
+    if (Object.keys(results).length < 1) {
         document.getElementById('chart-section').classList.add('hidden');
         return;
     }
     document.getElementById('chart-section').classList.remove('hidden');
 
-    const handlePointClick = (index, type) => {
-        const scenarioName = labels[index]; // e.g. "redfield (vague)"
-        const runType = type.toLowerCase(); // "guided" or "unguided"
+    const container = document.getElementById('dumbbell-chart');
+    if (!container) return;
+    container.innerHTML = ''; // Clear old content
 
-        // Find the original key in the results
-        const originalKey = Object.keys(results).find(key => {
-            const parts = key.split(' - ');
-            return `${parts[0]} (${parts[1]})` === scenarioName && parts[2] === runType;
-        });
+    // Apply CSS columns layout to balance heights
+    container.style.display = 'block';
+    container.style.columns = '2';
+    container.style.gap = '16px';
+    container.style.width = '100%';
 
-        if (originalKey) {
-            const testName = originalKey;
-            const runData = results[testName];
-            const testStats = data.stats[testName];
-            showDetails(testName, runData, testStats, testId);
+    // Group results by discipline
+    const groupedByDiscipline = {};
+    Object.keys(results).forEach(key => {
+        const runs = results[key];
+        const sampleRun = runs[0];
+        const discipline = sampleRun ? sampleRun.discipline : 'Uncategorized';
+
+        if (!groupedByDiscipline[discipline]) {
+            groupedByDiscipline[discipline] = {};
         }
-    };
-
-    const datasets = [
-        {
-            label: 'Unguided',
-            data: unguided,
-            tokens: unguided_tokens,
-            onClick: handlePointClick
-        },
-        {
-            label: 'Guided',
-            data: guided,
-            tokens: guided_tokens,
-            onClick: handlePointClick
-        }
-    ];
-
-    // Render the Dumbbell Chart
-    if (dumbbellChartInstance) dumbbellChartInstance.container.innerHTML = '';
-    dumbbellChartInstance = new DumbbellChart('dumbbell-chart', {
-        size: 700,
-        rowHeight: 30,
-        margin: { top: 20, right: 200, bottom: 20, left: 30 }
+        groupedByDiscipline[discipline][key] = runs;
     });
-    dumbbellChartInstance.render({ labels, datasets });
+
+    // Sort disciplines by number of features (descending) to help balance columns
+    const disciplines = Object.keys(groupedByDiscipline).sort((a, b) => {
+        const countA = Object.keys(groupedByDiscipline[a]).length;
+        const countB = Object.keys(groupedByDiscipline[b]).length;
+        return countB - countA;
+    });
+
+    disciplines.forEach(discipline => {
+        const disciplineResults = groupedByDiscipline[discipline];
+        const { labels, guided, unguided, guided_tokens, unguided_tokens } = calculateChartData(disciplineResults);
+
+        if (labels.length === 0) return;
+
+        const chartDiv = document.createElement('div');
+        chartDiv.className = 'discipline-chart-segment';
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'meta-label';
+        titleEl.textContent = discipline;
+        titleEl.style.padding = '12px 16px 0'; // Padding top and horizontal
+        chartDiv.appendChild(titleEl);
+
+        const svgContainer = document.createElement('div');
+        svgContainer.className = 'chart-svg-container';
+        chartDiv.appendChild(svgContainer);
+
+        container.appendChild(chartDiv);
+
+        const handlePointClick = (index, type) => {
+            const scenarioName = labels[index];
+            const runType = type.toLowerCase();
+            const originalKey = Object.keys(disciplineResults).find(key => {
+                const parts = key.split(' - ');
+                return `${parts[0]} (${parts[1]})` === scenarioName && parts[2] === runType;
+            });
+
+            if (originalKey) {
+                const testName = originalKey;
+                const scenarioPart = testName.split(' - ')[1] || '';
+                const accordions = document.querySelectorAll('.task-accordion');
+                for (const acc of accordions) {
+                    const titleEl = acc.querySelector('.task-title');
+                    if (titleEl && titleEl.textContent.trim() === scenarioPart.trim()) {
+                        const headerEl = $('.task-accordion-header', acc);
+                        if (!acc.classList.contains('open')) {
+                            headerEl.click();
+                        }
+                        acc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        break;
+                    }
+                }
+            }
+        };
+
+        const datasets = [
+            { label: 'Unguided', data: unguided, tokens: unguided_tokens, onClick: handlePointClick },
+            { label: 'Guided', data: guided, tokens: guided_tokens, onClick: handlePointClick }
+        ];
+
+        const chart = new DumbbellChart(svgContainer, {
+            size: 500,
+            rowHeight: 28,
+            margin: { top: 5, right: 200, bottom: 40, left: 30 },
+            hideLegend: true // Hide legend for individual charts to save space
+        });
+        chart.render({ labels, datasets });
+    });
 }
 
 async function getResultPaths(testId, run, testName) {
