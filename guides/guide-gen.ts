@@ -16,9 +16,9 @@ import { spawn } from 'node:child_process';
 import { features } from 'web-features';
 // Workaround for https://github.com/web-platform-dx/web-features/issues/1980
 type FeatureData = Extract<typeof features[string], { kind: 'feature' }>;
-
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 import type { Identifier } from '@mdn/browser-compat-data';import { guidesDir, rootDir } from '../lib/paths.ts';
+
 import { runCommand, runGemini, setupIsolatedWorkDir } from './lib/utils.ts';
 import {
   cleanupIsolatedHome,
@@ -44,7 +44,7 @@ interface UseCase {
 }
 
 function lookupFeature(featureId: string): FeatureData {
-  const feature = (features as Record<string, any>)[featureId];
+  const feature = (features as Record<string, typeof features[string]>)[featureId];
   if (!feature || feature.kind !== 'feature') {
     throw new Error(`Feature "${featureId}" not found in web-features package.`);
   }
@@ -357,35 +357,35 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
 
   if (isCI) {
     console.log(`\nRunning pipelines in parallel with prefixed logs for ${useCases.length} use cases in CI...`);
-    
+
     const promises = useCases.map(async (uc) => {
       const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
       console.log(`[Usecase: ${uc.slug}] Running calibration...`);
-      
+
       const child = spawn('node', ['--experimental-strip-types', 'guides/dev-guide.ts', outputDir, '--no-test'], {
         cwd: rootDir,
         env: { ...process.env },
         stdio: ['ignore', 'pipe', 'pipe']
       });
-      
+
       const prefix = `[${uc.slug}] `;
-      
+
       child.stdout.on('data', (data) => {
         const lines = data.toString().split('\n');
         for (const line of lines) {
           if (line.trim()) console.log(prefix + line);
         }
       });
-      
+
       child.stderr.on('data', (data) => {
         const lines = data.toString().split('\n');
         for (const line of lines) {
           if (line.trim()) console.error(prefix + line);
         }
       });
-      
+
       const exitCode = await new Promise<number>((resolve) => child.on('close', resolve));
-      
+
       if (exitCode !== 0) {
         throw new Error(`devGuide failed for ${uc.slug}`);
       }
@@ -394,25 +394,25 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
     await Promise.all(promises);
   } else {
     console.log(`\nRunning pipelines in parallel for ${useCases.length} use cases...`);
-    
+
     const promises = useCases.map(async (uc) => {
       const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
       const logFile = path.join(outputDir, 'dev.log');
       console.log(`[Usecase: ${uc.slug}] Running calibration. Logs redirected to ${logFile}`);
-      
+
       const logStream = fs.createWriteStream(logFile);
-      
+
       const child = spawn('node', ['--experimental-strip-types', 'guides/dev-guide.ts', outputDir, '--no-test'], {
         cwd: rootDir,
         env: { ...process.env },
         stdio: ['ignore', 'pipe', 'pipe']
       });
-      
+
       child.stdout.pipe(logStream);
       child.stderr.pipe(logStream);
-      
+
       const exitCode = await new Promise<number>((resolve) => child.on('close', resolve));
-      
+
       if (exitCode !== 0) {
         throw new Error(`devGuide failed for ${uc.slug}. See logs at ${logFile}`);
       }
