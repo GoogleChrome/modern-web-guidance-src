@@ -16,14 +16,7 @@ import { spawn } from 'node:child_process';
 import { features } from 'web-features';
 import type { FeatureData } from 'web-features';
 
-const bcdPath = path.resolve(rootDir, 'node_modules/@mdn/browser-compat-data/data.json');
-let bcd = {};
-
-try {
-  bcd = JSON.parse(fs.readFileSync(bcdPath, 'utf8'));
-} catch (err) {
-  console.warn(`Warning: Could not read BCD data file.`);
-}
+import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 
 import { guidesDir, rootDir } from '../lib/paths.ts';
 import config from '../harness/config.ts';
@@ -499,32 +492,42 @@ async function createPullRequest(featureId: string, reviewer: string, body: stri
   console.log(`✅ PR created for ${branch}`);
 }
 
-// ─── MDN URL construction ────────────────────────────────────────────────────
-
-// ─── MDN URL construction ────────────────────────────────────────────────────
-
-export function mdnUrlFromCompatKey(compatKey: string): string | null {
-  if (!compatKey) return null;
-
-  const parts = compatKey.split('.');
-  let node: any = bcd; 
-  
-  for (const part of parts) {
-    if (!node || typeof node !== 'object') return null;
-    node = node[part];
-  }
-
-  const mdnUrl = node?.__compat?.mdn_url;
-  
-  return typeof mdnUrl === 'string' ? mdnUrl : null;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 export function getMdnUrlsForFeature(feature: FeatureData): string[] {
   const urls: string[] = [];
   for (const compatKey of (feature.compat_features || [])) {
-    const url = mdnUrlFromCompatKey(compatKey);
-    if (url && !urls.includes(url)) {
-      urls.push(url);
+    if (!compatKey) continue;
+
+    const parts = compatKey.split('.');
+    let node: Record<string, unknown> = {};
+    if (isRecord(bcd)) {
+      node = bcd;
+    }
+    
+    for (const part of parts) {
+      if (isRecord(node) && part in node) {
+        const nextNode = node[part];
+        if (isRecord(nextNode)) {
+          node = nextNode;
+        } else {
+          node = {};
+          break;
+        }
+      } else {
+        node = {};
+        break;
+      }
+    }
+
+    const compat = node?.__compat;
+    if (isRecord(compat)) {
+      const mdnUrl = compat.mdn_url;
+      if (typeof mdnUrl === 'string' && !urls.includes(mdnUrl)) {
+        urls.push(mdnUrl);
+      }
     }
   }
   return urls;
