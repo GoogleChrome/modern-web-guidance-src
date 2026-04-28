@@ -14,6 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { features } from 'web-features';
+import mdnData from 'mdn-data';
 
 import { guidesDir, rootDir } from '../lib/paths.ts';
 import config from '../harness/config.ts';
@@ -30,6 +31,22 @@ import { devGuide } from './dev-guide.ts';
 // ─── MDN URL construction ────────────────────────────────────────────────────
 
 function mdnUrlFromCompatKey(compatKey: string): string | null {
+  if (compatKey.startsWith('css.properties.')) {
+    const propName = compatKey.slice('css.properties.'.length);
+    const propData = (mdnData.css.properties as any)[propName];
+    if (propData && propData.mdn_url) {
+      return propData.mdn_url;
+    }
+  }
+  if (compatKey.startsWith('css.at-rules.')) {
+    const ruleName = compatKey.slice('css.at-rules.'.length);
+    const ruleData = (mdnData.css.atrules as any)[`@${ruleName}`];
+    if (ruleData && ruleData.mdn_url) {
+      return ruleData.mdn_url;
+    }
+  }
+
+  // Fallback to old custom mapping for non-CSS or missing keys
   if (compatKey.startsWith('javascript.builtins.')) {
     const rest = compatKey.slice('javascript.builtins.'.length).replace(/\./g, '/');
     return `https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/${rest}`;
@@ -37,14 +54,6 @@ function mdnUrlFromCompatKey(compatKey: string): string | null {
   if (compatKey.startsWith('api.')) {
     const rest = compatKey.slice('api.'.length).replace(/\./g, '/');
     return `https://developer.mozilla.org/en-US/docs/Web/API/${rest}`;
-  }
-  if (compatKey.startsWith('css.properties.')) {
-    const rest = compatKey.slice('css.properties.'.length);
-    return `https://developer.mozilla.org/en-US/docs/Web/CSS/${rest}`;
-  }
-  if (compatKey.startsWith('css.at-rules.')) {
-    const rest = compatKey.slice('css.at-rules.'.length);
-    return `https://developer.mozilla.org/en-US/docs/Web/CSS/@${rest}`;
   }
   if (compatKey.startsWith('html.elements.')) {
     const rest = compatKey.slice('html.elements.'.length);
