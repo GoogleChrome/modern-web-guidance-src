@@ -533,19 +533,17 @@ const PREFIX_MAPPINGS: Record<string, { urlPrefix: string; transform: (rest: str
   }
 };
 
+const CSS_MAPPINGS = {
+  'css.properties.': { data: mdnCssProperties, prefix: '' },
+  'css.at-rules.': { data: mdnCssAtrules, prefix: '@' }
+};
+
 export function mdnUrlFromCompatKey(compatKey: string): string | null {
-  if (compatKey.startsWith('css.properties.')) {
-    const propName = compatKey.slice('css.properties.'.length);
-    const propData = (mdnCssProperties as any)[propName];
-    if (propData && propData.mdn_url) {
-      return propData.mdn_url;
-    }
-  }
-  if (compatKey.startsWith('css.at-rules.')) {
-    const ruleName = compatKey.slice('css.at-rules.'.length);
-    const ruleData = (mdnCssAtrules as any)[`@${ruleName}`];
-    if (ruleData && ruleData.mdn_url) {
-      return ruleData.mdn_url;
+  for (const [prefix, mapping] of Object.entries(CSS_MAPPINGS)) {
+    if (compatKey.startsWith(prefix)) {
+      const name = compatKey.slice(prefix.length);
+      const data = (mapping.data as any)[mapping.prefix + name];
+      if (data && data.mdn_url) return data.mdn_url;
     }
   }
 
