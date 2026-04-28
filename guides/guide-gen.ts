@@ -14,7 +14,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { features } from 'web-features';
-import type { FeatureData } from '../node_modules/web-features/types.js';
+// Workaround for https://github.com/web-platform-dx/web-features/issues/1980
+type FeatureData = Extract<typeof features[string], { kind: 'feature' }>;
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 import { guidesDir, rootDir } from '../lib/paths.ts';
 
