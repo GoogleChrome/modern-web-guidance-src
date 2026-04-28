@@ -1,7 +1,5 @@
 
 /* Dashboard Layout & Tabs */
-/* Removed dark theme overrides to allow light theme variables from dashboard.css to take effect */
-
 /* Tab Content Areas */
 .tab-content {
   animation: fadeIn 0.2s ease-out;
