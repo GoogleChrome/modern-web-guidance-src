@@ -2,7 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import Ad from '../../components/AdSlotBanner.tsx';
 
-import { getCollection, getEntry } from 'astro:content';
+import { getCollection, getEntry, render } from 'astro:content';
 import type { GetStaticPaths } from 'astro';
 import { Image } from 'astro:assets';
 import { getArticleImage } from '../../utils/images';
@@ -12,7 +12,7 @@ import ArticleTeaser from '../../components/ArticleTeaser.astro';
 export const getStaticPaths = (async () => {
   const articles = await getCollection('articles');
   return articles.map(article => ({
-    params: { slug: article.slug },
+    params: { slug: article.id },
   }));
 }) satisfies GetStaticPaths;
 
@@ -25,9 +25,9 @@ if (!article) return Astro.redirect('/404');
 
 
 
-const { Content } = await article.render();
+const { Content } = await render(article);
 const allArticles = await getCollection('articles');
-const relatedArticles = allArticles.filter(a => a.slug !== article.slug).slice(0, 3);
+const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3);
 
 const articleImage = await getArticleImage(article);
 const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
