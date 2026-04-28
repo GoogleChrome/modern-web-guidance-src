@@ -10,18 +10,17 @@
     "astro": "astro"
   },
   "dependencies": {
-
     "@astrojs/node": "^10.0.6",
-    "@astrojs/react": "^4.4.2",
+    "@astrojs/react": "^5.0.4",
     "@heroicons/react": "^2.2.0",
-    "@lexical/react": "^0.35.0",
-    "@libsql/client": "^0.15.15",
+    "@lexical/react": "^0.44.0",
+    "@libsql/client": "^0.17.3",
     "@tailwindcss/vite": "^4.2.4",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "astro": "^6.1.9",
     "firebase-tools": "^15.15.0",
-    "lexical": "^0.35.0",
+    "lexical": "^0.44.0",
     "quill": "^2.0.3",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
