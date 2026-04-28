@@ -17,7 +17,7 @@ import { features } from 'web-features';
 // Workaround for https://github.com/web-platform-dx/web-features/issues/1980
 type FeatureData = Extract<typeof features[string], { kind: 'feature' }>;
 
-import bcd from '@mdn/browser-compat-data';
+import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 import type { Identifier } from '@mdn/browser-compat-data';
 
 import { guidesDir, rootDir } from '../lib/paths.ts';
@@ -504,6 +504,7 @@ export function getMdnUrlsForFeature(feature: FeatureData): string[] {
         break;
       }
     }
+
 
     if (node && node.__compat?.mdn_url) {
       const mdnUrl = node.__compat.mdn_url;
