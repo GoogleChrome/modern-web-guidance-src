@@ -181,11 +181,12 @@ The eval harness measures whether guides actually improve agent output.
 
 ### Agents
 
-Three agents are supported, configured in `harness/config.ts`:
+Four agents are supported, configured in `harness/config.ts`:
 
 - **Jetski** (default): Google's internal IDE agent. Requires the Jetski app.
 - **Gemini CLI**: Uses `GEMINI_API_KEY` and `GEMINI_MODEL` env vars.
 - **Claude Code**: Uses Claude on Vertex AI. Requires GCP setup.
+- **Codex CLI**: Requires requesting an exception and PCounsel approval. See root README for details.
 
 ### Base apps
 
@@ -231,14 +232,9 @@ The code in `serving/` provides both the MCP server and standalone tools used by
 
 The 4 eval-ready guides: `batch-analytics-events`, `full-session-analytics`, `adapt-scrollbar-to-contrast-preferences`, `customize-scrollbar-color-and-thickness`.
 
-### Active branch: `cli-plus-dev`
+### Active branch: `main`
 
-This branch (diverged from `main`) introduces:
-- The `gd` CLI with all commands
-- The `gd dev` automated pipeline with retry loop
-- The `gd audit` command
-- Refactored grader internals (CalibrationResult, programmatic API)
-- Agent test integration into the dev pipeline
+The `gd` CLI, `gd dev` pipeline, and `gd audit` commands have been merged to `main` and are available to all contributors.
 
 ### Open PRs (representative)
 
