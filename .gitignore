@@ -17,6 +17,8 @@ harness/test-results/
 tasks/test-results/
 grade-report/
 test-app-results/
+guides/**/test-results/
+guides/**/.last-run.json
 
 # legacy paths (any content here should be deleted)
 serving/.mcp-data/
