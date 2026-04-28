@@ -7,7 +7,6 @@ import { generateGrader, generateGraderWithContext } from './grader-gen.ts';
 import { testGrader, findGrader, runPlaywright, type CalibrationResult } from './run-grader.ts';
 import {
   cleanupIsolatedHome,
-  copyFileIfExists,
   spawnAsync
 } from '../harness/lib/agent-shared.ts';
 import { environmentConfig, defaultSuiteConfig, Serving, type SuiteConfig } from '../harness/config.ts';

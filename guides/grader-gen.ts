@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 
 import { guidesDir } from '../lib/paths.ts';
 import config from '../harness/config.ts';
-import { createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders } from '../harness/lib/agent-shared.ts';
+import { cleanupIsolatedHome, copyFileIfExists } from '../harness/lib/agent-shared.ts';
 import type { CalibrationResult } from './run-grader.ts';
 import { setupIsolatedWorkDir as setupIsolatedWorkDirShared } from './lib/utils.ts';
 

@@ -10,7 +10,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import config from '../harness/config.ts';
+
 import { runCommand, runGemini } from './lib/utils.ts';
 
 
