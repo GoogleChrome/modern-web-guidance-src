@@ -518,7 +518,7 @@ function renderSuites() {
                 <td>${servingDisplayNames[testInfo.serving] || testInfo.serving}</td>
                 <td style="font-size: 0.85rem; color: var(--text-secondary); word-break: break-word; width: 120px;">${escapeHtml(testInfo.model).replaceAll('-', '-&shy;')}</td>
                 <td style="font-weight: 600;">${taskCount} ${maxRuns > 1 ? `<span style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 400;">×${maxRuns}</span>` : ''}</td>
-                <td class="uplift-cell" style="width: 200px; padding: 10px 15px; vertical-align: middle;">
+                <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 10px 15px; vertical-align: middle;">
                     <div style="height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; position: relative; padding: 2px;">
                         <div style="position: absolute; left: calc(${uRate}% - 3px); width: 6px; height: 6px; border: 1.5px solid #8b949e; background: transparent; border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
                         <div style="position: absolute; left: calc(${gRate}% - 4px); width: 8px; height: 8px; background: var(--color-primary); border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
@@ -544,7 +544,7 @@ let hideTimeout = null;
 const tooltipContainer = $('#tooltip-container');
 
 function setupRateCellHovers() {
-    const rateCells = document.querySelectorAll('.rate-cell');
+    const rateCells = document.querySelectorAll('.uplift-cell');
     rateCells.forEach(cell => {
         cell.addEventListener('mouseenter', (e) => {
             if (!(cell instanceof HTMLElement)) return;
