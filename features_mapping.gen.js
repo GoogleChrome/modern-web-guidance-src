@@ -155,6 +155,9 @@ window.__featuresMapping = {
     "calc-size",
     "interpolate-size"
   ],
+  "apply-webgl-shaders": [
+    "canvas-html"
+  ],
   "browser-ui-color-theme": [
     "color-scheme",
     "prefers-color-scheme"
@@ -240,6 +243,12 @@ window.__featuresMapping = {
     "sibling-count",
     "trig-functions"
   ],
+  "export-html-media-from-canvas": [
+    "canvas-html"
+  ],
+  "expose-canvas-content-to-browser-features": [
+    "canvas-html"
+  ],
   "flicker-free-client-side-ab-testing": [
     "blocking-render"
   ],
@@ -264,6 +273,9 @@ window.__featuresMapping = {
   ],
   "individual-transform-properties": [
     "individual-transforms"
+  ],
+  "interactive-content-in-3d-scenes": [
+    "canvas-html"
   ],
   "interactive-content-reveal": [
     "masks",
