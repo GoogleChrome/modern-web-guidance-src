@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High-Latency Video Streaming</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #eee;
+            display: flex;
+            justify-content: center;
+            padding: 50px;
+        }
+        .player-card {
+            background: white;
+            padding: 20px;
+            border-radius: 4px;
+            width: 640px;
+        }
+        video {
+            width: 100%;
+            background: black;
+        }
+        .info {
+            margin-top: 15px;
+            color: #444;
+        }
+    </style>
+</head>
+<body>
+    <div class="player-card">
+        <h1>Standard Stream Player</h1>
+        <video id="video" controls></video>
+        <div class="info">
+            <p>Status: <span id="status">Initializing...</span></p>
+            <p>Buffer Level: <span id="buffer">0</span>s</p>
+        </div>
+        <button onclick="loadStream()">Load Default Stream</button>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const status = document.getElementById('status');
+        const bufferDisplay = document.getElementById('buffer');
+
+        function loadStream() {
+            const streamUrl = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+            
+            if (Hls.isSupported()) {
+                const hls = new Hls({
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 600,
+                    appendErrorMaxRetry: 10,
+                    enableWorker: false
+                });
+                
+                hls.loadSource(streamUrl);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    status.textContent = 'Playing HLS Stream';
+                    video.play();
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = streamUrl;
+                video.addEventListener('loadedmetadata', function() {
+                    status.textContent = 'Playing Native HLS';
+                    video.play();
+                });
+            }
+        }
+
+        setInterval(() => {
+            if (video.buffered.length > 0) {
+                const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+                const duration = bufferedEnd - video.currentTime;
+                bufferDisplay.textContent = duration.toFixed(2);
+            }
+        }, 500);
+    </script>
+</body>
+</html>

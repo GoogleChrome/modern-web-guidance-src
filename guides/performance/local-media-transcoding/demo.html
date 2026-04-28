@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebCodecs Local Transcoding Demo</title>
+  <style>
+    :root {
+      --primary-color: #2563eb;
+      --bg-color: #f8fafc;
+      --text-color: #1e293b;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      line-height: 1.5;
+    }
+    section {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    canvas {
+      background: #000;
+      width: 100%;
+      max-width: 400px;
+      aspect-ratio: 16 / 9;
+      display: block;
+      margin-bottom: 1rem;
+    }
+    button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 0.25rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:disabled {
+      background-color: #94a3b8;
+      cursor: not-allowed;
+    }
+    .log-container {
+      background: #1e293b;
+      color: #f1f5f9;
+      padding: 1rem;
+      border-radius: 0.25rem;
+      font-family: monospace;
+      font-size: 0.875rem;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+    .status-supported { background: #dcfce7; color: #166534; }
+    .status-unsupported { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>WebCodecs: Local Media Processing</h1>
+    <p>This demo demonstrates how to use the <strong>WebCodecs API</strong> to encode video frames locally. This approach improves performance by avoiding server round-trips and protects user privacy by keeping sensitive media data on the device.</p>
+  </header>
+
+  <main>
+    <section>
+      <div class="controls">
+        <div id="support-status" class="test-support-status">Checking WebCodecs support...</div>
+        <button id="start-btn" class="test-start-btn" disabled>Start Local Encoding</button>
+      </div>
+
+      <canvas id="source-canvas" class="test-video-source" width="640" height="360"></canvas>
+      
+      <div class="test-output-info">
+        <strong>Status:</strong> <span id="encoding-status">Idle</span>
+      </div>
+    </section>
+
+    <section>
+      <h3>Encoding Log (Encoded Chunks)</h3>
+      <div id="log" class="log-container test-output-log">
+        Waiting for interaction...
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const startBtn = document.getElementById('start-btn');
+    const canvas = document.getElementById('source-canvas');
+    const log = document.getElementById('log');
+    const statusText = document.getElementById('encoding-status');
+    const supportStatus = document.getElementById('support-status');
+    const ctx = canvas.getContext('2d');
+
+    let encoder = null;
+    let frameCounter = 0;
+    let isEncoding = false;
+    let animationId = null;
+
+    // 1. Feature Detection
+    if ('VideoEncoder' in window) {
+      supportStatus.textContent = 'WebCodecs Supported';
+      supportStatus.className = 'status-badge status-supported';
+      startBtn.disabled = false;
+    } else {
+      supportStatus.textContent = 'WebCodecs Not Supported';
+      supportStatus.className = 'status-badge status-unsupported';
+      log.textContent = 'Error: Your browser does not support WebCodecs. Please try Chrome or Edge.';
+    }
+
+    function addLog(message) {
+      const entry = document.createElement('div');
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      log.prepend(entry);
+    }
+
+    // 2. Configure VideoEncoder
+    async function initEncoder() {
+      const config = {
+        codec: 'vp8', // Use VP8 for broad compatibility in this demo
+        width: canvas.width,
+        height: canvas.height,
+        bitrate: 1_000_000, // 1 Mbps
+        framerate: 30,
+      };
+
+      const isSupported = await VideoEncoder.isConfigSupported(config);
+      if (!isSupported.supported) {
+        addLog('Error: Selected codec configuration not supported.');
+        return null;
+      }
+
+      const init = {
+        output: (chunk, metadata) => {
+          addLog(`Encoded chunk: type=${chunk.type}, size=${chunk.byteLength} bytes`);
+        },
+        error: (e) => {
+          addLog(`Encoder Error: ${e.message}`);
+          stopEncoding();
+        },
+      };
+
+      const enc = new VideoEncoder(init);
+      enc.configure(config);
+      return enc;
+    }
+
+    // 3. Frame Generation (Source)
+    function drawFrame(timestamp) {
+      // Draw a simple animation
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      ctx.fillStyle = '#3b82f6';
+      const x = (timestamp / 5) % (canvas.width + 100) - 50;
+      ctx.beginPath();
+      ctx.arc(x, canvas.height / 2, 50, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = 'white';
+      ctx.font = '24px sans-serif';
+      ctx.fillText(`Local Transcoding: Frame ${frameCounter}`, 20, 40);
+      ctx.fillText(`Timestamp: ${timestamp.toFixed(0)}ms`, 20, 80);
+
+      if (isEncoding && encoder) {
+        // Create a VideoFrame from the canvas
+        const frame = new VideoFrame(canvas, { timestamp: frameCounter * (1000000 / 30) }); // Microseconds
+        
+        // Encode the frame
+        encoder.encode(frame, { keyFrame: frameCounter % 60 === 0 });
+        frame.close(); // Important: release resources immediately
+        frameCounter++;
+      }
+
+      animationId = requestAnimationFrame(drawFrame);
+    }
+
+    async function startEncoding() {
+      isEncoding = true;
+      frameCounter = 0;
+      startBtn.textContent = 'Stop Encoding';
+      statusText.textContent = 'Encoding...';
+      log.innerHTML = '';
+      
+      encoder = await initEncoder();
+      if (!encoder) {
+        stopEncoding();
+        return;
+      }
+      addLog('Encoder initialized and configured.');
+    }
+
+    function stopEncoding() {
+      isEncoding = false;
+      startBtn.textContent = 'Start Local Encoding';
+      statusText.textContent = 'Idle';
+      if (encoder) {
+        encoder.flush().then(() => {
+          addLog('Encoder flushed and closed.');
+          encoder.close();
+          encoder = null;
+        });
+      }
+    }
+
+    startBtn.addEventListener('click', () => {
+      if (isEncoding) {
+        stopEncoding();
+      } else {
+        startEncoding();
+      }
+    });
+
+    // Start background animation loop
+    animationId = requestAnimationFrame(drawFrame);
+  </script>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebCodecs Ultra-Low Latency Demo</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --bg-color: #f8fafc;
+            --text-color: #1e293b;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            line-height: 1.5;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .video-wrapper {
+            margin: 1.5rem 0;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 16 / 9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .supported { background: #dcfce7; color: #166534; }
+        .unsupported { background: #fee2e2; color: #991b1b; }
+        .stats {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Interactive Live Streaming</h1>
+        <p>Demonstrating ultra-low latency media processing via <strong>WebCodecs</strong>.</p>
+    </header>
+
+    <div id="supportStatus" class="test-support-status status-badge">
+        Checking WebCodecs support...
+    </div>
+
+    <div class="video-wrapper">
+        <canvas id="outputCanvas" class="test-target-element test-video-output"></canvas>
+    </div>
+
+    <div class="controls">
+        <button id="startBtn" class="test-start-stream" disabled>Start Camera Stream</button>
+        <div class="stats test-latency-info">
+            Processing Latency: <span id="latencyVal">0</span>ms
+        </div>
+    </div>
+
+    <section style="margin-top: 2rem;">
+        <h3>How it works</h3>
+        <p>This demo captures your camera, pipes frames through a <code>VideoEncoder</code>, simulates a "network" transfer of encoded chunks, and immediately decodes them using <code>VideoDecoder</code> for minimal glass-to-glass latency.</p>
+    </section>
+</div>
+
+<script>
+    const statusEl = document.getElementById('supportStatus');
+    const startBtn = document.getElementById('startBtn');
+    const canvas = document.getElementById('outputCanvas');
+    const ctx = canvas.getContext('2d');
+    const latencyEl = document.getElementById('latencyVal');
+
+    // 1. Feature Detection
+    const isSupported = 'VideoEncoder' in window && 'VideoDecoder' in window && 'VideoFrame' in window;
+
+    if (isSupported) {
+        statusEl.textContent = 'WebCodecs Supported';
+        statusEl.classList.add('supported');
+        startBtn.disabled = false;
+    } else {
+        statusEl.textContent = 'WebCodecs Not Supported in this browser';
+        statusEl.classList.add('unsupported');
+    }
+
+    async function startDemo() {
+        startBtn.disabled = true;
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+            const track = stream.getVideoTracks()[0];
+            const processor = new MediaStreamTrackProcessor(track);
+            const reader = processor.readable.getReader();
+
+            // 2. Setup Decoder
+            const decoder = new VideoDecoder({
+                output: (frame) => {
+                    // Update stats
+                    const now = performance.now();
+                    if (frame.timestamp) {
+                        const latency = Math.round(now - (frame.timestamp / 1000));
+                        latencyEl.textContent = latency;
+                    }
+
+                    // Render to canvas
+                    canvas.width = frame.displayWidth;
+                    canvas.height = frame.displayHeight;
+                    ctx.drawImage(frame, 0, 0);
+                    frame.close();
+                },
+                error: (e) => console.error('Decoder error:', e)
+            });
+
+            // 3. Setup Encoder
+            const encoder = new VideoEncoder({
+                output: (chunk, metadata) => {
+                    // Simulate network "delivery" by passing chunk directly to decoder
+                    if (metadata.decoderConfig) {
+                        decoder.configure(metadata.decoderConfig);
+                    }
+                    decoder.decode(chunk);
+                },
+                error: (e) => console.error('Encoder error:', e)
+            });
+
+            const config = {
+                codec: 'vp8',
+                width: 1280,
+                height: 720,
+                bitrate: 2_000_000, // 2 Mbps
+                framerate: 30,
+                latencyMode: 'realtime' // Key for ultra-low latency
+            };
+
+            encoder.configure(config);
+
+            // 4. Processing Loop
+            async function process() {
+                while (true) {
+                    const { done, value: frame } = await reader.read();
+                    if (done) break;
+
+                    if (encoder.encodeQueueSize > 2) {
+                        // Drop frames if encoder is struggling to maintain latency
+                        frame.close();
+                    } else {
+                        // Use timestamp to track end-to-end latency
+                        encoder.encode(frame);
+                        frame.close();
+                    }
+                }
+            }
+
+            process();
+
+        } catch (err) {
+            console.error('Demo failed:', err);
+            alert('Could not access camera or initialize WebCodecs loop.');
+            startBtn.disabled = false;
+        }
+    }
+
+    startBtn.addEventListener('click', startDemo);
+</script>
+
+</body>
+</html>

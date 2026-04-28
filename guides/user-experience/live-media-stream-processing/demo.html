@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebCodecs Real-time Media Effects</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            line-height: 1.5;
+            background-color: #f8f9fa;
+            color: #212529;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        header {
+            border-bottom: 2px solid #eee;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+        }
+        h1 { margin: 0; font-size: 1.5rem; color: #007bff; }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            align-items: center;
+            margin-bottom: 2rem;
+            background: #f1f3f5;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        video {
+            width: 100%;
+            max-width: 640px;
+            aspect-ratio: 4 / 3;
+            border-radius: 8px;
+            background: #000;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        button {
+            padding: 0.6rem 1.2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #adb5bd; cursor: not-allowed; }
+        label { cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-weight: 500; }
+        .status {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            text-align: center;
+            font-weight: 500;
+        }
+        .status-info { background: #e7f1ff; color: #0c5460; }
+        .status-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Live Media Stream Processor</h1>
+            <p>Applying real-time visual effects using <strong>WebCodecs (VideoFrame)</strong>.</p>
+        </header>
+
+        <main>
+            <section class="controls">
+                <button class="test-start-stream">Start Media Stream</button>
+                <label>
+                    <input type="checkbox" class="test-effect-toggle"> Apply Grayscale Filter
+                </label>
+            </section>
+
+            <section id="display">
+                <video class="test-video-output" autoplay playsinline muted title="Live processed output"></video>
+                <div class="test-status status status-info">Ready to start. Please grant camera permissions when prompted.</div>
+            </section>
+
+            <section class="test-fallback hidden">
+                <div class="status status-error">
+                    <strong>Unsupported Browser:</strong> This demo requires WebCodecs and Insertable Streams (MediaStreamTrackProcessor), currently supported in Chromium-based browsers (Chrome 94+, Edge).
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const startBtn = document.querySelector('.test-start-stream');
+        const effectToggle = document.querySelector('.test-effect-toggle');
+        const videoOutput = document.querySelector('.test-video-output');
+        const statusEl = document.querySelector('.test-status');
+        const fallbackEl = document.querySelector('.test-fallback');
+
+        // 1. Feature Detection: WebCodecs (VideoFrame) and Insertable Streams
+        const supportsWebCodecs = 'VideoFrame' in window;
+        const supportsInsertableStreams = 'MediaStreamTrackProcessor' in window && 'MediaStreamTrackGenerator' in window;
+
+        if (!supportsWebCodecs || !supportsInsertableStreams) {
+            statusEl.classList.add('hidden');
+            fallbackEl.classList.remove('hidden');
+            startBtn.disabled = true;
+        }
+
+        let mediaStream = null;
+        let offscreenCanvas = null;
+        let ctx = null;
+
+        async function initStream() {
+            try {
+                statusEl.textContent = 'Initializing camera...';
+                
+                // 2. Capture live stream
+                mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: { ideal: 640 }, height: { ideal: 480 } } 
+                });
+                
+                const videoTrack = mediaStream.getVideoTracks()[0];
+                const settings = videoTrack.getSettings();
+                const width = settings.width;
+                const height = settings.height;
+
+                // 3. Prepare processing surface (OffscreenCanvas)
+                offscreenCanvas = new OffscreenCanvas(width, height);
+                ctx = offscreenCanvas.getContext('2d', { alpha: false });
+
+                // 4. Setup Insertable Streams with WebCodecs VideoFrames
+                const processor = new MediaStreamTrackProcessor({ track: videoTrack });
+                const generator = new MediaStreamTrackGenerator({ kind: 'video' });
+
+                const transformer = new TransformStream({
+                    async transform(frame, controller) {
+                        // 'frame' is a WebCodecs VideoFrame object
+                        
+                        if (!effectToggle.checked) {
+                            // Passthrough if effect is disabled
+                            controller.enqueue(frame);
+                            return;
+                        }
+
+                        // Apply Visual Effect
+                        // WebCodecs frames can be drawn directly to canvas
+                        ctx.drawImage(frame, 0, 0);
+                        
+                        // Simple Grayscale manipulation
+                        ctx.globalCompositeOperation = 'saturation';
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, width, height);
+                        ctx.globalCompositeOperation = 'source-over';
+
+                        // Create a NEW VideoFrame from the processed canvas
+                        const processedFrame = new VideoFrame(offscreenCanvas, { 
+                            timestamp: frame.timestamp,
+                            duration: frame.duration
+                        });
+
+                        // IMPORTANT: Close the original frame to release hardware resources
+                        frame.close();
+                        
+                        // Enqueue the processed frame into the stream
+                        controller.enqueue(processedFrame);
+                    }
+                });
+
+                // 5. Build the pipeline: Readable -> Transform -> Writable
+                processor.readable
+                    .pipeThrough(transformer)
+                    .pipeTo(generator.writable)
+                    .catch(err => {
+                        console.error('Stream pipeline broken:', err);
+                        updateStatus('Stream pipeline error.', 'error');
+                    });
+
+                // 6. Output the generated track to the video element
+                videoOutput.srcObject = new MediaStream([generator]);
+                
+                updateStatus('Live stream active. WebCodecs processing enabled.', 'success');
+                startBtn.disabled = true;
+
+            } catch (err) {
+                console.error(err);
+                const msg = err.name === 'NotAllowedError' ? 'Access denied.' : err.message;
+                updateStatus(`Error: ${msg}`, 'error');
+            }
+        }
+
+        function updateStatus(text, type) {
+            statusEl.textContent = text;
+            statusEl.className = `test-status status status-${type}`;
+        }
+
+        startBtn.addEventListener('click', initStream);
+    </script>
+</body>
+</html>

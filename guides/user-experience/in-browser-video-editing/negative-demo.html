@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Video Editor</title>
+    <style>
+        body { font-family: sans-serif; }
+        #container { width: 600px; margin: 0 auto; }
+        #canvas { width: 100%; border: 1px solid black; }
+        .btn { padding: 10px; background: blue; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>Video Export Tool</h1>
+        <input type="file" id="input" accept="video/*">
+        <video id="v" style="display:none" muted></video>
+        <canvas id="canvas"></canvas>
+        <button id="btn" class="btn">Record and Save</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const input = document.getElementById('input');
+        const v = document.getElementById('v');
+        const c = document.getElementById('canvas');
+        const ctx = c.getContext('2d');
+        const btn = document.getElementById('btn');
+        const status = document.getElementById('status');
+
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            v.src = URL.createObjectURL(file);
+            v.onloadedmetadata = () => {
+                c.width = v.videoWidth;
+                c.height = v.videoHeight;
+                status.innerText = "Video ready.";
+            };
+        };
+
+        btn.onclick = () => {
+            const stream = c.captureStream(30);
+            const recorder = new MediaRecorder(stream);
+            const chunks = [];
+
+            recorder.ondataavailable = (e) => chunks.push(e.data);
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'video.webm';
+                a.click();
+                status.innerText = "Download started.";
+            };
+
+            recorder.start();
+            v.play();
+
+            const draw = () => {
+                if (v.paused || v.ended) {
+                    recorder.stop();
+                    return;
+                }
+                ctx.drawImage(v, 0, 0);
+                
+                const data = c.toDataURL('image/jpeg', 0.5);
+                
+                ctx.fillStyle = "red";
+                ctx.font = "30px Arial";
+                ctx.fillText("WATERMARK", 50, 50);
+
+                setTimeout(draw, 33);
+            };
+            draw();
+            status.innerText = "Recording...";
+        };
+    </script>
+</body>
+</html>

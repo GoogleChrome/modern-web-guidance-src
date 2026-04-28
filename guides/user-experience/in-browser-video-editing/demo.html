@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebCodecs High-Res Video Editor & Exporter</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --bg-color: #f8fafc;
+            --text-color: #1e293b;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            display: flex;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .demo-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+        h1 { margin-top: 0; font-size: 1.5rem; }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        button:disabled { background-color: #cbd5e1; cursor: not-allowed; }
+        .canvas-container {
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 16 / 9;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .status-panel {
+            background: #f1f5f9;
+            padding: 1rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.875rem;
+            min-height: 100px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .error { color: #dc2626; font-weight: bold; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="demo-container">
+    <header>
+        <h1>WebCodecs: High-Res Video Export</h1>
+        <p>Edit high-resolution frames (1080p) and encode them directly in the browser using the WebCodecs API.</p>
+    </header>
+
+    <div id="support-check" class="error hidden">
+        WebCodecs API is not supported in this browser. Please use a modern browser like Chrome 94+.
+    </div>
+
+    <div class="controls">
+        <input type="file" id="video-upload" class="test-video-input" accept="video/*">
+        <button id="start-export" class="test-export-button" disabled>Start 1080p Export</button>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="editor-canvas" class="test-preview-canvas" width="1920" height="1080"></canvas>
+    </div>
+
+    <div class="status-panel test-status-output" id="status-log">
+        Waiting for video file...
+    </div>
+
+    <video id="source-video" class="hidden" muted></video>
+</div>
+
+<script>
+    const videoInput = document.getElementById('video-upload');
+    const exportBtn = document.getElementById('start-export');
+    const canvas = document.getElementById('editor-canvas');
+    const ctx = canvas.getContext('2d');
+    const statusLog = document.getElementById('status-log');
+    const video = document.getElementById('source-video');
+    const supportCheck = document.getElementById('support-check');
+
+    let framesProcessed = 0;
+    let encodedChunks = 0;
+    let totalSize = 0;
+
+    // Feature Detection
+    if (!('VideoEncoder' in window)) {
+        supportCheck.classList.remove('hidden');
+        videoInput.disabled = true;
+    }
+
+    function log(msg, isError = false) {
+        const div = document.createElement('div');
+        if (isError) div.className = 'error';
+        div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        statusLog.prepend(div);
+    }
+
+    videoInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            video.src = URL.createObjectURL(file);
+            video.onloadedmetadata = () => {
+                log(`Video loaded: ${video.videoWidth}x${video.videoHeight}. Ready to export at 1080p.`);
+                exportBtn.disabled = false;
+            };
+        }
+    });
+
+    async function startExport() {
+        exportBtn.disabled = true;
+        framesProcessed = 0;
+        encodedChunks = 0;
+        totalSize = 0;
+
+        log("Initializing 1080p VideoEncoder...");
+
+        // 1. Configure VideoEncoder (H.264 High Profile)
+        const init = {
+            output: (chunk) => {
+                encodedChunks++;
+                totalSize += chunk.byteLength;
+                if (encodedChunks % 30 === 0) {
+                    log(`Encoded ${encodedChunks} chunks. Total size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+                }
+            },
+            error: (e) => log(`Encoder Error: ${e.message}`, true)
+        };
+
+        const config = {
+            codec: 'avc1.42E01E', // H.264 Baseline
+            width: 1920,
+            height: 1080,
+            bitrate: 5_000_000, // 5 Mbps for High-Res
+            framerate: 30,
+        };
+
+        const encoder = new VideoEncoder(init);
+        encoder.configure(config);
+
+        // 2. Process Frames
+        video.currentTime = 0;
+        await video.play();
+
+        const processFrame = async () => {
+            if (video.paused || video.ended) {
+                await encoder.flush();
+                log(`Export Complete! Processed ${framesProcessed} frames into ${encodedChunks} encoded chunks.`);
+                exportBtn.disabled = false;
+                return;
+            }
+
+            // Edit step: Draw frame to high-res canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Add "Edit" Overlay (Watermark)
+            ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+            ctx.font = "bold 48px sans-serif";
+            ctx.fillText("WEBCODECS HIGH-RES EXPORT", 50, 1030);
+            
+            // Create VideoFrame from Canvas
+            const frame = new VideoFrame(canvas, { timestamp: video.currentTime * 1000000 });
+            
+            // Encode
+            encoder.encode(frame);
+            frame.close();
+            
+            framesProcessed++;
+            
+            // Use requestVideoFrameCallback if available, otherwise requestAnimationFrame
+            if ('requestVideoFrameCallback' in video) {
+                video.requestVideoFrameCallback(processFrame);
+            } else {
+                requestAnimationFrame(processFrame);
+            }
+        };
+
+        video.requestVideoFrameCallback ? video.requestVideoFrameCallback(processFrame) : requestAnimationFrame(processFrame);
+    }
+
+    exportBtn.addEventListener('click', startExport);
+</script>
+
+</body>
+</html>

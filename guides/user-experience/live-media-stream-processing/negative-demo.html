@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Media Processor</title>
+    <style>
+        .video-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        video {
+            width: 640px;
+            height: 480px;
+            background: black;
+        }
+        .grayscale {
+            filter: grayscale(100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="video-container">
+        <video id="v" autoplay></video>
+        <canvas id="c" width="640" height="480" style="display:none"></canvas>
+        <video id="out" autoplay></video>
+        <div>
+            <button id="s">Start</button>
+            <button id="e">Toggle Effect</button>
+        </div>
+    </div>
+    <script>
+        const v = document.getElementById('v');
+        const c = document.getElementById('c');
+        const out = document.getElementById('out');
+        const s = document.getElementById('s');
+        const e = document.getElementById('e');
+        const ctx = c.getContext('2d');
+
+        s.onclick = async () => {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            v.srcObject = stream;
+            
+            const outStream = c.captureStream();
+            out.srcObject = outStream;
+
+            function process() {
+                ctx.drawImage(v, 0, 0, 640, 480);
+                const data = ctx.getImageData(0, 0, 640, 480);
+                for (let i = 0; i < data.data.length; i += 4) {
+                    if (v.classList.contains('grayscale')) {
+                        const avg = (data.data[i] + data.data[i + 1] + data.data[i + 2]) / 3;
+                        data.data[i] = avg;
+                        data.data[i + 1] = avg;
+                        data.data[i + 2] = avg;
+                    }
+                }
+                ctx.putImageData(data, 0, 0);
+                setTimeout(process, 33);
+            }
+            process();
+        };
+
+        e.onclick = () => {
+            v.classList.toggle('grayscale');
+        };
+    </script>
+</body>
+</html>

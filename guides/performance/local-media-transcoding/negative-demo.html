@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Media Processing System</title>
+</head>
+<body>
+    <h1>Video Management Portal</h1>
+    <div>
+        <button id="record-btn">Record and Upload</button>
+        <button id="ffmpeg-btn">Run FFmpeg Processing</button>
+    </div>
+    <video id="preview" autoplay muted></video>
+    <div id="status">System Ready</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+    <script>
+        const recordBtn = document.getElementById('record-btn');
+        const ffmpegBtn = document.getElementById('ffmpeg-btn');
+        const status = document.getElementById('status');
+        const video = document.getElementById('preview');
+
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        async function init() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            video.srcObject = stream;
+        }
+
+        recordBtn.onclick = () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                recordBtn.innerText = 'Record and Upload';
+                status.innerText = 'Uploading raw data...';
+            } else {
+                recordedChunks = [];
+                mediaRecorder = new MediaRecorder(video.srcObject);
+                mediaRecorder.ondataavailable = (e) => recordedChunks.push(e.data);
+                mediaRecorder.onstop = uploadToServer;
+                mediaRecorder.start();
+                recordBtn.innerText = 'Stop and Upload';
+                status.innerText = 'Recording...';
+            }
+        };
+
+        async function uploadToServer() {
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const formData = new FormData();
+            formData.append('video', blob);
+            
+            await fetch('https://api.example.com/v1/transcode', {
+                method: 'POST',
+                body: formData
+            });
+            status.innerText = 'Processing on server...';
+        }
+
+        ffmpegBtn.onclick = async () => {
+            status.innerText = 'Loading FFmpeg WASM (25MB)...';
+            const { createFFmpeg, fetchFile } = FFmpeg;
+            const ffmpeg = createFFmpeg({ log: true });
+            await ffmpeg.load();
+            
+            status.innerText = 'Processing with FFmpeg...';
+            ffmpeg.FS('writeFile', 'input.webm', await fetchFile(new Blob(recordedChunks)));
+            await ffmpeg.run('-i', 'input.webm', 'output.mp4');
+            const data = ffmpeg.FS('readFile', 'output.mp4');
+            status.innerText = 'FFmpeg Processing Complete';
+        };
+
+        init();
+    </script>
+</body>
+</html>
