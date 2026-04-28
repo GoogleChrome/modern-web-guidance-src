@@ -18,7 +18,7 @@ import { features } from 'web-features';
 type FeatureData = Extract<typeof features[string], { kind: 'feature' }>;
 
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
-import type { Identifier, CompatData } from '@mdn/browser-compat-data';
+
 import { guidesDir, rootDir } from '../lib/paths.ts';
 import { runCommand, runGemini, setupIsolatedWorkDir } from './lib/utils.ts';
 import {
