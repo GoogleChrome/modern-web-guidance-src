@@ -14,7 +14,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { features } from 'web-features';
-import mdnData from 'mdn-data';
+
+const mdnCssPropertiesPath = path.resolve(rootDir, 'node_modules/mdn-data/css/properties.json');
+const mdnCssAtrulesPath = path.resolve(rootDir, 'node_modules/mdn-data/css/at-rules.json');
+
+let mdnCssProperties = {};
+let mdnCssAtrules = {};
+
+try {
+  mdnCssProperties = JSON.parse(fs.readFileSync(mdnCssPropertiesPath, 'utf8'));
+  mdnCssAtrules = JSON.parse(fs.readFileSync(mdnCssAtrulesPath, 'utf8'));
+} catch (err) {
+  console.warn(`Warning: Could not read mdn-data files.`);
+}
 
 import { guidesDir, rootDir } from '../lib/paths.ts';
 import config from '../harness/config.ts';
@@ -33,14 +45,14 @@ import { devGuide } from './dev-guide.ts';
 export function mdnUrlFromCompatKey(compatKey: string): string | null {
   if (compatKey.startsWith('css.properties.')) {
     const propName = compatKey.slice('css.properties.'.length);
-    const propData = (mdnData.css.properties as any)[propName];
+    const propData = (mdnCssProperties as any)[propName];
     if (propData && propData.mdn_url) {
       return propData.mdn_url;
     }
   }
   if (compatKey.startsWith('css.at-rules.')) {
     const ruleName = compatKey.slice('css.at-rules.'.length);
-    const ruleData = (mdnData.css.atrules as any)[`@${ruleName}`];
+    const ruleData = (mdnCssAtrules as any)[`@${ruleName}`];
     if (ruleData && ruleData.mdn_url) {
       return ruleData.mdn_url;
     }
