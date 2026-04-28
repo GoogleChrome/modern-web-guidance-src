@@ -232,10 +232,6 @@ The code in `serving/` provides both the MCP server and standalone tools used by
 
 The 4 eval-ready guides: `batch-analytics-events`, `full-session-analytics`, `adapt-scrollbar-to-contrast-preferences`, `customize-scrollbar-color-and-thickness`.
 
-### Active branch: `main`
-
-The `gd` CLI, `gd dev` pipeline, and `gd audit` commands have been merged to `main` and are available to all contributors.
-
 ### Open PRs (representative)
 
 - **#217** (bramus): Scroll-driven animations use cases — SME contribution, multiple use cases
