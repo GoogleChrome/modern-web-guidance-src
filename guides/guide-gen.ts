@@ -14,7 +14,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { features } from 'web-features';
-import type { FeatureData } from 'web-features/types';
+type FeaturesType = typeof features;
+type AllFeatureData = FeaturesType[string];
+type FeatureData = Extract<AllFeatureData, { kind: 'feature' }>;
 
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 
