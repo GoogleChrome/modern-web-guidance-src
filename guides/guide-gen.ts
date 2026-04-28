@@ -14,7 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { features } from 'web-features';
-import type { FeatureData } from 'web-features';
+import type { FeatureData } from 'web-features/types';
 
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 
@@ -496,38 +496,45 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-export function getMdnUrlsForFeature(feature: FeatureData): string[] {
-  const urls: string[] = [];
-  for (const compatKey of (feature.compat_features || [])) {
-    if (!compatKey) continue;
-
-    const parts = compatKey.split('.');
-    let node: Record<string, unknown> = {};
-    if (isRecord(bcd)) {
-      node = bcd;
-    }
-    
-    for (const part of parts) {
-      if (isRecord(node) && part in node) {
-        const nextNode = node[part];
-        if (isRecord(nextNode)) {
-          node = nextNode;
-        } else {
-          node = {};
-          break;
-        }
+export function mdnUrlFromCompatKey(compatKey: string): string | null {
+  const parts = compatKey.split('.');
+  let node: Record<string, unknown> = {};
+  if (isRecord(bcd)) {
+    node = bcd;
+  }
+  
+  for (const part of parts) {
+    if (isRecord(node) && part in node) {
+      const nextNode = node[part];
+      if (isRecord(nextNode)) {
+        node = nextNode;
       } else {
         node = {};
         break;
       }
+    } else {
+      node = {};
+      break;
     }
+  }
 
-    const compat = node?.__compat;
-    if (isRecord(compat)) {
-      const mdnUrl = compat.mdn_url;
-      if (typeof mdnUrl === 'string' && !urls.includes(mdnUrl)) {
-        urls.push(mdnUrl);
-      }
+  const compat = node?.__compat;
+  if (isRecord(compat)) {
+    const mdnUrl = compat.mdn_url;
+    if (typeof mdnUrl === 'string') {
+      return mdnUrl;
+    }
+  }
+  return null;
+}
+
+export function getMdnUrlsForFeature(feature: FeatureData): string[] {
+  const urls: string[] = [];
+  for (const compatKey of (feature.compat_features || [])) {
+    if (!compatKey) continue;
+    const mdnUrl = mdnUrlFromCompatKey(compatKey);
+    if (mdnUrl && !urls.includes(mdnUrl)) {
+      urls.push(mdnUrl);
     }
   }
   return urls;
