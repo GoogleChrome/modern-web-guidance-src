@@ -87,6 +87,53 @@ async function captureAndEncode(canvas, encoder, frameCount) {
 }
 ```
 
+## Performance considerations
+
+### Avoiding main thread jank
+Encoding and decoding video are CPU-intensive operations. Performing these tasks on the main thread can lead to "jank" (dropped frames, unresponsive UI) because the browser's event loop is blocked by the heavy processing.
+
+To maintain a smooth 60fps UI, always offload WebCodecs operations to a **Web Worker**. WebCodecs is specifically designed to be "Transferable," meaning you can send `VideoFrame` and `AudioData` objects between the main thread and workers with zero-copy overhead.
+
+### Using Web Workers for encoding
+Moving the encoder to a worker ensures that your application remains responsive even during high-bitrate transcoding.
+
+```javascript
+// main.js
+const worker = new Worker('encoder-worker.js');
+const canvas = document.querySelector('canvas');
+const stream = canvas.captureStream();
+const [track] = stream.getVideoTracks();
+const processor = new MediaStreamTrackProcessor({ track });
+const reader = processor.readable.getReader();
+
+// Transfer a ReadableStream or individual frames to the worker
+const readableStream = processor.readable;
+worker.postMessage({ type: 'init', readableStream }, [readableStream]);
+
+// encoder-worker.js
+self.onmessage = async (e) => {
+  if (e.data.type === 'init') {
+    const reader = e.data.readableStream.getReader();
+    const encoder = new VideoEncoder({
+      output: (chunk) => self.postMessage({ type: 'chunk', chunk }),
+      error: (err) => console.error(err)
+    });
+    
+    encoder.configure({ /* ...config */ });
+
+    while (true) {
+      const { done, value: frame } = await reader.read();
+      if (done) break;
+      encoder.encode(frame);
+      frame.close();
+    }
+  }
+};
+```
+
+### Memory management and object lifecycle
+The most common cause of performance degradation in WebCodecs applications is failing to call `.close()` on `VideoFrame` and `AudioData` objects. These objects are handles to large buffers of raw media data (often in GPU memory). If they are not explicitly closed, the browser will eventually run out of memory, causing the video pipeline to stall or the tab to crash.
+
 ## Fallback strategies
 
 ### Fallback strategies
