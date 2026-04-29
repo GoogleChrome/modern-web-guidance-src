@@ -204,49 +204,6 @@ const UserInvalidFallback = (() => {
 UserInvalidFallback.init();
 ```
 
-## Integration with Third-Party Libraries
-
-When utilizing modern UI frameworks or form management tools, the underlying mechanics of tracking user interaction are often abstracted away. The core principle remains the same: **only apply `aria-invalid` after the user has interacted with the field**.
-
-### Form Management Libraries (e.g., React Hook Form, Formik)
-
-Libraries like React Hook Form maintain internal flags (such as `touchedFields` or `isDirty`) alongside the validation state. You can leverage these flags directly to conditionally apply `aria-invalid`, bypassing the need for manual event listeners or the `:user-invalid` pseudo-class.
-
-```jsx
-import { useForm } from "react-hook-form";
-
-function EmailForm() {
-  const { register, formState: { errors, touchedFields } } = useForm({ mode: "onBlur" });
-  
-  // Apply invalid state only if there's an error AND the user has touched the field
-  const isEmailInvalid = errors.email && touchedFields.email;
-
-  return (
-    <form>
-      <div className="field">
-        <label htmlFor="email">Email</label>
-        <input 
-          id="email"
-          type="email" 
-          aria-errormessage="email-error"
-          aria-invalid={isEmailInvalid ? "true" : "false"}
-          {...register("email", { required: true, pattern: /^\S+@\S+$/i })} 
-        />
-        {isEmailInvalid && (
-          <span id="email-error" className="error-msg">
-            Please enter a valid email address.
-          </span>
-        )}
-      </div>
-    </form>
-  );
-}
-```
-
-### Accessibility-First Component Libraries (e.g., React Aria)
-
-If you are using robust component libraries designed specifically for accessibility, such as **React Aria**, they typically handle the synchronization of `aria-invalid` and interaction states out of the box. By using their custom hooks (like `useTextField`), the library manages the form validation lifecycle automatically, ensuring screen readers announce errors at the correct time without requiring manual wiring.
-
 ## Other Considerations
 
 1.  **`aria-live` vs. `aria-errormessage`**: 
