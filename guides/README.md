@@ -214,47 +214,41 @@ This stage is triggered by `gd dev <path/to/guide_dir>` or called automatically 
 ### ASCII Diagram
 
 ```text
-+--------------------------------------------------+
-| Stage 1 & 2: Identification & Scaffolding        |
-| (guide-gen.ts)                                  |
-+--------------------------------------------------+
++--------------------------------------------------------------+
+| NEW: Research Ingestion (deep_research.js)                   |
+| - Seeds deep research files to ground task in reality        |
++--------------------------------------------------------------+
         |
-        | 1. Lookup Feature (web-features)
-        | 2. Deep Research (Auto if missing) ------> [features/<feature-id>/research.md]
-        | 3. Identify Use Cases (Gemini)
         v
-+--------------------------------------------------+
-| Scaffolded Files (per use case)                  |
-| - guide.md                                       |
-| - demo.html                                      |
-| - expectations.md                                |
-+--------------------------------------------------+
++--------------------------------------------------------------+
+| NEW: Use Case Identification (guide-gen.ts)                  |
+| - Synthesizes research to propose 2-5 distinct use cases     |
++--------------------------------------------------------------+
         |
-        | calls / triggered by gd dev
         v
-+--------------------------------------------------+
-| Stage 3: Calibration & Testing                   |
-| (dev-guide.ts)                                   |
-+--------------------------------------------------+
++--------------------------------------------------------------+
+| NEW: Guide & Artifact Scaffolding (guide-gen.ts)             |
+| - guide.md: AI-optimized guidance document                   |
+| - demo.html: Golden Sample reference implementation          |
+| - expectations.md: Must pass/fail outcomes criteria          |
++--------------------------------------------------------------+
         |
-        |---[Generate missing artifacts]-->
-        |   - negative-demo.html (negative-gen.ts) |
-        |   - grader.ts (grader-gen.ts)            |
-        |
-        |---[Calibration Loop]-->
-        |   - Run grader on demo.html (100% pass)  |
-        |   - Run grader on neg-demo.html (0% pass)|
-        |   - If fail: Regenerate grader w/ context|
-        |
-        |---[Task Generation]-->
-        |   - tasks/task.md (Gemini)               |
-        |
-        |---[Agent Test (Optional)]-->
-        |   - Run agent (Unguided vs Guided)       |
-        |   - Grade outputs                        |
-        |   - Compare impact                       |
         v
-+--------------------------------------------------+
-| Final Output: Calibrated & Tested Guide Package |
-+--------------------------------------------------+
++--------------------------------------------------------------+
+| Automated Calibration (via existing dev-guide flow)          |
+| - Generates negative fallbacks & Playwright grader scripts   |
+| - Verifies baselines against gold and poisoned fallbacks     |
++--------------------------------------------------------------+
+        |
+        v
++--------------------------------------------------------------+
+| NEW: PR Creation (feedback-handler.ts)                       |
+| - Bot pushes branch and opens draft PR for SME review        |
++--------------------------------------------------------------+
+        |
+        v
++--------------------------------------------------------------+
+| NEW: Feedback Loop (feedback-handler.ts)                     |
+| - Bot automatically iterates on PR review comments via hook  |
++--------------------------------------------------------------+
 ```
