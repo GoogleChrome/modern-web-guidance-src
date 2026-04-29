@@ -45,8 +45,13 @@ function getSkillContent(skillName: string): string {
     let content = fs.readFileSync(skillPath, 'utf8');
 
     if (skillName === 'project-use-cases') {
-      // Prepend automated instructions rather than brittle string replacement
-      content = `IMPORTANT AUTOMATION INSTRUCTION: In this automated pipeline, the research has already been conducted and saved to a file (\`features/<feature-id>/research.md\`). Read that report primarily to identify use cases, rather than running research tools yourself.\n\n` + content;
+      content = content.replace(
+        /## Research and discovery[\s\S]*?## Identifying action-oriented tasks/,
+        `## Research and discovery
+In this automated pipeline, the research has already been conducted by a specialized model and saved to a file (e.g., \`features/<feature-id>/research.md\`). You must read that research report primarily to identify use cases, rather than attempting to run research tools yourself.
+
+## Identifying action-oriented tasks`
+      );
     }
     return content;
   } catch (err) {
