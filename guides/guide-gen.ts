@@ -321,21 +321,8 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
         stdio: ['ignore', 'pipe', 'pipe']
       });
 
-      const prefix = `[${uc.slug}] `;
-
-      child.stdout.on('data', (data) => {
-        const lines = data.toString().split('\n');
-        for (const line of lines) {
-          if (line.trim()) console.log(prefix + line);
-        }
-      });
-
-      child.stderr.on('data', (data) => {
-        const lines = data.toString().split('\n');
-        for (const line of lines) {
-          if (line.trim()) console.error(prefix + line);
-        }
-      });
+      child.stdout.on('data', d => d.toString().split('\n').forEach((l: string) => l.trim() && console.log(`[${uc.slug}] ${l}`)));
+      child.stderr.on('data', d => d.toString().split('\n').forEach((l: string) => l.trim() && console.error(`[${uc.slug}] ${l}`)));
 
       const exitCode = await new Promise<number>((resolve) => child.on('close', resolve));
 
