@@ -10,6 +10,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import fs from 'node:fs';
 import { runCommand, runGemini } from './lib/utils.ts';
 
 async function fetchPRContext(prNumber: string): Promise<any> {
@@ -180,7 +181,19 @@ export async function handleFeedback(prNumber: string): Promise<void> {
     }
 
     for (const guideDir of guideDirs) {
-      await runGdDev(guideDir);
+      const modifiedFiles = await runCommand('git', ['diff', '--name-only', guideDir]);
+      const modifiedFilesList = modifiedFiles.split('\n').filter(Boolean);
+      
+      const hasGrader = fs.existsSync(path.join(guideDir, 'grader.ts'));
+      const needsGdDev = !hasGrader || modifiedFilesList.some(f => 
+        f.endsWith('demo.html') || f.endsWith('expectations.md') || f.endsWith('guide.md')
+      );
+      
+      if (needsGdDev) {
+        await runGdDev(guideDir);
+      } else {
+        console.log(`Skipping gd dev for ${guideDir} (no source files modified and grader exists).`);
+      }
     }
 
     await pushChanges(prData, guideDirs);
