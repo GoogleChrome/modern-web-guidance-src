@@ -426,5 +426,11 @@ window.__featuresMapping = {
   ],
   "visually-texture-content": [
     "masks"
+  ],
+  "agentic-forms": [
+    "declarative-webmcp"
+  ],
+  "agentic-javascript-tools": [
+    "navigator-modelcontext"
   ]
 };
