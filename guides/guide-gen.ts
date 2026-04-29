@@ -272,26 +272,7 @@ function parseUseCasesResponse(response: string): UseCase[] {
   }
 }
 
-async function asyncPool<T, R>(poolLimit: number, array: readonly T[], iteratorFn: (item: T) => Promise<R>): Promise<R[]> {
-  const ret: Promise<R>[] = [];
-  const executing: Promise<void>[] = [];
-  for (const item of array) {
-    const p = Promise.resolve().then(() => iteratorFn(item));
-    ret.push(p);
-    if (poolLimit <= array.length) {
-      const e = p.then(() => {
-        executing.splice(executing.indexOf(e), 1);
-      });
-      executing.push(e);
-      if (executing.length >= poolLimit) {
-        await Promise.race(executing);
-      }
-    }
-  }
-  return Promise.all(ret);
-}
 
-// ─── Main generation function ────────────────────────────────────────────────
 
 
 export async function generateUseCases(featureId: string, reviewer: string = 'paulirish'): Promise<void> {
@@ -330,7 +311,7 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
   if (isCI) {
     console.log(`\nRunning pipelines in parallel with prefixed logs for ${useCases.length} use cases in CI...`);
 
-    await asyncPool(2, useCases, async (uc) => {
+    const promises = useCases.map(async (uc) => {
       const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
       console.log(`[Usecase: ${uc.slug}] Running calibration...`);
 
@@ -362,10 +343,12 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
         throw new Error(`devGuide failed for ${uc.slug}`);
       }
     });
+
+    await Promise.all(promises);
   } else {
     console.log(`\nRunning pipelines in parallel for ${useCases.length} use cases...`);
 
-    await asyncPool(2, useCases, async (uc) => {
+    const promises = useCases.map(async (uc) => {
       const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
       const logFile = path.join(outputDir, 'dev.log');
       console.log(`[Usecase: ${uc.slug}] Running calibration. Logs redirected to ${logFile}`);
@@ -387,6 +370,8 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
         throw new Error(`devGuide failed for ${uc.slug}. See logs at ${logFile}`);
       }
     });
+
+    await Promise.all(promises);
   }
 
   console.log(`\n🎉 All use cases scaffolded and processed!`);
