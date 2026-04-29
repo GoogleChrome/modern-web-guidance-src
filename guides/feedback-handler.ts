@@ -50,13 +50,13 @@ function deriveAffectedFiles(prData: any, guideDir: string): string[] {
 async function synthesizeFeedback(prNumber: string, prData: any): Promise<string> {
   console.log('Synthesizing feedback with Gemini...');
   const prompt = `
-You are a coordinator for an AI coding agent. Below is the JSON data for PR #${prNumber}, including reviews and comments.
+You are the **PlannerAgent**. Your task is to synthesize feedback left on PR #${prNumber} and create a structured TODO list for the **FixerAgent**.
 
 Tasks:
 1. Resolve conflicting feedback: If there is conflicting feedback, flag it clearly.
 2. Filter noise: Ignore LGTM or general chatter.
 3. Deduplicate: Group similar feedback.
-4. Output a structured TODO list for the coding agent.
+4. Output a structured TODO list for the FixerAgent.
 
 PR Data:
 ${JSON.stringify(prData)}
@@ -75,7 +75,7 @@ async function postPlanToPR(prNumber: string, synthesis: string): Promise<void> 
   console.log('Posting plan to PR...');
   const body = `On it!
 
-<details><summary>Plan from feedback-handler</summary>
+<details><summary>Plan from PlannerAgent</summary>
 
 ${synthesis}
 
@@ -87,10 +87,10 @@ ${synthesis}
 async function applyFixesToSourceFiles(guideDirs: string[], synthesis: string): Promise<string | undefined> {
   console.log('Applying fixes to source files...');
   const applyPrompt = `
-You are an AI coding agent. A previous agent generated the files within the following directories:
-${guideDirs.map(d => `- \`${d}\``).join('\n')}
+You are the **FixerAgent**. Your task is to apply the following fixes to these files to address PR feedback, following the plan provided by the **PlannerAgent**.
 
-Your task is to apply the following fixes to these files to address PR feedback.
+A previous agent generated the files within the following directories:
+${guideDirs.map(d => `- \`${d}\``).join('\n')}
 
 Synthesized Plan:
 ${synthesis}
@@ -164,7 +164,7 @@ async function postFixesReportToPR(prNumber: string, report: string): Promise<vo
   console.log('Posting fixes report to PR...');
   const body = `Fixes applied!
 
-<details><summary>Details from coding agent</summary>
+<details><summary>Report from FixerAgent</summary>
 
 ${report}
 
