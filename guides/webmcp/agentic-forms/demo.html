@@ -20,8 +20,7 @@
     
     <form id="demo-form" 
           toolname="get_weather" 
-          tooldescription="Get current weather for a location" 
-          toolautosubmit>
+          tooldescription="Get current weather for a location">
         <div class="field">
             <label for="city">City Name</label>
             <input type="text" id="city" name="city" toolparamdescription="The name of the city (e.g. San Francisco)" required>
@@ -67,6 +66,14 @@
                 event.respondWith(Promise.resolve(weatherResult));
             }
         });
+
+    window.addEventListener('toolactivated', ({ toolName }) => {
+        console.log(`Tool "${toolName}" was activated by the agent.`);
+    });
+
+    window.addEventListener('toolcancel', ({ toolName }) => {
+        console.log(`Tool "${toolName}" interaction was cancelled.`);
+    });
     </script>
 </body>
 </html>

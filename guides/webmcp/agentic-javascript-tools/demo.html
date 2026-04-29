@@ -17,9 +17,8 @@
     <script>
         const status = document.getElementById('status');
 
-        if ('modelContext' in navigator && 'registerTool' in navigator.modelContext) {
-            status.textContent = 'WebMCP Imperative API is supported! Tool "calculate_sum" registered.';
-            
+            if ('modelContext' in navigator && 'registerTool' in navigator.modelContext) {
+
             // Mandatory: Use AbortController for lifecycle management
             const controller = new AbortController();
 
@@ -37,9 +36,10 @@
                 execute(input) {
                     console.log('Tool invoked with:', input);
                     return input.a + input.b;
-                },
-                annotations: { readOnlyHint: true }
+                }
             }, { signal: controller.signal });
+
+            status.textContent = 'WebMCP Imperative API is supported! Tool "calculate_sum" registered.';
 
             // Mandatory: Cleanup on page unload
             window.addEventListener('beforeunload', () => {
