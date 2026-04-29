@@ -32,6 +32,8 @@ export async function runCommand(command: string, args: string[], cwd?: string):
 export async function runGemini(prompt: string, workDir?: string): Promise<string> {
   const command = config.environment.geminiCliBin;
   const commandArgs = ['-p', prompt, '--yolo'];
+  
+  process.env.GEMINI_CLI_TRUST_WORKSPACE = 'true';
   return runCommand(command, commandArgs, workDir);
 }
 
