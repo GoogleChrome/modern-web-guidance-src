@@ -100,7 +100,7 @@ Use your file editing tools to make the changes.
   }
 }
 
-async function runGraderDev(guideDir: string): Promise<void> {
+async function runGdDev(guideDir: string): Promise<void> {
   console.log(`Running gd dev for ${guideDir}...`);
   try {
     await runCommand('node', ['bin/gd.ts', 'dev', guideDir]);
@@ -180,7 +180,7 @@ export async function handleFeedback(prNumber: string): Promise<void> {
     }
 
     for (const guideDir of guideDirs) {
-      await runGraderDev(guideDir);
+      await runGdDev(guideDir);
     }
 
     await pushChanges(prData, guideDirs);
