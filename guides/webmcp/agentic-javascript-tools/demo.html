@@ -28,8 +28,7 @@
   <script>
     const status = document.getElementById('status');
 
-      if ('modelContext' in navigator && 'registerTool' in navigator.modelContext) {
-
+    if ('modelContext' in navigator && 'registerTool' in navigator.modelContext) {
       // Mandatory: Use AbortController for lifecycle management
       const controller = new AbortController();
 
@@ -51,11 +50,11 @@
       }, { signal: controller.signal });
 
       status.textContent = 'WebMCP Imperative API is supported! Tool "calculate_sum" registered.';
-      } else {
-        status.textContent = 'WebMCP is not supported in this browser.';
-        status.style.color = 'red';
-      }
-    </script>
+    } else {
+      status.textContent = 'WebMCP is not supported in this browser.';
+      status.style.color = 'red';
+    }
+  </script>
 </body>
 
 </html>
