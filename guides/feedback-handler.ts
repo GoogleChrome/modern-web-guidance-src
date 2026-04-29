@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 import fs from 'node:fs';
 import { runCommand, runGemini } from './lib/utils.ts';
+import { parsePassRates } from './guide-gen.ts';
 
 async function fetchPRContext(prNumber: string): Promise<any> {
   console.log('Fetching PR context via gh CLI...');
@@ -120,11 +121,9 @@ async function maybeRunGdDev(guideDir: string): Promise<{unguided: string, guide
     const output = await runCommand('node', ['bin/gd.ts', 'dev', guideDir]);
     console.log(`✅ gd dev completed`);
     
-    const unguidedMatch = output.match(/Unguided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
-    const guidedMatch = output.match(/Guided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
-    
-    if (unguidedMatch && guidedMatch) {
-      return { unguided: unguidedMatch[1], guided: guidedMatch[1] };
+    const passRates = parsePassRates(output);
+    if (passRates) {
+      return passRates;
     }
     console.warn(`⚠️ Could not parse pass rates from gd dev output`);
     return null;
