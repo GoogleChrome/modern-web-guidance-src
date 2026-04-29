@@ -39,6 +39,12 @@ function deriveGuideDirectory(prData: any): string {
   return guideDir;
 }
 
+function deriveAffectedFiles(prData: any, guideDir: string): string[] {
+  return prData.files
+    .map((f: any) => f.path)
+    .filter((p: string) => p.startsWith(guideDir));
+}
+
 async function synthesizeFeedback(prNumber: string, prData: any): Promise<string> {
   console.log('Synthesizing feedback with Gemini...');
   const prompt = `
@@ -76,15 +82,19 @@ ${synthesis}
   console.log('✅ Plan posted');
 }
 
-async function applyFixesToSourceFiles(guideDir: string, synthesis: string): Promise<string | undefined> {
+async function applyFixesToSourceFiles(guideDir: string, synthesis: string, affectedFiles: string[]): Promise<string | undefined> {
   console.log('Applying fixes to source files...');
   const applyPrompt = `
-You are an AI coding agent. Your task is to apply the following fixes to the files in the guide directory \`${guideDir}\` to address PR feedback.
+You are an AI coding agent. A previous agent generated the files within \`${guideDir}\`.
+Your task is to apply the following fixes to these files to address PR feedback.
+
+Specific files modified in this PR:
+${affectedFiles.map(f => `- \`${f}\``).join('\n')}
 
 Synthesized Plan:
 ${synthesis}
 
-Please read the files in \`${guideDir}\` and update them (e.g., \`demo.html\`, \`guide.md\`) to implement the requested changes.
+Please read these files and update them to implement the requested changes.
 Focus on the source files. Do not run \`gd dev\` or try to calibrate the grader, that will be done in a separate step.
 Use your file editing tools to make the changes.
 `;
@@ -170,7 +180,8 @@ export async function handleFeedback(prNumber: string): Promise<void> {
   await postPlanToPR(prNumber, synthesis);
 
   if (guideDir) {
-    const fixesReport = await applyFixesToSourceFiles(guideDir, synthesis);
+    const affectedFiles = deriveAffectedFiles(prData, guideDir);
+    const fixesReport = await applyFixesToSourceFiles(guideDir, synthesis, affectedFiles);
     if (fixesReport) {
       await postFixesReportToPR(prNumber, fixesReport);
     }
