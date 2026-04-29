@@ -273,8 +273,15 @@ export function parseUseCasesResponse(response: string): UseCase[] {
   }
 }
 
-
-
+export function parsePassRates(output: string): {unguided: string, guided: string} | null {
+  const unguidedMatch = output.match(/Unguided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
+  const guidedMatch = output.match(/Guided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
+  
+  if (unguidedMatch && guidedMatch) {
+    return { unguided: unguidedMatch[1], guided: guidedMatch[1] };
+  }
+  return null;
+}
 
 export async function generateUseCases(featureId: string, reviewer: string = 'paulirish'): Promise<void> {
 
@@ -335,11 +342,9 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
       throw new Error(`devGuide failed for ${uc.slug}. See logs at ${logFile}`);
     }
 
-    const unguidedMatch = stdoutData.match(/Unguided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
-    const guidedMatch = stdoutData.match(/Guided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
-    
-    if (unguidedMatch && guidedMatch) {
-      useCasePassRates[uc.slug] = { unguided: unguidedMatch[1], guided: guidedMatch[1] };
+    const passRates = parsePassRates(stdoutData);
+    if (passRates) {
+      useCasePassRates[uc.slug] = passRates;
     } else {
       console.warn(`⚠️ Could not parse pass rates for ${uc.slug}`);
     }
