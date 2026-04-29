@@ -26,17 +26,19 @@ async function fetchPRContext(prNumber: string): Promise<any> {
   return prData;
 }
 
-function deriveGuideDirectory(prData: any): string {
-  const guideFile = prData.files.find((f: any) => f.path.startsWith('guides/'));
-  let guideDir = '';
-  if (guideFile) {
-    const parts = guideFile.path.split('/');
-    if (parts.length >= 3) {
-      guideDir = path.join(parts[0], parts[1], parts[2]);
-      console.log(`Affected guide directory: ${guideDir}`);
+function deriveGuideDirectories(prData: any): string[] {
+  const guideDirs = new Set<string>();
+  for (const file of prData.files) {
+    if (file.path.startsWith('guides/')) {
+      const parts = file.path.split('/');
+      if (parts.length >= 3) {
+        guideDirs.add(path.join(parts[0], parts[1], parts[2]));
+      }
     }
   }
-  return guideDir;
+  const dirs = Array.from(guideDirs);
+  console.log(`Affected guide directories: ${dirs.join(', ')}`);
+  return dirs;
 }
 
 function deriveAffectedFiles(prData: any, guideDir: string): string[] {
@@ -118,9 +120,11 @@ async function runGraderDev(guideDir: string): Promise<void> {
   }
 }
 
-async function pushChanges(prData: any, guideDir: string): Promise<void> {
+async function pushChanges(prData: any, guideDirs: string[]): Promise<void> {
   console.log('Pushing changes...');
-  await runCommand('git', ['add', guideDir]);
+  for (const dir of guideDirs) {
+    await runCommand('git', ['add', dir]);
+  }
   const stagedFiles = await runCommand('git', ['diff', '--cached', '--name-only']);
   if (!stagedFiles.trim()) {
     console.log('No changes to commit.');
@@ -174,21 +178,24 @@ export async function handleFeedback(prNumber: string): Promise<void> {
   console.log(`Processing feedback for PR #${prNumber}...`);
 
   const prData = await fetchPRContext(prNumber);
-  const guideDir = deriveGuideDirectory(prData);
+  const guideDirs = deriveGuideDirectories(prData);
 
   const synthesis = await synthesizeFeedback(prNumber, prData);
   await postPlanToPR(prNumber, synthesis);
 
-  if (guideDir) {
-    const affectedFiles = deriveAffectedFiles(prData, guideDir);
-    const fixesReport = await applyFixesToSourceFiles(guideDir, synthesis, affectedFiles);
-    if (fixesReport) {
-      await postFixesReportToPR(prNumber, fixesReport);
+  if (guideDirs.length > 0) {
+    for (const guideDir of guideDirs) {
+      console.log(`Processing guide directory: ${guideDir}`);
+      const affectedFiles = deriveAffectedFiles(prData, guideDir);
+      const fixesReport = await applyFixesToSourceFiles(guideDir, synthesis, affectedFiles);
+      if (fixesReport) {
+        await postFixesReportToPR(prNumber, fixesReport);
+      }
+      await runGraderDev(guideDir);
     }
-    await runGraderDev(guideDir);
-    await pushChanges(prData, guideDir);
+    await pushChanges(prData, guideDirs);
   } else {
-    console.log('No specific guide directory identified from PR files. Skipping automatic gd dev.');
+    console.log('No guide directories identified from PR files.');
   }
 }
 
