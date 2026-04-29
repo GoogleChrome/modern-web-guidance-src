@@ -78,6 +78,6 @@ describe('modern-web tools (Functional / Integration Tests)', () => {
 
     const result = await handlers['search_use_cases']({ query: 'tooltip' });
 
-    assert.ok(result.content[0].text.includes('tooltip') || Array.isArray(JSON.parse(result.content[0].text)));
+    assert.ok(result.content[0].text.includes('tooltip') && Array.isArray(JSON.parse(result.content[0].text)));
   });
 });
