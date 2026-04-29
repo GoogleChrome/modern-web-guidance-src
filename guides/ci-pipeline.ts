@@ -15,10 +15,9 @@ export function constructPRBody(featureId: string, useCases: UseCase[]): string 
 
   let body = `\`${featureId}\` has been researched, usecases identified, guides & artifacts generated. And adverserially reviewed. ${emoji}
 
-### Feature: ${feature.name}
-${feature.description}
+> **${feature.name}**: ${feature.description}
 
-### usecases
+### generated use cases
 
 `;
 
