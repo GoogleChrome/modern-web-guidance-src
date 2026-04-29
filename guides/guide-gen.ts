@@ -273,7 +273,12 @@ export function parseUseCasesResponse(response: string): UseCase[] {
   }
 }
 
-export function parsePassRates(output: string): {unguided: string, guided: string} | null {
+export interface PassRates {
+  unguided: string;
+  guided: string;
+}
+
+export function parsePassRates(output: string): PassRates | null {
   const unguidedMatch = output.match(/Unguided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
   const guidedMatch = output.match(/Guided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
   
@@ -314,7 +319,7 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
 
   cleanupIsolatedHome(path.dirname(workDir));
 
-  const useCasePassRates: Record<string, {unguided: string, guided: string}> = {};
+  const useCasePassRates: Record<string, PassRates> = {};
 
   const promises = useCases.map(async (uc) => {
     const outputDir = await scaffoldUseCase(uc, feature, guidesDir);

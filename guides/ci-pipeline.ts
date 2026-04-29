@@ -1,5 +1,5 @@
 import { runCommand } from './lib/utils.ts';
-import { lookupFeature } from './guide-gen.ts';
+import { lookupFeature, PassRates } from './guide-gen.ts';
 
 export interface UseCase {
   slug: string;
@@ -7,7 +7,7 @@ export interface UseCase {
   category: string;
 }
 
-export function constructPRBody(featureId: string, useCases: UseCase[], passRates?: Record<string, {unguided: string, guided: string}>): string {
+export function constructPRBody(featureId: string, useCases: UseCase[], passRates?: Record<string, PassRates>): string {
   const branch = `guidance-bot/${featureId}`;
   const repo = process.env.GITHUB_REPOSITORY || 'paulirish/guidance';
   const emoji  = [...'😀😁😂🤣😃😄😅😆😉😊😋😎😍🥰😘'].at(Math.floor(Math.random() * 15));
@@ -94,7 +94,7 @@ export async function createPullRequest(featureId: string, reviewer: string, bod
   console.log(`✅ PR created for ${branch}`);
 }
 
-export async function handleGitAndPR(featureId: string, reviewer: string, useCases: UseCase[], passRates?: Record<string, {unguided: string, guided: string}>): Promise<void> {
+export async function handleGitAndPR(featureId: string, reviewer: string, useCases: UseCase[], passRates?: Record<string, PassRates>): Promise<void> {
   if (process.env.GITHUB_ACTIONS) {
     const pushed = await commitAndPush(featureId);
     if (pushed) {

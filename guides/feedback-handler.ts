@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 import fs from 'node:fs';
 import { runCommand, runGemini } from './lib/utils.ts';
-import { parsePassRates } from './guide-gen.ts';
+import { parsePassRates, PassRates } from './guide-gen.ts';
 
 async function fetchPRContext(prNumber: string): Promise<any> {
   console.log('Fetching PR context via gh CLI...');
@@ -102,7 +102,7 @@ Use your file editing tools to make the changes.
   }
 }
 
-async function maybeRunGdDev(guideDir: string): Promise<{unguided: string, guided: string} | null> {
+async function maybeRunGdDev(guideDir: string): Promise<PassRates | null> {
   const modifiedFiles = await runCommand('git', ['diff', '--name-only', guideDir]);
   const modifiedFilesList = modifiedFiles.split('\n').filter(Boolean);
   
@@ -187,7 +187,7 @@ ${report}
   console.log('✅ Fixes report posted');
 }
 
-async function postPassRatesToPR(prNumber: string, guideDir: string, passRates: {unguided: string, guided: string}): Promise<void> {
+async function postPassRatesToPR(prNumber: string, guideDir: string, passRates: PassRates): Promise<void> {
   console.log('Posting pass rates to PR...');
   const body = `### Updated Pass Rates for \`${guideDir}\`
 - **Unguided**: ${passRates.unguided}%
