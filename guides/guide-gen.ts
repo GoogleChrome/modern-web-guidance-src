@@ -22,16 +22,13 @@ import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 import { guidesDir, rootDir } from '../lib/paths.ts';
 import { runCommand, runGemini, setupIsolatedWorkDir } from './lib/utils.ts';
 import {cleanupIsolatedHome} from '../harness/lib/agent-shared.ts';
+import type { UseCase } from './ci-pipeline.ts';
+import { handleGitAndPR } from './ci-pipeline.ts';
 
 type FeatureDataPlusMDN = FeatureData & { id: string; name: string; mdnUrls: string[]; specUrls: string[] };
 
 
 // ─── Feature lookup ──────────────────────────────────────────────────────────
-interface UseCase {
-  slug: string;
-  description: string;
-  category: string;
-}
 
 function lookupFeature(featureId: string): FeatureDataPlusMDN {
   const feature = (features as Record<string, typeof features[string]>)[featureId];
@@ -50,14 +47,8 @@ function getSkillContent(skillName: string): string {
     let content = fs.readFileSync(skillPath, 'utf8');
 
     if (skillName === 'project-use-cases') {
-      // Replace human research steps with automated instructions
-      content = content.replace(
-        /## Research and discovery[\s\S]*?## Identifying action-oriented tasks/,
-        `## Research and discovery
-In this automated pipeline, the research has already been conducted by a specialized model and saved to a file (e.g., \`features/<feature-id>/research.md\`). You must read that research report primarily to identify use cases, rather than attempting to run research tools yourself.
-
-## Identifying action-oriented tasks`
-      );
+      // Prepend automated instructions rather than brittle string replacement
+      content = `IMPORTANT AUTOMATION INSTRUCTION: In this automated pipeline, the research has already been conducted and saved to a file (\`features/<feature-id>/research.md\`). Read that report primarily to identify use cases, rather than running research tools yourself.\n\n` + content;
     }
     return content;
   } catch (err) {
@@ -102,7 +93,7 @@ ${researchSkill}
 Source URLs to read:
 ${sourcesList || '(No source URLs available — use your knowledge of this feature)'}
 
-Output your response as a JSON array of objects, with NO other text or markdown formatting blocks. Just the raw JSON array.
+Output your response as a JSON array of objects, wrapped in a \`\`\`json block.
 Each object must have:
 - slug: short kebab-case name of the use case (do NOT prefix with action verbs like create-, build-, add-).
 - description: A single short sentence describing the task.
@@ -207,6 +198,16 @@ Output ONLY the raw markdown content, with no outer code blocks or other text. D
 
 
 
+function extractCodeBlock(text: string, lang?: string): string {
+  const langPattern = lang ? lang + '\\s*' : '[a-z]*\\s*';
+  const regex = new RegExp(`\`\`\`${langPattern}\\n([\\s\\S]*?)\\n\`\`\``, 'i');
+  const match = text.match(regex);
+  if (match) {
+    return match[1].trim();
+  }
+  return text.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim();
+}
+
 async function scaffoldUseCase(uc: { slug: string; description: string; category: string }, feature: FeatureDataPlusMDN, guidesDir: string): Promise<string> {
   const workDir = setupIsolatedWorkDir('ghh-guide-gen');
   const outputDir = path.join(guidesDir, uc.category, uc.slug);
@@ -231,7 +232,7 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
     const guidePrompt = buildGuidePrompt(feature, feature.id, uc);
     const guideContent = await runGemini(guidePrompt, workDir);
 
-    const cleanGuideContent = guideContent.replace(/^```markdown\n?/, '').replace(/\n?```$/, '').trim();
+    const cleanGuideContent = extractCodeBlock(guideContent, 'markdown');
 
     fs.writeFileSync(path.join(outputDir, 'guide.md'), frontmatter + cleanGuideContent);
     console.log(`✅ Generated guide.md`);
@@ -241,7 +242,7 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
     const demoPrompt = buildDemoPrompt(feature, feature.id, uc);
     const demoHtml = await runGemini(demoPrompt, workDir);
 
-    const cleanHtml = demoHtml.replace(/^```html\n?/, '').replace(/\n?```$/, '').trim();
+    const cleanHtml = extractCodeBlock(demoHtml, 'html');
     fs.writeFileSync(path.join(outputDir, 'demo.html'), cleanHtml);
     console.log(`✅ Generated demo.html`);
 
@@ -250,7 +251,7 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
     const expectationsPrompt = buildExpectationsPrompt(feature, feature.id, uc);
     const expectationsMd = await runGemini(expectationsPrompt, workDir);
 
-    const cleanExpectations = expectationsMd.replace(/^```markdown\n?/, '').replace(/\n?```$/, '').trim();
+    const cleanExpectations = extractCodeBlock(expectationsMd, 'markdown');
     fs.writeFileSync(path.join(outputDir, 'expectations.md'), cleanExpectations);
     console.log(`✅ Generated expectations.md`);
 
@@ -263,52 +264,39 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
 
 function parseUseCasesResponse(response: string): UseCase[] {
   try {
-    const match = response.match(/\[\s*\{[\s\S]*\}\s*\]/);
-    if (!match) {
-      throw new Error("Could not find JSON array in response");
-    }
-    return JSON.parse(match[0]);
+    const jsonStr = extractCodeBlock(response, 'json');
+    return JSON.parse(jsonStr);
   } catch (err) {
+    // fallback if no code block or bad json
+    try {
+      const match = response.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      if (match) return JSON.parse(match[0]);
+    } catch (e) {
+      console.error(`Failed to parse JSON response. Raw response:\n${response}`);
+      throw err;
+    }
     console.error(`Failed to parse JSON response from Gemini. Raw response:\n${response}`);
     throw err;
   }
 }
 
-function constructPRBody(featureId: string, useCases: UseCase[]): string {
-  const branch = `guidance-bot/${featureId}`;
-  const repo = process.env.GITHUB_REPOSITORY || 'paulirish/guidance';
-  const emoji  = '😀😁😂🤣😃😄😅😆😉😊😋😎😍🥰😘'.split('').at(Math.floor(Math.random() * 16));
-
-  let body = `\`${featureId}\` has been researched, usecases identified, guides & artifacts generated. And adverserially reviewed. ${emoji}
-
-### usecases
-
-`;
-
-  for (const uc of useCases) {
-    const previewUrl = `https://github-preview-proxy-847799827363.us-central1.run.app/${repo}/${branch}/guides/${uc.category}/${uc.slug}/demo.html`;
-
-    body += `- \`${uc.slug}\` - ${uc.description}\n`;
-    body += `   - [demo](${previewUrl})\n`;
-  }
-
-  body += `\n---\n\nReviewer: Please ensure \`guide\` usecase is valid, and details are technically accurate, \`expectations\` criteria is accurate.  \n\n**Add a PR review** (after optionally leaving comments) to trigger a feedback iteration, where the agent will handle your feedback and push new commits.  (If you prefer, you can just push changes to the branch.)\n`;
-
-  return body;
-}
-
-
-
-async function handleGitAndPR(featureId: string, reviewer: string, useCases: UseCase[]): Promise<void> {
-  if (process.env.GITHUB_ACTIONS) {
-    const pushed = await commitAndPush(featureId);
-    if (pushed) {
-      const body = constructPRBody(featureId, useCases);
-      await createPullRequest(featureId, reviewer, body);
+async function asyncPool<T, R>(poolLimit: number, array: readonly T[], iteratorFn: (item: T) => Promise<R>): Promise<R[]> {
+  const ret: Promise<R>[] = [];
+  const executing: Promise<void>[] = [];
+  for (const item of array) {
+    const p = Promise.resolve().then(() => iteratorFn(item));
+    ret.push(p);
+    if (poolLimit <= array.length) {
+      const e = p.then(() => {
+        executing.splice(executing.indexOf(e), 1);
+      });
+      executing.push(e);
+      if (executing.length >= poolLimit) {
+        await Promise.race(executing);
+      }
     }
-  } else {
-    console.log('\nSkipping Git commit/push and PR creation (not running in GitHub Actions).');
   }
+  return Promise.all(ret);
 }
 
 // ─── Main generation function ────────────────────────────────────────────────
@@ -350,7 +338,7 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
   if (isCI) {
     console.log(`\nRunning pipelines in parallel with prefixed logs for ${useCases.length} use cases in CI...`);
 
-    const promises = useCases.map(async (uc) => {
+    await asyncPool(2, useCases, async (uc) => {
       const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
       console.log(`[Usecase: ${uc.slug}] Running calibration...`);
 
@@ -382,12 +370,10 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
         throw new Error(`devGuide failed for ${uc.slug}`);
       }
     });
-
-    await Promise.all(promises);
   } else {
     console.log(`\nRunning pipelines in parallel for ${useCases.length} use cases...`);
 
-    const promises = useCases.map(async (uc) => {
+    await asyncPool(2, useCases, async (uc) => {
       const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
       const logFile = path.join(outputDir, 'dev.log');
       console.log(`[Usecase: ${uc.slug}] Running calibration. Logs redirected to ${logFile}`);
@@ -409,8 +395,6 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
         throw new Error(`devGuide failed for ${uc.slug}. See logs at ${logFile}`);
       }
     });
-
-    await Promise.all(promises);
   }
 
   console.log(`\n🎉 All use cases scaffolded and processed!`);
@@ -418,67 +402,7 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
   await handleGitAndPR(featureId, reviewer, useCases);
 }
 
-async function commitAndPush(featureId: string): Promise<boolean> {
-  const branch = `guidance-bot/${featureId}`;
-  console.log(`Committing and pushing to ${branch}...`);
-
-  // Check if there are changes
-  const status = await runCommand('git', ['status', '--porcelain']);
-  if (!status.trim()) {
-    console.log('No changes to commit.');
-    return false;
-  }
-
-  // Create or switch to branch
-  try {
-    await runCommand('git', ['checkout', '-b', branch]);
-  } catch (err) {
-    await runCommand('git', ['checkout', branch]);
-  }
-
-  await runCommand('git', ['add', 'guides/']);
-  await runCommand('git', ['commit', '-m', `feat: scaffold guide for ${featureId}`]);
-
-  const token = process.env.APP_TOKEN || process.env.GH_TOKEN;
-  const repo = process.env.GITHUB_REPOSITORY;
-  const pushUrl = token && repo ? `https://x-access-token:${token}@github.com/${repo}.git` : 'origin';
-
-
-  await runCommand('git', ['push', pushUrl, `${branch}:${branch}`, '--force']);
-  console.log(`✅ Pushed to ${branch}`);
-  return true;
-
-}
-
-async function createPullRequest(featureId: string, reviewer: string, body: string): Promise<void> {
-  const branch = `guidance-bot/${featureId}`;
-  console.log(`Creating PR for ${branch}...`);
-
-  // Check if PR already exists
-  try {
-    const pr = await runCommand('gh', ['pr', 'view', branch]);
-    if (pr) {
-      console.log(`PR already exists for ${branch}. Skipping creation.`);
-      return;
-    }
-  } catch (err) {
-    // PR doesn't exist, continue
-  }
-
-  const title = `guides: ${featureId}`;
-
-  await runCommand('gh', [
-    'pr', 'create',
-    '--draft',
-    '--head', branch,
-    '--title', title,
-    '--body', body,
-    '--reviewer', reviewer
-  ]);
-
-  console.log(`✅ PR created for ${branch}`);
-}
-
+let bcdParsed = false;
 const tagToUrls = new Map<string, string[]>();
 function scanBcd(node: Identifier) {
   if (!node || typeof node !== 'object') return;
@@ -494,9 +418,12 @@ function scanBcd(node: Identifier) {
   }
   for (const k in node) if (k !== '__compat') scanBcd(node[k]);
 }
-Object.values(bcd).forEach(scanBcd);
 
 export function getMdnUrlsForFeature(featureId: string): string[] {
+  if (!bcdParsed) {
+    Object.values(bcd).forEach(scanBcd);
+    bcdParsed = true;
+  }
   return tagToUrls.get(featureId) || [];
 }
 
