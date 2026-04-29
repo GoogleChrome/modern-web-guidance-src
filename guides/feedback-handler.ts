@@ -84,14 +84,16 @@ ${synthesis}
   console.log('✅ Plan posted');
 }
 
-async function applyFixesToSourceFiles(guideDir: string, synthesis: string, affectedFiles: string[]): Promise<string | undefined> {
+async function applyFixesToSourceFiles(guideDirs: string[], synthesis: string, allAffectedFiles: string[]): Promise<string | undefined> {
   console.log('Applying fixes to source files...');
   const applyPrompt = `
-You are an AI coding agent. A previous agent generated the files within \`${guideDir}\`.
+You are an AI coding agent. A previous agent generated the files within the following directories:
+${guideDirs.map(d => `- \`${d}\``).join('\n')}
+
 Your task is to apply the following fixes to these files to address PR feedback.
 
 Specific files modified in this PR:
-${affectedFiles.map(f => `- \`${f}\``).join('\n')}
+${allAffectedFiles.map(f => `- \`${f}\``).join('\n')}
 
 Synthesized Plan:
 ${synthesis}
@@ -184,15 +186,20 @@ export async function handleFeedback(prNumber: string): Promise<void> {
   await postPlanToPR(prNumber, synthesis);
 
   if (guideDirs.length > 0) {
+    const allAffectedFiles: string[] = [];
     for (const guideDir of guideDirs) {
-      console.log(`Processing guide directory: ${guideDir}`);
-      const affectedFiles = deriveAffectedFiles(prData, guideDir);
-      const fixesReport = await applyFixesToSourceFiles(guideDir, synthesis, affectedFiles);
-      if (fixesReport) {
-        await postFixesReportToPR(prNumber, fixesReport);
-      }
+      allAffectedFiles.push(...deriveAffectedFiles(prData, guideDir));
+    }
+
+    const fixesReport = await applyFixesToSourceFiles(guideDirs, synthesis, allAffectedFiles);
+    if (fixesReport) {
+      await postFixesReportToPR(prNumber, fixesReport);
+    }
+
+    for (const guideDir of guideDirs) {
       await runGraderDev(guideDir);
     }
+    
     await pushChanges(prData, guideDirs);
   } else {
     console.log('No guide directories identified from PR files.');
