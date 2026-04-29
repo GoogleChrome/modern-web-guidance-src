@@ -38,7 +38,7 @@ function lookupFeature(featureId: string): FeatureDataPlusMDN {
   return {  ...feature, id: featureId,  mdnUrls, specUrls };
 }
 
-function getSkillContent(skillName: string): string {
+export function getSkillContent(skillName: string): string {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
   const skillPath = path.join(currentDir, '../.agents/skills', skillName, 'SKILL.md');
   try {
