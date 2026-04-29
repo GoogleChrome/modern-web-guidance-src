@@ -62,10 +62,10 @@ function buildUseCasesPrompt(feature: FeatureDataPlusMDN): string {
   const sourcesList = [
     ...feature.mdnUrls.map(u => `- MDN: ${u}`),
     ...feature.specUrls.map(u => `- Spec: ${u}`),
-  ].join('\n');
+  ].join('\n')  || '(No source URLs available — use your knowledge of this feature)';
 
   const useCasesSkill = getSkillContent('project-use-cases');
-  
+
 
   const researchPath = path.resolve('features', feature.id, 'research.md');
   let researchContent = '';
@@ -85,10 +85,8 @@ Follow the guidelines in these skill files:
 === project-use-cases ===
 ${useCasesSkill}
 
-
-
-Source URLs to read:
-${sourcesList || '(No source URLs available — use your knowledge of this feature)'}
+Source URLs:
+${sourcesList}
 
 Output your response as a JSON array of objects, wrapped in a \`\`\`json block.
 Each object must have:
