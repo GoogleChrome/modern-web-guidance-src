@@ -107,24 +107,7 @@ export function getBaselineStatus(featureId: string): BaselineStatus | undefined
  * @param featureId - The ID of the feature to check
  * @returns true if the feature meets the target criteria
  */
-export function isValidTarget(target: string): boolean {
-  const normalizedTarget = target.toLowerCase();
-  return (
-    normalizedTarget.includes('limited') ||
-    /^baseline \d{4}$/i.test(target) ||
-    /^baseline widely available on \d{4}-\d{2}-\d{2}$/i.test(target) ||
-    normalizedTarget.includes('widely') ||
-    normalizedTarget.includes('newly') ||
-    normalizedTarget === 'baseline' ||
-    normalizedTarget === 'baseline newly available'
-  );
-}
-
 export function checkBaseline(target: string, featureId: string): boolean {
-  if (!isValidTarget(target)) {
-    throw new Error(`Invalid target '${target}'.`);
-  }
-  
   const normalizedTarget = target.toLowerCase();
 
   // 1. Handle "Limited" - matches everything
@@ -167,7 +150,7 @@ export function checkBaseline(target: string, featureId: string): boolean {
     return baselineStatus.baseline === 'low' || baselineStatus.baseline === 'high';
   }
 
-  throw new Error(`Invalid target '${target}'.`);
+  return false;
 }
 
 /**
@@ -271,7 +254,7 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
   const baselineStatus = getFeatureStatus(featureId);
   if (!baselineStatus) return;
 
-  const subject = feature.kind === 'feature' ? `${feature.name} (${featureId})` : featureId;
+  const subject = feature.kind === 'feature' ? feature.name : featureId;
 
   if (baselineStatus.baseline === false) {
     return formatStatusMessage(subject, { baseline: false });

@@ -1,9 +1,7 @@
 #!/usr/bin/env node --experimental-strip-types
 
 import { parseArgs } from "util";
-
 import { retrieveUseCase } from "../lib/retrieve.ts";
-import { getFeatureStatus, checkBaseline } from "../lib/baseline.ts";
 
 const { values } = parseArgs({
   args: process.argv.slice(2),
@@ -11,12 +9,6 @@ const { values } = parseArgs({
     search: { type: "string", short: "s" },
     retrieve: { type: "string", short: "r" },
     help: { type: "boolean", short: "h" },
-    target: { type: "string" },
-    feature: { type: "string" },
-    'baseline-lookup': { type: "boolean" },
-    'baseline-satisfies': { type: "boolean" },
-    'baseline-search': { type: "string" },
-    limit: { type: "string", short: "l" },
   },
   allowPositionals: false,
 });
@@ -28,10 +20,6 @@ Usage: modern-web [options]
 Options:
   -s, --search <query>          Search use cases by query
   -r, --retrieve <ids>          Retrieve use case(s) by ID(s), comma-separated
-  --baseline-lookup             Look up Baseline status (requires --feature)
-  --baseline-satisfies          Check if feature meets target (requires --feature and --target)
-  --baseline-search <query>     Search web features by description
-  -l, --limit <number>          Limit the number of results (default: 5)
   -h, --help                    Show this help
 `);
 }
@@ -40,41 +28,6 @@ async function main() {
   if (values.help) {
     printUsage();
     process.exit(0);
-  }
-
-  const limit = values.limit ? parseInt(values.limit, 10) : undefined;
-
-  if (values['baseline-lookup']) {
-    const featureId = values.feature;
-    if (!featureId) {
-      console.error("--feature required for --baseline-lookup.");
-      process.exit(1);
-    }
-    const status = getFeatureStatus(featureId);
-    if (!status) {
-      console.error(`Feature '${featureId}' not found.`);
-      process.exit(1);
-    }
-    console.log(JSON.stringify(status, null, 2));
-    process.exit(0);
-  }
-
-  if (values['baseline-satisfies']) {
-    const target = values.target;
-    const featureId = values.feature;
-    if (!target || !featureId) {
-      console.error("--target and --feature required for --baseline-satisfies.");
-      process.exit(1);
-    }
-    
-    try {
-      const result = checkBaseline(target, featureId);
-      console.log(JSON.stringify({ result }, null, 2));
-      process.exit(0);
-    } catch (error: any) {
-      console.error(error.message);
-      process.exit(1);
-    }
   }
 
   if (values.search) {
@@ -92,15 +45,6 @@ async function main() {
       }
     } catch (error) {
       console.error("Search failed:", error);
-      process.exit(1);
-    }
-  } else if (values['baseline-search']) {
-    try {
-      const { searchBaseline } = await import("../lib/search.ts");
-      const results = await searchBaseline(values['baseline-search'], limit);
-      console.log(JSON.stringify(results, null, 2));
-    } catch (error) {
-      console.error("Baseline search failed:", error);
       process.exit(1);
     }
   } else if (values.retrieve) {

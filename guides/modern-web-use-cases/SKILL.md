@@ -61,67 +61,40 @@ Once you have a relevant `id` from the search results, call this script using th
 node <modern-web-use-cases-directory>/modern-web.mjs --retrieve "<id>"
 ```
 
-
 **Example Output**:
 `The markdown content of the guide describing implementation steps...`
 
-### Step 4. Verify Baseline Status
+### Step 4. Verify Baseline Satisfaction
 
-After retrieving the guide, check if the features it recommends satisfy your project's Baseline target.
+Compare the project's Baseline target (from Step 1) with the Baseline status of **all features** recommended in the guide (typically found in the **Fallback strategies** section).
 
-```sh
-modern-web --baseline-lookup --feature <feature-id>
-modern-web --baseline-satisfies --target <target> --feature <feature-id>
-```
+#### Project Target Types
+Project targets can take several forms:
+- **Relative**: `widely available`, `newly available`, `limited availability`
+- **Yearly**: `baseline 2024` (Available by end of 2024)
+- **Date-specific**: `baseline widely available on 2027-01-01` (Newly available 30 months prior)
 
-If needed, perform a semantic search to find features by their descriptions:
+#### Baseline Status Types
+Features are labeled in the guide as:
+- **Widely Available**: High baseline status.
+- **Newly Available since YYYY-MM-DD**: Low baseline status with a specific "interoperable" date.
+- **Limited Availability**: Not yet interoperable.
 
-```sh
-modern-web --baseline-search "<query>" [--limit <number>]
-```
+#### Satisfaction Matrix
 
-### Decision Matrix for Fallbacks
+| Project Target | Widely Available | Newly Available | Limited Availability |
+| :--- | :---: | :---: | :---: |
+| **Widely Available** | ✅ | ❌ | ❌ |
+| **Newly Available** | ✅ | ✅ | ❌ |
+| **Limited Availability** | ✅ | ✅ | ✅ |
+| **Baseline YYYY** | ✅ | If Low Date ≤ YYYY-12-31 | ❌ |
+| **Widely on YYYY-MM-DD** | ✅ | If Low Date ≤ (Target Date - 30 months) | ❌ |
 
-Use this decision matrix to determine the action to take based on target satisfaction and fallback availability.
+- **✅ Satisfied**: The feature is safe to use as-is.
+- **❌ Not Satisfied**: You must implement a fallback or avoid the feature as described in the guide.
 
-To determine whether to automatically add Baseline TODOs, check `"enable_baseline_todos"` in `baseline.config.json`. If set to `false`, do not add `TODO(baseline/...)` comments. The default value is `true`.
-
-When adding `TODO(baseline/...)` comments, place them as close as possible to where the final implementation will live and/or where existing implementations will need to change.
-
-| Target Satisfied | Fallback Required | TODOs Enabled | Action | Rationale |
-| :---: | :---: | :---: | --- | --- |
-| **Yes** | N/A | N/A | **Skip Fallback** | Feature is safe to use as-is per project configuration. Don't add redundant code. |
-| **No** | **Yes** | N/A | **Progressive Enhancement** | Use feature detection to use the modern feature if supported by the browser, otherwise load the fallback/polyfill. |
-| **No** | **No** | **Yes** | **Avoid Feature & Add TODO** | Do not use the feature. Leave a `// TODO(baseline/feature-id)` in the source code to adopt it later. |
-| **No** | **No** | **No** | **Avoid Feature** | Do not use the feature. Do not add a TODO comment. |
-
-### Implementation Patterns
-
-#### Target is NOT Satisfied (Use Fallback)
-```javascript
-if ('fooBar' in window) {
-  // Use modern API where it's available
-  window.fooBar();
-} else {
-  // Polyfill or fallback strategy as defined in the guide
-  // TODO(baseline/feature-id): Remove fallback when target satisfies baseline
-  guideFallback();
-}
-```
-
-#### Target is NOT Satisfied (No Fallback Available)
-```javascript
-// Current target does not support 'feature-id' and no fallback is available.
-// TODO(baseline/feature-id): Use modern API when target satisfies baseline
-legacyApproach();
-```
-
-#### Target is Satisfied (Skip Fallback)
-```javascript
-// Feature is safe for target
-// Rely on native implementation directly
-window.someFeature();
-```
+> [!TIP]
+> If you are unsure whether a feature satisfies the Baseline target, always err on the side of caution and use the fallback strategy.
 
 ## Guidelines
 
