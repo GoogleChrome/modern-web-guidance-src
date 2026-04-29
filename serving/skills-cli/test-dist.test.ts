@@ -62,17 +62,17 @@ test('Gemini and VS Code manifests', async () => {
   const pkgJson = JSON.parse(pkgJsonRaw);
   assert.strictEqual(pkgJson.publisher, 'GoogleChrome');
   assert.ok(pkgJson.contributes?.chatSkills, 'Must contribute chatSkills');
-  assert.strictEqual(pkgJson.contributes.chatSkills[0].path, './skills/modern-web-use-cases/SKILL.md');
+  assert.strictEqual(pkgJson.contributes.chatSkills[0].path, './skills/modern-web/SKILL.md');
 });
 
 test('SKILL.md validations', async () => {
-  const skillPath = path.join(DIST_DIR, 'skills/modern-web-use-cases/SKILL.md');
-  await assert.doesNotReject(fs.access(skillPath), `Missing SKILL.md in modern-web-use-cases`);
+  const skillPath = path.join(DIST_DIR, 'skills/modern-web/SKILL.md');
+  await assert.doesNotReject(fs.access(skillPath), `Missing SKILL.md in modern-web`);
 
   const content = await fs.readFile(skillPath, 'utf8');
   const { data } = matter(content);
   assert.ok(data.name, `Missing 'name' field in frontmatter`);
-  assert.strictEqual(data.name, 'modern-web-use-cases', `Frontmatter name must match folder name`);
+  assert.strictEqual(data.name, 'modern-web', `Frontmatter name must match folder name`);
 });
 
 test('Generic skill validations (forms, performance)', async () => {
@@ -124,7 +124,7 @@ test('README dynamic Skill Coverage content', async () => {
 });
 
 test('modern-web CLI search and retrieve', async () => {
-  const binaryPath = path.join(DIST_DIR, 'skills/modern-web-use-cases/modern-web.mjs');
+  const binaryPath = path.join(DIST_DIR, 'skills/modern-web/modern-web.mjs');
   
   // 1. Validate search
   const searchOut = execSync(`node "${binaryPath}" --search "address form"`, { encoding: 'utf8' });
