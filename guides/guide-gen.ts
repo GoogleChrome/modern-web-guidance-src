@@ -15,33 +15,32 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { features } from 'web-features';
 // Workaround for https://github.com/web-platform-dx/web-features/issues/1980
-type FeatureData = Extract<typeof features[string], { kind: 'feature' }>;
+import type { FeatureData } from '../node_modules/web-features/types.quicktype.d.ts';
+import type { Identifier } from '@mdn/browser-compat-data';
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
+
 import { guidesDir, rootDir } from '../lib/paths.ts';
-
 import { runCommand, runGemini, setupIsolatedWorkDir } from './lib/utils.ts';
-import {
-  cleanupIsolatedHome,
-} from '../harness/lib/agent-shared.ts';
+import {cleanupIsolatedHome} from '../harness/lib/agent-shared.ts';
 
-
+type FeatureDataPlusMDN = FeatureData & { id: string; name: string; mdnUrls: string[]; specUrls: string[] };
 
 
 // ─── Feature lookup ──────────────────────────────────────────────────────────
-
-
 interface UseCase {
   slug: string;
   description: string;
   category: string;
 }
 
-function lookupFeature(featureId: string): FeatureData {
+function lookupFeature(featureId: string): FeatureDataPlusMDN {
   const feature = (features as Record<string, typeof features[string]>)[featureId];
   if (!feature || feature.kind !== 'feature') {
     throw new Error(`Feature "${featureId}" not found in web-features package.`);
   }
-  return feature;
+  const mdnUrls = getMdnUrlsForFeature(featureId);
+  const specUrls = feature.spec || [];
+  return {  ...feature, id: featureId,  mdnUrls, specUrls };
 }
 
 function getSkillContent(skillName: string): string {
@@ -69,7 +68,7 @@ In this automated pipeline, the research has already been conducted by a special
 
 // ─── Prompt construction ─────────────────────────────────────────────────────
 
-function buildUseCasesPrompt(feature: FeatureInfo): string {
+function buildUseCasesPrompt(feature: FeatureDataPlusMDN): string {
 
   const sourcesList = [
     ...feature.mdnUrls.map(u => `- MDN: ${u}`),
@@ -208,7 +207,7 @@ Output ONLY the raw markdown content, with no outer code blocks or other text. D
 
 
 
-async function scaffoldUseCase(uc: { slug: string; description: string; category: string }, feature: FeatureData, featureId: string, mdnUrls: string[], guidesDir: string): Promise<string> {
+async function scaffoldUseCase(uc: { slug: string; description: string; category: string }, feature: FeatureDataPlusMDN, guidesDir: string): Promise<string> {
   const workDir = setupIsolatedWorkDir('ghh-guide-gen');
   const outputDir = path.join(guidesDir, uc.category, uc.slug);
   console.log(`\nScaffolding ${uc.slug} in ${outputDir}...`);
@@ -221,15 +220,15 @@ async function scaffoldUseCase(uc: { slug: string; description: string; category
 name: ${uc.slug}
 description: ${uc.description}
 web-feature-ids:
-  - ${featureId}
+  - ${feature.id}
 sources:
-${mdnUrls.map(u => `  - ${u}`).join('\n')}
+${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
 ---
 
 `;
 
     console.log(`Generating content for guide.md for ${uc.slug}...`);
-    const guidePrompt = buildGuidePrompt(feature, featureId, uc);
+    const guidePrompt = buildGuidePrompt(feature, feature.id, uc);
     const guideContent = await runGemini(guidePrompt, workDir);
 
     const cleanGuideContent = guideContent.replace(/^```markdown\n?/, '').replace(/\n?```$/, '').trim();
@@ -239,7 +238,7 @@ ${mdnUrls.map(u => `  - ${u}`).join('\n')}
 
     // 2. Generate demo.html
     console.log(`Generating demo.html for ${uc.slug}...`);
-    const demoPrompt = buildDemoPrompt(feature, featureId, uc);
+    const demoPrompt = buildDemoPrompt(feature, feature.id, uc);
     const demoHtml = await runGemini(demoPrompt, workDir);
 
     const cleanHtml = demoHtml.replace(/^```html\n?/, '').replace(/\n?```$/, '').trim();
@@ -248,7 +247,7 @@ ${mdnUrls.map(u => `  - ${u}`).join('\n')}
 
     // 3. Generate expectations.md
     console.log(`Generating expectations.md for ${uc.slug}...`);
-    const expectationsPrompt = buildExpectationsPrompt(feature, featureId, uc);
+    const expectationsPrompt = buildExpectationsPrompt(feature, feature.id, uc);
     const expectationsMd = await runGemini(expectationsPrompt, workDir);
 
     const cleanExpectations = expectationsMd.replace(/^```markdown\n?/, '').replace(/\n?```$/, '').trim();
@@ -278,7 +277,7 @@ function parseUseCasesResponse(response: string): UseCase[] {
 function constructPRBody(featureId: string, useCases: UseCase[]): string {
   const branch = `guidance-bot/${featureId}`;
   const repo = process.env.GITHUB_REPOSITORY || 'paulirish/guidance';
-  const emoji  = '😀 😁 😂 🤣 😃 😄 😅 😆 😉 😊 😋 😎 😍 🥰 😘'.split('').at(Math.floor(Math.random() * 16));
+  const emoji  = '😀😁😂🤣😃😄😅😆😉😊😋😎😍🥰😘'.split('').at(Math.floor(Math.random() * 16));
 
   let body = `\`${featureId}\` has been researched, usecases identified, guides & artifacts generated. And adverserially reviewed. ${emoji}
 
@@ -331,9 +330,8 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
     console.log(`Found existing research file at ${researchPath}. Skipping deep research.`);
   }
 
-  const mdnUrls = getMdnUrlsForFeature(featureId);
   const workDir = setupIsolatedWorkDir('ghh-guide-gen');
-  const prompt = buildUseCasesPrompt(feature, featureId, mdnUrls);
+  const prompt = buildUseCasesPrompt(feature);
 
   console.log(`Asking Gemini to identify use cases...`);
   const response = await runGemini(prompt, workDir);
@@ -353,7 +351,7 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
     console.log(`\nRunning pipelines in parallel with prefixed logs for ${useCases.length} use cases in CI...`);
 
     const promises = useCases.map(async (uc) => {
-      const outputDir = await scaffoldUseCase(uc, feature, featureId, mdnUrls, guidesDir);
+      const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
       console.log(`[Usecase: ${uc.slug}] Running calibration...`);
 
       const child = spawn('node', ['--experimental-strip-types', 'guides/dev-guide.ts', outputDir, '--no-test'], {
@@ -390,7 +388,7 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
     console.log(`\nRunning pipelines in parallel for ${useCases.length} use cases...`);
 
     const promises = useCases.map(async (uc) => {
-      const outputDir = await scaffoldUseCase(uc, feature, featureId, mdnUrls, guidesDir);
+      const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
       const logFile = path.join(outputDir, 'dev.log');
       console.log(`[Usecase: ${uc.slug}] Running calibration. Logs redirected to ${logFile}`);
 
@@ -482,7 +480,6 @@ async function createPullRequest(featureId: string, reviewer: string, body: stri
 }
 
 const tagToUrls = new Map<string, string[]>();
-
 function scanBcd(node: Identifier) {
   if (!node || typeof node !== 'object') return;
   const { mdn_url, tags } = node.__compat || {};
@@ -497,9 +494,7 @@ function scanBcd(node: Identifier) {
   }
   for (const k in node) if (k !== '__compat') scanBcd(node[k]);
 }
-
-// Build the map once on startup
-scanBcd(bcd as unknown as Identifier);
+Object.values(bcd).forEach(scanBcd);
 
 export function getMdnUrlsForFeature(featureId: string): string[] {
   return tagToUrls.get(featureId) || [];
