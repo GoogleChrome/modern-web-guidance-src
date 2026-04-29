@@ -9,7 +9,7 @@ export interface UseCase {
 export function constructPRBody(featureId: string, useCases: UseCase[]): string {
   const branch = `guidance-bot/${featureId}`;
   const repo = process.env.GITHUB_REPOSITORY || 'paulirish/guidance';
-  const emoji  = '😀😁😂🤣😃😄😅😆😉😊😋😎😍🥰😘'.split('').at(Math.floor(Math.random() * 16));
+  const emoji  = [...'😀😁😂🤣😃😄😅😆😉😊😋😎😍🥰😘'].at(Math.floor(Math.random() * 15));
 
   let body = `\`${featureId}\` has been researched, usecases identified, guides & artifacts generated. And adverserially reviewed. ${emoji}
 
