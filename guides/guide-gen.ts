@@ -76,11 +76,11 @@ function buildUseCasesPrompt(feature: FeatureDataPlusMDN): string {
 
   return `
 You are researching the web platform feature "${feature.name}" (ID: ${feature.id}).
-Your task is to identify 2-5 distinct developer use cases for this feature.
+Your task is to identify 1-3 distinct developer use cases for this feature.
 
 ${researchContent ? `Here is the deep research report for this feature to read primarily:\n===\n${researchContent}\n===\n` : ''}
 
-Follow the guidelines in these skill files:
+Follow the guidelines:
 
 === project-use-cases ===
 ${useCasesSkill}
@@ -94,8 +94,7 @@ Each object must have:
 - description: A single short sentence describing the task.
 - category: one of 'performance', 'accessibility', 'user-experience', 'security', or 'forms'.
 
-IMPORTANT: If the feature is a low-level utility (like a new Promise method or a general object cloning function) that primarily acts as a drop-in replacement for legacy patterns, avoid forcing it into multiple outcome-oriented use cases. Instead, generate a single 'Fundamental Guide' (e.g., 'Deep cloning complex objects') or place it in a top-level discipline skill file. In this case, return only 1 use case representing that fundamental guide.
-
+IMPORTANT: If the feature is a low-level utility (like a new Promise method or a general object cloning function) that primarily acts as a drop-in replacement for legacy patterns, avoid forcing it into multiple outcome-oriented use cases. Instead, generate a single 'Fundamental Guide' (e.g., 'Deep cloning complex objects').
 
 Example output:
 [
