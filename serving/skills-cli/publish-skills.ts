@@ -81,7 +81,6 @@ async function main() {
     console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
     
     await ghpages.publish(publishCliDir, {
-      src: ['**/*'], // No longer vendor node_modules! Users will install via npx -y!
       branch: 'main',
       repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
       dotfiles: true,
