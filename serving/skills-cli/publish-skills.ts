@@ -42,7 +42,28 @@ export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<st
   return newVersion;
 }
 
+async function publishToDistributionRepo(publishCliDir: string, newVersion: string, releaseNotes: string) {
+  console.log(`Creating GitHub release v${newVersion} on GoogleChrome/modern-web-guidance...`);
+  console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
 
+  await ghpages.publish(publishCliDir, {
+    branch: 'main',
+    repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
+    dotfiles: true,
+    message: `Release v${newVersion}`,
+    tag: `v${newVersion}`,
+    remove: "**/*"
+  });
+
+  // Create GitHub release on the distribution repo.
+  execSync(`gh release create v${newVersion} -R GoogleChrome/modern-web-guidance --title "v${newVersion}" --notes -`, {
+    input: releaseNotes,
+    stdio: ['pipe', 'inherit', 'inherit']
+  });
+  console.log(`✅ GitHub release v${newVersion} created successfully!`);
+
+  console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance!`);
+}
 
 async function main() {
   const newVersion = await getNextVersion();
@@ -78,19 +99,12 @@ async function main() {
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
     console.log(`   env FULL=1 TEST_REPORTER=spec pnpm test`);
 
-    console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
-    
-    await ghpages.publish(publishCliDir, {
-      branch: 'main',
-      repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
-      dotfiles: true,
-      message: `Release v${newVersion}`,
-      tag: `v${newVersion}`,
-      remove: "**/*"
-    });
-
-
-    console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance!`);
+    const releaseNotes = `### Summary
+- Use cases: ${useCasesCount}
+- Features: ${featuresCount}
+- Skills: ${skillsCount}
+${skillNames.map(skill => `  - ${skill}`).join('\n')}`.trim();
+    await publishToDistributionRepo(publishCliDir, newVersion, releaseNotes);
 
     // Create and push tag on current repo
     console.log(`Creating and pushing Git tag v${newVersion}...`);
