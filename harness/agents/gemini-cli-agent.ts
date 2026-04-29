@@ -228,7 +228,7 @@ export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   return Array.from(new Set(toolsUsed));
 }
 
-export function parseGeminiStreamOutput(outputStr: string, skillName: string = 'modern-web-use-cases'): {
+export function parseGeminiStreamOutput(outputStr: string, skillName: string = 'modern-web'): {
     skillActivated: boolean;
     searchCalled: boolean;
     retrieveCalled: boolean;

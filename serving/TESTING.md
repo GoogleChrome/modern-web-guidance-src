@@ -27,7 +27,7 @@ claude plugin uninstall modern-web-guidance@googlechrome
 gemini extensions uninstall https://github.com/GoogleChrome/modern-web-guidance
 
 # Universal Skills CLI
-DISABLE_TELEMETRY=1 npx -y skills remove --global modern-web-use-cases
+DISABLE_TELEMETRY=1 npx -y skills remove --global modern-web
 ```
 
 ### 2. Verification Install Sequence
@@ -71,5 +71,5 @@ claude # and then
 gemini extensions uninstall https://github.com/GoogleChrome/skills-alpha
 
 # Universal Skills CLI
-DISABLE_TELEMETRY=1 npx -y skills remove --global modern-web-use-cases
+DISABLE_TELEMETRY=1 npx -y skills remove --global modern-web
 ```
