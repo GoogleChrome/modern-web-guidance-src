@@ -28,7 +28,7 @@ import { handleGitAndPR } from './ci-pipeline.ts';
 type FeatureDataPlusMDN = FeatureData & { id: string; name: string; mdnUrls: string[]; specUrls: string[] };
 
 
-function lookupFeature(featureId: string): FeatureDataPlusMDN {
+export function lookupFeature(featureId: string): FeatureDataPlusMDN {
   const feature = (features as Record<string, typeof features[string]>)[featureId];
   if (!feature || feature.kind !== 'feature') {
     throw new Error(`Feature "${featureId}" not found in web-features package.`);
@@ -255,7 +255,7 @@ function extractCodeBlock(text: string, lang?: string): string {
   return text.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim();
 }
 
-function parseUseCasesResponse(response: string): UseCase[] {
+export function parseUseCasesResponse(response: string): UseCase[] {
   try {
     const jsonStr = extractCodeBlock(response, 'json');
     return JSON.parse(jsonStr);
