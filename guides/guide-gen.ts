@@ -28,8 +28,6 @@ import { handleGitAndPR } from './ci-pipeline.ts';
 type FeatureDataPlusMDN = FeatureData & { id: string; name: string; mdnUrls: string[]; specUrls: string[] };
 
 
-// ─── Feature lookup ──────────────────────────────────────────────────────────
-
 function lookupFeature(featureId: string): FeatureDataPlusMDN {
   const feature = (features as Record<string, typeof features[string]>)[featureId];
   if (!feature || feature.kind !== 'feature') {
@@ -113,10 +111,10 @@ Example output:
 `.trim();
 }
 
-function buildExpectationsPrompt(feature: FeatureData, featureId: string, useCase: { slug: string; description: string }): string {
+function buildExpectationsPrompt(feature: FeatureDataPlusMDN, useCase: { slug: string; description: string }): string {
   return `
 You are generating structured expectations for the use case: "${useCase.description}".
-This use case relies on the feature "${feature.name}" (ID: ${featureId}).
+This use case relies on the feature "${feature.name}" (ID: ${feature.id}).
 
 Your task is to create an \`expectations.md\` file that defines how to verify a solution for this use case.
 
@@ -142,11 +140,11 @@ Output ONLY the raw markdown content, with no outer code blocks or other text.
 }
 
 
-function buildDemoPrompt(feature: FeatureData, featureId: string, useCase: { slug: string; description: string }): string {
+function buildDemoPrompt(feature: FeatureDataPlusMDN, useCase: { slug: string; description: string }): string {
 
   return `
 You are generating a minimal demo for the use case: "${useCase.description}".
-This use case relies on the feature "${feature.name}" (ID: ${featureId}).
+This use case relies on the feature "${feature.name}" (ID: ${feature.id}).
 
 Your task is to create a \`demo.html\` file that is a minimal, self-contained reference implementation of this use case.
 
@@ -163,12 +161,12 @@ Output ONLY the raw HTML content, with no markdown code blocks or other text.
 `.trim();
 }
 
-function buildGuidePrompt(feature: FeatureData, featureId: string, useCase: { slug: string; description: string }): string {
+function buildGuidePrompt(feature: FeatureDataPlusMDN, useCase: { slug: string; description: string }): string {
   const guideSkill = getSkillContent('project-guides');
 
   return `
 You are generating a guide for the use case: "${useCase.description}".
-This use case relies on the feature "${feature.name}" (ID: ${featureId}).
+This use case relies on the feature "${feature.name}" (ID: ${feature.id}).
 
 Your task is to create the content for a \`guide.md\` file (starting from the H1 title).
 
@@ -190,24 +188,7 @@ Output ONLY the raw markdown content, with no outer code blocks or other text. D
 
 
 
-
-// ─── Isolated work dir setup ─────────────────────────────────────────────────
-
-
-
-
-
-
-function extractCodeBlock(text: string, lang?: string): string {
-  const langPattern = lang ? lang + '\\s*' : '[a-z]*\\s*';
-  const regex = new RegExp(`\`\`\`${langPattern}\\n([\\s\\S]*?)\\n\`\`\``, 'i');
-  const match = text.match(regex);
-  if (match) {
-    return match[1].trim();
-  }
-  return text.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim();
-}
-
+/** usecase ==> guide + expectations + demo */
 async function scaffoldUseCase(uc: { slug: string; description: string; category: string }, feature: FeatureDataPlusMDN, guidesDir: string): Promise<string> {
   const workDir = setupIsolatedWorkDir('ghh-guide-gen');
   const outputDir = path.join(guidesDir, uc.category, uc.slug);
@@ -229,7 +210,7 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
 `;
 
     console.log(`Generating content for guide.md for ${uc.slug}...`);
-    const guidePrompt = buildGuidePrompt(feature, feature.id, uc);
+    const guidePrompt = buildGuidePrompt(feature, uc);
     const guideContent = await runGemini(guidePrompt, workDir);
 
     const cleanGuideContent = extractCodeBlock(guideContent, 'markdown');
@@ -239,7 +220,7 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
 
     // 2. Generate demo.html
     console.log(`Generating demo.html for ${uc.slug}...`);
-    const demoPrompt = buildDemoPrompt(feature, feature.id, uc);
+    const demoPrompt = buildDemoPrompt(feature, uc);
     const demoHtml = await runGemini(demoPrompt, workDir);
 
     const cleanHtml = extractCodeBlock(demoHtml, 'html');
@@ -248,7 +229,7 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
 
     // 3. Generate expectations.md
     console.log(`Generating expectations.md for ${uc.slug}...`);
-    const expectationsPrompt = buildExpectationsPrompt(feature, feature.id, uc);
+    const expectationsPrompt = buildExpectationsPrompt(feature, uc);
     const expectationsMd = await runGemini(expectationsPrompt, workDir);
 
     const cleanExpectations = extractCodeBlock(expectationsMd, 'markdown');
@@ -260,6 +241,17 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
   }
 
   return outputDir;
+}
+
+
+function extractCodeBlock(text: string, lang?: string): string {
+  const langPattern = lang ? lang + '\\s*' : '[a-z]*\\s*';
+  const regex = new RegExp(`\`\`\`${langPattern}\\n([\\s\\S]*?)\\n\`\`\``, 'i');
+  const match = text.match(regex);
+  if (match) {
+    return match[1].trim();
+  }
+  return text.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim();
 }
 
 function parseUseCasesResponse(response: string): UseCase[] {
