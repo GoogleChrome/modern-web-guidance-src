@@ -321,10 +321,8 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
 
     child.stdout.pipe(logStream);
     child.stderr.pipe(logStream);
-
     child.stdout.on('data', d => d.toString().split('\n').forEach((l: string) => l.trim() && console.log(`[${uc.slug}] ${l}`)));
     child.stderr.on('data', d => d.toString().split('\n').forEach((l: string) => l.trim() && console.error(`[${uc.slug}] ${l}`)));
-
     const exitCode = await new Promise<number>((resolve) => child.on('close', resolve));
 
     if (exitCode !== 0) {
@@ -339,7 +337,7 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
   await handleGitAndPR(featureId, reviewer, useCases);
 }
 
-let bcdParsed = false;
+// Collect MDN urls from the BCD data.
 const tagToUrls = new Map<string, string[]>();
 function scanBcd(node: Identifier) {
   if (!node || typeof node !== 'object') return;
@@ -357,9 +355,8 @@ function scanBcd(node: Identifier) {
 }
 
 export function getMdnUrlsForFeature(featureId: string): string[] {
-  if (!bcdParsed) {
+  if (tagToUrls.size === 0) {
     Object.values(bcd).forEach(scanBcd);
-    bcdParsed = true;
   }
   return tagToUrls.get(featureId) || [];
 }
