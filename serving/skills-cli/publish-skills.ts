@@ -47,12 +47,13 @@ async function publishToDistributionRepo(publishCliDir: string, newVersion: stri
     remove: "**/*"
   });
 
+  // TODO: not working. Think we need a GH API key from the modern-web-guidance repo.
   // Create GitHub release on the distribution repo.
-  execSync(`gh release create v${newVersion} -R GoogleChrome/modern-web-guidance --title "v${newVersion}" --notes -`, {
-    input: releaseNotes,
-    stdio: ['pipe', 'inherit', 'inherit']
-  });
-  console.log(`✅ GitHub release v${newVersion} created successfully!`);
+  // execSync(`gh release create v${newVersion} -R GoogleChrome/modern-web-guidance --title "v${newVersion}" --notes -`, {
+  //   input: releaseNotes,
+  //   stdio: ['pipe', 'inherit', 'inherit']
+  // });
+  // console.log(`✅ GitHub release v${newVersion} created successfully!`);
 
   console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance!`);
 }
