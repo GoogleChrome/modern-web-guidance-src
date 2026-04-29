@@ -7,7 +7,7 @@ export interface UseCase {
   category: string;
 }
 
-export function constructPRBody(featureId: string, useCases: UseCase[]): string {
+export function constructPRBody(featureId: string, useCases: UseCase[], passRates?: Record<string, {unguided: string, guided: string}>): string {
   const branch = `guidance-bot/${featureId}`;
   const repo = process.env.GITHUB_REPOSITORY || 'paulirish/guidance';
   const emoji  = [...'😀😁😂🤣😃😄😅😆😉😊😋😎😍🥰😘'].at(Math.floor(Math.random() * 15));
@@ -26,6 +26,11 @@ export function constructPRBody(featureId: string, useCases: UseCase[]): string 
 
     body += `- \`${uc.slug}\` - ${uc.description}\n`;
     body += `   - [demo](${previewUrl})\n`;
+    
+    if (passRates && passRates[uc.slug]) {
+      const rates = passRates[uc.slug];
+      body += `   - **Pass Rates**: Unguided: ${rates.unguided}%, Guided: ${rates.guided}%\n`;
+    }
   }
 
   body += `\n---\n\nReviewer: Please ensure \`guide\` usecase is valid, and details are technically accurate, \`expectations\` criteria is accurate.  \n\n**Add a PR review** (after optionally leaving comments) to trigger a feedback iteration, where the agent will handle your feedback and push new commits.  (If you prefer, you can just push changes to the branch.)\n`;
@@ -89,11 +94,11 @@ export async function createPullRequest(featureId: string, reviewer: string, bod
   console.log(`✅ PR created for ${branch}`);
 }
 
-export async function handleGitAndPR(featureId: string, reviewer: string, useCases: UseCase[]): Promise<void> {
+export async function handleGitAndPR(featureId: string, reviewer: string, useCases: UseCase[], passRates?: Record<string, {unguided: string, guided: string}>): Promise<void> {
   if (process.env.GITHUB_ACTIONS) {
     const pushed = await commitAndPush(featureId);
     if (pushed) {
-      const body = constructPRBody(featureId, useCases);
+      const body = constructPRBody(featureId, useCases, passRates);
       await createPullRequest(featureId, reviewer, body);
     }
   } else {
