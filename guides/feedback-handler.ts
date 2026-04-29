@@ -45,7 +45,7 @@ async function synthesizeFeedback(prNumber: string, prData: any): Promise<string
 You are a coordinator for an AI coding agent. Below is the JSON data for PR #${prNumber}, including reviews and comments.
 
 Tasks:
-1. Resolve conflicts: If there is conflicting feedback, flag it clearly.
+1. Resolve conflicting feedback: If there is conflicting feedback, flag it clearly.
 2. Filter noise: Ignore LGTM or general chatter.
 3. Deduplicate: Group similar feedback.
 4. Output a structured TODO list for the coding agent.
@@ -65,7 +65,14 @@ Output your response as a clear markdown summary and TODO list.
 
 async function postPlanToPR(prNumber: string, synthesis: string): Promise<void> {
   console.log('Posting plan to PR...');
-  await runCommand('gh', ['pr', 'comment', prNumber, '-b', synthesis]);
+  const body = `On it!
+
+<details><summary>Plan from feedback-handler</summary>
+
+${synthesis}
+
+</details>`;
+  await runCommand('gh', ['pr', 'comment', prNumber, '-b', body]);
   console.log('✅ Plan posted');
 }
 
@@ -109,20 +116,20 @@ async function pushChanges(prData: any, guideDir: string): Promise<void> {
   }
 
   await runCommand('git', ['commit', '-m', 'chore: apply feedback and regenerate artifacts']);
-  
+
   const token = process.env.APP_TOKEN || process.env.GH_TOKEN;
   const repo = process.env.GITHUB_REPOSITORY;
   const pushUrl = token && repo ? `https://x-access-token:${token}@github.com/${repo}.git` : 'origin';
   const branch = prData.headRefName;
-  
+
   try {
     console.log('Stashing any unstaged changes...');
     await runCommand('git', ['stash', '-u']);
-    
+
     console.log('Pulling latest changes...');
     await runCommand('git', ['pull', '--rebase', pushUrl, branch]);
     console.log('✅ Pulled latest changes');
-    
+
     console.log('Restoring stashed changes...');
     try {
       await runCommand('git', ['stash', 'pop']);
@@ -143,10 +150,10 @@ export async function handleFeedback(prNumber: string): Promise<void> {
 
   const prData = await fetchPRContext(prNumber);
   const guideDir = deriveGuideDirectory(prData);
-  
+
   const synthesis = await synthesizeFeedback(prNumber, prData);
   await postPlanToPR(prNumber, synthesis);
-  
+
   if (guideDir) {
     await applyFixesToSourceFiles(guideDir, synthesis);
     await runGraderDev(guideDir);
