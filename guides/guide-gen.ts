@@ -307,18 +307,23 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
 
   cleanupIsolatedHome(path.dirname(workDir));
 
+  const useCasePassRates: Record<string, {unguided: string, guided: string}> = {};
+
   const promises = useCases.map(async (uc) => {
     const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
     const logFile = path.join(outputDir, 'dev.log');
-    console.log(`[Usecase: ${uc.slug}] Running calibration. Logs in ${logFile}`);
+    console.log(`[Usecase: ${uc.slug}] Running calibration and evaluation. Logs in ${logFile}`);
 
     const logStream = fs.createWriteStream(logFile);
 
-    const child = spawn('node', ['--experimental-strip-types', 'guides/dev-guide.ts', outputDir, '--no-test'], {
+    const child = spawn('node', ['--experimental-strip-types', 'guides/dev-guide.ts', outputDir], {
       cwd: rootDir,
       env: { ...process.env },
       stdio: ['ignore', 'pipe', 'pipe']
     });
+
+    let stdoutData = '';
+    child.stdout.on('data', d => { stdoutData += d.toString(); });
 
     child.stdout.pipe(logStream);
     child.stderr.pipe(logStream);
@@ -329,13 +334,20 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
     if (exitCode !== 0) {
       throw new Error(`devGuide failed for ${uc.slug}. See logs at ${logFile}`);
     }
+
+    const match = stdoutData.match(/Pass Rate - Unguided: (\d+)%, Guided: (\d+)%/);
+    if (match) {
+      useCasePassRates[uc.slug] = { unguided: match[1], guided: match[2] };
+    } else {
+      console.warn(`⚠️ Could not parse pass rates for ${uc.slug}`);
+    }
   });
 
   await Promise.all(promises);
 
   console.log(`\n🎉 All use cases scaffolded and processed!`);
 
-  await handleGitAndPR(featureId, reviewer, useCases);
+  await handleGitAndPR(featureId, reviewer, useCases, useCasePassRates);
 }
 
 // Collect MDN urls from the BCD data.
