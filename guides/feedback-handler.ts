@@ -10,12 +10,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-
 import { runCommand, runGemini } from './lib/utils.ts';
-
-
-
-// ─── Main logic ─────────────────────────────────────────────────────────────
 
 async function fetchPRContext(prNumber: string): Promise<any> {
   console.log('Fetching PR context via gh CLI...');
@@ -41,15 +36,9 @@ function deriveGuideDirectories(prData: any): string[] {
   return dirs;
 }
 
-function deriveAffectedFiles(prData: any, guideDir: string): string[] {
-  return prData.files
-    .map((f: any) => f.path)
-    .filter((p: string) => p.startsWith(guideDir));
-}
-
 async function synthesizeFeedback(prNumber: string, prData: any): Promise<string> {
   console.log('Synthesizing feedback with Gemini...');
-  const prompt = `
+  const plannerPrompt = `
 You are the **PlannerAgent**. Your task is to synthesize feedback left on PR #${prNumber} and create a structured TODO list for the **FixerAgent**.
 
 Tasks:
@@ -64,7 +53,7 @@ ${JSON.stringify(prData)}
 Output your response as a clear markdown summary and TODO list.
 `;
 
-  const synthesis = await runGemini(prompt);
+  const synthesis = await runGemini(plannerPrompt);
   console.log('\n--- Synthesis & Plan ---');
   console.log(synthesis);
   console.log('------------------------\n');
@@ -75,7 +64,7 @@ async function postPlanToPR(prNumber: string, synthesis: string): Promise<void> 
   console.log('Posting plan to PR...');
   const body = `On it!
 
-<details><summary>Plan from PlannerAgent</summary>
+<details><summary>Plan from feedback-handler</summary>
 
 ${synthesis}
 
@@ -86,21 +75,23 @@ ${synthesis}
 
 async function applyFixesToSourceFiles(guideDirs: string[], synthesis: string): Promise<string | undefined> {
   console.log('Applying fixes to source files...');
-  const applyPrompt = `
-You are the **FixerAgent**. Your task is to apply the following fixes to these files to address PR feedback, following the plan provided by the **PlannerAgent**.
+  const fixerPrompt = `
+You are the **FixerAgent**. Your task is to update files within these directories to address PR feedback, following the plan provided by the **PlannerAgent**.
 
 A previous agent generated the files within the following directories:
 ${guideDirs.map(d => `- \`${d}\``).join('\n')}
 
-Synthesized Plan:
+### Synthesized Plan:
 ${synthesis}
+
+---
 
 Please read these files and update them to implement the requested changes.
 Focus on the source files. Do not run \`gd dev\` or try to calibrate the grader, that will be done in a separate step.
 Use your file editing tools to make the changes.
 `;
   try {
-    const response = await runGemini(applyPrompt);
+    const response = await runGemini(fixerPrompt);
     console.log('✅ Fixes applied to source files');
     return response;
   } catch (err) {
@@ -191,7 +182,7 @@ export async function handleFeedback(prNumber: string): Promise<void> {
     for (const guideDir of guideDirs) {
       await runGraderDev(guideDir);
     }
-    
+
     await pushChanges(prData, guideDirs);
   } else {
     console.log('No guide directories identified from PR files.');
