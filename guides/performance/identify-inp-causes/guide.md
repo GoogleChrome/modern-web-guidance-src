@@ -67,7 +67,9 @@ onINP((metric) => {
 
 ## Best Practices
 
-- **DO** prefer the Long Animation Frames API over alternatives like the JS Self-Profiling API, which carries higher runtime overhead.
+- **DO** use INP subparts initially to identify whether the delay is already running JavaScript (input delay), the event handlers JavaScript for the interaction (processing duration), or the subsequent rendering (presentation delay).
+- **DO** attempt to identify the biggest blocking JavaScript as additional detail, particularly for input delay, and processing duration.
+- **DO** prefer the Long Animation Frames API for providing this futher detail over alternatives like the JS Self-Profiling API, which carries higher runtime overhead.
 - **DO** use the `web-vitals` library if no other RUM solution is in place. It can identify the INP interaction and includes information about the subparts and the scripts that were executed during the interaction (using the Long Animation Frames API).
 - **DO** beacon back the required information to an analytics service rather than just log it locally.
 
