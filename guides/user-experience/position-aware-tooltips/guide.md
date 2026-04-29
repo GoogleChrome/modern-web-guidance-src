@@ -29,7 +29,7 @@ Use the Popover API to create a tooltip. This creates an implicit anchor connect
 
 ```html
 <button popovertarget="tooltip" id="anchor">anchor</button>
-<div id="tooltip" popover></div>
+<div id="tooltip" popover role="tooltip"></div>
 ```
 
 Reset the popover inset and margin styles for use with anchor positioning, but only if anchor positioning is supported.
@@ -65,7 +65,7 @@ Use `@container anchored(fallback: <value>)` to apply styles when a specific fal
 Like all container queries, `@container` can only style **descendants** of the container. A common strategy to create the arrows is with the `::before` and `::after` pseudo-elements, which are treated as descendants and can be styled directly. However, to style the tooltip itself (as seen in step 4), we will add a child element to the tooltip, and create the arrow in its `::before` pseudo-element.
 
 ```html
-<div id="tooltip" popover>
+<div id="tooltip" popover role="tooltip">
   <div class="tooltip-content">Tooltip</div>
 </div>
 ```
@@ -112,7 +112,7 @@ If you need to change properties on the container itself (like `margin` or `back
 - **Use pseudo-elements for arrows**: Tooltip arrows are purely decorative and are perfect candidates for `::before` or `::after`, which can be styled via anchored container queries without extra DOM.
 
 
-## Fallbacks
+## Fallback strategies
 
 {{ BASELINE_STATUS("container-anchor-position-queries") }}
 
