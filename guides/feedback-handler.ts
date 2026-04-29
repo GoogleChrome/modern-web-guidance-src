@@ -120,9 +120,11 @@ async function maybeRunGdDev(guideDir: string): Promise<{unguided: string, guide
     const output = await runCommand('node', ['bin/gd.ts', 'dev', guideDir]);
     console.log(`✅ gd dev completed`);
     
-    const match = output.match(/Pass Rate - Unguided: (\d+)%, Guided: (\d+)%/);
-    if (match) {
-      return { unguided: match[1], guided: match[2] };
+    const unguidedMatch = output.match(/Unguided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
+    const guidedMatch = output.match(/Guided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
+    
+    if (unguidedMatch && guidedMatch) {
+      return { unguided: unguidedMatch[1], guided: guidedMatch[1] };
     }
     console.warn(`⚠️ Could not parse pass rates from gd dev output`);
     return null;

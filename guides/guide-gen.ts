@@ -335,9 +335,11 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
       throw new Error(`devGuide failed for ${uc.slug}. See logs at ${logFile}`);
     }
 
-    const match = stdoutData.match(/Pass Rate - Unguided: (\d+)%, Guided: (\d+)%/);
-    if (match) {
-      useCasePassRates[uc.slug] = { unguided: match[1], guided: match[2] };
+    const unguidedMatch = stdoutData.match(/Unguided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
+    const guidedMatch = stdoutData.match(/Guided:\s+\d+\/\d+\s+checks passed\s+\((\d+)%\)/);
+    
+    if (unguidedMatch && guidedMatch) {
+      useCasePassRates[uc.slug] = { unguided: unguidedMatch[1], guided: guidedMatch[1] };
     } else {
       console.warn(`⚠️ Could not parse pass rates for ${uc.slug}`);
     }
