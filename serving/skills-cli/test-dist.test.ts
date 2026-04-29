@@ -24,17 +24,21 @@ export function assertSearchResults(output: string) {
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
-console.log("Running build-dist to ensure fresh build...");
-try {
-  execSync('node --experimental-strip-types skills-cli/build-dist.ts', { 
-    cwd: path.resolve(import.meta.dirname, '..'), 
-    stdio: 'pipe' 
-  });
-} catch (error: any) {
-  console.error("\n❌ build-dist.ts failed!");
-  if (error.stdout) console.log(error.stdout.toString('utf8'));
-  if (error.stderr) console.error(error.stderr.toString('utf8'));
-  throw new Error("build-dist.ts failed");
+if (process.env.SKIP_BUILD) {
+  console.log("Skipping build-dist as requested via SKIP_BUILD...");
+} else {
+  console.log("Running build-dist to ensure fresh build...");
+  try {
+    execSync('node --experimental-strip-types skills-cli/build-dist.ts', {
+      cwd: path.resolve(import.meta.dirname, '..'),
+      stdio: 'pipe'
+    });
+  } catch (error: any) {
+    console.error("\n❌ build-dist.ts failed!");
+    if (error.stdout) console.log(error.stdout.toString('utf8'));
+    if (error.stderr) console.error(error.stderr.toString('utf8'));
+    throw new Error("build-dist.ts failed");
+  }
 }
 
 test('Claude Plugin Config in Dist', async () => {

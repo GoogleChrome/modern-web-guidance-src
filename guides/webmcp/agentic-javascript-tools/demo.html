@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebMCP Imperative Demo</title>
+  <style>
+    body {
+      font-family: system-ui;
+      padding: 2rem;
+    }
+
+    #status {
+      margin-top: 1rem;
+      color: green;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>WebMCP Imperative Demo</h1>
+  <p>Check the console or use a WebMCP-enabled browser assistant to interact with the <code>calculate_sum</code> tool.
+  </p>
+  <div id="status">Checking WebMCP support...</div>
+
+  <script>
+    const status = document.getElementById('status');
+
+    if ('modelContext' in navigator && 'registerTool' in navigator.modelContext) {
+      // Mandatory: Use AbortController for lifecycle management
+      const controller = new AbortController();
+
+      navigator.modelContext.registerTool({
+        name: "calculate_sum",
+        description: "Calculates the sum of two numbers.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            a: { type: "number", description: "The first number" },
+            b: { type: "number", description: "The second number" }
+          },
+          required: ["a", "b"]
+        },
+        execute(input) {
+          console.log('Tool invoked with:', input);
+          return input.a + input.b;
+        }
+      }, { signal: controller.signal });
+
+      status.textContent = 'WebMCP Imperative API is supported! Tool "calculate_sum" registered.';
+    } else {
+      status.textContent = 'WebMCP is not supported in this browser.';
+      status.style.color = 'red';
+    }
+  </script>
+</body>
+
+</html>
