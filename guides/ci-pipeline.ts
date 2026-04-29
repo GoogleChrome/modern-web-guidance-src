@@ -1,5 +1,5 @@
 import { runCommand } from './lib/utils.ts';
-import { lookupFeature, PassRates } from './guide-gen.ts';
+import { lookupFeature, type PassRates } from './guide-gen.ts';
 
 export interface UseCase {
   slug: string;
@@ -26,8 +26,8 @@ export function constructPRBody(featureId: string, useCases: UseCase[], passRate
 
     body += `- \`${uc.slug}\` - ${uc.description}\n`;
     body += `   - [demo](${previewUrl})\n`;
-    
-    if (passRates && passRates[uc.slug]) {
+
+    if (passRates?.[uc.slug]) {
       const rates = passRates[uc.slug];
       body += `   - **Pass Rates**: Unguided: ${rates.unguided}%, Guided: ${rates.guided}%\n`;
     }
