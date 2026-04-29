@@ -229,15 +229,17 @@ export function getFeaturesNeedingSync(
   featureToIssueMap: Map<string, FeatureIssueData>,
   featuresWithActiveUseCases: Set<string>,
   featuresWithAnyUseCases: Set<string>,
-  featuresNeedingInvestigation: Set<string> = new Set()
+  featuresNeedingInvestigation: Set<string> = new Set(),
+  projectDetails: ProjectDetails | null = null
 ): FeatureToSync[] {
   const result: FeatureToSync[] = [];
   for (const [featureId, featureData] of featureToIssueMap) {
-    const hasActiveUseCases = featuresWithActiveUseCases.has(featureId);
+    const isInvestigatingFeature = projectDetails?.issueStatusMap.get(featureData.number) === ProjectStatus.NeedsInvestigation;
+    const hasActiveUseCases = featuresWithActiveUseCases.has(featureId) || isInvestigatingFeature;
     const hasCompletedUseCases = !hasActiveUseCases && featuresWithAnyUseCases.has(featureId);
 
     if (hasActiveUseCases) {
-      const isInvestigating = featuresNeedingInvestigation.has(featureId);
+      const isInvestigating = featuresNeedingInvestigation.has(featureId) || isInvestigatingFeature;
       result.push({
         featureId,
         issueNumber: featureData.number,
@@ -253,13 +255,13 @@ export function getFeaturesNeedingSync(
         closeReason: 'completed',
         targetStatus: null,
       });
-    } else if (!featuresWithAnyUseCases.has(featureId) && featureData.state === 'open') {
+    } else if (!featuresWithAnyUseCases.has(featureId) && (featureData.state === 'open' || isInvestigatingFeature)) {
       result.push({
         featureId,
         issueNumber: featureData.number,
-        needsReopen: false,
+        needsReopen: featureData.state === 'closed',
         closeReason: null,
-        targetStatus: ProjectStatus.NeedsUseCases,
+        targetStatus: isInvestigatingFeature ? ProjectStatus.NeedsInvestigation : ProjectStatus.NeedsUseCases,
       });
     }
   }
@@ -599,11 +601,11 @@ async function processUseCases(
 
     for (const id of featureIds) {
       if (!featureUseCaseMap.has(id)) featureUseCaseMap.set(id, []);
-      featureUseCaseMap.get(id)!.push({ name, issueNumber, complete: statusName === null });
+      featureUseCaseMap.get(id)!.push({ name, issueNumber, complete: statusName === null && currentProjectStatus !== ProjectStatus.NeedsInvestigation });
     }
 
     let statusChanged = false;
-    if (statusName && (issueNumber > 0 || IS_DRY_RUN)) {
+    if (statusName && currentProjectStatus !== ProjectStatus.NeedsInvestigation && (issueNumber > 0 || IS_DRY_RUN)) {
       if (projectDetails) {
         const currentStatus = projectDetails.issueStatusMap.get(issueNumber);
         if (currentStatus?.toLowerCase() !== statusName.toLowerCase()) {
@@ -642,7 +644,7 @@ async function syncFeatureIssues(
 ) {
   if (!GITHUB_TOKEN && !IS_DRY_RUN) return;
 
-  const featuresToSync = getFeaturesNeedingSync(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featuresNeedingInvestigation);
+  const featuresToSync = getFeaturesNeedingSync(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featuresNeedingInvestigation, projectDetails);
   if (featuresToSync.length === 0) return;
 
   console.log('🔄 Syncing feature issue states based on use case progress...');
