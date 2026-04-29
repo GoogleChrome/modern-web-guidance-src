@@ -382,7 +382,7 @@ async function gradeOutput(htmlPath: string, graderPath: string, outputDir: stri
   }
 }
 
-function printTestComparison(results: Record<string, { passed: number; total: number }>): void {
+export function printTestComparison(results: Record<string, { passed: number; total: number }>): void {
   const total = results.pre?.total || results.guided?.total || results.unguided?.total || 0;
   if (total === 0) return;
 
