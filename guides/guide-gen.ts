@@ -65,7 +65,7 @@ function buildUseCasesPrompt(feature: FeatureDataPlusMDN): string {
   ].join('\n');
 
   const useCasesSkill = getSkillContent('project-use-cases');
-  const researchSkill = getSkillContent('project-use-cases-research');
+  
 
   const researchPath = path.resolve('features', feature.id, 'research.md');
   let researchContent = '';
@@ -85,8 +85,7 @@ Follow the guidelines in these skill files:
 === project-use-cases ===
 ${useCasesSkill}
 
-=== project-use-cases-research ===
-${researchSkill}
+
 
 Source URLs to read:
 ${sourcesList || '(No source URLs available — use your knowledge of this feature)'}
