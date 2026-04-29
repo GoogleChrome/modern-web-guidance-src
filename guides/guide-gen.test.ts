@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { getMdnUrlsForFeature } from './guide-gen.ts';
+import { getMdnUrlsForFeature, getSkillContent } from './guide-gen.ts';
 import { features } from 'web-features';
 
 test('getMdnUrlsForFeature returns arrays of URLs for a feature by tag', () => {
@@ -19,4 +19,11 @@ test('web-features coverage to MDN URLs is above threshold', () => {
   const percentage = (foundUrls / featureIds.length) * 100;
   console.log(`Feature coverage: ${percentage.toFixed(2)}% (${foundUrls}/${featureIds.length})`);
   assert.ok(percentage > 85, `Coverage was ${percentage.toFixed(2)}%`);
+});
+
+test('getSkillContent applies replacement for project-use-cases', () => {
+  const content = getSkillContent('project-use-cases');
+  assert.ok(content.includes('## Research and discovery'));
+  assert.ok(content.includes('In this automated pipeline, the research has already been conducted'));
+  assert.ok(content.includes('## Identifying action-oriented tasks'));
 });
