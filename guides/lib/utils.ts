@@ -9,24 +9,30 @@ import {
 } from '../../harness/lib/agent-shared.ts';
 
 export async function runCommand(command: string, args: string[], cwd?: string): Promise<string> {
-  const child = spawn(command, args, {
-    cwd,
-    env: { ...process.env },
-    stdio: ['ignore', 'pipe', 'pipe'],
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd,
+      env: { ...process.env },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let stdoutData = '';
+    let stderrData = '';
+    child.stdout.on('data', (d) => { stdoutData += d; });
+    child.stderr.on('data', (d) => { stderrData += d; });
+
+    child.on('error', (err) => {
+      reject(new Error(`Failed to start command ${command}: ${err.message}`));
+    });
+
+    child.on('close', (exitCode) => {
+      if (exitCode !== 0) {
+        reject(new Error(`Command ${command} failed with code ${exitCode}. Stderr: ${stderrData}`));
+      } else {
+        resolve(stdoutData.trim());
+      }
+    });
   });
-
-  let stdoutData = '';
-  let stderrData = '';
-  child.stdout.on('data', (d) => { stdoutData += d; });
-  child.stderr.on('data', (d) => { stderrData += d; });
-
-  const exitCode = await new Promise<number | null>(resolve => child.on('close', resolve));
-
-  if (exitCode !== 0) {
-    throw new Error(`Command ${command} failed with code ${exitCode}. Stderr: ${stderrData}`);
-  }
-
-  return stdoutData.trim();
 }
 
 export async function runGemini(prompt: string, workDir?: string): Promise<string> {
