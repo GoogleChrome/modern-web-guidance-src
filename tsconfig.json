@@ -19,6 +19,7 @@
     "**/node_modules",
     "**/dist",
     "**/build",
+    "**/grade-report",
     "**/test-app-results/**",
     "harness/results/",
     "**/eval-view",

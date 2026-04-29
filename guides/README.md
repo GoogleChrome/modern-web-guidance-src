@@ -48,7 +48,7 @@ You can use `gd audit` to see exactly where every guide sits in the Kanban board
 gd audit
 ```
 
-This will output a categorized table sorted into the 4 workflow states (`Needs use cases`, `Needs guidance`, `Needs evals`, `Done`), along with recommended next steps.
+This will output a categorized table sorted into the 6 maturity stages (`Stub`, `Incomplete`, `Needs expectations`, `Needs calibration`, `Needs test`, `Eval-ready`), along with recommended next steps.
 
 ### Manual Piece-wise execution 
 
