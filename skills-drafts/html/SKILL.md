@@ -14,10 +14,17 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DO** use `<search>` to enclose search and filtering mechanisms (eliminates the need for `role="search"`).
 - **DO** use `<button>` for triggered actions (JS, Modals, Forms) and `<a>` strictly for URL navigation. Set `type="button"` for non-submit buttons in forms to prevent unintended submission.
 - **DO** use `<ul>`, `<ol>`, `<dl>`, and `<menu>` elements for list content. 
+- **DO** make sure that all interactive elements like links and buttons have accessible names. 
+- **DO** use accessible names for interactive elements. 
+- **DO** hide decorative SVGs from assistive technology using `aria-hidden="true"`.
+- **DO** ensure that informative SVGs like logos, data visualizations, or icon buttons have a proper accessible name. 
 
 - **DON'T** use generic `<div>` or `<span>` when semantic elements exist, for instance for interactive elements, headings, or independently reusable self-contained content.
 - **DON'T** use boolean attributes with redundant values (e.g., use `disabled`, not `disabled="disabled"`).
 - **DON'T** use inline styles; they violate CSP and bloat page weight.
+- **DON'T** use generic elements with added ARIA roles or states when native elements with built-in semantics and behavior exist.
+- **DON'T** change the native semantics of elements with ARIA unless it is a critical requirement. 
+- **DON'T** use `role="presentation"` or `aria-hidden="true` on focusable elements or their parents and ancestors. 
 
 ### Code Example
 
@@ -215,6 +222,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DO** ensure that all inputs in a form have a corresponding `<label>` element. 
 
 - **DON'T** use `autocomplete="off"` unless handling highly sensitive tracking tokens (violates standard password manager overrides). Use standard inputs `type="email"`, `type="tel"`.
+- **DON'T** use the `placeholder` attribute as an alternative to a `<label>`.
 
 ### Code Example
 
@@ -269,7 +277,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DO** set `width` and `height` to prevent layout shifts (CLS) on `<video>` and `<audio>`.
 - **DO** provide a `poster` image fallback for videos.
 - **DO** include subtitles and captions with `<track>`.
-- **DO** ensure background videos are `muted`, `autoplay`, `loop`, and use `role="none"` or `aria-hidden="true"`.
+- **DO** ensure background videos are `muted`, provide users with full control over playback, and use `role="none"` or `aria-hidden="true"`.
 
 - **DON'T** rely on JS for basic video controls if native `controls` attribute is sufficient.
 
@@ -288,13 +296,13 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 </video>
 ```
 
-## 9. Dynamic Styles
+## 9. Dynamic Styles and Interactivity
 
 ### Guidelines
 - **DO** use the `style` attribute to pass state to CSS via **Custom Properties**. This keeps visual logic in your stylesheet while JavaScript provides the raw data.
 
 - **DON'T** use inline styles for static design (colors, padding, margins) that belong in a stylesheet.
-- **DON'T** use inline event handlers (e.g., `onclick`). Use `addEventListener` in script files to maintain a clean DOM and secure CSP.
+- **DON'T** use inline event handlers (e.g., `onclick`). Trigger actions using `addEventListener()`.
 
 ### Code Example
 
