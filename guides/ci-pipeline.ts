@@ -1,4 +1,5 @@
 import { runCommand } from './lib/utils.ts';
+import { lookupFeature } from './guide-gen.ts';
 
 export interface UseCase {
   slug: string;
@@ -10,8 +11,12 @@ export function constructPRBody(featureId: string, useCases: UseCase[]): string 
   const branch = `guidance-bot/${featureId}`;
   const repo = process.env.GITHUB_REPOSITORY || 'paulirish/guidance';
   const emoji  = [...'😀😁😂🤣😃😄😅😆😉😊😋😎😍🥰😘'].at(Math.floor(Math.random() * 15));
+  const feature = lookupFeature(featureId);
 
   let body = `\`${featureId}\` has been researched, usecases identified, guides & artifacts generated. And adverserially reviewed. ${emoji}
+
+### Feature: ${feature.name}
+${feature.description}
 
 ### usecases
 
