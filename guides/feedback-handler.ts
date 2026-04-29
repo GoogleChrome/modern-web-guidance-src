@@ -101,7 +101,7 @@ Use your file editing tools to make the changes.
   }
 }
 
-async function maybeRunGdDev(guideDir: string): Promise<void> {
+async function maybeRunGdDev(guideDir: string): Promise<{unguided: string, guided: string} | null> {
   const modifiedFiles = await runCommand('git', ['diff', '--name-only', guideDir]);
   const modifiedFilesList = modifiedFiles.split('\n').filter(Boolean);
   
@@ -112,15 +112,23 @@ async function maybeRunGdDev(guideDir: string): Promise<void> {
   
   if (!needsGdDev) {
     console.log(`Skipping gd dev for ${guideDir} (no source files modified and grader exists).`);
-    return;
+    return null;
   }
 
   console.log(`Running gd dev for ${guideDir}...`);
   try {
-    await runCommand('node', ['bin/gd.ts', 'dev', guideDir]);
+    const output = await runCommand('node', ['bin/gd.ts', 'dev', guideDir]);
     console.log(`✅ gd dev completed`);
+    
+    const match = output.match(/Pass Rate - Unguided: (\d+)%, Guided: (\d+)%/);
+    if (match) {
+      return { unguided: match[1], guided: match[2] };
+    }
+    console.warn(`⚠️ Could not parse pass rates from gd dev output`);
+    return null;
   } catch (err) {
     console.error(`❌ gd dev failed: ${(err as Error).message}`);
+    return null;
   }
 }
 
@@ -178,6 +186,15 @@ ${report}
   console.log('✅ Fixes report posted');
 }
 
+async function postPassRatesToPR(prNumber: string, guideDir: string, passRates: {unguided: string, guided: string}): Promise<void> {
+  console.log('Posting pass rates to PR...');
+  const body = `### Updated Pass Rates for \`${guideDir}\`
+- **Unguided**: ${passRates.unguided}%
+- **Guided**: ${passRates.guided}%`;
+  await runCommand('gh', ['pr', 'comment', prNumber, '-b', body]);
+  console.log('✅ Pass rates posted');
+}
+
 export async function handleFeedback(prNumber: string): Promise<void> {
   console.log(`Processing feedback for PR #${prNumber}...`);
 
@@ -194,7 +211,10 @@ export async function handleFeedback(prNumber: string): Promise<void> {
     }
 
     for (const guideDir of guideDirs) {
-      await maybeRunGdDev(guideDir);
+      const passRates = await maybeRunGdDev(guideDir);
+      if (passRates) {
+        await postPassRatesToPR(prNumber, guideDir, passRates);
+      }
     }
 
     await pushChanges(prData, guideDirs);
