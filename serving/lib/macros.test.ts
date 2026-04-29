@@ -20,7 +20,7 @@ describe('replaceMacros (Functional with real data)', () => {
       // Accelerometer is typically limited
       const content = '{{ BASELINE_STATUS("accelerometer") }}';
       const result = replaceMacros(content, 'test.md');
-      assert.ok(result.includes('not supported') || result.includes('Limited'));
+      assert.ok(result.includes('not supported') || result.includes('limited'));
     });
 
     it('throws error for non-existent feature', () => {
