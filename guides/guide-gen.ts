@@ -29,13 +29,6 @@ import {
 
 // ─── Feature lookup ──────────────────────────────────────────────────────────
 
-interface FeatureInfo {
-  id: string;
-  name: string;
-  description: string;
-  specUrls: string[];
-  mdnUrls: string[];
-}
 
 interface UseCase {
   slug: string;
@@ -130,10 +123,10 @@ Example output:
 `.trim();
 }
 
-function buildExpectationsPrompt(feature: FeatureInfo, useCase: { slug: string; description: string }): string {
+function buildExpectationsPrompt(feature: FeatureData, featureId: string, useCase: { slug: string; description: string }): string {
   return `
 You are generating structured expectations for the use case: "${useCase.description}".
-This use case relies on the feature "${feature.name}" (ID: ${feature.id}).
+This use case relies on the feature "${feature.name}" (ID: ${featureId}).
 
 Your task is to create an \`expectations.md\` file that defines how to verify a solution for this use case.
 
@@ -159,11 +152,11 @@ Output ONLY the raw markdown content, with no outer code blocks or other text.
 }
 
 
-function buildDemoPrompt(feature: FeatureInfo, useCase: { slug: string; description: string }): string {
+function buildDemoPrompt(feature: FeatureData, featureId: string, useCase: { slug: string; description: string }): string {
 
   return `
 You are generating a minimal demo for the use case: "${useCase.description}".
-This use case relies on the feature "${feature.name}" (ID: ${feature.id}).
+This use case relies on the feature "${feature.name}" (ID: ${featureId}).
 
 Your task is to create a \`demo.html\` file that is a minimal, self-contained reference implementation of this use case.
 
@@ -180,12 +173,12 @@ Output ONLY the raw HTML content, with no markdown code blocks or other text.
 `.trim();
 }
 
-function buildGuidePrompt(feature: FeatureInfo, useCase: { slug: string; description: string }): string {
+function buildGuidePrompt(feature: FeatureData, featureId: string, useCase: { slug: string; description: string }): string {
   const guideSkill = getSkillContent('project-guides');
 
   return `
 You are generating a guide for the use case: "${useCase.description}".
-This use case relies on the feature "${feature.name}" (ID: ${feature.id}).
+This use case relies on the feature "${feature.name}" (ID: ${featureId}).
 
 Your task is to create the content for a \`guide.md\` file (starting from the H1 title).
 
@@ -215,7 +208,7 @@ Output ONLY the raw markdown content, with no outer code blocks or other text. D
 
 
 
-async function scaffoldUseCase(uc: { slug: string; description: string; category: string }, feature: FeatureInfo, guidesDir: string): Promise<string> {
+async function scaffoldUseCase(uc: { slug: string; description: string; category: string }, feature: FeatureData, featureId: string, mdnUrls: string[], guidesDir: string): Promise<string> {
   const workDir = setupIsolatedWorkDir('ghh-guide-gen');
   const outputDir = path.join(guidesDir, uc.category, uc.slug);
   console.log(`\nScaffolding ${uc.slug} in ${outputDir}...`);
@@ -228,15 +221,15 @@ async function scaffoldUseCase(uc: { slug: string; description: string; category
 name: ${uc.slug}
 description: ${uc.description}
 web-feature-ids:
-  - ${feature.id}
+  - ${featureId}
 sources:
-${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
+${mdnUrls.map(u => `  - ${u}`).join('\n')}
 ---
 
 `;
 
     console.log(`Generating content for guide.md for ${uc.slug}...`);
-    const guidePrompt = buildGuidePrompt(feature, uc);
+    const guidePrompt = buildGuidePrompt(feature, featureId, uc);
     const guideContent = await runGemini(guidePrompt, workDir);
 
     const cleanGuideContent = guideContent.replace(/^```markdown\n?/, '').replace(/\n?```$/, '').trim();
@@ -246,7 +239,7 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
 
     // 2. Generate demo.html
     console.log(`Generating demo.html for ${uc.slug}...`);
-    const demoPrompt = buildDemoPrompt(feature, uc);
+    const demoPrompt = buildDemoPrompt(feature, featureId, uc);
     const demoHtml = await runGemini(demoPrompt, workDir);
 
     const cleanHtml = demoHtml.replace(/^```html\n?/, '').replace(/\n?```$/, '').trim();
@@ -255,7 +248,7 @@ ${feature.mdnUrls.map(u => `  - ${u}`).join('\n')}
 
     // 3. Generate expectations.md
     console.log(`Generating expectations.md for ${uc.slug}...`);
-    const expectationsPrompt = buildExpectationsPrompt(feature, uc);
+    const expectationsPrompt = buildExpectationsPrompt(feature, featureId, uc);
     const expectationsMd = await runGemini(expectationsPrompt, workDir);
 
     const cleanExpectations = expectationsMd.replace(/^```markdown\n?/, '').replace(/\n?```$/, '').trim();
@@ -328,18 +321,19 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
   const feature = lookupFeature(featureId);
   console.log(`Found: ${feature.name}`);
 
-  const researchPath = path.resolve('features', feature.id, 'research.md');
+  const researchPath = path.resolve('features', featureId, 'research.md');
   if (!fs.existsSync(researchPath)) {
     console.log(`Research file not found at ${researchPath}. Invoking deep research...`);
     const scriptPath = path.join(rootDir, '.agents/skills/project-use-cases-research/scripts/deep_research.js');
-    await runCommand('node', [scriptPath, '--feature-id', feature.id]);
+    await runCommand('node', [scriptPath, '--feature-id', featureId]);
     console.log(`✅ Deep research completed and saved to ${researchPath}`);
   } else {
     console.log(`Found existing research file at ${researchPath}. Skipping deep research.`);
   }
 
+  const mdnUrls = getMdnUrlsForFeature(featureId);
   const workDir = setupIsolatedWorkDir('ghh-guide-gen');
-  const prompt = buildUseCasesPrompt(feature);
+  const prompt = buildUseCasesPrompt(feature, featureId, mdnUrls);
 
   console.log(`Asking Gemini to identify use cases...`);
   const response = await runGemini(prompt, workDir);
@@ -359,7 +353,7 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
     console.log(`\nRunning pipelines in parallel with prefixed logs for ${useCases.length} use cases in CI...`);
 
     const promises = useCases.map(async (uc) => {
-      const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
+      const outputDir = await scaffoldUseCase(uc, feature, featureId, mdnUrls, guidesDir);
       console.log(`[Usecase: ${uc.slug}] Running calibration...`);
 
       const child = spawn('node', ['--experimental-strip-types', 'guides/dev-guide.ts', outputDir, '--no-test'], {
@@ -396,7 +390,7 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
     console.log(`\nRunning pipelines in parallel for ${useCases.length} use cases...`);
 
     const promises = useCases.map(async (uc) => {
-      const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
+      const outputDir = await scaffoldUseCase(uc, feature, featureId, mdnUrls, guidesDir);
       const logFile = path.join(outputDir, 'dev.log');
       console.log(`[Usecase: ${uc.slug}] Running calibration. Logs redirected to ${logFile}`);
 
