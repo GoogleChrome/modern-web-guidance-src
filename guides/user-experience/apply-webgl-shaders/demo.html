@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Demo: Apply WebGL shaders to HTML content</title>
+    <style>
+        body { font-family: sans-serif; }
+        canvas { border: 1px solid #ccc; }
+        .font {
+            padding: 20px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 50px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Apply Visual Effects using WebGL to HTML Content</h1>
+    <p>This demo shows how to apply WebGL shaders to HTML content rendered in a canvas.</p>
+    
+    <canvas id="canvas" style="width: 400px; height: 300px;" layoutsubtree>
+        <div id="effect_element" >
+           <h2 class="font"> Hello World</h2>
+        </div>
+    </canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const gl = canvas.getContext('webgl2');
+        const effect_element = document.getElementById('effect_element');
+
+        if (!gl) {
+            console.error("WebGL not supported");
+        }
+
+        // Vertex Shader
+        const vsSource = `
+            attribute vec4 aVertexPosition;
+            attribute vec2 aTextureCoord;
+            varying highp vec2 vTextureCoord;
+            void main(void) {
+                gl_Position = aVertexPosition;
+                vTextureCoord = aTextureCoord;
+            }
+        `;
+
+        // Fragment Shader (Rain Effect)
+        const fsSource = `
+            precision highp float;
+            varying highp vec2 vTextureCoord;
+            uniform sampler2D uSampler;
+            uniform vec2 u_resolution;
+            uniform vec2 u_mouse;
+            uniform float u_time;
+
+            #define PI 3.14159265
+
+            highp float random1d(float dt) {
+                highp float c = 43758.5453;
+                highp float sn = mod(dt, 3.14);
+                return fract(sin(sn) * c);
+            }
+
+            vec2 random_drop_pos(float val, vec2 screen_dim, vec2 velocity) {
+                float max_x_move = velocity.x * abs(screen_dim.y / velocity.y);
+                float x = -max_x_move * step(0.0, max_x_move) + (screen_dim.x + abs(max_x_move)) * random1d(val);
+                float y = (1.0 + 0.05 * random1d(1.234 * val)) * screen_dim.y;
+                return vec2(x, y);
+            }
+
+            vec3 trail_color(vec2 pixel, vec2 pos, vec2 velocity_dir, float width, float size) {
+                vec2 pixel_dir = pixel - pos;
+                float projected_dist = dot(pixel_dir, -velocity_dir);
+                float tanjential_dist_sq = dot(pixel_dir, pixel_dir) - pow(projected_dist, 2.0);
+                float width_sq = pow(width, 2.0);
+                float line = step(0.0, projected_dist) * (1.0 - smoothstep(width_sq / 2.0, width_sq, tanjential_dist_sq));
+                float dashed_line = line * step(0.5, cos(0.3 * projected_dist - PI / 3.0));
+                float fading_dashed_line = dashed_line * (1.0 - smoothstep(size / 5.0, size, projected_dist));
+                return vec3(fading_dashed_line);
+            }
+
+            vec3 wave_color(vec2 pixel, vec2 pos, float size, float time) {
+                vec2 pixel_dir = pixel - pos;
+                float distorted_dist = length(pixel_dir * vec2(1.0, 3.5));
+                float inner_radius = (0.05 + 0.8 * time) * size;
+                float outer_radius = inner_radius + 0.25 * size;
+                float ring = smoothstep(inner_radius, inner_radius + 5.0, distorted_dist)
+                        * (1.0 - smoothstep(outer_radius, outer_radius + 5.0, distorted_dist));
+                float fading_ring = ring * (1.0 - smoothstep(0.0, 0.7, time));
+                return vec3(fading_ring);
+            }
+
+            void main() {
+                const float n_drops = 20.0;
+                float trail_width = 2.0;
+                float trail_size = 70.0;
+                float wave_size = 20.0;
+                float fall_time = 0.7;
+                float life_time = fall_time + 0.5;
+
+                vec2 velocity = vec2(u_mouse.x - 0.5 * u_resolution.x, -0.9 * u_resolution.y) / fall_time;
+                vec2 velocity_dir = normalize(velocity);
+
+                vec3 pixel_color = vec3(0.0);
+
+                for (float i = 0.0; i < n_drops; ++i) {
+                    float time = u_time + life_time * (i + i / n_drops);
+                    float ellapsed_time = mod(time, life_time);
+                    vec2 initial_pos = random_drop_pos(i + floor(time / life_time - i) * n_drops, u_resolution, velocity);
+
+                    if (ellapsed_time < fall_time) {
+                        vec2 current_pos = initial_pos + ellapsed_time * velocity;
+                        pixel_color += trail_color(gl_FragCoord.xy, current_pos, velocity_dir, trail_width, trail_size);
+                    } else {
+                        vec2 final_pos = initial_pos + fall_time * velocity;
+                        pixel_color += wave_color(gl_FragCoord.xy, final_pos, wave_size, ellapsed_time - fall_time);
+                    }
+                }
+
+                // Read background texture (HTML content)
+                vec2 uv = gl_FragCoord.xy / u_resolution;
+                uv.y = 1.0 - uv.y; // Fix vertical flip common in WebGL textures
+                vec4 texColor = texture2D(uSampler, uv);
+
+                // Add rain drops to texture color
+                gl_FragColor = vec4(texColor.rgb + pixel_color, 1.0);
+            }
+        `;
+
+        // Initialize shaders
+        function loadShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        function initShaderProgram(gl, vsSource, fsSource) {
+            const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+            const shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                console.error('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
+                return null;
+            }
+            return shaderProgram;
+        }
+
+        const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
+        const programInfo = {
+            program: shaderProgram,
+            attribLocations: {
+                vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+                textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
+            },
+            uniformLocations: {
+                uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
+                u_resolution: gl.getUniformLocation(shaderProgram, 'u_resolution'),
+                u_mouse: gl.getUniformLocation(shaderProgram, 'u_mouse'),
+                u_time: gl.getUniformLocation(shaderProgram, 'u_time'),
+            },
+        };
+
+        // Buffers
+        function initBuffers(gl) {
+            const positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            const positions = [
+                -1.0,  1.0,
+                 1.0,  1.0,
+                -1.0, -1.0,
+                 1.0, -1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+            const textureCoordBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
+            const textureCoordinates = [
+                0.0,  0.0,
+                1.0,  0.0,
+                0.0,  1.0,
+                1.0,  1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates), gl.STATIC_DRAW);
+
+            return {
+                position: positionBuffer,
+                textureCoord: textureCoordBuffer,
+            };
+        }
+
+        const buffers = initBuffers(gl);
+
+        // Texture
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+
+        let startTime = Date.now();
+        let logError = true;
+        let mouseX = 200;
+        let mouseY = 150;
+
+        // Track mouse for u_mouse uniform
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = rect.height - (e.clientY - rect.top); // Invert Y for WebGL
+        });
+
+        canvas.onpaint = (event) => {
+            const currentTime = (Date.now() - startTime) * 0.001; // seconds
+            
+            // Set viewport to match canvas size
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            
+            if (typeof gl.texElementImage2D !== 'function') {
+                if (logError) {
+                    console.error("texElementImage2D is not supported in this browser. Please use Chrome Canary with the #canvas-draw-element flag.");
+                    logError = false;
+                }
+                // Draw fallback background
+                gl.clearColor(0.2, 0.2, 0.2, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                return;
+            }
+
+            try {
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, effect_element);
+            } catch (e) {
+                console.log("texElementImage2D failed:", e);
+                return;
+            }
+
+            gl.clearColor(0.0, 0.0, 0.0, 0.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.useProgram(programInfo.program);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
+            gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord);
+            gl.vertexAttribPointer(programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+            
+            // Set uniforms
+            gl.uniform2f(programInfo.uniformLocations.u_resolution, canvas.width, canvas.height);
+            gl.uniform2f(programInfo.uniformLocations.u_mouse, mouseX, mouseY);
+            gl.uniform1f(programInfo.uniformLocations.u_time, currentTime);
+
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        };
+
+        function animate() {
+            canvas.requestPaint();
+            requestAnimationFrame(animate);
+        }
+        requestAnimationFrame(animate);
+
+        const observer = new ResizeObserver(([entry]) => {
+            canvas.width = entry.devicePixelContentBoxSize[0].inlineSize;
+            canvas.height = entry.devicePixelContentBoxSize[0].blockSize;
+            canvas.requestPaint();
+        });
+        observer.observe(canvas, {box: 'device-pixel-content-box'});
+    </script>
+</body>
+</html>

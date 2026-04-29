@@ -154,8 +154,14 @@ pnpm preflight
 
 ## Development
 
-- Add guides under `guides/<discipline>/` (e.g. `guides/performance/my-feature/`). See [guides README](./guides/README.md) and [CONTEXT.md](./CONTEXT.md) for the full workflow.
-- Build-free TypeScript is supported in `serving` (requires Node 24+).
+Development follows a **three-stage workflow**:
+1.  **Stage 1: Identifying use cases** — Translate a feature into distinct tasks (Stub state).
+2.  **Stage 2: Authoring guidance** — Flesh out the guidance and expectations (Needs calibration).
+3.  **Stage 3: Evaluating guidance** — Auto-generate artifacts and run tests with `gd dev` (Eval-ready).
+
+Add guides under `guides/<discipline>/` (e.g. `guides/performance/my-feature/`). See [guides README](./guides/README.md) and [CONTEXT.md](./CONTEXT.md) for the detailed workflow.
+
+Build-free TypeScript is supported in `serving` (requires Node 24+).
 
 ## License
 
