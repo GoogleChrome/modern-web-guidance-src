@@ -62,3 +62,7 @@ export function setupIsolatedWorkDir(prefix: string): string {
   
   return workDir;
 }
+
+export function escapeLeftAngleBracket(text: string): string {
+  return text.replaceAll('<', '&lt;');
+}

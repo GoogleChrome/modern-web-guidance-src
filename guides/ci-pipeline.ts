@@ -1,4 +1,4 @@
-import { runCommand } from './lib/utils.ts';
+import { runCommand, escapeLeftAngleBracket } from './lib/utils.ts';
 import { lookupFeature, type PassRates } from './guide-gen.ts';
 
 export interface UseCase {
@@ -24,7 +24,8 @@ export function constructPRBody(featureId: string, useCases: UseCase[], passRate
   for (const uc of useCases) {
     const previewUrl = `https://github-preview-proxy-847799827363.us-central1.run.app/${repo}/${branch}/guides/${uc.category}/${uc.slug}/demo.html`;
 
-    body += `- \`${uc.slug}\` - ${uc.description}\n`;
+    const escapedDescription = escapeLeftAngleBracket(uc.description);
+    body += `- \`${uc.slug}\` - ${escapedDescription}\n`;
     body += `   - [demo](${previewUrl})\n`;
 
     if (passRates?.[uc.slug]) {

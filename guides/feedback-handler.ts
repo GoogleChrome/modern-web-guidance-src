@@ -11,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import fs from 'node:fs';
-import { runCommand, runGemini } from './lib/utils.ts';
+import { runCommand, runGemini, escapeLeftAngleBracket } from './lib/utils.ts';
 import { parsePassRates, PassRates } from './guide-gen.ts';
 
 async function fetchPRContext(prNumber: string): Promise<any> {
@@ -64,11 +64,12 @@ Output your response as a clear markdown summary and TODO list.
 
 async function postPlanToPR(prNumber: string, synthesis: string): Promise<void> {
   console.log('Posting plan to PR...');
+  const escapedSynthesis = escapeLeftAngleBracket(synthesis);
   const body = `On it!
 
 <details><summary>Plan from feedback-handler</summary>
 
-${synthesis}
+${escapedSynthesis}
 
 </details>`;
   await runCommand('gh', ['pr', 'comment', prNumber, '-b', body]);
@@ -176,11 +177,12 @@ async function pushChanges(prData: any, guideDirs: string[]): Promise<void> {
 
 async function postFixesReportToPR(prNumber: string, report: string): Promise<void> {
   console.log('Posting fixes report to PR...');
+  const escapedReport = escapeLeftAngleBracket(report);
   const body = `Fixes applied!
 
 <details><summary>Report from FixerAgent</summary>
 
-${report}
+${escapedReport}
 
 </details>`;
   await runCommand('gh', ['pr', 'comment', prNumber, '-b', body]);
