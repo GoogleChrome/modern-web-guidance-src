@@ -306,12 +306,10 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
 
   cleanupIsolatedHome(path.dirname(workDir));
 
-  console.log(`\nRunning pipelines in parallel for ${useCases.length} use cases...`);
-
   const promises = useCases.map(async (uc) => {
     const outputDir = await scaffoldUseCase(uc, feature, guidesDir);
     const logFile = path.join(outputDir, 'dev.log');
-    console.log(`[Usecase: ${uc.slug}] Running calibration. Logs redirected to ${logFile}`);
+    console.log(`[Usecase: ${uc.slug}] Running calibration. Logs in ${logFile}`);
 
     const logStream = fs.createWriteStream(logFile);
 
@@ -323,6 +321,9 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
 
     child.stdout.pipe(logStream);
     child.stderr.pipe(logStream);
+
+    child.stdout.on('data', d => d.toString().split('\n').forEach((l: string) => l.trim() && console.log(`[${uc.slug}] ${l}`)));
+    child.stderr.on('data', d => d.toString().split('\n').forEach((l: string) => l.trim() && console.error(`[${uc.slug}] ${l}`)));
 
     const exitCode = await new Promise<number>((resolve) => child.on('close', resolve));
 
