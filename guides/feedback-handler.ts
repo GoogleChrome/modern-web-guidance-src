@@ -76,7 +76,7 @@ ${synthesis}
   console.log('✅ Plan posted');
 }
 
-async function applyFixesToSourceFiles(guideDir: string, synthesis: string): Promise<void> {
+async function applyFixesToSourceFiles(guideDir: string, synthesis: string): Promise<string | undefined> {
   console.log('Applying fixes to source files...');
   const applyPrompt = `
 You are an AI coding agent. Your task is to apply the following fixes to the files in the guide directory \`${guideDir}\` to address PR feedback.
@@ -89,10 +89,12 @@ Focus on the source files. Do not run \`gd dev\` or try to calibrate the grader,
 Use your file editing tools to make the changes.
 `;
   try {
-    await runGemini(applyPrompt);
+    const response = await runGemini(applyPrompt);
     console.log('✅ Fixes applied to source files');
+    return response;
   } catch (err) {
     console.error(`❌ Failed to apply fixes: ${(err as Error).message}`);
+    return undefined;
   }
 }
 
@@ -145,6 +147,19 @@ async function pushChanges(prData: any, guideDir: string): Promise<void> {
   console.log(`✅ Changes pushed to ${branch}`);
 }
 
+async function postFixesReportToPR(prNumber: string, report: string): Promise<void> {
+  console.log('Posting fixes report to PR...');
+  const body = `Fixes applied!
+
+<details><summary>Details from coding agent</summary>
+
+${report}
+
+</details>`;
+  await runCommand('gh', ['pr', 'comment', prNumber, '-b', body]);
+  console.log('✅ Fixes report posted');
+}
+
 export async function handleFeedback(prNumber: string): Promise<void> {
   console.log(`Processing feedback for PR #${prNumber}...`);
 
@@ -155,7 +170,10 @@ export async function handleFeedback(prNumber: string): Promise<void> {
   await postPlanToPR(prNumber, synthesis);
 
   if (guideDir) {
-    await applyFixesToSourceFiles(guideDir, synthesis);
+    const fixesReport = await applyFixesToSourceFiles(guideDir, synthesis);
+    if (fixesReport) {
+      await postFixesReportToPR(prNumber, fixesReport);
+    }
     await runGraderDev(guideDir);
     await pushChanges(prData, guideDir);
   } else {
