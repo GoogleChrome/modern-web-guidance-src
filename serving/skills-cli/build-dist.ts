@@ -81,8 +81,8 @@ function convertSkillToUseNpx(skillDest: string) {
   fs.writeFileSync(skillDest, skillText);
 }
 
-async function main(opts: {publishRoot: string, version?: string, npx?: boolean}): Promise<BuildResult | undefined> {
-  const {publishRoot, version, npx} = opts;
+async function main(opts: {publishRoot: string, version?: string, npx?: boolean, subset?: boolean | number}): Promise<BuildResult | undefined> {
+  const {publishRoot, version, npx, subset} = opts;
 
   fs.rmSync(publishRoot, { recursive: true, force: true });
   fs.mkdirSync(publishRoot, {recursive: true});
@@ -102,7 +102,8 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
   // 1. Run build-guides.ts to update .modern-web-data and build/guides
   try {
     console.time("⏳ build-guides.ts");
-    execSync("node --experimental-strip-types scripts/build-guides.ts", {
+    const subsetFlag = subset ? (typeof subset === 'number' ? `--subset=${subset}` : '--subset') : '';
+    execSync(`node --experimental-strip-types scripts/build-guides.ts ${subsetFlag}`, {
       cwd: SERVING_DIR,
       stdio: "inherit",
     });
@@ -415,7 +416,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(1);
   });
 
-  main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true}).catch((err) => {
+  main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true, subset: 3}).catch((err) => {
     console.error(err);
     process.exit(1);
   });

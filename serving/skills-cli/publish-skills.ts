@@ -61,7 +61,7 @@ async function publishToNpm(newVersion: string) {
   console.log(`\nRebuilding distribution with version ${newVersion} for npm...`);
 
   const publishCliDir = path.join(DIST_DIR, "skills-cli-npx");
-  const result = await buildDist({publishRoot: publishCliDir, version: newVersion, npx: true});
+  const result = await buildDist({publishRoot: publishCliDir, version: newVersion, npx: true, subset: 3});
   if (!result) {
     throw new Error("Build failed or was already in progress.");
   }
