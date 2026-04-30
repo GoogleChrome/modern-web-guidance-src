@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Plans</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 40px;
+            background-color: #f4f4f4;
+        }
+        .grid {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+        .card {
+            width: 300px;
+            background: white;
+            border: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+        }
+        .card-header {
+            padding: 20px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #eee;
+            min-height: 120px;
+        }
+        .card-content {
+            padding: 20px;
+            flex-grow: 1;
+        }
+        .card-footer {
+            padding: 15px;
+            background: #f0f0f0;
+            height: 50px;
+            text-align: center;
+        }
+        h2 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="grid">
+        <div class="card">
+            <div class="card-header">
+                <h2>Standard</h2>
+            </div>
+            <div class="card-content">
+                <p>Basic features for small projects.</p>
+            </div>
+            <div class="card-footer">
+                $10/mo
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Premium Enterprise Global Solutions Package</h2>
+            </div>
+            <div class="card-content">
+                <p>Comprehensive tools for large scale operations with multiple team members and advanced analytics tracking enabled by default.</p>
+            </div>
+            <div class="card-footer">
+                $99/mo
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Lite</h2>
+            </div>
+            <div class="card-content">
+                <p>Limited access for individual users.</p>
+            </div>
+            <div class="card-footer">
+                Free
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function syncCardHeights() {
+            const contents = document.querySelectorAll('.card-content');
+            let maxHeight = 0;
+            
+            contents.forEach(item => {
+                item.style.height = 'auto';
+            });
+
+            contents.forEach(item => {
+                if (item.offsetHeight > maxHeight) {
+                    maxHeight = item.offsetHeight;
+                }
+            });
+
+            contents.forEach(item => {
+                item.style.height = maxHeight + 'px';
+            });
+        }
+
+        window.onload = syncCardHeights;
+        window.onresize = syncCardHeights;
+    </script>
+
+</body>
+</html>

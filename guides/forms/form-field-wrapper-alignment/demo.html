@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Subgrid: Uniform Multi-Column Form Alignment</title>
+    <style>
+        :root {
+            --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --color-bg: #f8fafc;
+            --color-card: #ffffff;
+            --color-label: #475569;
+            --color-input-border: #cbd5e1;
+            --color-accent: #2563eb;
+            --color-error-bg: #fef2f2;
+            --color-error-text: #991b1b;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--color-bg);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .test-demo-card {
+            background-color: var(--color-card);
+            padding: 2.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 900px;
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 2rem;
+            font-size: 1.5rem;
+            color: #0f172a;
+            text-align: center;
+        }
+
+        /* 
+           THE GRID PARENT 
+           Defines a 4-column layout: [Label] [Input] [Label] [Input]
+           The labels (cols 1 & 3) will automatically size to the widest content.
+        */
+        .test-grid-parent {
+            display: grid;
+            grid-template-columns: max-content 1fr max-content 1fr;
+            gap: 1.25rem 2rem;
+            align-items: center;
+        }
+
+        /* 
+           THE SEMANTIC CONTAINER
+           Each label/input pair is wrapped in a <div>.
+           Using 'subgrid', this <div> inherits the column sizing of the parent grid,
+           ensuring that labels and inputs align perfectly across different rows.
+        */
+        .test-field-group {
+            display: grid;
+            grid-column: span 2;
+            grid-template-columns: subgrid;
+            gap: inherit;
+        }
+
+        /* A variant that spans the full width of the form (4 columns) */
+        .test-field-group-full {
+            display: grid;
+            grid-column: span 4;
+            grid-template-columns: subgrid;
+            gap: inherit;
+        }
+
+        .test-label {
+            font-weight: 600;
+            color: var(--color-label);
+            white-space: nowrap;
+        }
+
+        .test-input {
+            padding: 0.6rem 0.75rem;
+            border: 1px solid var(--color-input-border);
+            border-radius: 0.375rem;
+            font-size: 0.95rem;
+            width: 100%;
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .test-input:focus {
+            outline: none;
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Fallback Notice */
+        .test-no-support-banner {
+            display: none;
+            background-color: var(--color-error-bg);
+            color: var(--color-error-text);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid #fecaca;
+            font-size: 0.9rem;
+        }
+
+        /* Feature Detection */
+        @supports not (grid-template-columns: subgrid) {
+            .test-no-support-banner {
+                display: block;
+            }
+            .test-grid-parent {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .test-field-group, .test-field-group-full {
+                display: flex;
+                flex-direction: column;
+                gap: 0.4rem;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="test-demo-card">
+    <h1>Uniform Multi-Column Form</h1>
+
+    <div class="test-no-support-banner">
+        <strong>Feature Not Detected:</strong> Your browser does not support <code>subgrid</code>. 
+        The layout has reverted to a standard vertical stack.
+    </div>
+
+    <form class="test-grid-parent">
+        <!-- Row 1 -->
+        <div class="test-field-group">
+            <label for="first-name" class="test-label">First Name</label>
+            <input type="text" id="first-name" class="test-input" placeholder="Jane">
+        </div>
+
+        <div class="test-field-group">
+            <label for="last-name" class="test-label">Last Name</label>
+            <input type="text" id="last-name" class="test-input" placeholder="Doe">
+        </div>
+
+        <!-- Row 2 -->
+        <div class="test-field-group">
+            <label for="user-email" class="test-label">Email Address</label>
+            <input type="email" id="user-email" class="test-input" placeholder="jane@example.com">
+        </div>
+
+        <div class="test-field-group">
+            <label for="user-phone" class="test-label">Phone</label>
+            <input type="tel" id="user-phone" class="test-input" placeholder="+1 (555) 000-0000">
+        </div>
+
+        <!-- Row 3 (Full Width spanning 4 columns) -->
+        <div class="test-field-group-full">
+            <label for="mailing-address" class="test-label">Mailing Address</label>
+            <!-- Spans 3 columns of the parent (the remaining space) -->
+            <input type="text" id="mailing-address" class="test-input" placeholder="123 Example Street, Suite 4B" style="grid-column: span 3;">
+        </div>
+
+        <!-- Row 4 -->
+        <div class="test-field-group">
+            <label for="city-loc" class="test-label">City</label>
+            <input type="text" id="city-loc" class="test-input" placeholder="San Francisco">
+        </div>
+
+        <div class="test-field-group">
+            <label for="postal-code" class="test-label">Zip Code</label>
+            <input type="text" id="postal-code" class="test-input" placeholder="94105">
+        </div>
+    </form>
+</div>
+
+</body>
+</html>

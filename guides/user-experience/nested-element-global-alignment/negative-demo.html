@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Negative Example</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: sans-serif;
+        }
+
+        .broken-global-grid {
+            display: grid;
+            grid-template-columns: 1fr 800px 1fr;
+            gap: 20px;
+        }
+
+        .header {
+            grid-column: 2;
+            text-align: center;
+        }
+
+        .manual-nested-component {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: 1fr 800px 1fr;
+            gap: 20px;
+            background: #eee;
+            border: 5px solid red;
+            padding: 20px 0;
+        }
+
+        .brittle-alignment-box {
+            grid-column: 2;
+            position: relative;
+            left: 50px;
+            margin-left: -50px;
+            width: 800px;
+            background: white;
+        }
+
+        .fake-subgrid-child {
+            display: block;
+            margin-left: 210px;
+            width: 390px;
+            float: left;
+        }
+
+        .absolute-fix {
+            position: absolute;
+            top: 0;
+            right: -100px;
+            width: 200px;
+            background: blue;
+            color: white;
+        }
+
+        .misused-contents {
+            display: contents;
+            background: yellow;
+            border: 10px solid black;
+            padding: 50px;
+        }
+
+        .hardcoded-item {
+            grid-column: 2;
+            margin-top: 150px;
+            padding-left: 410px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="broken-global-grid">
+        <div class="header">
+            <h1>Anti-Pattern Layout</h1>
+        </div>
+
+        <div class="manual-nested-component">
+            <div class="brittle-alignment-box">
+                <div class="fake-subgrid-child">
+                    This element uses floats and hardcoded margins to try and match the parent grid columns instead of using subgrid.
+                </div>
+                <div class="absolute-fix">
+                    Fixed width absolute positioning.
+                </div>
+            </div>
+        </div>
+
+        <div class="misused-contents">
+            <div class="hardcoded-item">
+                This item is inside a display: contents wrapper that has ignored styles. 
+                The layout relies on specific padding values to align with the text above.
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

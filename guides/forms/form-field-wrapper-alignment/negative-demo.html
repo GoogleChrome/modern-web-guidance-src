@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Layout</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f0f0f0;
+            padding: 20px;
+        }
+
+        .form-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .legacy-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .legacy-table td {
+            padding: 10px 5px;
+        }
+
+        .label-cell {
+            width: 150px;
+            font-weight: bold;
+        }
+
+        .input-cell input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        .flex-row {
+            display: flex;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .flex-row label {
+            width: 150px;
+            flex-shrink: 0;
+        }
+
+        .flex-row input {
+            flex-grow: 1;
+            padding: 8px;
+        }
+
+        .contents-wrapper {
+            display: contents;
+        }
+
+        .nested-grid {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            margin-bottom: 10px;
+        }
+
+        .section-title {
+            border-bottom: 1px solid #ccc;
+            margin: 20px 0 10px;
+            padding-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="form-container">
+    <div class="section-title">Table Layout</div>
+    <table class="legacy-table">
+        <tr>
+            <td class="label-cell"><label for="t-first">First Name</label></td>
+            <td class="input-cell"><input type="text" id="t-first"></td>
+        </tr>
+        <tr>
+            <td class="label-cell"><label for="t-last">Last Name</label></td>
+            <td class="input-cell"><input type="text" id="t-last"></td>
+        </tr>
+    </table>
+
+    <div class="section-title">Fixed Width Flex</div>
+    <div class="flex-row">
+        <label for="f-email">Email</label>
+        <input type="email" id="f-email">
+    </div>
+    <div class="flex-row">
+        <label for="f-phone">Phone Number</label>
+        <input type="tel" id="f-phone">
+    </div>
+
+    <div class="section-title">Display Contents</div>
+    <div class="contents-wrapper">
+        <div class="flex-row">
+            <label for="c-addr">Address</label>
+            <input type="text" id="c-addr">
+        </div>
+    </div>
+
+    <div class="section-title">Nested Independent Grids</div>
+    <div class="nested-grid">
+        <label for="n-city">City</label>
+        <input type="text" id="n-city">
+    </div>
+    <div class="nested-grid">
+        <label for="n-zip">Postal Code</label>
+        <input type="text" id="n-zip">
+    </div>
+</div>
+
+</body>
+</html>

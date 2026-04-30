@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSS Subgrid: Aligned Card Sections</title>
+  <style>
+    :root {
+      --primary-color: #3b82f6;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-color: #1e293b;
+      --border-color: #e2e8f0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.5;
+      padding: 2rem;
+      margin: 0;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    /* 
+      The Container 
+      We define the grid rows here so the subgrid items can align to them.
+      Each card will span 3 rows: Header, Body, Footer.
+    */
+    .test-card-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    /* 
+      The Card
+      Default styling (fallback for browsers without subgrid)
+    */
+    .test-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+
+    .test-card-header {
+      font-weight: bold;
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      border-bottom: 2px solid var(--primary-color);
+      padding-bottom: 0.5rem;
+    }
+
+    .test-card-body {
+      flex: 1; /* Pushes footer down in flex fallback */
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+      color: #475569;
+    }
+
+    .test-card-footer {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--primary-color);
+      background: #eff6ff;
+      padding: 0.5rem;
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    /* 
+      Subgrid Implementation
+      When supported, we align internal sections across siblings.
+    */
+    @supports (grid-template-rows: subgrid) {
+      .test-card-container {
+        /* Define 3 rows for the shared alignment */
+        grid-template-rows: auto 1fr auto;
+      }
+
+      .test-card {
+        display: grid;
+        /* Card spans the 3 rows defined in the container */
+        grid-row: span 3;
+        /* Inherit the row tracks from the container */
+        grid-template-rows: subgrid;
+        /* Remove margins that might interfere with subgrid alignment */
+        padding: 1.25rem;
+      }
+
+      .test-card-header,
+      .test-card-body,
+      .test-card-footer {
+        margin: 0;
+      }
+    }
+
+    .status-msg {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Feature Demo: CSS Subgrid</h1>
+  
+  <p style="text-align: center; max-width: 600px; margin: 0 auto 2rem;">
+    This demo shows how <strong>Subgrid</strong> allows sibling cards to align their headers, bodies, and footers perfectly, 
+    even when content lengths vary.
+  </p>
+
+  <main class="test-card-container">
+    <!-- Card 1: Short Header, Long Body -->
+    <article class="test-card">
+      <header class="test-card-header">Simple Plan</header>
+      <div class="test-card-body">
+        <p>This card has a very short header, but the body content is substantial to demonstrate vertical expansion.</p>
+        <p>In a normal layout, the footer would be pushed down relative only to this card's content.</p>
+      </div>
+      <footer class="test-card-footer">Starting at $9/mo</footer>
+    </article>
+
+    <!-- Card 2: Long Header, Short Body -->
+    <article class="test-card">
+      <header class="test-card-header">The Professional Enterprise Advanced Solution</header>
+      <div class="test-card-body">
+        <p>Short body content here.</p>
+      </div>
+      <footer class="test-card-footer">Contact Sales</footer>
+    </article>
+
+    <!-- Card 3: Medium Header, Medium Body, Long Footer -->
+    <article class="test-card">
+      <header class="test-card-header">Standard Plus</header>
+      <div class="test-card-body">
+        <p>Balanced content for the middle ground.</p>
+      </div>
+      <footer class="test-card-footer">
+        Includes Priority Support, API Access, and Unlimited Cloud Storage
+      </footer>
+    </article>
+  </main>
+
+  <div class="status-msg" id="support-status">
+    Checking subgrid support...
+  </div>
+
+  <script>
+    const status = document.getElementById('support-status');
+    if (CSS.supports('grid-template-rows', 'subgrid')) {
+      status.innerHTML = "✅ <strong>Subgrid is supported!</strong> The headers and footers are perfectly aligned across the row.";
+      status.style.color = "green";
+    } else {
+      status.innerHTML = "⚠️ <strong>Subgrid not supported.</strong> Falling back to Flexbox (internal sections may not align).";
+      status.style.color = "#92400e";
+    }
+  </script>
+
+</body>
+</html>
