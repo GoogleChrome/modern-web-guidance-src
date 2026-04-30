@@ -117,7 +117,7 @@ async function postPlanToPR(prNumber: string, synthesis: string): Promise<void> 
   const escapedSynthesis = escapeLeftAngleBracket(synthesis);
   const body = `On it!
 
-<details><summary>Plan from feedback-handler</summary>
+<details><summary>📋 Plan from feedback-handler</summary>
 
 ${escapedSynthesis}
 
@@ -230,7 +230,7 @@ async function postFixesReportToPR(prNumber: string, report: string): Promise<vo
   const escapedReport = escapeLeftAngleBracket(report);
   const body = `Fixes applied!
 
-<details><summary>Report from FixerAgent</summary>
+<details><summary>🛠️ Report from FixerAgent</summary>
 
 ${escapedReport}
 
@@ -260,6 +260,13 @@ export async function handleFeedback(prNumber: string): Promise<void> {
   if (guideDirs.length > 0) {
     const fixesReport = await applyFixesToSourceFiles(guideDirs, synthesis);
     if (fixesReport) {
+      for (const guideDir of guideDirs) {
+        await runCommand('git', ['add', guideDir]);
+      }
+      const stagedFiles = await runCommand('git', ['diff', '--cached', '--name-only']);
+      if (stagedFiles.trim()) {
+        await runCommand('git', ['commit', '-m', 'chore: apply feedback to source files']);
+      }
       await postFixesReportToPR(prNumber, fixesReport);
     }
 
