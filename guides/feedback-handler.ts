@@ -240,7 +240,7 @@ ${escapedReport}
 }
 
 async function postAllPassRatesToPR(prNumber: string, allPassRates: Record<string, PassRates>): Promise<void> {
-  console.log('Posting all pass rates to PR...');
+  console.log('Posting all pass rates to PR:', JSON.stringify(allPassRates, null, 2));
   
   let body = `### 📊 Updated Pass Rates\n\n`;
   body += `| Use Case | Unguided | Guided | Uplift |\n`;
