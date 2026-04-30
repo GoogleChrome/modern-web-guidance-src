@@ -64,7 +64,64 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 </html>
 ```
 
-## 2. Resource Prioritization and Performance
+## 2. Content Grouping and Attribution
+
+### Guidelines
+
+- **DO** use `<blockquote>` for extended quotations from another source, and use the `cite` attribute to provide a machine-readable URL for that source.
+- **DO** use `<figure>` to group self-contained content (images, code snippets, or quotes) that is referenced from the main flow but could be moved to an appendix or sidebar without affecting the document's meaning.
+- **DO** use `<figcaption>` as the first or last child of a `<figure>` to provide a human-readable caption or attribution.
+- **DO** use the `<cite>` element inside a caption or attribution to identify the **title** of a work (e.g., a book or website name), not the author's name.
+- **DO** use the `<code>` element for short fragments of computer code (e.g., variable names, file paths, or inline snippets).
+- **DO** wrap `<code>` inside a `<pre>` element when displaying blocks of code to preserve whitespace and line breaks.
+- **DO** ensure that code blocks are accessible by adding `tabindex="0"` to the `<pre>` element if it becomes scrollable, allowing keyboard users to reach the content.
+
+- **DON'T** use `<blockquote>` for purely visual indentation of non-quoted text.
+- **DON'T** use `<figure>` for every single image; use it only when a caption is required or when the content is a distinct, referenced unit.
+- **DON'T** use `<pre>` without `<code>` for code blocks; `<pre>` alone only preserves formatting but doesn't convey that the content is a computer language.
+
+### Code Example
+
+```html
+<!-- Quote with attribution using Figure -->
+<figure>
+  <blockquote cite="https://html.spec.whatwg.org/">
+    <p>The figure element represents some flow content, optionally with a caption, that is self-contained and is typically referenced as a single unit from the main flow of the document.</p>
+  </blockquote>
+  <figcaption>
+    Definition of the &lt;figure&gt; element from the <cite>HTML Living Standard</cite>
+  </figcaption>
+</figure>
+
+<!-- Image with caption -->
+<figure>
+  <img 
+    src="architecture-diagram.webp" 
+    alt="Diagram showing the flow between Client, API Gateway, and Microservices"
+    width="800"
+    height="450"
+    loading="lazy"
+  >
+  <figcaption>Figure 1: High-level system architecture overview.</figcaption>
+</figure>
+
+<!-- Code block with accessibility and language hint -->
+<figure>
+  <figcaption>Example configuration:</figcaption>
+  <pre tabindex="0"><code class="language-json">
+{
+  "name": "gemini-cli",
+  "version": "1.0.0",
+  "private": true
+}
+  </code></pre>
+</figure>
+
+<!-- Inline code -->
+<p>To initialize the project, run the <code>npm install</code> command.</p>
+```
+
+## 3. Resource Prioritization and Performance
 
 ### Guidelines
 
@@ -72,6 +129,8 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DO** use `<link rel="preload" as="image">` with `fetchpriority="high"` for LCP background images defined in CSS.
 - **DO** apply `loading="lazy"` to off-screen images and iframes to defer bandwidth.
 - **DO** specify `width` and `height` on all `<img>` tags to preserve aspect ratio and prevent Layout Shifts (CLS).
+- **DO** use the `srcset` attribute on `<img>`s for adding multiple versions of the same image at different sizes.
+- **DO** use the `<picture>` element with a fallback `<img>` for more fine-grained image control like switching between image formats, image sizes, and cropping images at different device sizes. 
 
 - **DON'T** apply `loading="lazy"` to above-the-fold or hero images. This delays LCP.
 - **DON'T** overuse `fetchpriority="high"`; prioritization is a zero-sum mechanism. Use `fetchpriority="low"` to demote non-critical trackers or carousel items.
@@ -79,14 +138,23 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 ### Code Example
 
 ```html
-<!-- High-priority hero image -->
+<!-- High-priority hero image with responsive sizes -->
 <img 
-  src="hero.webp" 
+  src="hero-large.webp" 
+  srcset="hero-small.webp 480w, hero-medium.webp 800w, hero-large.webp 1200w"
+  sizes="(max-width: 600px) 480px, (max-width: 1000px) 800px, 1200px"
   alt="Main product view" 
   fetchpriority="high" 
   width="1200" 
   height="600"
 >
+
+<!-- Art direction and format switching with <picture> -->
+<picture>
+  <source srcset="hero-mobile.webp" media="(max-width: 600px)">
+  <source srcset="hero-desktop.avif" type="image/avif">
+  <img src="hero-desktop.webp" alt="Platform dashboard overview" width="1200" height="600">
+</picture>
 
 <!-- Low-priority decorative footer image -->
 <img 
@@ -300,7 +368,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 </video>
 ```
 
-## 9. Dynamic Styles and Interactivity
+## 10. Dynamic Styles and Interactivity
 
 ### Guidelines
 - **DO** use the `style` attribute to pass state to CSS via **Custom Properties**. This keeps visual logic in your stylesheet while JavaScript provides the raw data.
@@ -329,6 +397,17 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
     };
 
     // Example: Move to 85% and shift color to green (120)
+    setTimeout(() => updateProgress(85, 120), 1000);
+  </script>
+</body>
+```
+```css
+.loading-bar {
+  accent-color: hsl(var(--brand-hue, 200), 80%, 50%);
+  transition: accent-color 0.3s ease;
+}
+```
+r to green (120)
     setTimeout(() => updateProgress(85, 120), 1000);
   </script>
 </body>
