@@ -11,7 +11,7 @@ Use this skill when you need to validate the automated guidance pipeline (v2) us
 
 1.  **GitHub Actions First**: Kicking off a new workflow must be done via the GitHub CLI (`gh workflow run`), not by running scripts locally.
 2.  **Workflow Awareness**: Be aware of the specific workflow files involved: `generate-guide.yml` and `handle-pr-review.yml`.
-3.  **Remote Targeting**: Always target the correct remote (usually `paul` pointing to `paulirish/guidance`) when running workflows.
+3.  **Remote Targeting**: Always target the correct remote (usually `paul` pointing to `[owner]/[repo]`) when running workflows.
 
 ## Operations to Perform
 
@@ -25,20 +25,20 @@ Use this skill when you need to validate the automated guidance pipeline (v2) us
 
 -   **Trigger Workflow**:
     ```bash
-    gh workflow run generate-guide.yml --ref <branch-name> -f feature_id=<feature-id> -f reviewer=<reviewer-handle> --repo paulirish/guidance
+    gh workflow run generate-guide.yml --ref <branch-name> -f feature_id=<feature-id> -f reviewer=<reviewer-handle> --repo [owner]/[repo]
     ```
 -   **List Runs**:
     ```bash
-    gh run list --workflow <workflow-file> --repo paulirish/guidance
+    gh run list --workflow <workflow-file> --repo [owner]/[repo]
     ```
 -   **Watch Run**:
     ```bash
-    gh run watch <run-id> --interval 60 --repo paulirish/guidance
+    gh run watch <run-id> --interval 60 --repo [owner]/[repo]
     ```
 
 ## Examples
 
 ### Kicking off a workflow for `intl-display-names`
 ```bash
-gh workflow run generate-guide.yml --ref pipelinev2 -f feature_id=intl-display-names -f reviewer=paulirish --repo paulirish/guidance
+gh workflow run generate-guide.yml --ref pipelinev2 -f feature_id=intl-display-names -f reviewer=paulirish --repo [owner]/[repo]
 ```
