@@ -187,7 +187,7 @@ function showHelp() {
   // AI-First Safety: Enforce at compile-time that every command is documented in the help text
   type AssertEmpty<_T extends never> = true;
   type _CheckAllCmdsRendered = AssertEmpty<Exclude<CommandName, typeof groups[number]['commands'][number]>>;
-  
+
   // AI-First Safety: Enforce that every flag in ALL_OPTIONS is assigned to a command or rendered globally
   type GlobalFlags = 'help' | 'version' | 'verbose';
   type CmdFlags = typeof COMMAND_METADATA[keyof typeof COMMAND_METADATA]['flags'][number];
@@ -271,9 +271,10 @@ async function main() {
     }
 
     case 'gen-guide': {
-      const featureId = requireArg(positionals[1], 'gd gen-guide <web-feature-id> [--category <cat>] [--slug <slug>]');
+      const featureId = requireArg(positionals[1], 'gd gen-guide <web-feature-id> [<reviewer-github-username>]');
+      const reviewer = requireArg(positionals[2], 'gd gen-guide <web-feature-id> [<reviewer-github-username>]');
       const { generateUseCases } = await import('../guides/guide-gen.ts');
-      await generateUseCases(featureId);
+      await generateUseCases(featureId, reviewer);
       break;
     }
 
