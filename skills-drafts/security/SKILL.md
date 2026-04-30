@@ -9,6 +9,34 @@ Guidelines for implementing preventative security measures on the web safely and
 
 **NOTE**: This skill covers standard web platform defenses but does **not** replace comprehensive backend security, authorization models, or server-side input validation.
 
+## Table of Contents
+
+- When to apply this skill
+- Phase 1: Quick Wins & Obvious Anti-Patterns
+  - 1.1 Avoid Dangerous DOM Sinks
+  - 1.2 Secure Cookies
+- Phase 2: Discovery & Data Collection (Prerequisites)
+  - 2.1 Inspect the Application
+  - 2.2 Deploy Report-Only Policies
+  - 2.3 Data Hygiene for Reports
+  - 2.4 Automated Discovery via Browser APIs and DevTools
+- Phase 3: Interpreting Results & Enforcement
+  - Core enforcement (data-driven rollouts)
+    - 3.1 Analyzing CSP Reports
+    - 3.2 Transitioning to CSP Enforcement
+    - 3.3 Trusted Types Enforcement
+    - 3.4 Handling Advanced Isolation (COOP / COEP / CORP)
+    - 3.5 Fetch Metadata (Resource Isolation)
+  - Companion policies (deploy in parallel)
+    - HTTP Strict Transport Security (HSTS)
+    - X-Content-Type-Options
+    - Clickjacking: frame-ancestors, X-Frame-Options, iframe sandbox
+    - Referrer Policy
+    - Permissions Policy
+    - Subresource Integrity (SRI)
+    - Cross-Origin Resource Sharing (CORS)
+    - Clear-Site-Data (Logout)
+
 ## When to apply this skill
 
 The right starting point depends on the application:
@@ -18,8 +46,6 @@ The right starting point depends on the application:
 - **SaaS template / framework defaults**: Ship Phase 1 hygiene and Phase 3 policies enabled by default, with Phase 2 reporting on so downstream users can detect regressions.
 
 If you are unsure which case applies, default to Phase 1 → 2 → 3 in order.
-
----
 
 ## Phase 1: Quick Wins & Obvious Anti-Patterns
 
@@ -42,40 +68,20 @@ element.innerHTML = `Hello, ${untrustedName}!`;
 element.textContent = `Hello, ${untrustedName}!`;
 ```
 
-### 1.2 Trusted Types
-Trusted Types enforces the §1.1 advice at the platform level — once enabled, the browser blocks string assignments to dangerous sinks unless they pass through a policy.
+Trusted Types can enforce this pattern at runtime by blocking string assignments to dangerous sinks. Deploying it is a CSP enforcement step with real breakage risk — see §3.3.
 
-- **DO**: Enable Trusted Types via CSP (`require-trusted-types-for 'script'`).
-- **DO**: Define a single named policy that performs sanitization (or escaping) and route all sink writes through it.
-- **DO**: Roll out in report-only mode first (see Phase 2) to find every offending sink.
-
-**Header:**
-```http
-Content-Security-Policy: require-trusted-types-for 'script'
-```
-
-**JS policy:**
-```javascript
-if (window.trustedTypes && trustedTypes.createPolicy) {
-  const policy = trustedTypes.createPolicy('escapePolicy', {
-    createHTML: str => str.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  });
-  el.innerHTML = policy.createHTML(untrustedString);
-}
-```
-
-### 1.3 Secure Cookies
+### 1.2 Secure Cookies
 Ensure new cookies are configured securely by default.
 - **DO**: Explicitly set `SameSite=Lax` for standard first-party cookies.
 - **DO**: Set `SameSite=None; Secure; Partitioned` for third-party contexts (iframes).
+- **DO**: Use the `__Host-` prefix for cookies scoped to a single origin (requires `Secure`, `Path=/`, and no `Domain` attribute) — the browser rejects writes that don't meet those constraints, preventing subdomain injection.
+- **DO**: Use the `__Secure-` prefix for any cookie that must only be set over HTTPS.
 - **DO NOT**: Rely on unpartitioned `SameSite=None` — these are being systematically blocked for tracking prevention.
 
 ```http
-Set-Cookie: session_id=value; SameSite=Lax; HttpOnly; Secure
+Set-Cookie: __Host-session_id=value; SameSite=Lax; HttpOnly; Secure; Path=/
 Set-Cookie: third_party_var=value; SameSite=None; Secure; Partitioned
 ```
-
----
 
 ## Phase 2: Discovery & Data Collection (Prerequisites)
 
@@ -88,6 +94,9 @@ Before turning anything on, gather facts:
 - **List third-party script origins** loaded by the app (analytics, ads, tag managers, CDNs). These dictate what `script-src` must allow or whether `'strict-dynamic'` is viable.
 - **Identify popup-dependent flows**: OAuth, payment gateways, SSO. These constrain COOP choices.
 - **Identify cross-origin embeds and embedders**: iframes the app loads, and sites that embed the app. These constrain COEP/CORP/`frame-ancestors`.
+- **Enumerate required browser features**: List any features (camera, geolocation, microphone, fullscreen) used by the app or embedded third-party widgets to inform `Permissions-Policy`.
+- **Identify dynamic dependencies**: Check if third-party scripts are versioned or if they receive silent updates, determining if `SRI` can be used.
+- **Map cross-site integrations**: List all incoming Webhooks, cross-site APIs, or SSO redirect endpoints so `Fetch Metadata` resource isolation policies don't break them.
 
 ### 2.2 Deploy Report-Only Policies
 Use "Report-Only" headers to identify potential breakages before they happen.
@@ -101,16 +110,25 @@ Reporting-Endpoints: main-endpoint="https://reports.example/main"
 Content-Security-Policy-Report-Only: script-src 'nonce-{RANDOM}' 'strict-dynamic' https: 'unsafe-inline'; object-src 'none'; base-uri 'none'; report-to main-endpoint;
 ```
 
+The `'strict-dynamic'`, `https:`, and `'unsafe-inline'` tokens together form a backwards-compatibility ladder: modern browsers honor `'strict-dynamic'` (nonce-propagating) and ignore the others; older browsers fall back to `https:`; very old browsers fall back to `'unsafe-inline'`. The fallbacks are harmless on any browser that supports a stricter token.
+
 ### 2.3 Data Hygiene for Reports
 - **DO NOT**: Include sensitive data (PII, authentication tokens, session identifiers, query strings with secrets) in logs or violation reports. Mask or omit them at the edge before they reach the reporting endpoint.
 
----
+### 2.4 Automated Discovery via Browser APIs and DevTools
+- **Reporting API**: Use `Reporting-Endpoints` in combination with report-only headers (e.g., `Content-Security-Policy-Report-Only`, `Document-Policy-Report-Only`) to have the browser automatically post violations to your server.
+- **Browser DevTools**: Use the **Issues Tab** in modern browsers (e.g., Chrome DevTools). It automatically surfaces blocked resources, mixed content, third-party cookie deprecation warnings, and feature policy violations without you having to crawl the codebase manually.
 
 ## Phase 3: Interpreting Results & Enforcement
 
-After collecting data, use the mental model below to decide how to proceed with enforcement.
+After collecting data, decide how to proceed with enforcement. Phase 3 has two tracks that run in parallel, not in sequence:
 
-### 3.1 Analyzing CSP Reports
+- **Core enforcement (data-driven rollouts)** — high-breakage-risk policies that depend on Phase 2 report-only data. These are the rollouts you stage and watch.
+- **Companion policies (deploy in parallel)** — lower-risk headers that can be turned on alongside or before the core work, with little or no Phase 2 discovery required.
+
+### Core enforcement (data-driven rollouts)
+
+#### 3.1 Analyzing CSP Reports
 - **Scenario**: Many violations for inline scripts.
   - **Condition**: The app uses a framework that relies on inline scripts.
   - **Decision**: Implement Nonces (server-rendered) or Hashes (static) before enforcing.
@@ -119,18 +137,25 @@ After collecting data, use the mental model below to decide how to proceed with 
   - **Decision**: Allow the specific domains, or use `'strict-dynamic'` if they load dependencies.
 - **Scenario**: Trusted Types violations on specific sinks.
   - **Condition**: Legacy code paths still write strings to `innerHTML` etc.
-  - **Decision**: Refactor those sinks (per §1.1) or route them through the policy defined in §1.2 before enforcing.
+  - **Decision**: Refactor those sinks (per §1.1) or route them through a Trusted Types policy (§3.3) before enforcing.
 
-### 3.2 Transitioning to Enforcement
+#### 3.2 Transitioning to CSP Enforcement
 Only move to enforced mode when:
 1. Violations in the report-only logs have dropped to near zero or are accounted for.
 2. You have refactored unsafe sinks identified in Phase 1.
 3. Reporting remains wired up after the switch — keep `report-to` on the enforced header so regressions are visible.
 
+**Key directives to set:**
+- `default-src 'self'` as a fallback for unspecified fetch directives — anchors the policy so any new resource type defaults to a safe value.
+- `script-src` with nonces or hashes (avoid URL allowlists; see below).
+- `object-src 'none'` and `base-uri 'none'` to block plugin and base-tag injection.
+- `form-action 'self'` to prevent form submissions to attacker-controlled origins. `script-src` alone does not close this exfiltration path.
+- `upgrade-insecure-requests` to auto-upgrade subresource HTTP loads to HTTPS, closing mixed-content gaps that HSTS does not cover for already-loaded pages.
+
 **Enforced Header Example (CSP with reporting):**
 ```http
 Reporting-Endpoints: main-endpoint="https://reports.example/main"
-Content-Security-Policy: script-src 'nonce-{RANDOM}' 'strict-dynamic' https: 'unsafe-inline'; object-src 'none'; base-uri 'none'; report-to main-endpoint;
+Content-Security-Policy: default-src 'self'; script-src 'nonce-{RANDOM}' 'strict-dynamic' https: 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'self'; upgrade-insecure-requests; report-to main-endpoint;
 ```
 
 HTML for nonce-based CSP:
@@ -142,7 +167,23 @@ For static/cached HTML (SPAs) where a per-response nonce is not possible, use ha
 
 **Avoid**: URL allowlists like `script-src https://cdn.example.com` — they are easily bypassed by open redirects, JSONP endpoints, and dependency injection on the allowed origin.
 
-### 3.3 Handling Advanced Isolation (COOP / COEP / CORP)
+#### 3.3 Trusted Types Enforcement
+Trusted Types enforces the §1.1 source-level guidance at runtime: once enabled, the browser blocks string assignments to dangerous sinks unless they pass through a named policy.
+
+- **DO**: Roll out via `Content-Security-Policy-Report-Only: require-trusted-types-for 'script'` first to find every offending sink.
+- **DO**: Define a single named policy that performs sanitization (or escaping) and route all sink writes through it.
+- **DO**: Move to `Content-Security-Policy: require-trusted-types-for 'script'` only after report-only violations have dropped to near zero.
+
+```javascript
+if (window.trustedTypes && trustedTypes.createPolicy) {
+  const policy = trustedTypes.createPolicy('escapePolicy', {
+    createHTML: str => str.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  });
+  el.innerHTML = policy.createHTML(untrustedString);
+}
+```
+
+#### 3.4 Handling Advanced Isolation (COOP / COEP / CORP)
 Cross-origin isolation enables `SharedArrayBuffer` and mitigates Spectre, but has the highest breakage risk of any policy here.
 
 - **Caution**: `Cross-Origin-Opener-Policy: same-origin` severs `window.opener` references, breaking OAuth popups and `postMessage`-based payment gateways.
@@ -156,63 +197,12 @@ Cross-Origin-Embedder-Policy: require-corp
 Cross-Origin-Resource-Policy: same-origin
 ```
 
----
+#### 3.5 Fetch Metadata (Resource Isolation)
+Server-side enforcement that uses `Sec-Fetch-*` request headers to reject suspicious cross-site requests. Requires the cross-site integration mapping from §2.1 before enforcing.
 
-## Phase 3 Reference: Additional Headers
-
-These policies are lower-risk than CSP/COOP but still benefit from the Phase 2 → Phase 3 discipline. Apply them once Phases 1–2 are complete.
-
-### HTTP Strict Transport Security (HSTS)
-- **DO**: `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload` to force HTTPS.
-- **TIP**: In production rollout, start with a short `max-age` (e.g., 300 seconds) and incrementally increase to 1 year. A misconfigured HSTS with a long max-age can render the site permanently inaccessible until the cache expires in every browser that saw it.
-
-### X-Content-Type-Options
-- **DO**: Set `X-Content-Type-Options: nosniff` to block MIME-type sniffing.
-
-### X-Frame-Options / `frame-ancestors` (Clickjacking)
-- **DO**: Use `frame-ancestors` in CSP for fine-grained control. Fall back to `X-Frame-Options: DENY` or `SAMEORIGIN` for older browsers if needed.
-
-```http
-Content-Security-Policy: frame-ancestors 'self' https://trusted-partner.com;
-```
-
-### Referrer Policy
-- **DO**: Use `strict-origin-when-cross-origin` as a safe default.
-
-### Permissions Policy
-- **DO**: Disable unused browser features (camera, geolocation, microphone) for the page and iframes using Structured Fields syntax.
-- **DO**: When delegating features to an iframe, use the `allow` attribute in HTML *in addition* to the header.
-
-```http
-Permissions-Policy: camera=(), geolocation=(), microphone=()
-```
-
-```html
-<iframe src="https://trusted-video.com/player" allow="fullscreen; camera"></iframe>
-```
-
-### Subresource Integrity (SRI)
-- **DO**: Use the `integrity` attribute with a cryptographic hash when loading third-party scripts, combined with `crossorigin="anonymous"`.
-- **DO**: Ensure the server/CDN sends an appropriate `Access-Control-Allow-Origin` header so the browser can compute the hash.
-- **DO NOT**: Use SRI for dynamic or unversioned assets — silent updates will cause script execution to fail. SRI is strictly for immutable, versioned assets.
-
-```html
-<script src="https://cdn.example.com/lib.js" integrity="sha384-H8df...39v" crossorigin="anonymous"></script>
-```
-
-### Cross-Origin Resource Sharing (CORS)
-- **DO**: Validate the `Origin` header on the server and set `Access-Control-Allow-Origin` dynamically to specific origins (rather than wildcard `*`).
-- **DO NOT**: Use wildcard `*` for `Access-Control-Allow-Origin` if `Access-Control-Allow-Credentials: true` is required — the browser will reject the response.
-- **DO**: Handle preflight (`OPTIONS`) requests by returning appropriate headers before processing data.
-
-```http
-Access-Control-Allow-Origin: https://trusted-app.com
-Access-Control-Allow-Credentials: true
-```
-
-### Fetch Metadata (Resource Isolation)
 - **DO**: Implement a server-side resource isolation policy that checks `Sec-Fetch-*` headers and rejects `cross-site` requests for non-navigational endpoints.
 - **DO**: Include `Vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site` to prevent intermediate caches (CDNs) from serving cached responses to attackers.
+- **CAUTION**: Misconfiguring these checks will block legitimate API requests coming from cross-site integrations, SSO handlers, or Webhooks. Ensure you log and test your `Sec-Fetch-*` constraints beforehand.
 
 ```javascript
 app.use((req, res, next) => {
@@ -233,7 +223,67 @@ app.use((req, res, next) => {
 });
 ```
 
-### Clear-Site-Data (Logout)
+### Companion policies (deploy in parallel)
+
+These carry significantly lower breakage risk than the core enforcement track. They can be deployed alongside — or before — the CSP and isolation rollouts.
+
+#### HTTP Strict Transport Security (HSTS)
+- **DO**: `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload` to force HTTPS.
+- **TIP**: In production rollout, start with a short `max-age` (e.g., 300 seconds) and incrementally increase to 1 year. A misconfigured HSTS with a long max-age can render the site permanently inaccessible until the cache expires in every browser that saw it.
+
+#### X-Content-Type-Options
+- **DO**: Set `X-Content-Type-Options: nosniff` to block MIME-type sniffing.
+
+#### Clickjacking: `frame-ancestors`, X-Frame-Options, iframe `sandbox`
+- **DO**: Use `frame-ancestors` in CSP for fine-grained control over who can embed your page. Fall back to `X-Frame-Options: DENY` or `SAMEORIGIN` for older browsers if needed.
+- **DO**: When *you* embed untrusted content (user-generated HTML, third-party widgets), use the iframe `sandbox` attribute to restrict what it can do — scripts, forms, top-navigation, popups are all blocked unless explicitly opted in.
+
+```http
+Content-Security-Policy: frame-ancestors 'self' https://trusted-partner.com;
+```
+
+```html
+<iframe src="https://untrusted.example/widget" sandbox="allow-scripts"></iframe>
+```
+
+#### Referrer Policy
+- **DO**: Use `strict-origin-when-cross-origin` as a safe default.
+
+#### Permissions Policy
+- **DO**: Disable unused browser features (camera, geolocation, microphone) for the page and iframes using Structured Fields syntax.
+- **DO**: When delegating features to an iframe, use the `allow` attribute in HTML *in addition* to the header.
+- **CAUTION**: Unintentionally blocking a delegated feature will cause silent failures in third-party widgets (like embedded video players or payment gateways). Audit third-party dependencies before blocking.
+
+```http
+Permissions-Policy: camera=(), geolocation=(), microphone=()
+```
+
+```html
+<iframe src="https://trusted-video.com/player" allow="fullscreen; camera"></iframe>
+```
+
+#### Subresource Integrity (SRI)
+- **DO**: Use the `integrity` attribute with a cryptographic hash when loading third-party scripts, combined with `crossorigin="anonymous"`.
+- **DO**: Ensure the server/CDN sends an appropriate `Access-Control-Allow-Origin` header so the browser can compute the hash.
+- **DO NOT**: Use SRI for dynamic or unversioned assets — silent updates will cause script execution to fail. SRI is strictly for immutable, versioned assets.
+
+```html
+<script src="https://cdn.example.com/lib.js" integrity="sha384-H8df...39v" crossorigin="anonymous"></script>
+```
+
+#### Cross-Origin Resource Sharing (CORS)
+CORS is a permission grant, not a defense — it tells the browser which cross-origin reads to allow. The risk is misconfiguring it as too permissive.
+
+- **DO**: Validate the `Origin` header on the server and set `Access-Control-Allow-Origin` dynamically to specific origins (rather than wildcard `*`).
+- **DO NOT**: Use wildcard `*` for `Access-Control-Allow-Origin` if `Access-Control-Allow-Credentials: true` is required — the browser will reject the response.
+- **DO**: Handle preflight (`OPTIONS`) requests by returning appropriate headers before processing data.
+
+```http
+Access-Control-Allow-Origin: https://trusted-app.com
+Access-Control-Allow-Credentials: true
+```
+
+#### Clear-Site-Data (Logout)
 - **DO**: Use `Clear-Site-Data` on logout endpoints to ensure complete session termination.
 
 ```http
