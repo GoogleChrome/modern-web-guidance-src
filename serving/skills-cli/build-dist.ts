@@ -76,8 +76,8 @@ function convertSkillToUseNpx(skillDest: string) {
     skillText = skillText.replaceAll(from, to);
   }
 
-  replace(`node <modern-web-directory>/modern-web.mjs search "<query>"`, `npx -p modern-web@latest -- modern-web search "<query>"`);
-  replace(`node <modern-web-directory>/modern-web.mjs retrieve "<id>"`, `npx -p modern-web@latest -- modern-web retrieve "<id>"`);
+  replace(`node <modern-web-directory>/modern-web.mjs search "<query>"`, `npx -p modern-web-guidance@latest -- modern-web search "<query>"`);
+  replace(`node <modern-web-directory>/modern-web.mjs retrieve "<id>"`, `npx -p modern-web-guidance@latest -- modern-web retrieve "<id>"`);
   fs.writeFileSync(skillDest, skillText);
 }
 
