@@ -16,7 +16,7 @@ env:
 jobs:
   handle-review:
     # Only run on bot-generated PR branches (or as configured)
-    if: startsWith(github.event.pull_request.head.ref, 'guidance-bot/')
+    if: startsWith(github.event.pull_request.head.ref, 'bot/')
     runs-on: ubuntu-latest
 
     steps:

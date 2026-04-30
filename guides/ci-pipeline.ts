@@ -8,7 +8,7 @@ export interface UseCase {
 }
 
 export function constructPRBody(featureId: string, useCases: UseCase[], passRates?: Record<string, PassRates>): string {
-  const branch = `guidance-bot/${featureId}`;
+  const branch = `bot/${featureId}`;
   const repo = process.env.GITHUB_REPOSITORY || 'paulirish/guidance';
   const emoji  = [...'😀😁😂🤣😃😄😅😆😉😊😋😎😍🥰😘'].at(Math.floor(Math.random() * 15));
   const feature = lookupFeature(featureId);
@@ -53,7 +53,7 @@ export function constructPRBody(featureId: string, useCases: UseCase[], passRate
 }
 
 export async function commitAndPush(featureId: string): Promise<boolean> {
-  const branch = `guidance-bot/${featureId}`;
+  const branch = `bot/${featureId}`;
   console.log(`Committing and pushing to ${branch}...`);
 
   // Check if there are changes
@@ -80,7 +80,7 @@ export async function commitAndPush(featureId: string): Promise<boolean> {
 }
 
 export async function createPullRequest(featureId: string, reviewer: string, body: string): Promise<void> {
-  const branch = `guidance-bot/${featureId}`;
+  const branch = `bot/${featureId}`;
   console.log(`Creating PR for ${branch}...`);
 
   // Check if PR already exists
