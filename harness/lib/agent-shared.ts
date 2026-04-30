@@ -283,24 +283,24 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
     }
 
     // 1. Scan top-level directories for SKILL.md and copy them
-    const topLevelDirs = fs.readdirSync(guidesSource, { withFileTypes: true })
-      .filter(
-        d => d.isDirectory() &&
-        !d.name.startsWith('.') &&
-        d.name !== 'node_modules' &&
-        d.name !== 'modern-web' // only needed when using Skills (CLI), already added above
-      );
+    // const topLevelDirs = fs.readdirSync(guidesSource, { withFileTypes: true })
+    //   .filter(
+    //     d => d.isDirectory() &&
+    //     !d.name.startsWith('.') &&
+    //     d.name !== 'node_modules' &&
+    //     d.name !== 'modern-web' // only needed when using Skills (CLI), already added above
+    //   );
 
-    for (const dir of topLevelDirs) {
-      const categorySrc = path.join(guidesSource, dir.name);
-      const categoryDest = path.join(destDir, dir.name);
-      const skillPath = path.join(categorySrc, 'SKILL.md');
+    // for (const dir of topLevelDirs) {
+    //   const categorySrc = path.join(guidesSource, dir.name);
+    //   const categoryDest = path.join(destDir, dir.name);
+    //   const skillPath = path.join(categorySrc, 'SKILL.md');
 
-      if (fs.existsSync(skillPath)) {
-        fs.mkdirSync(categoryDest, { recursive: true });
-        fs.copyFileSync(skillPath, path.join(categoryDest, 'SKILL.md'));
-      }
-    }
+    //   if (fs.existsSync(skillPath)) {
+    //     fs.mkdirSync(categoryDest, { recursive: true });
+    //     fs.copyFileSync(skillPath, path.join(categoryDest, 'SKILL.md'));
+    //   }
+    // }
 
     if (!cli) {
       // 2. Scan and copy guide.md for eval-ready guides
