@@ -12,7 +12,7 @@ const SERVING_DIR = path.join(rootDir, "serving");
 const ROOT_DIST_DIR = path.join(rootDir, "dist");
 const PUBLISH_ROOT = path.join(ROOT_DIST_DIR, "skills-cli");
 
-const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web-use-cases");
+const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web");
 
 interface BuildResult {
   featuresCount: number;
@@ -147,7 +147,7 @@ async function main(version?: string): Promise<BuildResult | undefined> {
       bundle: true,
       platform: "node",
       format: "esm",
-      outfile: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/search.mjs"),
+      outfile: path.join(PUBLISH_ROOT, "skills/modern-web/search.mjs"),
       banner: {
         js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
       },
@@ -187,7 +187,7 @@ async function main(version?: string): Promise<BuildResult | undefined> {
       bundle: true,
       platform: "node",
       format: "esm",
-      outfile: path.join(PUBLISH_ROOT, "skills/modern-web-use-cases/modern-web.mjs"),
+      outfile: path.join(PUBLISH_ROOT, "skills/modern-web/modern-web.mjs"),
       plugins: [{
         name: 'rewrite-search',
         setup(build) {
