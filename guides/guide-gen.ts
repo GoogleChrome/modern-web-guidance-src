@@ -72,18 +72,11 @@ function buildUseCasesPrompt(feature: FeatureDataPlusMDN): string {
   const useCasesSkill = getSkillContent('project-use-cases');
 
 
-  const researchPath = path.resolve('features', feature.id, 'research.md');
-  let researchContent = '';
-  if (fs.existsSync(researchPath)) {
-    console.log(`Found research file at ${researchPath}. Including in prompt.`);
-    researchContent = fs.readFileSync(researchPath, 'utf8');
-  }
-
   return `
 You are researching the web platform feature "${feature.name}" (ID: ${feature.id}).
 Your task is to identify 1-3 distinct developer use cases for this feature.
 
-${researchContent ? `Here is the deep research report for this feature to read primarily:\n===\n${researchContent}\n===\n` : ''}
+You can find a deep research report for this feature at \`features/${feature.id}/research.md\`. You should read it to understand the feature deeply before generating use cases.
 
 Follow the guidelines:
 
@@ -168,6 +161,8 @@ function buildGuidePrompt(feature: FeatureDataPlusMDN, useCase: { slug: string; 
   return `
 You are generating a guide for the use case: "${useCase.description}".
 This use case relies on the feature "${feature.name}" (ID: ${feature.id}).
+
+You can find a deep research report for this feature at \`features/${feature.id}/research.md\`. You should read it to understand the feature deeply before generating the guide.
 
 Your task is to create the content for a \`guide.md\` file (starting from the H1 title).
 
