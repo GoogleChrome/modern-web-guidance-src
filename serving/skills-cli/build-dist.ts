@@ -10,9 +10,6 @@ import { rootDir } from "../../lib/paths.ts";
 
 const SERVING_DIR = path.join(rootDir, "serving");
 const ROOT_DIST_DIR = path.join(rootDir, "dist");
-const PUBLISH_ROOT = path.join(ROOT_DIST_DIR, "skills-cli");
-
-const DIST_DIR = path.join(PUBLISH_ROOT, "skills/modern-web");
 
 interface BuildResult {
   featuresCount: number;
@@ -68,7 +65,30 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   console.log(`Updated ${marketplacePath}`);
 }
 
-async function main(version?: string): Promise<BuildResult | undefined> {
+function convertSkillToUseNpx(skillDest: string) {
+  let skillText = fs.readFileSync(skillDest, 'utf-8');
+
+  function replace(from: string, to: string) {
+    if (!skillText.includes(from)) {
+      throw new Error(`expected: '${from}', but not found`);
+    }
+
+    skillText = skillText.replaceAll(from, to);
+  }
+
+  replace(`node <modern-web-directory>/modern-web.mjs search "<query>"`, `npx -p modern-web@latest -- modern-web search "<query>"`);
+  replace(`node <modern-web-directory>/modern-web.mjs retrieve "<id>"`, `npx -p modern-web@latest -- modern-web retrieve "<id>"`);
+  fs.writeFileSync(skillDest, skillText);
+}
+
+async function main(opts: {publishRoot: string, version?: string, npx?: boolean}): Promise<BuildResult | undefined> {
+  const {publishRoot, version, npx} = opts;
+
+  fs.rmSync(publishRoot, { recursive: true, force: true });
+  fs.mkdirSync(publishRoot, {recursive: true});
+
+  const DIST_DIR = path.join(publishRoot, "skills/modern-web");
+
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
   const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
 
@@ -76,7 +96,7 @@ async function main(version?: string): Promise<BuildResult | undefined> {
 
   try {
     console.log("Ensuring dist/ output directory exists...");
-    fs.mkdirSync(PUBLISH_ROOT, { recursive: true });
+    fs.mkdirSync(publishRoot, { recursive: true });
 
   console.log("Generating guides and updating vector store...");
   // 1. Run build-guides.ts to update .modern-web-data and build/guides
@@ -95,11 +115,11 @@ async function main(version?: string): Promise<BuildResult | undefined> {
   // Placing modern-web.mjs inside the skill directory instead of bin/ for self-containment!
 
   console.log("Copying installation manifests and metadata for AI tools...");
-  fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), PUBLISH_ROOT, { recursive: true });
+  fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
 
   if (version) {
     console.log(`Updating version to ${version} in distribution files...`);
-    updateVersionsInDir(PUBLISH_ROOT, version);
+    updateVersionsInDir(publishRoot, version);
   }
 
 
@@ -147,7 +167,7 @@ async function main(version?: string): Promise<BuildResult | undefined> {
       bundle: true,
       platform: "node",
       format: "esm",
-      outfile: path.join(PUBLISH_ROOT, "skills/modern-web/search.mjs"),
+      outfile: path.join(publishRoot, "skills/modern-web/search.mjs"),
       banner: {
         js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
       },
@@ -178,8 +198,8 @@ async function main(version?: string): Promise<BuildResult | undefined> {
         },
       }],
     });
-    fs.writeFileSync(path.join(PUBLISH_ROOT, "search.meta.json"), JSON.stringify(resultSearch.metafile, null, 2));
-    console.log(`Generated metafile for search.mjs at ${path.join(PUBLISH_ROOT, "search.meta.json")}`);
+    fs.writeFileSync(path.join(publishRoot, "search.meta.json"), JSON.stringify(resultSearch.metafile, null, 2));
+    console.log(`Generated metafile for search.mjs at ${path.join(publishRoot, "search.meta.json")}`);
 
     console.log("Bundling modern-web.mjs...");
     const resultModernWeb = await esbuild.build({
@@ -187,7 +207,7 @@ async function main(version?: string): Promise<BuildResult | undefined> {
       bundle: true,
       platform: "node",
       format: "esm",
-      outfile: path.join(PUBLISH_ROOT, "skills/modern-web/modern-web.mjs"),
+      outfile: path.join(publishRoot, "skills/modern-web/modern-web.mjs"),
       plugins: [{
         name: 'rewrite-search',
         setup(build) {
@@ -203,7 +223,7 @@ async function main(version?: string): Promise<BuildResult | undefined> {
     console.log("Generating THIRD_PARTY_NOTICES...");
     generateThirdPartyNotices(
       [resultSearch.metafile, resultModernWeb.metafile],
-      path.join(PUBLISH_ROOT, "THIRD_PARTY_NOTICES")
+      path.join(publishRoot, "THIRD_PARTY_NOTICES")
     );
 
   } catch (error) {
@@ -224,7 +244,7 @@ async function main(version?: string): Promise<BuildResult | undefined> {
   for (const candidate of candidates) {
     const skillSource = path.join(guidesDirInRoot, candidate, "SKILL.md");
     if (fs.existsSync(skillSource)) {
-      const skillDestDir = path.join(PUBLISH_ROOT, "skills", candidate);
+      const skillDestDir = path.join(publishRoot, "skills", candidate);
       const skillDest = path.join(skillDestDir, "SKILL.md");
       fs.mkdirSync(skillDestDir, { recursive: true });
       fs.copyFileSync(skillSource, skillDest);
@@ -233,9 +253,15 @@ async function main(version?: string): Promise<BuildResult | undefined> {
       skillNames.push(candidate);
     }
   }
+
+  if (npx) {
+    const skillDest = path.join(DIST_DIR, "SKILL.md");
+    convertSkillToUseNpx(skillDest);
+  }
+
   console.log(`Successfully copied ${skillsCount} skills to distribution.`);
 
-  const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(PUBLISH_ROOT);
+  const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
 
   console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
   return { featuresCount, useCasesCount, skillsCount, skillNames };
@@ -374,8 +400,22 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
   console.log(`Generated THIRD_PARTY_NOTICES at ${outputFilePath}`);
 }
 
+function getLatestVersion() {
+  const getLatestGitTag = () => execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  const tag = getLatestGitTag();
+  const version = tag.startsWith('v') ? tag.slice(1) : tag;
+  return version;
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  main().catch((err) => {
+  const version = getLatestVersion();
+
+  main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version}).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+
+  main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true}).catch((err) => {
     console.error(err);
     process.exit(1);
   });
