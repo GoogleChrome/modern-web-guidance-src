@@ -1,4 +1,4 @@
-# Collapse auto-generated eval artifacts in PR diffs
+# Collapse some artifacts in PR diffs for better signal:noise
 guides/**/grader.ts           linguist-generated
 guides/**/negative-demo.html  linguist-generated
 guides/**/prompts.md          linguist-generated

@@ -37,7 +37,7 @@ test('collectGemini metrics from a single trajectory file', async () => {
           toolCalls: [
             {
               name: 'run_shell_command',
-              args: { command: 'npx modern-web --retrieve dialog-closedby' }
+              args: { command: 'npx modern-web retrieve dialog-closedby' }
             },
             {
               name: 'activate_skill',
@@ -74,7 +74,7 @@ test('collectClaude metrics from a single trajectory file', async () => {
             {
               type: 'tool_use',
               name: 'Bash',
-              input: { command: 'npx modern-web --retrieve accessible-error-announcement' }
+              input: { command: 'npx modern-web retrieve accessible-error-announcement' }
             },
             {
               type: 'tool_use',
