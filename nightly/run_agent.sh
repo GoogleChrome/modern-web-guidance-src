@@ -1,13 +1,58 @@
 #!/bin/bash
 set -euo pipefail
 
-if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 <agent>"
+usage() {
+  cat << EOF
+Usage: $0 [OPTIONS]
+Runs the nightly evaluation for the specified agent.
+
+Options:
+  --help        Show this help message and exit.
+  --agent       The agent to run (required).
+                Valid agents: jetski_cli, claude_code, codex_cli
+  --workers     The number of concurrent workers to use (optional).
+
+Examples:
+  $0 --agent jetski_cli
+  $0 --agent jetski_cli --workers 10
+EOF
+}
+
+# Parse flags
+AGENT=""
+WORKERS=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help)
+      usage
+      exit 0
+      ;;
+    --agent)
+      if [[ -z "${2:-}" ]]; then echo "Error: --agent requires an argument"; exit 1; fi
+      AGENT="$2"
+      shift 2
+      ;;
+    --workers)
+      if ! [[ "${2:-}" =~ ^[0-9]+$ ]]; then echo "Error: --workers requires a numeric argument"; exit 1; fi
+      WORKERS="$2"
+      shift 2
+      ;;
+    *)
+      echo "❌ Error: Unknown option or positional argument: $1"
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "$AGENT" ]]; then
+  echo "❌ Error: --agent is required."
+  usage
   exit 1
 fi
 
 USER_LDAP=$(whoami)
-AGENT="$1"
+# AGENT is already set above
 
 # Initialization & State Reset
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -57,7 +102,7 @@ cleanup() {
 
     body="✅ Nightly run for agent ${AGENT} completed successfully.\nSuite ID: ${SUITE_ID}\n\nResults have been uploaded to the dashboard: go/guidance-evals"
   else
-    body="❌ Nightly run for agent ${AGENT} failed unexpectedly with exit code ${exit_code} during stage: ${STAGE}.\nSuite ID: ${SUITE_ID}\n"
+    body="❌ Nightly run for agent ${AGENT} failed unexpectedly with exit code ${exit_code}. Last stage: ${STAGE}.\nSuite ID: ${SUITE_ID}\n"
     if [ "$EVAL_EXIT_CODE" -ne 0 ]; then
       body="${body}\n\nEvaluation step (gd eval) failed with exit code ${EVAL_EXIT_CODE}."
     fi
@@ -103,8 +148,8 @@ STAGE="Configuration Setup"
 # Update Configuration
 case "$AGENT" in
   "jetski_cli") AGENT_ENUM="JETSKI_CLI" ;;
-  "claude")     AGENT_ENUM="CLAUDE_CODE" ;;
-  "codex")      AGENT_ENUM="CODEX_CLI" ;;
+  "claude_code") AGENT_ENUM="CLAUDE_CODE" ;;
+  "codex_cli")  AGENT_ENUM="CODEX_CLI" ;;
   *) echo "Unknown agent: $AGENT"; exit 1 ;;
 esac
 
@@ -119,6 +164,10 @@ customConfig.agent = Agents.$AGENT_ENUM;
 customConfig.name = "$SUITE_ID";
 delete customConfig.tasks;
 EOF
+
+if [ -n "$WORKERS" ]; then
+  echo "customConfig.workerCount = $WORKERS;" >> "$TEMP_CONFIG_FILE"
+fi
 
 STAGE="Evaluation"
 # Execute Evaluation
