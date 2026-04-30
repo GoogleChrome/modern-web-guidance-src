@@ -60,7 +60,13 @@ In this automated pipeline, the research has already been conducted by a special
   }
 }
 
-// ─── Prompt construction ─────────────────────────────────────────────────────
+function buildUseCasesPrompt(feature: FeatureDataPlusMDN): string {
+  const sourcesList = [
+    ...feature.mdnUrls.map(u => `- MDN: ${u}`),
+    ...feature.specUrls.map(u => `- Spec: ${u}`),
+  ].join('\n')  || '(No source URLs available — use your knowledge of this feature)';
+
+  const useCasesSkill = getSkillContent('project-use-cases');
 
   const researchPath = path.resolve('features', feature.id, 'research.md');
   let researchContent = '';
