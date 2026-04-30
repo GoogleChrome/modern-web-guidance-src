@@ -211,44 +211,29 @@ This stage is triggered by `gd dev <path/to/guide_dir>` or called automatically 
     *   Grades the outputs using `grader.ts`.
     *   Compares results to assess guide impact.
 
-### ASCII Diagram
+### Workflow Comparison (Manual vs Pipeline V2)
 
 ```text
-+--------------------------------------------------------------+
-| NEW: Research Ingestion (deep_research.js)                   |
-| - Seeds deep research files to ground task in reality        |
-+--------------------------------------------------------------+
-        |
-        v
-+--------------------------------------------------------------+
-| NEW: Use Case Identification (guide-gen.ts)                  |
-| - Synthesizes research to propose 2-5 distinct use cases     |
-+--------------------------------------------------------------+
-        |
-        v
-+--------------------------------------------------------------+
-| NEW: Guide & Artifact Scaffolding (guide-gen.ts)             |
-| - guide.md: AI-optimized guidance document                   |
-| - demo.html: Golden Sample reference implementation          |
-| - expectations.md: Must pass/fail outcomes criteria          |
-+--------------------------------------------------------------+
-        |
-        v
-+--------------------------------------------------------------+
-| Automated Calibration (via existing dev-guide flow)          |
-| - Generates negative fallbacks & Playwright grader scripts   |
-| - Verifies baselines against gold and poisoned fallbacks     |
-+--------------------------------------------------------------+
-        |
-        v
-+--------------------------------------------------------------+
-| NEW: PR Creation (feedback-handler.ts)                       |
-| - Bot pushes branch and opens draft PR for SME review        |
-+--------------------------------------------------------------+
-        |
-        v
-+--------------------------------------------------------------+
-| NEW: Feedback Loop (feedback-handler.ts)                     |
-| - Bot automatically iterates on PR review comments via hook  |
-+--------------------------------------------------------------+
+           OLD: 3-Stage Manual/Hybrid Flow       │        NEW: Pipeline V2 (Full Automation)
+─────────────────────────────────────────────────┼──────────────────────────────────────────────────
+                                                 │
+ 1. 🧠 Stage 1: Identify Use Cases               │  1. 🤖 Deep Research & Usecase Gen
+    SME reads specs, writes stubs & demo.         │     Agent crawls, determines usecases.
+                                                 │
+ 2. First PR: 👥 Approve Use Cases               │
+    Team reviews selection & naming.             │
+                                                 │
+ 3. 🧠 Stage 2: Author Guidance                  │  2. 🤖 Agent authors guide/expectations/demo
+    SME fleshes out guide & expectations.         │
+                                                 │
+ 4. 🤖 Stage 3: Task & Grader Generation         │  4. 🤖 Task & Grader Generation
+    `gd dev`                                     │     `gd dev`
+                                                 │
+ 5. Second PR: 👥 Final Review                   │  5. First PR: 🧠 SME Review
+    Team reviews full package.                   │     Bot opens PR. SME reviews key files.
+                                                 │
+                                                 │  6. 🤖 Feedback Iteration
+                                                 │     Bot handles SME feedback automatically.
+─────────────────────────────────────────────────┴──────────────────────────────────────────────────
+Key: 🧠 Subject Matter Expert | 👥 Team Reviewers | 🤖 Automation
 ```
