@@ -33,7 +33,7 @@ export function constructPRBody(featureId: string, useCases: UseCase[], passRate
     body += `\n### Initial Pass Rates\n\n`;
     body += `| Use Case | Unguided | Guided | Uplift |\n`;
     body += `| :--- | :---: | :---: | :---: |\n`;
-    
+
     for (const uc of useCases) {
       const rates = passRates[uc.slug];
       if (rates) {
@@ -41,7 +41,7 @@ export function constructPRBody(featureId: string, useCases: UseCase[], passRate
         const guided = parseInt(rates.guided, 10);
         const uplift = guided - unguided;
         const upliftStr = uplift >= 0 ? `+${uplift}%` : `${uplift}%`;
-        
+
         body += `| \`${uc.slug}\` | ${rates.unguided}% | ${rates.guided}% | ${upliftStr} |\n`;
       }
     }
@@ -79,7 +79,7 @@ export async function commitAndPush(featureId: string): Promise<boolean> {
 
 }
 
-export async function createPullRequest(featureId: string, reviewer: string, body: string): Promise<void> {
+export async function createPullRequest(featureId: string, body: string, reviewer?: string): Promise<void> {
   const branch = `bot/${featureId}`;
   console.log(`Creating PR for ${branch}...`);
 
@@ -96,24 +96,29 @@ export async function createPullRequest(featureId: string, reviewer: string, bod
 
   const title = `guides: ${featureId}`;
 
-  await runCommand('gh', [
+  const args = [
     'pr', 'create',
     '--draft',
     '--head', branch,
     '--title', title,
     '--body', body,
-    '--reviewer', reviewer
-  ]);
+  ];
+
+  if (reviewer) {
+    args.push('--reviewer', reviewer);
+  }
+
+  await runCommand('gh', args);
 
   console.log(`✅ PR created for ${branch}`);
 }
 
-export async function handleGitAndPR(featureId: string, reviewer: string, useCases: UseCase[], passRates?: Record<string, PassRates>): Promise<void> {
+export async function handleGitAndPR(featureId: string, useCases: UseCase[], reviewer?: string, passRates?: Record<string, PassRates>): Promise<void> {
   if (process.env.GITHUB_ACTIONS) {
     const pushed = await commitAndPush(featureId);
     if (pushed) {
       const body = constructPRBody(featureId, useCases, passRates);
-      await createPullRequest(featureId, reviewer, body);
+      await createPullRequest(featureId, body, reviewer);
     }
   } else {
     console.log('\nSkipping Git commit/push and PR creation (not running in GitHub Actions).');

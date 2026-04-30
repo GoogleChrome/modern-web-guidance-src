@@ -355,7 +355,7 @@ export async function generateUseCases(featureId: string, reviewer: string = 'pa
 
   console.log(`\n🎉 All use cases scaffolded and processed!`);
 
-  await handleGitAndPR(featureId, reviewer, useCases, useCasePassRates);
+  await handleGitAndPR(featureId, useCases, reviewer, useCasePassRates);
 }
 
 // Collect MDN urls from the BCD data.
