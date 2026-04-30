@@ -417,15 +417,15 @@ function getLatestVersion() {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const version = getLatestVersion();
 
-  main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version}).catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
-
-  main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true, subset: 3}).catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+  (async () => {
+    try {
+      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version});
+      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true, subset: 3});
+    } catch (err) {
+      console.error(err);
+      process.exit(1);
+    }
+  })();
 }
 
 export { main as buildDist };
