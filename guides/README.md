@@ -50,7 +50,7 @@ gd audit
 
 This will output a categorized table sorted into the 6 maturity stages (`Stub`, `Incomplete`, `Needs expectations`, `Needs calibration`, `Needs test`, `Eval-ready`), along with recommended next steps.
 
-### Manual Piece-wise execution 
+### Manual Piece-wise execution
 
 Occasionally, you may want to generate or test specific pieces of the pipeline manually.
 Ensure `GEMINI_API_KEY` and `GEMINI_MODEL` environment variables are in `guidance/.env`:
@@ -211,31 +211,31 @@ This stage is triggered by `gd dev <path/to/guide_dir>` or called automatically 
     *   Grades the outputs using `grader.ts`.
     *   Compares results to assess guide impact.
 
-### Workflow Comparison (Manual vs Pipeline V2)
+### Workflow Comparison
 
 ```text
-           OLD: 3-Stage Manual/Hybrid Flow       │        NEW: Pipeline V2 (Full Automation)
+           Previous guidance pipeline            │        Pipeline V2
 ─────────────────────────────────────────────────┼──────────────────────────────────────────────────
                                                  │
- 1. 🧠 Stage 1: Identify Use Cases               │  1. 🤖 Deep Research & Usecase Gen
-    SME reads specs, writes stubs & demo.         │     Agent crawls, determines usecases.
+ 🧠 Stage 1: Identify Use Cases                  │  🤖 Deep Research & Usecase Gen
+    SME reads specs, writes stubs & demo.        │     Agent crawls, determines usecases.
                                                  │
- 2. First PR: 👥 Approve Use Cases               │
+ First PR: 👥 Approve Use Cases                  │
     Team reviews selection & naming.             │
                                                  │
- 3. 🧠 Stage 2: Author Guidance                  │  2. 🤖 Agent authors guide/expectations/demo
-    SME fleshes out guide & expectations.         │
+ 🧠 Stage 2: Author Guidance                     │  🤖 Agent authors guide/expectations/demo
+    SME fleshes out guide & expectations.        │
                                                  │
- 4. 🤖 Stage 3: Task & Grader Generation         │  4. 🤖 Task & Grader Generation
+ 🤖 Stage 3: Task & Grader Generation            │  🤖 Task & Grader Generation
     `gd dev`                                     │     `gd dev`
                                                  │
- 5. Second PR: 👥 Final Review                   │  5. First PR: 🧠 SME Review
+ Second PR: 👥 Final Review                      │  First PR: 🧠 SME Review
     Team reviews full package.                   │     Bot opens PR. SME reviews key files.
                                                  │
-                                                 │  6. 🤖 Feedback Iteration
+                                                 │  🤖 Feedback Iteration
                                                  │     Bot handles SME feedback automatically.
 ─────────────────────────────────────────────────┴──────────────────────────────────────────────────
-Key: 🧠 Subject Matter Expert | 👥 Team Reviewers | 🤖 Automation
+Key: 🧠 Subject Matter Expert | 👥 Team Reviewers | 🤖 Automation/Agent
 ```
 
 ### Execution Flow Detail
