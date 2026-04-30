@@ -245,7 +245,7 @@ async function main() {
       }
       if (values['test-grader']) {
         const { testGrader } = await import('../guides/test-grader.ts');
-        const result = await testGrader(dir, { crossApp: !!values['cross-app'] });
+        const result = await testGrader(dir);
         process.exit(result.success ? 0 : 1);
       }
       if (values['gen-grader']) {

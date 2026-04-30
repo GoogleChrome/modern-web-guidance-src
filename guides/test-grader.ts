@@ -6,11 +6,10 @@ if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(imp
   const { testGrader } = await import('./run-grader.ts');
   const args = process.argv.slice(2);
   const dir = args.find(a => !a.startsWith('--'));
-  const crossApp = args.includes('--cross-app');
   if (!dir) {
-    console.error('Usage: gd dev <path/to/guide> --test-grader [--cross-app]');
+    console.error('Usage: gd dev <path/to/guide> --test-grader');
     process.exit(1);
   }
-  const result = await testGrader(dir, { crossApp });
+  const result = await testGrader(dir);
   process.exit(result.success ? 0 : 1);
 }

@@ -158,18 +158,10 @@ export function printPassingSpecs(suite: PlaywrightSuite, prefix = ''): void {
   }
 }
 
-export interface CrossAppResult {
-  baseApp: string;
-  passed: number;
-  failed: number;
-  spuriousPasses: string[];
-}
-
 export interface CalibrationResult {
   success: boolean;
   demo: { passed: number; failed: number; failingTests: string[] };
   negative: { passed: number; failed: number; passingTests: string[] };
-  crossApp?: CrossAppResult;
 }
 
 function validateCalibrationPaths(targetDirAbs: string): { demoPath: string; negativePath: string; graderPath: string; } {
@@ -269,52 +261,7 @@ function printFinalCalibrationSummary(result: CalibrationResult, demoFailed: boo
   }
 }
 
-/**
- * Runs the grader against a completely different, unmodified base application
- * (e.g., cards-app) to detect spurious passes (false positives).
- * 
- * If tests pass on an unrelated app, it indicates the grader is checking for
- * generic app structure (like "a button exists") rather than feature-specific outcomes.
- * This helps identify graders that are too lenient or poorly targeted.
- * 
- * We expect a 100% failure rate on this unrelated app.
- */
-async function runCrossAppCheck(targetDirAbs: string, graderPath: string, result: CalibrationResult): Promise<void> {
-  const crossAppName = 'cards-app';
-  const crossAppIndex = path.join(baseAppsDir, crossAppName, 'index.html');
-
-  if (!fs.existsSync(crossAppIndex)) {
-    console.log(cYellow(`\n⚠️  Cross-app check skipped: base app not found at ${crossAppIndex}`));
-  } else {
-    console.log(cYellow(`\nRunning cross-app check against ${crossAppName}/index.html... (Expecting 100% fail)`));
-    const crossAppOutDir = path.join(targetDirAbs, 'grade-report', 'cross-app');
-
-    const crossAppResults = await runPlaywright(crossAppIndex, graderPath, crossAppOutDir, 'pipe')
-      .catch(() => null);
-
-    if (crossAppResults) {
-      const spuriousPasses = crossAppResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
-      const passed = crossAppResults.stats?.expected || 0;
-      const failed = crossAppResults.stats?.unexpected || 0;
-
-      result.crossApp = { baseApp: crossAppName, passed, failed, spuriousPasses };
-
-      if (spuriousPasses.length > 0) {
-        console.log(cYellow(`⚠️  ${spuriousPasses.length} test(s) passed on an unmodified base app — grader may be checking app-generic structure:`));
-        for (const t of spuriousPasses) {
-          console.log(cYellow(`   - ${t}`));
-        }
-        console.log(cYellow(`   Review the "App-agnostic rules" section in expectations.md and tighten these checks.`));
-      } else {
-        console.log(cGreen(`✅ Cross-app check passed: grader correctly failed all ${failed} tests on unmodified ${crossAppName}.`));
-      }
-    } else {
-      console.log(cYellow(`⚠️  Cross-app check could not run (Playwright error).`));
-    }
-  }
-}
-
-export async function testGrader(targetDirRaw: string, options: { crossApp?: boolean } = {}): Promise<CalibrationResult> {
+export async function testGrader(targetDirRaw: string): Promise<CalibrationResult> {
   const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
   const { demoPath, negativePath, graderPath } = validateCalibrationPaths(targetDirAbs);
 
@@ -337,10 +284,6 @@ export async function testGrader(targetDirRaw: string, options: { crossApp?: boo
   await runNegativeCalibration(negativePath, graderPath, negativeOutDir, result);
 
   printFinalCalibrationSummary(result, demoFailed, demoOutDir, negativeOutDir);
-
-  if (result.success && options.crossApp) {
-    await runCrossAppCheck(targetDirAbs, graderPath, result);
-  }
 
   return result;
 }
