@@ -1,11 +1,11 @@
 ---
 name: javascript
-description: Action-oriented guidelines for modern JavaScript development. Use this skill when writing, reviewing, or debugging client-side JavaScript code, including DOM manipulation, asynchronous logic, and performance optimization.
+description: Modern JavaScript development - use this skill when writing, reviewing, or debugging client-side JavaScript code, including DOM manipulation, asynchronous logic, and performance optimization.
 ---
 
 # JavaScript Development Standards
 
-Use this skill as a baseline for writing clean, performant, and secure JavaScript. These guidelines apply to web platform development and assume modern ECMAScript standards (ES2023+).
+This skill is a baseline for writing clean, performant, and secure JavaScript. These guidelines apply to web platform development and assume modern ECMAScript standards (ES2023+).
 
 This skill defers to specific use-case guidance found in the `/guides/` directory when applicable.
 
@@ -42,7 +42,7 @@ const finalScoreLegacy = score || 10; // 10 (incorrectly overrides 0)
 - **Asynchronous Flow with `async/await`**: Use `async`/`await` for readable asynchronous code instead of heavy promise chains or callbacks. Always wrap with `try/catch` for error handling.
 - **Fail Fast with Early Returns**: Return early from functions to keep code flat and avoid deep `if-else` nesting.
 - **Use Ternary Statements for Conditional Variable Assignment**: Prefer standard `if/else` statements over side effects in a conditional ternary statement.(e.g., `condition ? doSomething() : doSomethingElse()`). Avoid nesting ternary operators, prefer `if-else` or switch statements.
-- **Throw Errors Objects**: Don't throw strings or other literals (e.g., `throw "CustomError`). Instead throw an `Error` or a subclass of `Error`, (e.g., `throw new Error('CustomError')`).
+- **Throw Error Objects**: Don't throw strings or other literals (e.g., `throw "CustomError"`). Instead throw an `Error` or a subclass of `Error`, (e.g., `throw new Error('CustomError')`).
 
 ```javascript
 // ✅ GOOD: Readable async flow
@@ -151,11 +151,12 @@ list.appendChild(fragment); // Single layout recalculation pass
 ## Modern Browser APIs
 
 - **Prefer Modern Browser APIs over Third Party Libraries** - Use native APIs like `document.querySelectorAll()` over jQuery selectors, and `Object.groupBy()` over Lodash `groupBy()`.
-- **Prefer HTML and CSS for UI over JavaScript** - Don't use JavaScript when a feature is possible without it, for instance Accordion Menus, color manipulation, sticky positioning, or validation.
+- **Prefer HTML and CSS for UI over JavaScript** - Don't use JavaScript when a feature is possible without it, (e.g., `<details>` and `<summary>` for simple accordion components, Relative Color Syntax for color manipulation, `position:sticky` for sticky positioning, or native form validation).
 - **Prefer HTML and CSS features over Observers**: Use `<img loading="lazy" />` or scroll driven animations over `IntersectionObserver`, and container queries over `ResizeObserver`.
 - **Use JavaScript as a Progressive Enhancement**: Anticipate that JavaScript will not always be able to run, and ensure your site is functional without it.
-- **Trigger Actions Using `addEventListener()`**: Don't use `on*` HTML attributes like `onclick`. 
-- **Avoid Recreating Native Elements**: Use `<button>` to trigger events, `<a>` to navigate, etc. Avoid replicating their behavior by adding event listeners to `<div>` or other generic elements. Do use JavaScript to add required ARIA.
+- **Trigger Actions Using `addEventListener()`**: Don't use `on*` HTML attributes like `onclick`.
+- **Avoid Extending CustomEvent**: Use native events like `TouchEvent` or `FocusEvent` when possible, or extend `Event`.
+- **Avoid Recreating Native Elements**: Use `<button>` to trigger events, `<a>` to navigate, etc. Avoid replicating their behavior by adding event listeners to `<div>` or other generic elements. Do use JavaScript to add required dynamic ARIA, for instance `aria-expanded` or `aria-active`.
 
 ## Security
 
