@@ -237,3 +237,51 @@ This stage is triggered by `gd dev <path/to/guide_dir>` or called automatically 
 ─────────────────────────────────────────────────┴──────────────────────────────────────────────────
 Key: 🧠 Subject Matter Expert | 👥 Team Reviewers | 🤖 Automation
 ```
+
+### Execution Flow Detail
+
+```text
++--------------------------------------------------+
+| Stage 1 & 2: Identification & Scaffolding        |
+| (guide-gen.ts)                                  |
++--------------------------------------------------+
+        |
+        | 1. Lookup Feature (web-features)
+        | 2. Deep Research (Auto if missing) ------> [features/<feature-id>/research.md]
+        | 3. Identify Use Cases (Gemini)
+        v
++--------------------------------------------------+
+| Scaffolded Files (per use case)                  |
+| - guide.md                                       |
+| - demo.html                                      |
+| - expectations.md                                |
++--------------------------------------------------+
+        |
+        | calls / triggered by gd dev
+        v
++--------------------------------------------------+
+| Stage 3: Calibration & Testing                   |
+| (dev-guide.ts)                                   |
++--------------------------------------------------+
+        |
+        |---[Generate missing artifacts]-->
+        |   - negative-demo.html (negative-gen.ts) |
+        |   - grader.ts (grader-gen.ts)            |
+        |
+        |---[Calibration Loop]-->
+        |   - Run grader on demo.html (100% pass)  |
+        |   - Run grader on neg-demo.html (0% pass)|
+        |   - If fail: Regenerate grader w/ context|
+        |
+        |---[Task Generation]-->
+        |   - tasks/task.md (Gemini)               |
+        |
+        |---[Agent Test (Optional)]-->
+        |   - Run agent (Unguided vs Guided)       |
+        |   - Grade outputs                        |
+        |   - Compare impact                       |
+        v
++--------------------------------------------------+
+| Final Output: Calibrated & Tested Guide Package |
++--------------------------------------------------+
+```
