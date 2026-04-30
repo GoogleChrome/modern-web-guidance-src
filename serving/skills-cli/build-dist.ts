@@ -275,7 +275,13 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
 
 function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   console.log("Generating dynamic README content around features and use cases...");
-  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
+  const guidesDir = path.join(publishRoot, 'skills/modern-web/guides');
+  const readyGuides = scanAllGuides().filter(inv => {
+    if (!inv.hasGuide) return false;
+
+    const guideBuildPath = path.join(guidesDir, inv.category, `${inv.name}.md`);
+    return fs.existsSync(guideBuildPath);
+  });
 
   const useCaseGroupMap = new Map<string, { features: { id: string; name: string }[]; useCases: { id: string; description: string }[] }>();
   const allFeatureIds = new Set<string>();
