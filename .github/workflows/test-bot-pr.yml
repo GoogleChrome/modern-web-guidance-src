@@ -1,0 +1,38 @@
+name: Test Bot PR
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  test-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure git
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+
+      - name: Make dummy change
+        run: |
+          echo "Test commit by ${{ github.actor }} at $(date)" >> test-bot.txt
+
+      - name: Commit and Push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          branch="bot/test-pr-${{ github.run_id }}"
+          git checkout -b "$branch"
+          git add test-bot.txt
+          git commit -m "test: bot PR creation as ${{ github.actor }}"
+          git push origin "$branch"
+          
+          gh pr create \
+            --title "test: bot PR from ${{ github.actor }}" \
+            --body "This is a test PR to verify CLA handling for bot commits." \
+            --head "$branch" \
+            --draft
