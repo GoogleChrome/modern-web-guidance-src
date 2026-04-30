@@ -809,10 +809,20 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             const isExpectedGuide = g === run.guideName;
             const hasExpectedPrefix = run.expectedToolPrefixes && run.expectedToolPrefixes.some(p => g.startsWith(p));
             const isGreen = isExpectedGuide || hasExpectedPrefix;
+            
+            const isCorrespondingDiscipline = !run.isSkill && g === run.discipline;
 
-            const className = isGreen ? 'matching-guide' : 'default-guide';
+            let className = 'default-guide';
+            let style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace;';
 
-            return `<span class="${className}" style="padding: 2px 4px; border-radius: 4px; font-family: monospace;">${escapeHtml(g)}</span>`;
+            if (isGreen) {
+                className = 'matching-guide';
+            } else if (isCorrespondingDiscipline) {
+                className = ''; // Don't use default-guide
+                style += ' background-color: rgba(218, 165, 32, 0.15); color: #daa520; border: 1px solid rgba(218, 165, 32, 0.3);';
+            }
+
+            return `<span class="${className}" style="${style}">${escapeHtml(g)}</span>`;
         };
 
                 const getTfootChips = async (runs, typeLabel) => {
