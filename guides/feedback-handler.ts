@@ -239,13 +239,26 @@ ${escapedReport}
   console.log('✅ Fixes report posted');
 }
 
-async function postPassRatesToPR(prNumber: string, guideDir: string, passRates: PassRates): Promise<void> {
-  console.log('Posting pass rates to PR...');
-  const body = `### Updated Pass Rates for \`${guideDir}\`
-- **Unguided**: ${passRates.unguided}%
-- **Guided**: ${passRates.guided}%`;
+async function postAllPassRatesToPR(prNumber: string, allPassRates: Record<string, PassRates>): Promise<void> {
+  console.log('Posting all pass rates to PR...');
+  
+  let body = `### 📊 Updated Pass Rates\n\n`;
+  body += `| Use Case | Unguided | Guided | Uplift |\n`;
+  body += `| :--- | :---: | :---: | :---: |\n`;
+  
+  for (const [guideDir, rates] of Object.entries(allPassRates)) {
+    const unguided = parseInt(rates.unguided, 10);
+    const guided = parseInt(rates.guided, 10);
+    const uplift = guided - unguided;
+    const upliftStr = uplift >= 0 ? `+${uplift}%` : `${uplift}%`;
+    
+    const label = path.basename(guideDir);
+    
+    body += `| \`${label}\` | ${rates.unguided}% | ${rates.guided}% | ${upliftStr} |\n`;
+  }
+  
   await runCommand('gh', ['pr', 'comment', prNumber, '-b', body]);
-  console.log('✅ Pass rates posted');
+  console.log('✅ All pass rates posted');
 }
 
 export async function handleFeedback(prNumber: string): Promise<void> {
@@ -270,11 +283,17 @@ export async function handleFeedback(prNumber: string): Promise<void> {
       await postFixesReportToPR(prNumber, fixesReport);
     }
 
+    const allPassRates: Record<string, PassRates> = {};
+
     for (const guideDir of guideDirs) {
       const passRates = await maybeRunGdDev(guideDir);
       if (passRates) {
-        await postPassRatesToPR(prNumber, guideDir, passRates);
+        allPassRates[guideDir] = passRates;
       }
+    }
+
+    if (Object.keys(allPassRates).length > 0) {
+      await postAllPassRatesToPR(prNumber, allPassRates);
     }
 
     await pushChanges(prData, guideDirs);
