@@ -57,17 +57,13 @@ async function publishToDistributionRepo(publishCliDir: string, newVersion: stri
   console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance!`);
 }
 
-async function publishToNpm(newVersion: string) {
+async function buildForNpm(newVersion: string) {
   console.log(`\nRebuilding distribution with version ${newVersion} for npm...`);
 
   const publishCliDir = path.join(DIST_DIR, "skills-cli-npx");
   const result = await buildDist({publishRoot: publishCliDir, version: newVersion, npx: true, subset: 3});
   if (!result) {
     throw new Error("Build failed or was already in progress.");
-  }
-
-  if (isDryRun) {
-    return;
   }
 }
 
@@ -76,6 +72,7 @@ async function main() {
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
+  // TODO: when we release, this should be changed to `npx: true` to publish a npm-ready package.
   const result = await buildDist({publishRoot: publishCliDir, version: newVersion});
   if (!result) {
     throw new Error("Build failed or was already in progress.");
@@ -126,7 +123,7 @@ ${skillNames.map(skill => `  - ${skill}`).join('\n')}`.trim();
     console.log('\nPerhaps also:\n    pushd ~/code/skills-alpha && git pull gh && git push gob && popd');
   }
 
-  await publishToNpm(newVersion);
+  await buildForNpm(newVersion);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
