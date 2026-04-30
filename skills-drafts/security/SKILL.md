@@ -25,8 +25,10 @@ Guidelines for implementing preventative security measures on the web safely and
     - 3.1 Analyzing CSP Reports
     - 3.2 Transitioning to CSP Enforcement
     - 3.3 Trusted Types Enforcement
-    - 3.4 Handling Advanced Isolation (COOP / COEP / CORP)
-    - 3.5 Fetch Metadata (Resource Isolation)
+    - 3.4 Cross-Origin Opener Policy (COOP)
+    - 3.5 Cross-Origin Resource Policy (CORP)
+    - 3.6 Cross-Origin Isolation
+    - 3.7 Fetch Metadata (Resource Isolation)
   - Companion policies (deploy in parallel)
     - HTTP Strict Transport Security (HSTS)
     - X-Content-Type-Options
@@ -134,7 +136,7 @@ After collecting data, decide how to proceed with enforcement. Phase 3 has two t
   - **Decision**: Implement Nonces (server-rendered) or Hashes (static) before enforcing.
 - **Scenario**: Violations for third-party analytics scripts.
   - **Condition**: The scripts are required.
-  - **Decision**: Allow the specific domains, or use `'strict-dynamic'` if they load dependencies.
+  - **Decision**: Use `'strict-dynamic'` with a per-request nonce so the analytics loader can attach its dependencies. Do **not** add the analytics origin to a URL allowlist — domain allowlists are bypassable via open redirects, JSONP, and dependency injection on the listed origin.
 - **Scenario**: Trusted Types violations on specific sinks.
   - **Condition**: Legacy code paths still write strings to `innerHTML` etc.
   - **Decision**: Refactor those sinks (per §1.1) or route them through a Trusted Types policy (§3.3) before enforcing.
@@ -142,8 +144,7 @@ After collecting data, decide how to proceed with enforcement. Phase 3 has two t
 #### 3.2 Transitioning to CSP Enforcement
 Only move to enforced mode when:
 1. Violations in the report-only logs have dropped to near zero or are accounted for.
-2. You have refactored unsafe sinks identified in Phase 1.
-3. Reporting remains wired up after the switch — keep `report-to` on the enforced header so regressions are visible.
+2. Reporting remains wired up after the switch — keep `report-to` on the enforced header so regressions are visible.
 
 **Key directives to set:**
 - `default-src 'self'` as a fallback for unspecified fetch directives — anchors the policy so any new resource type defaults to a safe value.
@@ -170,6 +171,8 @@ For static/cached HTML (SPAs) where a per-response nonce is not possible, use ha
 #### 3.3 Trusted Types Enforcement
 Trusted Types enforces the §1.1 source-level guidance at runtime: once enabled, the browser blocks string assignments to dangerous sinks unless they pass through a named policy.
 
+- **Prerequisite**: Trusted Types requires framework cooperation. If the app's framework (or any third-party widget that writes to DOM sinks) does not produce `TrustedHTML` / `TrustedScript` values, the policy cannot be enforced without breaking that code. Audit framework support before starting the report-only rollout.
+- **Prerequisite**: The code-level sink refactor from Phase 1 is a strict prerequisite for Trusted Types enforcement. (Standard CSP `script-src` enforcement, by contrast, does not police DOM sinks and can be deployed without refactoring them.)
 - **DO**: Roll out via `Content-Security-Policy-Report-Only: require-trusted-types-for 'script'` first to find every offending sink.
 - **DO**: Define a single named policy that performs sanitization (or escaping) and route all sink writes through it.
 - **DO**: Move to `Content-Security-Policy: require-trusted-types-for 'script'` only after report-only violations have dropped to near zero.
@@ -183,13 +186,27 @@ if (window.trustedTypes && trustedTypes.createPolicy) {
 }
 ```
 
-#### 3.4 Handling Advanced Isolation (COOP / COEP / CORP)
-Cross-origin isolation enables `SharedArrayBuffer` and mitigates Spectre, but has the highest breakage risk of any policy here.
+#### 3.4 Cross-Origin Opener Policy (COOP)
 
-- **Caution**: `Cross-Origin-Opener-Policy: same-origin` severs `window.opener` references, breaking OAuth popups and `postMessage`-based payment gateways.
-- **Scenario**: The app uses OAuth popups or payment gateways.
-  - **Decision**: Do not enforce `COOP: same-origin` blindly. Consider `same-origin-allow-popups`, `credentialless` for COEP, or isolate OAuth flows to a subdomain that opts out of COOP.
-- **Coupling**: When using `COEP: require-corp`, every subresource (images, scripts, fonts) must send `Cross-Origin-Resource-Policy: same-origin` (or `same-site`/`cross-origin` as appropriate) or it will fail to load. Audit subresources before enforcing.
+Lowest-risk of the three. Deploy if the app is **not** an OAuth provider, payment processor, or otherwise expected to be reached from an opener.
+
+- **DO**: Use `Cross-Origin-Opener-Policy: same-origin-allow-popups` — prevents a malicious opener from mounting XS-leaks attacks while still allowing OAuth and payment flows that *the app itself* initiates.
+- **DO NOT**: Jump straight to `same-origin` unless you have explicitly verified that no integrations rely on cross-origin `window.opener` access.
+
+#### 3.5 Cross-Origin Resource Policy (CORP)
+
+Set CORP explicitly on each response based on whether it should be embeddable in other contexts. Two core benefits: it protects resources from malicious cross-origin reads, and ensures compatibility when pages request stronger client-side isolation.
+
+- **DO**: Default to `Cross-Origin-Resource-Policy: same-origin` for app-internal resources (authenticated data, user session JSON, restricted internal scripts).
+- **DO**: Use `same-site` for endpoints utilized across subdomains of the same eTLD+1.
+- **DO**: Provide `cross-origin` exclusively for resources created for generic embedding or widely cached delivery (e.g., static shared assets or public CDNs).
+
+#### 3.6 Cross-Origin Isolation
+
+Highest deployment breakage risk. You only need to deploy this infrastructure if the application requires features relying on `SharedArrayBuffer` (e.g., WebAssembly multi-threading or shared memory architectures). If not required, skip this policy group.
+
+- **Preferred path (Chromium environments)**: Enable `Document-Isolation-Policy: isolate-and-credentialless`. This provides client-side isolation comparable to COEP while instructing the browser to strip cookies and authentication credentials from non-CORS cross-origin resource fetches rather than blocking them outright. Apps that need to *block* cross-origin resources lacking explicit CORP opt-in (rather than load them with credentials stripped) can adopt `isolate-and-require-corp` instead. This is stricter and harder to deploy — it requires the same subresource audit as the cross-browser path below.
+- **Cross-browser path (Complex enforcement)**: Require `Cross-Origin-Opener-Policy: same-origin` coupled with `Cross-Origin-Embedder-Policy: require-corp`. Every embedded subresource (images, styles, external media) MUST serve an explicit `Cross-Origin-Resource-Policy` header or the browser will prevent it from loading.
 
 ```http
 Cross-Origin-Opener-Policy: same-origin
@@ -197,7 +214,7 @@ Cross-Origin-Embedder-Policy: require-corp
 Cross-Origin-Resource-Policy: same-origin
 ```
 
-#### 3.5 Fetch Metadata (Resource Isolation)
+#### 3.7 Fetch Metadata (Resource Isolation)
 Server-side enforcement that uses `Sec-Fetch-*` request headers to reject suspicious cross-site requests. Requires the cross-site integration mapping from §2.1 before enforcing.
 
 - **DO**: Implement a server-side resource isolation policy that checks `Sec-Fetch-*` headers and rejects `cross-site` requests for non-navigational endpoints.
