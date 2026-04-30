@@ -29,7 +29,7 @@ test('copySkills sets up the isolated environment with the skill and its data', 
         homeDir = createIsolatedHome('test-copy-skills');
         
         // 2. Run copySkills (cli = true). This might trigger a build if dist is missing
-        const success = copySkills(homeDir, Agents.JETSKI, true);
+        const success = copySkills(homeDir, Agents.JETSKI, true, ['modern-web']);
         assert.ok(success, 'copySkills should succeed');
 
         const skillDir = path.join(homeDir, '.gemini', 'jetski', 'skills', 'modern-web');

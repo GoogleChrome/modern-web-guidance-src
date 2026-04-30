@@ -50,7 +50,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
     const approach = suiteConfig.serving;
 
     if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
-      copySkills(tempHome, Agents.GEMINI_CLI, approach === Serving.SKILLS_CLI);
+      copySkills(tempHome, Agents.GEMINI_CLI, approach === Serving.SKILLS_CLI, suiteConfig.skillsToEnable);
     } else if (approach === Serving.MCP) {
       updateMcpConfig(
         path.join(geminiDest, 'settings.json'),

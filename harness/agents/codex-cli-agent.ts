@@ -30,7 +30,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
     const approach = suiteConfig.serving;
 
     if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
-      copySkills(tempHome, Agents.CODEX_CLI, approach === Serving.SKILLS_CLI);
+      copySkills(tempHome, Agents.CODEX_CLI, approach === Serving.SKILLS_CLI, suiteConfig.skillsToEnable);
     } else if (approach === Serving.MCP) {
       updateMcpConfig(
         path.join(tempHome, '.codex', 'config.toml'),

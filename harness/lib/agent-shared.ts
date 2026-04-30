@@ -223,10 +223,8 @@ export function updateMcpConfig(
  * @param agent The agent type
  * @returns True if successful, false otherwise
  */
-export function copySkills(homeDir: string, agent: string, cli: boolean): boolean {
+export function copySkills(homeDir: string, agent: string, cli: boolean, skillsToEnable: string[] = ['modern-web']): boolean {
   const guidesSource = guidesDir;
-  const suiteConfig = getSuiteConfig();
-  const skillsToEnable = suiteConfig.skillsToEnable || ['modern-web'];
 
   let destDir = '';
   if (agent === Agents.CLAUDE_CODE) {
