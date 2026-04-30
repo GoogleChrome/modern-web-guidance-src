@@ -27,10 +27,23 @@ export function constructPRBody(featureId: string, useCases: UseCase[], passRate
     const escapedDescription = escapeLeftAngleBracket(uc.description);
     body += `- \`${uc.slug}\` - ${escapedDescription}\n`;
     body += `   - [demo](${previewUrl})\n`;
+  }
 
-    if (passRates?.[uc.slug]) {
+  if (passRates && Object.keys(passRates).length > 0) {
+    body += `\n### Initial Pass Rates\n\n`;
+    body += `| Use Case | Unguided | Guided | Uplift |\n`;
+    body += `| :--- | :---: | :---: | :---: |\n`;
+    
+    for (const uc of useCases) {
       const rates = passRates[uc.slug];
-      body += `   - **Pass Rates**: Unguided: ${rates.unguided}%, Guided: ${rates.guided}%\n`;
+      if (rates) {
+        const unguided = parseInt(rates.unguided, 10);
+        const guided = parseInt(rates.guided, 10);
+        const uplift = guided - unguided;
+        const upliftStr = uplift >= 0 ? `+${uplift}%` : `${uplift}%`;
+        
+        body += `| \`${uc.slug}\` | ${rates.unguided}% | ${rates.guided}% | ${upliftStr} |\n`;
+      }
     }
   }
 
