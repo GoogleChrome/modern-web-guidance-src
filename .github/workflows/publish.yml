@@ -50,6 +50,8 @@ jobs:
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "git@github.com:"
 
       - name: Publish Skills to GitHub (modern-web-guidance)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter serving run publish-skills
 
       # =========================================================================
