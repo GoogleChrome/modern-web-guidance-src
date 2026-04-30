@@ -7,16 +7,17 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 ### Guidelines
 
-- **DO** use the standard HTML5 doctype `<!DOCTYPE html>` to prevent quirky rendering modes.
+- **DO** use the standard HTML5 doctype `<!DOCTYPE html>` to prevent quirky rendering modes. 
 - **DO** set the `lang` attribute on the `<html>` element for screen reader pronunciation and translation tools.
-- **DO** use a single `<h1>` per page representing the main topic. Maintain a sequential, non-skipping heading hierarchy (`<h2>` to `<h3>`, but not `<h2>` to `<h4>`).
+- **DO** use the `<meta name="viewport">` element with the `content` attribute set to `"width=device-width, initial-scale=1.0"` to ensure page responsiveness.
+- **DO** use a single `<h1>` per page/view representing the main topic. Exceptions can be made for modal dialogs, which can also use a single `<h1>`.
+- **DO** maintain a sequential, non-skipping heading hierarchy (`<h2>` to `<h3>`, but not `<h2>` to `<h4>`).
 - **DO** use semantic landmarks (`<header>`, `<nav>`, `<main>`, `<aside>`, `<footer>`) to create regional navigation for assistive technologies.
 - **DO** use `<search>` to enclose search and filtering mechanisms (eliminates the need for `role="search"`).
 - **DO** use `<button>` for triggered actions (JS, Modals, Forms) and `<a>` strictly for URL navigation. Set `type="button"` for non-submit buttons in forms to prevent unintended submission.
-- **DO** use `<ul>`, `<ol>`, `<dl>`, and `<menu>` elements for list content. 
-- **DO** make sure that all interactive elements like links and buttons have accessible names. 
-- **DO** use accessible names for interactive elements. 
-- **DO** hide decorative SVGs from assistive technology using `aria-hidden="true"`.
+- **DO** use `<ul>`, `<ol>`, and `<dl>` elements for list content. 
+- **DO** ensure that all interactive elements like links and buttons have accessible names.  
+- **DO** hide purely decorative images from assistive technology using `aria-hidden="true"`. If using a decorative `<img>`, always include an empty `alt` attribute (e.g. `alt=""`). 
 - **DO** ensure that informative SVGs like logos, data visualizations, or icon buttons have a proper accessible name. 
 
 - **DON'T** use generic `<div>` or `<span>` when semantic elements exist, for instance for interactive elements, headings, or independently reusable self-contained content.
@@ -25,19 +26,20 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DON'T** use generic elements with added ARIA roles or states when native elements with built-in semantics and behavior exist.
 - **DON'T** change the native semantics of elements with ARIA unless it is a critical requirement. 
 - **DON'T** use `role="presentation"` or `aria-hidden="true` on focusable elements or their parents and ancestors. 
+- **DON'T** disable page zooming capabilities.
 
 ### Code Example
 
 ```html
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard | Platform</title>
 </head>
 <body>
   <header>
-    <h1>Analytics</h1>
     <nav>
       <ul>
         <li><a href="#">About</a></li>
@@ -46,6 +48,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
     </nav>
   </header>
   <main>
+     <h1>Analytics</h1>
     <search>
       <form action="/filter" method="GET">
         <label for="search-input">Scan items:</label>
@@ -162,6 +165,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 - **DON'T** nest other interactive elements (links, buttons) directly inside `<summary>` text as it acts as a button and breaks focus.
 - **DON'T** hide visible triangles via `list-style: none` without providing explicit directional cues (via `::before`/`::after` pseudo-elements).
+- **DON'T** use the `title` attribute to create tooltip effects. 
 
 ### Code Example
 
