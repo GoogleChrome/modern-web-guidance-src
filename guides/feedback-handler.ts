@@ -18,7 +18,7 @@ async function fetchPRContext(prNumber: string): Promise<any> {
   console.log('Fetching PR context via GraphQL...');
   const repo = process.env.GITHUB_REPOSITORY || 'paulirish/guidance';
   const [owner, name] = repo.split('/');
-  
+
   const query = `
 query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
@@ -59,10 +59,10 @@ query($owner: String!, $name: String!, $number: Int!) {
   const result = await runCommand('gh', ['api', 'graphql', '-F', `owner=${owner}`, '-F', `name=${name}`, '-F', `number=${prNumber}`, '-f', `query=${query}`]);
   const gqlData = JSON.parse(result);
   const pr = gqlData.data.repository.pullRequest;
-  
+
   console.log(`PR Branch: ${pr.headRefName}`);
   console.log(`Found ${pr.reviewThreads.nodes.length} review threads and ${pr.comments.nodes.length} general comments.`);
-  
+
   return {
     headRefName: pr.headRefName,
     files: pr.files.nodes,
@@ -156,28 +156,24 @@ Use your file editing tools to make the changes.
 async function maybeRunGdDev(guideDir: string): Promise<PassRates | null> {
   const modifiedFiles = await runCommand('git', ['diff', '--name-only', guideDir]);
   const modifiedFilesList = modifiedFiles.split('\n').filter(Boolean);
-  
+
   const hasGrader = fs.existsSync(path.join(guideDir, 'grader.ts'));
-  const needsGdDev = !hasGrader || modifiedFilesList.some(f => 
+  const needsGdDev = !hasGrader || modifiedFilesList.some(f =>
     f.endsWith('demo.html') || f.endsWith('expectations.md') || f.endsWith('guide.md')
   );
-  
+
   if (!needsGdDev) {
     console.log(`Skipping gd dev for ${guideDir} (no source files modified and grader exists).`);
     return null;
   }
 
-  console.log(`Running gd dev for ${guideDir}...`);
+  console.log(`Running gd dev for ${guideDir}... (slow)`);
   try {
     const output = await runCommand('node', ['bin/gd.ts', 'dev', guideDir]);
-    console.log(`✅ gd dev completed`);
-    
     const passRates = parsePassRates(output);
-    if (passRates) {
-      return passRates;
-    }
-    console.warn(`⚠️ Could not parse pass rates from gd dev output`);
-    return null;
+    console.log(`✅ gd dev completed`, passRates ? `with pass rates: ${JSON.stringify(passRates)}` : 'but ⚠️ failed to parse pass rates');
+
+    return passRates || null
   } catch (err) {
     console.error(`❌ gd dev failed: ${(err as Error).message}`);
     return null;
@@ -241,22 +237,22 @@ ${escapedReport}
 
 async function postAllPassRatesToPR(prNumber: string, allPassRates: Record<string, PassRates>): Promise<void> {
   console.log('Posting all pass rates to PR:', JSON.stringify(allPassRates, null, 2));
-  
+
   let body = `### 📊 Updated Pass Rates\n\n`;
   body += `| Use Case | Unguided | Guided | Uplift |\n`;
   body += `| :--- | :---: | :---: | :---: |\n`;
-  
+
   for (const [guideDir, rates] of Object.entries(allPassRates)) {
     const unguided = parseInt(rates.unguided, 10);
     const guided = parseInt(rates.guided, 10);
     const uplift = guided - unguided;
     const upliftStr = uplift >= 0 ? `+${uplift}%` : `${uplift}%`;
-    
+
     const label = path.basename(guideDir);
-    
+
     body += `| \`${label}\` | ${rates.unguided}% | ${rates.guided}% | ${upliftStr} |\n`;
   }
-  
+
   await runCommand('gh', ['pr', 'comment', prNumber, '-b', body]);
   console.log('✅ All pass rates posted');
 }
