@@ -90,7 +90,6 @@ send_summary_email() {
     else
       printf "❌ Catastrophic failure occurred before any agent results could be recorded.\n"
     fi
-    printf "\nDashboard: go/guidance-evals\n"
   } | timeout 100s $sendgmr_cmd --subject="$subject" --to="${USER_LDAP}@google.com" || echo "Warning: Failed to send email via sendgmr"
   
   rm -f "$SUMMARY_FILE"

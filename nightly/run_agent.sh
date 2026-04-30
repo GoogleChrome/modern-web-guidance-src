@@ -65,6 +65,7 @@ INITIAL_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
 # Setup variables
 TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
 SUITE_ID="nightly-${TIMESTAMP}-${AGENT}-${USER_LDAP}"
+DASHBOARD_URL="http://go/guidance-evals/dashboard.html?testId=${SUITE_ID}&source=remote"
 EVAL_EXIT_CODE=0
 FAIL_REASON=""
 UPLOAD_EXIT_CODE=0
@@ -100,7 +101,7 @@ cleanup() {
     echo "Run completed successfully. Deleting isolation branch ${SUITE_ID}..."
     git branch -D "$SUITE_ID" || true
 
-    body="✅ Nightly run for agent ${AGENT} completed successfully.\nSuite ID: ${SUITE_ID}\n\nResults have been uploaded to the dashboard: go/guidance-evals"
+    body="✅ Nightly run for agent ${AGENT} completed successfully.\nSuite ID: ${SUITE_ID}\n\nResults have been uploaded to the dashboard: ${DASHBOARD_URL}"
   else
     body="❌ Nightly run for agent ${AGENT} failed unexpectedly with exit code ${exit_code}. Last stage: ${STAGE}.\nSuite ID: ${SUITE_ID}\n"
     if [ "$EVAL_EXIT_CODE" -ne 0 ]; then
@@ -110,7 +111,7 @@ cleanup() {
       body="${body}\n\nReason: ${FAIL_REASON}"
     fi
     if [ "$UPLOAD_RAN" = "true" ] && [ "$UPLOAD_EXIT_CODE" = "0" ]; then
-      body="${body}\n\nNote: Partial evaluation results were successfully uploaded and are available in the dashboard: go/guidance-evals"
+      body="${body}\n\nNote: Partial evaluation results were successfully uploaded and are available in the dashboard: ${DASHBOARD_URL}"
     fi
   fi
 
