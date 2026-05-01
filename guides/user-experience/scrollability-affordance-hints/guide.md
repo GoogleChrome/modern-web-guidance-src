@@ -31,7 +31,7 @@ The scroll container must be declared as a scroll-state query container.
 
 ### 2. Style the Indicators
 
-Place the indicator elements (like shadows, gradients, or arrows) inside the container and style them. They should be hidden by default.
+Place the indicator elements (like shadows, gradients, or arrows) inside the container and style them. By default, they should not be visible. When they are shown, they should not be interactive, by setting `pointer-events: none`.
 
 ```css
 .indicator-top, .indicator-bottom {
