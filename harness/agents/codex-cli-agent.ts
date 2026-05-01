@@ -162,8 +162,8 @@ export async function collectCodexGuidesFromTrajectory(dirPath: string, serving:
             const args = typeof functionCall.arguments === 'string' ? JSON.parse(functionCall.arguments) : functionCall.arguments;
             const command = args.cmd || '';
 
-            if (serving === Serving.SKILLS_CLI && command.includes('modern-web') && command.includes('--retrieve')) {
-              const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
+            if (serving === Serving.SKILLS_CLI && command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
+              const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
               if (match) {
                 const ids = match[1].split(',');
                 for (const id of ids) {

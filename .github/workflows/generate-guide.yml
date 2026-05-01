@@ -1,0 +1,61 @@
+name: Generate Guide
+
+on:
+  workflow_dispatch:
+    inputs:
+      feature_id:
+        description: 'web-features ID (e.g., intl-duration-format)'
+        required: true
+        type: string
+      reviewer:
+        description: 'GitHub username to assign as PR reviewer'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GEMINI_MODEL: gemini-3-flash-preview
+  GEMINI_CLI_TRUST_WORKSPACE: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm run setup:playwright
+
+      - name: Generate Guide
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_AUTHOR_NAME: "github-actions[bot]"
+          GIT_AUTHOR_EMAIL: "github-actions[bot]@users.noreply.github.com"
+          GIT_COMMITTER_NAME: "github-actions[bot]"
+          GIT_COMMITTER_EMAIL: "github-actions[bot]@users.noreply.github.com"
+        run: |
+          node --experimental-strip-types guides/guide-gen.ts "${{ inputs.feature_id }}"
+
+      - name: Upload Logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: calibration-logs-${{ inputs.feature_id }}
+          path: guides/**/dev.log
