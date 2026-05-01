@@ -18,26 +18,23 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
             return;
         }
 
-        const helpOut = execSync(`${geminiBin} extensions --help`, { 
-            encoding: 'utf8',
-            env: { ...process.env, GEMINI_CLI_TRUST_WORKSPACE: '1' }
-        });
+        const helpOut = execSync(`${geminiBin} extensions --help`, { encoding: 'utf8' });
         assert.ok(helpOut.includes('install'), 'Gemini should have install command');
 
         console.log(`\nInstalling Gemini extension locally...`);
         // Use input: 'y\n' to answer the workspace trust prompt cleanly, and stdio: 'inherit' to see it
         execSync(`${geminiBin} extensions install ${distDir} --consent`, { 
-            stdio: 'inherit',
+            stdio: ['pipe', 'inherit', 'inherit'],
             input: 'y\n',
-            env: { ...process.env, HOME: homeDir, GEMINI_CLI_TRUST_WORKSPACE: 'true' }
+            env: { ...process.env, HOME: homeDir }
         });
 
         console.log(`\nRunning Gemini prompt using the skill...`);
-        const promptCmd = `${geminiBin} -p "use the modern-web skill and tell me best practices on implementing an address form" -o stream-json --yolo`;
+        const promptCmd = `${geminiBin} -p "use the modern-web skill and tell me best practices on implementing an address form" -o stream-json --yolo --skip-trust`;
         const output = execSync(promptCmd, { 
             stdio: ['ignore', 'pipe', 'pipe'], 
             timeout: 90000,
-            env: { ...process.env, HOME: homeDir, GEMINI_CLI_TRUST_WORKSPACE: 'true' }
+            env: { ...process.env, HOME: homeDir }
         });
 
         console.log(`\nVerifying Gemini used the skill...`);

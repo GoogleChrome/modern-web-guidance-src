@@ -25,7 +25,7 @@ test('npx skills add from local path', { skip: !process.env.FULL }, async () => 
             try {
                 execSync(`${geminiBin} extensions uninstall googlechrome-skills`, {
                     stdio: 'ignore', 
-                    env: { ...process.env, HOME: homeDir, GEMINI_CLI_TRUST_WORKSPACE: 'true' }
+                    env: { ...process.env, HOME: homeDir }
                 });
             } catch {
                 // Ignore if not installed
@@ -40,11 +40,11 @@ test('npx skills add from local path', { skip: !process.env.FULL }, async () => 
 
         if (fs.existsSync(geminiBin)) {
             console.log(`\nVerifying Gemini can use the added skill...`);
-            const promptCmd = `${geminiBin} -p "use the modern-web skill and tell me best practices on implementing an address form" -o stream-json --yolo`;
+            const promptCmd = `${geminiBin} -p "use the modern-web skill and tell me best practices on implementing an address form" -o stream-json --yolo --skip-trust`;
             const output = execSync(promptCmd, { 
                 stdio: ['ignore', 'pipe', 'pipe'], 
                 timeout: 90000,
-                env: { ...process.env, HOME: homeDir, GEMINI_CLI_TRUST_WORKSPACE: 'true' }
+                env: { ...process.env, HOME: homeDir }
             });
 
             console.log(`\nVerifying Gemini used the skill...`);
