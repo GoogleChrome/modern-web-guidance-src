@@ -17,7 +17,6 @@ import { scanAllGuides, type GuideInventory } from "../../lib/guide-validation.t
 import { getFeatureName } from "../lib/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
-const BUILD_GUIDES_DIR = path.join(ROOT_DIR, "build/guides");
 const OUTPUT_FILE = path.join(ROOT_DIR, "lib/use-cases.gen.ts");
 
 interface UseCase {
@@ -27,21 +26,38 @@ interface UseCase {
   featuresUsed: string[];
 }
 
-async function processGuides() {
-  const targetGuidePath = process.argv.slice(2).find(arg => !arg.startsWith("--"));
-  const force = process.argv.includes("--force");
-  const subsetArg = process.argv.find(arg => arg.startsWith("--subset"));
+export interface BuildOptions {
+  outputDir: string;
+  isDistribution?: boolean;
+  subset?: number;
+  force?: boolean;
+  targetGuidePath?: string;
+  modelName?: string;
+  noChunking?: boolean;
+}
+
+// Global variables to be set by processGuides
+let BUILD_GUIDES_DIR: string;
+let VECTORS_FILE: string;
+let IS_NO_CHUNKING = false;
+
+export async function processGuides(opts: BuildOptions) {
+  const { outputDir, isDistribution, subset, force, targetGuidePath, modelName, noChunking } = opts;
+
+  BUILD_GUIDES_DIR = path.join(outputDir, "guides");
+  VECTORS_FILE = isDistribution
+    ? path.join(outputDir, "use-cases.vectors.gen.json.gz")
+    : path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
+  
+  IS_NO_CHUNKING = !!noChunking;
 
   // Scan guides first to see if we even need to run
   let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
 
-  if (subsetArg) {
-    const limit = subsetArg.includes("=") ? parseInt(subsetArg.split("=")[1], 10) : 3;
-    readyGuides = readyGuides.slice(0, limit);
+  if (subset) {
+    readyGuides = readyGuides.slice(0, subset);
     console.log(`Building a subset of ${readyGuides.length} guides.`);
   }
-
-  const VECTORS_FILE = path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
 
   let shouldSkip = !process.env.CI && !targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(VECTORS_FILE);
 
@@ -101,8 +117,6 @@ async function processGuides() {
   const storeUseCases: StoreUseCase[] = [];
 
   console.log("Initializing Embedder...");
-  const modelArg = process.argv.find((arg) => arg.startsWith("--model="));
-  const modelName = modelArg ? modelArg.split("=")[1] : undefined;
   
   if (modelName) {
     console.log(`Using custom embedding model: ${modelName}`);
@@ -228,8 +242,7 @@ async function processSingleGuideFile(
     featuresUsed,
   });
 
-  const isNoChunking = process.argv.includes("--no-chunking");
-  const chunks = isNoChunking 
+  const chunks = IS_NO_CHUNKING 
     ? [`${frontmatter}\n\n${processedMarkdown}`] 
     : [...chunkMarkdown(processedMarkdown), frontmatter];
 
@@ -260,5 +273,20 @@ async function processSingleGuideFile(
 
 // Only run automatically if executed directly
 if (process.argv[1] === import.meta.filename) {
-  processGuides().catch(console.error);
+  const targetGuidePath = process.argv.slice(2).find(arg => !arg.startsWith("--"));
+  const force = process.argv.includes("--force");
+  const subsetArg = process.argv.find(arg => arg.startsWith("--subset"));
+  const subset = subsetArg ? (subsetArg.includes("=") ? parseInt(subsetArg.split("=")[1], 10) : 3) : undefined;
+  const modelArg = process.argv.find((arg) => arg.startsWith("--model="));
+  const modelName = modelArg ? modelArg.split("=")[1] : undefined;
+  const noChunking = process.argv.includes("--no-chunking");
+
+  processGuides({
+    outputDir: path.join(ROOT_DIR, "build"),
+    force,
+    subset,
+    targetGuidePath,
+    modelName,
+    noChunking
+  }).catch(console.error);
 }

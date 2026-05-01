@@ -7,6 +7,8 @@ import * as esbuild from "esbuild";
 import { scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
+import { processGuides } from "../scripts/build-guides.ts";
+
 
 const SERVING_DIR = path.join(rootDir, "serving");
 const ROOT_DIST_DIR = path.join(rootDir, "dist");
@@ -99,15 +101,14 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
     fs.mkdirSync(publishRoot, { recursive: true });
 
   console.log("Generating guides and updating vector store...");
-  // 1. Run build-guides.ts to update .modern-web-data and build/guides
   try {
-    console.time("⏳ build-guides.ts");
-    const subsetFlag = subset ? (typeof subset === 'number' ? `--subset=${subset}` : '--subset') : '';
-    execSync(`node --experimental-strip-types scripts/build-guides.ts ${subsetFlag}`, {
-      cwd: SERVING_DIR,
-      stdio: "inherit",
+    console.time("⏳ processGuides");
+    await processGuides({
+      outputDir: DIST_DIR,
+      isDistribution: true,
+      subset: typeof subset === 'number' ? subset : undefined,
     });
-    console.timeEnd("⏳ build-guides.ts");
+    console.timeEnd("⏳ processGuides");
   } catch (error) {
     console.error("Failed to build guides:", error);
     process.exit(1);
@@ -121,27 +122,6 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
   if (version) {
     console.log(`Updating version to ${version} in distribution files...`);
     updateVersionsInDir(publishRoot, version);
-  }
-
-
-  console.log("Copying data files...");
-
-  // 4. Copy build/guides
-  const buildGuidesDir = path.join(SERVING_DIR, "build/guides");
-  const destBuildGuidesDir = path.join(DIST_DIR, "guides");
-  if (fs.existsSync(buildGuidesDir)) {
-    fs.cpSync(buildGuidesDir, destBuildGuidesDir, { recursive: true });
-    console.log(`Copied ${buildGuidesDir} to ${destBuildGuidesDir}`);
-  } else {
-    console.warn(`Warning: ${buildGuidesDir} does not exist.`);
-  }
-
-  console.log("Copying pure JS vector file...");
-  const vectorsFile = path.join(SERVING_DIR, "lib/use-cases.vectors.gen.json.gz");
-  const destVectorsFile = path.join(DIST_DIR, "use-cases.vectors.gen.json.gz");
-  if (fs.existsSync(vectorsFile)) {
-    fs.cpSync(vectorsFile, destVectorsFile);
-    console.log(`Copied ${vectorsFile} to ${destVectorsFile}`);
   }
 
   console.log("Copying TFJS model files...");
