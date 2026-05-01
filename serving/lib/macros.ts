@@ -2,6 +2,8 @@ import { validateFeature, getStatusMessage } from "./baseline.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { guidesDir } from "../../lib/paths.ts";
+import { scanAllGuides } from "../../lib/guide-validation.ts";
+
 
 
 /**
@@ -61,23 +63,12 @@ let guideCache: Map<string, { path: string; category: string }> | null = null;
 function getGuidePath(guideId: string): { path: string; category: string } | null {
   if (!guideCache) {
     guideCache = new Map();
-    if (fs.existsSync(guidesDir)) {
-      const categories = fs.readdirSync(guidesDir, { withFileTypes: true })
-        .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
-        .map(d => d.name);
-
-      for (const category of categories) {
-        const categoryDir = path.join(guidesDir, category);
-        if (!fs.existsSync(categoryDir)) continue;
-        for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
-          if (entry.isDirectory()) {
-            guideCache.set(entry.name, {
-              path: path.join('guides', category, entry.name, 'guide.md'),
-              category
-            });
-          }
-        }
-      }
+    const guides = scanAllGuides();
+    for (const guide of guides) {
+      guideCache.set(guide.name, {
+        path: path.join('guides', guide.category, guide.name, 'guide.md'),
+        category: guide.category
+      });
     }
   }
   return guideCache.get(guideId) || null;
