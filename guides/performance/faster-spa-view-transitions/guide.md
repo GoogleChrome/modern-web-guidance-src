@@ -39,11 +39,6 @@ While this approach offers massive performance benefits, it introduces a specifi
 Set `content-visibility: hidden` on views that are not currently active.
 
 ```css
-.spa-view {
-  /* Default state for active views */
-  content-visibility: visible;
-}
-
 .spa-view.inactive {
   /* MANDATORY: Use hidden to cache the rendering state of inactive views */
   content-visibility: hidden;
