@@ -408,14 +408,3 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
   transition: accent-color 0.3s ease;
 }
 ```
-r to green (120)
-    setTimeout(() => updateProgress(85, 120), 1000);
-  </script>
-</body>
-```
-```css
-.loading-bar {
-  accent-color: hsl(var(--brand-hue, 200), 80%, 50%);
-  transition: accent-color 0.3s ease;
-}
-```
