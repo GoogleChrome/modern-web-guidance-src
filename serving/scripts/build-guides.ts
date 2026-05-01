@@ -41,7 +41,7 @@ export interface BuildOptions {
 let BUILD_GUIDES_DIR: string;
 let VECTORS_FILE: string;
 let IS_NO_CHUNKING = false;
-let TARGET = 'local-dev';
+let TARGET: BuildTarget = 'local-dev';
 
 
 export async function processGuides(opts: BuildOptions) {
