@@ -1,7 +1,5 @@
 import { validateFeature, getStatusMessage } from "./baseline.ts";
-import fs from "node:fs";
 import path from "node:path";
-import { guidesDir } from "../../lib/paths.ts";
 import { scanAllGuides } from "../../lib/guide-validation.ts";
 
 
