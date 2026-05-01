@@ -11,7 +11,7 @@ sources:
   - https://www.joshwcomeau.com/css/container-queries-unleashed/
   - https://frontendmasters.com/blog/container-queries-and-units/
   - https://www.smashingmagazine.com/2024/06/what-are-css-container-style-queries-good-for/
-  - https://www.oddbird.net/2026/02/18/queries-units-actions/
+  - https://web.dev/articles/baseline-in-action-container-queries
   - https://web.dev/blog/how-to-use-container-queries-now
 ---
 
