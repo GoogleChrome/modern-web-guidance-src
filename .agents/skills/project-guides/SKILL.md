@@ -64,12 +64,31 @@ sources:
 
 ### 5. Fallback Strategies
 * You **MUST** include a "Fallback strategies" section regardless of Baseline status, as developers may have older baseline targets.
-* **MANDATORY**: The `{{ BASELINE_STATUS("feature-id") }}` macro must *always* be placed as the first, standalone line inside the "Fallback strategies" section. Do not place it at the top of the document.
-* **OPTIONAL** provide an optional second argument for specific BCD keys: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
+* **MANDATORY**: The first, standalone line inside that section must be either `{{ FEATURE_FALLBACKS("feature-id") }}` (preferred) or `{{ BASELINE_STATUS("feature-id") }}`. Do not place either at the top of the document.
+  * Prefer `FEATURE_FALLBACKS` even when no `features/<feature-id>.md` exists yet — it gracefully degrades to just the baseline status, and any shared fallback content added later flows in automatically without a guide-side edit.
+  * Use `BASELINE_STATUS` directly only when you need the BCD-key second argument: `{{ BASELINE_STATUS("feature-id", "bcd.key") }}`. This is useful when a critical sub-feature's status differs from the overall feature status.
 * **MANDATORY**: You MUST explicitly describe the fallback experience for unsupported browsers. Explain if the feature is a progressive enhancement (and what the base experience looks like), or show explicit code for feature detection (e.g., `CSS.supports()`, `if ('feature' in window)`) and graceful degradation techniques.
 * When recommending feature detection, prefer checking `HTMLElement.prototype` (e.g., `'onbeforematch' in HTMLElement.prototype`) over `window` or `document`, as it is more reliable.
 * When recommending a polyfill, ALWAYS show how to conditionally load it only for browsers that need it. Do not instruct agents to unconditionally load polyfills.
 * **DO NOT** recommend polyfills from polyfill.io.
+
+### 6. Build-time macros
+
+| Macro | What it emits |
+|---|---|
+| `{{ BASELINE_STATUS("feature-id"[, "bcd.key"]) }}` | `"Baseline since YYYY-MM-DD"` or `"limited availability"`. |
+| `{{ INCLUDE("path[#section]") }}` | Whole markdown file (frontmatter + leading `# H1` stripped) or one section (its heading dropped). Bare paths resolve from repo root; `./`/`../` resolve relative to the calling file. |
+| `{{ FEATURE("feature-id", "section") }}` | Sugar for `INCLUDE("features/<feature-id>.md#<section>")`. |
+| `{{ FEATURE_FALLBACKS("feature-id") }}` | `### Fallbacks & browser support for <Feature name>` + `BASELINE_STATUS` + the `#fallbacks` section. If `#fallbacks` is empty, emits only `BASELINE_STATUS` (no heading). |
+| `{{ FEATURE_ISSUES("feature-id") }}` | `### Issues to be aware of when using <Feature name>` + the `#issues` section. Returns `""` if `#issues` is empty/missing. |
+
+* **Errors**: invalid feature ID or missing required argument → `MacroError` (build fails loudly). Missing referenced *content* (file or section) → silent `""`, so guides can reference content that doesn't exist yet.
+* **Section IDs**: slugified heading text (`### Fallback strategies` → `fallback-strategies`), or an explicit `{#id}` suffix on the heading.
+* **Recursion**: macros inside transcluded content expand normally. No cycle detection — don't write self-referential includes.
+
+### 7. Reusing per-feature content via `features/`
+
+When the same feature-level content (intro, fallback patterns, a11y, gotchas) applies to multiple guides, extract it into `features/<feature-id>.md` and pull it in with the macros above. Rule of thumb: extract if two or more guides cover the same `web-feature-id` and repeat the same advice. Standard section names: `## Fallbacks` (used by `FEATURE_FALLBACKS`), `## Issues` (used by `FEATURE_ISSUES`); add others as needed and pull them with `FEATURE`. Verify your include resolved by inspecting the build output (`serving/build/guides/<category>/<id>.md`) — silent misses won't fail the build.
 
 ## Authoring `expectations.md` and  `demo.html`
 
