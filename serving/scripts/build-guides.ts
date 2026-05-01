@@ -3,6 +3,8 @@ import path from "path";
 import zlib from "zlib";
 import matter from "gray-matter";
 import { marked } from "marked";
+import { parseArgs } from "node:util";
+
 export interface StoreUseCase {
   id: string;
   description: string;
@@ -277,13 +279,20 @@ async function processSingleGuideFile(
 
 // Only run automatically if executed directly
 if (process.argv[1] === import.meta.filename) {
-  const targetGuidePath = process.argv.slice(2).find(arg => !arg.startsWith("--"));
-  const force = process.argv.includes("--force");
-  const subsetArg = process.argv.find(arg => arg.startsWith("--subset"));
-  const subset = subsetArg ? (subsetArg.includes("=") ? parseInt(subsetArg.split("=")[1], 10) : 3) : undefined;
-  const modelArg = process.argv.find((arg) => arg.startsWith("--model="));
-  const modelName = modelArg ? modelArg.split("=")[1] : undefined;
-  const noChunking = process.argv.includes("--no-chunking");
+  const options = {
+    force: { type: 'boolean' as const },
+    subset: { type: 'string' as const },
+    model: { type: 'string' as const },
+    'no-chunking': { type: 'boolean' as const },
+  };
+
+  const { values, positionals } = parseArgs({ options, allowPositionals: true });
+
+  const targetGuidePath = positionals[0];
+  const force = values.force;
+  const noChunking = values['no-chunking'];
+  const modelName = values.model;
+  const subset = values.subset ? parseInt(values.subset, 10) : undefined;
 
   processGuides({
     outputDir: path.join(ROOT_DIR, "build"),
