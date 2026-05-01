@@ -16,11 +16,11 @@
   "contributes": {
     "chatSkills": [
       {
-        "path": "./skills/modern-web-use-cases/SKILL.md"
+        "path": "./skills/modern-web/SKILL.md"
       }
     ]
   },
   "bin": {
-    "modern-web": "./skills/modern-web-use-cases/modern-web.mjs"
+    "modern-web": "./skills/modern-web/modern-web.mjs"
   }
 }

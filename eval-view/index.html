@@ -14,7 +14,6 @@
     <header class="header-nav">
       <div>
         <h1 class="landing-title">Guidance Evals</h1>
-        <p class="landing-subtitle">All suite runs and performance over time</p>
       </div>
       <div class="filter-container-nav" style="display: flex; gap: 10px; align-items: center;">
         <button id="auth-btn" class="secondary-btn" style="display: none;">
@@ -49,12 +48,18 @@
 
     <!-- Suites Tab -->
     <div id="suites-tab" class="tab-content active">
+      <details class="insights-drawer">
+        <summary class="insights-summary">Uplift Comparisons</summary>
+        <div id="insights-container" class="insights-grid">
+          <!-- Populated by JS -->
+        </div>
+      </details>
+
       <div class="suites-table-container">
         <table class="suites-table">
           <thead>
             <tr>
-              <th style="padding-left:15px; text-align: left;">Suite ID</th>
-              <th style="padding-left:15px; text-align: left;">Date</th>
+              <th style="text-align: left;">Suite ID & Date</th>
               <th>
                 <select id="filter-agent" class="header-filter-select">
                   <option value="all">Agent</option>
@@ -79,8 +84,8 @@
                   </optgroup>
                 </select>
               </th>
-              <th style="text-align: right; padding-right: 15px;">Guided</th>
-              <th style="text-align: right; padding-right: 15px;">Unguided</th>
+              <th># Tasks</th>
+              <th style="text-align: center; padding-right: 15px;">Uplift</th>
               <th id="header-source">
                 <select id="filter-source" class="header-filter-select">
                   <option value="all">Source</option>

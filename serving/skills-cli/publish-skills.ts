@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url';
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const SERVING_DIR = path.join(ROOT_DIR, "serving");
 const DIST_DIR = path.join(ROOT_DIR, "dist");
-const SKILLS_CLI_TEMPLATE_DIR = path.join(SERVING_DIR, "skills-cli/template");
 
 const isDryRun = process.argv.includes('--dry-run');
 
@@ -23,26 +22,41 @@ const getLatestGitTag = () => execSync('git describe --tags --abbrev=0 --match="
 
 export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<string> {
   console.log("Determining next version...");
-  let currentVersion = "0.0.0";
 
-  try {
-    // Get the latest tag that looks like v*.*.*
-    const latestTag = getLatestTag();
-    currentVersion = latestTag.startsWith('v') ? latestTag.slice(1) : latestTag;
-    console.log(`Found latest tag: ${latestTag}`);
-  } catch (e) {
-    console.warn("No version tags found, falling back to package.json version.");
-    const vscodePath = path.join(SKILLS_CLI_TEMPLATE_DIR, "package.json");
-    const vscodeData = JSON.parse(await fs.readFile(vscodePath, 'utf8'));
-    currentVersion = vscodeData.version;
-  }
+  // Get the latest tag that looks like v*.*.*
+  const latestTag = getLatestTag();
+  const currentVersion = latestTag.startsWith('v') ? latestTag.slice(1) : latestTag;
+  console.log(`Found latest tag: ${latestTag}`);
 
   const newVersion = incrementVersion(currentVersion);
   console.log(`Next version will be: ${newVersion}`);
   return newVersion;
 }
 
+async function publishToDistributionRepo(publishCliDir: string, newVersion: string, releaseNotes: string) {
+  console.log(`Creating GitHub release v${newVersion} on GoogleChrome/modern-web-guidance...`);
+  console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
 
+  await ghpages.publish(publishCliDir, {
+    branch: 'main',
+    repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
+    dotfiles: true,
+    message: `Release v${newVersion}`,
+    tag: `v${newVersion}`,
+    remove: "**/*"
+  });
+
+  // TODO: not working. Think we need a GH API key from the modern-web-guidance repo.
+  // Create GitHub release on the distribution repo.
+  // execSync(`gh release create v${newVersion} -R GoogleChrome/modern-web-guidance --title "v${newVersion}" --notes -`, {
+  //   input: releaseNotes,
+  //   stdio: ['pipe', 'inherit', 'inherit']
+  // });
+  // console.log(`✅ GitHub release v${newVersion} created successfully!`);
+  console.log(releaseNotes);
+
+  console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance!`);
+}
 
 async function main() {
   const newVersion = await getNextVersion();
@@ -59,7 +73,11 @@ async function main() {
   const { featuresCount, useCasesCount, skillsCount, skillNames } = result;
   
   console.log(`\nVerifying built distribution with test-dist.test.ts suite...`);
-  execSync('node --test skills-cli/*.test.ts', { cwd: SERVING_DIR, stdio: 'inherit' ,  env: { ...process.env, TEST_REPORTER: 'spec'}});
+  execSync('node --test skills-cli/*.test.ts', {
+    cwd: SERVING_DIR,
+    stdio: 'inherit' ,
+    env: { ...process.env, TEST_REPORTER: 'spec', SKIP_BUILD: '1' }
+  });
   
 
   if (isDryRun) {
@@ -78,20 +96,12 @@ async function main() {
     console.log(`\n💡 Tip: Run thorough pre-flight verification with FULL=1 to include heavy agent tests:`);
     console.log(`   env FULL=1 TEST_REPORTER=spec pnpm test`);
 
-    console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
-    
-    await ghpages.publish(publishCliDir, {
-      src: ['**/*'], // No longer vendor node_modules! Users will install via npx -y!
-      branch: 'main',
-      repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
-      dotfiles: true,
-      message: `Release v${newVersion}`,
-      tag: `v${newVersion}`,
-      remove: "**/*"
-    });
-
-
-    console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance!`);
+    const releaseNotes = `### Summary
+- Use cases: ${useCasesCount}
+- Features: ${featuresCount}
+- Skills: ${skillsCount}
+${skillNames.map(skill => `  - ${skill}`).join('\n')}`.trim();
+    await publishToDistributionRepo(publishCliDir, newVersion, releaseNotes);
 
     // Create and push tag on current repo
     console.log(`Creating and pushing Git tag v${newVersion}...`);
