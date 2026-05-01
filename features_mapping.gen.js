@@ -356,6 +356,9 @@ window.__featuresMapping = {
   "resilient-context-menus-and-nested-dropdowns": [
     "anchor-positioning"
   ],
+  "same-document-transitions": [
+    "view-transitions"
+  ],
   "scroll-entry-exit-effects": [
     "scroll-driven-animations"
   ],
@@ -387,9 +390,6 @@ window.__featuresMapping = {
     "details",
     "details-name",
     "hidden-until-found"
-  ],
-  "shared-element-transitions": [
-    "view-transitions"
   ],
   "shrinking-header-on-scroll": [
     "scroll-driven-animations"
