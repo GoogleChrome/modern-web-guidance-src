@@ -85,6 +85,39 @@ function convertSkillToUseNpx(skillDest: string) {
   fs.writeFileSync(skillDest, skillText);
 }
 
+export function processSkills(publishRoot: string, distDir: string, npx: boolean) {
+  console.log("Scanning for skills (SKILL.md) in guides/...");
+  const guidesDirInRoot = path.join(rootDir, "guides");
+  const candidates = fs.readdirSync(guidesDirInRoot, { withFileTypes: true })
+    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+    .map(d => d.name);
+
+  let skillsCount = 0;
+  const skillNames: string[] = [];
+  for (const candidate of candidates) {
+    const skillSource = path.join(guidesDirInRoot, candidate, "SKILL.md");
+    if (fs.existsSync(skillSource)) {
+      const skillDestDir = path.join(publishRoot, "skills", candidate);
+      const skillDest = path.join(skillDestDir, "SKILL.md");
+      fs.mkdirSync(skillDestDir, { recursive: true });
+      const skillContent = fs.readFileSync(skillSource, 'utf8');
+      const processedSkillContent = replaceMacros(skillContent, skillSource);
+      fs.writeFileSync(skillDest, processedSkillContent);
+      console.log(`Processed and copied skill ${candidate} (SKILL.md) to ${skillDestDir}`);
+      skillsCount++;
+      skillNames.push(candidate);
+    }
+  }
+
+  if (npx) {
+    const skillDest = path.join(distDir, "SKILL.md");
+    convertSkillToUseNpx(skillDest);
+  }
+
+  console.log(`Successfully copied ${skillsCount} skills to distribution.`);
+  return { skillsCount, skillNames };
+}
+
 async function main(opts: {publishRoot: string, version?: string, npx?: boolean, subset?: boolean | number}): Promise<BuildResult | undefined> {
   const {publishRoot, version, npx, subset} = opts;
 
@@ -222,35 +255,7 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
 
 
 
-  console.log("Scanning for skills (SKILL.md) in guides/...");
-  const guidesDirInRoot = path.join(rootDir, "guides");
-  const candidates = fs.readdirSync(guidesDirInRoot, { withFileTypes: true })
-    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
-    .map(d => d.name);
-
-  let skillsCount = 0;
-  const skillNames: string[] = [];
-  for (const candidate of candidates) {
-    const skillSource = path.join(guidesDirInRoot, candidate, "SKILL.md");
-    if (fs.existsSync(skillSource)) {
-      const skillDestDir = path.join(publishRoot, "skills", candidate);
-      const skillDest = path.join(skillDestDir, "SKILL.md");
-      fs.mkdirSync(skillDestDir, { recursive: true });
-      const skillContent = fs.readFileSync(skillSource, 'utf8');
-      const processedSkillContent = replaceMacros(skillContent, skillSource);
-      fs.writeFileSync(skillDest, processedSkillContent);
-      console.log(`Processed and copied skill ${candidate} (SKILL.md) to ${skillDestDir}`);
-      skillsCount++;
-      skillNames.push(candidate);
-    }
-  }
-
-  if (npx) {
-    const skillDest = path.join(DIST_DIR, "SKILL.md");
-    convertSkillToUseNpx(skillDest);
-  }
-
-  console.log(`Successfully copied ${skillsCount} skills to distribution.`);
+  const { skillsCount, skillNames } = processSkills(publishRoot, DIST_DIR, !!npx);
 
   const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
 
