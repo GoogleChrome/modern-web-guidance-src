@@ -65,7 +65,6 @@ async function main() {
     await embedder.init();
   }
 
-
   let hitsTop1 = 0;
   let hitsTop3 = 0;
   let hitsTop5 = 0;

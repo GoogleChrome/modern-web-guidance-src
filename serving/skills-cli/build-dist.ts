@@ -92,8 +92,6 @@ async function main(version?: string): Promise<BuildResult | undefined> {
     process.exit(1);
   }
 
-
-
   // Placing modern-web.mjs inside the skill directory instead of bin/ for self-containment!
 
   console.log("Copying installation manifests and metadata for AI tools...");
@@ -106,7 +104,6 @@ async function main(version?: string): Promise<BuildResult | undefined> {
 
 
   console.log("Copying data files...");
-
 
   // 4. Copy build/guides
   const buildGuidesDir = path.join(SERVING_DIR, "build/guides");

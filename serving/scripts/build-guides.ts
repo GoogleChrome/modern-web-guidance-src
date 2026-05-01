@@ -83,7 +83,6 @@ async function processGuides() {
   const embedder = Embedder.getInstance(modelName);
   await embedder.init();
 
-
   if (targetGuidePath) {
     // Single guide mode
     const absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
