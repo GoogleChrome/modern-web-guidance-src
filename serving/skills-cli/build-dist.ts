@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import { createRequire } from "module";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import matter from "gray-matter";
