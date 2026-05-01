@@ -114,7 +114,7 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
   return { skillsCount: skillFiles.length, skillNames: skillFiles.map(f => path.dirname(f as string)) };
 }
 
-async function main(opts: {publishRoot: string, version?: string, npx?: boolean, subset?: boolean | number}): Promise<BuildResult | undefined> {
+async function main(opts: {publishRoot: string, version?: string, npx?: boolean, subset?: number}): Promise<BuildResult | undefined> {
   const {publishRoot, version, npx, subset} = opts;
 
   fs.rmSync(publishRoot, { recursive: true, force: true });
@@ -137,7 +137,7 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
     await processGuides({
       outputDir: DIST_DIR,
       target: 'skills-cli',
-      subset: typeof subset === 'number' ? subset : undefined,
+      subset,
     });
     console.timeEnd("⏳ processGuides");
   } catch (error) {
