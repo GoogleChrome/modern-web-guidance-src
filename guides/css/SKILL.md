@@ -64,11 +64,11 @@ Modern CSS provides advanced effects for depth, textures, and non-rectangular ge
 ### Code Example: Advanced Visuals
 ```css
 .card {
-  box-shadow: 
-    0 1px 1px rgba(0,0,0,0.1), 
-    0 2px 2px rgba(0,0,0,0.1), 
+  box-shadow:
+    0 1px 1px rgba(0,0,0,0.1),
+    0 2px 2px rgba(0,0,0,0.1),
     0 4px 4px rgba(0,0,0,0.1); /* Layered shadow */
-    
+
   border-radius: 50px / 25px; /* Elliptical corners */
 }
 
@@ -107,19 +107,19 @@ Modern browser-native selectors reduce the need for preprocessors and complex st
 ```css
 .card {
   position: relative;
-  
+
   /* Accessible focus visible state */
   &:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 4px; /* Separate ring from border */
   }
-  
+
   /* Conditional styling based on content */
   &:has(img) { padding: 0; }
-  
+
   /* State management without extra classes */
   &:has(input:checked) { border-color: var(--active); }
-  
+
   /* Shared styles without high specificity */
   :is(.title, .subtitle) {
     margin: 0;

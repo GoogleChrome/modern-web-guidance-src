@@ -114,7 +114,7 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
     }
 
     const target = options?.target || 'local-dev';
-    
+
     if (target === 'skills-cli') {
       return `\`${guideId}\` (via \`node <modern-web-directory>/modern-web.mjs retrieve "${guideId}"\`)`;
     }

@@ -50,7 +50,7 @@ export async function processGuides(opts: BuildOptions) {
   VECTORS_FILE = (target === 'skills-cli')
     ? path.join(outputDir, "use-cases.vectors.gen.json.gz")
     : path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
-  
+
   IS_NO_CHUNKING = !!noChunking;
   TARGET = target || 'local-dev';
 
@@ -245,7 +245,7 @@ async function processSingleGuideFile(
     featuresUsed,
   });
 
-  const chunks = IS_NO_CHUNKING 
+  const chunks = IS_NO_CHUNKING
     ? [`${frontmatter}\n\n${processedMarkdown}`] 
     : [...chunkMarkdown(processedMarkdown), frontmatter];
 
