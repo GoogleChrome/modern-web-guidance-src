@@ -66,7 +66,7 @@ node <modern-web-directory>/modern-web.mjs retrieve "<id>"
 
 ### Step 4. Verify Baseline Satisfaction
 
-Compare the project's Baseline target (from Step 1) with the Baseline status of **all features** recommended in the guide (typically found in the **Fallback strategies** section).
+Compare the project's Baseline target (from Step 1) with the Baseline status of **each feature** recommended in the guide (typically found in the **Fallback strategies** section).
 
 #### Project Target Types
 Project targets can take several forms:
@@ -90,11 +90,10 @@ Features are labeled in the guide as:
 | **Baseline YYYY** | ✅ | If Low Date ≤ YYYY-12-31 | ❌ |
 | **Widely on YYYY-MM-DD** | ✅ | If Low Date ≤ (Target Date - 30 months) | ❌ |
 
-- **✅ Satisfied**: The feature is safe to use as-is.
-- **❌ Not Satisfied**: You must implement a fallback or avoid the feature as described in the guide.
+**✅ Satisfied**: The feature is safe to use as-is.
+**❌ Not Satisfied**: You must implement a fallback or avoid the feature as described in the guide.
 
-> [!TIP]
-> If you are unsure whether a feature satisfies the Baseline target, always err on the side of caution and use the fallback strategy.
+If you are unsure whether a feature satisfies the Baseline target, always err on the side of caution and use the fallback strategy.
 
 ## Guidelines
 
