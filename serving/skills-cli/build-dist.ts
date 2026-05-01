@@ -93,18 +93,7 @@ async function main(version?: string): Promise<BuildResult | undefined> {
     process.exit(1);
   }
 
-  console.log("Vectorizing web features...");
-  try {
-    console.time("⏳ build-baseline.ts");
-    execSync("node --experimental-strip-types scripts/build-baseline.ts", {
-      cwd: SERVING_DIR,
-      stdio: "inherit",
-    });
-    console.timeEnd("⏳ build-baseline.ts");
-  } catch (error) {
-    console.error("Failed to vectorize web features:", error);
-    process.exit(1);
-  }
+
 
   // Placing modern-web.mjs inside the skill directory instead of bin/ for self-containment!
 
