@@ -8,7 +8,6 @@ sources:
   - https://developer.chrome.com/blog/css-scroll-state-queries
   - https://css-tricks.com/scrollytelling-on-steroids-with-scroll-state-queries/
   - https://una.im/scroll-state-scrolled
-  - https://nerdy.dev/scroll-state-container-queries
 ---
 
 ## Overview
