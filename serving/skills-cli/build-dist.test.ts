@@ -35,4 +35,19 @@ describe('processSkills', () => {
     assert.ok(!content.includes('{{ BASELINE_STATUS'), 'Macro should be resolved');
     assert.ok(content.includes('Widely available') || content.includes('Baseline since'), 'Should contain baseline status');
   });
+
+  it('processes GUIDE_REF macros in real CSS SKILL.md', () => {
+    const publishRoot = testOutputDir;
+    const distDir = path.join(publishRoot, 'skills/modern-web');
+    
+    processSkills(publishRoot, distDir, false);
+    
+    const builtSkillPath = path.join(publishRoot, 'skills', 'css', 'SKILL.md');
+    assert.ok(fs.existsSync(builtSkillPath), 'Built CSS SKILL.md should exist');
+    
+    const content = fs.readFileSync(builtSkillPath, 'utf8');
+    assert.ok(!content.includes('{{ GUIDE_REF'), 'GUIDE_REF macro should be resolved');
+    assert.ok(content.includes('guides/user-experience/child-state-based-styling/guide.md'), 'Should contain path to child-state-based-styling');
+    assert.ok(content.includes('guides/user-experience/content-based-styling/guide.md'), 'Should contain path to content-based-styling');
+  });
 });

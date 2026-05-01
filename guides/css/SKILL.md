@@ -93,7 +93,7 @@ Modern browser-native selectors reduce the need for preprocessors and complex st
 
 ### DOs and DON'Ts
 - **DO** use native CSS nesting to group related styles (3 levels max).
-- **DO** use `:has()` to style parents based on child state (e.g., `.form-group:has(:invalid)`).
+- **DO** use `:has()` to style parents based on child state (e.g., `.form-group:has(:invalid)`). For more information, see the guides at {{ GUIDE_REF("child-state-based-styling") }} and {{ GUIDE_REF("content-based-styling") }}.
 - **DON'T** nest `:has()` or use pseudo-elements inside `:has()` (browser API limitation).
 - **DO** use Attribute selectors (e.g., `[disabled]`) to style elements based on their state or metadata.
 - **DO** use `:where()` for baseline styles you want to be easily overridable (0 specificity).
