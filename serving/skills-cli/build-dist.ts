@@ -415,7 +415,13 @@ function getLatestVersion() {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const version = getLatestVersion();
+  let version;
+  // Not sure why but in CI the `git describe` command fails. Even though we fetched tags. shrug.
+  try {
+    version = getLatestVersion();
+  } catch (err) {
+    console.error(err);
+  }
 
   (async () => {
     try {
