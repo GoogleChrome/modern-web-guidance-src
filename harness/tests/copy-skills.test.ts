@@ -32,7 +32,7 @@ test('copySkills sets up the isolated environment with the skill and its data', 
         const success = copySkills(homeDir, Agents.JETSKI, true);
         assert.ok(success, 'copySkills should succeed');
 
-        const skillDir = path.join(homeDir, '.gemini', 'jetski', 'skills', 'modern-web-use-cases');
+        const skillDir = path.join(homeDir, '.gemini', 'jetski', 'skills', 'modern-web');
         assert.ok(fs.existsSync(skillDir), 'Skill directory should exist');
         
         const mjsPath = path.join(skillDir, 'modern-web.mjs');
@@ -55,7 +55,7 @@ test('copySkills sets up the isolated environment with the skill and its data', 
 
         // 4. Run the CLI to search
         // We need to extend PATH to make sure node is available if needed, but it should be
-        const cmd = `node ${mjsPath} --search "address form"`;
+        const cmd = `node ${mjsPath} search "address form"`;
         const output = execSync(cmd, { encoding: 'utf8' });
         assertSearchResults(output);
         
@@ -112,7 +112,7 @@ test('invoking gemini-cli-agent.ts works end-to-end like in eval suite', { skip:
         console.log(`- Retrieve Called: ${retrieveCalled}\n`);
         
         // Assert all, but we get the log above first!
-        assert.ok(skillActivated, 'Skill should specify check for modern-web-use-cases activation');
+        assert.ok(skillActivated, 'Skill should specify check for modern-web activation');
         assert.ok(searchCalled, 'Modern web search should be called');
         assert.ok(retrieveCalled, 'Modern web retrieve should be called');
 

@@ -74,7 +74,9 @@
         cursor: pointer;
         font-family: inherit;
         font-weight: 400;
-        transition: all 0.3s ease;
+        transition-property: background, border-color, transform, box-shadow;
+        transition-duration: 0.3s;
+        transition-timing-function: ease;
       }
 
       button:hover {
@@ -135,21 +137,18 @@
         transform: scale(0.9) translateY(20px);
 
         /* Transition for closing */
-        transition:
-          opacity 0.5s ease,
-          transform 0.5s cubic-bezier(0.19, 1, 0.22, 1),
-          overlay 0.5s allow-discrete,
-          display 0.5s allow-discrete;
+        transition-property: opacity, transform, overlay, display;
+        transition-duration: 0.5s;
+        transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+        transition-behavior: allow-discrete;
       }
 
       dialog[open] {
         /* Open state */
         opacity: 1;
         transform: scale(1) translateY(0);
-      }
 
-      @starting-style {
-        dialog[open] {
+        @starting-style {
           /* Open starting state */
           opacity: 0;
           transform: scale(1.05) translateY(-20px);
@@ -159,18 +158,17 @@
       /* Dialog Backdrop */
       dialog::backdrop {
         background-color: rgb(0 0 0 / 0%);
+        /* The transition shorthand can also be used with allow-discrete */
         transition:
-          background-color 0.5s ease,
+          display 0.5s allow-discrete,
           overlay 0.5s allow-discrete,
-          display 0.5s allow-discrete;
+          background-color 0.5s ease;
       }
 
       dialog[open]::backdrop {
         background-color: rgb(0 0 0 / 50%);
-      }
 
-      @starting-style {
-        dialog[open]::backdrop {
+        @starting-style {
           background-color: rgb(0 0 0 / 0%);
         }
       }
@@ -183,20 +181,17 @@
         /* Base state for popover */
         opacity: 0;
         transform: scale(0.95);
-        transition:
-          opacity 0.4s ease,
-          transform 0.4s cubic-bezier(0.19, 1, 0.22, 1),
-          overlay 0.4s allow-discrete,
-          display 0.4s allow-discrete;
+        transition-property: opacity, transform, overlay, display;
+        transition-duration: 0.4s;
+        transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+        transition-behavior: allow-discrete;
       }
 
       [popover]:popover-open {
         opacity: 1;
         transform: scale(1);
-      }
 
-      @starting-style {
-        [popover]:popover-open {
+        @starting-style {
           opacity: 0;
           transform: scale(0.8);
         }
@@ -204,19 +199,38 @@
 
       [popover]::backdrop {
         background-color: rgb(0 0 0 / 0%);
+        /* The transition shorthand can also be used with allow-discrete */
         transition:
-          background-color 0.4s ease,
+          display 0.4s allow-discrete,
           overlay 0.4s allow-discrete,
-          display 0.4s allow-discrete;
+          background-color 0.4s ease;
       }
 
       [popover]:popover-open::backdrop {
         background-color: rgb(15 23 42 / 70%);
+
+        @starting-style {
+          background-color: rgb(0 0 0 / 0%);
+        }
       }
 
-      @starting-style {
-        [popover]:popover-open::backdrop {
-          background-color: rgb(0 0 0 / 0%);
+      /* ========================================= */
+      /* RESPECT USER PREFERENCE FOR REDUCED MOTION */
+      /* ========================================= */
+
+      @media (prefers-reduced-motion: reduce) {
+        dialog,
+        [popover] {
+          /* Disable movement and shorten duration for a simple fade */
+          transform: none;
+          transition-duration: 0.1s;
+        }
+
+        @starting-style {
+          dialog[open],
+          [popover]:popover-open {
+            transform: none;
+          }
         }
       }
     </style>

@@ -18,6 +18,8 @@ harness/test-results/
 tasks/test-results/
 grade-report/
 test-app-results/
+guides/**/test-results/
+guides/**/.last-run.json
 
 # legacy paths (any content here should be deleted)
 serving/.mcp-data/
@@ -27,6 +29,7 @@ serving/mcp-server/data/use-cases.gen.ts
 # Environment and Logs
 .env
 *.log
+dev.log
 .vscode
 
 # OS Junk
@@ -50,7 +53,7 @@ project-gleam/
 GEMINI.md
 
 # Research drafts
-skills-drafts/.research/
+
 
 # Generated vector and benchmark evaluation files
 serving/lib/use-cases.vectors.gen.json
