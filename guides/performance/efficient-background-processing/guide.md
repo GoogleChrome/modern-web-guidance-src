@@ -7,6 +7,8 @@ sources:
   - https://developer.mozilla.org/en-US/docs/Web/CSS/content-visibility
   - https://web.dev/articles/content-visibility
   - https://css-tricks.com/almanac/properties/c/content-visibility/
+  - https://github.com/w3c/csswg-drafts/issues/11310
+  - https://issues.chromium.org/issues/365168180
 ---
 
 # Efficient Background Processing
@@ -55,9 +57,14 @@ Set `content-visibility: auto` on the heavy container and provide a placeholder 
 
 Add an event listener for `contentvisibilityautostatechange` to pause or resume background tasks.
 
+> **Important:** The `contentvisibilityautostatechange` event does not bubble in some browser implementations. To handle this event reliably, you must either:
+> - Attach the event listener directly to the element that has `content-visibility: auto` applied.
+> - Use a capturing event listener (`{ capture: true }`) if you are delegating events to a parent container.
+
 ```javascript
 const component = document.querySelector('.heavy-component');
 
+// Option 1: Direct listener (recommended)
 component.addEventListener('contentvisibilityautostatechange', (event) => {
   if (event.skipped) {
     // The browser skipped rendering this content.
@@ -71,6 +78,17 @@ component.addEventListener('contentvisibilityautostatechange', (event) => {
     resumeWebSocketPolling();
   }
 });
+
+// Option 2: Capturing listener for event delegation
+document.addEventListener('contentvisibilityautostatechange', (event) => {
+  if (event.target.matches('.heavy-component')) {
+    if (event.skipped) {
+      stopSimulation();
+    } else {
+      startSimulation();
+    }
+  }
+}, { capture: true });
 ```
 
 ### Fallback strategies

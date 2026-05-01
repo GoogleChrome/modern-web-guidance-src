@@ -38,6 +38,8 @@ While this approach offers massive performance benefits, it introduces a specifi
 
 Set `content-visibility: hidden` on views that are not currently active.
 
+> **Note:** The `content-visibility: hidden` property hides an element's *contents*, but the element itself remains styled and visible. Its background, borders, padding, and margins will still be painted by the browser.
+
 ```css
 .spa-view.inactive {
   /* MANDATORY: Use hidden to cache the rendering state of inactive views */
