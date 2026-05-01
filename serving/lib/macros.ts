@@ -53,9 +53,9 @@ export class MacroError extends Error {
 export const MACRO_PATTERN = /{{\s*([A-Z_]+)\((.*?)\)\s*}}/g;
 
 
-let guideCache: Map<string, string> | null = null;
+let guideCache: Map<string, { path: string; category: string }> | null = null;
 
-function getGuidePath(guideId: string): string | null {
+function getGuidePath(guideId: string): { path: string; category: string } | null {
   if (!guideCache) {
     guideCache = new Map();
     if (fs.existsSync(guidesDir)) {
@@ -68,7 +68,10 @@ function getGuidePath(guideId: string): string | null {
         if (!fs.existsSync(categoryDir)) continue;
         for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
           if (entry.isDirectory()) {
-            guideCache.set(entry.name, path.join('guides', category, entry.name, 'guide.md'));
+            guideCache.set(entry.name, {
+              path: path.join('guides', category, entry.name, 'guide.md'),
+              category
+            });
           }
         }
       }
@@ -105,19 +108,18 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
       throw new MacroError(`Missing guide ID in GUIDE_REF macro (${filePath}).`);
     }
 
-    const guidePath = getGuidePath(guideId);
-    if (!guidePath) {
+    const guideInfo = getGuidePath(guideId);
+    if (!guideInfo) {
       throw new MacroError(`Guide "${guideId}" not found (referenced in GUIDE_REF macro in ${filePath}).`);
     }
 
     const target = options?.target || 'local-dev';
     
     if (target === 'skills-cli') {
-      // We can specialize here later if needed
-      return `For more information, see the guide at ${guidePath}`;
+      return `\`${guideId}\` (via \`node modern-web.mjs retrieve "${guideId}"\`)`;
     }
 
-    return `For more information, see the guide at ${guidePath}`;
+    return `\`${guideInfo.category}/${guideId}/guide.md\``;
   }
 };
 

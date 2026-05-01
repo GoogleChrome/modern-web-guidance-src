@@ -101,7 +101,7 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
       const skillDest = path.join(skillDestDir, "SKILL.md");
       fs.mkdirSync(skillDestDir, { recursive: true });
       const skillContent = fs.readFileSync(skillSource, 'utf8');
-      const processedSkillContent = replaceMacros(skillContent, skillSource);
+      const processedSkillContent = replaceMacros(skillContent, skillSource, { target: 'skills-cli' });
       fs.writeFileSync(skillDest, processedSkillContent);
       console.log(`Processed and copied skill ${candidate} (SKILL.md) to ${skillDestDir}`);
       skillsCount++;

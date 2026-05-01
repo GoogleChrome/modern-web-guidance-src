@@ -55,7 +55,7 @@ describe('replaceMacros (Functional with real data)', () => {
     it('replaces macro with guide path', () => {
       const content = '{{ GUIDE_REF("break-up-long-tasks") }}';
       const result = replaceMacros(content, 'test.md');
-      assert.ok(result.includes('guides/performance/break-up-long-tasks/guide.md'));
+      assert.ok(result.includes('`performance/break-up-long-tasks/guide.md`'));
     });
 
     it('throws error for non-existent guide', () => {

@@ -47,7 +47,7 @@ describe('processSkills', () => {
     
     const content = fs.readFileSync(builtSkillPath, 'utf8');
     assert.ok(!content.includes('{{ GUIDE_REF'), 'GUIDE_REF macro should be resolved');
-    assert.ok(content.includes('guides/user-experience/child-state-based-styling/guide.md'), 'Should contain path to child-state-based-styling');
-    assert.ok(content.includes('guides/user-experience/content-based-styling/guide.md'), 'Should contain path to content-based-styling');
+    assert.ok(content.includes('`child-state-based-styling` (via `node modern-web.mjs retrieve "child-state-based-styling"`)'), 'Should contain command for child-state-based-styling');
+    assert.ok(content.includes('`content-based-styling` (via `node modern-web.mjs retrieve "content-based-styling"`)'), 'Should contain command for content-based-styling');
   });
 });
