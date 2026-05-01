@@ -58,7 +58,4 @@ jobs:
         run: |
           npm install -g npm@latest
           cd dist/skills-cli-npx
-
-          # Run dry-run for safety or full publish
-          # npm publish --provenance --access public --registry https://registry.npmjs.org/
-          npm publish --dry-run --provenance --access public --registry https://registry.npmjs.org/
+          npm publish --provenance --access public --registry https://registry.npmjs.org/
