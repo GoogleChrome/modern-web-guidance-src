@@ -70,11 +70,11 @@ test.describe(`Select Menu Interaction Expectations: ${demoName}`, () => {
     const initialRed = await isErrorVisible(select);
     
     // Trigger error state by trying to submit
-    const submitBtn = page.locator('button[type="submit"], input[type="submit"]');
+    const submitBtn = page.locator('button[type="submit"], input[type="submit"], button:not([type="button"])');
     if (await submitBtn.count() > 0) {
         await submitBtn.first().click();
     } else {
-        await page.evaluate(() => document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true })));
+        await page.evaluate(() => document.querySelector('form')?.requestSubmit());
     }
     const triggeredRed = await isErrorVisible(select);
     
@@ -102,11 +102,11 @@ test.describe(`Select Menu Interaction Expectations: ${demoName}`, () => {
     const select = page.locator('select').first();
     const initialRed = await isErrorVisible(select);
     
-    const submitBtn = page.locator('button[type="submit"], input[type="submit"]');
+    const submitBtn = page.locator('button[type="submit"], input[type="submit"], button:not([type="button"])');
     if (await submitBtn.count() > 0) {
         await submitBtn.first().click();
     } else {
-        await page.evaluate(() => document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true })));
+        await page.evaluate(() => document.querySelector('form')?.requestSubmit());
     }
     
     const afterSubmitRed = await isErrorVisible(select);

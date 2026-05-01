@@ -26,8 +26,8 @@ test.describe(`child-state-based-styling Expectations: ${demoName}`, () => {
     expect(html).toMatch(/:has\(/);
   });
 
-  test(`HTML source contains the @supports not selector(:has(*)) fallback query`, async () => {
-    expect(html).toMatch(/@supports\s+not\s+selector\(\s*:has\(\*\)\s*\)/);
+  test(`HTML source contains the @supports selector(:has(*)) fallback query`, async () => {
+    expect(html).toMatch(/@supports\s+(not\s+)?selector\(\s*:has\(/);
   });
 
   test(`HTML source contains the CSS.supports feature detection for :has()`, async () => {

@@ -17,8 +17,12 @@ test.describe(`Consistent Cross-Document Transitions: ${fileName}`, () => {
   // 1. Opt in to cross-document view transitions
   test('Page must opt in to cross-document view transitions with @view-transition rule', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
+    const stylesPath = path.join(targetDir, 'styles.css');
+    const styles = fs.existsSync(stylesPath) ? fs.readFileSync(stylesPath, 'utf-8') : '';
+    const combinedSource = html + '\n' + styles;
+
     const viewTransitionRegex = /@view-transition\s*\{[^}]*navigation\s*:\s*auto/i;
-    expect(html).toMatch(viewTransitionRegex);
+    expect(combinedSource).toMatch(viewTransitionRegex);
   });
 
   // 2. Use <link rel="expect"> for above-the-fold content

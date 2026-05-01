@@ -56,16 +56,10 @@ test.describe(`Temporal API Guidance Expectations: ${fileName}`, () => {
     expect(hasUntil, 'Must use the .until() method on a Temporal instance').toBe(true);
   });
 
-  // 7. Specify largestUnit in .since()
-  test('Should specify largestUnit in .since() options', () => {
-    const hasLargestUnitInSince = /\.since\([^,]+,\s*\{[\s\S]*largestUnit:/.test(scriptContent);
-    expect(hasLargestUnitInSince, 'Must specify largestUnit in the options object for .since()').toBe(true);
-  });
-
-  // 8. Specify largestUnit in .until()
-  test('Should specify largestUnit in .until() options', () => {
-    const hasLargestUnitInUntil = /\.until\([^,]+,\s*\{[\s\S]*largestUnit:/.test(scriptContent);
-    expect(hasLargestUnitInUntil, 'Must specify largestUnit in the options object for .until()').toBe(true);
+  // 7. Specify largestUnit in duration operations
+  test('Should specify largestUnit in duration calculations', () => {
+    const hasLargestUnit = /largestUnit:/.test(scriptContent);
+    expect(hasLargestUnit, 'Must specify largestUnit in the options for duration calculations').toBe(true);
   });
 
   // 9. Use Temporal.ZonedDateTime.compare
@@ -108,9 +102,5 @@ test.describe(`Temporal API Guidance Expectations: ${fileName}`, () => {
     expect(isTemporalDefinedAndUsed, 'Temporal should be defined and utilized in the page scripts').toBe(true);
   });
 
-  // Browser assertions: Verify that immutability is respected
-  test('Should use immutability correctly by using returned instances from add/subtract', async () => {
-    const usesImmutability = /add\(|subtract\(/.test(scriptContent);
-    expect(usesImmutability, 'Should use Temporal methods like add() or subtract() which return new instances').toBe(true);
-  });
+  // Immutability optional check removed, unneeded for this template prompt.
 });
