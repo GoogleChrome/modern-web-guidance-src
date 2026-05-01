@@ -50,4 +50,17 @@ describe('replaceMacros (Functional with real data)', () => {
     assert.ok(result.includes('Widely available'));
     assert.ok(result.includes('Baseline since'));
   });
+
+  describe('GUIDE_REF', () => {
+    it('replaces macro with guide path', () => {
+      const content = '{{ GUIDE_REF("break-up-long-tasks") }}';
+      const result = replaceMacros(content, 'test.md');
+      assert.ok(result.includes('guides/performance/break-up-long-tasks/guide.md'));
+    });
+
+    it('throws error for non-existent guide', () => {
+      const content = '{{ GUIDE_REF("non-existent-guide-xyz") }}';
+      assert.throws(() => replaceMacros(content, 'test.md'), /Guide "non-existent-guide-xyz" not found/);
+    });
+  });
 });

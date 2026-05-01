@@ -1,4 +1,8 @@
 import { validateFeature, getStatusMessage } from "./baseline.ts";
+import fs from "node:fs";
+import path from "node:path";
+import { guidesDir } from "../../lib/paths.ts";
+
 
 /**
  * Parses macro arguments, respecting quotes and handling commas.
@@ -48,6 +52,30 @@ export class MacroError extends Error {
 export const MACRO_PATTERN = /{{\s*([A-Z_]+)\((.*?)\)\s*}}/g;
 
 
+let guideCache: Map<string, string> | null = null;
+
+function getGuidePath(guideId: string): string | null {
+  if (!guideCache) {
+    guideCache = new Map();
+    if (fs.existsSync(guidesDir)) {
+      const categories = fs.readdirSync(guidesDir, { withFileTypes: true })
+        .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+        .map(d => d.name);
+
+      for (const category of categories) {
+        const categoryDir = path.join(guidesDir, category);
+        if (!fs.existsSync(categoryDir)) continue;
+        for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
+          if (entry.isDirectory()) {
+            guideCache.set(entry.name, path.join('guides', category, entry.name, 'guide.md'));
+          }
+        }
+      }
+    }
+  }
+  return guideCache.get(guideId) || null;
+}
+
 const MACRO_HANDLERS: Record<string, MacroHandler> = {
   BASELINE_STATUS: (args, filePath) => {
     const [featureId, bcdKey] = args;
@@ -69,6 +97,19 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
     }
 
     return status;
+  },
+  GUIDE_REF: (args, filePath) => {
+    const [guideId] = args;
+    if (!guideId) {
+      throw new MacroError(`Missing guide ID in GUIDE_REF macro (${filePath}).`);
+    }
+
+    const guidePath = getGuidePath(guideId);
+    if (!guidePath) {
+      throw new MacroError(`Guide "${guideId}" not found (referenced in GUIDE_REF macro in ${filePath}).`);
+    }
+
+    return `For more information, see the guide at ${guidePath}`;
   }
 };
 
