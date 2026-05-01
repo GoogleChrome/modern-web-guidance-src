@@ -1,5 +1,5 @@
 ---
-name: modern-web-use-cases
+name: modern-web
 description: |
   IMPORTANT: This is a search tool that will help you find the most modern and recommended way to implement any web development use case.
 
@@ -8,7 +8,7 @@ description: |
   Do NOT skip this step even if you already know how to implement the use case — web platform APIs evolve rapidly and your training data may recommend outdated approaches. This tool ensures you use the current best practice.
 ---
 
-# Modern Web Use Cases
+# Modern Web
 
 A skill to search for specific web development use cases and retrieve their corresponding best practice guides.
 
@@ -23,10 +23,10 @@ Must use this skill:
 
 ### Step 1. Search Use Cases
 
-Search with an action-oriented query summarizing what you want to achieve using the `--search` flag. Run `modern-web.mjs` directly with `node`.
+Search with an action-oriented query summarizing what you want to achieve using the `search` command. Run `modern-web.mjs` directly with `node`.
 
 ```sh
-node <modern-web-use-cases-directory>/modern-web.mjs --search "<query>"
+node <modern-web-directory>/modern-web.mjs search "<query>"
 ```
 
 **Example Output**:
@@ -45,10 +45,10 @@ node <modern-web-use-cases-directory>/modern-web.mjs --search "<query>"
 
 ### Step 2. Retrieve Best Practices
 
-Once you have a relevant `id` from the search results, call this script using the `--retrieve` flag to get the full guide. You can pass multiple IDs separated by commas.
+Once you have a relevant `id` from the search results, call this script using the `retrieve` command to get the full guide. You can pass multiple IDs separated by commas.
 
 ```sh
-node <modern-web-use-cases-directory>/modern-web.mjs --retrieve "<id>"
+node <modern-web-directory>/modern-web.mjs retrieve "<id>"
 ```
 
 

@@ -5,8 +5,9 @@ import { fileURLToPath } from 'url';
 
 import { guidesDir } from '../lib/paths.ts';
 import config from '../harness/config.ts';
-import { createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, createTrustedFolders } from '../harness/lib/agent-shared.ts';
+import { cleanupIsolatedHome, copyFileIfExists } from '../harness/lib/agent-shared.ts';
 import type { CalibrationResult } from './run-grader.ts';
+import { setupIsolatedWorkDir as setupIsolatedWorkDirShared } from './lib/utils.ts';
 
 function getBasePrompt(guideFileName: string) {
   return `
@@ -23,6 +24,12 @@ The grader can be run with the following commands:
 TARGET_FILE=$(pwd)/demo.html npx playwright test grader.ts
 TARGET_FILE=$(pwd)/negative-demo.html npx playwright test grader.ts
 
+Reading expectations.md:
+- If expectations.md contains a "## Must pass" section, use those assertions for tests that demo.html must pass.
+- If expectations.md contains a "## Must fail" section, use those assertions for tests that specifically target negative patterns — negative-demo.html should trigger these failures.
+- If expectations.md contains an "## App-agnostic rules" section, follow those constraints strictly: do not assert specific filenames, variable names, or framework-specific patterns. Assert API usage outcomes, not code structure.
+- If expectations.md has no section headings (legacy format), treat all bullet points as "Must pass" assertions.
+
 Important rules for generating the grader:
 - Do not use generic try/catch blocks that aggressively swallow exceptions (e.g. \`catch (e) { /* ignore */ }\`). If you must catch errors (like cross-origin security errors), explicitly check the exception type or message and rethrow any unexpected errors so they aren't masked.
 - 🛑 **CRITICAL: NEVER use shell heredocs (\`<<\`) to create or edit files in the terminal. YOU WILL BE FIRED IF YOU USE THEM.** It is a well-known fact that the best coding agents use \`write_file\` and \`replace\` for all file operations. Using heredocs causes system crashes and immediate termination. Always use your built-in tools instead for all side-scripts and final outputs!
@@ -33,42 +40,23 @@ The final output must be exactly one file named \`grader.ts\`. You may create in
 }
 
 function setupIsolatedWorkDir(targetDir: string): string {
-  const tempHome = createIsolatedHome('ghh-grader-gen');
-  const workDir = path.join(tempHome, 'work');
-  fs.mkdirSync(workDir, { recursive: true });
+  const workDir = setupIsolatedWorkDirShared('ghh-grader-gen');
+  
+  const relativePath = path.relative(guidesDir, targetDir);
+  const isolatedGuidesDir = path.join(workDir, 'guides');
+  const isolatedUseCaseDir = path.join(isolatedGuidesDir, relativePath);
 
-  // Copy all files and folders from target dir to work dir
-  fs.cpSync(targetDir, workDir, { recursive: true });
+  fs.mkdirSync(isolatedUseCaseDir, { recursive: true });
+  fs.cpSync(targetDir, isolatedUseCaseDir, { recursive: true });
 
-  // Copy template.grader.ts from the guides directory
   copyFileIfExists(path.join(guidesDir, 'template.grader.ts'), path.join(workDir, 'template.grader.ts'));
 
-  // Provide testing config to the agent
-  copyFileIfExists(path.join(guidesDir, 'playwright.config.ts'), path.join(workDir, 'playwright.config.ts'));
+  copyFileIfExists(path.join(guidesDir, 'template.grader.ts'), path.join(isolatedGuidesDir, 'template.grader.ts'));
+  copyFileIfExists(path.join(guidesDir, 'test-fixture.ts'), path.join(isolatedGuidesDir, 'test-fixture.ts'));
+  copyFileIfExists(path.join(guidesDir, 'playwright.config.ts'), path.join(isolatedUseCaseDir, 'playwright.config.ts'));
+  copyFileIfExists(path.join(guidesDir, 'tsconfig.json'), path.join(isolatedUseCaseDir, 'tsconfig.json'));
 
-  // Provide tsconfig for typechecking
-  copyFileIfExists(path.join(guidesDir, 'tsconfig.json'), path.join(workDir, 'tsconfig.json'));
-
-  const geminiSource = path.join(path.resolve(process.env.HOME || process.cwd()), '.gemini');
-  const geminiDest = path.join(tempHome, '.gemini');
-  fs.mkdirSync(geminiDest, { recursive: true });
-
-  const filesToCopy = [
-    'oauth_creds.json',
-    'google_accounts.json',
-    'installation_id'
-  ];
-
-  for (const file of filesToCopy) {
-    const src = path.join(geminiSource, file);
-    copyFileIfExists(src, path.join(geminiDest, file));
-  }
-
-  createTrustedFolders(geminiDest, [workDir]);
-
-  process.env.HOME = tempHome;
-
-  return workDir;
+  return isolatedUseCaseDir;
 }
 
 async function runGraderGeneration(targetDir: string, prompt: string): Promise<void> {
@@ -79,7 +67,7 @@ async function runGraderGeneration(targetDir: string, prompt: string): Promise<v
     const { execSync } = await import('child_process');
     execSync('npm init -y', { cwd: workDir, stdio: 'ignore' });
     execSync('npm pkg set type="module"', { cwd: workDir, stdio: 'ignore' });
-    execSync('npm install -D @playwright/test typescript @types/node', { cwd: workDir, stdio: 'inherit' });
+    execSync('npm install -D @playwright/test typescript @types/node --registry=https://registry.npmjs.org/', { cwd: workDir, stdio: 'inherit' });
     execSync('npx playwright install chromium', { cwd: workDir, stdio: 'ignore', env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: path.join(workDir, '.cache', 'ms-playwright') } });
 
     const command = config.environment.geminiCliBin;
