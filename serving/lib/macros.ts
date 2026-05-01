@@ -1,6 +1,7 @@
 import { validateFeature, getStatusMessage } from "./baseline.ts";
 import path from "node:path";
-import { scanAllGuides } from "../../lib/guide-validation.ts";
+import { scanAllGuides, type GuideInventory } from "../../lib/guide-validation.ts";
+
 
 
 
@@ -56,17 +57,14 @@ export class MacroError extends Error {
 export const MACRO_PATTERN = /{{\s*([A-Z_]+)\((.*?)\)\s*}}/g;
 
 
-let guideCache: Map<string, { path: string; category: string }> | null = null;
+let guideCache: Map<string, GuideInventory> | null = null;
 
-function getGuidePath(guideId: string): { path: string; category: string } | null {
+function getGuidePath(guideId: string): GuideInventory | null {
   if (!guideCache) {
     guideCache = new Map();
     const guides = scanAllGuides();
     for (const guide of guides) {
-      guideCache.set(guide.name, {
-        path: path.join('guides', guide.category, guide.name, 'guide.md'),
-        category: guide.category
-      });
+      guideCache.set(guide.name, guide);
     }
   }
   return guideCache.get(guideId) || null;
