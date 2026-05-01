@@ -22,39 +22,53 @@
 
     let translator;
 
-    try {
-      if (!('Translator' in window)) {
-        throw new Error('Translator not found');
-      }
-      const availability = await Translator.availability(options);
-      if (availability === 'unavailable') {
-        throw new Error('Translator is not available');
-      }
-      translator = await Translator.create({
-        ...options,
-        monitor(m) {
-          m.addEventListener('downloadprogress', (e) => {
-            console.log(`Downloaded ${e.loaded * 100}%`);
-          });
-        },
-      });
-    } catch (e) {
-      console.error(e);
+    const translateForm = document.getElementById('translate-form');
+    const submitBtn = translateForm.querySelector('button');
+    const p = document.getElementById('translation');
+
+    if (!('Translator' in window)) {
+      p.textContent = 'Client-side translation is currently unsupported in this browser.';
+      submitBtn.disabled = true;
     }
 
-    document.getElementById('translate-form').addEventListener('submit', async (e) => {
+    translateForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!translator) return;
-      const text = document.getElementById('source').textContent;
-      const stream = translator.translateStreaming(text);
-      const p = document.getElementById('translation');
-      p.textContent = '';
-      let translation = '';
-      for await (const chunk of stream) {
-        translation += chunk;
-        p.append(chunk);
+      try {
+        const availability = await Translator.availability(options);
+        if (availability === 'no' || availability === 'unavailable') {
+          p.textContent = 'The translation model is unavailable on this device.';
+          return;
+        }
+
+        if (!translator) {
+          submitBtn.textContent = 'Initializing model...';
+          submitBtn.disabled = true;
+          translator = await Translator.create({
+            ...options,
+            monitor(m) {
+              m.addEventListener('downloadprogress', (progressEvent) => {
+                const total = progressEvent.total || 1;
+                const pct = Math.round((progressEvent.loaded / total) * 100);
+                submitBtn.textContent = `Downloading model... ${pct}%`;
+              });
+            },
+          });
+          submitBtn.textContent = 'Translate';
+          submitBtn.disabled = false;
+        }
+
+        const text = document.getElementById('source').textContent;
+        const stream = translator.translateStreaming(text);
+        p.textContent = '';
+        for await (const chunk of stream) {
+          p.append(chunk);
+        }
+      } catch (err) {
+        console.error(err);
+        p.textContent = `Error: ${err.message}`;
+        submitBtn.textContent = 'Translate';
+        submitBtn.disabled = false;
       }
-      console.log('Translation:', translation);
     });
   </script>
 </body>

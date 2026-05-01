@@ -61,7 +61,7 @@ test.describe(`Summarizer Expectations: ${demoName}`, () => {
           (window as any).__summarizer_calls.create.push(options);
           if (options && typeof options.monitor === 'function') {
             const monitor = {
-              addEventListener: (type: string, listener: any) => {
+              addEventListener: (type: string, _listener: any) => {
                 (window as any).__summarizer_calls.eventsAdded.push(type);
               }
             };

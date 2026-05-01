@@ -34,40 +34,53 @@
 
     let summarizer;
 
-    try {
-      if (!('Summarizer' in window)) {
-        throw new Error('Summarizer not found');
-      }
-      const availability = await Summarizer.availability(options);
-      if (availability === 'unavailable') {
-        throw new Error('Summarizer is not available');
-      }
-      summarizer = await Summarizer.create({
-        ...options,
+    const summarizeForm = document.getElementById('summarize-form');
+    const submitBtn = summarizeForm.querySelector('button');
+    const div = document.getElementById('summary');
 
-        monitor(m) {
-          m.addEventListener('downloadprogress', (e) => {
-            console.log(`Downloaded ${e.loaded * 100}%`);
-          });
-        },
-      });
-    } catch (e) {
-      console.error(e);
+    if (!('Summarizer' in window)) {
+      div.textContent = 'Local summarization is currently unsupported in this browser.';
+      submitBtn.disabled = true;
     }
 
-    document.getElementById('summarize-form').addEventListener('submit', async (e) => {
+    summarizeForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!summarizer) return;
-      const text = document.getElementById('article').textContent.trim();
-      const stream = summarizer.summarizeStreaming(text);
-      const div = document.getElementById('summary');
-      div.textContent = '';
-      let summary = '';
-      for await (const chunk of stream) {
-        summary += chunk;
-        div.append(chunk);
+      try {
+        const availability = await Summarizer.availability(options);
+        if (availability === 'unavailable') {
+          div.textContent = 'The summarization model is unavailable on this device.';
+          return;
+        }
+
+        if (!summarizer) {
+          submitBtn.textContent = 'Initializing model...';
+          submitBtn.disabled = true;
+          summarizer = await Summarizer.create({
+            ...options,
+            monitor(m) {
+              m.addEventListener('downloadprogress', (progressEvent) => {
+                const total = progressEvent.total || 1;
+                const pct = Math.round((progressEvent.loaded / total) * 100);
+                submitBtn.textContent = `Downloading model... ${pct}%`;
+              });
+            },
+          });
+          submitBtn.textContent = 'Summarize';
+          submitBtn.disabled = false;
+        }
+
+        const text = document.getElementById('article').textContent.trim();
+        const stream = summarizer.summarizeStreaming(text);
+        div.textContent = '';
+        for await (const chunk of stream) {
+          div.append(chunk);
+        }
+      } catch (err) {
+        console.error(err);
+        div.textContent = `Error: ${err.message}`;
+        submitBtn.textContent = 'Summarize';
+        submitBtn.disabled = false;
       }
-      console.log('Summary:', summary);
     });
   </script>
 </body>

@@ -8,10 +8,8 @@ sources:
   - https://developer.mozilla.org/en-US/docs/Web/API/Translator
 ---
 
-The **Translator API** allows developers to perform client-side text translation
-using built-in AI models in Chrome. This approach eliminates the need for
-cloud-based translation services for ephemeral content, reducing costs and
-improving privacy by keeping data on the user's device.
+The **Translator API** allows developers to perform client-side text translation using built-in AI models in Chrome. This approach eliminates the need for cloud-based translation services for ephemeral content, reducing costs and improving privacy by keeping data on the user's device.
+
 
 ## Prerequisites & Requirements
 
@@ -33,40 +31,33 @@ To run Gemini Nano and associated models, the system needs:
 
 ## Implementation & Code Samples
 
-### 1. Feature Detection
+### 1. Checking Availability & Downloading Models
 
-Before use, check if the `Translator` object is available in the global scope.
+**Mandatory Options Passing:** You must pass the identical configuration options object to both `Translator.availability(options)` and `Translator.create(options)`.
 
-```javascript
-if ('Translator' in self) {
-  // The Translator API is supported.
-}
-```
+**Mandatory Progress Monitoring:** You MUST implement a monitor for model download progress by providing a `monitor(m)` callback to `Translator.create()` and adding a listener for the `downloadprogress` event.
 
-### 2. Checking Availability & Downloading Models
-
-Availability returns `'available'`, `'after-download'`, or `'no'`. Use the
-`monitor` callback to track download progress.
+**User Gesture Requirement:** When `availability` is `'after-download'`, triggering the model download via `Translator.create()` requires a user gesture (such as a button click listener context). Unconditional page-load calls will trigger a `NotAllowedError`.
 
 ```javascript
-const translatorCapabilities = await Translator.availability({
+const options = {
   sourceLanguage: 'es',
   targetLanguage: 'fr',
-});
+};
 
-if (
-  translatorCapabilities === 'available' ||
-  translatorCapabilities === 'after-download'
-) {
-  const translator = await Translator.create({
-    sourceLanguage: 'es',
-    targetLanguage: 'fr',
-    monitor(m) {
-      m.addEventListener('downloadprogress', (e) => {
-        // e.loaded is a value between 0 and 1
-        console.log(`Downloaded ${e.loaded * 100}%`);
-      });
-    },
+const availability = await Translator.availability(options);
+
+if (availability === 'available' || availability === 'after-download') {
+  // A user gesture is strictly required to trigger create when downloadable
+  document.getElementById('start-translation-btn').addEventListener('click', async () => {
+    const translator = await Translator.create({
+      ...options,
+      monitor(m) {
+        m.addEventListener('downloadprogress', (e) => {
+          console.log(`Downloaded ${Math.round(e.loaded * 100)}%`);
+        });
+      },
+    });
   });
 }
 ```
@@ -101,9 +92,7 @@ for await (const chunk of stream) {
 
 ## Supported Languages
 
-The API supports a wide range of BCP 47 language codes: Here are the languages
-supported by Chrome's implementation of the Translator API, formatted as a
-Markdown list:
+The API supports a wide range of BCP 47 language codes: Here are the languages supported by Chrome's implementation of the Translator API:
 
 - **ar**: Arabic
 - **bg**: Bulgarian
@@ -155,3 +144,23 @@ Markdown list:
   complexities.
 - **Privacy:** No data is sent to Google servers during the translation process
   once the model is downloaded.
+
+## Fallback Strategy
+
+{{ BASELINE_STATUS("translator") }}
+
+Before use, check if the `Translator` object is available in the global scope:
+
+```javascript
+if ('Translator' in self) {
+  // The Translator API is supported.
+} else {
+  // Execute fallback strategy
+}
+```
+
+If the `Translator` API is unsupported or availability checks return `'no'`, you must gracefully fall back. 
+
+Recommended options:
+1. **Remote API Fallback**: Redirect the translation request to a server endpoint or cloud remote API (such as the Vertex AI Gemini API) to deliver translation functionality.
+2. **Graceful Degradation**: Visually disable translation control elements or buttons while showing an end-user friendly note (e.g., `"Client-side translation is currently unsupported in this browser"`). Do not allow unhandled exceptions.

@@ -83,7 +83,7 @@ test.describe(`Translator Expectations: ${demoName}`, () => {
           if (options && typeof options.monitor === 'function') {
             window.__INTERACTIONS.monitorProvided = true;
             const monitor = {
-              addEventListener: (type: string, listener: any) => {
+              addEventListener: (type: string, _listener: any) => {
                 if (type === 'downloadprogress') {
                   window.__INTERACTIONS.downloadProgressListened = true;
                 }
