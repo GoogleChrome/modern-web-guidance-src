@@ -54,7 +54,6 @@ function parseWatchdogArgs(): WatchdogArgs {
 function main() {
   const {
     parentPid,
-    logFile,
     clearcutEndpoint,
     clearcutIncludePidHeader,
   } = parseWatchdogArgs();
