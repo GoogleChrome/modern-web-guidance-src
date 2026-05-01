@@ -89,4 +89,4 @@ If container queries are not supported by the browser, you should provide a fall
 }
 ```
 
-This fallback ensures that the text still scales, but it will be based on the screen width rather than the component's width. This is usually a safe fallback.
+This fallback ensures that the text still scales, but it will be based on the screen width rather than the component's width. This should be tested to verify it works in your use case.
