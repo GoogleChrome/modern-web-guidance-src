@@ -436,3 +436,16 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
   }
   return guides;
 }
+
+let cachedGuidesMap: Map<string, GuideInventory> | null = null;
+
+export function getGuidesMap(): Map<string, GuideInventory> {
+  if (!cachedGuidesMap) {
+    cachedGuidesMap = new Map(scanAllGuides().map(g => [g.name, g]));
+  }
+  return cachedGuidesMap;
+}
+
+export function resetGuidesMap() {
+  cachedGuidesMap = null;
+}

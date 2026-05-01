@@ -1,6 +1,7 @@
 import { validateFeature, getStatusMessage } from "./baseline.ts";
 import path from "node:path";
-import { scanAllGuides, type GuideInventory } from "../../lib/guide-validation.ts";
+import { scanAllGuides, type GuideInventory, getGuidesMap } from "../../lib/guide-validation.ts";
+
 
 
 
@@ -57,18 +58,7 @@ export class MacroError extends Error {
 export const MACRO_PATTERN = /{{\s*([A-Z_]+)\((.*?)\)\s*}}/g;
 
 
-let guideCache: Map<string, GuideInventory> | null = null;
 
-function getGuidePath(guideId: string): GuideInventory | null {
-  if (!guideCache) {
-    guideCache = new Map();
-    const guides = scanAllGuides();
-    for (const guide of guides) {
-      guideCache.set(guide.name, guide);
-    }
-  }
-  return guideCache.get(guideId) || null;
-}
 
 const MACRO_HANDLERS: Record<string, MacroHandler> = {
   BASELINE_STATUS: (args, filePath) => {
@@ -98,7 +88,7 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
       throw new MacroError(`Missing guide ID in GUIDE_REF macro (${filePath}).`);
     }
 
-    const guideInfo = getGuidePath(guideId);
+    const guideInfo = getGuidesMap().get(guideId);
     if (!guideInfo) {
       throw new MacroError(`Guide "${guideId}" not found (referenced in GUIDE_REF macro in ${filePath}).`);
     }

@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { processSkills } from './build-dist.ts';
 import { replaceMacros } from '../lib/macros.ts';
+import { resetGuidesMap } from '../../lib/guide-validation.ts';
+
 
 import { rootDir } from '../../lib/paths.ts';
 
@@ -17,6 +19,7 @@ describe('processSkills', () => {
     fs.mkdirSync(dummySkillDir, { recursive: true });
     fs.writeFileSync(path.join(dummySkillDir, 'SKILL.md'), 'Test Skill with macro: {{ BASELINE_STATUS("grid") }}');
     fs.mkdirSync(testOutputDir, { recursive: true });
+    resetGuidesMap();
   });
 
   after(() => {
