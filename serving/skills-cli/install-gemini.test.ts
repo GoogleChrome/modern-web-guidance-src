@@ -18,7 +18,10 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
             return;
         }
 
-        const helpOut = execSync(`${geminiBin} extensions --help`, { encoding: 'utf8' });
+        const helpOut = execSync(`${geminiBin} extensions --help`, { 
+            encoding: 'utf8',
+            env: { ...process.env, GEMINI_CLI_TRUST_WORKSPACE: '1' }
+        });
         assert.ok(helpOut.includes('install'), 'Gemini should have install command');
 
         console.log(`\nInstalling Gemini extension locally...`);
@@ -26,7 +29,7 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
         execSync(`${geminiBin} extensions install ${distDir} --consent`, { 
             stdio: 'inherit',
             input: 'y\n',
-            env: { ...process.env, HOME: homeDir }
+            env: { ...process.env, HOME: homeDir, GEMINI_CLI_TRUST_WORKSPACE: 'true' }
         });
 
         console.log(`\nRunning Gemini prompt using the skill...`);
@@ -34,7 +37,7 @@ test('Gemini CLI verifies extension install capability', { skip: !process.env.FU
         const output = execSync(promptCmd, { 
             stdio: ['ignore', 'pipe', 'pipe'], 
             timeout: 90000,
-            env: { ...process.env, HOME: homeDir }
+            env: { ...process.env, HOME: homeDir, GEMINI_CLI_TRUST_WORKSPACE: 'true' }
         });
 
         console.log(`\nVerifying Gemini used the skill...`);
