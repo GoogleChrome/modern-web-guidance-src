@@ -227,6 +227,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 - **DO** use `<details>` and `<summary>` for native accordions or revealable content without JS.
 - **DO** place `<summary>` as the *first* child of `<details>`.
+- If headings must be used within a `<summary>`, consider if the heading is essential for understanding or navigating the document structure. If it is, use a more robust disclosure approach that allows wrapping the disclosure trigger with the heading (e.g. `<h2><button type="button" aria-expanded="false" aria-controls="significant-section-content">Significant section</button></h2>`). This ensures the heading semantics aren’t lost, and the button and its state are announced.
 - **DO** use `details[open]` attribute for styling expanded states.
 - **DO** use `details::details-content` for styling the contents of the `<details>` element.
 - **DO** use the `name` attribute on multiple `<details>` elements to create exclusive accordions (opening one closes others).
