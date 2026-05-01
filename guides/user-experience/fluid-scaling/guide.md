@@ -17,7 +17,9 @@ sources:
 
 ## Overview
 
-Fluid scaling allows components to adapt their internal proportions (like font sizes and spacing) smoothly as their container resizes. This creates a more cohesive design than jumping between fixed breakpoints. This approach is recommended because it ensures components look good regardless of where they are placed in a layout, promoting component isolation and reusability.
+Fluid scaling allows components to adjust their internal proportions (like font sizes and spacing) based on their current dimensions. This creates a more cohesive design than jumping between fixed breakpoints.
+
+While fluid scaling was historically achieved using viewport units (scaling based on the screen size), modern container query units allow components to scale relative to their parent container instead. This ensures components look good regardless of where they are placed in a layout, promoting better component isolation and reusability.
 
 ## Implementation
 
@@ -60,12 +62,12 @@ Use container query units (`cqi`, `cqb`, etc.) to set sizes relative to the cont
 
 ### 3. Constrain values with `clamp()`
 
-To prevent sizes from becoming too small or too large, use the CSS `clamp()` function.
+To prevent sizes from becoming too small or too large, use the CSS `clamp()` function. This impacts the user's ability to zoom or adjust their base font size. To ensure text meets accessibility guidelines, the maximum size must not be more than 2.5 times the minimum size.
 
 ```css
 .component-title {
-  /* Clamp font size between 1rem and 3rem, scaling with 5% of container width */
-  font-size: clamp(1rem, 5cqi, 3rem);
+  /* Clamp font size between 1rem and 2.5rem, scaling with 5% of container width */
+  font-size: clamp(1rem, 5cqi, 2.5rem);
 }
 ```
 
@@ -78,13 +80,13 @@ If container queries are not supported by the browser, you should provide a fall
 ```css
 .component-title {
   /* Fallback for browsers that do not support container units */
-  font-size: clamp(1rem, 5vw, 3rem);
+  font-size: clamp(1rem, 5vw, 2.5rem);
 }
 
 @supports (font-size: 1cqi) {
   .component-title {
     /* Use container units where supported */
-    font-size: clamp(1rem, 5cqi, 3rem);
+    font-size: clamp(1rem, 5cqi, 2.5rem);
   }
 }
 ```

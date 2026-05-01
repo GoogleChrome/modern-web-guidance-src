@@ -23,7 +23,6 @@
       resize: horizontal;
       overflow: auto;
       min-width: 200px;
-      max-width: 800px;
       width: 500px;
     }
 
@@ -39,6 +38,9 @@
       .card-title {
         /* Use container units where supported */
         font-size: clamp(1.2rem, 6cqi, 3rem);
+
+        /* Scale padding based on container width */
+        padding: 0 5cqi;
       }
     }
 
@@ -46,6 +48,13 @@
       font-size: 1rem;
       color: #4a4a4a;
       line-height: 1.5;
+    }
+
+    @supports (padding: 5cqi) {
+      .card-content {
+        /* Scale padding based on container width */
+        padding: 0 5cqi;
+      }
     }
 
     .instruction {
@@ -57,13 +66,20 @@
 <body>
 
   <div class="instruction">
-    Drag the bottom-right corner of the card to resize it and see the title font size scale smoothly.
+    Notice how the two cards below have different title sizes, even though they share the same CSS declaration, because they have different widths. Drag their bottom-right corners to resize them individually.
   </div>
 
-  <div class="card-wrapper">
+  <div class="card-wrapper" style="width: 350px; margin-bottom: 2rem;">
     <h1 class="card-title">This Title Scales Fluently</h1>
     <p class="card-content">
-      The font size of the title above is determined by the width of this white card container, not the width of the entire screen. Resize the card to see it in action.
+      This card is narrow (350px width), so the title is small.
+    </p>
+  </div>
+
+  <div class="card-wrapper" style="width: 600px;">
+    <h1 class="card-title">This Title Scales Fluently</h1>
+    <p class="card-content">
+      This card is wide (600px width), so the title is larger using the exact same CSS rules.
     </p>
   </div>
 
