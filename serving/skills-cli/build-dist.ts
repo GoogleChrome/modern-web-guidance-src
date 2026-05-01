@@ -88,25 +88,21 @@ function convertSkillToUseNpx(skillDest: string) {
 export function processSkills(publishRoot: string, distDir: string, npx: boolean) {
   console.log("Scanning for skills (SKILL.md) in guides/...");
   const guidesDirInRoot = path.join(rootDir, "guides");
-  const candidates = fs.readdirSync(guidesDirInRoot, { withFileTypes: true })
-    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
-    .map(d => d.name);
+  
+  // Find all SKILL.md files in top-level directories of guides/
+  const skillFiles = fs.globSync('*/SKILL.md', { cwd: guidesDirInRoot });
 
-  let skillsCount = 0;
-  const skillNames: string[] = [];
-  for (const candidate of candidates) {
-    const skillSource = path.join(guidesDirInRoot, candidate, "SKILL.md");
-    if (fs.existsSync(skillSource)) {
-      const skillDestDir = path.join(publishRoot, "skills", candidate);
-      const skillDest = path.join(skillDestDir, "SKILL.md");
-      fs.mkdirSync(skillDestDir, { recursive: true });
-      const skillContent = fs.readFileSync(skillSource, 'utf8');
-      const processedSkillContent = replaceMacros(skillContent, skillSource, { target: 'skills-cli' });
-      fs.writeFileSync(skillDest, processedSkillContent);
-      console.log(`Processed and copied skill ${candidate} (SKILL.md) to ${skillDestDir}`);
-      skillsCount++;
-      skillNames.push(candidate);
-    }
+  for (const relPath of skillFiles as string[]) {
+    const category = path.dirname(relPath);
+    const source = path.join(guidesDirInRoot, relPath);
+    const skillDestDir = path.join(publishRoot, "skills", category);
+    
+    fs.mkdirSync(skillDestDir, { recursive: true });
+    
+    const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target: 'skills-cli' });
+    fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
+    
+    console.log(`Processed and copied skill ${category} (SKILL.md) to ${skillDestDir}`);
   }
 
   if (npx) {
@@ -114,8 +110,8 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
     convertSkillToUseNpx(skillDest);
   }
 
-  console.log(`Successfully copied ${skillsCount} skills to distribution.`);
-  return { skillsCount, skillNames };
+  console.log(`Successfully copied ${skillFiles.length} skills to distribution.`);
+  return { skillsCount: skillFiles.length, skillNames: skillFiles.map(f => path.dirname(f as string)) };
 }
 
 async function main(opts: {publishRoot: string, version?: string, npx?: boolean, subset?: boolean | number}): Promise<BuildResult | undefined> {
