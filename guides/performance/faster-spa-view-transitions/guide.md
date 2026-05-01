@@ -17,7 +17,7 @@ Enable instant navigation between views in a Single-Page Application (SPA) by ca
 
 Traditionally, when a user navigates between tabs or views in an SPA, developers either destroy the old view or hide it using `display: none`. Both approaches require the browser to recreate or recalculate the full layout and paint when the user returns to that view.
 
-By using `content-visibility: hidden` on inactive views, the browser removes the element from the layout flow and stops painting it, but *retains* its cached rendering state in memory. When the user switches back, the view restores nearly instantly.
+By using `content-visibility: hidden` on inactive views, the browser removes the element’s contents from the layout flow and stops painting it, but *retains* its cached rendering state in memory. When the user switches back, the view restores nearly instantly.
 
 ### The CPU vs. RAM Trade-off
 
