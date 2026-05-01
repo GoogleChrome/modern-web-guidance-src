@@ -53,6 +53,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+      - run: git fetch --tags
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
