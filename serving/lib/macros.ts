@@ -39,7 +39,10 @@ export function parseArguments(argsString: string): string[] {
   return args;
 }
 
-type MacroHandler = (args: string[], filePath: string, options?: { target?: string }) => string;
+export type BuildTarget = 'skills-cli' | 'mcp-server' | 'megaskill' | 'local-dev';
+
+type MacroHandler = (args: string[], filePath: string, options?: { target?: BuildTarget }) => string;
+
 
 
 export class MacroError extends Error {
@@ -162,7 +165,7 @@ export function validateMacros(content: string, filePath: string): string[] {
   return errors;
 }
 
-export function replaceMacros(content: string, filePath: string, options: { target?: string } = {}): string {
+export function replaceMacros(content: string, filePath: string, options: { target?: BuildTarget } = {}): string {
   return processMacros(content, (handler, args, match) => {
     try {
       return handler(args, filePath, options);

@@ -12,7 +12,8 @@ export interface StoreUseCase {
   vector?: number[];
   distance?: number;
 }
-import { replaceMacros } from "../lib/macros.ts";
+import { replaceMacros, type BuildTarget } from "../lib/macros.ts";
+
 import { scanAllGuides, type GuideInventory } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 
@@ -28,7 +29,7 @@ interface UseCase {
 
 export interface BuildOptions {
   outputDir: string;
-  target?: 'skills-cli' | 'mcp-server' | 'megaskill' | 'local-dev';
+  target?: BuildTarget;
   subset?: number;
   force?: boolean;
   targetGuidePath?: string;
