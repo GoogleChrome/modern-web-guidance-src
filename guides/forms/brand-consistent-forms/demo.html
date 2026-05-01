@@ -11,6 +11,13 @@
     */
       :root {
         --brand-color: #6200ee;
+        color-scheme: light dark;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --brand-color: #bb86fc;
+        }
       }
 
       body {
