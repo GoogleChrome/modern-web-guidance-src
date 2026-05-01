@@ -3,6 +3,8 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import { processSkills } from './build-dist.ts';
+import { replaceMacros } from '../lib/macros.ts';
+
 import { rootDir } from '../../lib/paths.ts';
 
 describe('processSkills', () => {
@@ -47,7 +49,21 @@ describe('processSkills', () => {
     
     const content = fs.readFileSync(builtSkillPath, 'utf8');
     assert.ok(!content.includes('{{ GUIDE_REF'), 'GUIDE_REF macro should be resolved');
-    assert.ok(content.includes('`child-state-based-styling` (via `node modern-web.mjs retrieve "child-state-based-styling"`)'), 'Should contain command for child-state-based-styling');
-    assert.ok(content.includes('`content-based-styling` (via `node modern-web.mjs retrieve "content-based-styling"`)'), 'Should contain command for content-based-styling');
+    assert.ok(content.includes('`child-state-based-styling` (via `node <modern-web-directory>/modern-web.mjs retrieve "child-state-based-styling"`)'), 'Should contain command for child-state-based-styling');
+    assert.ok(content.includes('`content-based-styling` (via `node <modern-web-directory>/modern-web.mjs retrieve "content-based-styling"`)'), 'Should contain command for content-based-styling');
+  });
+
+  it('uses the same command text as in modern-web/SKILL.md', () => {
+    const skillFilePath = path.join(rootDir, 'guides/modern-web/SKILL.md');
+    assert.ok(fs.existsSync(skillFilePath), 'modern-web/SKILL.md should exist');
+    
+    const skillContent = fs.readFileSync(skillFilePath, 'utf8');
+    
+    const expectedPattern = 'node <modern-web-directory>/modern-web.mjs retrieve "<id>"';
+    assert.ok(skillContent.includes(expectedPattern), 'modern-web/SKILL.md should contain the expected command pattern');
+    
+    const result = replaceMacros('{{ GUIDE_REF("break-up-long-tasks") }}', 'test.md', { target: 'skills-cli' });
+    
+    assert.ok(result.includes('node <modern-web-directory>/modern-web.mjs retrieve "break-up-long-tasks"'), 'Macro output should match the pattern in SKILL.md');
   });
 });
