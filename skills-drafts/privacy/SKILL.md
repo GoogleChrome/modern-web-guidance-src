@@ -1,91 +1,158 @@
 ---
-name: privacy
-description: Action-oriented guidelines for privacy by design, data minimization, third-party audits, and modern browser privacy APIs. Use this skill when dealing with user data, cookies, tracking, third-party scripts, or browser privacy APIs.
+name: web-privacy
+description: Action-oriented guidelines for web developers to implement privacy by design, data minimization, third-party audits, and secure data handling. Use this skill when designing applications, integrating third-party services, handling user data, or configuring security headers.
 ---
 
-# Privacy
+# Web Privacy Guidelines for Developers
 
-Web application architects and developers must treat privacy not as an compliance afterthought, but as a foundational architectural design requirement. Modern web platforms are shifting away from implicit tracking toward explicit, user-consented, browser-mediated identity and permission exchanges.
+Web application developers must treat privacy as a foundational architectural requirement, not just a legal compliance checkbox. As the web ecosystem shifts away from passive tracking toward explicit, user-consented interactions, building privacy-preserving applications is critical for user trust and security.
 
-## 1. Privacy by Design and Data Minimization
+This document provides high-level principles and detailed, actionable guidelines with code examples for web developers.
 
-Reducing the digital footprint to limit breach exposure and foster user trust.
+---
 
-### DOs:
-- **DO** collect only adequate, relevant, and strictly necessary data for a stated purpose.
-- **DO** use lower granularity ("fuzzing") where precise data is not required (e.g., age brackets vs. exact birthdates).
-- **DO** offer guest checkouts to avoid forced account creation.
-- **DO** explain *why* data is collected inline, using `aria-describedby` to link inputs to their explanations.
-- **DO** use the `Clear-Site-Data` HTTP header upon logout to wipe client-side cookie caches and local storage.
+## High-Level Overview
 
-### DON'Ts:
-- **DON'T** collect data speculatively "just in case" it becomes useful.
-- **DON'T** rely on dark patterns or pre-checked opt-ins to force consent.
+These core themes should guide your approach to privacy in web development:
 
-### Code Examples:
+1.  **Automation Asymmetry & Privacy Labor**: Do not offload the burden of protecting privacy to the user (privacy labor). Avoid overwhelming users with complex consent dialogs (automation asymmetry). Users have limited time and attention; offloading privacy choices to them is often ineffective and causes fatigue. Systems should be privacy-protective by default.
+2.  **Data Minimization**: "If you don't have the data, you can't lose it." Collect only the bare minimum required for the immediate task. Reducing data storage reduces the risk of breach and builds user trust.
+3.  **Purpose Limitation**: Data collected for one purpose must not be used for another without fresh consent. Repurposing data without explicit agreement violates the trust relationship with the user.
+4.  **Transparency by Default**: Be honest and clear about why data is collected, where it goes, and how long it is kept. Transparency builds trust and can be a unique selling point for your application.
+5.  **Trustworthy Agency**: Treat your application as an agent acting in the user's best interest. This means protecting them from intrusive behaviors, unnecessary data exposure, and acting as a loyal fiduciary to the user rather than serving third-party interests.
 
-#### Clear-Site-Data (HTTP)
-Send this header on the page *after* logout confirmation.
-```http
-Clear-Site-Data: "cache", "cookies", "storage"
+---
+
+## Detailed Guidelines
+
+### 1. Data Minimization and Purpose Limitation
+
+Reducing the amount of data collected and strictly limiting its use is the most effective way to protect user privacy.
+
+#### DOs:
+*   **DO** collect data at the lowest granularity necessary. If you only need to know if a user is in a certain age bracket (e.g., 18-34), ask for the bracket, not the exact date of birth.
+*   **DO** provide guest checkout options for e-commerce to avoid forced account creation, which reduces data collection and cart abandonment.
+*   **DO** delete data as soon as the purpose for its collection has been fulfilled.
+*   **DO** use techniques like "fuzzing" or adding noise to data (Differential Privacy) when gathering aggregate statistics.
+
+#### DON'Ts:
+*   **DON'T** collect data speculatively "just in case" it might be useful in the future.
+*   **DON'T** reuse data collected for one purpose (e.g., security verification) for another (e.g., marketing) without explicit user consent.
+
+#### Code Examples:
+
+**Fuzzing Data Collection (HTML/JS)**
+Instead of asking for exact age:
+```html
+<label for="age-bracket">Age Bracket:</label>
+<select id="age-bracket" name="age-bracket">
+  <option value="18-34">18-34</option>
+  <option value="35-49">35-49</option>
+  <option value="50+">50+</option>
+</select>
 ```
 
-#### Inline Transparency (HTML)
+---
+
+### 2. Transparency and Trust
+
+Build trust by being open about your data practices and providing easy ways for users to control their data.
+
+#### DOs:
+*   **DO** provide inline explanations for why data is requested. Place the explanation directly next to the input field.
+*   **DO** provide a clear reason and context *before* requesting powerful browser permissions (e.g., camera, location).
+*   **DO** consider the **Page Embedded Permission Control (PEPC)** approach (using specific elements like `<geolocation>`) to make requests declarative, user-initiated, and act as data mediators.
+*   **DO** use the `Clear-Site-Data` header when a user logs out to ensure no lingering data remains in the browser.
+*   **DO** make it as easy to opt-out or delete an account as it was to sign up.
+
+#### DON'Ts:
+*   **DON'T** bury data collection explanations in long, complex privacy policies.
+*   **DON'T** use deceptive patterns (dark patterns) to trick users into giving consent.
+
+#### Code Examples:
+
+**Inline Transparency (HTML)**
 ```html
 <div>
-  <label for="email">Email address*</label>
-  <input id="email" type="email" name="email" required aria-describedby="whyemail">
-  <a href="#whyemail">Why do we need this?</a>
-  
-  <aside id="whyemail">
-    We need this email to send password resets. We will not use it for marketing unless you opt-in.
+  <label for="phone">Phone Number (Optional)</label>
+  <input id="phone" type="tel" name="phone" aria-describedby="phone-help">
+  <a href="#phone-help">Why do we ask for this?</a>
+  <aside id="phone-help">
+    We only use your phone number to send two-factor authentication codes for account security.
   </aside>
 </div>
 ```
 
-## 2. Third-Party Audits and Mitigations
-
-Limiting leakage introduced by external scripts, embeds, and tracking pixels.
-
-### DOs:
-- **DO** audit third parties technically using DevTools (Network panel) and HAR logs.
-- **DO** use the **Façade Pattern (Lazy Loading)** to load static thumbnails first, only loading heavy widget iframes upon user click.
-- **DO** replace third-party social buttons with static HTML sharing links (e.g., zero tracking SDKs).
-- **DO** set strict HTTP Referrer policies (`strict-origin-when-cross-origin` or `no-referrer`) to prevent leaking sensitive URL query parameters.
-- **DO** use rigid `Permissions-Policy` to lock down powerful APIs (geolocation, camera) globally or for subframes.
-- **DO** use `Content-Security-Policy-Report-Only` for continuous automated audits of where third-party scripts are attempting to send data.
-
-### DON'Ts:
-- **DON'T** use default tracking SDKs if a static hyperlink suffices.
-
-### Code Examples:
-
-#### Referrer-Policy and Permissions-Policy (HTTP)
+**Clear-Site-Data on Logout (HTTP Response)**
 ```http
-Referrer-Policy: strict-origin-when-cross-origin
-Permissions-Policy: accelerometer=(), camera=(), fullscreen=*
+HTTP/1.1 200 OK
+Clear-Site-Data: "*"
+```
+*Note: If clearing the cache, avoid sending this on the main navigation page to prevent blocking UI rendering on slow devices; trigger it via a subresource.*
+
+**Page Embedded Permission Control (HTML)**
+```html
+<!-- Declarative permission element with fallback -->
+<geolocation onlocation="updateMap(event)">
+  <!-- Fallback for unsupported browsers -->
+  <button onclick="navigator.geolocation.getCurrentPosition(updateMap)">
+    Use my location
+  </button>
+</geolocation>
 ```
 
-## 3. Cookie Deprecation and Partitioned Storage
+---
+
+### 3. Secure Coding and Data Handling for Privacy
+ 
+Privacy relies on a foundation of secure coding. Vulnerabilities like XSS or insecure storage directly lead to privacy violations.
+ 
+#### DOs:
+*   **DO** scrub Personally Identifiable Information (PII) from application logs. Use automated masking for emails, tokens, and IDs.
+*   **DO** use `HttpOnly` and `Secure` flags for cookies storing session identifiers to protect them from XSS attacks.
+*   **DO** use `IndexedDB` or server-side storage for large amounts of user data, rather than stuffing it into cookies or `localStorage`.
+*   **DO** implement rate limiting on sensitive endpoints (e.g., user search or profile views) to prevent bulk data scraping.
+*   **DO** enforce HTTPS for all traffic and use HSTS to lock browsers into secure connections.
+ 
+#### DON'Ts:
+*   **DON'T** store sensitive tokens or PII in `localStorage`, as it is accessible by any script on the origin.
+*   **DON'T** return detailed stack traces or database errors to the client in production, as they can leak system details.
+ 
+#### Code Examples:
+ 
+**Secure Session Cookie (HTTP)**
+```http
+Set-Cookie: session_id=xyz123; Secure; HttpOnly; SameSite=Strict
+```
+
+**HSTS (HTTP)**
+```http
+Strict-Transport-Security: max-age=63072000; includeSubDomains
+```
+ 
+ 
+---
+ 
+### 4. Cookie Isolation and Partitioned Storage
 
 Architecting for a web without unpartitioned third-party cookies.
 
-### DOs:
-- **DO** use **CHIPS (Cookies Having Independent Partitioned State)** by appending the `Partitioned` attribute for 1:1 embeds that do not share state across top-level sites.
-- **DO** use the **Storage Access API (SAA)** when cross-site state sharing is functionally critical (such as SSO portals).
-- **DO** trigger SAA permission requests (`requestStorageAccess()`) via direct user interaction (click/keypress).
+#### DOs:
+*   **DO** use **CHIPS (Cookies Having Independent Partitioned State)** by appending the `Partitioned` attribute for 1:1 embeds that do not share state across top-level sites.
+*   **DO** use the **Storage Access API (SAA)** when cross-site state sharing is functionally critical (such as SSO portals).
+*   **DO** trigger SAA permission requests (`requestStorageAccess()`) via direct user interaction (click/keypress).
 
-### DON'Ts:
-- **DON'T** rely on unpartitioned `SameSite=None` cookies as they are being systematically blocked by modern browser engines.
+#### DON'Ts:
+*   **DON'T** rely on unpartitioned `SameSite=None` cookies as they are being systematically blocked by modern browser engines.
 
-### Code Examples:
+#### Code Examples:
 
-#### CHIPS `Set-Cookie` (HTTP)
+**CHIPS `Set-Cookie` (HTTP)**
 ```http
 Set-Cookie: session_id=abc123; SameSite=None; Secure; Path=/; Partitioned; HttpOnly
 ```
 
-#### Storage Access API (JavaScript)
+**Storage Access API (JavaScript)**
 ```javascript
 document.getElementById('login-btn').addEventListener('click', async () => {
   try {
@@ -106,24 +173,23 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 | :--- | :--- | :--- | :--- |
 | **CHIPS** | 1:1 Partitioned | No | Embeds (Maps, Widgets) |
 | **Storage Access API (SAA)** | Cross-site | Yes | SSO Portals, Analytics |
-| **FedCM** | Identity Federation | Yes | "Sign In with..." |
 
-**Heuristic Rule**: Use CHIPS for isolated widgets (un-shared state), and SAA for shared identity state requiring explicit user consent.
+---
 
-## 4. Privacy-Preserving Identity (FedCM)
+### 5. Privacy-Preserving Identity (FedCM)
 
 Moving from opaque navigational redirects to explicit native UI-mediated federation.
 
-### DOs:
-- **DO** use the **Federated Credential Management API (FedCM)** to mediate "Sign-In" flows natively, preventing IdP tracking of Relying Parties prior to user consent.
-- **DO** verify the FedCM-returned un-falsifiable token on your backend.
+#### DOs:
+*   **DO** use the **Federated Credential Management API (FedCM)** to mediate "Sign-In" flows natively, preventing IdP tracking of Relying Parties prior to user consent.
+*   **DO** verify the FedCM-returned un-falsifiable token on your backend.
 
-### DON'Ts:
-- **DON'T** bounce users through opaque redirect URL chains if FedCM can fulfill the use-case natively.
+#### DON'Ts:
+*   **DON'T** bounce users through opaque redirect URL chains if FedCM can fulfill the use-case natively.
 
-### Code Examples:
+#### Code Examples:
 
-#### FedCM Sign-In (JavaScript)
+**FedCM Sign-In (JavaScript)**
 ```javascript
 try {
   const credential = await navigator.credentials.get({
@@ -140,82 +206,130 @@ try {
 }
 ```
 
-## 5. Fingerprinting & User-Agent Reduction
+---
 
-Shifting from passive device broadcasting to explicit feature inspection.
+### 6. Third-Party Audits and Mitigations
 
-### DOs:
-- **DO** use **Feature Detection** (e.g., `'createImageBitmap' in window`) over User-Agent string parsing.
-- **DO** use **User-Agent Client Hints (UA-CH)** if you must differentiate environments.
-- **DO** explicitly request only the minimum required high-entropy hints using the `Accept-CH` header.
-- **DO** use the `Vary` header (e.g., `Vary: Sec-CH-UA-Platform`) if your server caches vary based on UA-CH.
+Third-party scripts and resources are a common source of privacy leaks. You are responsible for the third parties you bring into your application.
 
-### DON'Ts:
-- **DON'T** parse `navigator.userAgent` for non-critical logic.
-- **DON'T** request a high volume of high-entropy hints simultaneously (interpretable as malicious fingerprinting).
+#### DOs:
+*   **DO** conduct regular technical audits of network requests using DevTools or HAR files to identify what data third parties are collecting.
+*   **DO** use the **Façade Pattern** for heavy embeds (like YouTube or TikTok). Display a static thumbnail and load the interactive iframe only after the user clicks.
+*   **DO** use privacy-preserving options for embeds when available (e.g., `youtube-nocookie.com`).
+*   **DO** replace heavy social sharing SDKs with simple, static HTML links that do not track users.
 
-### Code Examples:
+#### DON'Ts:
+*   **DON'T** assume a third party is privacy-safe just because it is popular.
+*   **DON'T** load third-party scripts on pages where sensitive data (like checkout or health info) is handled unless strictly necessary.
 
-#### Feature Detection vs Sniffing (JavaScript)
+#### Code Examples:
+
+**Privacy-Preserving Social Sharing (HTML)**
+```html
+<!-- No JS SDK required -->
+<a href="https://x.com/intent/tweet?text=Check%20this%20out&url=https%3A%2F%2Fexample.com" 
+   rel="noopener" target="_blank">
+   Share on X
+</a>
+```
+
+**Video Façade Pattern (HTML/JS)**
+```html
+<div id="video-container" data-video-id="abc123">
+  <img src="thumbnail.jpg" alt="Play Video" id="play-btn">
+</div>
+
+<script>
+document.getElementById('play-btn').addEventListener('click', function() {
+  const container = document.getElementById('video-container');
+  const videoId = container.dataset.videoId;
+  container.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1" allowfullscreen></iframe>`;
+});
+</script>
+```
+
+---
+
+### 7. Privacy-Preserving Headers
+
+Use standard HTTP headers to instruct the browser to enforce privacy boundaries.
+
+#### DOs:
+*   **DO** use `Permissions-Policy` to disable powerful features (like camera, microphone, geolocation) by default, enabling them only where required.
+*   **DO** set a strict `Referrer-Policy` to prevent leaking sensitive URL parameters to third parties.
+*   **DO** use `Content-Security-Policy` (CSP) to restrict where scripts can be loaded from and where data can be sent.
+
+#### Code Examples:
+
+**Strict Referrer Policy (HTTP)**
+```http
+Referrer-Policy: strict-origin-when-cross-origin
+```
+
+**Defensive Permissions Policy (HTTP)**
+Disables powerful features for all origins by default.
+```http
+Permissions-Policy: geolocation=(), camera=(), microphone=(), accelerometer=()
+```
+
+**CSP Report-Only for Auditing (HTTP)**
+Use this to discover where third parties are sending data without breaking the site.
+```http
+Content-Security-Policy-Report-Only: default-src 'self'; report-uri https://your-report-endpoint.com/csp
+```
+
+---
+
+
+
+### 8. Fingerprinting and User-Agent Reduction
+
+Avoid techniques that attempt to uniquely identify users covertly based on their device configuration. Fingerprinting takes away user control because it relies on unchanging characteristics and happens invisibly, preventing users from opting out or clearing their identifier.
+
+#### DOs:
+*   **DO** use **Feature Detection** instead of User-Agent sniffing to determine if a browser supports a capability.
+*   **DO** prepare for frozen User-Agent strings by migrating to **User-Agent Client Hints** (UA-CH) if specific device targeting is required.
+
+#### DON'Ts:
+*   **DON'T** use canvas rendering, font lists, or audio/video device enumerations to build a device fingerprint.
+*   **DON'T** rely on the full granularity of the traditional `navigator.userAgent` string.
+
+#### Code Examples:
+
+**Feature Detection (JavaScript)**
 ```javascript
-// AVOID: if (navigator.userAgent.includes("Chrome")) ...
-if ('createImageBitmap' in window) {
-  // Use modern API
+// GOOD: Check if the API exists
+if ('IntersectionObserver' in window) {
+  const observer = new IntersectionObserver(...);
+} else {
+  // Fallback
+}
+
+// BAD: Sniffing UA
+// if (navigator.userAgent.includes("Chrome/100")) ...
+```
+
+**User-Agent Client Hints (JavaScript)**
+```javascript
+if (navigator.userAgentData) {
+  navigator.userAgentData.getHighEntropyValues(["platformVersion", "architecture"])
+    .then(ua => {
+      console.log(ua.platformVersion);
+    });
 }
 ```
 
-## 6. Contextual Request Defenses with Fetch Metadata
+---
 
-Using unforgeable headers to reject unauthorized cross-origin requests server-side.
+### 9. Data Rights and User Control
 
-### DOs:
-- **DO** inspect `Sec-Fetch-Site`, `Sec-Fetch-Mode`, and `Sec-Fetch-Dest` headers before processing state-changing requests.
-- **DO** implement a **Resource Isolation Policy** (middleware) to automatically reject cross-site calls not intended as simple navigations.
+Empower users to exercise their rights over their personal data.
 
-### DON'Ts:
-- **DON'T** process state-changing requests if the origin relationship (`Sec-Fetch-Site`) is `cross-site` and the mode is not `navigate`.
+#### DOs:
+*   **DO** provide clear mechanisms for users to **access** all data you have collected about them.
+*   **DO** implement automated or easy manual flows for **data deletion** (erasure).
+*   **DO** allow users to correct inaccurate information associated with their identity.
 
-### Code Examples:
-
-#### Resource Isolation Middleware (Express / Node.js)
-```javascript
-app.use((req, res, next) => {
-  const site = req.get('Sec-Fetch-Site');
-  const mode = req.get('Sec-Fetch-Mode');
-
-  if (!site) return next(); // Fallback for legacy browsers
-
-  if (site === 'same-origin' || site === 'same-site') return next();
-
-  // Allow standard outside user navigations (GET link clicks)
-  if (site === 'cross-site' && mode === 'navigate' && req.method === 'GET') {
-    return next();
-  }
-
-  res.status(403).json({ error: 'Cross-origin request forbidden' });
-});
-```
-
-## 7. Fine-Grained Capability Control (Permissions API)
-
-Querying capabilities before hitting users with automatic prompts.
-
-### DOs:
-- **DO** query `navigator.permissions.query()` before requesting access to powerful APIs (geolocation, camera).
-- **DO** present polite explanations in UI explaining *why* the prompt exists before triggering the browser's native blocking prompt.
-
-### DON'Ts:
-- **DON'T** trigger browser native prompts automatically on page load without context.
-
-### Code Examples:
-
-#### Query Permission Status (JavaScript)
-```javascript
-navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-  if (result.state === 'granted') {
-    loadMap();
-  } else if (result.state === 'prompt') {
-    showPolitePermissionExplanation(); // trigger requestStorageAccess upon button click
-  }
-});
-```
+#### DON'Ts:
+*   **DON'T** make the deletion process difficult or require users to contact support if sign-up was automated.
+*   **DON'T** retaliate against users who exercise their data rights by denying access to non-dependent services.
