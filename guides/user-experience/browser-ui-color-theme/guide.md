@@ -4,6 +4,8 @@ description: Configure built-in browser UI (e.g. scrollbars, form controls, etc)
 web-feature-ids:
 - color-scheme
 - prefers-color-scheme
+- light-dark
+- accent-color
 sources:
   - https://web.dev/articles/baseline-in-action-color-theme
   - https://web.dev/articles/color-scheme
@@ -14,6 +16,7 @@ sources:
   - https://css-tricks.com/almanac/properties/c/color-scheme/
   - https://blog.jim-nielsen.com/2020/color-scheme-property/
   - https://web.dev/articles/building/a-color-scheme
+  - https://web.dev/articles/accent-color
 ---
 
 # Browser UI color theme
@@ -53,6 +56,34 @@ You can override the global theme for specific elements. This is useful for "dar
 }
 ```
 
+### 4. Fine-grained control with `light-dark()`
+For more control over the colors of built-in UI such as `accent-color` or `scrollbar-color`, use the `light-dark()` function. This function automatically picks the correct color based on the computed `color-scheme` of the element, eliminating the need for redundant media queries.
+
+```css
+:root {
+  /* Define browser UI accent color for each mode */
+  --accent-color-dark: #0056b3;
+  --accent-color-light: #00e5ff;
+  --accent-color: var(--accent-color-dark);
+
+  /* MANDATORY: Automatically adapt native UI to user system preferences */
+  color-scheme: light dark;
+  /* Set accent color */
+  accent-color: var(--accent-color);
+
+  /* MANDATORY: Fallback for browsers without light-dark support */
+  @media (prefers-color-scheme: dark) {
+    --accent-color: var(--accent-color-light);
+  }
+
+  /* Set browser UI accent color for each mode */
+  @supports (color: light-dark(white, black)) {
+    /* Blue in light mode, Cyan in dark mode */
+    --accent-color: light-dark(var(--accent-color-dark), var(--accent-color-light));
+  }
+}
+```
+
 ## Best Practices
 - **System Colors**: Use system color keywords like `Canvas` (background) and `CanvasText` (text) for your custom components when you want them to match the browser's native themed surfaces exactly. This is ideal for ensuring consistency between your content and the browser's UI (like scrollbars) while automatically respecting OS-level accessibility features like High Contrast mode.
 - **Respect User Preference**: **MANDATORY**: Avoid forcing a single theme on the overall page. While specific components (like a code editor) may benefit from a fixed theme, the main application should respect the user's system preference and ideally provide a manual toggle to allow users to choose between light, dark, or system-default modes.
@@ -62,7 +93,9 @@ You can override the global theme for specific elements. This is useful for "dar
 ## Fallback strategies
 
 {{ BASELINE_STATUS("color-scheme") }}
+{{ BASELINE_STATUS("light-dark") }}
 
-- **Progressive Enhancement**: Browsers that do not support `color-scheme` will simply ignore the property and use their default light-mode UI.
+- **Progressive Enhancement**: Browsers that do not support `color-scheme` or `light-dark()` will simply ignore these properties and use their default light-mode UI.
+- **Handling `light-dark()` Support**: For browsers that support `color-scheme` but not yet `light-dark()`, provide a simple fallback color before the `light-dark()` declaration, or continue using `@media (prefers-color-scheme)` for critical theme overrides.
 - **Manual Dark Mode Styling**: For older browsers, continue to use `prefers-color-scheme` media queries to provide custom styles for your own components.
 - **Custom Scrollbars**: If you need consistent scrollbar styling across all modern browsers, use the `scrollbar-color` property. For older WebKit-based browsers that do not support the standard property, continue to use the non-standard `::-webkit-scrollbar` pseudo-elements.
