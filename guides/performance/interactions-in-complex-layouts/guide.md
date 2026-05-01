@@ -24,7 +24,7 @@ By applying `content-visibility: auto` to self-contained layout regions (like co
 It is important to understand how `content-visibility: auto` benefits elements that are **already visible on the screen**:
 
 *   For visible elements, the browser **does not** skip rendering.
-*   Instead, the performance benefit comes entirely from strict **CSS Containment** (`contain: layout style paint size`) that the property automatically enforces.
+*   Instead, the performance benefit comes entirely from the **CSS containments** that the property automatically enforces (i.e., layout, style, and paint).
 *   This containment acts as a boundary. If a mutation occurs inside a container with containment applied, the browser knows that the changes cannot affect the geometry or styles of elements outside that container. The page reflow is isolated, preventing a global layout recalculation.
 
 ## Implementation
