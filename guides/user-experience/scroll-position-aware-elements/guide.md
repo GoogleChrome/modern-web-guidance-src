@@ -12,7 +12,7 @@ sources:
 
 ## Overview
 
-Floating buttons, like a "Back to Top" link, improve user experience by appearing only when they are useful. This guide shows how to build these elements using CSS `container-scroll-state-queries`, which allows styling elements based on the scroll position of their container without relying on JavaScript scroll listeners.
+Improve the user experience of floating buttons, like a "Back to Top" link, by showing them only when they are useful. This guide shows how to build these elements using CSS `container-scroll-state-queries`, which allows styling elements based on the scroll position of their container without relying on JavaScript scroll listeners or observers.
 
 ## Implementation
 
