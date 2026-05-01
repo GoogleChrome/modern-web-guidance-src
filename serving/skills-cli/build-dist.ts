@@ -8,6 +8,8 @@ import { scanAllGuides } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
 import { processGuides } from "../scripts/build-guides.ts";
+import { replaceMacros } from "../lib/macros.ts";
+
 
 
 const SERVING_DIR = path.join(rootDir, "serving");
@@ -234,8 +236,10 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
       const skillDestDir = path.join(publishRoot, "skills", candidate);
       const skillDest = path.join(skillDestDir, "SKILL.md");
       fs.mkdirSync(skillDestDir, { recursive: true });
-      fs.copyFileSync(skillSource, skillDest);
-      console.log(`Copied skill ${candidate} (SKILL.md) to ${skillDestDir}`);
+      const skillContent = fs.readFileSync(skillSource, 'utf8');
+      const processedSkillContent = replaceMacros(skillContent, skillSource);
+      fs.writeFileSync(skillDest, processedSkillContent);
+      console.log(`Processed and copied skill ${candidate} (SKILL.md) to ${skillDestDir}`);
       skillsCount++;
       skillNames.push(candidate);
     }
