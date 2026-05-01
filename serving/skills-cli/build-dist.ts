@@ -207,6 +207,12 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
       path.join(publishRoot, "THIRD_PARTY_NOTICES")
     );
 
+    const metaFile = path.join(publishRoot, "search.meta.json");
+    if (fs.existsSync(metaFile)) {
+      fs.unlinkSync(metaFile);
+      console.log(`Removed intermediate metafile ${metaFile}`);
+    }
+
   } catch (error) {
     console.error("Failed to bundle with esbuild:", error);
     process.exit(1);
