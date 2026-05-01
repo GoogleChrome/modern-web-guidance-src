@@ -140,7 +140,7 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
     console.time("⏳ processGuides");
     await processGuides({
       outputDir: DIST_DIR,
-      isDistribution: true,
+      target: 'skills-cli',
       subset: typeof subset === 'number' ? subset : undefined,
     });
     console.timeEnd("⏳ processGuides");

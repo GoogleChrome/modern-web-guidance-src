@@ -39,7 +39,8 @@ export function parseArguments(argsString: string): string[] {
   return args;
 }
 
-type MacroHandler = (args: string[], filePath: string) => string;
+type MacroHandler = (args: string[], filePath: string, options?: { target?: string }) => string;
+
 
 export class MacroError extends Error {
   constructor(message: string) {
@@ -98,7 +99,7 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
 
     return status;
   },
-  GUIDE_REF: (args, filePath) => {
+  GUIDE_REF: (args, filePath, options) => {
     const [guideId] = args;
     if (!guideId) {
       throw new MacroError(`Missing guide ID in GUIDE_REF macro (${filePath}).`);
@@ -107,6 +108,13 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
     const guidePath = getGuidePath(guideId);
     if (!guidePath) {
       throw new MacroError(`Guide "${guideId}" not found (referenced in GUIDE_REF macro in ${filePath}).`);
+    }
+
+    const target = options?.target || 'local-dev';
+    
+    if (target === 'skills-cli') {
+      // We can specialize here later if needed
+      return `For more information, see the guide at ${guidePath}`;
     }
 
     return `For more information, see the guide at ${guidePath}`;
@@ -152,10 +160,10 @@ export function validateMacros(content: string, filePath: string): string[] {
   return errors;
 }
 
-export function replaceMacros(content: string, filePath: string): string {
+export function replaceMacros(content: string, filePath: string, options: { target?: string } = {}): string {
   return processMacros(content, (handler, args, match) => {
     try {
-      return handler(args, filePath);
+      return handler(args, filePath, options);
     } catch (err: any) {
       if (err instanceof MacroError) {
         throw err;

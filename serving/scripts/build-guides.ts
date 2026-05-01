@@ -28,7 +28,7 @@ interface UseCase {
 
 export interface BuildOptions {
   outputDir: string;
-  isDistribution?: boolean;
+  target?: 'skills-cli' | 'mcp-server' | 'megaskill' | 'local-dev';
   subset?: number;
   force?: boolean;
   targetGuidePath?: string;
@@ -40,16 +40,19 @@ export interface BuildOptions {
 let BUILD_GUIDES_DIR: string;
 let VECTORS_FILE: string;
 let IS_NO_CHUNKING = false;
+let TARGET = 'local-dev';
+
 
 export async function processGuides(opts: BuildOptions) {
-  const { outputDir, isDistribution, subset, force, targetGuidePath, modelName, noChunking } = opts;
+  const { outputDir, target, subset, force, targetGuidePath, modelName, noChunking } = opts;
 
   BUILD_GUIDES_DIR = path.join(outputDir, "guides");
-  VECTORS_FILE = isDistribution
+  VECTORS_FILE = (target === 'skills-cli')
     ? path.join(outputDir, "use-cases.vectors.gen.json.gz")
     : path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
   
   IS_NO_CHUNKING = !!noChunking;
+  TARGET = target || 'local-dev';
 
   // Scan guides first to see if we even need to run
   let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
@@ -230,7 +233,7 @@ async function processSingleGuideFile(
     return;
   }
 
-  const processedMarkdown = replaceMacros(markdownBody, filePath);
+  const processedMarkdown = replaceMacros(markdownBody, filePath, { target: TARGET });
 
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
