@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Passkey Reauthentication Demo</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #fafafa; color: #333; }
+    .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 400px; }
+    button { background: #ff9900; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; font-size: 1rem; width: 100%; font-weight: bold; }
+    button:hover { background: #e68a00; }
+    .status { margin-top: 1rem; font-weight: bold; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Sensitive Transaction Protection</h2>
+    <p>Please re-authenticate your session to proceed with this action.</p>
+    
+    <button id="reauth-btn" data-testid="reauth-button">Verify Identity</button>
+    
+    <div id="status" class="status" data-testid="reauth-status">Idle</div>
+  </div>
+
+  <script type="module">
+    async function performReauth() {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Verifying...';
+
+      try {
+        // 1. Fetch constrained Options parameters for the signed-in user
+        const responseOptions = await fetch('/api/reauth/options', { method: 'POST' });
+        if (!responseOptions.ok) throw new Error('Failed to generate step-up options');
+        const reauthOptionsJSON = await responseOptions.json();
+
+        // 2. Decode options and Prompt native biometrics with userVerification REQUIRED
+        const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(reauthOptionsJSON);
+        
+        // Grade safety assert: allowCredentials MUST be populated for re-auth
+        if (!publicKey.allowCredentials || publicKey.allowCredentials.length === 0) {
+          throw new Error('Safety error: allowCredentials must not be empty for Reauthentication');
+        }
+
+        const credential = await navigator.credentials.get({ publicKey });
+
+        // 3. Verify on the backend endpoints
+        if (credential) {
+          const encodedResponse = credential.toJSON();
+          const verifyResponse = await fetch('/api/reauth/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(encodedResponse)
+          });
+
+          if (verifyResponse.ok) {
+            statusEl.textContent = 'Identity Verified Successfully!';
+            statusEl.style.color = '#228b22';
+          } else {
+            throw new Error('Re-authentication verification rejected');
+          }
+        } else {
+          throw new Error('Local step-up biometrics rejected');
+        }
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = `Error: ${e.message}`;
+        statusEl.style.color = '#cc0000';
+      }
+    }
+
+    document.getElementById('reauth-btn').addEventListener('click', performReauth);
+  </script>
+</body>
+</html>

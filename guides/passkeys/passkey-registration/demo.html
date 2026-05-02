@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Passkey Registration Demo</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #fafafa; color: #333; }
+    .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 400px; }
+    button { background: #0066cc; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+    button:hover { background: #0052a3; }
+    .status { margin-top: 1rem; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Register a Passkey</h2>
+    <p>Promote passkey adoption for a secure, passwordless login experience.</p>
+    <button id="register-btn" data-testid="register-button">Create Passkey</button>
+    <div id="status" class="status" data-testid="registration-status">Idle</div>
+  </div>
+
+  <script type="module">
+    async function registerPasskey() {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Registering...';
+
+      // Feature detect platform biometric platform support
+      if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
+        const capabilities = await PublicKeyCredential.getClientCapabilities();
+        if (!capabilities.passkeyPlatformAuthenticator) {
+          statusEl.textContent = 'Biometric passkey unsupported on this device.';
+          statusEl.style.color = '#cc0000';
+          return;
+        }
+      }
+
+      try {
+        // 1. Fetch Options Generation options from backend endpoint
+        const responseOptions = await fetch('/api/register/options', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ promotion: true }) // Post-password login Promotion Flow flag
+        });
+        
+        if (!responseOptions.ok) {
+          throw new Error('Failed to generate creation options from server');
+        }
+        const creationOptionsJSON = await responseOptions.json();
+
+        // 2. Decode and Invoke the WebAuthn API
+        const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(creationOptionsJSON);
+        const credential = await navigator.credentials.create({ publicKey });
+        
+        // 3. Verify Attestation Response on the backend
+        if (credential) {
+          const encodedResponse = credential.toJSON();
+          let verifyResponse;
+          
+          try {
+            verifyResponse = await fetch('/api/register/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(encodedResponse)
+            });
+            
+            if (verifyResponse.ok) {
+              statusEl.textContent = 'Passkey Registered Successfully!';
+              statusEl.style.color = '#228b22';
+            } else {
+              throw new Error('Server failed to verify passkey attestation');
+            }
+          } catch (verifyErr) {
+            // Segregated Try/Catch to sync manager credentials list if server verification fails
+            console.error('Verification endpoint failed:', verifyErr);
+            if (PublicKeyCredential.signalUnknownCredential) {
+              await PublicKeyCredential.signalUnknownCredential({
+                rpId: window.location.hostname,
+                credentialId: encodedResponse.id
+              });
+            }
+            throw verifyErr;
+          }
+        } else {
+          throw new Error('Failed to create local passkey credential');
+        }
+      } catch (e) {
+        console.error(e);
+        if (e.name === 'InvalidStateError') {
+          statusEl.textContent = 'A passkey already exists for this account.';
+        } else if (e.name === 'NotAllowedError') {
+          statusEl.textContent = 'User declined biometric registration prompt.';
+        } else {
+          statusEl.textContent = `Error: ${e.message}`;
+        }
+        statusEl.style.color = '#cc0000';
+      }
+    }
+
+    document.getElementById('register-btn').addEventListener('click', registerPasskey);
+  </script>
+</body>
+</html>

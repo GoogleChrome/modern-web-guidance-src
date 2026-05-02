@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Passkey Management Demo</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #fafafa; color: #333; }
+    .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 500px; }
+    .credential-list { margin-top: 1rem; }
+    .credential-item { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee; padding: 1rem 0; }
+    .credential-info { display: flex; align-items: center; gap: 12px; }
+    .provider-details { display: flex; flex-direction: column; }
+    .provider-name { font-weight: bold; }
+    .timestamp { font-size: 0.8rem; color: #777; }
+    button { background: #cc0000; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
+    button:hover { background: #a30000; }
+    button.rename-btn { background: #0066cc; margin-right: 0.5rem; }
+    button.rename-btn:hover { background: #0052a3; }
+    .empty-state { text-align: center; padding: 2rem 0; color: #777; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Manage Your Passkeys</h2>
+    <p>Sync state with your password manager in real-time.</p>
+    
+    <div id="list-container" class="credential-list" data-testid="credential-list">
+      <!-- Managed Credential items will load here -->
+    </div>
+    
+    <div id="status" style="margin-top: 1rem; font-weight: bold;" data-testid="management-status">Idle</div>
+  </div>
+
+  <script type="module">
+    // Local registry dataset mapping
+    const mockAaguids = {
+      'adce0002-35bc-c60a-2b7b-40b2fed21711': {
+        name: 'iCloud Keychain',
+        icon_light: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==...'
+      }
+    };
+
+    const base64UrlUserId = "M2YPl-KGnA8"; // Base64URL string User ID
+
+    async function syncAcceptedCredentials(currentList) {
+      if (window.PublicKeyCredential && PublicKeyCredential.signalAllAcceptedCredentials) {
+        try {
+          // Map Base64URL credential IDs
+          const credentialIds = currentList.map(c => c.id);
+          await PublicKeyCredential.signalAllAcceptedCredentials({
+            rpId: window.location.hostname,
+            userId: base64UrlUserId,
+            allAcceptedCredentialIds: credentialIds
+          });
+        } catch (e) {
+          console.error('Signal AllAcceptedCredentials sync threw:', e);
+        }
+      }
+    }
+
+    async function loadManagementUI() {
+      const container = document.getElementById('list-container');
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Loading...';
+
+      try {
+        const response = await fetch('/api/credentials');
+        if (!response.ok) throw new Error('Failed to load credentials');
+        const list = await response.json();
+        
+        container.innerHTML = '';
+        if (list.length === 0) {
+          container.innerHTML = '<div class="empty-state" data-testid="empty-state">No passkeys found.</div>';
+          statusEl.textContent = 'Idle';
+          return;
+        }
+
+        list.forEach(cred => {
+          // Zeroed AAGUID bypass lookup fallback rule
+          let provider = { name: 'Unknown passkey provider' };
+          if (cred.aaguid !== '00000000-0000-0000-0000-000000000000') {
+            provider = mockAaguids[cred.aaguid] || { name: 'Unknown passkey provider' };
+          }
+
+          const item = document.createElement('div');
+          item.className = 'credential-item';
+          item.setAttribute('data-testid', `credential-item-${cred.id}`);
+          
+          item.innerHTML = `
+            <div class="credential-info">
+              <div class="provider-details">
+                <span class="provider-name" data-testid="provider-name">${cred.name || provider.name}</span>
+                <span class="timestamp">Added: ${new Date(cred.registeredAt).toLocaleDateString()}</span>
+              </div>
+            </div>
+            <div>
+              <button class="rename-btn" data-testid="rename-button-${cred.id}">Rename</button>
+              <button class="delete-btn" data-testid="delete-button-${cred.id}">Delete</button>
+            </div>
+          `;
+          
+          // Wire action buttons
+          item.querySelector('.rename-btn').addEventListener('click', () => performRename(cred.id));
+          item.querySelector('.delete-btn').addEventListener('click', () => performDelete(cred.id));
+          
+          container.appendChild(item);
+        });
+
+        statusEl.textContent = 'Idle';
+        // Sync on page load
+        await syncAcceptedCredentials(list);
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    async function performRename(id) {
+      const newName = prompt('Enter a custom name:');
+      if (!newName) return;
+      
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Renaming...';
+
+      try {
+        const response = await fetch(`/api/credential/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: newName })
+        });
+        
+        if (response.ok) {
+          statusEl.textContent = 'Passkey Renamed';
+          // Sync on successful renaming details
+          if (window.PublicKeyCredential && PublicKeyCredential.signalCurrentUserDetails) {
+            await PublicKeyCredential.signalCurrentUserDetails({
+              rpId: window.location.hostname,
+              userId: base64UrlUserId,
+              name: 'user@example.com',
+              displayName: newName
+            });
+          }
+          await loadManagementUI();
+        } else {
+          throw new Error('Rename failed on server');
+        }
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    async function performDelete(id) {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Deleting...';
+
+      try {
+        const response = await fetch(`/api/credential/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+          statusEl.textContent = 'Passkey Deleted';
+          // Re-query and Sync AllAcceptedCredentials list
+          const updatedResponse = await fetch('/api/credentials');
+          const updatedList = await updatedResponse.json();
+          renderUI(updatedList); // Visual helper
+          await syncAcceptedCredentials(updatedList);
+        } else {
+          throw new Error('Delete failed on server');
+        }
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    // Auxiliary visual renderer for deletions
+    function renderUI(list) {
+      const container = document.getElementById('list-container');
+      container.innerHTML = '';
+      if (list.length === 0) {
+        container.innerHTML = '<div class="empty-state" data-testid="empty-state">No passkeys found.</div>';
+        return;
+      }
+      // Basic render loop matching primary loads
+      list.forEach(cred => {
+        const item = document.createElement('div');
+        item.className = 'credential-item';
+        item.innerHTML = `
+          <div class="credential-info"><span class="provider-name">${cred.name || 'iCloud Keychain'}</span></div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', loadManagementUI);
+  </script>
+</body>
+</html>
