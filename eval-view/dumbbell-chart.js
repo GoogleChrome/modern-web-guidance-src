@@ -1,6 +1,6 @@
 export class DumbbellChart {
   constructor(containerId, options = {}) {
-    this.container = document.getElementById(containerId);
+    this.container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
     this.options = {
       size: options.size || 600,
       rowHeight: options.rowHeight || 30,
@@ -32,6 +32,7 @@ export class DumbbellChart {
   }
 
   render(data) {
+    const offsetStep = 8;
     this.init();
 
     const labels = data.labels || [];
@@ -64,9 +65,9 @@ export class DumbbellChart {
         }
 
         // Use useCaseId (guide name) for lookup in featuresMap, fallback to useCaseId if no feature found, and finally taskName
-        let featureName = useCaseId || taskName;
+        let featureName = useCaseId || taskName || 'Uncategorized';
         if (featuresMap[useCaseId] && featuresMap[useCaseId].length > 0) {
-            featureName = featuresMap[useCaseId][0]; // take primary feature
+            featureName = featuresMap[useCaseId][0] || 'Uncategorized';
         }
 
         const uVal = unguidedSet.data[i] || 0;
@@ -93,7 +94,7 @@ export class DumbbellChart {
     let totalHeight = this.options.margin.top;
     featureNames.forEach(f => {
         const count = groups[f].length;
-        totalHeight += this.options.rowHeight + (count - 1) * 10; // upgrade to 10px spacing
+        totalHeight += this.options.rowHeight + (count - 1) * offsetStep;
     });
     totalHeight += this.options.margin.bottom;
 
@@ -159,18 +160,7 @@ export class DumbbellChart {
     const leftAxis = this.options.margin.left;
     const scale = (val) => leftAxis + (val / 100) * chartWidth;
 
-    // Title
-    if (this.options.title) {
-        const titleText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        titleText.setAttribute("x", (width / 2).toString());
-        titleText.setAttribute("y", "20");
-        titleText.setAttribute("fill", "#c9d1d9");
-        titleText.setAttribute("font-size", "14");
-        titleText.setAttribute("font-weight", "bold");
-        titleText.setAttribute("text-anchor", "middle");
-        titleText.textContent = this.options.title;
-        this.svg.appendChild(titleText);
-    }
+
 
     // Legend
     if (!this.options.hideLegend) {
@@ -188,7 +178,7 @@ export class DumbbellChart {
 
       const uText = document.createElementNS("http://www.w3.org/2000/svg", "text");
       uText.setAttribute("x", "15");
-      uText.setAttribute("fill", "#c9d1d9");
+      uText.setAttribute("fill", "var(--color-on-surface)");
       uText.setAttribute("font-size", "12");
       uText.textContent = "Unguided";
       
@@ -200,7 +190,7 @@ export class DumbbellChart {
 
       const gText = document.createElementNS("http://www.w3.org/2000/svg", "text");
       gText.setAttribute("x", "90");
-      gText.setAttribute("fill", "#c9d1d9");
+      gText.setAttribute("fill", "var(--color-on-surface)");
       gText.setAttribute("font-size", "12");
       gText.textContent = "Guided";
 
@@ -223,7 +213,7 @@ export class DumbbellChart {
         tick.setAttribute("y1", topAxisY.toString());
         tick.setAttribute("x2", x.toString());
         tick.setAttribute("y2", bottomAxisY.toString());
-        tick.setAttribute("stroke", val === 0 || val === 100 ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.1)");
+        tick.setAttribute("stroke", "var(--color-outline-variant)");
         tick.setAttribute("stroke-width", "1");
         if (val !== 0 && val !== 100) tick.setAttribute("stroke-dasharray", "4 4");
         this.svg.appendChild(tick);
@@ -231,7 +221,7 @@ export class DumbbellChart {
         const tickText = document.createElementNS("http://www.w3.org/2000/svg", "text");
         tickText.setAttribute("x", x.toString());
         tickText.setAttribute("y", (bottomAxisY + 20).toString());
-        tickText.setAttribute("fill", "rgba(255, 255, 255, 0.6)");
+        tickText.setAttribute("fill", "var(--color-on-surface-variant)");
         tickText.setAttribute("font-size", "10");
         tickText.setAttribute("text-anchor", "middle");
         tickText.textContent = val + "%";
@@ -239,21 +229,14 @@ export class DumbbellChart {
       });
     }
 
-    // Use case colors/shades with gradients
-    // We specify start and end colors so we can create a unique gradient per dumbbell that stretches perfectly!
-    const useCaseColors = [
-        { start: "oklch(65% 0.25 290)", end: "oklch(75% 0.15 210)", unguided: "rgba(255, 255, 255, 0.4)" }, // Violet to Cyan
-        { start: "oklch(60% 0.28 320)", end: "oklch(70% 0.20 280)", unguided: "rgba(255, 255, 255, 0.4)" }, // Magenta to Lavender
-        { start: "oklch(55% 0.25 295)", end: "oklch(65% 0.20 310)", unguided: "rgba(255, 255, 255, 0.4)" }, // Vivid Grape to Orchid
-        { start: "oklch(70% 0.20 280)", end: "oklch(75% 0.15 270)", unguided: "rgba(255, 255, 255, 0.4)" }  // Lavender to Periwinkle
-    ];
+    // We simplify to use the primary blue color for all guided elements
 
     // Data Rows
     let currentY = this.options.margin.top;
 
     featureNames.forEach((featureName, rowIndex) => {
       const items = groups[featureName];
-      const rowHeight = this.options.rowHeight + (items.length - 1) * 10;
+      const rowHeight = this.options.rowHeight + (items.length - 1) * offsetStep;
       const rowY = currentY + (rowHeight / 2);
 
       // Faint horizontal separator
@@ -269,19 +252,35 @@ export class DumbbellChart {
       }
 
       // Label text for Feature (Feature Name only) - Moved to the right
+      // Create background rect for the whole row
+      const rowBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      rowBg.setAttribute("x", "0");
+      rowBg.setAttribute("y", currentY.toString());
+      rowBg.setAttribute("width", width.toString());
+      rowBg.setAttribute("height", rowHeight.toString());
+      rowBg.setAttribute("fill", "transparent");
+      this.svg.appendChild(rowBg);
+
       if (!this.options.hideLabels) {
         const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
         text.setAttribute("x", scale(100) + 15);
         text.setAttribute("y", rowY);
-        text.setAttribute("fill", "#c9d1d9");
-        text.setAttribute("font-size", "13");
+        text.setAttribute("fill", "var(--color-outline)");
+        text.setAttribute("font-size", "11");
+        text.setAttribute("font-family", "var(--font-sans)");
+        text.setAttribute("font-weight", "600");
         text.setAttribute("text-anchor", "start");
         text.setAttribute("alignment-baseline", "middle");
         text.textContent = featureName;
+        
+        // Add hover effects to highlight the row
+        text.style.cursor = "pointer";
+        text.onmouseenter = () => rowBg.setAttribute("fill", "rgba(0, 0, 0, 0.05)");
+        text.onmouseleave = () => rowBg.setAttribute("fill", "transparent");
+        
         this.svg.appendChild(text);
       }
 
-      const offsetStep = 10;
       const startOffset = -((items.length - 1) / 2) * offsetStep;
 
       items.forEach((item, itemIndex) => {
@@ -291,70 +290,28 @@ export class DumbbellChart {
           const uX = scale(uVal);
           const gX = scale(gVal);
 
-          const colorPalette = useCaseColors[itemIndex % useCaseColors.length];
           const isPositive = gVal >= uVal;
-          
-          // Create a dynamic linear gradient for EACH dumbbell so it stretches across its specific length!
-          const gradId = `dumbbell-grad-${rowIndex}-${itemIndex}`;
-          const linearGrad = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-          linearGrad.setAttribute("id", gradId);
-          linearGrad.setAttribute("gradientUnits", "userSpaceOnUse");
-          // Set endpoints to the actual dumbbell coordinates so the gradient stretches!
-          linearGrad.setAttribute("x1", uX);
-          linearGrad.setAttribute("y1", y);
-          linearGrad.setAttribute("x2", gX);
-          linearGrad.setAttribute("y2", y);
-
-          const stop1 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
-          stop1.setAttribute("offset", "0%");
-          stop1.setAttribute("stop-color", colorPalette.start);
-
-          const stop2 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
-          stop2.setAttribute("offset", "100%");
-          stop2.setAttribute("stop-color", colorPalette.end);
-
-          linearGrad.appendChild(stop1);
-          linearGrad.appendChild(stop2);
-          
-          const defs = this.svg.querySelector('defs') || document.createElementNS("http://www.w3.org/2000/svg", "defs");
-          if (!defs.parentNode) this.svg.prepend(defs);
-          defs.appendChild(linearGrad);
-
-          const dir = gX > uX ? -1 : 1;
-          const canDrawArrow = Math.abs(gX - uX) > 15; // increased threshold a bit
-          const arrowOffset =canDrawArrow ? 4 : 0;
-          const lineEndX = gX + (arrowOffset * dir);
-
-          const lineColor = isPositive ? `url(#${gradId})` : "#da3633"; // Fall back to red if regressed
+          const lineColor = isPositive ? "var(--color-primary)" : "var(--color-accent-failure)";
 
           // Connecting Line (The Delta)
           const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
           line.setAttribute("x1", uX);
           line.setAttribute("y1", y);
-          line.setAttribute("x2", canDrawArrow ? (lineEndX + (arrowOffset * dir)) : lineEndX);
+          line.setAttribute("x2", gX);
           line.setAttribute("y2", y);
           line.setAttribute("stroke", lineColor);
-          line.setAttribute("stroke-width", "3"); // slightly thinner to fit multiple
+          line.setAttribute("stroke-width", "1.5");
           line.setAttribute("stroke-linecap", "round");
 
           this.svg.appendChild(line);
-
-          // To make it an "arrow", draw a triangle at the end - offset to sit clean of the dot
-          if (canDrawArrow) {
-            const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-            const arrowEndX = lineEndX; // Line stops where arrow head begins!
-            poly.setAttribute("points", `${arrowEndX},${y} ${arrowEndX + (7 * dir)},${y - 3.5} ${arrowEndX + (7 * dir)},${y + 3.5}`);
-            poly.setAttribute("fill", colorPalette.end); 
-            this.svg.appendChild(poly);
-          }
 
           // Unguided Dot (Baseline)
           const uDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
           uDot.setAttribute("cx", uX);
           uDot.setAttribute("cy", y);
           uDot.setAttribute("r", "3");
-          uDot.setAttribute("fill", "#161b22");
-          uDot.setAttribute("stroke", colorPalette.unguided);
+          uDot.setAttribute("fill", "var(--color-surface-container-lowest)");
+          uDot.setAttribute("stroke", "var(--color-primary)");
           uDot.setAttribute("stroke-width", "1.5");
           this.svg.appendChild(uDot);
 
@@ -363,35 +320,10 @@ export class DumbbellChart {
           gDot.setAttribute("cx", gX);
           gDot.setAttribute("cy", y);
           gDot.setAttribute("r", "3");
-          gDot.setAttribute("fill", lineColor);
+          gDot.setAttribute("fill", "var(--color-primary)");
           this.svg.appendChild(gDot);
 
-          // Draw Token Coin Icon (Only for more expensive runs)
-          if ((item.uTokens > 0 || item.gTokens > 0) && item.gTokens > item.uTokens) {
-            const coinX = Math.max(uX, gX) + (canDrawArrow ? 15 : 10);
-            
-            const coinGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
-            
-            const coinCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            coinCircle.setAttribute("cx", coinX.toString());
-            coinCircle.setAttribute("cy", y.toString());
-            coinCircle.setAttribute("r", "8");
-            coinCircle.setAttribute("fill", "#da3633");
-            coinCircle.setAttribute("filter", "url(#red-glow)");
-            coinGroup.appendChild(coinCircle);
 
-            const coinText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            coinText.setAttribute("x", coinX.toString());
-            coinText.setAttribute("y", (y + 4).toString()); // Center vertically
-            coinText.setAttribute("fill", "#ffffff");
-            coinText.setAttribute("font-size", "10");
-            coinText.setAttribute("font-weight", "bold");
-            coinText.setAttribute("text-anchor", "middle");
-            coinText.textContent = "$";
-            coinGroup.appendChild(coinText);
-
-            this.svg.appendChild(coinGroup);
-          }
 
           // Hit area for tooltip (covers the specific sub-line)
           const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "rect");
@@ -405,7 +337,7 @@ export class DumbbellChart {
           hitArea.onmousemove = (e) => {
             if (!this.tooltip) return;
             const delta = Math.round(gVal - uVal);
-            const deltaColor = delta >= 0 ? "#7ee787" : "#ffa198";
+            const deltaColor = delta >= 0 ? "var(--color-accent-success)" : "var(--color-accent-failure)";
             const deltaSign = delta > 0 ? "+" : "";
             
             const uTokens = item.uTokens || 0;
@@ -420,11 +352,11 @@ export class DumbbellChart {
             const costPct = uTokens > 0 ? Math.round((gTokens / uTokens) * 100) : 0;
 
             this.tooltip.innerHTML = `
-                <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 280px;">
+                <div style="display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-width: 280px; color: var(--color-on-surface);">
                     <!-- Left Column -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
-                         <div style="color: #fff; font-weight: bold; font-size: 14px; white-space: nowrap;">${item.useCaseId || "Default"}</div>
-                         <div style="font-size: 11px; color: #8b949e;">feature: ${featureName}</div>
+                         <div style="font-weight: bold; font-size: 14px; white-space: nowrap;">${item.useCaseId || "Default"}</div>
+                          <div style="font-size: 11px; color: var(--color-outline);">feature: ${featureName}</div>
                          ${uTokens > 0 || gTokens > 0 ? `
                          <div style="font-size: 11px; color: #8b949e; margin-top: 8px;">
                             Avg Tokens:<br/>
@@ -438,8 +370,8 @@ export class DumbbellChart {
                     <!-- Right Column -->
                     <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end; font-size: 12px;">
                          <div style="font-weight: bold; color: ${deltaColor}; font-size: 14px;">Uplift: ${deltaSign}${delta}%</div>
-                         <div style="color: #8b949e; white-space: nowrap;">Guided: ${Math.round(gVal)}%</div>
-                         <div style="color: #8b949e; white-space: nowrap;">Unguided: ${Math.round(uVal)}%</div>
+                         <div style="white-space: nowrap;">Guided: ${Math.round(gVal)}%</div>
+                         <div style="white-space: nowrap;">Unguided: ${Math.round(uVal)}%</div>
                     </div>
                 </div>
             `;

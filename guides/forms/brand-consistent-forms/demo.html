@@ -11,6 +11,13 @@
     */
       :root {
         --brand-color: #6200ee;
+        color-scheme: light dark;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --brand-color: #bb86fc;
+        }
       }
 
       body {
@@ -47,6 +54,165 @@
       .brand-title {
         margin: 0;
       }
+
+      /* Fallback for older browsers without accent-color */
+      @supports not (accent-color: var(--brand-color)) {
+        .demo-container input[type="checkbox"],
+        .demo-container input[type="radio"] {
+          position: absolute;
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .demo-container label {
+          position: relative;
+          padding-left: 2rem;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          min-height: 1.5rem;
+        }
+
+        /* Custom box for checkbox */
+        .demo-container input[type="checkbox"] + span::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 1.2rem;
+          height: 1.2rem;
+          border: 2px solid #ccc;
+          background: white;
+          border-radius: 4px;
+          box-sizing: border-box;
+          transition: all 0.2s ease;
+        }
+
+        /* Custom circle for radio */
+        .demo-container input[type="radio"] + span::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 1.2rem;
+          height: 1.2rem;
+          border: 2px solid #ccc;
+          background: white;
+          border-radius: 50%;
+          box-sizing: border-box;
+          transition: all 0.2s ease;
+        }
+
+        /* Checked State */
+        .demo-container input[type="checkbox"]:checked + span::before,
+        .demo-container input[type="radio"]:checked + span::before {
+          background-color: var(--brand-color);
+          border-color: var(--brand-color);
+        }
+
+        /* Checkmark (Unicode) */
+        .demo-container input[type="checkbox"]:checked + span::after {
+          content: "✓";
+          position: absolute;
+          left: 0.25rem;
+          top: 50%;
+          transform: translateY(-50%);
+          color: white;
+          font-weight: bold;
+          font-size: 0.9rem;
+        }
+
+        /* Radio Dot */
+        .demo-container input[type="radio"]:checked + span::after {
+          content: "";
+          position: absolute;
+          left: 0.35rem;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 0.5rem;
+          height: 0.5rem;
+          background-color: white;
+          border-radius: 50%;
+        }
+
+        /* Focus Indicator */
+        .demo-container input[type="checkbox"]:focus-visible + span::before,
+        .demo-container input[type="radio"]:focus-visible + span::before {
+          outline: 2px solid black;
+          outline-offset: 2px;
+        }
+
+        /* Fallback for Range Slider */
+        .demo-container input[type="range"] {
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+        }
+
+        .demo-container input[type="range"]::-webkit-slider-runnable-track {
+          width: 100%;
+          height: 8px;
+          background: linear-gradient(to right, var(--brand-color) var(--progress, 75%), #ccc var(--progress, 75%));
+          border-radius: 4px;
+        }
+
+        .demo-container input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          height: 16px;
+          width: 16px;
+          border-radius: 50%;
+          background: var(--brand-color);
+          cursor: pointer;
+          margin-top: -4px; /* Center vertically */
+        }
+
+        .demo-container input[type="range"]::-moz-range-track {
+          width: 100%;
+          height: 8px;
+          background: #ccc;
+          border-radius: 4px;
+        }
+
+        .demo-container input[type="range"]::-moz-range-thumb {
+          height: 16px;
+          width: 16px;
+          border-radius: 50%;
+          background: var(--brand-color);
+          cursor: pointer;
+        }
+
+        .demo-container input[type="range"]::-moz-range-progress {
+          background-color: var(--brand-color);
+          height: 8px;
+          border-radius: 4px;
+        }
+
+        /* Fallback for Progress Bar */
+        .demo-container progress {
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          appearance: none;
+          border: none;
+          background: #ccc;
+          height: 8px;
+          border-radius: 4px;
+        }
+
+        .demo-container progress::-webkit-progress-bar {
+          background-color: #ccc;
+          border-radius: 4px;
+        }
+
+        .demo-container progress::-moz-progress-bar,
+        .demo-container progress::-webkit-progress-value {
+          background-color: var(--brand-color);
+          border-radius: 4px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -66,11 +232,11 @@
       <div class="control-group">
         <label>
           <input type="checkbox" name="subscribe" checked />
-          Subscribe to newsletter
+          <span>Subscribe to newsletter</span>
         </label>
         <label>
           <input type="checkbox" name="terms" />
-          Accept terms and conditions
+          <span>Accept terms and conditions</span>
         </label>
       </div>
 
@@ -78,11 +244,11 @@
       <div class="control-group">
         <label>
           <input type="radio" name="plan" value="monthly" />
-          Monthly Plan
+          <span>Monthly Plan</span>
         </label>
         <label>
           <input type="radio" name="plan" value="yearly" checked />
-          Yearly Plan
+          <span>Yearly Plan</span>
         </label>
       </div>
 
@@ -105,5 +271,18 @@
         <progress id="loading" max="100" value="65">65%</progress>
       </div>
     </form>
+    <script>
+      // Fallback for older browsers without accent-color
+      if (!CSS.supports('accent-color')) {
+        const volumeSlider = document.getElementById('volume');
+        const updateProgress = (val) => {
+          volumeSlider.style.setProperty('--progress', `${val}%`);
+        };
+        updateProgress(volumeSlider.value);
+        volumeSlider.addEventListener('input', (e) => {
+          updateProgress(e.target.value);
+        });
+      }
+    </script>
   </body>
 </html>

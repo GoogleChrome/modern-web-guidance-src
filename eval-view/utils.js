@@ -44,6 +44,14 @@ export function capitalize(s) {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+export function formatTokens(tokens) {
+    if (!tokens) return '0 tok';
+    // undefined so it uses the user's locale.
+    return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
+        .format(tokens)
+        .toLowerCase() + ' tok';
+}
+
 export function timeAgo(date) {
     const diff = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
     const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
@@ -107,8 +115,32 @@ export function calculateChartData(results) {
 }
 
 
-export function formatTestName(name) {
+export function formatTestName(name, isSkill = false) {
     if (!name) return name;
+    const parts = name.split(' - ');
+    if (parts.length >= 2) {
+        const appName = parts[0];
+        const guideName = parts[1];
+        
+        const featuresMap = window.__featuresMapping || {};
+        let featureId = '';
+        
+        if (isSkill) {
+            // For skills, the first part is the discipline (e.g. performance)
+            return `${appName}: ${guideName}`; // discipline: task
+        }
+        
+        // For normal tasks, the second part is the guide name
+        if (featuresMap[guideName] && featuresMap[guideName].length > 0) {
+            featureId = featuresMap[guideName][0]; // take primary feature
+        }
+        
+        if (featureId) {
+            return `${featureId}: ${guideName}`;
+        }
+        
+        return `${appName}: ${guideName}`; // fallback
+    }
     return name.split(' - ').join(' / ');
 }
 
@@ -132,11 +164,7 @@ export function initGoogleAuth(onAuthSuccess) {
         if (authBtn) {
             authBtn.style.display = 'block';
             if (accessToken) {
-                authBtn.textContent = 'Authenticated ✓';
-                authBtn.disabled = true;
-                authBtn.style.backgroundColor = 'var(--accent-success)';
-                authBtn.style.color = 'white';
-                authBtn.style.borderColor = 'var(--accent-success)';
+                authBtn.style.display = 'none';
             }
         }
 
@@ -152,11 +180,7 @@ export function initGoogleAuth(onAuthSuccess) {
                 localStorage.setItem('gcs_access_token', accessToken);
                 console.log('Successfully authenticated with Google.');
                 if (authBtn) {
-                    authBtn.textContent = 'Authenticated ✓';
-                    authBtn.disabled = true;
-                    authBtn.style.backgroundColor = 'var(--accent-success)';
-                    authBtn.style.color = 'white';
-                    authBtn.style.borderColor = 'var(--accent-success)';
+                    authBtn.style.display = 'none';
                 }
                 if (onAuthSuccess) onAuthSuccess();
             },
@@ -183,6 +207,7 @@ export async function authenticatedFetch(url, options = {}) {
         // Reset button UI if available
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
+            authBtn.style.display = 'block';
             authBtn.textContent = 'Sign in with Google';
             authBtn.disabled = false;
             authBtn.style.backgroundColor = '';
