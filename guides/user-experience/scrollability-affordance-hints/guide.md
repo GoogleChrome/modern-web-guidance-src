@@ -123,7 +123,7 @@ if (!CSS.supports('container-type', 'scroll-state')) {
       }
       if (entry.target === bottomSentinel) {
         // If bottom sentinel is intersecting, we reached the bottom
-        scroller.classList.toggle('can-scroll-down', entry.isIntersecting);
+        scroller.classList.toggle('can-scroll-down', !entry.isIntersecting);
       }
     });
   }, { root: scroller });

@@ -115,7 +115,7 @@
             scroller.classList.toggle('scrolled-down', !entry.isIntersecting);
           }
           if (entry.target === bottomSentinel) {
-            scroller.classList.toggle('can-scroll-down', entry.isIntersecting);
+            scroller.classList.toggle('can-scroll-down', !entry.isIntersecting);
           }
         });
       }, { root: scroller });
