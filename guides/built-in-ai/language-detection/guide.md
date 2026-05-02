@@ -8,28 +8,16 @@ sources:
   - https://developer.chrome.com/docs/ai/language-detection
 ---
 
-The **Language Detector API** is a client-side web API designed to identify the
-language of a given text string. By performing detection locally in the browser,
-it enhances user privacy and reduces the need for heavy external libraries or
-costly server-side calls.
+The **Language Detector API** is a client-side web API designed to identify the language of a given text string. By performing detection locally in the browser, it enhances user privacy and reduces the need for heavy external libraries or costly server-side calls.
 
 ## Key Use Cases
 
-- **Translation Prep:** Identifying the source language before sending text to a
-  translator.
-- **Safety & Filtering:** Loading specific models for tasks like toxicity
-  detection.
-- **Accessibility:** Labeling content with the correct `lang` attribute for
-  screen readers.
-- **UI Localization:** Adjusting application interfaces based on the user's
-  input language.
+- **Translation Prep:** Identifying the source language before sending text to a translator.
+- **Safety & Filtering:** Loading specific models for tasks like toxicity detection.
+- **Accessibility:** Labeling content with the correct `lang` attribute for screen readers.
+- **UI Localization:** Adjusting application interfaces based on the user's input language.
 
-## Technical Requirements & Availability
-
-As of May 2025, the API is supported in **Chrome 138+** (Desktop only). Mobile
-support is currently unavailable.
-
-### Hardware & System Requirements
+## Hardware & System Requirements
 
 - **OS:** Windows 10/11, macOS 13+, Linux, or Chromebook Plus.
 - **Storage:** 22 GB free space (model is removed if space drops below 10 GB).
@@ -38,35 +26,32 @@ support is currently unavailable.
 
 ## Implementation Guide
 
-### 1. Feature Detection
+### 1. Model Management & User Activation
 
-Check if the browser supports the API before attempting to use it:
+Check model availability before attempting to instantiate the detector or trigger download.
+
+**MANDATORY:** Instantiating the language detector or triggering a model download with `LanguageDetector.create()` **MUST** be initiated by a user gesture (such as a button click) to prevent a `NotAllowedError` when the model is in a `downloadable` or `downloading` state.
 
 ```javascript
-if ('LanguageDetector' in self) {
-  // The Language Detector API is available.
+// Check if the model is available or downloadable
+const availability = await LanguageDetector.availability();
+
+if (availability !== 'unavailable') {
+  button.addEventListener('click', async () => {
+    const detector = await LanguageDetector.create({
+      monitor(m) {
+        m.addEventListener('downloadprogress', (e) => {
+          console.log(`Downloaded ${e.loaded * 100}%`);
+        });
+      },
+    });
+  });
 }
 ```
 
-### 2. Model Management
+### 2. Running Detection
 
-The model is downloaded on-demand. You should check availability and monitor the
-download progress.
-
-```javascript
-const detector = await LanguageDetector.create({
-  monitor(m) {
-    m.addEventListener('downloadprogress', (e) => {
-      console.log(`Downloaded ${e.loaded * 100}%`);
-    });
-  },
-});
-```
-
-### 3. Running Detection
-
-The API returns a ranked list of potential languages with a confidence score
-between `0.0` and `1.0`.
+The API returns a ranked list of potential languages with a confidence score between `0.0` and `1.0`.
 
 ```javascript
 const someUserText = 'Hallo und herzlich willkommen!';
@@ -79,20 +64,34 @@ for (const result of results) {
 }
 ```
 
-> [!CAUTION] Avoid using the detector on very short phrases or single words, as
-> accuracy drops significantly.
+Avoid using the detector on very short phrases or single words, as accuracy drops significantly.
 
 ## Security and Environment
 
-- **Iframes:** Cross-origin iframes require an explicit Permissions Policy to
-  access the API.
+- **Iframes:** Cross-origin iframes require an explicit Permissions Policy to access the API.
   ```html
   <iframe
     src="https://cross-origin.example.com/"
     allow="language-detector"
   ></iframe>
   ```
-- **Web Workers:** The API is **not** currently available in Web Workers due to
-  Permission Policy complexities.
-- **Privacy:** No data is sent to Google or third parties during the detection
-  process.
+- **Web Workers:** The API is **not** currently available in Web Workers due to Permission Policy complexities.
+- **Privacy:** No data is sent to Google or third parties during the detection process.
+
+## Fallback Strategy
+
+{{ BASELINE_STATUS("languagedetector") }}
+
+Before use, check if the `LanguageDetector` object is available in the global scope:
+
+```javascript
+if ('LanguageDetector' in self) {
+  // The Language Detector API is supported.
+} else {
+  // Execute fallback strategy
+}
+```
+
+If the `LanguageDetector` API is unsupported or availability checks return `'unavailable'`, you must gracefully fall back:
+1. **Remote API Fallback**: Redirect the detection request to a server endpoint or a cloud API (such as the Vertex AI Gemini API) to identify the language.
+2. **Graceful Degradation**: Disable language detection elements/buttons and inform the user that client-side detection is currently unsupported in this browser, preventing any unhandled exceptions or crashes.
