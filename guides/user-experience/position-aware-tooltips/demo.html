@@ -21,10 +21,12 @@
         margin-block-end: 0.25rem;
         color: white;
         background: black;
-        border-radius: 0.5rem 0.5rem 0 0;
       }
 
       @supports (container-type: anchored) {
+        .tooltip-content{
+          border-radius: 0.5rem 0.5rem 0 0;
+        }
         .tooltip-content::before {
           content: "▼";
           position: absolute;
