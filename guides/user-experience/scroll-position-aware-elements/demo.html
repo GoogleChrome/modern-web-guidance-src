@@ -17,7 +17,8 @@
 
     h2 {
       margin-top: 0;
-      scroll-margin-top: 1em;
+      /* Same length as container padding, so sentinel is in the scroll window. */
+      scroll-margin-top: 30px;
     }
 
     .scroller {
@@ -62,11 +63,11 @@
       pointer-events: auto;
 
       /* Hidden by default */
-      display: none;
+      visibility: hidden;
       opacity: 0;
       translate: 0 20px;
       transition:
-        display 0.3s,
+        visibility 0.3s,
         opacity 0.3s ease,
         translate 0.3s ease;
       transition-behavior: allow-discrete;
@@ -83,25 +84,16 @@
           display: inline-block;
           opacity: 1;
           translate: 0 0;
-
-          @starting-style {
-            opacity: 0;
-            translate: 0 20px;
-          }
+          visibility: visible;
         }
       }
     }
 
     /* Fallback using class toggled by JS */
     .scroller.scrolled .back-to-top {
-      display: inline-block;
+      visibility: visible;
       opacity: 1;
       translate: 0 0;
-
-      @starting-style {
-        opacity: 0;
-        translate: 0 20px;
-      }
     }
 
     /* Sentinel element styling */
