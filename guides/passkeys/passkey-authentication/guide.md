@@ -93,7 +93,7 @@ async function initializeConditionalAutofill() {
   if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
     const capabilities = await PublicKeyCredential.getClientCapabilities();
     if (capabilities.passkeyPlatformAuthenticator && capabilities.conditionalGet === true) {
-      
+      `MANDATORY: The client MUST fetch options JSON from the options generation server endpoint prior to invoking credentials get mediation.`
       const loginOptionsJSON = await optionsFetch();
       const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(loginOptionsJSON);
 

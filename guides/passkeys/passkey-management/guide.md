@@ -77,10 +77,10 @@ The Signal API lets the application communicate credential states to password ma
 *   **Parameter Encoding Rule**:
     *   `MANDATORY:` All `userId` and credential ID parameters passed to Signal API methods (`signalAllAcceptedCredentials`, `signalCurrentUserDetails`) MUST be **Base64URL-encoded strings**. Do NOT pass `Uint8Array` or `BufferSource` objects.
 *   **Initiating Page Load Sync**:
-    *   `MANDATORY:` Call `signalAllAcceptedCredentials()` as soon as the management page loads, passing the complete list of currently valid credential IDs.
+    *   `MANDATORY:` The application MUST invoke `signalAllAcceptedCredentials()` automatically in a `DOMContentLoaded` page load event listener, passing the Base64URL UserID and valid credentials list.
 *   **Management Updates Sync**:
-    *   `MANDATORY:` Call `signalAllAcceptedCredentials()` immediately after a passkey is deleted from the server, passing the *updated* list of remaining credentials.
-    *   `MANDATORY:` Call `signalCurrentUserDetails()` immediately after renaming a passkey, passing the updated `name` (username) and `displayName` to sync with the manager's local UI.
+    *   `MANDATORY:` The application MUST invoke `signalAllAcceptedCredentials()` immediately within your delete credential click handler post-fetch, passing the remaining valid credentials list.
+    *   `MANDATORY:` The application MUST invoke `signalCurrentUserDetails()` immediately within your rename click handler post-fetch, passing the updated Name details.
 *   **Empty Array Synchronization Warning**:
     *   `MANDATORY:` Passing an empty array `[]` to `signalAllAcceptedCredentials()` tells the password manager to **hide all passkeys** for this user on your site. Only invoke an empty list signal when you are 100% confident that the database contains zero valid passkeys for the user.
 
