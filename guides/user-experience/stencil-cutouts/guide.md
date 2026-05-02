@@ -7,14 +7,13 @@ sources:
   - https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/mask
   - https://web.dev/articles/building/a-theme-switch-component
   - https://web.dev/articles/css-masking
-  - https://web.dev/articles/how-we-built-designcember
   - https://web.dev/learn/css/paths-shapes-clipping-masking
   - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Masking/Introduction
   - https://css-tricks.com/clipping-masking-css/
 ---
 
 ## Overview
-To create complex cutouts or "knockout" effects (like adding a notch to a card or creating a stencil effect with a hole), use CSS Masking. The most robust and widely supported method for complex cutouts is using an SVG mask, where you can combine shapes using standard SVG elements. For simpler cutouts, like a circular hole or a simple notch, you can use a CSS gradient that includes transparent areas.
+To create complex cutouts or "knockout" effects (like adding a notch to a card or creating a stencil effect with a hole), use CSS Masking. For complex cutouts, use an SVG mask, where you can create a mask by combining shapes using standard SVG elements. For simpler cutouts, like a circular hole or a simple notch, you can use a CSS gradient that includes transparent areas.
 
 ## Implementation
 To implement stencil cutouts:

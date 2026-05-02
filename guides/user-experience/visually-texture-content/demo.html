@@ -55,6 +55,9 @@
     /* Fallback using CSS pattern for browsers without mask support */
     @supports not (mask-image: url(x)) {
       .weathered-bg {
+        height:100%;
+        width:100%;
+        position: absolute;
         background-color: #2ecc71; /* Base color (light green) */
         background-image: 
           linear-gradient(45deg, #27ae60 25%, transparent 25%), 

@@ -24,7 +24,7 @@ To clip elements to complex, free-form shapes like brush strokes or organic text
 To implement complex shapes using CSS masks:
 
 ### Using a raster image or SVG file
-You can use a URL to reference a PNG with transparency or an SVG file.
+You can use the transparency of an image as a mask, with opaque parts visible and transparent parts hidden. This can be a PNG, SVG, or other image with transparency, or a generated image, like a CSS gradient.
 
 ```css
 .shaped-element {
@@ -41,10 +41,10 @@ You can use a URL to reference a PNG with transparency or an SVG file.
 ```
 
 ### Using an SVG element in HTML
-You can also reference a `<mask>` element defined in your HTML.
+You can also reference a `<mask>` element defined in an inline SVG in your page's HTML.
 
 ```html
-<!-- Opaque areas reveal content, transparent areas hide it -->
+<!-- White areas reveal content, black or transparent areas hide it -->
 <svg width="0" height="0">
   <defs>
     <mask id="custom-shape">
