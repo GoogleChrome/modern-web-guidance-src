@@ -22,37 +22,33 @@ MANDATORY: Use `performance.getEntriesByType('visibility-state')` to access the 
  * Accurately determines visibility state history using the Performance API.
  */
 function getVisibilityInfo() {
-  // Feature detect the VisibilityStateEntry API on the window object.
-  if ('VisibilityStateEntry' in window && 'getEntriesByType' in performance) {
-    const entries = performance.getEntriesByType('visibility-state');
-    
-    if (entries.length > 0) {
-      const firstEntry = entries[0];
-      
-      // If the first performance entry for visibility is 'hidden',
-      // the page was loaded in the background.
-      const initiallyBackgrounded = firstEntry.name === 'hidden';
-      
-      // Find the precise, high-resolution timestamp of when the page 
-      // was first backgrounded.
-      let timeBackgrounded = null;
-      for (const entry of entries) {
-        if (entry.name === 'hidden') {
-          // <!-- entry.startTime is used because it provides the exact browser 
-          // timestamp of the visibility change, which is required for precision -->
-          timeBackgrounded = entry.startTime;
-          break;
-        }
-      }
-
-      return {
-        initiallyBackgrounded,
-        timeBackgrounded
-      };
-    }
-  }
+  // Retrieve VisibilityStateEntry members:
+  const entries = performance.getEntriesByType('visibility-state');
   
-  return getFallbackVisibilityInfo();
+  if (entries.length > 0) {
+    const firstEntry = entries[0];
+    
+    // If the first performance entry for visibility is 'hidden',
+    // the page was loaded in the background.
+    const initiallyBackgrounded = firstEntry.name === 'hidden';
+    
+    // Find the precise, high-resolution timestamp of when the page 
+    // was first backgrounded.
+    let timeBackgrounded = null;
+    for (const entry of entries) {
+      if (entry.name === 'hidden') {
+        // <!-- entry.startTime is used because it provides the exact browser 
+        // timestamp of the visibility change, which is required for precision -->
+        timeBackgrounded = entry.startTime;
+        break;
+      }
+    }
+
+    return {
+      initiallyBackgrounded,
+      timeBackgrounded
+    };
+  }
 }
 ```
 
@@ -92,5 +88,21 @@ function getFallbackVisibilityInfo() {
     get initiallyBackgrounded() { return initiallyBackgrounded; },
     get timeBackgrounded() { return timeBackgrounded; }
   };
+}
+
+// Modern implementation using VisibilityStateEntry API.
+function getVisibilityInfo() {
+  // Code omitted here would be the same modern
+  // implementation shown earlier in this guide
+  // ...
+}
+
+// DO: Detect if the VisibilityStateEntry API is available
+if ('VisibilityStateEntry' in window) {
+  // DO: If VisibilityStateEntry is available, use it first:
+  getVisibilityInfo();
+} else {
+  // DO: If VisibilityStateEntry is unavailable, fall back to `document.visibilityState`:
+  getFallbackVisibilityInfo();
 }
 ```
