@@ -80,18 +80,22 @@ const options = {
 ### Verification & AAGUID Lookup
 
 1.  **Challenge Verification**: Securely verify the attestation challenge against the expected session bound challenge.
-2.  **Relaxing Verification for 'preferred'**: 
+2.  **Verify User Presence**:
+    *   `MANDATORY:` Ensure that the User Present (UP) flag returned in the parsed authenticator data is `true` to confirm physical user presence at the time of creation.
+3.  **Relaxing Verification for 'preferred'**: 
     *   `MANDATORY:` When the creation options specified `userVerification: "preferred"`, the server-side verification call MUST be configured with `requireUserVerification: false`. Otherwise, authenticators that register without user biometrics (e.g., screen locks disabled) will trigger spurious server verification failures.
-3.  **AAGUID Resolution**: Fetch the AAGUID UUID string from the attestation data and look it up against the AAGUID registry to populate metadata:
+4.  **AAGUID Resolution**: Fetch the AAGUID UUID string from the attestation data and look it up against the AAGUID registry to populate metadata:
     *   `MANDATORY:` Authenticator providers return a zeroed AAGUID (`00000000-0000-0000-0000-000000000000`) for certain platform settings. When encountered, skip registry lookups entirely. Fall back to user-agent parsing or "Unknown passkey provider" and leave `providerIcon` undefined. Do NOT pass a zeroed AAGUID to the registry.
-4.  **Transports Persistence**: Persist `response.getTransports()` as the `transports` field inside the database record; this list is required for excluding existing credentials in subsequent flows.
-5.  **Return HTTP 404 on Missing Keys**:
+5.  **Transports Persistence**: Persist `response.getTransports()` as the `transports` field inside the database record; this list is required for excluding existing credentials in subsequent flows.
+6.  **Return HTTP 404 on Missing Keys**:
     *   `MANDATORY:` If the credential public key matching the Returned ID is missing or cannot be found in the database, the verification endpoint MUST respond with an explicit HTTP `404` status to safely trigger the Signal API.
 
 ## Client-Side Logic
 
-1.  **Feature Detect capabilities**: Ensure the current browser supports passkeys using `PublicKeyCredential.getClientCapabilities()` before offering UI prompts.
-2.  **Invoke creation**: Decode server options with `PublicKeyCredential.parseCreationOptionsFromJSON()` and pass the resulting configuration to `navigator.credentials.create()`.
+1.  **Gate the UI on page load**:
+    *   `MANDATORY:` On page load, call `PublicKeyCredential.getClientCapabilities()` and **hide the "Create passkey" button** if `passkeyPlatformAuthenticator` is not available. Do NOT render an enabled registration entry-point that the user cannot fulfill — this surfaces broken UI on devices without a platform authenticator. Hide via `style.display = 'none'` (or equivalent) and surface the standard password fallback in its place.
+2.  **Invoke creation & Serialize**: Decode server options with `PublicKeyCredential.parseCreationOptionsFromJSON()` and pass the resulting configuration to `navigator.credentials.create()`.
+    *   `MANDATORY:` Standard `PublicKeyCredential` DOM objects contain raw ArrayBuffers and do NOT serialize natively under standard `JSON.stringify()`. Developers MUST call `credential.toJSON()` to encode the `AuthenticatorAttestationResponse` into a valid, JSON-serializable object before fetching the verification endpoint.
 3.  **Handle WebAuthn Exceptions**:
     *   `InvalidStateError`: A matching passkey already exists (matched by `excludeCredentials`).
     *   `NotAllowedError`: The user cancelled or timed out the authentication biometrics dialog.
@@ -99,6 +103,21 @@ const options = {
     *   `SecurityError`: Secure origins (HTTPS) or RP ID mismatch errors (configuration issues).
 4.  **Try/Catch Segregation for Signal API**:
     *   `MANDATORY:` Wrap `navigator.credentials.create` and the subsequent server verification `fetch()` call in distinct try/catch blocks. Call `signalUnknownCredential()` ONLY when the server verification fetch fails (any status `response.ok === false` or network throws), not during standard WebAuthn API exceptions. Broadly catching all server errors ensures credentials aren't left orphaned and out-of-sync in password managers.
+
+```javascript
+// Page-load gating — runs once when the document loads, NOT on click.
+// Hides the registration button on devices that can't satisfy the prompt.
+async function gateRegistrationUI() {
+  const button = document.querySelector('[data-testid="register-button"]');
+  if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
+    const capabilities = await PublicKeyCredential.getClientCapabilities();
+    if (!capabilities.passkeyPlatformAuthenticator) {
+      button.style.display = 'none'; // Hide; surface password fallback instead
+    }
+  }
+}
+gateRegistrationUI();
+```
 
 ```javascript
 // optionsFetch and registerVerifyFetch are app-defined HTTP methods

@@ -1,8 +1,5 @@
 ---
 base_app: daily-grind
 ---
-- implement passkey authentication in the root `index.html` file. when a user lands on the sign-in page, immediately fetch sign-in options from `/api/auth/options` using a POST request to prime the browser's passkey autofill suggestion list. safely configure the username input field with the required autocomplete and focus attributes.
-- ensure options fetched from `/api/auth/options` are decoded properly before prompting the user's biometric passkey prompt.
-- if an explicit sign-in button annotated with `data-testid="login-button"` is clicked, cancel the ongoing background passkey autofill request and trigger an explicit biometric prompt.
-- handle try/catch scopes securely and send the assertion response to `/api/auth/verify`. if the server does not recognize the credential, notify the user's password manager with the Base64URL-encoded credential ID.
+- implement passkey authentication in the root `index.html` file. When the user lands on the page, fetch sign-in options from `/api/login/options` using a POST request, decode them using `parseRequestOptionsFromJSON`, and initialize browser autofill Conditional UI suggestions with `mediation: "conditional"` on the username field annotated with autocomplete token `webauthn` and `autofocus`. If an explicit "Sign in with passkey" button annotated with `data-testid="auth-button"` is clicked, abort the pending autofill suggests using AbortController before triggering explicit biometric prompting. Securely send the assertions to `/api/login/verify`, updating the UI status indicator annotated with `data-testid="auth-status"` to indicate successful authentication, and cleanly segregate standard cancels from server errors, triggering `signalUnknownCredential()` passing the Base64URL-encoded credential ID string (not the raw ArrayBuffer) only when the server verification returns an explicit 404.
 

@@ -45,13 +45,16 @@ Securely verify the assertion Returned by the client to authenticate the user:
 1.  **Validate session challenge**: Enforce strict challenge matching between the client response and the expected challenge stored in the session.
 2.  **Verify Cryptographic Signature**:
     *   `MANDATORY:` Fetch the Base64URL-encoded `credentialPublicKey` from your database record, convert it into a standard public key buffer, and verify the returned `signature` returned in the client assertion response. Signature validation is the core cryptographic check protecting the authentication flow.
-3.  **Enforce UV Preferences**: 
+3.  **Verify User Presence**:
+    *   `MANDATORY:` Verify that the User Present (UP) flag returned inside the parsed authenticator data is `true` to confirm user presence during assertion validation.
+4.  **Enforce UV Preferences**: 
     *   `MANDATORY:` Allow UV-less authenticators (e.g., authenticator screen locks disabled) if the session's `expectedUserVerification` requested `"preferred"`, by passing `requireUserVerification: false` to your server-side verification library. If requested `"required"`, enforce biometrics/PIN entry strictly.
-4.  **Handle Counter Parameters**:
+5.  **Handle Counter Parameters (Clone Prevention)**:
     *   `MANDATORY:` Fetch the previously stored `counter` parameter from the database record. Pass it to the verification routine to detect cloned authenticators.
+    *   `MANDATORY:` Skip strictly incrementing checks if both the old and new counters are `0` (the standard signature for multi-device synced passkeys), while strictly enforcing incrementing counter verification only for hardware-bound security keys to detect clones.
     *   `MANDATORY:` Save the returned `newCounter` parameter back to the database record immediately upon successful verification to update the clone-detection marker.
-5.  **Clean Server Error 404**: If the credential ID returned by the client is not found in the database, return an explicit HTTP `404` error so the client can trigger the Signal API.
-6.  **Establish the authenticated session**:
+6.  **Clean Server Error 404**: If the credential ID returned by the client is not found in the database, return an explicit HTTP `404` error so the client can trigger the Signal API.
+7.  **Establish the authenticated session**:
     *   `MANDATORY:` On successful verification, mark the user as authenticated in your session store (e.g. `req.session['signed-in'] = true` or your equivalent). Verification without session establishment leaves the user un-logged-in despite a successful biometric prompt.
 
 ## Client-Side Logic
@@ -79,8 +82,11 @@ Activate form autofill suggestions on page load to offer passkey authentication 
 
 1.  **Feature detect conditional capability**: Ensure both `passkeyPlatformAuthenticator` and `conditionalGet` are true using `PublicKeyCredential.getClientCapabilities()`.
 2.  **Invoke Conditional Get**: Call `navigator.credentials.get()` with `mediation: "conditional"` and pass an `AbortController` signal. This registers autofill silently without rendering biometrics popups.
-3.  **Try/Catch Segregation**: Wrap `navigator.credentials.get` and the subsequent server verification `fetch()` call in distinct try/catch blocks:
-    *   `MANDATORY:` Call `signalUnknownCredential()` ONLY when the server explicitly responds with HTTP status `404` (Credential not found) and the user is unauthenticated. Do NOT call it for standard WebAuthn cancel exceptions (`NotAllowedError`, `AbortError`) or other server errors to prevent false alarms.
+3.  **Try/Catch Exception Segregation**: Wrap `navigator.credentials.get` and the subsequent server verification `fetch()` call in distinct try/catch blocks:
+    *   `NotAllowedError`: The user cancelled or timed out the biometrics login prompt.
+    *   `AbortError`: The programmatic authentication request was cancelled.
+    *   `MANDATORY:` Call `signalUnknownCredential()` ONLY when the server explicitly responds with HTTP status `404` (Credential not found) and the user is unauthenticated. Do NOT call it for standard WebAuthn cancels (`NotAllowedError`, `AbortError`) or other server errors to prevent false alarms.
+    *   `MANDATORY:` The `credentialId` parameter passed to `signalUnknownCredential()` MUST strictly be the Base64URL-encoded credential ID string (e.g., `encoded.id`), NOT the raw ArrayBuffer object `credential.rawId`.
 
 ```javascript
 // optionsFetch and loginVerifyFetch are app-defined HTTP methods
