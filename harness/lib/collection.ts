@@ -358,11 +358,11 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         isSkill: isSkill,
         expectedToolPrefixes: expectedToolPrefixes,
         guideName: guide,
-        taskName: taskName,
         baseApp: actualBaseApp,
+        taskName: taskName,
         prompt: taskInfo.prompt,
         files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
-        tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined
+        tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
       });
     }
   }
