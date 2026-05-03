@@ -1,18 +1,36 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../test-fixture.ts';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
   throw new Error('TARGET_FILE environment variable is required');
 }
 
+const filePath = path.resolve(targetFile);
+const targetDir = path.dirname(filePath);
+const demoName = path.basename(filePath);
+
 test.describe('Passkey Reauthentication Expectations', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, TARGET_URL }) => {
+    if (TARGET_URL.startsWith('http://localhost/') || TARGET_URL === `http://localhost/${demoName}`) {
+      await page.route('http://localhost/*', async (route) => {
+        const requestPath = new URL(route.request().url()).pathname;
+        const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+
+        if (fs.existsSync(localFilePath)) {
+          await route.fulfill({ path: localFilePath });
+        } else {
+          await route.continue();
+        }
+      });
+    }
+
     await page.addInitScript(() => {
       (window as any).__getCalled = false;
       (window as any).__getOptions = null;
       (window as any).__parseCalled = false;
 
-      // Intercept relative fetches to prevent Playwright isolated filesystem CORS block blocks
       const originalFetch = window.fetch;
       window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === 'string' ? input : (input as any).url || '';
@@ -59,14 +77,14 @@ test.describe('Passkey Reauthentication Expectations', () => {
     });
   });
 
-  test('renders explicit step-up biometrics button UI annotated with data-testid', async ({ page }) => {
-    await page.goto(`file://${targetFile}`);
+  test('renders explicit step-up biometrics button UI annotated with data-testid', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     const button = page.locator('[data-testid="reauth-button"]');
     await expect(button).toBeVisible();
   });
 
-  test('invokes biometric re-verification via navigator.credentials.get clicking reauth button', async ({ page }) => {
-    await page.goto(`file://${targetFile}`);
+  test('invokes biometric re-verification via navigator.credentials.get clicking reauth button', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     const button = page.locator('[data-testid="reauth-button"]');
     await button.click();
     await page.waitForTimeout(500);
@@ -75,32 +93,30 @@ test.describe('Passkey Reauthentication Expectations', () => {
     expect(getCalled).toBe(true);
   });
 
-  test('populates allowCredentials mapped to user pre-registered credentials descriptors list', async ({ page }) => {
-    await page.goto(`file://${targetFile}`);
+  test('populates allowCredentials mapped to user pre-registered credentials descriptors list', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     const button = page.locator('[data-testid="reauth-button"]');
     await button.click();
     await page.waitForTimeout(500);
     
     const getOptions = await page.evaluate(() => (window as any).__getOptions);
-    // Grader verifies pre-registered allowedCredentials elements id populate safely
     const allowed = getOptions?.publicKey?.allowCredentials || getOptions?.allowCredentials || [];
     expect(allowed.length).toBeGreaterThan(0);
   });
 
-  test('enforces user biometrics by commanding required verification parameter', async ({ page }) => {
-    await page.goto(`file://${targetFile}`);
+  test('enforces user biometrics by commanding required verification parameter', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     const button = page.locator('[data-testid="reauth-button"]');
     await button.click();
     await page.waitForTimeout(500);
     
     const getOptions = await page.evaluate(() => (window as any).__getOptions);
     const pkOptions = getOptions?.publicKey || getOptions || {};
-    // Commands userVerification required enforce
     expect(pkOptions.userVerification).toBe('required');
   });
 
-  test('decodes step-up reauth request options calling parseRequestOptionsFromJSON safely', async ({ page }) => {
-    await page.goto(`file://${targetFile}`);
+  test('decodes step-up reauth request options calling parseRequestOptionsFromJSON safely', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     const button = page.locator('[data-testid="reauth-button"]');
     await button.click();
     await page.waitForTimeout(500);

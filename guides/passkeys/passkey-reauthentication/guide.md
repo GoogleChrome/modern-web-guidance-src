@@ -62,15 +62,102 @@ Applications choose from two reauthentication interfaces depending on the transa
 
 ### A. Button Flow (No Input Fields)
 
-Trigger reauthentication when a user presses a "Verify Identity" or "Proceed with Transaction" button:
-*   Follow the standard authentication biometrics prompt triggers.
-*   Ongoing form autofills (Conditional Gets) MUST be aborted prior to starting the biometric dialog.
+Trigger reauthentication when a user presses a "Verify Identity" or "Proceed with Transaction" button. Ongoing form autofills (Conditional Gets) MUST be aborted prior to starting the biometric dialog.
+
+```html
+<button id="reauth-btn" data-testid="reauth-button">Confirm Transaction</button>
+```
+
+```javascript
+let reauthAbortController = new AbortController();
+
+async function triggerButtonReauth() {
+  // Abort any background suggestion flows to avoid biometrics prompt collisions
+  reauthAbortController.abort();
+  reauthAbortController = new AbortController();
+
+  const optionsResponse = await fetch('/api/reauth/options', { method: 'POST' });
+  const optionsJSON = await optionsResponse.json();
+  const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
+
+  try {
+    const credential = await navigator.credentials.get({
+      publicKey,
+      signal: reauthAbortController.signal
+    });
+
+    if (credential) {
+      const verifyResponse = await fetch('/api/reauth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credential.toJSON())
+      });
+
+      if (verifyResponse.ok) {
+        showTransactionSuccessUI();
+      }
+    }
+  } catch (err) {
+    if (err.name === 'NotAllowedError') {
+      console.log('User cancelled reauthentication biometrics.');
+    }
+  }
+}
+
+document.getElementById('reauth-btn').addEventListener('click', triggerButtonReauth);
+```
 
 ### B. Conditional Mediation Flow (Autofill UI Form)
 
-If the sensitive transaction panel includes a password/re-auth input form (Progressive Step-Up fallback):
-*   Follow the Conditional UI Autofill initialization.
-*   Annotate the username field with `autocomplete="username webauthn"`.
+If the sensitive transaction panel includes a password/re-auth input form (Progressive Step-Up fallback), you can leverage Conditional UI to allow users to select their pre-registered passkeys directly from browser suggestions:
+
+```html
+<form id="reauth-form">
+  <!-- Autofill username field annotated with autocomplete token webauthn -->
+  <input type="text" name="username" autocomplete="username webauthn" autofocus data-testid="reauth-username">
+  <input type="password" name="password" autocomplete="current-password">
+  <button type="submit">Confirm Password</button>
+</form>
+```
+
+```javascript
+async function initializeConditionalReauth() {
+  if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
+    const capabilities = await PublicKeyCredential.getClientCapabilities();
+    if (capabilities.passkeyPlatformAuthenticator && capabilities.conditionalGet === true) {
+      const optionsResponse = await fetch('/api/reauth/options', { method: 'POST' });
+      const optionsJSON = await optionsResponse.json();
+      const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(optionsJSON);
+
+      try {
+        const credential = await navigator.credentials.get({
+          publicKey,
+          mediation: 'conditional',
+          signal: reauthAbortController.signal
+        });
+
+        if (credential) {
+          const verifyResponse = await fetch('/api/reauth/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(credential.toJSON())
+          });
+
+          if (verifyResponse.ok) {
+            showTransactionSuccessUI();
+          }
+        }
+      } catch (err) {
+        if (!['NotAllowedError', 'AbortError'].includes(err.name)) {
+          console.error('Unexpected reauth error:', err);
+        }
+      }
+    }
+  }
+}
+
+window.addEventListener('DOMContentLoaded', initializeConditionalReauth);
+```
 
 ---
 

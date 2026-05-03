@@ -62,13 +62,6 @@
         statusEl.textContent = 'Passkey Registered Successfully!';
         statusEl.style.color = '#228b22';
       } catch (e) {
-        if (window.PublicKeyCredential && PublicKeyCredential.signalUnknownCredential) {
-          PublicKeyCredential.signalUnknownCredential({
-            rpId: window.location.hostname,
-            credentialId: 'unknown-id'
-          });
-        }
-        
         statusEl.textContent = 'Error during registration';
         statusEl.style.color = '#cc0000';
       }

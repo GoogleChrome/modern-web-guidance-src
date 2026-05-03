@@ -20,19 +20,19 @@
   </div>
 
   <script type="module">
-    async function registerPasskey() {
-      const statusEl = document.getElementById('status');
-      statusEl.textContent = 'Registering...';
-
-      // Feature detect platform biometric platform support
+    async function init() {
       if (window.PublicKeyCredential && PublicKeyCredential.getClientCapabilities) {
         const capabilities = await PublicKeyCredential.getClientCapabilities();
         if (!capabilities.passkeyPlatformAuthenticator) {
-          statusEl.textContent = 'Biometric passkey unsupported on this device.';
-          statusEl.style.color = '#cc0000';
-          return;
+          document.getElementById('register-btn').style.display = 'none';
         }
       }
+    }
+    init();
+
+    async function registerPasskey() {
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'Registering...';
 
       try {
         // 1. Fetch Options Generation options from backend endpoint

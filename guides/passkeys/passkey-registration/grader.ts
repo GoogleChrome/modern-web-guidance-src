@@ -1,12 +1,31 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../test-fixture.ts';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
   throw new Error('TARGET_FILE environment variable is required');
 }
 
+const filePath = path.resolve(targetFile);
+const targetDir = path.dirname(filePath);
+const demoName = path.basename(filePath);
+
 test.describe('Passkey Registration Expectations', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, TARGET_URL }) => {
+    if (TARGET_URL.startsWith('http://localhost/') || TARGET_URL === `http://localhost/${demoName}`) {
+      await page.route('http://localhost/*', async (route) => {
+        const requestPath = new URL(route.request().url()).pathname;
+        const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+
+        if (fs.existsSync(localFilePath)) {
+          await route.fulfill({ path: localFilePath });
+        } else {
+          await route.continue();
+        }
+      });
+    }
+
     await page.addInitScript(() => {
       (window as any).__createCalled = false;
       (window as any).__createOptions = null;
@@ -76,15 +95,17 @@ test.describe('Passkey Registration Expectations', () => {
     });
   });
 
-  test('detects support using platform authenticator prior to prompting UI', async ({ page }) => {
-    await page.goto(`file://${targetFile}`);
-    // Asserts step button visibilities and features presence safely
+  test('detects support using platform authenticator prior to prompting UI', async ({ page, TARGET_URL }) => {
+    await page.addInitScript(() => {
+      (window as any).__mockPasskeyPlatformAuthenticator = false;
+    });
+    await page.goto(TARGET_URL);
     const button = page.locator('[data-testid="register-button"]');
-    await expect(button).toBeVisible();
+    await expect(button).toBeHidden();
   });
 
-  test('invokes native browser create biometrics trigger upon register click', async ({ page }) => {
-    await page.goto(`file://${targetFile}`);
+  test('invokes native browser create biometrics trigger upon register click', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     const button = page.locator('[data-testid="register-button"]');
     await button.click();
     await page.waitForTimeout(500);
@@ -93,7 +114,7 @@ test.describe('Passkey Registration Expectations', () => {
     expect(called).toBe(true);
   });
 
-  test('signals signalUnknownCredential using Base64URL credentialId upon server verification failure', async ({ page }) => {
+  test('signals signalUnknownCredential using Base64URL credentialId upon server verification failure', async ({ page, TARGET_URL }) => {
     // Intercept verify fetch endpoint to return bad verification status explicitly
     await page.addInitScript(() => {
       const verifyFetch = window.fetch;
@@ -111,7 +132,7 @@ test.describe('Passkey Registration Expectations', () => {
       };
     });
 
-    await page.goto(`file://${targetFile}`);
+    await page.goto(TARGET_URL);
     const button = page.locator('[data-testid="register-button"]');
     await button.click();
     await page.waitForTimeout(500);

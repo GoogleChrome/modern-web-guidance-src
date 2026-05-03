@@ -1,12 +1,31 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../test-fixture.ts';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
   throw new Error('TARGET_FILE environment variable is required');
 }
 
+const filePath = path.resolve(targetFile);
+const targetDir = path.dirname(filePath);
+const demoName = path.basename(filePath);
+
 test.describe('Passkey Management Expectations', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, TARGET_URL }) => {
+    if (TARGET_URL.startsWith('http://localhost/') || TARGET_URL === `http://localhost/${demoName}`) {
+      await page.route('http://localhost/*', async (route) => {
+        const requestPath = new URL(route.request().url()).pathname;
+        const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+
+        if (fs.existsSync(localFilePath)) {
+          await route.fulfill({ path: localFilePath });
+        } else {
+          await route.continue();
+        }
+      });
+    }
+
     await page.addInitScript(() => {
       (window as any).__signalAcceptedCalled = false;
       (window as any).__signalAcceptedOpts = null;
@@ -45,46 +64,42 @@ test.describe('Passkey Management Expectations', () => {
       });
     });
 
-    await page.route('**/api/credentials/*', async (route) => {
-      if (route.request().method() === 'DELETE') {
-        await route.fulfill({ status: 200 });
-      } else {
-        await route.fulfill({ status: 200 });
-      }
+    // Singular route matching demo paths correctly
+    await page.route('**/api/credential/*', async (route) => {
+      await route.fulfill({ status: 200 });
     });
   });
 
-  test('renders credentials list containing zeroed AAGUID bypassed item', async ({ page }) => {
-    await page.goto(`file://${targetFile}`);
+  test('renders credentials list containing zeroed AAGUID bypassed item', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     await page.waitForTimeout(500); // DOM parsing delay
     
-    // Correctly verify that the card rendered the credential Name on DOM safely
     await expect(page.locator('body')).toContainText('My Security Key');
   });
 
-  test('invokes signalAllAcceptedCredentials on DOMContentLoaded load', async ({ page }) => {
-    await page.goto(`file://${targetFile}`);
+  test('invokes signalAllAcceptedCredentials on DOMContentLoaded load', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     await page.waitForTimeout(500);
     
     const called = await page.evaluate(() => (window as any).__signalAcceptedCalled);
     expect(called).toBe(true);
   });
 
-  test('invokes signalAllAcceptedCredentials upon credentials deletion triggers', async ({ page }) => {
-    await page.goto(`file://${targetFile}`);
+  test('invokes signalAllAcceptedCredentials upon credentials deletion triggers', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
     await page.waitForTimeout(500);
     
     page.on('dialog', async dialog => {
       await dialog.accept();
     });
 
-    // Tolerant buttons click targeting text string content
     const deleteBtn = page.locator('button').filter({ hasText: /Remove|Delete/i });
-    if (await deleteBtn.count() > 0) {
-      await deleteBtn.first().click();
-      await page.waitForTimeout(500);
-      const called = await page.evaluate(() => (window as any).__signalAcceptedCalled);
-      expect(called).toBe(true);
-    }
+    const count = await deleteBtn.count();
+    expect(count).toBeGreaterThan(0); // Ensures button actually exists and fails if absent!
+
+    await deleteBtn.first().click();
+    await page.waitForTimeout(500);
+    const called = await page.evaluate(() => (window as any).__signalAcceptedCalled);
+    expect(called).toBe(true);
   });
 });
