@@ -120,7 +120,7 @@ Positioning the arrow based on the applied fallback is a progressive enhancement
 
 ```css
 @supports (container-type: anchored) {
-  #tooltip::before {
+  .tooltip-content::before {
     content: "▼";
   }
 }
