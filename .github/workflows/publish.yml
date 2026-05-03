@@ -50,25 +50,13 @@ jobs:
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "git@github.com:"
 
       - name: Publish Skills to GitHub (modern-web-guidance)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter serving run publish-skills
 
-      # =========================================================================
-      # Future: Enable these steps when ready to publish to npm publicly!
-      # =========================================================================
-      # - name: Setup Node with npm registry
-      #   uses: actions/setup-node@v6
-      #   with:
-      #     node-version: 24
-      #     registry-url: 'https://registry.npmjs.org'
-      # 
-      # - name: Publish to npm via OIDC Provenance
-      #   run: |
-      #     npm install -g npm@latest
-      #     cd dist/skills-cli
-      #     
-      #     # Run dry-run for safety or full publish
-      #     # npm publish --provenance --access public --registry https://registry.npmjs.org/
-      #     npm publish --dry-run --provenance --access public --registry https://registry.npmjs.org/
-      # =========================================================================
-
-
+      - name: Publish to npm via OIDC Provenance
+        run: |
+          npm install -g npm@latest
+          cd dist/skills-cli-npx
+          # Doesn't work unless repo is public. TODO: flip on when we open-source.
+          # npm publish --provenance --access public --registry https://registry.npmjs.org/

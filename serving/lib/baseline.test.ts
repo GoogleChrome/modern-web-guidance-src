@@ -21,15 +21,15 @@ describe('baseline data', () => {
 
   describe('getStatusMessage', () => {
     it('returns status message for a feature', () => {
-      assert.strictEqual(getStatusMessage('grid'), 'Grid is Widely. It\'s been Baseline since 2017-10-17.');
+      assert.strictEqual(getStatusMessage('grid'), 'Baseline status for Grid: Widely available. It\'s been Baseline since 2017-10-17.');
     });
 
     it('returns status message for a BCD key', () => {
-      assert.strictEqual(getStatusMessage('grid', 'css.properties.grid-template-columns'), 'The css.properties.grid-template-columns capability is Widely. It\'s been Baseline since 2017-10-17.');
+      assert.strictEqual(getStatusMessage('grid', 'css.properties.grid-template-columns'), 'Baseline status for the css.properties.grid-template-columns capability: Widely available. It\'s been Baseline since 2017-10-17.');
     });
 
     it('returns status message for a non-Baseline feature', () => {
-      assert.strictEqual(getStatusMessage('accelerometer'), 'Accelerometer is Limited.');
+      assert.strictEqual(getStatusMessage('accelerometer'), 'Accelerometer has limited availability.');
     });
 
     it('returns undefined for unknown features or keys', () => {

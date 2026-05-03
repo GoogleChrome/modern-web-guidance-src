@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Demo: HTML Media Export</title>
+    <style>
+        body { font-family: sans-serif; }
+        canvas { border: 1px solid #ccc; }
+        .export-content {
+            width: 300px;
+            height: 50px;
+            background: #fff;
+            color: #333;
+            font-size: 16px;
+            padding: 10px;
+            border: 2px solid #28a745;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <h1>HTML Media Export</h1>
+    <p>This demo shows how to render HTML content in canvas and export it as an image.</p>
+    <p>What you see in the DOM is exactly what gets drawn into the canvas, including complex text shaping, custom fonts, and advanced CSS layouts</p>
+    <canvas id="canvas" style="width: 400px; height: 200px;" layoutsubtree>
+        <input id="export_element" class="export-content" type="text" placeholder="type anything to capture media">
+    </canvas>
+    
+    <br><br>
+    <button id="export_btn">Export to Image Element</button>
+    <button id="download_btn" disabled>Download Image</button>
+    <br><br>
+    <p>Resulting image:</p>
+    <img id="output_img" alt="Result of canvas export" style="border: 1px solid #ccc;">
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const export_element = document.getElementById('export_element');
+        const export_btn = document.getElementById('export_btn');
+        const download_btn = document.getElementById('download_btn');
+        const output_img = document.getElementById('output_img');
+
+        canvas.onpaint = (event) => {
+            ctx.reset();
+            // Draw the element into the canvas
+            const transform = ctx.drawElementImage(export_element, 10, 10);
+            // Synchronize DOM position for hit testing (typing)
+            export_element.style.transform = transform.toString();
+        };
+
+        export_btn.onclick = () => {
+            // Export the canvas content as an image
+            const dataURL = canvas.toDataURL('image/png');
+            output_img.src = dataURL;
+            download_btn.disabled = false; // Enable download button
+        };
+
+        download_btn.onclick = () => {
+            const link = document.createElement('a');
+            link.download = 'exported-canvas.png';
+            link.href = output_img.src;
+            link.click();
+        };
+
+        // Initialize canvas size
+        const observer = new ResizeObserver(([entry]) => {
+            canvas.width = entry.devicePixelContentBoxSize[0].inlineSize;
+            canvas.height = entry.devicePixelContentBoxSize[0].blockSize;
+            canvas.requestPaint();
+        });
+        observer.observe(canvas, {box: 'device-pixel-content-box'});
+    </script>
+</body>
+</html>
