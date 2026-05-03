@@ -3,6 +3,7 @@ name: identify-inp-causes
 description: Identify slow running JavaScript that is impacting INP metric
 web-feature-ids:
   - long-animation-frames
+  - event-timing
 sources:
   - https://web.dev/articles/inp
   - https://web.dev/articles/find-slow-interactions-in-the-field
@@ -11,6 +12,7 @@ sources:
   - https://www.speedcurve.com/blog/guide-long-animation-frames-loaf/
   - https://www.debugbear.com/blog/long-animation-frames
   - https://requestmetrics.com/web-performance/long-animation-frame-loaf/
+  - https://github.com/GoogleChrome/web-vitals
 ---
 
 # Identify causes of poor INP
@@ -31,7 +33,7 @@ Calculating INP from the raw Event Timing API is complicated and has several nua
 
 ## Get attributions for INP interactions using web-vitals library
 
-The [`web-vitals` library](https://github.com/GoogleChrome/web-vitals) is a tiny library used to measure Core Web Vitals and other performance metrics. The `onINP()` function can be used to identify the slowest interaction and includes information about the INP subparts and scripts that were executed during the interaction using the Long Animation Frames API.
+The `web-vitals` library is a tiny library used to measure Core Web Vitals and other performance metrics. The `onINP()` function can be used to identify the slowest interaction and includes information about the INP subparts and scripts that were executed during the interaction using the Long Animation Frames API.
 
 ```javascript
 // Use the attribution build to get Long Animation Frame data
@@ -49,6 +51,7 @@ onINP((metric) => {
       // These fields give the INP subparts:
       inputDelay: metric.attribution.inputDelay,
       presentationDelay: metric.attribution.presentationDelay,
+      processingDuration: metric.attribution. processingDuration,
       interactionTarget: metric.attribution.interactionTarget,
       // These fields identify which script function was responsible
       // for the longest processing during the INP interaction.
@@ -75,9 +78,9 @@ onINP((metric) => {
 
 ## Browser support and fallback strategies
 
-{{ BASELINE_STATUS("event-timing") }}.
+{{ BASELINE_STATUS("event-timing") }}
 
-The Event Timing API is available in most modern browsers and is necessary to calculate INP and the INP subparts. For browsers that do no support this API INP cannot be measured.
+The Event Timing API is available in most modern browsers and is necessary to calculate INP and the INP subparts. For browsers that do not support this API INP cannot be measured.
 
 {{ BASELINE_STATUS("long-animation-frames") }}.
 
