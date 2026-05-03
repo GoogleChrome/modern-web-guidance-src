@@ -79,7 +79,7 @@ test.describe('Passkey Management Expectations', () => {
 
   test('invokes signalAllAcceptedCredentials on DOMContentLoaded load', async ({ page, TARGET_URL }) => {
     await page.goto(TARGET_URL);
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => (window as any).__signalAcceptedCalled === true, { timeout: 2000 }).catch(() => {});
     
     const called = await page.evaluate(() => (window as any).__signalAcceptedCalled);
     expect(called).toBe(true);
@@ -98,7 +98,7 @@ test.describe('Passkey Management Expectations', () => {
     expect(count).toBeGreaterThan(0); // Ensures button actually exists and fails if absent!
 
     await deleteBtn.first().click();
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => (window as any).__signalAcceptedCalled === true, { timeout: 2000 }).catch(() => {});
     const called = await page.evaluate(() => (window as any).__signalAcceptedCalled);
     expect(called).toBe(true);
   });
