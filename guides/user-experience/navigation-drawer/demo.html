@@ -105,8 +105,15 @@
 
         overflow-x: scroll;
         overscroll-behavior: none;
+
         scrollbar-width: none;
         scroll-snap-type: x mandatory;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .Drawer-scroller {
+          scroll-behavior: smooth;
+        }
       }
 
       /* A spacer to make the drawer sheet scrollable. */
@@ -178,16 +185,16 @@
       // view. Also wait for a double-rAF before continuing to ensure  `scrollTo()`
       // fully settles before calling `scrollTo()` again below.
       if (!CSS.supports('scroll-initial-target', 'nearest')) {
-        scroller.scrollTo({left: scroller.offsetWidth});
+        scroller.scrollTo({left: scroller.offsetWidth, behavior: 'instant'});
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       }
 
-      // Finally smooth scroll so the drawer is fully in view.
-      scroller.scrollTo({left: 0, behavior: 'smooth'});
+      // Finally scroll so the drawer is fully in view.
+      scroller.scrollTo({left: 0, behavior: 'auto'});
     }
 
     async function closeDrawer() {
-      scroller.scrollTo({left: scroller.offsetWidth, behavior: 'smooth'});
+      scroller.scrollTo({left: scroller.offsetWidth, behavior: 'auto'});
     }
 
     function onDrawerOpened() {

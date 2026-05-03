@@ -127,12 +127,20 @@ The scroller is a horizontal grid wider than the viewport: column 1 holds the sh
   scroll-snap-type: x mandatory;
 }
 
+/* Enable smooth scrolling natively, but only if the user has not
+   requested reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .Drawer-scroller {
+    scroll-behavior: smooth;
+  }
+}
+
 /* The empty spacer that creates the "closed" snap stop. */
 .Drawer-scroller::after {
   content: '';
   scroll-snap-align: end;
   /* Open the popover already scrolled to this stop (drawer off-screen),
-     so the JS only needs to smooth-scroll to the open position to
+     so the JS only needs to scroll to the open position to
      animate it in. */
   scroll-initial-target: nearest;
 }
@@ -200,7 +208,7 @@ A scroll-driven animation maps `--drawer-backdrop` from 1 (open) to 0 (closed) a
 
 ### 3. Open and close the drawer
 
-Opening is two steps: promote the popover to the top layer, then smooth-scroll the sheet into view. Closing is one step: smooth-scroll back to the spacer; an observer (step 4) hides the popover once the sheet is fully off-screen.
+Opening is two steps: promote the popover to the top layer, then scroll the sheet into view. Closing is one step: scroll back to the spacer; an observer (step 4) hides the popover once the sheet is fully off-screen.
 
 ```js
 const drawer = document.getElementById('drawer');
@@ -215,24 +223,26 @@ function openDrawer() {
   // stop, so the drawer enters the top layer already off-screen.
   drawer.showPopover();
 
-  // Smooth-scroll the sheet into view. Snap takes over at the end and
+  // Scroll the sheet into view. The `behavior: 'auto'` option defers
+  // to the CSS `scroll-behavior` property, which will be smooth unless
+  // the user prefers reduced motion. Snap takes over at the end and
   // locks the drawer fully open.
-  scroller.scrollTo({left: 0, behavior: 'smooth'});
+  scroller.scrollTo({left: 0, behavior: 'auto'});
 }
 
 function closeDrawer() {
-  // Smooth-scroll back to the spacer. Do NOT call hidePopover() here —
+  // Scroll back to the spacer. Do NOT call hidePopover() here —
   // doing so would remove the element from the top layer mid-animation
   // and the close animation would not be visible. The
   // IntersectionObserver in step 4 hides the popover once the sheet
   // has actually left the viewport.
-  scroller.scrollTo({left: scroller.offsetWidth, behavior: 'smooth'});
+  scroller.scrollTo({left: scroller.offsetWidth, behavior: 'auto'});
 }
 ```
 
 ### 4. Detect open and closed state
 
-Use an `IntersectionObserver` on the sheet — not the scroll position — as the source of truth for the drawer's state. The observer fires regardless of how the sheet moved (user swipe, smooth scroll, snap settle), so all dismissal paths converge in the same callback.
+Use an `IntersectionObserver` on the sheet — not the scroll position — as the source of truth for the drawer's state. The observer fires regardless of how the sheet moved (user swipe, programmatic scroll, snap settle), so all dismissal paths converge in the same callback.
 
 ```js
 function onDrawerOpened() {
@@ -259,7 +269,7 @@ const visibleThreshold = 1 / window.innerWidth;
 
 const observer = new IntersectionObserver(
   (entries) => {
-    // During smooth scrolling the observer can deliver multiple
+    // During programmatic scrolling the observer can deliver multiple
     // entries in one batch. Only the most recent describes the
     // current state; earlier entries are intermediate positions.
     const entry = entries.at(-1);
@@ -327,9 +337,9 @@ async function openDrawer() {
   drawer.showPopover();
 
   if (!CSS.supports('scroll-initial-target', 'nearest')) {
-    // Jump-scroll to the closed stop so the smooth-scroll below
+    // Jump-scroll to the closed stop so the scroll below
     // animates the drawer in from off-screen.
-    scroller.scrollTo({left: scroller.offsetWidth});
+    scroller.scrollTo({left: scroller.offsetWidth, behavior: 'instant'});
     // Wait two animation frames for the jump-scroll to commit.
     // A single rAF is not enough — the second `scrollTo` would
     // cancel the first before the browser has a chance to apply it.
@@ -338,7 +348,7 @@ async function openDrawer() {
     );
   }
 
-  scroller.scrollTo({left: 0, behavior: 'smooth'});
+  scroller.scrollTo({left: 0, behavior: 'auto'});
 }
 ```
 
