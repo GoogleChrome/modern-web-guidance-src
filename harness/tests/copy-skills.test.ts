@@ -55,7 +55,7 @@ test('copySkills sets up the isolated environment with the skill and its data', 
 
         // 4. Run the CLI to search
         // We need to extend PATH to make sure node is available if needed, but it should be
-        const cmd = `node ${mjsPath} --search "address form"`;
+        const cmd = `node ${mjsPath} search "address form"`;
         const output = execSync(cmd, { encoding: 'utf8' });
         assertSearchResults(output);
         

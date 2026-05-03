@@ -79,11 +79,11 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
                         if (item.type === 'tool_use' && item.name === 'Bash') {
                             const command = item.input?.command;
                             if (typeof command === 'string') {
-                                if (command.includes('--search')) {
+                                if (command.includes('search') || command.includes('--search')) {
                                     searchCalled = true;
                                     searchToolId = item.id;
                                 }
-                                if (command.includes('--retrieve')) {
+                                if (command.includes('retrieve') || command.includes('--retrieve')) {
                                     retrieveCalled = true;
                                     retrieveToolId = item.id;
                                 }
