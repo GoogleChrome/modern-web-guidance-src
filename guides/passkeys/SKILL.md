@@ -32,8 +32,10 @@ For backend FIDO2/WebAuthn options generation and signature verification, develo
 
 ## 4. Use Case Reference Matrix
 
-Specific passkey and WebAuthn implementation details are mapped to the following guides under `guides/passkeys/`:
-*   **[Passkey Registration](./passkey-registration/guide.md)**: Offering new passkey registration and promotions.
-*   **[Passkey Authentication](./passkey-authentication/guide.md)**: Discoverable-autofill and button sign-ins.
-*   **[Passkey Management](./passkey-management/guide.md)**: Syncing lists, renames, and deletions with password managers.
-*   **[Passkey Reauthentication](./passkey-reauthentication/guide.md)**: Re-verifying returning signed-in users for sensitive steps.
+Identify the matching use case below and retrieve its full implementation guide. Every use case has critical APIs (`PublicKeyCredential.parseCreationOptionsFromJSON`, `parseRequestOptionsFromJSON`, `signalAllAcceptedCredentials`, `signalCurrentUserDetails`, `signalUnknownCredential`, conditional mediation, AAGUID handling, etc.) that are documented only in the per-use-case guide. Do NOT skip this retrieval step, and do NOT substitute third-party library wrappers (such as SimpleWebAuthn's `startAuthentication`/`startRegistration`) on the client — call the native WebAuthn browser APIs directly. Library recommendations in Section 3 apply to the **server-side** (backend FIDO2 verification) only.
+
+Specific passkey and WebAuthn implementation details are mapped to the following guides:
+*   **Passkey Registration**: {{ GUIDE_REF("passkey-registration") }} — Offering new passkey registration and promotions.
+*   **Passkey Authentication**: {{ GUIDE_REF("passkey-authentication") }} — Discoverable-autofill and button sign-ins.
+*   **Passkey Management**: {{ GUIDE_REF("passkey-management") }} — Syncing lists, renames, and deletions with password managers.
+*   **Passkey Reauthentication**: {{ GUIDE_REF("passkey-reauthentication") }} — Re-verifying returning signed-in users for sensitive steps.

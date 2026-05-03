@@ -1,7 +1,5 @@
 ---
 base_app: daily-grind
 ---
-- implement step-up biometric identity verification in the root `index.html` file. when a signed-in user clicks a "step up biometrics re-verify" button annotated with `data-testid="reauth-button"`, request cryptographic options from the server using a POST request to `/api/reauth/options`.
-- ensure the server scopes options strictly to the user's pre-registered credentials, and the client decodes options before prompting the browser prompt biometrics.
-- verify the biometric assertion signature using a POST request to `/api/reauth/verify` to securely re-establish the verified account session.
+- implement step-up biometric identity verification in `index.html`. When a signed-in user clicks the re-verify button annotated with `data-testid="reauth-button"`, fetch options from `/api/reauth/options` via POST, decode them with `PublicKeyCredential.parseRequestOptionsFromJSON()`, and prompt the browser via the native `navigator.credentials.get()` WebAuthn API directly (do NOT wrap with third-party libraries). The server-supplied options scope `allowCredentials` strictly to the active user's pre-registered passkeys and set `userVerification: "required"` — pass them through verbatim. POST the resulting assertion to `/api/reauth/verify` to securely re-establish the verified session.
 
