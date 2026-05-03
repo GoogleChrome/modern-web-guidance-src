@@ -1,134 +1,225 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scroll Snap State Sync Demo</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        background: #f5f5f5;
+      }
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scroll Snap State Sync Demo</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      background: #f5f5f5;
-    }
+      h1 {
+        font-size: 1.2rem;
+        margin-bottom: 16px;
+      }
 
-    h1 {
-      font-size: 1.2rem;
-      margin-bottom: 16px;
-    }
+      .carousel {
+        display: flex;
+        gap: 16px;
+        width: 100%;
+        max-width: 400px;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
 
-    .carousel {
-      display: flex;
-      gap: 16px;
-      width: 100%;
-      max-width: 400px;
-      overflow-x: auto;
-      scroll-snap-type: x mandatory;
-      border-radius: 12px;
-      background: #fff;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
+      .slide {
+        flex: 0 0 100%;
+        height: 250px;
+        scroll-snap-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #fff;
+      }
 
-    .slide {
-      flex: 0 0 100%;
-      height: 250px;
-      scroll-snap-align: center;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: #fff;
-    }
+      .slide:nth-child(1) {
+        background: #e74c3c;
+      }
+      .slide:nth-child(2) {
+        background: #074f7f;
+      }
+      .slide:nth-child(3) {
+        background: #089041;
+      }
+      .slide:nth-child(4) {
+        background: #c87b01;
+      }
 
-    .slide:nth-child(1) { background: #e74c3c; }
-    .slide:nth-child(2) { background: #3498db; }
-    .slide:nth-child(3) { background: #2ecc71; }
-    .slide:nth-child(4) { background: #f39c12; }
+      .dots {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+      }
 
-    .dots {
-      display: flex;
-      gap: 8px;
-      margin-top: 16px;
-    }
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #ccc;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
 
-    .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #ccc;
-      border: none;
-      padding: 0;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
+      .dot:not([aria-selected="false"]) {
+        background: #333;
+      }
+      .dot.scroll-active:not([aria-selected="true"]) {
+        background: #666;
+      }
 
-    .dot.active {
-      background: #333;
-    }
+      .caption {
+        margin-top: 12px;
+        min-height: 1.4em;
+      }
+    </style>
+  </head>
 
-    .caption {
-      margin-top: 12px;
-      font-size: 0.95rem;
-      color: #555;
-      min-height: 1.4em;
-    }
-  </style>
-</head>
+  <body>
+    <h1>Image Carousel with Synced Navigation</h1>
 
-<body>
-  <h1>Image Carousel with Synced Navigation</h1>
+    <section aria-roledescription="carousel" aria-label="Example slideshow">
+      <div aria-live="polite" class="carousel" id="carousel" role="tablist">
+        <div
+          class="slide"
+          role="tabpanel"
+          aria-roledescription="slide"
+          aria-label="1 of 4"
+          data-index="1"
+        >
+          <div class="caption">Sunset over the mountains</div>
+        </div>
+        <div
+          class="slide"
+          role="tabpanel"
+          aria-roledescription="slide"
+          aria-label="2 of 4"
+          data-index="2"
+        >
+          <div class="caption">Ocean waves at dawn</div>
+        </div>
+        <div
+          class="slide"
+          role="tabpanel"
+          aria-roledescription="slide"
+          aria-label="3 of 4"
+          data-index="3"
+        >
+          <div class="caption">Forest trail in autumn</div>
+        </div>
+        <div
+          class="slide"
+          role="tabpanel"
+          aria-roledescription="slide"
+          aria-label="4 of 4"
+          data-index="4"
+        >
+          <div class="caption">City skyline at night</div>
+        </div>
+      </div>
+    </section>
+    <div class="dots" id="dots" role="tablist" aria-label="Slides">
+      <button
+        type="button"
+        role="tab"
+        class="dot active"
+        aria-selected
+        aria-label="Slide 1"
+      ></button>
+      <button
+        type="button"
+        role="tab"
+        class="dot"
+        aria-selected="false"
+        aria-label="Slide 2"
+      ></button>
+      <button
+        type="button"
+        role="tab"
+        class="dot"
+        aria-selected="false"
+        aria-label="Slide 3"
+      ></button>
+      <button
+        type="button"
+        role="tab"
+        class="dot"
+        aria-selected="false"
+        aria-label="Slide 4"
+      ></button>
+    </div>
 
-  <div class="carousel" id="carousel">
-    <div class="slide" data-caption="Sunset over the mountains">Slide 1</div>
-    <div class="slide" data-caption="Ocean waves at dawn">Slide 2</div>
-    <div class="slide" data-caption="Forest trail in autumn">Slide 3</div>
-    <div class="slide" data-caption="City skyline at night">Slide 4</div>
-  </div>
+    <script>
+      const carousel = document.getElementById("carousel");
+      const dots = document.querySelectorAll(".dot");
+      const slides = document.querySelectorAll(".slide");
 
-  <div class="dots" id="dots">
-    <button class="dot active" aria-label="Go to slide 1"></button>
-    <button class="dot" aria-label="Go to slide 2"></button>
-    <button class="dot" aria-label="Go to slide 3"></button>
-    <button class="dot" aria-label="Go to slide 4"></button>
-  </div>
+      const setActiveSlide = (element) => {
+        const index = parseInt(element.dataset.index);
+        // Update pagination dots.
+        dots.forEach((dot, dotIndex) =>
+          dot.setAttribute("aria-selected", index === dotIndex + 1),
+        );
 
-  <div class="caption" id="caption">Sunset over the mountains</div>
+        // Track which slide the user viewed (analytics).
+        console.log("Slide viewed:", index);
+      };
 
-  <script>
-    const carousel = document.getElementById('carousel');
-    const dots = document.querySelectorAll('.dot');
-    const caption = document.getElementById('caption');
-    const slides = document.querySelectorAll('.slide');
+      // Sync dots and caption when the snap target changes after scrolling completes.
+      carousel.addEventListener("scrollsnapchange", (event) => {
+        const snappedSlide = event.snapTargetInline;
 
-    // Sync dots and caption when the snap target changes after scrolling completes.
-    carousel.addEventListener('scrollsnapchange', (event) => {
-      const snappedSlide = event.snapTargetInline;
-
-      // Update pagination dots.
-      dots.forEach((dot) => dot.classList.remove('active'));
-      const index = [...slides].indexOf(snappedSlide);
-      dots[index].classList.add('active');
-
-      // Update the linked caption panel.
-      caption.textContent = snappedSlide.dataset.caption;
-
-      // Track which slide the user viewed (analytics).
-      console.log('Slide viewed:', index + 1, snappedSlide.dataset.caption);
-    });
-
-    // Allow clicking dots to scroll to a slide.
-    dots.forEach((dot, i) => {
-      dot.addEventListener('click', () => {
-        slides[i].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        setActiveSlide(snappedSlide);
       });
-    });
-  </script>
-</body>
 
+      carousel.addEventListener("scrollsnapchanging", (event) => {
+        const pendingElement = event.snapTargetInline;
+
+        const index = [...slides].indexOf(pendingElement);
+
+        dots.forEach((dot, dotIndex) =>
+          dot.classList.toggle("scroll-active", index === dotIndex),
+        );
+      });
+
+      // Feature detect support for scrollsnapchange
+      if (!("onscrollsnapchange" in HTMLElement.prototype)) {
+        //Fallback with IntersectionObserver
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) setActiveSlide(entry.target);
+            });
+          },
+          { root: carousel, threshold: 0.9 },
+        );
+        slides.forEach((slide) => observer.observe(slide));
+      }
+
+      // Allow clicking dots to scroll to a slide.
+      dots.forEach((dot, i) => {
+        dot.addEventListener("click", () => {
+          slides[i].scrollIntoView({
+            behavior: "smooth",
+            inline: "center",
+            block: "nearest",
+          });
+        });
+      });
+    </script>
+  </body>
 </html>

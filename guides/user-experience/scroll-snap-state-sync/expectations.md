@@ -1,0 +1,8 @@
+- The carousel container has `scroll-snap-type: x mandatory` or `scroll-snap-type: both mandatory` applied.
+- Each slide within the carousel has `scroll-snap-align: center` applied.
+- When the user scrolls to a slide, the corresponding navigation dot has `aria-selected="true"`.
+- When the user scrolls to a slide, only one navigation dot has `aria-selected="true"`.
+- Clicking a navigation dot causes the carousel to scroll to the corresponding slide.
+- The implementation uses the `scrollsnapchange` event listener on the carousel container to synchronize state when scroll settles.
+- The implementation uses the `scrollsnapchanging` event listener on the carousel container to optimisticallysynchronize state as scroll happens.
+- The implementation includes a fallback (such as `IntersectionObserver`) for browsers that do not support the `scrollsnapchange` event.
