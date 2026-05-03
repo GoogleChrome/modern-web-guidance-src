@@ -19,7 +19,7 @@ This guide details how to enable users to view, rename, and delete their registe
 
 Your backend database layer and endpoints MUST support common CRUD actions for registered credentials. Decoupled from framework-specific libraries, the server exposes endpoints to:
 
-1.  **List all user credentials**: Fetch all `SesamePublicKeyCredential` records matching the signed-in user's ID.
+1.  **List all user credentials**: Fetch all `StoredPasskeyCredential` records matching the signed-in user's ID.
 2.  **Update credential names**: Accept a new custom string name for a specific credential ID and persist the update.
 3.  **Delete credentials**: Remove a specific credential ID from the database.
 

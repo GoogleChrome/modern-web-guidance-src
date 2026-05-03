@@ -54,7 +54,7 @@ router.post('/api/reauth/options', enforceActiveSession, async (req, res) => {
 Verify the returned re-authentication assertion returned by the client:
 
 1.  **Verify Account Ownership**:
-    *   `MANDATORY:` The verification endpoint MUST explicitly verify that the resulting authenticated credential ID returned by the client matches one of the pre-registered credential records belonging to the active signed-in user (`SesamePublicKeyCredential.passkeyUserId === req.user.id`). If a valid passkey of a *different* user is returned, authentication MUST be rejected immediately.
+    *   `MANDATORY:` The verification endpoint MUST explicitly verify that the resulting authenticated credential ID returned by the client resolves to a stored credential record whose associated user ID strictly matches the active signed-in user (`storedCredential.passkeyUserId === req.user.id`). If a valid passkey of a *different* user is returned, authentication MUST be rejected immediately.
 
 ## Client-Side Flow Deltas
 

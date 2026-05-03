@@ -20,7 +20,7 @@ This guide details how to enable users to register a passkey for their account, 
 To support passkey registrations, your database credential table must store the following fields:
 
 ```typescript
-export interface SesamePublicKeyCredential {
+export interface StoredPasskeyCredential {
   id: string; // Base64URL-encoded credential ID (unique lookup key)
   passkeyUserId: string; // Associated application user ID
   credentialPublicKey: string; // Base64URL-encoded public key used to verify assertion signatures
