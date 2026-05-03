@@ -247,6 +247,38 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     expect(hasScrollSnap).toBe(true);
   });
 
+  test('The drawer\'s horizontal scroll container uses scroll-behavior: smooth only when the user has not requested reduced motion (e.g., via @media (prefers-reduced-motion: no-preference))', async ({ page }) => {
+    const { drawer } = await getElements(page);
+    
+    // First, check that with no preference, it's smooth
+    await page.emulateMedia({ reducedMotion: null });
+    const isSmoothNoPreference = await drawer.evaluate((el) => {
+      const els = [el, ...Array.from(el.querySelectorAll('*'))];
+      for (const e of els) {
+        const style = window.getComputedStyle(e);
+        if (style.scrollBehavior === 'smooth') {
+          return true;
+        }
+      }
+      return false;
+    });
+    expect(isSmoothNoPreference).toBe(true);
+
+    // Second, check that with reduce, it's not smooth
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const isSmoothReduce = await drawer.evaluate((el) => {
+      const els = [el, ...Array.from(el.querySelectorAll('*'))];
+      for (const e of els) {
+        const style = window.getComputedStyle(e);
+        if (style.scrollBehavior === 'smooth') {
+          return true;
+        }
+      }
+      return false;
+    });
+    expect(isSmoothReduce).toBe(false);
+  });
+
   test('Horizontally scrolling the drawer\'s scroll container all the way to its end position closes the drawer', async ({ page }) => {
     const { trigger, drawer } = await getElements(page);
     await clickTrigger(trigger);

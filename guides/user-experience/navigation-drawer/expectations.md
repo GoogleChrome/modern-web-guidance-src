@@ -14,5 +14,6 @@
 - Keyboard focus is moved inside the drawer after it opens.
 - After the drawer is closed, the menu trigger button's `aria-expanded` attribute returns to `false`.
 - The drawer's horizontal scroll container uses CSS scroll snap with `scroll-snap-type: x mandatory`.
+- The drawer's horizontal scroll container uses `scroll-behavior: smooth` only when the user has not requested reduced motion (e.g., via `@media (prefers-reduced-motion: no-preference)`).
 - Horizontally scrolling the drawer's scroll container all the way to its end position closes the drawer.
 - The drawer's backdrop opacity decreases as the drawer's scroll container is scrolled toward the closed position.
