@@ -23,10 +23,10 @@ Must use this skill:
 
 ### Step 1. Search Use Cases
 
-Search with an action-oriented query summarizing what you want to achieve using the `--search` flag. Run `modern-web.mjs` directly with `node`.
+Search with an action-oriented query summarizing what you want to achieve using the `search` command. Run `modern-web.mjs` directly with `node`.
 
 ```sh
-node <modern-web-directory>/modern-web.mjs --search "<query>"
+node <modern-web-directory>/modern-web.mjs search "<query>"
 ```
 
 **Example Output**:
@@ -45,10 +45,10 @@ node <modern-web-directory>/modern-web.mjs --search "<query>"
 
 ### Step 2. Retrieve Best Practices
 
-Once you have a relevant `id` from the search results, call this script using the `--retrieve` flag to get the full guide. You can pass multiple IDs separated by commas.
+Once you have a relevant `id` from the search results, call this script using the `retrieve` command to get the full guide. You can pass multiple IDs separated by commas.
 
 ```sh
-node <modern-web-directory>/modern-web.mjs --retrieve "<id>"
+node <modern-web-directory>/modern-web.mjs retrieve "<id>"
 ```
 
 

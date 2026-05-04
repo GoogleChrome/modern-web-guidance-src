@@ -131,11 +131,11 @@ test('modern-web CLI search and retrieve', async () => {
   const binaryPath = path.join(DIST_DIR, 'skills/modern-web/modern-web.mjs');
   
   // 1. Validate search
-  const searchOut = execSync(`node "${binaryPath}" --search "address form"`, { encoding: 'utf8' });
+  const searchOut = execSync(`node "${binaryPath}" search "address form"`, { encoding: 'utf8' });
   assertSearchResults(searchOut);
 
   // 2. Validate retrieve
-  const retrieveOut = execSync(`node "${binaryPath}" --retrieve accessible-error-announcement`, { encoding: 'utf8' });
+  const retrieveOut = execSync(`node "${binaryPath}" retrieve accessible-error-announcement`, { encoding: 'utf8' });
   assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
 });
 
