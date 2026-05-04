@@ -19,10 +19,12 @@
     "**/node_modules",
     "**/dist",
     "**/build",
+    "**/grade-report",
     "**/test-app-results/**",
     "harness/results/",
     "**/eval-view",
     "**/eval-view/**/*",
-    "harness/base_apps/devtools-times/"
+    "harness/base_apps/devtools-times/",
+    "**/grade-report/**"
   ]
 }

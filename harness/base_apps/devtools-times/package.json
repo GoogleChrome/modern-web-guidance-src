@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@astrojs/db": "^0.18.2",
-    "@astrojs/node": "^9.5.0",
+    "@astrojs/node": "^10.0.5",
     "@astrojs/react": "^4.4.1",
     "@heroicons/react": "^2.2.0",
     "@lexical/react": "^0.35.0",

@@ -74,10 +74,10 @@ export function getDetailedBaselineStatus(featureId: string): DetailedBaselineSt
  * Maps baseline internal values to human-readable terms.
  */
 export function mapBaseline(baseline: string | boolean | undefined): string {
-  if (baseline === 'low') return 'Newly';
-  if (baseline === 'high') return 'Widely';
-  if (baseline === false) return 'Limited';
-  return 'unknown';
+  if (baseline === "low") return "Newly available";
+  if (baseline === "high") return "Widely available";
+  if (baseline === false) return "Limited availability";
+  return "unknown";
 }
 
 /**
@@ -224,11 +224,11 @@ export function validateFeature(id: string): FeatureValidationResult {
 function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string; shortLabel?: string; releaseDate?: string }): string {
   const { baseline, releaseDate, shortLabel } = status;
 
-  if (baseline !== false && releaseDate && releaseDate !== '-') {
-    return `${featureName} is ${shortLabel}. It's been Baseline since ${releaseDate}.`;
+  if (baseline !== false && releaseDate && releaseDate !== "-") {
+    return `Baseline status for ${featureName}: ${shortLabel}. It's been Baseline since ${releaseDate}.`;
   }
 
-  return `${featureName} is Limited.`;
+  return `${featureName} has limited availability.`;
 }
 
 /**
@@ -245,7 +245,7 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
       shortLabel: mapBaseline(status.baseline),
       releaseDate: status.baseline_low_date || '-'
     };
-    return formatStatusMessage(`The ${bcdKey} capability`, mapped);
+    return formatStatusMessage(`the ${bcdKey} capability`, mapped);
   }
 
   const feature = features[featureId] as Feature | undefined;

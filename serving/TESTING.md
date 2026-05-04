@@ -28,6 +28,7 @@ gemini extensions uninstall https://github.com/GoogleChrome/modern-web-guidance
 
 # Universal Skills CLI
 DISABLE_TELEMETRY=1 npx -y skills remove --global modern-web-use-cases
+DISABLE_TELEMETRY=1 npx -y skills remove --global modern-web
 ```
 
 ### 2. Verification Install Sequence
@@ -53,23 +54,3 @@ claude --plugin-dir ~/code/guidance/dist/skills-cli --dangerously-skip-permissio
 ```
 
 
-
-## Appendix: Uninstalling skilla-alpha versions.
-
-We migrated names, so please drop the old ones.
-
-If you have the old `skills-alpha`, use these commands to clean them up:
-
-```sh
-npm uninstall --global modern-web
-
-claude # and then
-# /plugin uninstall googlechrome-skills@skills-alpha
-# /plugin marketplace remove skills-alpha
-
-# Gemini CLI
-gemini extensions uninstall https://github.com/GoogleChrome/skills-alpha
-
-# Universal Skills CLI
-DISABLE_TELEMETRY=1 npx -y skills remove --global modern-web-use-cases
-```

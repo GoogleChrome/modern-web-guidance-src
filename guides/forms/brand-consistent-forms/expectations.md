@@ -1,0 +1,8 @@
+- The implementation MUST use the `accent-color` CSS property to apply a custom color to form controls.
+- The implementation MUST target at least one of the following elements with `accent-color`: `<input type="checkbox">`, `<input type="radio">`, `<input type="range">`, or `<progress>`.
+- The implementation MUST use `color-scheme: light dark` (in CSS or meta tag) to enable appropriate default styling for forms in dark mode.
+- The implementation MUST update the `accent-color` value for dark mode using a `prefers-color-scheme` media query if brand colors need adjustment for contrast.
+- The implementation MUST provide a fallback for browsers that do not support `accent-color` using the `@supports not` rule.
+- The fallback implementation MUST style checkboxes and radio buttons to match the brand color using the "visually hidden input" technique.
+- The fallback implementation for range sliders MUST use vendor prefixes to style the thumb and track, and MUST simulate progress.
+- The fallback implementation for progress bars MUST use vendor prefixes to style the progress value.
