@@ -3,6 +3,18 @@ name: html
 description: Action-oriented guidelines for modern HTML architecture, semantics, native interactive APIs (Dialog, Popover, Details), focus management, and resource prioritization. Use this skill when structuring web documents, implementing native overlays, or optimizing resource loading order.
 ---
 
+## Table of Contents
+
+1. Fundamental Semantics and Validation
+2. Content Grouping and Attribution
+3. Resource Prioritization and Performance
+4. Native Overlays: Dialogs and Popovers
+5. Disclosures: Details and Summary
+6. Focus Boundaries and Visibility
+7. HTML APIs and Forms Grouping
+8. Native Media Elements
+9. Dynamic Styles and Interactivity
+
 ## 1. Fundamental Semantics and Validation
 
 ### Guidelines
@@ -25,7 +37,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DON'T** use inline styles; they violate CSP and bloat page weight.
 - **DON'T** use generic elements with added ARIA roles or states when native elements with built-in semantics and behavior exist.
 - **DON'T** change the native semantics of elements with ARIA unless it is a critical requirement. 
-- **DON'T** use `role="presentation"` or `aria-hidden="true` on focusable elements or their parents and ancestors. 
+- **DON'T** use `role="presentation"` or `aria-hidden="true"` on focusable elements or their parents and ancestors. 
 - **DON'T** disable page zooming capabilities.
 
 ### Code Example
@@ -252,6 +264,8 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 ## 6. Focus Boundaries and Visibility
 
+### Guidelines
+
 - **DO** use the global `inert` attribute for entire hidden sections (off-screen menus, background while custom modal is open) to remove them from tab flows and accessibility trees.
 - **DO** pair `[inert]` with CSS (`pointer-events: none; opacity: 0.5`) to visually signify inactivity.
 - **DO** rely on natural DOM order for sequential navigation. 
@@ -282,8 +296,6 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 ```
 
 ## 7. HTML APIs and Forms Grouping
-
-
 
 ### Guidelines
 
@@ -355,12 +367,9 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
   <label for="upload-progress">Upload status:</label>
   <progress id="upload-progress" class="loading-bar" value="0" max="100" style="--brand-hue: 200;"></progress>
 
-
   <script>
     const updateProgress = (percent, hue) => {
       const bar = document.querySelector('.loading-bar');
-      
-
       bar.value = percent;
       
       // Update dynamic style variable 
