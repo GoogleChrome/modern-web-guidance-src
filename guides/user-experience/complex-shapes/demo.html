@@ -36,34 +36,30 @@
       box-sizing: border-box;
     }
 
-    /* Fallback for browsers that support clip-path but not mask-image */
-    @supports (not (mask-image: url(x))) and (clip-path: inset(0)) {
+    /* Fallback for browsers that do not support masking */
+    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
       .shaped-element {
         /* Use a simple rounded rectangle as fallback */
         clip-path: inset(5% round 15px);
       }
     }
 
-    /* Hide the SVG from view */
-    svg {
-      position: absolute;
-      width: 0;
-      height: 0;
-    }
   </style>
 </head>
 
 <body>
-  <!-- SVG Mask Definition -->
-  <svg>
+  <!-- SVG Mask Definition (hidden from view) -->
+  <svg width="0" height="0" style="position: absolute;">
     <defs>
       <!-- Use objectBoundingBox to make it scale -->
       <mask id="star-mask" maskContentUnits="objectBoundingBox">
-        <!-- White reveals, black hides -->
+        <!-- White reveals, black hides, gray creates semi-transparency -->
         <!-- A simple star shape path in normalized coordinates (0 to 1) -->
         <path
           d="M 0.5,0 L 0.625,0.375 L 1,0.375 L 0.7,0.625 L 0.8125,1 L 0.5,0.75 L 0.1875,1 L 0.3,0.625 L 0,0.375 L 0.375,0.375 Z"
           fill="white" />
+        <!-- A gray circle in the center to demonstrate semi-transparency -->
+        <circle cx="0.5" cy="0.5" r="0.2" fill="gray" />
       </mask>
     </defs>
   </svg>

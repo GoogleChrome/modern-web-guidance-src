@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <title>Soft Edge Content Fade Demo</title>
+  <title>Soft Edge Content Fade - Paywall Demo</title>
   <style>
     body {
       font-family: sans-serif;
@@ -13,53 +14,93 @@
       margin: 0;
       background-color: #f0f0f0;
     }
-    
-    .scroll-container {
-      width: 300px;
-      height: 200px;
+
+    .paywall-card {
+      position: relative;
+      width: 350px;
       background-color: white;
-      padding: 20px;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      
-      /* Apply the fade mask at the bottom */
-      -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
-      mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      border: 1px solid #eaeaea;
+      overflow: hidden;
+    }
+
+    .paywall-container {
+      max-height: 150px;
+      overflow: hidden;
+
+      /* Apply the fade mask at the bottom to obscure text */
+      -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+      mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
     }
 
     /* Fallback using an overlay for browsers that do not support masking */
-    @supports not (mask-image: linear-gradient(to bottom, black, transparent)) {
-      .scroll-container {
+    @supports (not (mask-image: linear-gradient(to bottom, black, transparent))) and (not (-webkit-mask-image: linear-gradient(to bottom, black, transparent))) {
+      .paywall-container {
         position: relative;
       }
-      
-      .scroll-container::after {
+
+      .paywall-container::after {
         content: '';
         position: absolute;
         bottom: 0;
         left: 0;
         right: 0;
-        height: 20%;
+        height: 50%;
         /* Fallback assumes a solid background color (e.g., white) */
-        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));
-        pointer-events: none; /* Allow interaction with text underneath */
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 1));
+        pointer-events: none;
       }
     }
-    
+
     .content {
       line-height: 1.6;
+      color: #333;
+      margin: 0;
+    }
+
+    .cta-section {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .cta-button {
+      background-color: #0070f3;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .cta-button:hover {
+      background-color: #0051a2;
     }
   </style>
 </head>
+
 <body>
 
-  <div class="scroll-container">
-    <div class="content">
-      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-      <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
-      <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
+  <div class="paywall-card">
+    <div class="paywall-container">
+      <div class="content">
+        <p>This is premium member-only content. In a real application, this text would continue detailing highly
+          valuable
+          insights and expert analysis that are reserved exclusively for our subscribed readers.</p>
+        <p>Obscuring text using a transparency gradient is an elegant way to tease premium content without fully
+          exposing it,
+          encouraging reader sign-ups.</p>
+      </div>
+    </div>
+    <div class="cta-section">
+      <button class="cta-button">Subscribe to Read Full Story</button>
     </div>
   </div>
 
 </body>
+
 </html>

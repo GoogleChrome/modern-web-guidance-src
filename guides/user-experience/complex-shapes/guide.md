@@ -23,33 +23,36 @@ To clip elements to complex, free-form shapes like brush strokes or organic text
 ## Implementation
 To implement complex shapes using CSS masks:
 
-### Using a raster image or SVG file
+### Using transparency from an image
 You can use the transparency of an image as a mask, with opaque parts visible and transparent parts hidden. This can be a PNG, SVG, or other image with transparency, or a generated image, like a CSS gradient.
 
 ```css
 .shaped-element {
   /* MANDATORY: Use vendor prefix for wider support in older browsers */
-  -webkit-mask-image: url('mask.png');
+  -webkit-mask-image: url('mask.svg');
   -webkit-mask-size: cover; /* Scale mask to cover element */
   -webkit-mask-repeat: no-repeat; /* Do not tile the mask */
 
   /* Standard property for modern browsers */
-  mask-image: url('mask.png');
+  mask-image: url('mask.svg');
   mask-size: cover;
   mask-repeat: no-repeat;
 }
 ```
 
 ### Using an SVG element in HTML
-You can also reference a `<mask>` element defined in an inline SVG in your page's HTML.
+You can also reference a `<mask>` element defined in an inline SVG in your page's HTML. Use `maskContentUnits="objectBoundingBox"` to make the mask scale automatically with the size of the element. This tells the browser to interpret all coordinates inside the mask as fractions from `0` to `1` (like `0.5` for 50%) instead of absolute pixels.
 
 ```html
-<!-- White areas reveal content, black or transparent areas hide it -->
+<!-- White areas reveal content, gray creates semi-transparency, black or transparent hides it -->
 <svg width="0" height="0">
   <defs>
-    <mask id="custom-shape">
-      <!-- Use white shapes to define the mask -->
-      <circle cx="50" cy="50" r="50" fill="white" />
+    <!-- objectBoundingBox scales mask coordinates (0 to 1) with the element's size -->
+    <mask id="custom-shape" maskContentUnits="objectBoundingBox">
+      <!-- Use white shapes to define fully opaque areas -->
+      <circle cx="0.5" cy="0.5" r="0.5" fill="white" />
+      <!-- Use gray shapes to define semi-transparent/faded areas -->
+      <circle cx="0.5" cy="0.5" r="0.25" fill="gray" />
     </mask>
   </defs>
 </svg>
@@ -76,8 +79,8 @@ If a browser does not support `mask-image` or the prefixed version:
 - Optionally, use feature detection to provide a simpler fallback shape with `clip-path`.
 
 ```css
-/* Fallback for browsers that support clip-path but not mask-image */
-@supports not (mask-image: url(x)) and (clip-path: inset(0)) {
+/* Fallback for browsers that do not support masking */
+@supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
   .shaped-element {
     /* Use a simple rounded rectangle as fallback */
     clip-path: inset(5% round 15px);

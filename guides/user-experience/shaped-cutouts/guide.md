@@ -1,5 +1,5 @@
 ---
-name: stencil-cutouts
+name: shaped-cutouts
 description: Combine multiple shapes to create complex cutouts or 'knockout' effects in elements, such as adding a notch to an element.
 web-feature-ids:
   - masks
@@ -13,17 +13,21 @@ sources:
 ---
 
 ## Overview
-To create complex cutouts or "knockout" effects (like adding a notch to a card or creating a stencil effect with a hole), use CSS Masking. For complex cutouts, use an SVG mask, where you can create a mask by combining shapes using standard SVG elements. For simpler cutouts, like a circular hole or a simple notch, you can use a CSS gradient that includes transparent areas.
+To create complex cutouts or "knockout" effects (like adding a notch to a card or creating a shaped border), use CSS Masking. For complex cutouts, use an SVG mask, where you can create a mask by combining shapes using standard SVG elements. For simpler cutouts, like a circular hole or a simple notch, you can use a CSS gradient that includes transparent areas.
 
 ## Implementation
-To implement stencil cutouts:
+To implement shaped cutouts:
 
 ### Using an SVG Mask (Recommended for complex cutouts)
 SVG masks allow you to define shapes that subtract from or add to the visible area using white (reveal) and black (hide) fills.
 
+> **Important**: Always apply the mask to a background layer (like a `::before` pseudo-element) rather than the parent element containing text. This ensures that if the mask fails to load or is unsupported, your text content is never clipped, lost, or rendered unreadable.
+
+Using **absolute positioning** with a negative `z-index` allows you to stack the text content on top of the background pseudo-element cleanly:
+
 ```html
-<!-- Define the mask in SVG -->
-<svg width="0" height="0">
+<!-- Define the mask in SVG (hidden from view) -->
+<svg width="0" height="0" style="position: absolute;">
   <defs>
     <!-- Use objectBoundingBox to make the mask scale with the element -->
     <mask id="notch-stencil" maskContentUnits="objectBoundingBox">
@@ -36,11 +40,29 @@ SVG masks allow you to define shapes that subtract from or add to the visible ar
 </svg>
 
 <div class="notched-card">
-  <!-- Content -->
+  <h2>Card Title</h2>
+  <p>Card content here.</p>
 </div>
 
 <style>
 .notched-card {
+  position: relative;
+  color: white;
+  padding: 20px;
+  z-index: 1;
+}
+
+/* The mask is applied to an absolute positioned pseudo-element stacked behind content */
+.notched-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #3498db;
+  z-index: -1;
+
   /* Reference the SVG mask */
   -webkit-mask-image: url(#notch-stencil);
   mask-image: url(#notch-stencil);
@@ -63,13 +85,6 @@ You can create simple cutouts using a gradient that goes from transparent to opa
 {{ BASELINE_STATUS("masks") }}
 
 If a browser does not support `mask-image` or the prefixed version:
-- The element will not have the cutout and will display as a solid shape.
-- Ensure the content is still readable and the layout does not break without the cutout (progressive enhancement).
-- For critical UI shapes, consider using an inline SVG instead of CSS masking to ensure the shape is rendered correctly in all browsers.
-
-```css
-/* Fallback: Ensure content is visible even if mask fails */
-.notched-card {
-  background-color: #f0f0f0; /* Fallback background */
-}
-```
+- The background pseudo-element will display as a normal solid rectangle without the cutout.
+- By applying the mask to a `::before` pseudo-element instead of the text container, the text remains fully readable and styled, avoiding any contrast issues.
+- The layout degrades gracefully to a standard card design without breaking.

@@ -23,7 +23,7 @@ To implement a soft edge fade:
 This is useful for indicating that there is more content below in a scrollable area.
 
 ```css
-.scroll-container {
+.container {
   /* Enable scrolling */
   overflow-y: auto;
   
@@ -56,12 +56,12 @@ If a browser does not support `mask-image` or the prefixed version:
 
 ```css
 /* Fallback using an overlay for browsers that do not support masking */
-@supports not (mask-image: linear-gradient(to bottom, black, transparent)) {
-  .scroll-container {
+@supports (not (mask-image: linear-gradient(to bottom, black, transparent))) and (not (-webkit-mask-image: linear-gradient(to bottom, black, transparent))) {
+  .container {
     position: relative;
   }
   
-  .scroll-container::after {
+  .container::after {
     content: '';
     position: absolute;
     bottom: 0;

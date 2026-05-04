@@ -41,20 +41,18 @@ You can generate patterns using CSS gradients. This is self-contained and does n
 
 ```css
 .patterned-element {
-  /* Apply a checkerboard pattern as a mask */
-  -webkit-mask-image: 
+  --checkerboard-gradient: 
     linear-gradient(45deg, #000 25%, transparent 25%), 
     linear-gradient(-45deg, #000 25%, transparent 25%), 
     linear-gradient(45deg, transparent 75%, #000 75%), 
     linear-gradient(-45deg, transparent 75%, #000 75%);
+
+  /* Apply a checkerboard pattern as a mask */
+  -webkit-mask-image: var(--checkerboard-gradient);
   -webkit-mask-size: 20px 20px;
   -webkit-mask-position: 0 0, 0 10px, 10px -10px, -10px 0px;
   
-  mask-image: 
-    linear-gradient(45deg, #000 25%, transparent 25%), 
-    linear-gradient(-45deg, #000 25%, transparent 25%), 
-    linear-gradient(45deg, transparent 75%, #000 75%), 
-    linear-gradient(-45deg, transparent 75%, #000 75%);
+  mask-image: var(--checkerboard-gradient);
   mask-size: 20px 20px;
   mask-position: 0 0, 0 10px, 10px -10px, -10px 0px;
 }
@@ -70,10 +68,10 @@ If a browser does not support `mask-image` or the prefixed version:
 
 ```css
 /* Fallback: Use a background image for browsers without mask support */
-@supports not (mask-image: url(x)) {
+@supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
   .weathered-element {
     /* Fallback adds texture on top or behind, depending on implementation */
-    background-image: url('grunge-pattern.png');
+    background-image: url('grunge-pattern.svg');
     background-color: #fff; /* Ensure background is solid if needed */
   }
 }

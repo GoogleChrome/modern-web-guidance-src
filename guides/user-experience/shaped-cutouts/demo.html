@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Stencil Cutouts Demo</title>
+  <title>Shaped Cutouts Demo</title>
   <style>
     body {
       font-family: sans-serif;
@@ -11,42 +11,44 @@
       align-items: center;
       height: 100vh;
       margin: 0;
-      background-color: #f0f0f0;
+      /* Grid background to demonstrate the transparent cutout */
+      background-color: #e5e9f0;
+      background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+      background-size: 20px 20px;
     }
     
     .notched-card {
+      position: relative;
       width: 300px;
       height: 200px;
-      background-color: #3498db;
       color: white;
       padding: 20px;
       box-sizing: border-box;
-      
-      /* Apply the mask */
-      -webkit-mask-image: url(#notch-stencil);
-      mask-image: url(#notch-stencil);
+      z-index: 1;
     }
 
-    /* Fallback: Ensure content is visible even if mask fails */
-    @supports not (mask-image: url(#notch-stencil)) {
-      .notched-card {
-        background-color: #f0f0f0;
-        color: #333; /* Added to ensure contrast */
-      }
-    }
-    
-    /* Hide the SVG from view */
-    svg {
+    /* Apply the mask to a pseudo-element to protect text legibility and progressive enhancement */
+    .notched-card::before {
+      content: '';
       position: absolute;
-      width: 0;
-      height: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #3498db;
+      border-radius: 8px;
+      z-index: -1;
+      
+      /* Apply the mask to the background shape only */
+      -webkit-mask-image: url(#notch-stencil);
+      mask-image: url(#notch-stencil);
     }
   </style>
 </head>
 <body>
 
   <!-- SVG Mask Definition -->
-  <svg>
+  <svg width="0" height="0" style="position: absolute;">
     <defs>
       <!-- Use objectBoundingBox to make the mask scale with the element -->
       <mask id="notch-stencil" maskContentUnits="objectBoundingBox">
@@ -60,7 +62,8 @@
 
   <div class="notched-card">
     <h2>Card Title</h2>
-    <p>This card has a circular notch cut out at the top center using an SVG mask.</p>
+    <p>This card has a circular notch cut out at the top center using an SVG mask applied to a background pseudo-element
+      stacked using z-index.</p>
   </div>
 
 </body>
