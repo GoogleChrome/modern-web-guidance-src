@@ -303,11 +303,6 @@ window.__featuresMapping = {
   "light-dismiss-a-dialog": [
     "dialog-closedby"
   ],
-  "light-dismiss-content-overlay": [
-    "popover",
-    "scroll-snap",
-    "inert"
-  ],
   "manage-recurring-intervals": [
     "temporal"
   ],
@@ -316,6 +311,15 @@ window.__featuresMapping = {
   ],
   "move-dom-element-without-losing-state": [
     "move-before"
+  ],
+  "navigation-drawer": [
+    "inert",
+    "intersection-observer",
+    "popover",
+    "registered-custom-properties",
+    "scroll-driven-animations",
+    "scroll-initial-target",
+    "scroll-snap"
   ],
   "overflow-clipping-control": [
     "overflow-clip",
