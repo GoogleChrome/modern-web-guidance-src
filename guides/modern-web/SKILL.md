@@ -31,7 +31,7 @@ Before you can check if a feature satisfies the target, you need to find the pro
 
 Do NOT attempt to interpret or map general browser support matrices (like `> 1%` or `last 2 versions`) to Baseline equivalents.
 
-If no explicit configuration is found, default to `'widely available'`.
+If no explicit configuration is found, default to `Widely Available`.
 
 ### Step 2. Search Use Cases
 
@@ -69,10 +69,10 @@ node <modern-web-directory>/modern-web.mjs retrieve "<id>"
 Compare the project's Baseline target (from Step 1) with the Baseline status of **each feature** recommended in the guide (typically found in the **Fallback strategies** section).
 
 #### Project Target Types
-Project targets can take several forms:
-- **Relative**: `widely available`, `newly available`, `limited availability`
-- **Yearly**: `baseline 2024` (Available by end of 2024)
-- **Date-specific**: `baseline widely available on 2027-01-01` (Newly available 30 months prior)
+Project targets fall into three main categories that map to the Satisfaction Matrix:
+- **Relative**: `Widely Available` (from configs like `"widely"` or `"baseline widely available"`), `Newly Available`, `Limited Availability`
+- **Yearly**: `Baseline YYYY` (from configs like `"baseline 2024"`)
+- **Date-specific**: `Widely on YYYY-MM-DD` (from configs like `"baseline widely available on 2027-01-01"`)
 
 #### Baseline Status Types
 Features are labeled in the guide as:
@@ -84,7 +84,7 @@ Features are labeled in the guide as:
 
 | Project Target | Widely Available | Newly Available | Limited Availability |
 | :--- | :---: | :---: | :---: |
-| **Widely Available** | ✅ | ❌ | ❌ |
+| **Widely Available** (default) | ✅ | ❌ | ❌ |
 | **Newly Available** | ✅ | ✅ | ❌ |
 | **Limited Availability** | ✅ | ✅ | ✅ |
 | **Baseline YYYY** | ✅ | If Low Date ≤ YYYY-12-31 | ❌ |
@@ -92,6 +92,10 @@ Features are labeled in the guide as:
 
 **✅ Satisfied**: The feature is safe to use as-is.
 **❌ Not Satisfied**: You must implement a fallback or avoid the feature as described in the guide.
+
+**Target Normalization**: 
+- When parsing project targets from external configurations (such as ESLint's `"newly"`/`"widely"` or Browserslist's `"baseline widely available"`), normalize them to their closest equivalent in the matrix (e.g., `"newly"` to `Newly Available`) before evaluating satisfaction.
+- **Baseline Date vs. Widely Available Date**: The "Baseline since YYYY-MM-DD" date always represents the date the feature became **Newly Available** (first became interoperable). A feature only becomes **Widely Available** 30 months after that date. Keep this 30-month offset in mind when manually evaluating "Widely available on YYYY-MM-DD" targets.
 
 If you are unsure whether a feature satisfies the Baseline target, always err on the side of caution and use the fallback strategy.
 
