@@ -14,8 +14,8 @@ const demoName = path.basename(filePath);
 test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
 
   test.beforeEach(async ({ page }) => {
-    const TARGET_URL = 'http://localhost/';
-    await page.route('http://localhost/*', async (route) => {
+    const TARGET_URL = 'http://127.0.0.1/';
+    await page.route('http://127.0.0.1/*', async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
       const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath.slice(1));
 
@@ -178,12 +178,21 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     await waitForOpen(page, trigger);
 
     const main = page.locator('main');
+    const hasInertAncestor = (el: any) => {
+      let current = el;
+      while (current) {
+        if (current.inert || current.hasAttribute('inert')) return true;
+        current = current.parentElement;
+      }
+      return false;
+    };
+
     if (await main.count() > 0) {
-      const isInert = await main.evaluate((el: any) => el.inert === true);
+      const isInert = await main.evaluate(hasInertAncestor);
       expect(isInert).toBe(true);
     } else {
       const parent = trigger.locator('..');
-      const isInert = await parent.evaluate((el: any) => el.inert === true);
+      const isInert = await parent.evaluate(hasInertAncestor);
       expect(isInert).toBe(true);
     }
   });
@@ -197,12 +206,21 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     await expect(drawer).not.toBeVisible();
     
     const main = page.locator('main');
+    const hasInertAncestor = (el: any) => {
+      let current = el;
+      while (current) {
+        if (current.inert || current.hasAttribute('inert')) return true;
+        current = current.parentElement;
+      }
+      return false;
+    };
+
     if (await main.count() > 0) {
-      const isInert = await main.evaluate((el: any) => el.inert === true);
+      const isInert = await main.evaluate(hasInertAncestor);
       expect(isInert).toBe(false);
     } else {
       const parent = trigger.locator('..');
-      const isInert = await parent.evaluate((el: any) => el.inert === true);
+      const isInert = await parent.evaluate(hasInertAncestor);
       expect(isInert).toBe(false);
     }
   });
