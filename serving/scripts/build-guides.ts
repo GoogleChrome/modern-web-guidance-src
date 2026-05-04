@@ -30,13 +30,42 @@ interface UseCase {
 async function processGuides() {
   const targetGuidePath = process.argv.slice(2).find(arg => !arg.startsWith("--"));
   const force = process.argv.includes("--force");
+  const subsetArg = process.argv.find(arg => arg.startsWith("--subset"));
 
   // Scan guides first to see if we even need to run
   let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
 
+  if (subsetArg) {
+    const limit = subsetArg.includes("=") ? parseInt(subsetArg.split("=")[1], 10) : 3;
+    readyGuides = readyGuides.slice(0, limit);
+    console.log(`Building a subset of ${readyGuides.length} guides.`);
+  }
+
   const VECTORS_FILE = path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
 
-  if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(VECTORS_FILE)) {
+  let shouldSkip = !targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(VECTORS_FILE);
+
+  if (shouldSkip) {
+    // Also check if the count of files in BUILD_GUIDES_DIR matches readyGuides.length
+    const countFiles = (dir: string): number => {
+      let count = 0;
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          count += countFiles(path.join(dir, entry.name));
+        } else if (entry.name.endsWith(".md")) {
+          count++;
+        }
+      }
+      return count;
+    };
+
+    if (countFiles(BUILD_GUIDES_DIR) !== readyGuides.length) {
+      shouldSkip = false;
+    }
+  }
+
+  if (shouldSkip) {
     const outputFileMTime = Math.min(
       fs.statSync(OUTPUT_FILE).mtimeMs,
       fs.statSync(VECTORS_FILE).mtimeMs

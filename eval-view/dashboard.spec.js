@@ -23,8 +23,8 @@ test.describe('Eval View Dashboard', () => {
   test('should show dumbbell chart tooltip on rate-cell hover', async ({ page }) => {
     await page.goto('/');
     
-    await page.waitForSelector('.rate-cell');
-    await page.locator('.rate-cell').first().hover();
+    await page.waitForSelector('.uplift-cell');
+    await page.locator('.uplift-cell').first().hover();
     
     const tooltip = page.locator('.tooltip-container');
     await expect(tooltip).toBeVisible();
@@ -38,7 +38,7 @@ test.describe('Eval View Dashboard', () => {
     await page.goto('/dashboard.html?testId=example-result');
 
     // Check title
-    await expect(page.locator('h1')).toContainText('Suite Results');
+    await expect(page).toHaveTitle('Suite Results');
 
     // Check header info
     await expect(page.locator('#test-header')).toContainText('example-result');
@@ -46,29 +46,29 @@ test.describe('Eval View Dashboard', () => {
     // Check grid exists and has content
     await expect(page.locator('#guide-grid')).toBeVisible();
     
-    // Wait for actual cards to be rendered by JS
-    const firstCard = page.locator('.test-card').first();
-    await expect(firstCard).toBeVisible();
+    // Wait for actual accordions to be rendered by JS
+    const firstAccordion = page.locator('.task-accordion-header').first();
+    await expect(firstAccordion).toBeVisible();
     
-    const count = await page.locator('.test-card').count();
+    const count = await page.locator('.task-accordion-header').count();
     expect(count).toBeGreaterThan(0);
   });
 
   test('should show details and toggle diff view', async ({ page }) => {
     await page.goto('/dashboard.html?testId=example-result');
 
-    // Wait for cards and click the first one
-    const firstCard = page.locator('.test-card').first();
-    await firstCard.click();
+    // Wait for accordions and click the first one
+    const firstAccordion = page.locator('.task-accordion-header').first();
+    await firstAccordion.click();
+
+    // Verify Diff button exists and click it to open modal
+    const diffButton = page.locator('.tfoot-action-btn', { hasText: 'Diff' }).first();
+    await expect(diffButton).toBeVisible();
+    await diffButton.click();
 
     // Verify modal is shown
     const modal = page.locator('#modal');
     await expect(modal).toBeVisible();
-
-    // Verify dropdown exists and select "Diff"
-    const dropdown = page.locator('.run-actions-dropdown').first();
-    await expect(dropdown).toBeVisible();
-    await dropdown.selectOption('diff');
 
     // Verify diff content is displayed
     // The title changes to "Diff: ..."
