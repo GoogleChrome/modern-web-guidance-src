@@ -31,9 +31,13 @@ test.describe('Passkey Management Expectations', () => {
       (window as any).__signalAcceptedOpts = null;
       (window as any).__signalDetailsCalled = false;
       (window as any).__signalDetailsOpts = null;
+      (window as any).__mockPasskeyPlatformAuthenticator = true;
 
       Object.defineProperty(window, 'PublicKeyCredential', {
         value: class {
+          static async getClientCapabilities() {
+            return { passkeyPlatformAuthenticator: (window as any).__mockPasskeyPlatformAuthenticator };
+          }
           static async signalAllAcceptedCredentials(opts: any) {
             (window as any).__signalAcceptedCalled = true;
             (window as any).__signalAcceptedOpts = opts;
@@ -59,6 +63,13 @@ test.describe('Passkey Management Expectations', () => {
             aaguid: '00000000-0000-0000-0000-000000000000',
             registeredAt: Date.now() - 100000,
             lastUsedAt: Date.now() - 50000
+          },
+          {
+            id: 'fake-cred-2',
+            name: 'iCloud Keychain',
+            aaguid: 'adce0002-35bc-c60a-2b7b-40b2fed21711',
+            registeredAt: Date.now() - 200000,
+            lastUsedAt: Date.now() - 10000
           }
         ])
       });
@@ -88,7 +99,7 @@ test.describe('Passkey Management Expectations', () => {
   test('invokes signalAllAcceptedCredentials upon credentials deletion triggers', async ({ page, TARGET_URL }) => {
     await page.goto(TARGET_URL);
     await page.waitForTimeout(500);
-    
+
     page.on('dialog', async dialog => {
       await dialog.accept();
     });
@@ -101,5 +112,45 @@ test.describe('Passkey Management Expectations', () => {
     await page.waitForFunction(() => (window as any).__signalAcceptedCalled === true, { timeout: 2000 }).catch(() => {});
     const called = await page.evaluate(() => (window as any).__signalAcceptedCalled);
     expect(called).toBe(true);
+  });
+
+  test('invokes signalCurrentUserDetails upon credential rename', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
+    await page.waitForTimeout(500);
+
+    page.on('dialog', async dialog => {
+      if (dialog.type() === 'prompt') {
+        await dialog.accept('Renamed Passkey');
+      } else {
+        await dialog.accept();
+      }
+    });
+
+    const renameBtn = page.locator('button').filter({ hasText: /Rename/i }).first();
+    await renameBtn.click();
+    await page.waitForFunction(() => (window as any).__signalDetailsCalled === true, { timeout: 2000 }).catch(() => {});
+    const called = await page.evaluate(() => (window as any).__signalDetailsCalled);
+    expect(called).toBe(true);
+  });
+
+  test('renders provider icon and last-used timestamp for AAGUID-resolvable credentials', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
+    await page.waitForTimeout(500);
+
+    const icon = page.locator('[data-testid="provider-icon"]').first();
+    await expect(icon).toBeVisible();
+
+    const lastUsed = page.locator('[data-testid="last-used"]').first();
+    await expect(lastUsed).toBeVisible();
+  });
+
+  test('feature-detects platform authenticator before rendering Create Passkey button', async ({ page, TARGET_URL }) => {
+    await page.addInitScript(() => {
+      (window as any).__mockPasskeyPlatformAuthenticator = false;
+    });
+    await page.goto(TARGET_URL);
+    await page.waitForTimeout(500);
+    const createBtn = page.locator('[data-testid="create-passkey-button"]');
+    await expect(createBtn).toBeHidden();
   });
 });

@@ -32,6 +32,8 @@ test.describe('Passkey Registration Expectations', () => {
       (window as any).__parseCalled = false;
       (window as any).__signalCalled = false;
       (window as any).__signalOptions = null;
+      (window as any).__verifyCalled = false;
+      (window as any).__verifyBody = null;
       (window as any).__mockPasskeyPlatformAuthenticator = true;
       (window as any).__mockCreateError = null;
 
@@ -53,6 +55,12 @@ test.describe('Passkey Registration Expectations', () => {
           } as any;
         }
         if (url.includes('/api/register/verify')) {
+          (window as any).__verifyCalled = true;
+          try {
+            (window as any).__verifyBody = init?.body ? JSON.parse(init.body as string) : null;
+          } catch {
+            (window as any).__verifyBody = null;
+          }
           return {
             ok: true,
             status: 200,
@@ -112,6 +120,29 @@ test.describe('Passkey Registration Expectations', () => {
     
     const called = await page.evaluate(() => (window as any).__createCalled);
     expect(called).toBe(true);
+  });
+
+  test('decodes server creation options via parseCreationOptionsFromJSON before invoking the authenticator', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
+    const button = page.locator('[data-testid="register-button"]');
+    await button.click();
+    await page.waitForTimeout(500);
+
+    const parseCalled = await page.evaluate(() => (window as any).__parseCalled);
+    expect(parseCalled).toBe(true);
+  });
+
+  test('submits the attestation to the verify endpoint as JSON-encoded credential data', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
+    const button = page.locator('[data-testid="register-button"]');
+    await button.click();
+    await page.waitForTimeout(500);
+
+    const verifyCalled = await page.evaluate(() => (window as any).__verifyCalled);
+    expect(verifyCalled).toBe(true);
+    const body = await page.evaluate(() => (window as any).__verifyBody);
+    expect(body).toBeTruthy();
+    expect(body.id).toBe('fake-id');
   });
 
   test('signals signalUnknownCredential using Base64URL credentialId upon server verification failure', async ({ page, TARGET_URL }) => {

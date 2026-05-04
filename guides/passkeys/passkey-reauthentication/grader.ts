@@ -30,6 +30,8 @@ test.describe('Passkey Reauthentication Expectations', () => {
       (window as any).__getCalled = false;
       (window as any).__getOptions = null;
       (window as any).__parseCalled = false;
+      (window as any).__verifyCalled = false;
+      (window as any).__verifyBody = null;
 
       const originalFetch = window.fetch;
       window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -47,6 +49,12 @@ test.describe('Passkey Reauthentication Expectations', () => {
           } as any;
         }
         if (url.includes('/api/reauth/verify')) {
+          (window as any).__verifyCalled = true;
+          try {
+            (window as any).__verifyBody = init?.body ? JSON.parse(init.body as string) : null;
+          } catch {
+            (window as any).__verifyBody = null;
+          }
           return {
             ok: true,
             status: 200,
@@ -120,8 +128,35 @@ test.describe('Passkey Reauthentication Expectations', () => {
     const button = page.locator('[data-testid="reauth-button"]');
     await button.click();
     await page.waitForTimeout(500);
-    
+
     const parseCalled = await page.evaluate(() => (window as any).__parseCalled);
     expect(parseCalled).toBe(true);
+  });
+
+  test('aborts in-flight conditional flows by passing an AbortSignal to credentials.get', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
+    const button = page.locator('[data-testid="reauth-button"]');
+    await button.click();
+    await page.waitForTimeout(500);
+
+    const hasSignal = await page.evaluate(() => {
+      const opts = (window as any).__getOptions;
+      const signal = opts?.signal;
+      return !!signal && typeof signal.aborted === 'boolean';
+    });
+    expect(hasSignal).toBe(true);
+  });
+
+  test('submits the assertion to the verify endpoint as encoded JSON', async ({ page, TARGET_URL }) => {
+    await page.goto(TARGET_URL);
+    const button = page.locator('[data-testid="reauth-button"]');
+    await button.click();
+    await page.waitForTimeout(500);
+
+    const verifyCalled = await page.evaluate(() => (window as any).__verifyCalled);
+    expect(verifyCalled).toBe(true);
+    const body = await page.evaluate(() => (window as any).__verifyBody);
+    expect(body).toBeTruthy();
+    expect(body.id).toBe('fake-reauth-cred-id');
   });
 });

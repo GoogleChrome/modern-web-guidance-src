@@ -17,38 +17,44 @@
     <p>Please re-authenticate your session to proceed with this action.</p>
     
     <button id="reauth-btn" data-testid="reauth-button">Verify Identity</button>
-    
+
     <div id="status" class="status" data-testid="reauth-status">Idle</div>
+    <div id="fallback" data-testid="reauth-fallback" hidden>Your device does not support passkeys. Please re-enter your password to continue.</div>
   </div>
 
   <script type="module">
+    let reauthAbortController = new AbortController();
+
     async function performReauth() {
       const statusEl = document.getElementById('status');
+
+      if (!window.PublicKeyCredential || !PublicKeyCredential.parseRequestOptionsFromJSON) {
+        document.getElementById('fallback').hidden = false;
+        return;
+      }
+
       statusEl.textContent = 'Verifying...';
 
+      reauthAbortController.abort();
+      reauthAbortController = new AbortController();
+
       try {
-        // 1. Fetch constrained Options parameters for the signed-in user
         const responseOptions = await fetch('/api/reauth/options', { method: 'POST' });
         if (!responseOptions.ok) throw new Error('Failed to generate step-up options');
         const reauthOptionsJSON = await responseOptions.json();
 
-        // 2. Decode options and Prompt native biometrics with userVerification REQUIRED
         const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(reauthOptionsJSON);
-        
-        // Grade safety assert: allowCredentials MUST be populated for re-auth
-        if (!publicKey.allowCredentials || publicKey.allowCredentials.length === 0) {
-          throw new Error('Safety error: allowCredentials must not be empty for Reauthentication');
-        }
 
-        const credential = await navigator.credentials.get({ publicKey });
+        const credential = await navigator.credentials.get({
+          publicKey,
+          signal: reauthAbortController.signal
+        });
 
-        // 3. Verify on the backend endpoints
         if (credential) {
-          const encodedResponse = credential.toJSON();
           const verifyResponse = await fetch('/api/reauth/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(encodedResponse)
+            body: JSON.stringify(credential.toJSON())
           });
 
           if (verifyResponse.ok) {
@@ -57,12 +63,14 @@
           } else {
             throw new Error('Re-authentication verification rejected');
           }
-        } else {
-          throw new Error('Local step-up biometrics rejected');
         }
-      } catch (e) {
-        console.error(e);
-        statusEl.textContent = `Error: ${e.message}`;
+      } catch (err) {
+        if (err.name === 'NotAllowedError') {
+          statusEl.textContent = 'Verification cancelled.';
+          return;
+        }
+        console.error(err);
+        statusEl.textContent = `Error: ${err.message}`;
         statusEl.style.color = '#cc0000';
       }
     }
