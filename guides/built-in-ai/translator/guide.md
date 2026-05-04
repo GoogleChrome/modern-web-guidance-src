@@ -47,7 +47,7 @@ const options = {
 
 const availability = await Translator.availability(options);
 
-if (availability === 'available' || availability === 'after-download') {
+if (availability === 'available' || availability === 'downloadable') {
   // A user gesture is strictly required to trigger create when downloadable
   document.getElementById('start-translation-btn').addEventListener('click', async () => {
     const translator = await Translator.create({
