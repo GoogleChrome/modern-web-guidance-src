@@ -76,6 +76,7 @@ async function fetchData(url) {
 - **Static Utilities**: Use `static` methods for utility functions or domain factories that do not need instance state.
 - **Safe Property Checks**: Use `Object.hasOwn(obj, "prop")` instead of `obj.hasOwnProperty("prop")`.
 - **Avoid Prototype Poisoning**: Use `Object.getPrototypeOf()` and `Object.setPrototypeOf()` instead of the legacy `__proto__`.
+- **Use Getters and Setters**: Encapsulate custom logic, value validation and formatting using `get` and `set`. 
 
 ```javascript
 class UserService {
@@ -83,6 +84,18 @@ class UserService {
 
   constructor(token) {
     this.#privateToken = token;
+  }
+
+  set privateToken(token){
+    if(!validateToken(token)){
+      console.log('Invalid Token');
+    } else {
+      this.#privateToken = token;
+    }
+  }
+
+  get hasValidToken(){
+    return validateToken(this.#privateToken)
   }
 
   static fromConfig(config) { // Factory utility
@@ -156,7 +169,7 @@ list.appendChild(fragment); // Single layout recalculation pass
 - **Use JavaScript as a Progressive Enhancement**: Anticipate that JavaScript will not always be able to run, and ensure your site is functional without it.
 - **Trigger Actions Using `addEventListener()`**: Don't use `on*` HTML attributes like `onclick`.
 - **Avoid Extending CustomEvent**: Use native events like `TouchEvent` or `FocusEvent` when possible, or extend `Event`.
-- **Avoid Recreating Native Elements**: Use `<button>` to trigger events, `<a>` to navigate, etc. Avoid replicating their behavior by adding event listeners to `<div>` or other generic elements. Do use JavaScript to add required dynamic ARIA, for instance `aria-expanded` or `aria-active`.
+- **Avoid Recreating Native Elements**: Use `<button>` to trigger events, `<a>` to navigate, etc. Avoid replicating their behavior by adding event listeners to `<div>` or other generic elements. Do use JavaScript to add required dynamic ARIA, for instance `aria-expanded` or `aria-selected`.
 
 ## Security
 
