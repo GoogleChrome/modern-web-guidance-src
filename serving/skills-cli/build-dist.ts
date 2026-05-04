@@ -425,8 +425,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   (async () => {
     try {
-      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version});
       await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true, subset: 3});
+      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version});
     } catch (err) {
       console.error(err);
       process.exit(1);
