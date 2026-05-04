@@ -44,6 +44,14 @@ export function capitalize(s) {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+export function formatTokens(tokens) {
+    if (!tokens) return '0 tok';
+    // undefined so it uses the user's locale.
+    return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
+        .format(tokens)
+        .toLowerCase() + ' tok';
+}
+
 export function timeAgo(date) {
     const diff = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
     const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
@@ -67,7 +75,7 @@ export function calculateChartData(results) {
 
         if (!['guided', 'unguided'].includes(runType)) return;
         const scenario = `${taskName} (${guide})`;
-        if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [] };
+        if (!apps[scenario]) apps[scenario] = { guided: [], unguided: [], guided_tokens: [], unguided_tokens: [] };
         
         const runs = results[key];
         if (runs.length > 0 && runs[0].taskName) {
@@ -77,6 +85,11 @@ export function calculateChartData(results) {
         const passed = runs.reduce((acc, r) => acc + getRunStats(r.results).passed, 0);
         const total = runs.reduce((acc, r) => acc + r.results.length, 0);
         apps[scenario][runType].push(total > 0 ? (passed / total) * 100 : 0);
+
+        const totalTokens = runs.reduce((acc, r) => acc + (r.tokenUsage?.total || 0), 0);
+        const avgTokens = runs.length > 0 ? Math.round(totalTokens / runs.length) : 0;
+        if (!apps[scenario][runType + '_tokens']) apps[scenario][runType + '_tokens'] = [];
+        apps[scenario][runType + '_tokens'].push(avgTokens);
     });
     
     const labels = Object.keys(apps).sort((a, b) => {
@@ -88,12 +101,46 @@ export function calculateChartData(results) {
         const s = apps[l][type];
         return s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;
     };
-    return { labels, guided: labels.map(l => getAvg(l, 'guided')), unguided: labels.map(l => getAvg(l, 'unguided')) };
+    const getAvgTokens = (l, type) => {
+        const s = apps[l][type + '_tokens'];
+        return s && s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : 0;
+    };
+    return { 
+        labels, 
+        guided: labels.map(l => getAvg(l, 'guided')), 
+        unguided: labels.map(l => getAvg(l, 'unguided')),
+        guided_tokens: labels.map(l => getAvgTokens(l, 'guided')),
+        unguided_tokens: labels.map(l => getAvgTokens(l, 'unguided'))
+    };
 }
 
 
-export function formatTestName(name) {
+export function formatTestName(name, isSkill = false) {
     if (!name) return name;
+    const parts = name.split(' - ');
+    if (parts.length >= 2) {
+        const appName = parts[0];
+        const guideName = parts[1];
+        
+        const featuresMap = window.__featuresMapping || {};
+        let featureId = '';
+        
+        if (isSkill) {
+            // For skills, the first part is the discipline (e.g. performance)
+            return `${appName}: ${guideName}`; // discipline: task
+        }
+        
+        // For normal tasks, the second part is the guide name
+        if (featuresMap[guideName] && featuresMap[guideName].length > 0) {
+            featureId = featuresMap[guideName][0]; // take primary feature
+        }
+        
+        if (featureId) {
+            return `${featureId}: ${guideName}`;
+        }
+        
+        return `${appName}: ${guideName}`; // fallback
+    }
     return name.split(' - ').join(' / ');
 }
 
@@ -117,11 +164,7 @@ export function initGoogleAuth(onAuthSuccess) {
         if (authBtn) {
             authBtn.style.display = 'block';
             if (accessToken) {
-                authBtn.textContent = 'Authenticated ✓';
-                authBtn.disabled = true;
-                authBtn.style.backgroundColor = 'var(--accent-success)';
-                authBtn.style.color = 'white';
-                authBtn.style.borderColor = 'var(--accent-success)';
+                authBtn.style.display = 'none';
             }
         }
 
@@ -137,11 +180,7 @@ export function initGoogleAuth(onAuthSuccess) {
                 localStorage.setItem('gcs_access_token', accessToken);
                 console.log('Successfully authenticated with Google.');
                 if (authBtn) {
-                    authBtn.textContent = 'Authenticated ✓';
-                    authBtn.disabled = true;
-                    authBtn.style.backgroundColor = 'var(--accent-success)';
-                    authBtn.style.color = 'white';
-                    authBtn.style.borderColor = 'var(--accent-success)';
+                    authBtn.style.display = 'none';
                 }
                 if (onAuthSuccess) onAuthSuccess();
             },
@@ -168,6 +207,7 @@ export async function authenticatedFetch(url, options = {}) {
         // Reset button UI if available
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
+            authBtn.style.display = 'block';
             authBtn.textContent = 'Sign in with Google';
             authBtn.disabled = false;
             authBtn.style.backgroundColor = '';

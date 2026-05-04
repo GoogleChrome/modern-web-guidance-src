@@ -14,6 +14,8 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
 
 `;
 
+
+
   // Generate detailed sections for each test
   for (const name of sortedKeys) {
     const runs = allResults[name];

@@ -7,7 +7,8 @@ describe('replaceMacros (Functional with real data)', () => {
     it('replaces macro with widely available status', () => {
       const content = '{{ BASELINE_STATUS("grid") }}';
       const result = replaceMacros(content, 'test.md');
-      assert.ok(result.includes('2017-10-17') || result.includes('Widely available'));
+      assert.ok(result.includes('2017-10-17'));
+      assert.ok(result.includes('Widely available'));
     });
 
     it('replaces macro with newly available status', () => {
@@ -20,7 +21,7 @@ describe('replaceMacros (Functional with real data)', () => {
       // Accelerometer is typically limited
       const content = '{{ BASELINE_STATUS("accelerometer") }}';
       const result = replaceMacros(content, 'test.md');
-      assert.ok(result.includes('not supported') || result.includes('Limited'));
+      assert.ok(result.includes('limited availability'));
     });
 
     it('throws error for non-existent feature', () => {
@@ -45,6 +46,8 @@ describe('replaceMacros (Functional with real data)', () => {
   it('supports multiple macros and mixed quotes', () => {
     const content = '{{ BASELINE_STATUS("grid") }} and {{ BASELINE_STATUS("grid", "css.properties.grid-template-columns") }}';
     const result = replaceMacros(content, 'test.md');
-    assert.ok(result.includes('grid') || result.includes('Widely available') || result.includes('Baseline since'));
+    assert.ok(result.includes('grid'));
+    assert.ok(result.includes('Widely available'));
+    assert.ok(result.includes('Baseline since'));
   });
 });

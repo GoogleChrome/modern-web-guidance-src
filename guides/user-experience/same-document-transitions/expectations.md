@@ -1,0 +1,9 @@
+- The transition from list view to detail view is wrapped in a `document.startViewTransition` call.
+- When a thumbnail is clicked, the selected element is assigned a `view-transition-name` (e.g., `hero`) before or during the transition.
+- The corresponding hero element in the detail view has the same `view-transition-name` (e.g., `hero`) as the selected thumbnail.
+- Only one element in the DOM has a specific `view-transition-name` at any given time.
+- After the transition to the detail view is complete, the temporary `view-transition-name` is removed from the list view's thumbnail.
+- The title text in both views is assigned a matching `view-transition-name` (e.g., `title`).
+- Elements with `view-transition-name` that contain text have `width: fit-content` applied to maintain a stable aspect ratio during transition.
+- The `::view-transition-old(hero)` and `::view-transition-new(hero)` pseudo-elements are styled with `height: 100%` to prevent stretching across different aspect ratios.
+- All view transition animations are disabled when `prefers-reduced-motion: reduce` is active.
