@@ -70,7 +70,6 @@
         visibility 0.3s,
         opacity 0.3s ease,
         translate 0.3s ease;
-      transition-behavior: allow-discrete;
     }
 
     /* Progressive Enhancement for supported browsers */
@@ -81,10 +80,9 @@
 
       @container scroll-state(scrollable: top) {
         .back-to-top {
-          display: inline-block;
+          visibility: visible;
           opacity: 1;
           translate: 0 0;
-          visibility: visible;
         }
       }
     }
