@@ -3,6 +3,7 @@ name: passkey-reauthentication
 description: Verify a signed-in user's identity using their existing passkeys before a sensitive action.
 web-feature-ids:
   - webauthn
+  - webauthn-public-key-easy
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
   - https://www.w3.org/TR/webauthn-3/
@@ -159,8 +160,6 @@ async function initializeConditionalReauth() {
 window.addEventListener('DOMContentLoaded', initializeConditionalReauth);
 ```
 
----
-
 ## Fallback Strategies
 
 {{ BASELINE_STATUS("webauthn") }}
@@ -174,3 +173,10 @@ Passkey reauthentication is a progressive enhancement. If platform authenticator
       showTraditionalReauthFields();
     }
     ```
+
+### Easy JSON Serialization Fallback
+
+{{ BASELINE_STATUS("webauthn-public-key-easy") }}
+
+The WebAuthn JSON serialization helper methods represent progressive optimizations.
+*   **Fallback Experience**: If `PublicKeyCredential.parseRequestOptionsFromJSON` or `credential.toJSON` are unsupported by the browser, the application MUST gracefully fall back to manual base64url-to-ArrayBuffer encoding and decoding helper scripts to parse options and verify credentials safely.

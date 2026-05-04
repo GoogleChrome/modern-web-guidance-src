@@ -148,13 +148,13 @@ async function performRename(credentialId, updatedName, updatedDisplayName) {
 }
 ```
 
----
-
 ## Fallback Strategies
+
+### Biometrics Management Fallback
 
 {{ BASELINE_STATUS("webauthn") }}
 
-Passkey management is a progressive enhancement. If browser or device environments do not support platform capabilities:
+Passkey management is a progressive enhancement. If browser or device environments do not support platform capabilities, the application MUST fallback immediately to standard profile options.
 *   **Fallback Experience**: Surface standard profile panels allowing users to manage MFA devices, passwords, or security questions natively.
 *   **Feature Detection**:
     ```javascript
@@ -163,3 +163,10 @@ Passkey management is a progressive enhancement. If browser or device environmen
       hidePasskeysSection();
     }
     ```
+
+### Signal API Synchronization Fallback
+
+{{ BASELINE_STATUS("webauthn-signals") }}
+
+The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used to keep password managers in sync with the server credential state.
+*   **Fallback Experience**: Gated via `if (PublicKeyCredential.signalAllAcceptedCredentials)` and `if (PublicKeyCredential.signalCurrentUserDetails)`. If unsupported, the background synchronization signals are bypassed gracefully without throwing browser exceptions.

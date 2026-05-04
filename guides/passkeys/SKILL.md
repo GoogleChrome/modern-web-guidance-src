@@ -36,6 +36,8 @@ Identify the matching use case below and retrieve its full implementation guide.
 
 Specific passkey and WebAuthn implementation details are mapped to the following guides:
 *   **Passkey Registration**: {{ GUIDE_REF("passkey-registration") }} — Offering new passkey registration and promotions.
+*   **Passkey Conditional Create**: {{ GUIDE_REF("passkey-conditional-create") }} — Silently registering passkeys immediately after successful password login.
 *   **Passkey Authentication**: {{ GUIDE_REF("passkey-authentication") }} — Discoverable-autofill and button sign-ins.
 *   **Passkey Management**: {{ GUIDE_REF("passkey-management") }} — Syncing lists, renames, and deletions with password managers.
 *   **Passkey Reauthentication**: {{ GUIDE_REF("passkey-reauthentication") }} — Re-verifying returning signed-in users for sensitive steps.
+

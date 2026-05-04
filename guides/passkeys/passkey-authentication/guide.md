@@ -4,6 +4,7 @@ description: Authenticate a returning user with a passkey for primary sign-in.
 web-feature-ids:
   - webauthn
   - webauthn-signals
+  - webauthn-public-key-easy
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
   - https://www.w3.org/TR/webauthn-3/
@@ -182,13 +183,13 @@ async function triggerButtonAuthentication() {
 window.addEventListener('DOMContentLoaded', initializeConditionalAutofill);
 ```
 
----
-
 ## Fallback Strategies
+
+### Biometrics Authentication Fallback
 
 {{ BASELINE_STATUS("webauthn") }}
 
-Passkey authentication is a progressive enhancement. If platform authenticators are unsupported by the device:
+Passkey authentication is a progressive enhancement. If platform authenticators are unsupported by the device, the application MUST fallback immediately to standard forms.
 *   **Fallback Experience**: Gracefully fallback to traditional password inputs or browser-stored password autofill flows natively.
 *   **Feature Detection**:
     ```javascript
@@ -197,3 +198,17 @@ Passkey authentication is a progressive enhancement. If platform authenticators 
       showStandardPasswordFields();
     }
     ```
+
+### Signal API Synchronization Fallback
+
+{{ BASELINE_STATUS("webauthn-signals") }}
+
+The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used to keep password managers in sync with the server credential state.
+*   **Fallback Experience**: Gated via `if (PublicKeyCredential.signalUnknownCredential)`. If unsupported, the background verification sync is bypassed gracefully without throwing browser exceptions.
+
+### Easy JSON Serialization Fallback
+
+{{ BASELINE_STATUS("webauthn-public-key-easy") }}
+
+The WebAuthn JSON serialization helper methods represent progressive optimizations.
+*   **Fallback Experience**: If `PublicKeyCredential.parseRequestOptionsFromJSON` or `credential.toJSON` are unsupported by the browser, the application MUST gracefully fall back to manual base64url-to-ArrayBuffer encoding and decoding helper scripts to parse options and verify credentials safely.
