@@ -15,6 +15,8 @@ Guidelines for implementing preventative security measures on the web safely and
 - Phase 1: Quick Wins & Obvious Anti-Patterns
   - 1.1 Avoid Dangerous DOM Sinks
   - 1.2 Secure Cookies
+  - 1.3 Clickjacking Protection (Frame-Ancestors & X-Frame-Options)
+  - 1.4 Secure Window Messaging (postMessage)
 - Phase 2: Discovery & Data Collection (Prerequisites)
   - 2.1 Inspect the Application
   - 2.2 Deploy Report-Only Policies
@@ -32,7 +34,6 @@ Guidelines for implementing preventative security measures on the web safely and
   - Companion policies (deploy in parallel)
     - HTTP Strict Transport Security (HSTS)
     - X-Content-Type-Options
-    - Clickjacking: frame-ancestors, X-Frame-Options, iframe sandbox
     - Referrer Policy
     - Permissions Policy
     - Subresource Integrity (SRI)
@@ -48,6 +49,8 @@ The right starting point depends on the application:
 - **SaaS template / framework defaults**: Ship Phase 1 hygiene and Phase 3 policies enabled by default, with Phase 2 reporting on so downstream users can detect regressions.
 
 If you are unsure which case applies, default to Phase 1 → 2 → 3 in order.
+
+**Focusing on Leverage**: While Phase 1 and 2 establish baseline hygiene and data gathering, Phase 3 core enforcement represents the highest-leverage security work. Specifically, Injection/XSS mitigation through CSP (§3.2) and Trusted Types (§3.3) addresses the largest practical threat, while companion policies and isolation defenses provide important defense-in-depth.
 
 ## Phase 1: Quick Wins & Obvious Anti-Patterns
 
@@ -75,7 +78,7 @@ Trusted Types can enforce this pattern at runtime by blocking string assignments
 ### 1.2 Secure Cookies
 Ensure new cookies are configured securely by default.
 - **DO**: Explicitly set `SameSite=Lax` for standard first-party cookies.
-- **DO**: Set `SameSite=None; Secure; Partitioned` for third-party contexts (iframes).
+- **DO**: Set `SameSite=None; Secure; Partitioned` if your application needs to be embedded as an iframe in third-party contexts.
 - **DO**: Use the `__Host-` prefix for cookies scoped to a single origin (requires `Secure`, `Path=/`, and no `Domain` attribute) — the browser rejects writes that don't meet those constraints, preventing subdomain injection.
 - **DO**: Use the `__Secure-` prefix for any cookie that must only be set over HTTPS.
 - **DO NOT**: Rely on unpartitioned `SameSite=None` — these are being systematically blocked for tracking prevention.
@@ -83,6 +86,39 @@ Ensure new cookies are configured securely by default.
 ```http
 Set-Cookie: __Host-session_id=value; SameSite=Lax; HttpOnly; Secure; Path=/
 Set-Cookie: third_party_var=value; SameSite=None; Secure; Partitioned
+```
+
+### 1.3 Clickjacking Protection (Frame-Ancestors & X-Frame-Options)
+Clickjacking protection is easy to deploy, carries extremely low risk of breaking legitimate functionality, and provides immediate defense against malicious UI redressing.
+- **DO**: Set the `X-Frame-Options: SAMEORIGIN` header to prevent other sites from embedding your pages in an iframe (or use `DENY` if you should never be embedded).
+- **DO**: For fine-grained control in modern browsers, use `frame-ancestors 'self'` (or specified trusted domains) in your CSP header.
+- **DO**: When *you* embed untrusted content, always use the iframe `sandbox` attribute to restrict its capabilities unless explicitly allowed (e.g., `sandbox="allow-scripts"`).
+
+```http
+X-Frame-Options: SAMEORIGIN
+Content-Security-Policy: frame-ancestors 'self' https://trusted-partner.com;
+```
+
+### 1.4 Secure Window Messaging (postMessage)
+If your application communicates with other origins using `window.postMessage`, you must strictly validate the sender and receiver.
+- **DO**: Always validate the `event.origin` of incoming messages on the receiver side using strict equality against a list of trusted origins. Do **not** trust wildcards (`*`) or unverified payloads.
+- **DO**: Always specify a target origin (rather than the wildcard `*`) when calling `postMessage` to send sensitive data, ensuring only the intended origin can receive it.
+- **DO**: Parse and sanitize message payloads (e.g., using `JSON.parse` and strict schema validation) before performing operations or writing to DOM sinks.
+
+```javascript
+// Receiver (Safe)
+window.addEventListener('message', (event) => {
+  if (event.origin !== 'https://trusted-origin.com') return;
+  try {
+    const data = JSON.parse(event.data);
+    // Process data safely
+  } catch (e) {
+    // Handle parsing error
+  }
+});
+
+// Sender (Safe)
+targetWindow.postMessage(JSON.stringify({ action: 'update' }), 'https://trusted-origin.com');
 ```
 
 ## Phase 2: Discovery & Data Collection (Prerequisites)
@@ -102,7 +138,11 @@ Before turning anything on, gather facts:
 
 ### 2.2 Deploy Report-Only Policies
 Use "Report-Only" headers to identify potential breakages before they happen.
-- **DO**: Use `Content-Security-Policy-Report-Only` to test CSP rules.
+- **DO**: Use report-only headers to dry-run policies without enforcement. Standard report-only headers include:
+  - `Content-Security-Policy-Report-Only` for CSP rules.
+  - `Cross-Origin-Opener-Policy-Report-Only` for COOP isolation.
+  - `Cross-Origin-Embedder-Policy-Report-Only` for COEP isolation.
+  - `Document-Policy-Report-Only` for document features.
 - **DO**: Define a `Reporting-Endpoints` header so violations have somewhere to go, and reference its name from `report-to`.
 - **DO**: Run report-only for long enough to cover real traffic patterns (typically days to weeks), not just synthetic testing.
 
@@ -113,6 +153,8 @@ Content-Security-Policy-Report-Only: script-src 'nonce-{RANDOM}' 'strict-dynamic
 ```
 
 The `'strict-dynamic'`, `https:`, and `'unsafe-inline'` tokens together form a backwards-compatibility ladder: modern browsers honor `'strict-dynamic'` (nonce-propagating) and ignore the others; older browsers fall back to `https:`; very old browsers fall back to `'unsafe-inline'`. The fallbacks are harmless on any browser that supports a stricter token.
+
+**Managing report false-positives**: Reporting endpoints receive a significant volume of false-positive violation reports caused by aggressive browser extensions, ancient browsers, web crawlers, or antivirus scanners. When analyzing report-only logs, focus on high-frequency patterns from modern user-agents and filter out noise before making deployment decisions.
 
 ### 2.3 Data Hygiene for Reports
 - **DO NOT**: Include sensitive data (PII, authentication tokens, session identifiers, query strings with secrets) in logs or violation reports. Mask or omit them at the edge before they reach the reporting endpoint.
@@ -250,18 +292,6 @@ These carry significantly lower breakage risk than the core enforcement track. T
 
 #### X-Content-Type-Options
 - **DO**: Set `X-Content-Type-Options: nosniff` to block MIME-type sniffing.
-
-#### Clickjacking: `frame-ancestors`, X-Frame-Options, iframe `sandbox`
-- **DO**: Use `frame-ancestors` in CSP for fine-grained control over who can embed your page. Fall back to `X-Frame-Options: DENY` or `SAMEORIGIN` for older browsers if needed.
-- **DO**: When *you* embed untrusted content (user-generated HTML, third-party widgets), use the iframe `sandbox` attribute to restrict what it can do — scripts, forms, top-navigation, popups are all blocked unless explicitly opted in.
-
-```http
-Content-Security-Policy: frame-ancestors 'self' https://trusted-partner.com;
-```
-
-```html
-<iframe src="https://untrusted.example/widget" sandbox="allow-scripts"></iframe>
-```
 
 #### Referrer Policy
 - **DO**: Use `strict-origin-when-cross-origin` as a safe default.
