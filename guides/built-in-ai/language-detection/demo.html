@@ -24,7 +24,7 @@
         }
         const availability = await LanguageDetector.availability();
         if (availability === 'available' || availability === 'downloadable' || availability === 'downloading') {
-          console.log('LanguageDetector is available');
+          console.log('LanguageDetector is supported and can be used');
         }
         if (availability === 'unavailable') {
           throw new Error('LanguageDetector is not available');
@@ -45,7 +45,7 @@
           console.log(resultText);
           const div = document.createElement('div');
           div.textContent = resultText;
-          output.appendChild(div);
+          output.append(div);
         }
       } catch (e) {
         console.error(e);
