@@ -37,7 +37,7 @@ To run Gemini Nano and associated models, the system needs:
 
 **Mandatory Progress Monitoring:** You MUST implement a monitor for model download progress by providing a `monitor(m)` callback to `Translator.create()` and adding a listener for the `downloadprogress` event.
 
-**User Gesture Requirement:** When `availability` is `'after-download'`, triggering the model download via `Translator.create()` requires a user gesture (such as a button click listener context). Unconditional page-load calls will trigger a `NotAllowedError`.
+**User Gesture Requirement:** When `availability` is `'downloadable'`, triggering the model download via `Translator.create()` requires a user gesture (such as a button click listener context). Unconditional page-load calls will trigger a `NotAllowedError`.
 
 ```javascript
 const options = {
