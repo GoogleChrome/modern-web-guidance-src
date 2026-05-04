@@ -19,6 +19,8 @@ export interface RunResult {
   tokenUsage?: { total: number; cached: number };
 }
 
+
+
 export interface Metrics {
   summary: {
     unguidedMedian: number;
@@ -39,6 +41,7 @@ export interface Metrics {
     totalGuidedNonDisciplineRuns?: number;
     toolActivationRate?: number;
     toolActivationCount?: number;
+
     unguidedEarlyFailures?: number;
     unguidedEarlyFailureRate?: number;
     guidedEarlyFailures?: number;
@@ -56,6 +59,7 @@ export interface Metrics {
     runCount?: number;
     passedChecks: number;
     totalChecks: number;
+
     isSkill?: boolean;
     earlyFailures?: number;
     avgTokens?: { total: number; cached: number };
@@ -100,18 +104,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
     return runTypeA.localeCompare(runTypeB);
   });
 
-  const testStats: Record<string, {
-    medianPassRate: number;
-    runPassRates: number[];
-    runsUsingGuide?: number;
-    runsWithToolActivation?: number;
-    runCount?: number;
-    passedChecks: number;
-    totalChecks: number;
-    isSkill?: boolean;
-    earlyFailures?: number;
-    avgTokens?: { total: number; cached: number };
-  }> = {};
+  const testStats: Metrics['testStats'] = {};
 
   for (const name of sortedKeys) {
     const runs = allResults[name];
@@ -158,6 +151,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       });
     }
 
+
+
     let totalTokensForConfig = 0;
     let cachedTokensForConfig = 0;
     let runsWithTokenData = 0;
@@ -169,7 +164,6 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
         runsWithTokenData++;
       }
     });
-
     testStats[name] = {
       medianPassRate: Math.round(median),
       runPassRates: passRates.map(r => Math.round(r)),
@@ -277,6 +271,8 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
   const totalTokensSum = (uStats.totalTokens?.total || 0) + (gStats.totalTokens?.total || 0);
   const cachedTokensSum = (uStats.totalTokens?.cached || 0) + (gStats.totalTokens?.cached || 0);
 
+
+
   return {
     summary: {
       unguidedMedian: uStats.median,
@@ -297,6 +293,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       totalGuidedNonDisciplineRuns: gStats.totalGuidedNonDisciplineRuns,
       toolActivationRate: gStats.toolActivationRate,
       toolActivationCount: gStats.toolActivationCount,
+
       unguidedEarlyFailures: uStats.earlyFailures,
       unguidedEarlyFailureRate: uStats.earlyFailureRate,
       guidedEarlyFailures: gStats.earlyFailures,

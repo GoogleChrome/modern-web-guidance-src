@@ -34,8 +34,8 @@ Options:
 }
 
 const featureId = values['feature-id'];
-const outputDir = path.resolve('guides/.research');
-const outputPath = path.join(outputDir, `${featureId}.md`);
+const outputDir = path.resolve('features', featureId);
+const outputPath = path.join(outputDir, 'research.md');
 
 const prompt = `Thoroughly research the web platform feature '${featureId}'. 
 
