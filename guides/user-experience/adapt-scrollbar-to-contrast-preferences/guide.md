@@ -14,7 +14,7 @@ sources:
 
 Users who enable high-contrast modes in their operating system or browser expect UI elements (like scrollbars) to be extremely legible, often relying on stark foreground-background separation rather than subtle grays or theme colors.
 
-This guide provides optional instructions on how to use the `@media (prefers-contrast: more)` CSS media feature to enforce high-contrast scrollbar styling. 
+This guide provides optional instructions on how to use the `@media (prefers-contrast: more)` CSS media feature to enforce high-contrast scrollbar styling.
 
 ## Enhance Legibility
 
@@ -27,7 +27,7 @@ OPTIONAL: Use a `@media (prefers-contrast: more)` block to define dark, distinct
 .scroller {
   --scrollbar-thumb: #bbb;
   --scrollbar-track: #f1f1f1;
-  
+
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   scrollbar-width: thin;
   scrollbar-gutter: stable;
@@ -43,31 +43,9 @@ OPTIONAL: Use a `@media (prefers-contrast: more)` block to define dark, distinct
 }
 ```
 
-IMPORTANT: Do NOT animate or transition `scrollbar-color`. A [WebKit bug](https://bugs.webkit.org/show_bug.cgi?id=311752) causes the scrollbar to flicker every time `scrollbar-color` changes.
+{{ FEATURE_ISSUES("scrollbar-color") }}
 
 ## Fallbacks & Browser Support
 
-{{ BASELINE_STATUS("scrollbar-color") }}
+{{ FEATURE_FALLBACKS("scrollbar-color") }}
 
-If you are using legacy WebKit pseudo-elements to ensure custom colored scrollbars on older versions of Safari/Chrome, the variable assignments from the media query above will automatically cascade to the fallback.
-
-OPTIONAL: If the user's Baseline target is "Baseline Widely Available" or earlier, you SHOULD ensure you provide the legacy fallback code block securely isolated behind `@supports not (scrollbar-color: auto)`.
-
-```css
-/* Legacy fallback for WebKit/Blink browsers */
-@supports not (scrollbar-color: auto) {
-  .scroller::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
-  }
-  .scroller::-webkit-scrollbar-thumb {
-    /* Will inherit the high-contrast #000000 */
-    background: var(--scrollbar-thumb);
-    border: 3px solid var(--scrollbar-track);
-  }
-  .scroller::-webkit-scrollbar-track {
-    /* Will inherit the high-contrast #ffffff */
-    background: var(--scrollbar-track);
-  }
-}
-```
