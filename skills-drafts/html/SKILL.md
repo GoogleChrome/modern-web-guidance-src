@@ -166,7 +166,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 >
 ```
 
-## 3. Native Overlays: Dialogs and Popovers
+## 4. Native Overlays: Dialogs and Popovers
 
 ### Guidelines
 
@@ -221,7 +221,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 **Heuristic Rule**: Use `<dialog>` for interruptions requiring user action, `popover` for transient info, and `<details>` for inline content expansion.
 
-## 4. Disclosures: Details and Summary
+## 5. Disclosures: Details and Summary
 
 ### Guidelines
 
@@ -250,7 +250,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 </details>
 ```
 
-## 5. Focus Boundaries and Visibility
+## 6. Focus Boundaries and Visibility
 
 - **DO** use the global `inert` attribute for entire hidden sections (off-screen menus, background while custom modal is open) to remove them from tab flows and accessibility trees.
 - **DO** pair `[inert]` with CSS (`pointer-events: none; opacity: 0.5`) to visually signify inactivity.
@@ -281,7 +281,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 }
 ```
 
-## 6. HTML APIs and Forms Grouping
+## 7. HTML APIs and Forms Grouping
 
 
 
@@ -313,36 +313,6 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 </form>
 ```
 
-## 7. Templates and Progressive Custom Elements
-
-### Guidelines
-
-- **DO** ensure Custom Element names contain a dash (e.g., `<fancy-card>`).
-- **DO** use `<template>` to hold inactive content that is cloned via JS (`node.cloneNode(true)`).
-- **DO** use Declarative Shadow DOM (`<template shadowrootmode="open">`) inside Web Components to enable style scoping without blocking during Server Side Rendering.
-- **DO** use `<slot>` inside templates to declare placeholders mapping to light DOM content.
-
-- **DON'T** style light DOM content from inside the shadow boundary without `::slotted(selector)`. Use `part="name"` to expose internal nodes for custom external styling (`::part(name)`).
-
-### Code Example
-
-```html
-<fancy-card>
-  <template shadowrootmode="open">
-    <style>
-      :host { display: block; border: 1px solid #ccc; }
-      ::slotted(span) { font-weight: bold; }
-    </style>
-    <div part="container">
-      <slot name="title"></slot>
-      <slot></slot>
-    </div>
-  </template>
-  <span slot="title">Headline</span>
-  <p>Body copy</p>
-</fancy-card>
-```
-
 ## 8. Native Media Elements
 
 ### Guidelines
@@ -369,7 +339,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 </video>
 ```
 
-## 10. Dynamic Styles and Interactivity
+## 9. Dynamic Styles and Interactivity
 
 ### Guidelines
 - **DO** use the `style` attribute to pass state to CSS via **Custom Properties**. This keeps visual logic in your stylesheet while JavaScript provides the raw data.
