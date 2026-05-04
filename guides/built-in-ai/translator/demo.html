@@ -35,7 +35,7 @@
       e.preventDefault();
       try {
         const availability = await Translator.availability(options);
-        if (availability === 'no' || availability === 'unavailable') {
+        if (availability === 'unavailable') {
           p.textContent = 'The translation model is unavailable on this device.';
           return;
         }
