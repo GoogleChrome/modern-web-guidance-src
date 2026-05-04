@@ -21,6 +21,8 @@ To implement shaped cutouts:
 ### Using an SVG Mask (Recommended for complex cutouts)
 SVG masks allow you to define shapes that subtract from or add to the visible area using white (reveal) and black (hide) fills.
 
+> **Luminance vs. Alpha Masking**: SVG masks default to **luminance** (brightness) mode, which is why we use `fill="white"` to reveal areas and `fill="black"` to cut them out. If you prefer to use the SVG's transparency (alpha channel) instead of colors, you can set `mask-type: alpha;` in CSS or `mask-type="alpha"` on the SVG `<mask>` element.
+
 > **Important**: Always apply the mask to a background layer (like a `::before` pseudo-element) rather than the parent element containing text. This ensures that if the mask fails to load or is unsupported, your text content is never clipped, lost, or rendered unreadable.
 
 Using **absolute positioning** with a negative `z-index` allows you to stack the text content on top of the background pseudo-element cleanly:

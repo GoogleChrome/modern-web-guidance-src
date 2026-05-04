@@ -43,6 +43,8 @@ You can use the transparency of an image as a mask, with opaque parts visible an
 ### Using an SVG element in HTML
 You can also reference a `<mask>` element defined in an inline SVG in your page's HTML. Use `maskContentUnits="objectBoundingBox"` to make the mask scale automatically with the size of the element. This tells the browser to interpret all coordinates inside the mask as fractions from `0` to `1` (like `0.5` for 50%) instead of absolute pixels.
 
+> **Luminance vs. Alpha Masking**: By default, SVG masks use **luminance** (brightness) to determine opacity, where white reveals, black hides, and gray creates semi-transparency. If you want the mask to use the **alpha channel** (transparency) of your SVG shapes instead, you can specify `mask-type: alpha;` in your CSS or `mask-type="alpha"` directly on the SVG `<mask>` element.
+
 ```html
 <!-- White areas reveal content, gray creates semi-transparency, black or transparent hides it -->
 <svg width="0" height="0">
