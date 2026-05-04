@@ -6,6 +6,12 @@ window.__featuresMapping = {
   "language-detection": [
     "languagedetector"
   ],
+  "summarizer": [
+    "summarizer"
+  ],
+  "translator": [
+    "translator"
+  ],
   "animated-select-picker": [
     "customizable-select"
   ],
