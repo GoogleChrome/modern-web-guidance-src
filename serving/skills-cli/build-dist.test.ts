@@ -17,7 +17,7 @@ describe('processSkills', () => {
 
   before(() => {
     fs.mkdirSync(dummySkillDir, { recursive: true });
-    fs.writeFileSync(path.join(dummySkillDir, 'SKILL.md'), 'Test Skill with macro: {{ BASELINE_STATUS("grid") }} and guide ref: {{ GUIDE_REF("forms") }}');
+    fs.writeFileSync(path.join(dummySkillDir, 'SKILL.md'), '---\nname: test-dummy-skill\ndescription: Test dummy skill\n---\nTest Skill with macro: {{ BASELINE_STATUS("grid") }} and guide ref: {{ GUIDE_REF("forms") }}');
     fs.mkdirSync(testOutputDir, { recursive: true });
     resetGuidesMap();
   });

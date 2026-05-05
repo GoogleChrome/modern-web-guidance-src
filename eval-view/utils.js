@@ -10,6 +10,11 @@ export function getRunStats(checks) {
     return { rate, passed, total };
 }
 
+export function isDisciplineSkillRun(run) {
+    if (!run) return false;
+    return run.isDisciplineSkill !== undefined ? run.isDisciplineSkill : run.isSkill;
+}
+
 export function getColor(percentage) {
     const p = Math.max(0, Math.min(100, percentage));
     

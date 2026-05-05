@@ -305,13 +305,13 @@ describe('INCLUDE', () => {
     it('replaces macro with guide path', () => {
       const content = '{{ GUIDE_REF("break-up-long-tasks") }}';
       const result = replaceMacros(content, 'test.md');
-      assert.ok(result.includes('`performance/break-up-long-tasks/guide.md`'));
+      assert.ok(result.includes('`../guides/performance/break-up-long-tasks/guide.md`'));
     });
 
     it('replaces macro with forms skill path', () => {
       const content = '{{ GUIDE_REF("forms") }}';
       const result = replaceMacros(content, 'test.md');
-      assert.ok(result.includes('`forms/SKILL.md`'));
+      assert.ok(result.includes('`../guides/forms/SKILL.md`'));
     });
 
     it('replaces macro with category-level skill command for skills-cli', () => {

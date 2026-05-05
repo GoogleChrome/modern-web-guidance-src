@@ -90,9 +90,9 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
   const skills = scanDisciplineSkills();
 
   for (const skill of skills) {
-    const category = skill.category;
+    const skillName = skill.name;
     const source = path.join(skill.dir, "SKILL.md");
-    const skillDestDir = path.join(publishRoot, "skills", category);
+    const skillDestDir = path.join(publishRoot, "skills", skillName);
     
     fs.mkdirSync(skillDestDir, { recursive: true });
     
@@ -100,7 +100,7 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
     
-    console.log(`Processed and copied skill ${category} (SKILL.md) to ${skillDestDir}`);
+    console.log(`Processed and copied skill ${skillName} (SKILL.md) to ${skillDestDir}`);
   }
 
   if (npx) {
@@ -109,7 +109,7 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
   }
 
   console.log(`Successfully copied ${skills.length} skills to distribution.`);
-  return { skillsCount: skills.length, skillNames: skills.map(s => s.category) };
+  return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
 async function main(opts: {publishRoot: string, version?: string, npx?: boolean, subset?: number}): Promise<BuildResult | undefined> {
