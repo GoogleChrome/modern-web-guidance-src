@@ -56,6 +56,18 @@ You can generate patterns using CSS gradients. This is self-contained and does n
 }
 ```
 
+### Alpha vs Luminance Masking Modes
+
+By default, CSS masks use `mask-mode: match-source`. This means the browser automatically decides whether to use the **alpha channel** (transparency) or the **luminance** (brightness) of the mask based on what kind of source you provide:
+
+| Mask Source Type | Default Mask Mode | Masking Behavior |
+| :--- | :--- | :--- |
+| **Inline SVG `<mask>` element** | `luminance` | Opacity is determined by the brightness of colors. **White** reveals content, **black** hides it, and **gray** creates semi-transparency. |
+| **Direct Image File** (e.g. PNG, SVG file) | `alpha` | Opacity is determined by transparency. **Opaque** parts reveal content, and **transparent** parts hide it. |
+| **CSS Gradient** | `alpha` | Opacity is determined by transparency. **Opaque** colors (like `black`) reveal content, and **transparent** colors hide it. |
+
+> **Note:** You can explicitly override the default mask mode using the `mask-mode` CSS property (e.g., `mask-mode: luminance;` or `mask-mode: alpha;`).
+
 ## Fallback strategies
 {{ BASELINE_STATUS("masks") }}
 
