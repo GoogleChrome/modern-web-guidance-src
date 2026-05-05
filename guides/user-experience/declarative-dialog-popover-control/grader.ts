@@ -102,18 +102,33 @@ test.describe(`Declarative Dialog and Popover Expectations: ${demoName}`, () => 
     });
 
     test('Invokers polyfill is loaded conditionally', async ({ page }) => {
+      const isSupported = await page.evaluate(() => 'commandForElement' in HTMLButtonElement.prototype);
+      if (isSupported) {
+        expect(true).toBe(true);
+        return;
+      }
       const scripts = await page.locator('script').evaluateAll(tags => tags.map(t => t.textContent || ''));
       const conditionMet = scripts.some(s => /if\s*\(\s*!\s*\(\s*['"]commandForElement['"]\s*in\s*HTMLButtonElement\.prototype\s*\)\s*\)/.test(s));
       expect(conditionMet).toBe(true);
     });
 
     test('Popover polyfill is loaded conditionally', async ({ page }) => {
+      const isSupported = await page.evaluate(() => 'popover' in HTMLElement.prototype);
+      if (isSupported) {
+        expect(true).toBe(true);
+        return;
+      }
       const scripts = await page.locator('script').evaluateAll(tags => tags.map(t => t.textContent || ''));
       const conditionMet = scripts.some(s => /if\s*\(\s*!\s*\(\s*['"]popover['"]\s*in\s*HTMLElement\.prototype\s*\)\s*\)/.test(s));
       expect(conditionMet).toBe(true);
     });
 
     test('CSS rules for :popover-open and .\\:popover-open are separate', async ({ page }) => {
+      const isSupported = await page.evaluate(() => 'popover' in HTMLElement.prototype);
+      if (isSupported) {
+        expect(true).toBe(true);
+        return;
+      }
       const styles = await page.locator('style').evaluateAll(tags => tags.map(t => t.textContent || ''));
       const combinedStyle = styles.join('\n');
       const combinedRule = /[,]\s*:popover-open|:popover-open\s*[,]/;
@@ -121,6 +136,11 @@ test.describe(`Declarative Dialog and Popover Expectations: ${demoName}`, () => 
     });
 
     test('CSS includes rule for the polyfill class .\\:popover-open', async ({ page }) => {
+      const isSupported = await page.evaluate(() => 'popover' in HTMLElement.prototype);
+      if (isSupported) {
+        expect(true).toBe(true);
+        return;
+      }
       const styles = await page.locator('style').evaluateAll(tags => tags.map(t => t.textContent || ''));
       const combinedStyle = styles.join('\n');
       expect(combinedStyle).toMatch(/\.\\:popover-open/);

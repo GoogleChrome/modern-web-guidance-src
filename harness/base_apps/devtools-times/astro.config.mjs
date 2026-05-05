@@ -25,27 +25,7 @@ export default defineConfig({
       },
      },
   },
-  experimental: {
-    csp: {
-      directives: [
-        "default-src 'self' https://astro-news-1026410574114.us-central1.run.app https://us-central1-web-devrel-apps.cloudfunctions.net https://chrome.dev",
-        "font-src 'self' https://fonts.gstatic.com data:",
-        "img-src 'self'"
-      ],
-      styleDirective: {
-        resources: [
-          "'self'",
-          "https://fonts.googleapis.com"
-        ]
-      },
-      scriptDirective: {
-        resources: [
-          "'self'",
-          "https://us-central1-web-devrel-apps.cloudfunctions.net"
-        ]
-      }
-    }
-  },
+
   security: {
     checkOrigin: false,
     allowedDomains: [
