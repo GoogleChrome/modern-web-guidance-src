@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
+import { marked, type Token, type Tokens } from "marked";
 import { rootDir } from "../../lib/paths.ts";
 
 /**
@@ -41,85 +42,73 @@ export function resolveInclude(rawArg: string, callerPath: string): IncludeResol
     return { isValid: false, errorMessage: `Absolute paths are not allowed (got "${rawArg}")` };
   }
 
-  const hashIdx = rawArg.indexOf("#");
-  const rawPath = hashIdx === -1 ? rawArg : rawArg.slice(0, hashIdx);
-  const sectionId = hashIdx === -1 ? "" : rawArg.slice(hashIdx + 1);
-
+  const [rawPath, ...rest] = rawArg.split("#");
+  const sectionId = rest.join("#");
   const absolutePath = rawPath.startsWith("./") || rawPath.startsWith("../")
     ? path.resolve(path.dirname(callerPath), rawPath)
     : path.resolve(rootDir, rawPath);
 
-  loadBody(absolutePath); // populate cache (or mark missing as "")
-  const content = sectionId
-    ? loadSection(absolutePath, sectionId)
-    : fileCache.get(absolutePath)![""];
-
+  const file = loadFile(absolutePath);
+  const content = sectionId ? extractSection(file, sectionId) : file.body;
   return { isValid: true, content, absolutePath };
 }
 
-// File cache: absolutePath -> { "" -> post-frontmatter, post-h1 body, ...sectionId -> section body }
-const fileCache = new Map<string, Record<string, string>>();
+interface ParsedFile {
+  /** File body with frontmatter and a leading H1 stripped. "" for missing files. */
+  body: string;
+  /** Lexed body. Joined `.raw` is lossless, so sections slice cleanly. */
+  tokens: Token[];
+  /** Memoized section bodies by id. "" for misses. */
+  sections: Map<string, string>;
+}
 
-/**
- * Read a markdown file's body (frontmatter + leading H1 stripped, trimmed).
- * Returns "" if the file doesn't exist. Cached per absolute path.
- */
-function loadBody(absolutePath: string): string {
-  let record = fileCache.get(absolutePath);
-  if (!record) {
-    record = {};
-    fileCache.set(absolutePath, record);
-    if (!fs.existsSync(absolutePath)) {
-      record[""] = "";
-    } else {
-      const raw = fs.readFileSync(absolutePath, "utf-8");
-      let body = matter(raw).content.trim();
-      // Strip a leading "# Title" line — redundant when transcluded.
-      const firstNL = body.indexOf("\n");
-      const firstLine = firstNL === -1 ? body : body.slice(0, firstNL);
-      if (/^#\s+/.test(firstLine)) {
-        body = firstNL === -1 ? "" : body.slice(firstNL + 1).trim();
-      }
-      record[""] = body;
-    }
-  }
-  return record[""];
+const fileCache = new Map<string, ParsedFile>();
+
+function loadFile(absolutePath: string): ParsedFile {
+  let file = fileCache.get(absolutePath);
+  if (file) return file;
+
+  const raw = fs.existsSync(absolutePath) ? fs.readFileSync(absolutePath, "utf-8") : "";
+  // Strip frontmatter and a leading "# Title" line — redundant when transcluded.
+  const body = matter(raw).content.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
+  file = { body, tokens: marked.lexer(body), sections: new Map() };
+  fileCache.set(absolutePath, file);
+  return file;
+}
+
+const isHeading = (t: Token): t is Tokens.Heading => t.type === "heading";
+
+// `{#id}` heading-suffix syntax. Not standard CommonMark, and no installed
+// marked plugin handles it, so we match it on the heading text ourselves.
+const HEADING_ID = /\s*\{\s*#([\w-]+)\s*\}\s*$/;
+
+function matchesHeading({ text, depth }: Tokens.Heading, sectionId: string): boolean {
+  if (depth < 2) return false; // H1s are document titles, not section anchors.
+  const explicit = HEADING_ID.exec(text);
+  return explicit
+    ? explicit[1] === sectionId
+    : slugify(text) === sectionId;
 }
 
 /**
  * Extract a section by id, dropping the heading itself. A heading matches
  * when its `{#id}` suffix equals `sectionId` or its text slugifies to it.
  * Section ends at the next heading of equal or shallower depth.
- * Cached per (file, sectionId).
- *
- * Heading detection is regex-based and skips H1 to avoid clashing with
- * document titles. Known limitation: a `### foo` line inside a fenced code
- * block is treated as a real heading.
  */
-function loadSection(absolutePath: string, sectionId: string): string {
-  const record = fileCache.get(absolutePath)!;
-  if (sectionId in record) return record[sectionId];
+function extractSection(file: ParsedFile, sectionId: string): string {
+  let result = file.sections.get(sectionId);
+  if (result !== undefined) return result;
 
-  const body = record[""];
-  let result = "";
-  if (body) {
-    const headings = [...body.matchAll(/^(#{2,})\s+(.+?)(?:\s*\{\s*#([\w-]+)\s*\})?\s*$/gm)];
-    for (let i = 0; i < headings.length; i++) {
-      const [match, hashes, text, explicitId] = headings[i];
-      if (explicitId !== sectionId && slugify(text) !== sectionId) continue;
-
-      const start = headings[i].index! + match.length;
-      let end = body.length;
-      for (let j = i + 1; j < headings.length; j++) {
-        if (headings[j][1].length <= hashes.length) {
-          end = headings[j].index!;
-          break;
-        }
-      }
-      result = body.slice(start, end).trim();
-      break;
-    }
+  const { tokens } = file;
+  const heading = tokens.find((t): t is Tokens.Heading => isHeading(t) && matchesHeading(t, sectionId));
+  if (!heading) {
+    result = "";
+  } else {
+    const start = tokens.indexOf(heading);
+    const end = tokens.findIndex((t, i) => i > start && isHeading(t) && t.depth <= heading.depth);
+    const stop = end === -1 ? tokens.length : end;
+    result = tokens.slice(start + 1, stop).map(t => t.raw).join("").trim();
   }
-  record[sectionId] = result;
+  file.sections.set(sectionId, result);
   return result;
 }
