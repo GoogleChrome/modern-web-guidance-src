@@ -596,7 +596,7 @@ function renderGrid(data, testId) {
             if (!unguidedRuns && !guidedRuns) return; // Skip if neither exists
 
             const sampleRun = (unguidedRuns && unguidedRuns[0]) || (guidedRuns && guidedRuns[0]);
-            const isSkill = sampleRun ? sampleRun.isSkill : false;
+            const isDisciplineSkill = sampleRun ? (sampleRun.isDisciplineSkill !== undefined ? sampleRun.isDisciplineSkill : sampleRun.isSkill) : false;
 
             sortedScenarios.push(scenarioName);
 
@@ -629,8 +629,8 @@ function renderGrid(data, testId) {
                 <div class="task-accordion-header">
                     <div class="left-section">
                         <span class="chevron" style="display: inline-block; transition: transform 0.2s; margin-right: 10px;">▶</span>
-                        <span class="feature-chip">${escapeHtml(formatTestName(scenarioName, isSkill).split(': ')[0])}</span>
-                        <span class="task-title">${escapeHtml(formatTestName(scenarioName, isSkill).split(': ')[1] || '')}</span>
+                        <span class="feature-chip">${escapeHtml(formatTestName(scenarioName, isDisciplineSkill).split(': ')[0])}</span>
+                        <span class="task-title">${escapeHtml(formatTestName(scenarioName, isDisciplineSkill).split(': ')[1] || '')}</span>
                     </div>
                     <div class="right-section">
                         <div class="mini-dumbbell-track">
@@ -661,10 +661,10 @@ function renderGrid(data, testId) {
                 }
             };
 
-            const targetGrid = isSkill ? disciplineGrid : guideGrid;
+            const targetGrid = isDisciplineSkill ? disciplineGrid : guideGrid;
             if (targetGrid) {
                 targetGrid.appendChild(accordion);
-                if (isSkill) {
+                if (isDisciplineSkill) {
                     const section = document.getElementById('discipline-section');
                     if (section) section.style.display = 'block';
                 }
@@ -810,7 +810,8 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             const hasExpectedPrefix = run.expectedToolPrefixes && run.expectedToolPrefixes.some(p => g.startsWith(p));
             const isGreen = isExpectedGuide || hasExpectedPrefix;
             
-            const isCorrespondingDiscipline = !run.isSkill && g === run.discipline;
+            const runIsDisciplineSkill = run.isDisciplineSkill !== undefined ? run.isDisciplineSkill : run.isSkill;
+            const isCorrespondingDiscipline = !runIsDisciplineSkill && g === run.discipline;
 
             let className = 'default-guide';
             let style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace;';
@@ -900,7 +901,8 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                              <div class="run-card-row-inner" style="flex-wrap: wrap;">
                                                                    ${toolsUsed.map(t => {
                                       const isCorrectTool = run.expectedToolPrefixes && run.expectedToolPrefixes.some(p => t.startsWith(p));
-                                      const isCorrespondingDiscipline = !run.isSkill && t === run.discipline;
+                                      const runIsDisciplineSkill = run.isDisciplineSkill !== undefined ? run.isDisciplineSkill : run.isSkill;
+                                       const isCorrespondingDiscipline = !runIsDisciplineSkill && t === run.discipline;
 
                                       let className = 'default-guide';
                                       let style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace;';
