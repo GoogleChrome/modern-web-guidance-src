@@ -58,4 +58,5 @@ jobs:
         run: |
           npm install -g npm@latest
           cd dist/skills-cli-npx
-          npm publish --provenance --access public --registry https://registry.npmjs.org/
+          # Doesn't work unless repo is public. TODO: flip on when we open-source.
+          # npm publish --provenance --access public --registry https://registry.npmjs.org/
