@@ -56,7 +56,7 @@ function getVisibilityInfo() {
 
 {{ BASELINE_STATUS("page-visibility-state") }}
 
-The `VisibilityStateEntry` API is not universally supported in older browser versions. For unsupported environments, you may fall back to checking the `document.visibilityState` property and listening for the `visibilitychange` event.
+For unsupported environments, you may fall back to checking the `document.visibilityState` property or listening for the `visibilitychange` event.
 
 **MANDATORY:** You must understand that this fallback approach is often **highly inaccurate for determining initial background state**. Because scripts can load and execute asynchronously, a page could be opened in a background tab and then foregrounded by the user *before* your script has finished downloading and executing. When your script finally runs, `document.visibilityState` will synchronously read as `'visible'`, and you will incorrectly assume the page was loaded in the foreground, completely missing its initial hidden state. Furthermore, the fallback timestamp lacks the internal precision of the Performance API. If precision is a high priority, do not use the fallback.
 
