@@ -18,9 +18,9 @@ import { replaceMacros, type BuildTarget } from "../lib/macros.ts";
 
 import { scanAllGuides, type GuideInventory, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../lib/baseline.ts";
+import { rootDir as WORKSPACE_ROOT } from "../../lib/paths.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
-const WORKSPACE_ROOT = path.resolve(ROOT_DIR, "..");
 const OUTPUT_FILE = path.join(ROOT_DIR, "lib/use-cases.gen.ts");
 
 interface UseCase {
@@ -28,6 +28,11 @@ interface UseCase {
   description: string;
   category: string;
   featuresUsed: string[];
+}
+
+interface GuideWithContent extends GuideInventory {
+  content?: string;
+  guidePath: string;
 }
 
 export interface BuildOptions {
@@ -58,8 +63,17 @@ export async function processGuides(opts: BuildOptions) {
   IS_NO_CHUNKING = !!noChunking;
   TARGET = target || 'local-dev';
 
-  // Scan guides first to see if we even need to run
-  let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
+  // Scan guides and load their content for hashing and processing
+  let readyGuides: GuideWithContent[] = scanAllGuides()
+    .filter(inv => inv.hasGuide)
+    .map(inv => {
+      const guidePath = getGuideMarkdownPath(inv);
+      return {
+        ...inv,
+        guidePath,
+        content: fs.existsSync(guidePath) ? fs.readFileSync(guidePath, "utf-8") : undefined
+      };
+    });
 
   if (subset) {
     readyGuides = readyGuides.slice(0, subset);
@@ -76,10 +90,10 @@ export async function processGuides(opts: BuildOptions) {
 
   // Hash the contents of all active guides to guarantee state accuracy
   for (const inv of readyGuides) {
-    const guidePath = getGuideMarkdownPath(inv);
-    if (fs.existsSync(guidePath)) {
-      hash.update(guidePath);
-      hash.update(fs.readFileSync(guidePath, "utf-8"));
+    if (inv.content !== undefined) {
+      // Use relative path for portability
+      hash.update(path.relative(WORKSPACE_ROOT, inv.guidePath));
+      hash.update(inv.content);
     }
   }
   const currentHash = hash.digest("hex");
@@ -134,7 +148,7 @@ export async function processGuides(opts: BuildOptions) {
 
   if (targetGuidePath) {
     // Single guide mode
-    const absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
+    const absoluteTargetPath = path.resolve(WORKSPACE_ROOT, targetGuidePath);
     console.log(`Building single guide from: ${absoluteTargetPath}`);
 
     const guidePath = path.join(absoluteTargetPath, "guide.md");
@@ -144,13 +158,19 @@ export async function processGuides(opts: BuildOptions) {
 
     const category = path.basename(path.dirname(absoluteTargetPath));
     const name = path.basename(absoluteTargetPath);
-    readyGuides = [{dir: absoluteTargetPath, name, category, hasGuide: true} as GuideInventory];
+    readyGuides = [{
+      dir: absoluteTargetPath,
+      name,
+      category,
+      hasGuide: true,
+      guidePath,
+      content: fs.readFileSync(guidePath, "utf-8")
+    } as GuideWithContent];
   }
 
   console.log("Generating embeddings…");
   for (const inv of readyGuides) {
-    const guidePath = getGuideMarkdownPath(inv);
-    await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder);
+    await processSingleGuideFile(inv, useCases, storeUseCases, embedder);
   }
 
 
@@ -204,14 +224,14 @@ export function chunkMarkdown(markdown: string): string[] {
 }
 
 async function processSingleGuideFile(
-  filePath: string,
-  category: string,
-  id: string,
+  inv: GuideWithContent,
   useCases: UseCase[],
   storeUseCases: StoreUseCase[],
   embedder: any
 ) {
-  const content = fs.readFileSync(filePath, "utf-8");
+  const { guidePath: filePath, category, name: id, content } = inv;
+  if (content === undefined) return;
+  
   const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
 
   if (!data.description || !frontmatter) {
