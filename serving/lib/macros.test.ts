@@ -113,6 +113,15 @@ describe('INCLUDE', () => {
       path.join(tmpDir, 'with-baseline.md'),
       '# With Baseline\n\n### Fallbacks\n\nBaseline status: {{ BASELINE_STATUS("grid") }}\n'
     );
+    fs.writeFileSync(
+      path.join(tmpDir, 'formatted-headings.md'),
+      '# Formatted Headings\n\n' +
+      '### Foo **bar** <em>baz</em>\n\nUNIQUE_BOLD_HTML\n\n' +
+      '### A [link](https://example.com) here\n\nUNIQUE_LINK\n\n' +
+      '### `code` in heading\n\nUNIQUE_CODE\n\n' +
+      '### *Italic* heading {#renamed}\n\nUNIQUE_RENAMED\n\n' +
+      'Setext Foo  \nBar\n----------\n\nUNIQUE_BR\n'
+    );
   });
 
   after(() => {
@@ -162,6 +171,33 @@ describe('INCLUDE', () => {
     it('still matches by slugified heading text when no `{#id}` is set', () => {
       const result = replaceMacros('{{ INCLUDE("./explicit-id.md#plain-heading") }}', FIXTURE_CALLER);
       assert.ok(result.includes('Plain section content'));
+    });
+
+    it('matches headings with bold and inline HTML by visible text', () => {
+      const result = replaceMacros('{{ INCLUDE("./formatted-headings.md#foo-bar-baz") }}', FIXTURE_CALLER);
+      assert.ok(result.includes('UNIQUE_BOLD_HTML'));
+    });
+
+    it('matches headings with links by visible text only (URL not in slug)', () => {
+      const result = replaceMacros('{{ INCLUDE("./formatted-headings.md#a-link-here") }}', FIXTURE_CALLER);
+      assert.ok(result.includes('UNIQUE_LINK'));
+    });
+
+    it('matches headings with inline code', () => {
+      const result = replaceMacros('{{ INCLUDE("./formatted-headings.md#code-in-heading") }}', FIXTURE_CALLER);
+      assert.ok(result.includes('UNIQUE_CODE'));
+    });
+
+    it('treats a hard line break in a setext heading as a word boundary', () => {
+      const result = replaceMacros('{{ INCLUDE("./formatted-headings.md#setext-foo-bar") }}', FIXTURE_CALLER);
+      assert.ok(result.includes('UNIQUE_BR'));
+    });
+
+    it('matches a heading with both formatting and {#id}, by either id or slug', () => {
+      const byId = replaceMacros('{{ INCLUDE("./formatted-headings.md#renamed") }}', FIXTURE_CALLER);
+      assert.ok(byId.includes('UNIQUE_RENAMED'));
+      const bySlug = replaceMacros('{{ INCLUDE("./formatted-headings.md#italic-heading") }}', FIXTURE_CALLER);
+      assert.ok(bySlug.includes('UNIQUE_RENAMED'));
     });
 
     it('trims output so a section can be inlined cleanly', () => {

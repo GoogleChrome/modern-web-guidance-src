@@ -78,16 +78,36 @@ function loadFile(absolutePath: string): ParsedFile {
 
 const isHeading = (t: Token): t is Tokens.Heading => t.type === "heading";
 
+/**
+ * Plain-text projection of a list of marked tokens (block or inline), in the
+ * spirit of DOM `Node.textContent`. Strips markdown syntax and HTML tags,
+ * keeping only visible content; for links, keeps the visible text and drops
+ * the URL. Inline `html` tokens (the tag syntax itself) are skipped, since
+ * the visible text between tags lives in adjacent `text` tokens. Block-level
+ * HTML is also dropped — its content isn't exposed as child tokens.
+ */
+function textContent(tokens: Token[] | undefined): string {
+  return tokens?.map(t => {
+    if ("tokens" in t && t.tokens) return textContent(t.tokens);
+    if (t.type === "br") return "\n";
+    if (t.type === "html") return "";
+    return "text" in t ? t.text : "";
+  }).join("") ?? "";
+}
+
 // `{#id}` heading-suffix syntax. Not standard CommonMark, and no installed
 // marked plugin handles it, so we match it on the heading text ourselves.
 const HEADING_ID = /\s*\{\s*#([\w-]+)\s*\}\s*$/;
 
-function matchesHeading({ text, depth }: Tokens.Heading, sectionId: string): boolean {
-  if (depth < 2) return false; // H1s are document titles, not section anchors.
+function matchesHeading(heading: Tokens.Heading, sectionId: string): boolean {
+  if (heading.depth < 2) return false; // H1s are document titles, not section anchors.
+  let text = textContent(heading.tokens);
   const explicit = HEADING_ID.exec(text);
-  return explicit
-    ? explicit[1] === sectionId
-    : slugify(text) === sectionId;
+  if (explicit) {
+    if (explicit[1] === sectionId) return true;
+    text = text.slice(0, explicit.index);
+  }
+  return slugify(text) === sectionId;
 }
 
 /**
