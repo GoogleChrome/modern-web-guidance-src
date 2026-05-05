@@ -34,3 +34,15 @@ gemini extensions install https://github.com/GoogleChrome/modern-web-guidance --
 * Navigate to the `modern-web-guidance` directory and select it.
 
 Compatibility with VSCode forks: unknown.
+
+## Usage Statistics
+
+Google collects anonymous usage statistics (such as search and retrieve queries) to improve the reliability, relevance, and performance of the Modern Web Guidance tool.
+
+Data collection is enabled by default. You can opt-out completely at any time by setting the `DISABLE_MWG_TELEMETRY=1` environment variable in your shell profile (e.g., `.bashrc` or `.zshrc`):
+
+```bash
+export DISABLE_MWG_TELEMETRY=1
+```
+
+Google handles this data in accordance with the [Google Privacy Policy](https://policies.google.com/privacy).

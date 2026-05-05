@@ -53,22 +53,9 @@ function parseWatchdogArgs(): WatchdogArgs {
 
 function main() {
   const {
-    parentPid,
     clearcutEndpoint,
     clearcutIncludePidHeader,
   } = parseWatchdogArgs();
-
-  console.log(
-    'Watchdog started',
-    JSON.stringify(
-      {
-        pid: process.pid,
-        parentPid,
-      },
-      null,
-      2
-    )
-  );
 
   const sender = new ClearcutSender({
     clearcutEndpoint,
@@ -76,28 +63,25 @@ function main() {
   });
 
   let isShuttingDown = false;
-  function onParentDeath(reason: string) {
+  function onParentDeath() {
     if (isShuttingDown) {
       return;
     }
 
     isShuttingDown = true;
-    console.log(`Parent death detected (${reason}). Sending shutdown event...`);
     sender
       .sendShutdownEvent()
       .then(() => {
-        console.log('Shutdown event sent. Exiting.');
         process.exit(0);
       })
-      .catch(err => {
-        console.error('Failed to send shutdown event', err);
+      .catch(() => {
         process.exit(1);
       });
   }
 
-  process.stdin.on('end', () => onParentDeath('stdin end'));
-  process.stdin.on('close', () => onParentDeath('stdin close'));
-  process.on('disconnect', () => onParentDeath('ipc disconnect'));
+  process.stdin.on('end', () => onParentDeath());
+  process.stdin.on('close', () => onParentDeath());
+  process.on('disconnect', () => onParentDeath());
 
   const rl = readline.createInterface({
     input: process.stdin,

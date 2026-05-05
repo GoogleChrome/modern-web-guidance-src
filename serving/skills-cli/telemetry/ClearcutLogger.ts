@@ -5,9 +5,6 @@
  */
 
 import process from 'node:process';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { WatchdogClient } from './WatchdogClient.js';
 import {
   type ChromeModernWebGuidance,
@@ -15,18 +12,10 @@ import {
 } from './types.js';
 
 function isTelemetryEnabled(): boolean {
-  const currentDir = path.dirname(fileURLToPath(import.meta.url));
-  const telemetryFilePath = path.join(currentDir, '.telemetry');
-  
-  if (!fs.existsSync(telemetryFilePath)) {
-    return false; // Off by default
-  }
-  try {
-    const content = fs.readFileSync(telemetryFilePath, 'utf-8').trim();
-    return content === 'true';
-  } catch {
+  if (process.env.DISABLE_MWG_TELEMETRY === '1' || process.env.DISABLE_MWG_TELEMETRY === 'true') {
     return false;
   }
+  return true; // Enabled by default!
 }
 
 export class ClearcutLogger {
@@ -40,6 +29,7 @@ export class ClearcutLogger {
   } = {}) {
     this.#enabled = isTelemetryEnabled();
     if (this.#enabled) {
+      console.log("Sending telemetry event. Opt-out of usage statistics collection by setting the environment variable DISABLE_MWG_TELEMETRY=1.");
       this.#watchdog = new WatchdogClient({
         parentPid: process.pid,
         logFile: options.logFile,

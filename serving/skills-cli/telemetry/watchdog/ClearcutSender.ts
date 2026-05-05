@@ -20,6 +20,7 @@ const REQUEST_TIMEOUT_MS = 10_000;
 export class ClearcutSender {
   #clearcutEndpoint: string;
   #includePidHeader: boolean;
+  #pendingFetches: Set<Promise<void>> = new Set();
 
   constructor(config: ClearcutSenderConfig = {}) {
     this.#clearcutEndpoint =
@@ -28,16 +29,17 @@ export class ClearcutSender {
   }
 
   enqueueEvent(event: ChromeModernWebGuidance): void {
-    console.log('Sending telemetry event', JSON.stringify(event, null, 2));
-    this.#sendEvent(event).catch(err => {
-      console.error('Failed to send telemetry event:', err);
+    const p = this.#sendEvent(event).catch(() => {});
+    this.#pendingFetches.add(p);
+    p.finally(() => {
+      this.#pendingFetches.delete(p);
     });
   }
 
   async sendShutdownEvent(): Promise<void> {
-    // No shutdown event needed for this simplified version,
-    // and no buffer to flush.
-    return Promise.resolve();
+    if (this.#pendingFetches.size > 0) {
+      await Promise.allSettled(this.#pendingFetches);
+    }
   }
 
   async #sendEvent(event: ChromeModernWebGuidance): Promise<void> {
@@ -57,7 +59,7 @@ export class ClearcutSender {
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     
     try {
-      const response = await fetch(this.#clearcutEndpoint, {
+      await fetch(this.#clearcutEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -70,13 +72,8 @@ export class ClearcutSender {
       });
 
       clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        console.error('Telemetry server returned error:', response.status);
-      }
     } catch (err) {
       clearTimeout(timeoutId);
-      console.error('Fetch error in telemetry:', err);
     }
   }
 }

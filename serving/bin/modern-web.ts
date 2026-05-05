@@ -31,9 +31,6 @@ async function main() {
     process.exit(values.help ? 0 : 1);
   }
 
-  // Instantiate logger
-  const logger = new ClearcutLogger();
-
   const command = positionals[0];
   const arg = positionals.slice(1).join(" ");
 
@@ -50,6 +47,8 @@ async function main() {
       if (results.length === 0) {
         console.log("[]");
       } else {
+        // Instantiate logger
+        const logger = new ClearcutLogger();
         // Log search results
         await logger.logSearchResult(results.map(r => r.id));
 
@@ -73,6 +72,8 @@ async function main() {
       process.exit(1);
     }
 
+    // Instantiate logger
+    const logger = new ClearcutLogger();
     // Log retrieve results
     await logger.logRetrieveResult(ids);
 
