@@ -83,7 +83,7 @@ export async function processGuides(opts: BuildOptions) {
     }
   }
   const currentHash = hash.digest("hex");
-  
+
   // Ensure the build directory exists before we reference it for the manifest
   const manifestDir = path.join(ROOT_DIR, "build");
   if (!fs.existsSync(manifestDir)) {
@@ -122,7 +122,7 @@ export async function processGuides(opts: BuildOptions) {
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
 
-  console.log("Initializing Embedder...");
+  console.log("Initializing Embedder…");
 
   if (modelName) {
     console.log(`Using custom embedding model: ${modelName}`);
@@ -177,7 +177,6 @@ export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
 
   // Write manifest only after successful build completes
   fs.writeFileSync(manifestPath, JSON.stringify({ hash: currentHash }, null, 2));
-  console.log(`Cache manifest updated at ${path.relative(WORKSPACE_ROOT, manifestPath)}`);
 }
 
 export function chunkMarkdown(markdown: string): string[] {
