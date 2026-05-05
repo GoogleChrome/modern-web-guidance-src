@@ -213,6 +213,33 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // --- /api/available-skills : lists folders with SKILL.md ---
+  if (decodedPath === '/api/available-skills') {
+    try {
+      const guidesDir = path.resolve('../guides');
+      const skills = [];
+      if (fs.existsSync(guidesDir)) {
+        const candidates = fs.readdirSync(guidesDir, { withFileTypes: true })
+          .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+          .map(d => d.name);
+
+        for (const candidate of candidates) {
+          const skillSource = path.join(guidesDir, candidate, "SKILL.md");
+          if (fs.existsSync(skillSource)) {
+            skills.push(candidate);
+          }
+        }
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ skills }));
+    } catch (e) {
+      console.error('Error fetching skills:', e);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }));
+    }
+    return;
+  }
+
   // --- /api/eval-launch : spawns an evaluation run in background ---
   if (decodedPath === '/api/eval-launch' && req.method === 'POST') {
     let body = '';
