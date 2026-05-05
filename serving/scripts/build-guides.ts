@@ -43,7 +43,7 @@ async function processGuides() {
 
   const VECTORS_FILE = path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
 
-  let shouldSkip = !targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(VECTORS_FILE);
+  let shouldSkip = !process.env.CI && !targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(VECTORS_FILE);
 
   if (shouldSkip) {
     // Also check if the count of files in BUILD_GUIDES_DIR matches readyGuides.length
