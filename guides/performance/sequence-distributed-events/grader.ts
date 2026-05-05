@@ -65,7 +65,7 @@ test.describe(`Sequencing Distributed Events Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test('Browser: Application should detect and handle missing Temporal support', async ({ page }) => {
+  test('Browser: Application should detect and handle missing Temporal support', async () => {
     expect(true).toBe(true);
   });
 

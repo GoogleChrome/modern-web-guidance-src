@@ -108,7 +108,7 @@ test.describe(`Temporal API Expectations: ${demoName}`, () => {
     }
   });
 
-  test('MUST NOT use the legacy Date object for representing partial time concepts', async ({ page }) => {
+  test('MUST NOT use the legacy Date object for representing partial time concepts', async () => {
     expect(true).toBe(true);
   });
 });
