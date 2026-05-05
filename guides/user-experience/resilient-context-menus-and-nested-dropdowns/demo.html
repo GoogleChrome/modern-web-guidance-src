@@ -12,13 +12,18 @@
       }
     </script>
 
+    <script type="module">
+      if (!("anchorName" in document.documentElement.style)) {
+        await import("https://unpkg.com/@oddbird/css-anchor-positioning");
+      }
+    </script>
+
     <style>
       body {
         font-family:
           system-ui,
           -apple-system,
           sans-serif;
-        min-height: 100vh;
         margin: 0;
         background-color: #f6f8fa;
         overflow: hidden; /* Prevent scrolling while dragging */
@@ -66,6 +71,7 @@
         border-radius: 4px;
         color: #333;
         transition: background-color 0.2s;
+        anchor-name: --kebab-anchor;
       }
 
       .kebab-button:hover,
@@ -82,8 +88,13 @@
         box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
         min-width: 160px;
 
-        /* Tethering using position-area */
-        position-area: block-end span-inline-end;
+        position-anchor: --kebab-anchor;
+        /* Mandatory: use insets rather that position-area for positioning */
+        bottom: auto;
+        right: auto;
+        top: anchor(bottom);
+        left: anchor(left);
+        margin: 0;
 
         /* Edge collision handling */
         position-try-fallbacks: flip-block, flip-inline;
@@ -97,7 +108,15 @@
         box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
         min-width: 140px;
 
-        position-area: inline-end span-block-end;
+        position-anchor: --submenu-trigger;
+
+        /* Mandatory: use insets rather that position-area for positioning */
+        bottom: auto;
+        right: auto;
+        top: anchor(top);
+        left: anchor(right);
+        margin: 0;
+
         position-try-fallbacks: flip-inline, flip-block;
       }
 
@@ -129,6 +148,9 @@
 
       .has-submenu > .menu-item::after {
         display: block;
+      }
+      .submenu-trigger {
+        anchor-name: --submenu-trigger;
       }
     </style>
   </head>

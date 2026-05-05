@@ -100,8 +100,10 @@ For some use cases, you may be able to use the `@oddbird/css-anchor-positioning`
   /* Mandatory: use explicit anchor name */
   position-anchor: --kebab-anchor;
   /* Mandatory: use insets rather that position-area for positioning */
-  inset: auto;
-  inset-block-start: anchor(outside);
-  inset-inline-start: anchor(inside);
+  bottom: auto;
+  right: auto;
+  top: anchor(bottom);
+  left: anchor(left);
+  margin: 0;
 }
 ```
