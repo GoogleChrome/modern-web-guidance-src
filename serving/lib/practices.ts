@@ -26,12 +26,27 @@ export function getUseCasesByCategory(category?: string): UseCase[] {
 }
 
 export async function getGuide(useCaseId: string): Promise<string | null> {
+  let filePath: string | null = null;
   const useCase = USE_CASES.find((u) => u.id === useCaseId);
-  if (!useCase) return null;
-  const devGuidesDir = path.resolve(import.meta.dirname, "../build/guides");
-  const prodGuidesDir = path.resolve(import.meta.dirname, "./guides");
-  const guidesDir = existsSync(devGuidesDir) ? devGuidesDir : prodGuidesDir;
-  const filePath = path.join(guidesDir, useCase.category, `${useCaseId}.md`);
+  
+  if (!useCase) {
+    // Fallback: Check if it is a high-level category skill.
+    const localSkillPath = path.resolve(import.meta.dirname, "../../guides", useCaseId, "SKILL.md");
+    const prodSkillPath = path.resolve(import.meta.dirname, "../", useCaseId, "SKILL.md");
+
+    if (existsSync(localSkillPath)) {
+      filePath = localSkillPath;
+    } else if (existsSync(prodSkillPath)) {
+      filePath = prodSkillPath;
+    } else {
+      return null;
+    }
+  } else {
+    const devGuidesDir = path.resolve(import.meta.dirname, "../build/guides");
+    const prodGuidesDir = path.resolve(import.meta.dirname, "./guides");
+    const guidesDir = existsSync(devGuidesDir) ? devGuidesDir : prodGuidesDir;
+    filePath = path.join(guidesDir, useCase.category, `${useCaseId}.md`);
+  }
 
   try {
     const content = await fs.readFile(filePath, "utf-8");

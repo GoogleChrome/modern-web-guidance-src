@@ -14,4 +14,11 @@ describe("getGuide", () => {
     const guide = await getGuide("non-existent-id");
     assert.strictEqual(guide, null);
   });
+
+  it("should retrieve category skill SKILL.md when category name is provided", async () => {
+    const guide = await getGuide("forms");
+    assert.ok(guide);
+    assert.ok(guide.includes("name: forms"));
+    assert.ok(guide.includes("description: Best practices for building accessible, secure, and user-friendly web forms"));
+  });
 });
