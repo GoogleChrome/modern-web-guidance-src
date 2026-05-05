@@ -18,9 +18,9 @@ import { replaceMacros, type BuildTarget } from "../lib/macros.ts";
 
 import { scanAllGuides, type GuideInventory, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../lib/baseline.ts";
-import { rootDir as WORKSPACE_ROOT } from "../../lib/paths.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
+const WORKSPACE_ROOT = path.resolve(ROOT_DIR, "..");
 const OUTPUT_FILE = path.join(ROOT_DIR, "lib/use-cases.gen.ts");
 
 interface UseCase {
@@ -148,7 +148,7 @@ export async function processGuides(opts: BuildOptions) {
 
   if (targetGuidePath) {
     // Single guide mode
-    const absoluteTargetPath = path.resolve(WORKSPACE_ROOT, targetGuidePath);
+    const absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
     console.log(`Building single guide from: ${absoluteTargetPath}`);
 
     const guidePath = path.join(absoluteTargetPath, "guide.md");
