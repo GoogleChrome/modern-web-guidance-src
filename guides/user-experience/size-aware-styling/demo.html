@@ -1,1 +1,146 @@
-<!-- TODO -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Size-Aware Styling Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 2rem;
+      background: #f0f2f5;
+    }
+
+    /* The container that we want to measure */
+    .resizable-container {
+      container-type: inline-size;
+      background: #e9ecef;
+      padding: 1rem;
+      border-radius: 8px;
+      border: 2px dashed #ccc;
+      
+      /* Make the container resizable for the demo */
+      resize: horizontal;
+      overflow: auto;
+      min-width: 250px;
+      max-width: 800px;
+      width: 350px;
+    }
+
+    /* The component that responds to container size */
+    /* Default safe stacked layout */
+    .card {
+      display: flex;
+      flex-direction: column;
+      background: white;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      gap: 1rem;
+      padding: 1rem;
+    }
+
+    .card-image {
+      background: #007bff;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      height: 100px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .card-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .card-text {
+      margin: 0;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    /* Fallback using media queries for older browsers */
+    @media (min-width: 600px) {
+      .card {
+        flex-direction: row;
+        align-items: center;
+      }
+      
+      .card-image {
+        width: 100px;
+        height: 100px;
+      }
+      
+      .card-content {
+        flex: 1;
+      }
+    }
+
+    /* Overwrite with container queries where supported */
+    @supports (container-type: inline-size) {
+      @media (min-width: 600px) {
+        .card {
+          /* Reset media query fallback if needed */
+          flex-direction: column;
+          align-items: stretch;
+        }
+        
+        .card-image {
+          width: 100%;
+          height: 100px;
+        }
+      }
+      
+      @container (min-width: 400px) {
+        .card {
+          flex-direction: row;
+          align-items: center;
+        }
+
+        .card-image {
+          width: 100px;
+          height: 100px;
+        }
+        
+        .card-content {
+          flex: 1;
+        }
+      }
+    }
+
+    .instruction {
+      margin-bottom: 1rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="instruction">
+    Drag the bottom-right corner of the dashed box to resize it. When it crosses 400px, the card layout will change from vertical to horizontal.
+  </div>
+
+  <div class="resizable-container">
+    <div class="card">
+      <div class="card-image">Image</div>
+      <div class="card-content">
+        <h2 class="card-title">Responsive Card</h2>
+        <p class="card-text">
+          This card changes its layout based on the width of its container, not the screen.
+        </p>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
