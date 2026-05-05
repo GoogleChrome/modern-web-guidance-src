@@ -47,7 +47,8 @@
       "onnxruntime-node",
       "protobufjs",
       "sharp",
-      "tree-sitter-bash"
+      "tree-sitter-bash",
+      "@anthropic-ai/claude-code"
     ],
     "packageExtensions": {
       "@google/gemini-cli": {
