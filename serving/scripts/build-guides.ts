@@ -20,6 +20,7 @@ import { scanAllGuides, type GuideInventory, getGuideMarkdownPath } from "../../
 import { getFeatureName } from "../lib/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
+const WORKSPACE_ROOT = path.resolve(ROOT_DIR, "..");
 const OUTPUT_FILE = path.join(ROOT_DIR, "lib/use-cases.gen.ts");
 
 interface UseCase {
@@ -166,17 +167,17 @@ export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
 `;
 
   fs.writeFileSync(OUTPUT_FILE, tsContent);
-  console.log(`Generated ${useCases.length} use cases to ${OUTPUT_FILE}`);
+  console.log(`Generated ${useCases.length} use cases to ${path.relative(WORKSPACE_ROOT, OUTPUT_FILE)}`);
 
 
   const jsonContent = JSON.stringify(storeUseCases);
   const compressed = zlib.gzipSync(jsonContent);
   fs.writeFileSync(VECTORS_FILE, compressed);
-  console.log(`Vector storage updated at ${VECTORS_FILE}`);
+  console.log(`Vector storage updated at ${path.relative(WORKSPACE_ROOT, VECTORS_FILE)}`);
 
   // Write manifest only after successful build completes
   fs.writeFileSync(manifestPath, JSON.stringify({ hash: currentHash }, null, 2));
-  console.log(`Cache manifest updated at ${manifestPath}`);
+  console.log(`Cache manifest updated at ${path.relative(WORKSPACE_ROOT, manifestPath)}`);
 }
 
 export function chunkMarkdown(markdown: string): string[] {
