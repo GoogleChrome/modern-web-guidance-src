@@ -6,8 +6,12 @@ import path from 'path';
  */
 export function getRootDir(): string {
   try {
+    const env = { ...process.env };
+    delete env.GIT_DIR;
+    delete env.GIT_WORK_TREE;
     return execSync('git rev-parse --show-toplevel', {
       encoding: 'utf-8',
+      env,
       stdio: ['pipe', 'pipe', 'pipe'],
     }).trim();
   } catch {
