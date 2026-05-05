@@ -13,7 +13,6 @@ sources:
   - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Masking/Introduction
   - https://css-tricks.com/clipping-masking-css/
   - https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorials/SVG_from_scratch/SVG_and_CSS
-  - https://www.joshwcomeau.com/svg/friendly-introduction-to-svg/
   - https://css-tricks.com/svg-properties-and-css/
 ---
 
