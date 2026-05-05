@@ -37,8 +37,8 @@ function getVisibilityInfo() {
     let timeBackgrounded = null;
     for (const entry of entries) {
       if (entry.name === 'hidden') {
-        // <!-- entry.startTime is used because it provides the exact browser 
-        // timestamp of the visibility change, which is required for precision -->
+        // entry.startTime is used because it provides the exact browser 
+        // timestamp of the visibility change, which is required for precision
         timeBackgrounded = entry.startTime;
         break;
       }
@@ -63,7 +63,7 @@ For unsupported environments, you may fall back to checking the `document.visibi
 ```javascript
 /**
  * Fallback implementation using document.visibilityState.
- * <!-- This approach is prone to race conditions if the script loads asynchronously. -->
+ * This approach is prone to race conditions if the script loads asynchronously.
  */
 function getFallbackVisibilityInfo() {
   // Check the state exactly when this script executes.
@@ -77,9 +77,9 @@ function getFallbackVisibilityInfo() {
   // Listen for future visibility changes to capture if it is backgrounded later.
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden' && timeBackgrounded === null) {
-      // <!-- performance.now() is used here as a fallback, but it only gives 
+      // performance.now() is used here as a fallback, but it only gives 
       // us the time the event listener fired, not the precise internal 
-      // browser time the visibility actually changed. -->
+      // browser time the visibility actually changed.
       timeBackgrounded = performance.now();
     }
   });
