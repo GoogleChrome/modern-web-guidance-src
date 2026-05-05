@@ -37,6 +37,8 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
 
   if (opts.htmlOutputDir) {
     env.PLAYWRIGHT_HTML_OUTPUT_DIR = opts.htmlOutputDir;
+    // Set output dir to be relative to the target file!
+    env.PLAYWRIGHT_OUTPUT_DIR = path.join(path.dirname(opts.targetFileAbs), 'test-results');
   }
 
   if (opts.jsonOutputName) {
@@ -162,8 +164,7 @@ export interface CalibrationResult {
   negative: { passed: number; failed: number; passingTests: string[] };
 }
 
-export async function testGrader(targetDirRaw: string): Promise<CalibrationResult> {
-  const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
+function validateCalibrationPaths(targetDirAbs: string): { demoPath: string; negativePath: string; graderPath: string; } {
   const demoPath = path.join(targetDirAbs, 'demo.html');
   const negativePath = path.join(targetDirAbs, 'negative-demo.html');
   const graderPath = findGrader(targetDirAbs);
@@ -178,19 +179,12 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
     throw new Error(`Missing negative-demo.html in ${targetDirAbs}`);
   }
 
-  const result: CalibrationResult = {
-    success: false,
-    demo: { passed: 0, failed: 0, failingTests: [] },
-    negative: { passed: 0, failed: 0, passingTests: [] },
-  };
+  return { demoPath, negativePath, graderPath };
+}
 
-  let demoFailed = false;
-
-  const demoOutDir = path.join(targetDirAbs, 'grade-report', 'demo');
-  const negativeOutDir = path.join(targetDirAbs, 'grade-report', 'negative');
-
-  // 1. Test against demo.html — all tests should pass
+async function runDemoCalibration(demoPath: string, graderPath: string, demoOutDir: string, result: CalibrationResult): Promise<boolean> {
   console.log(cYellow(`\nRunning against demo.html... (Expecting 100% pass)`));
+  let demoFailed = false;
 
   const demoResults = await runPlaywright(demoPath, graderPath, demoOutDir, 'inherit')
     .catch(err => {
@@ -220,13 +214,10 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
   }
 
   console.log('');
+  return demoFailed;
+}
 
-  if (demoFailed) {
-    console.log(cYellow(`Skipping negative-demo.html run due to failures in demo.html`));
-    return result;
-  }
-
-  // 2. Test against negative-demo.html — all tests should fail
+async function runNegativeCalibration(negativePath: string, graderPath: string, negativeOutDir: string, result: CalibrationResult): Promise<void> {
   console.log(cYellow(`Running against negative-demo.html... (Expecting 100% fail)`));
 
   const negativeResults = await runPlaywright(negativePath, graderPath, negativeOutDir, 'ignore')
@@ -238,7 +229,6 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
   if (!negativeResults) {
     // Failed to run — result.success stays false
   } else {
-    // In Playwright stats: "expected" = passed, "unexpected" = failed
     const passed = negativeResults.stats?.expected || 0;
     const failed = negativeResults.stats?.unexpected || 0;
     result.negative.passed = passed;
@@ -257,7 +247,9 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
   }
 
   console.log('');
+}
 
+function printFinalCalibrationSummary(result: CalibrationResult, demoFailed: boolean, demoOutDir: string, negativeOutDir: string): void {
   if (result.success) {
     console.log(cBold(cGreen(`Success! The grader is perfectly calibrated.`)));
   } else {
@@ -267,6 +259,31 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
     }
     console.log(`\nView negative-demo.html report:\n  pnpm --filter guides exec playwright show-report ${path.relative(process.cwd(), negativeOutDir)}`);
   }
+}
+
+export async function testGrader(targetDirRaw: string): Promise<CalibrationResult> {
+  const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
+  const { demoPath, negativePath, graderPath } = validateCalibrationPaths(targetDirAbs);
+
+  const result: CalibrationResult = {
+    success: false,
+    demo: { passed: 0, failed: 0, failingTests: [] },
+    negative: { passed: 0, failed: 0, passingTests: [] },
+  };
+
+  const demoOutDir = path.join(targetDirAbs, 'grade-report', 'demo');
+  const negativeOutDir = path.join(targetDirAbs, 'grade-report', 'negative');
+
+  const demoFailed = await runDemoCalibration(demoPath, graderPath, demoOutDir, result);
+
+  if (demoFailed) {
+    console.log(cYellow(`Skipping negative-demo.html run due to failures in demo.html`));
+    return result;
+  }
+
+  await runNegativeCalibration(negativePath, graderPath, negativeOutDir, result);
+
+  printFinalCalibrationSummary(result, demoFailed, demoOutDir, negativeOutDir);
 
   return result;
 }

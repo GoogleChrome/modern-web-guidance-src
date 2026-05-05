@@ -34,15 +34,20 @@
                         <input type="text" id="name" placeholder="Leave empty for auto-generated name">
                     </div>
                     <div class="row">
-                        <div class="input-group">
+                        <div class="input-group" style="flex: 0 0 auto;">
                             <label for="numRuns">Number of Runs</label>
                             <input type="number" id="numRuns" value="1" min="1">
+                        </div>
+                        <div class="input-group" style="flex: 0 0 auto;">
+                            <label for="workerCount">Worker Count</label>
+                            <input type="number" id="workerCount" placeholder="Auto" min="1">
                         </div>
                         <div class="input-group">
                             <label>Agent</label>
                             <div class="btn-toggle-group" id="agent-group">
                                 <button type="button" class="btn-toggle active" data-value="gemini_cli">Gemini CLI</button>
                                 <button type="button" class="btn-toggle" data-value="jetski">Jetski</button>
+                                <button type="button" class="btn-toggle" data-value="jetski_cli">Jetski CLI</button>
                                 <button type="button" class="btn-toggle" data-value="claude_code">Claude Code</button>
                                 <button type="button" class="btn-toggle" data-value="codex_cli">Codex CLI</button>
                             </div>

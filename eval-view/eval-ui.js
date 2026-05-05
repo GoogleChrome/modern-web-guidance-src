@@ -392,12 +392,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const nameEl = document.getElementById('name');
     const numRunsEl = document.getElementById('numRuns');
+    const workerCountEl = document.getElementById('workerCount');
     const agentEl = document.getElementById('agent');
     const servingEl = document.getElementById('serving');
 
     const payload = {
       name: (nameEl instanceof HTMLInputElement) ? nameEl.value || null : null,
       numRuns: (numRunsEl instanceof HTMLInputElement) ? parseInt(numRunsEl.value) : 0,
+      workerCount: (workerCountEl instanceof HTMLInputElement && workerCountEl.value) ? parseInt(workerCountEl.value) : null,
       agent: (agentEl instanceof HTMLInputElement) ? agentEl.value : '',
       serving: (servingEl instanceof HTMLInputElement) ? servingEl.value : '',
       tasks: selectedTasks
