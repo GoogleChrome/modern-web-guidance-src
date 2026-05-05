@@ -98,7 +98,7 @@ export async function processGuides(opts: BuildOptions) {
       anyGuideNewer = true;
     } else {
       for (const inv of readyGuides) {
-        const guidePath = path.join(inv.dir, "guide.md");
+        const guidePath = getGuideMarkdownPath(inv);
         if (fs.existsSync(guidePath) && fs.statSync(guidePath).mtimeMs > outputFileMTime) {
           anyGuideNewer = true;
           break;
