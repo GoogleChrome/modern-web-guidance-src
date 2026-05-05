@@ -4,7 +4,7 @@ import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import matter from "gray-matter";
 import * as esbuild from "esbuild";
-import { scanAllGuides } from "../../lib/guide-validation.ts";
+import { scanAllGuides, scanDisciplineSkills } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
 import { processGuides } from "../scripts/build-guides.ts";
@@ -87,19 +87,17 @@ function convertSkillToUseNpx(skillDest: string) {
 
 export function processSkills(publishRoot: string, distDir: string, npx: boolean) {
   console.log("Scanning for skills (SKILL.md) in guides/...");
-  const guidesDirInRoot = path.join(rootDir, "guides");
-  
-  // Find all SKILL.md files in top-level directories of guides/
-  const skillFiles = fs.globSync('*/SKILL.md', { cwd: guidesDirInRoot });
+  const skills = scanDisciplineSkills();
 
-  for (const relPath of skillFiles as string[]) {
-    const category = path.dirname(relPath);
-    const source = path.join(guidesDirInRoot, relPath);
+  for (const skill of skills) {
+    const category = skill.category;
+    const source = path.join(skill.dir, "SKILL.md");
     const skillDestDir = path.join(publishRoot, "skills", category);
     
     fs.mkdirSync(skillDestDir, { recursive: true });
     
-    const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target: 'skills-cli' });
+    const target = npx ? 'skills-cli-npx' : 'skills-cli';
+    const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
     
     console.log(`Processed and copied skill ${category} (SKILL.md) to ${skillDestDir}`);
@@ -110,8 +108,8 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
     convertSkillToUseNpx(skillDest);
   }
 
-  console.log(`Successfully copied ${skillFiles.length} skills to distribution.`);
-  return { skillsCount: skillFiles.length, skillNames: skillFiles.map(f => path.dirname(f as string)) };
+  console.log(`Successfully copied ${skills.length} skills to distribution.`);
+  return { skillsCount: skills.length, skillNames: skills.map(s => s.category) };
 }
 
 async function main(opts: {publishRoot: string, version?: string, npx?: boolean, subset?: number}): Promise<BuildResult | undefined> {
@@ -136,7 +134,7 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
     console.time("⏳ processGuides");
     await processGuides({
       outputDir: DIST_DIR,
-      target: 'skills-cli',
+      target: npx ? 'skills-cli-npx' : 'skills-cli',
       subset,
     });
     console.timeEnd("⏳ processGuides");
