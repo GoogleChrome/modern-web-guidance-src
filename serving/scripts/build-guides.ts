@@ -123,11 +123,11 @@ export async function processGuides(opts: BuildOptions) {
   const storeUseCases: StoreUseCase[] = [];
 
   console.log("Initializing Embedder...");
-  
+
   if (modelName) {
     console.log(`Using custom embedding model: ${modelName}`);
   }
-  
+
   const { Embedder } = await import("../lib/transformers-embedder.ts");
   const embedder = Embedder.getInstance(modelName);
   await embedder.init();
@@ -163,7 +163,6 @@ export async function processGuides(opts: BuildOptions) {
     for (const candidate of candidates) {
       const skillSource = path.join(guidesDirInRoot, candidate, "SKILL.md");
       if (fs.existsSync(skillSource)) {
-        console.log(`Processing category skill: ${skillSource}`);
         await processSingleGuideFile(skillSource, candidate, candidate, useCases, storeUseCases, embedder);
       }
     }
@@ -249,7 +248,7 @@ async function processSingleGuideFile(
   });
 
   const chunks = IS_NO_CHUNKING
-    ? [`${frontmatter}\n\n${processedMarkdown}`] 
+    ? [`${frontmatter}\n\n${processedMarkdown}`]
     : [...chunkMarkdown(processedMarkdown), frontmatter];
 
   for (const chunk of chunks) {
