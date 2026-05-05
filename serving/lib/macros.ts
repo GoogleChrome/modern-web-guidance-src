@@ -72,21 +72,6 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
     // will overflow the call stack. Add a visited set if it becomes a problem.
     return replaceMacros(result.content, result.absolutePath!);
   },
-};
-
-defineFeatureMacro("BASELINE_STATUS", {
-  content: (args, filePath) => {
-    const [featureId, bcdKey] = args;
-    const status = getStatusMessage(featureId, bcdKey);
-    if (!status) {
-      if (bcdKey) {
-        throw new MacroError(`BCD key "${bcdKey}" not found (referenced in ${filePath}).`);
-      }
-      throw new MacroError(`Status not found for feature "${featureId}" (referenced in ${filePath}).`);
-    }
-
-    return status;
-  },
   GUIDE_REF: (args, filePath, options) => {
     const [guideId] = args;
     if (!guideId) {
@@ -113,6 +98,21 @@ defineFeatureMacro("BASELINE_STATUS", {
     }
 
     return `\`${guideInfo.category}/${guideId}/guide.md\``;
+  }
+};
+
+defineFeatureMacro("BASELINE_STATUS", {
+  content: (args, filePath) => {
+    const [featureId, bcdKey] = args;
+    const status = getStatusMessage(featureId, bcdKey);
+    if (!status) {
+      if (bcdKey) {
+        throw new MacroError(`BCD key "${bcdKey}" not found (referenced in ${filePath}).`);
+      }
+      throw new MacroError(`Status not found for feature "${featureId}" (referenced in ${filePath}).`);
+    }
+
+    return status;
   }
 });
 
