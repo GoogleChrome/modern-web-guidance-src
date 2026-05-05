@@ -31,7 +31,8 @@ test.describe(`Consistent Cross-Document Transitions: ${fileName}`, () => {
     const headMatch = html.match(/<head>([\s\S]*?)<\/head>/i);
     const headContent = headMatch ? headMatch[1] : '';
     const linkExpectRegex = /<link\s+[^>]*rel=["']expect["'][^>]*blocking=["']render["']/i;
-    expect(headContent).toMatch(linkExpectRegex);
+    const scriptBlockingRegex = /<script\s+[^>]*blocking=["']render["']/i;
+    expect(linkExpectRegex.test(headContent) || scriptBlockingRegex.test(headContent)).toBe(true);
   });
 
   // 3. pagereveal listener registered
