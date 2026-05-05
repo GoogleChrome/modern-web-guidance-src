@@ -46,6 +46,13 @@ test.describe(`Validate Input After Interaction Expectations: ${demoName}`, () =
     });
 
     await page.goto(demoUrl);
+
+    // Disable transitions and animations to ensure instant E2E checks
+    await page.evaluate(() => {
+      const style = document.createElement('style');
+      style.innerHTML = '* { transition: none !important; animation: none !important; }';
+      document.head.appendChild(style);
+    });
   });
 
   // Browser assertions

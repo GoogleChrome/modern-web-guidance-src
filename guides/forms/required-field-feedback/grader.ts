@@ -36,44 +36,51 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     });
 
     await page.goto(demoUrl);
+
+    // Disable transitions and animations to ensure instant E2E style checks
+    await page.evaluate(() => {
+      const style = document.createElement('style');
+      style.innerHTML = '* { transition: none !important; animation: none !important; }';
+      document.head.appendChild(style);
+    });
   });
 
   // Browser assertions
   test('On page load, all required fields must appear neutral', async ({ page }) => {
     const inputs = page.locator('form input[required]');
-    const borderColors = await inputs.evaluateAll(els => els.map(el => window.getComputedStyle(el).borderColor));
+    const borderColors = await inputs.evaluateAll(els => els.map(el => window.getComputedStyle(el).borderLeftColor));
     expect(borderColors.every(color => color !== 'rgb(217, 48, 37)')).toBe(true);
   });
 
   test('Clicking into a required field and clicking out (blur) WITHOUT typing MUST trigger the error state (red border)', async ({ page }) => {
     const input = page.locator('form input[required]').first();
-    const initialColor = await input.evaluate(el => window.getComputedStyle(el).borderColor);
+    const initialColor = await input.evaluate(el => window.getComputedStyle(el).borderLeftColor);
     
     await input.focus();
     await page.keyboard.press('Space');
     await page.keyboard.press('Backspace');
     await input.blur();
     
-    const finalColor = await input.evaluate(el => window.getComputedStyle(el).borderColor);
+    const finalColor = await input.evaluate(el => window.getComputedStyle(el).borderLeftColor);
     
     expect(initialColor !== finalColor).toBe(true);
   });
 
   test('Typing into the field MUST remove the error state immediately', async ({ page }) => {
     const input = page.locator('form input[required]').first();
-    const initialColor = await input.evaluate(el => window.getComputedStyle(el).borderColor);
+    const initialColor = await input.evaluate(el => window.getComputedStyle(el).borderLeftColor);
     
     await input.focus();
     await page.keyboard.press('Space');
     await page.keyboard.press('Backspace');
     await input.blur();
     
-    const errorColor = await input.evaluate(el => window.getComputedStyle(el).borderColor);
+    const errorColor = await input.evaluate(el => window.getComputedStyle(el).borderLeftColor);
     
     await input.focus();
     await page.keyboard.press('a');
     
-    const finalColor = await input.evaluate(el => window.getComputedStyle(el).borderColor);
+    const finalColor = await input.evaluate(el => window.getComputedStyle(el).borderLeftColor);
     
     expect(errorColor !== initialColor && finalColor !== errorColor).toBe(true);
   });
@@ -85,9 +92,9 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     let allTriggered = false;
     if (isEnabled) {
       const inputs = page.locator('form input[required]');
-      const initialColors = await inputs.evaluateAll(els => els.map(el => window.getComputedStyle(el).borderColor));
+      const initialColors = await inputs.evaluateAll(els => els.map(el => window.getComputedStyle(el).borderLeftColor));
       await submitBtn.click();
-      const finalColors = await inputs.evaluateAll(els => els.map(el => window.getComputedStyle(el).borderColor));
+      const finalColors = await inputs.evaluateAll(els => els.map(el => window.getComputedStyle(el).borderLeftColor));
       allTriggered = initialColors.every((color, i) => color !== finalColors[i]) && initialColors.length > 0;
     }
     
@@ -107,25 +114,25 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     await fallbackCheckbox.check();
     
     const inputs = page.locator('form input[required]');
-    const initialColors = await inputs.evaluateAll(els => els.map(el => window.getComputedStyle(el).borderColor));
+    const initialColors = await inputs.evaluateAll(els => els.map(el => window.getComputedStyle(el).borderLeftColor));
     
     const firstInput = inputs.first();
     await firstInput.focus();
     await page.keyboard.press('Space');
     await page.keyboard.press('Backspace');
     await firstInput.blur();
-    const blurColor = await firstInput.evaluate(el => window.getComputedStyle(el).borderColor);
+    const blurColor = await firstInput.evaluate(el => window.getComputedStyle(el).borderLeftColor);
     const blurRed = blurColor !== initialColors[0];
     
     await firstInput.focus();
     await page.keyboard.press('a');
-    const typeColor = await firstInput.evaluate(el => window.getComputedStyle(el).borderColor);
+    const typeColor = await firstInput.evaluate(el => window.getComputedStyle(el).borderLeftColor);
     const typeNeutral = typeColor !== blurColor;
     
     await page.keyboard.press('Backspace');
     const submitBtn = page.locator('button[type="submit"]');
     await submitBtn.click();
-    const finalColors = await inputs.evaluateAll(els => els.map(el => window.getComputedStyle(el).borderColor));
+    const finalColors = await inputs.evaluateAll(els => els.map(el => window.getComputedStyle(el).borderLeftColor));
     const allRed = finalColors.every((color, index) => color !== initialColors[index]);
     
     success = blurRed && typeNeutral && allRed;

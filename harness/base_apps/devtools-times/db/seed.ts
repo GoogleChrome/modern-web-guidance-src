@@ -34,7 +34,7 @@ export default async function() {
       }
       
       commentsToSeed.push({
-        slug: article.slug,
+        slug: article.id || article.slug,
         author,
         body: body.trim(),
         createdAt: new Date(Date.now() - Math.floor(Math.random() * 1000 * 3600 * 24 * 5)) // Random time in last 5 days

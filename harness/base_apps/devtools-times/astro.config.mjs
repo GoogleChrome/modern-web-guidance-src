@@ -26,7 +26,6 @@ export default defineConfig({
      },
   },
   experimental: {
-    chromeDevtoolsWorkspace: true,
     csp: {
       directives: [
         "default-src 'self' https://astro-news-1026410574114.us-central1.run.app https://us-central1-web-devrel-apps.cloudfunctions.net https://chrome.dev",
