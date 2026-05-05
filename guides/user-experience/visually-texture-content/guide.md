@@ -5,9 +5,7 @@ web-feature-ids:
   - masks
 sources:
   - https://developer.mozilla.org/docs/Web/CSS/Reference/Properties/mask
-  - https://web.dev/articles/building/a-theme-switch-component
   - https://web.dev/articles/css-masking
-  - https://web.dev/articles/how-we-built-designcember
   - https://web.dev/learn/css/paths-shapes-clipping-masking
   - https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Masking/Introduction
   - https://css-tricks.com/clipping-masking-css/
