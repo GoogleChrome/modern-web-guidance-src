@@ -29,7 +29,7 @@ export class ClearcutLogger {
   } = {}) {
     this.#enabled = isTelemetryEnabled();
     if (this.#enabled) {
-      console.log("Sending telemetry event. Opt-out of usage statistics collection by setting the environment variable DISABLE_MWG_TELEMETRY=1.");
+      console.warn("Sending telemetry event. Opt-out of usage statistics collection by setting the environment variable DISABLE_MWG_TELEMETRY=1.");
       this.#watchdog = new WatchdogClient({
         parentPid: process.pid,
         logFile: options.logFile,

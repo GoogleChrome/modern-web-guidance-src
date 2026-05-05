@@ -49,7 +49,7 @@ export class WatchdogClient {
     });
     
     this.#childProcess.on('exit', (code, signal) => {
-      console.log(`Watchdog exited with code ${code} and signal ${signal}`);
+      console.warn(`Watchdog exited with code ${code} and signal ${signal}`);
     });
   }
 
