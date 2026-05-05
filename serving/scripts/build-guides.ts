@@ -30,11 +30,6 @@ interface UseCase {
   featuresUsed: string[];
 }
 
-interface GuideWithContent extends GuideInventory {
-  content?: string;
-  guidePath: string;
-}
-
 export interface BuildOptions {
   outputDir: string;
   target?: BuildTarget;
@@ -63,17 +58,8 @@ export async function processGuides(opts: BuildOptions) {
   IS_NO_CHUNKING = !!noChunking;
   TARGET = target || 'local-dev';
 
-  // Scan guides and load their content for hashing and processing
-  let readyGuides: GuideWithContent[] = scanAllGuides()
-    .filter(inv => inv.hasGuide)
-    .map(inv => {
-      const guidePath = getGuideMarkdownPath(inv);
-      return {
-        ...inv,
-        guidePath,
-        content: fs.existsSync(guidePath) ? fs.readFileSync(guidePath, "utf-8") : undefined
-      };
-    });
+  // Scan guides first to see if we even need to run
+  let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
 
   if (subset) {
     readyGuides = readyGuides.slice(0, subset);
@@ -90,10 +76,10 @@ export async function processGuides(opts: BuildOptions) {
 
   // Hash the contents of all active guides to guarantee state accuracy
   for (const inv of readyGuides) {
-    if (inv.content !== undefined) {
-      // Use relative path for portability
-      hash.update(path.relative(WORKSPACE_ROOT, inv.guidePath));
-      hash.update(inv.content);
+    const guidePath = getGuideMarkdownPath(inv);
+    if (fs.existsSync(guidePath)) {
+      hash.update(path.relative(WORKSPACE_ROOT, guidePath));
+      hash.update(fs.readFileSync(guidePath, "utf-8"));
     }
   }
   const currentHash = hash.digest("hex");
@@ -158,19 +144,13 @@ export async function processGuides(opts: BuildOptions) {
 
     const category = path.basename(path.dirname(absoluteTargetPath));
     const name = path.basename(absoluteTargetPath);
-    readyGuides = [{
-      dir: absoluteTargetPath,
-      name,
-      category,
-      hasGuide: true,
-      guidePath,
-      content: fs.readFileSync(guidePath, "utf-8")
-    } as GuideWithContent];
+    readyGuides = [{dir: absoluteTargetPath, name, category, hasGuide: true} as GuideInventory];
   }
 
   console.log("Generating embeddings…");
   for (const inv of readyGuides) {
-    await processSingleGuideFile(inv, useCases, storeUseCases, embedder);
+    const guidePath = getGuideMarkdownPath(inv);
+    await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder);
   }
 
 
@@ -224,14 +204,14 @@ export function chunkMarkdown(markdown: string): string[] {
 }
 
 async function processSingleGuideFile(
-  inv: GuideWithContent,
+  filePath: string,
+  category: string,
+  id: string,
   useCases: UseCase[],
   storeUseCases: StoreUseCase[],
   embedder: any
 ) {
-  const { guidePath: filePath, category, name: id, content } = inv;
-  if (content === undefined) return;
-  
+  const content = fs.readFileSync(filePath, "utf-8");
   const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
 
   if (!data.description || !frontmatter) {
