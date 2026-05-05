@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Translation Tool</title>
+</head>
+<body>
+  <textarea id="input"></textarea>
+  <button id="run">Translate</button>
+  <div id="out"></div>
+
+  <script>
+    document.getElementById('run').onclick = async () => {
+      const text = document.getElementById('input').value;
+      const translator = await window.ai.translator.create({
+        sourceLanguage: 'en',
+        targetLanguage: 'es',
+      });
+      const translation = await translator.translate(text);
+      document.getElementById('out').innerText = translation;
+    };
+  </script>
+</body>
+</html>
