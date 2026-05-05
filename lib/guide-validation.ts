@@ -275,7 +275,7 @@ export interface GuideInventory {
   hasGrader: boolean;
   hasTask: boolean;
   featureIds: string[];
-  isCategorySkill?: boolean;
+  isDisciplineSkill?: boolean;
 }
 
 export interface TaskInfo {
@@ -438,7 +438,7 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
   return guides;
 }
 
-export function scanCategorySkills(scanDir = guidesDir): GuideInventory[] {
+export function scanDisciplineSkills(scanDir = guidesDir): GuideInventory[] {
   const skills: GuideInventory[] = [];
   if (!fs.existsSync(scanDir)) return skills;
 
@@ -463,7 +463,7 @@ export function scanCategorySkills(scanDir = guidesDir): GuideInventory[] {
         hasGrader: false,
         hasTask: false,
         featureIds: [],
-        isCategorySkill: true,
+        isDisciplineSkill: true,
       });
     }
   }
@@ -474,7 +474,7 @@ let cachedGuidesMap: Map<string, GuideInventory> | null = null;
 
 export function getGuidesMap(): Map<string, GuideInventory> {
   if (!cachedGuidesMap) {
-    const allItems = [...scanAllGuides(), ...scanCategorySkills()];
+    const allItems = [...scanAllGuides(), ...scanDisciplineSkills()];
     cachedGuidesMap = new Map(allItems.map(g => [g.name, g]));
   }
   return cachedGuidesMap;

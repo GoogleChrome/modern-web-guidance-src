@@ -189,9 +189,9 @@ const server = http.createServer(async (req, res) => {
         const [guide, task] = key.split('/');
         
         const parentDir = path.basename(path.dirname(info.guideDir));
-        const isSkill = parentDir === 'guides';
+        const isDisciplineSkill = parentDir === 'guides';
         
-        if (isSkill) {
+        if (isDisciplineSkill) {
           if (!disciplines[guide]) disciplines[guide] = [];
           disciplines[guide].push(task);
         } else {
