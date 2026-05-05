@@ -315,16 +315,12 @@
         pages.forEach(page => {
           if (page.id === targetId) {
             page.classList.add('active');
+            page.setAttribute('aria-hidden', 'false');
+            page.focus();
           } else {
             page.classList.remove('active');
-if (page.id === targetId) {
-  page.classList.add('active');
-  page.setAttribute('aria-hidden', 'false');
-  page.focus();
-} else {
-  page.classList.remove('active');
-  page.setAttribute('aria-hidden', 'true');
-}
+            page.setAttribute('aria-hidden', 'true');
+          }
         });
       });
     });
