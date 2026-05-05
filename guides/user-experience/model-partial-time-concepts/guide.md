@@ -80,26 +80,4 @@ console.log(`Snoozed alarm: ${snoozedTime.toString()}`);
 
 ## Fallback Strategy
 
-{{ BASELINE_STATUS("temporal") }}
-
-For environments without native `Temporal` support, use feature detection and load the `@js-temporal/polyfill`.
-
-```javascript
-// Check if Temporal is supported natively
-(async () => {
-  if (typeof Temporal === 'undefined') {
-    // Load the polyfill conditionally
-    const module = await import("https://esm.sh/@js-temporal/polyfill");
-    globalThis.Temporal = module.Temporal;
-    // Extend Date.prototype if needed
-    Date.prototype.toTemporalInstant = module.toTemporalInstant;
-    initializeApp();
-  }
-})();
-
-function initializeApp() {
-  // Application logic using Temporal
-  const time = Temporal.PlainTime.from("12:00:00");
-  console.log(`Initialized at ${time.toString()}`);
-}
-```
+{{ FEATURE_FALLBACKS("temporal") }}

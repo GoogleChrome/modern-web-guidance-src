@@ -120,6 +120,50 @@ export function validateGuide(filePath: string): ValidationResult {
 }
 
 /**
+ * Parses expectations.md content into structured sections.
+ * Supports both the legacy flat bullet format (all items treated as mustPass)
+ * and the new structured format with ## Must pass / ## Must fail / ## App-agnostic rules sections.
+ */
+export function parseExpectations(content: string): {
+  mustPass: string[];
+  mustFail: string[];
+  appAgnostic: string[];
+} {
+  const hasStructuredHeadings = /^##\s+(Must pass|Must fail|App-agnostic rules)/im.test(content);
+
+  if (!hasStructuredHeadings) {
+    // Legacy format: treat all bullet items as mustPass
+    const bullets = content
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.startsWith('- '))
+      .map(l => l.slice(2).trim());
+    return { mustPass: bullets, mustFail: [], appAgnostic: [] };
+  }
+
+  const extract = (heading: string): string[] => {
+    const pattern = new RegExp(`^##\\s+${heading}\\s*$`, 'im');
+    const match = pattern.exec(content);
+    if (!match) return [];
+    const start = match.index + match[0].length;
+    const rest = content.slice(start);
+    const nextHeading = /^##\s/m.exec(rest);
+    const section = nextHeading ? rest.slice(0, nextHeading.index) : rest;
+    return section
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.startsWith('- '))
+      .map(l => l.slice(2).trim());
+  };
+
+  return {
+    mustPass: extract('Must pass'),
+    mustFail: extract('Must fail'),
+    appAgnostic: extract('App-agnostic rules'),
+  };
+}
+
+/**
  * Processes guide inventory entries: validates frontmatter, checks for missing
  * paired files, and collects feature ID sets. Returns structured data for the
  * GitHub sync step without making any API calls.
@@ -231,6 +275,7 @@ export interface GuideInventory {
   hasGrader: boolean;
   hasTask: boolean;
   featureIds: string[];
+  isDisciplineSkill?: boolean;
 }
 
 export interface TaskInfo {
@@ -379,8 +424,8 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
   if (!fs.existsSync(guidesDir)) return guides;
 
   const categories = fs.readdirSync(scanDir, { withFileTypes: true })
-    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
-    .map(d => d.name);
+     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+     .map(d => d.name);
 
   for (const category of categories) {
     const categoryDir = path.join(scanDir, category);
@@ -391,4 +436,50 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
     }
   }
   return guides;
+}
+
+export function scanDisciplineSkills(scanDir = guidesDir): GuideInventory[] {
+  const skills: GuideInventory[] = [];
+  if (!fs.existsSync(scanDir)) return skills;
+
+  const categories = fs.readdirSync(scanDir, { withFileTypes: true })
+    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+    .map(d => d.name);
+
+  for (const category of categories) {
+    const categoryDir = path.join(scanDir, category);
+    const skillPath = path.join(categoryDir, 'SKILL.md');
+    if (fs.existsSync(skillPath)) {
+      skills.push({
+        dir: categoryDir,
+        name: category,
+        category: category,
+        hasGuide: true,
+        isStub: false,
+        hasDemo: false,
+        hasExpectations: false,
+        expectationsEmpty: true,
+        hasNegativeDemo: false,
+        hasGrader: false,
+        hasTask: false,
+        featureIds: [],
+        isDisciplineSkill: true,
+      });
+    }
+  }
+  return skills;
+}
+
+let cachedGuidesMap: Map<string, GuideInventory> | null = null;
+
+export function getGuidesMap(): Map<string, GuideInventory> {
+  if (!cachedGuidesMap) {
+    const allItems = [...scanAllGuides(), ...scanDisciplineSkills()];
+    cachedGuidesMap = new Map(allItems.map(g => [g.name, g]));
+  }
+  return cachedGuidesMap;
+}
+
+export function resetGuidesMap() {
+  cachedGuidesMap = null;
 }

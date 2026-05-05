@@ -203,9 +203,9 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       }
 
       let taskCategory = path.basename(path.dirname(taskInfo.guideDir));
-      const isSkill = taskCategory === 'guides';
+      const isDisciplineSkill = taskCategory === 'guides';
       let expectedToolPrefixes = ['modern-web'].filter(Boolean);
-      if (isSkill) {
+      if (isDisciplineSkill) {
         taskCategory = path.basename(taskInfo.guideDir);
         expectedToolPrefixes = [taskCategory].filter(Boolean);
       }
@@ -261,7 +261,9 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         }
       }
 
-      const testName = `${taskName} - ${guide} - ${runType}`;
+      // For skills, placing the discipline name (`guide`) first ensures it is correctly identified 
+      // and displayed as the main category in the dashboard's transposed layout.
+      const testName = isDisciplineSkill ? `${guide} - ${taskName} - ${runType}` : `${taskName} - ${guide} - ${runType}`;
       const actualBaseApp = taskInfo.baseApp;
 
       let totalTokens = 0;
@@ -353,14 +355,14 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         fileReadGuides: fileReadGuides,
         guidanceToolsUsed: guidanceToolsUsedResult,
         discipline: taskCategory,
-        isSkill: isSkill,
+        isDisciplineSkill: isDisciplineSkill,
         expectedToolPrefixes: expectedToolPrefixes,
         guideName: guide,
-        taskName: taskName,
         baseApp: actualBaseApp,
+        taskName: taskName,
         prompt: taskInfo.prompt,
         files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
-        tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined
+        tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
       });
     }
   }
