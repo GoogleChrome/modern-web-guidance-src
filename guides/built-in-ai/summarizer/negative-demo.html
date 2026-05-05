@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Summary Tool</title>
+</head>
+<body>
+  <textarea id="input"></textarea>
+  <button id="run">Summarize</button>
+  <div id="out"></div>
+
+  <script>
+    document.getElementById('run').onclick = async () => {
+      const text = document.getElementById('input').value;
+      const summarizer = await window.ai.summarizer.create();
+      const summary = await summarizer.summarize(text);
+      document.getElementById('out').innerText = summary;
+    };
+  </script>
+</body>
+</html>

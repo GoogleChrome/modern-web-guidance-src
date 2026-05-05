@@ -39,6 +39,7 @@ Before finalizing any guide, verify all sources listed in the guide:
 Critically evaluate the guide's content to ensure it follows established best practices and does not introduce anti-patterns:
 *   **Discipline-Specific Skills**: Check if there are finalized "production ready" skill files for the relevant discipline located at `guides/<discipline>/skill.md`. If they exist, ensure the guide complies with them.
 *   **Accessibility (A11y)**: Even if a specific accessibility skill file is not yet finalized, accessibility is a distinct concern that should **always** be present. Evaluate the guide against general accessibility best practices based on your own training data (e.g., contrast, motion, focus management, ARIA usage).
+*   **Avoid Gating Critical Content**: Verify that the guide does not recommend interactive reveal patterns (e.g., following the cursor) that are inaccessible to non-pointer users. Ensure accessible alternatives are provided if such patterns are discussed.
 *   **Internal Consistency**: Ensure no deviations from existing skills or established patterns in the project.
 *   **Copy-Paste Safety**: Ensure that code examples are complete and safe to copy. If the text recommends a fallback or a constraint (like reduced motion), the code example **MUST** implement it.
 

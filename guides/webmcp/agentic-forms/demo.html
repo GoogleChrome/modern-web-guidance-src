@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebMCP Declarative Demo</title>
+    <style>
+        body { font-family: system-ui; padding: 2rem; }
+        form { border: 1px solid #ccc; padding: 1rem; border-radius: 8px; max-width: 400px; }
+        form:tool-form-active { outline: 2px dashed blue; background: #f0f7ff; }
+        button:tool-submit-active { outline: 2px dashed red; }
+        .field { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.25rem; }
+        input { width: 100%; padding: 0.5rem; box-sizing: border-box; }
+        #result { margin-top: 1rem; padding: 1rem; background: #eee; display: none; }
+    </style>
+</head>
+<body>
+    <h1>WebMCP Declarative Demo</h1>
+    
+    <form id="demo-form" 
+          toolname="get_weather" 
+          tooldescription="Get current weather for a location">
+        <div class="field">
+            <label for="city">City Name</label>
+            <input type="text" id="city" name="city" toolparamdescription="The name of the city (e.g. San Francisco)" required>
+        </div>
+        <button type="submit">Get Weather</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        const form = document.getElementById('demo-form');
+        const resultDiv = document.getElementById('result');
+
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const city = formData.get('city');
+
+            // Best Practice: Validate input and return descriptive errors
+            if (!city || city.trim().length < 2) {
+                const errorMsg = "Validation failed: City Name must be at least 2 characters.";
+                if (event.agentInvoked) {
+                    event.respondWith(Promise.resolve(errorMsg));
+                }
+                resultDiv.textContent = errorMsg;
+                resultDiv.style.display = 'block';
+                resultDiv.style.color = 'red';
+                return;
+            }
+
+            const weatherResult = {
+                location: city,
+                temperature: "22°C",
+                condition: "Sunny"
+            };
+
+            const resultText = `Weather in ${city}: 22°C, Sunny`;
+            resultDiv.textContent = resultText;
+            resultDiv.style.display = 'block';
+            resultDiv.style.color = 'black';
+
+            if (event.agentInvoked) {
+                event.respondWith(Promise.resolve(weatherResult));
+            }
+        });
+
+    window.addEventListener('toolactivated', ({ toolName }) => {
+        console.log(`Tool "${toolName}" was activated by the agent.`);
+    });
+
+    window.addEventListener('toolcancel', ({ toolName }) => {
+        console.log(`Tool "${toolName}" interaction was cancelled.`);
+    });
+    </script>
+</body>
+</html>

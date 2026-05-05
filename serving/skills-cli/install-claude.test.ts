@@ -24,7 +24,7 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         const child = spawn('claude', [
             '--model', 'claude-sonnet-4-6',
             '--plugin-dir', distDir,
-            '-p', 'use the modern-web-use-cases skill and tell me best practices on implementing an address form',
+            '-p', 'use the modern-web skill and tell me best practices on implementing an address form',
             '--dangerously-skip-permissions',
             '--verbose',
             '--output-format', 'stream-json'
@@ -79,11 +79,11 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
                         if (item.type === 'tool_use' && item.name === 'Bash') {
                             const command = item.input?.command;
                             if (typeof command === 'string') {
-                                if (command.includes('--search')) {
+                                if (command.includes('search') || command.includes('--search')) {
                                     searchCalled = true;
                                     searchToolId = item.id;
                                 }
-                                if (command.includes('--retrieve')) {
+                                if (command.includes('retrieve') || command.includes('--retrieve')) {
                                     retrieveCalled = true;
                                     retrieveToolId = item.id;
                                 }
@@ -122,7 +122,7 @@ test('Claude Code loads plugin from local dist directory', { skip: !process.env.
         console.log(`- Retrieve Called: ${retrieveCalled}\n`);
         
         // Assert all, but we get the log above first!
-        assert.ok(skillActivated, 'Skill should specify check for modern-web-use-cases activation');
+        assert.ok(skillActivated, 'Skill should specify check for modern-web activation');
         assert.ok(searchCalled, 'Modern web search should be called');
         assert.ok(searchSuccess, 'Modern web search should be successful');
         assert.ok(retrieveCalled, 'Modern web retrieve should be called');
