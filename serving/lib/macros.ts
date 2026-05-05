@@ -98,6 +98,10 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
       return `\`${guideId}\` (via \`node <modern-web-directory>/modern-web.mjs retrieve "${guideId}"\`)`;
     }
 
+    if (guideInfo.isCategorySkill) {
+      return `\`${guideInfo.category}/SKILL.md\``;
+    }
+
     return `\`${guideInfo.category}/${guideId}/guide.md\``;
   }
 };

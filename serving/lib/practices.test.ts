@@ -14,4 +14,10 @@ describe("getGuide", () => {
     const guide = await getGuide("non-existent-id");
     assert.strictEqual(guide, null);
   });
+
+  it("should retrieve category skill when category name is provided", async () => {
+    const guide = await getGuide("forms");
+    assert.ok(guide);
+    assert.ok(guide.includes("Semantic Structure and Form Element"));
+  });
 });

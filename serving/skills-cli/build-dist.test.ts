@@ -17,7 +17,7 @@ describe('processSkills', () => {
 
   before(() => {
     fs.mkdirSync(dummySkillDir, { recursive: true });
-    fs.writeFileSync(path.join(dummySkillDir, 'SKILL.md'), 'Test Skill with macro: {{ BASELINE_STATUS("grid") }}');
+    fs.writeFileSync(path.join(dummySkillDir, 'SKILL.md'), 'Test Skill with macro: {{ BASELINE_STATUS("grid") }} and guide ref: {{ GUIDE_REF("forms") }}');
     fs.mkdirSync(testOutputDir, { recursive: true });
     resetGuidesMap();
   });
@@ -39,6 +39,8 @@ describe('processSkills', () => {
     const content = fs.readFileSync(builtSkillPath, 'utf8');
     assert.ok(!content.includes('{{ BASELINE_STATUS'), 'Macro should be resolved');
     assert.ok(content.includes('Widely available') || content.includes('Baseline since'), 'Should contain baseline status');
+    assert.ok(!content.includes('{{ GUIDE_REF'), 'GUIDE_REF macro should be resolved');
+    assert.ok(content.includes('`forms` (via `node <modern-web-directory>/modern-web.mjs retrieve "forms"`)'), 'Should resolve forms skill reference');
   });
 
   it('processes GUIDE_REF macros in real CSS SKILL.md', () => {
