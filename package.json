@@ -65,12 +65,12 @@
     }
   },
   "devDependencies": {
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.6.0",
     "@types/omelette": "^0.4.5",
     "gh-pages": "^6.3.0",
     "gray-matter": "^4.0.3",
     "oxlint": "^1.55.0",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "@mdn/browser-compat-data": "^7.3.13",
