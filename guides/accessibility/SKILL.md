@@ -31,16 +31,17 @@ Keep these principles in mind throughout:
 ### Code Examples
 
 ```html
-<!-- Good: Semantic landmarks and heading hierarchy -->
+<!-- Good: Semantic landmarks, heading hierarchy, skip link -->
 <header>
-  <h1>Platform Dashboard</h1>
+  <a href="#content" class="skip-link visually-hidden">Skip to content</a>
   <nav aria-label="Primary">
     <ul>
       <li><a href="/">Home</a></li>
     </ul>
   </nav>
 </header>
-<main>
+<main id="content" tabindex="-1">
+  <h1>Platform Dashboard</h1>
   <section>
     <h2>User Statistics</h2>
     <table>
@@ -71,11 +72,11 @@ Keep these principles in mind throughout:
 - **Don't use ARIA when native HTML exists**: Avoid `<div role="button">` or `<a role="button">` if `<button>` works.
 - **Don't add redundant ARIA roles or properties**: Avoid `<ul role="list">`, `<nav role="navigation">`, or `<input required aria-required="true">`.
   - **Caveat**: Safari removes list semantics from `<ul>`/`<ol>` outside `<nav>` when `list-style: none` or `display: flex`/`grid` is applied. In that case `role="list"` is required to restore them. A similar effect impacts `<table>` with flex/grid across more browsers.
-- **Don't assume custom elements have no ARIA**: Custom elements can attach ARIA via `ElementInternals`, which some automated test tools can't see — so the absence of `role`/`aria-*` attributes in markup doesn't prove the element has no semantics. Verify with a screen reader or the browser's accessibility-tree inspector.
+- **Don't assume custom elements have no ARIA**: Custom elements can attach ARIA via `ElementInternals`, which some automated test tools can't see — so the absence of `role`/`aria-*` attributes in markup doesn't prove the element has no semantics. Verify with the browser's accessibility-tree inspector.
 
 ## 3. Accessible Names and Descriptions
 
-Every interactive element needs an accessible name, and many benefit from an accessible description. Names are short and identify the control; descriptions add context.
+Every interactive element and some landmarks need an accessible name, and many benefit from an accessible description. Names are short and identify the element; descriptions add context.
 
 ### Actionable Guidelines
 
@@ -83,18 +84,18 @@ Every interactive element needs an accessible name, and many benefit from an acc
 - **Prefer native naming mechanisms**: `<label>` for form controls, `<caption>` for `<table>`, `<legend>` for `<fieldset>`, `<figcaption>` for `<figure>`.
 - **Explicitly associate `<label>` with its control via `for`/`id`**, even when nesting the input inside the label — explicit association improves assistive-tech support.
 - **Prefer `aria-labelledby` over `aria-label` when a visible label exists**: avoids duplication, improves maintainability, and translates better.
-- **Reuse the same accessible name for hyperlinks that share an `href`.**
+- **Prefer to reuse the same accessible name for hyperlinks that share an `href`.**
 - **Use visually hidden text to disambiguate controls** that look identical visually but do different things (e.g. multiple "Edit" buttons in a list).
 
 #### DON'Ts
 - **Don't put `aria-label`/`aria-labelledby` on elements that shouldn't be named** — e.g. plain `<div>`, `<span>`, or custom elements without a role. Custom elements may have an implicit role set via `ElementInternals`, so the absence of a `role` attribute isn't conclusive.
-- **Don't reuse an accessible name across controls with different effects in the same context** (close buttons for two different open dialogs are fine because only one is reachable at a time; two "Submit" buttons on the same form are not).
+- **Don't reuse an accessible name across controls with different effects in the same view** (close buttons for two different open dialogs are fine because only one is reachable at a time; multiple “Edit” buttons for different content is not).
 - **Don't reuse an accessible name across hyperlinks pointing to different `href`s.**
 - **Don't pack descriptions, error messages, or instructions into the label.**
 - **Don't repeat state already exposed via ARIA** (`aria-expanded`, `aria-checked`, `aria-selected`, `aria-pressed`) inside the accessible name — it creates redundancy and ambiguity.
 - **Don't include the role name in the label**: `<nav aria-label="Primary navigation">` reads as "Primary navigation navigation."
 - **Don't use `title` or `placeholder` as a naming mechanism.**
-- **Don't include interactive elements in an `aria-describedby` target** unless their text content reads sensibly as a description on its own.
+- **Don't include interactive elements in an `aria-describedby` target** unless their text content reads sensibly as a description on its own (e.g. if a link’s text is the same as how it’s labelled elsewhere, it can be included within a description).
 
 ### Code Example: Visually Hidden Utility
 
@@ -157,7 +158,7 @@ When the hidden content is focusable (skip links, focus-receiving wrappers), the
 - **Visible Focus Indicators**: Always style `:focus-visible` states explicitly. If disabling defaults, provide high-contrast overrides.
 - **Skip Navigation Links**: Provide a "Skip to content" link at the top of the page.
 - **Lock Modal Focus**: Ensure focus cannot leave open modal dialogs.
-- **Custom Trigger Keyboards**: Attach Enter/Space handlers for custom simulated interactive elements.
+- **Custom Trigger Keyboards**: Attach Enter/Space handlers for custom simulated interactive elements. When implementing a custom keyboard handler for button-like elements, `Enter` should be a `keydown` handler and `Space` should be a `keyup` handler (matching native `<button>` behavior where `Enter` repeats and `Space` triggers on release).
 - **Use `tabindex` deliberately**: Anything focusable — by keyboard or programmatically — should have an implicit or explicit ARIA role, so don't make every element focusable. When focus is needed, choose `tabindex="0"` to add the element to the tab order or `tabindex="-1"` to make it programmatically focusable only (e.g., a skip-link target).
 - **Manage Toggle States**: Utilize `aria-expanded` and `aria-pressed` to communicate toggle states for custom controls.
 
@@ -178,24 +179,35 @@ When the hidden content is focusable (skip links, focus-receiving wrappers), the
 
 ```html
 <!-- Good: Skip to main content -->
-<a href="#main" class="skip-link">Skip to main content</a>
-<main id="main" tabindex="-1">...</main>
+<a href="#content" class="skip-link">Skip to main content</a>
+<main id="content" tabindex="-1">...</main>
 ```
 
 ```javascript
-// Good: Keyboard handlers for complex custom widgets (e.g., Tree items).
+// Good: Keyboard handlers for complex custom widgets (e.g., Tree items, tabs).
 // NOTE: This pattern applies ONLY to non-standard UI where no native HTML tag exists.
 // Always prioritize native <button> or <input> elements for standard interactions.
-// Elements MUST have the appropriate ARIA role (e.g., role="treeitem" or role="button").
+// Elements MUST have the appropriate ARIA role (e.g., role="treeitem" or role="tab").
 customWidget.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ' ') {
-    e.preventDefault(); // Prevent page scrolling on Spacebar
-    // Toggle state for screen readers
-    const pressed = customWidget.getAttribute('aria-pressed') === 'true';
-    customWidget.setAttribute('aria-pressed', !pressed);
-    performCustomAction();
+  if (e.key === 'Enter') {
+    toggleWidgetState();
+  }
+  if (e.key === ' ') {
+    e.preventDefault(); // Prevent page scrolling on Spacebar keydown
   }
 });
+
+customWidget.addEventListener('keyup', (e) => {
+  if (e.key === ' ') {
+    toggleWidgetState();
+  }
+});
+
+function toggleWidgetState() {
+  // E.g., Manage toggle/expanded states for custom controls
+  const isExpanded = customWidget.getAttribute('aria-expanded') === 'true';
+  customWidget.setAttribute('aria-expanded', !isExpanded);
+}
 ```
 
 ## 6. Alternate Text and Media
@@ -276,7 +288,7 @@ customWidget.addEventListener('keydown', (e) => {
 - **Provide form validation constraints**: Use `required` (or `aria-required="true"` only when `required` isn't applicable) to signal mandatory inputs.
 
 #### DON'Ts
-- **Don't rely on placeholders alone**: Placeholders are not persistent labels.
+- **Don't use placeholders as labels**: Placeholders are not persistent labels.
 - **Don't trigger context shifts on focus changes**: Avoid auto-submitting forms or jumping pages on focus change events alone.
 
 ### Code Examples
@@ -391,7 +403,7 @@ article {
 - **Default to static views**: Consider defaulting to static states and allowing users to opt-in to motion.
 
 #### DON'Ts
-- **Don't exceed flash limits (three per second)**: Avoid rapid light-to-dark flashing to prevent seizures.
+- **Don't exceed flash limits (three per second)**: Never include rapid light-to-dark flashing. Such effects can cause seizures.
 
 ### Code Examples
 
