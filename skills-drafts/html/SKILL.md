@@ -29,12 +29,11 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DO** use `<button>` for triggered actions (JS, Modals, Forms) and `<a>` strictly for URL navigation. Set `type="button"` for non-submit buttons in forms to prevent unintended submission.
 - **DO** use `<ul>`, `<ol>`, and `<dl>` elements for list content. 
 - **DO** ensure that all interactive elements like links and buttons have accessible names.  
-- **DO** hide purely decorative images from assistive technology using `aria-hidden="true"`. If using a decorative `<img>`, always include an empty `alt` attribute (e.g. `alt=""`). 
+- **DO** hide purely decorative SVG images from assistive technology using `aria-hidden="true"`. If using a decorative `<img>`, always include an empty `alt` attribute (e.g. `alt=""`). 
 - **DO** ensure that informative SVGs like logos, data visualizations, or icon buttons have a proper accessible name. 
 
 - **DON'T** use generic `<div>` or `<span>` when semantic elements exist, for instance for interactive elements, headings, or independently reusable self-contained content.
 - **DON'T** use boolean attributes with redundant values (e.g., use `disabled`, not `disabled="disabled"`).
-- **DON'T** use inline styles; they violate CSP and bloat page weight.
 - **DON'T** use generic elements with added ARIA roles or states when native elements with built-in semantics and behavior exist.
 - **DON'T** change the native semantics of elements with ARIA unless it is a critical requirement. 
 - **DON'T** use `role="presentation"` or `aria-hidden="true"` on focusable elements or their parents and ancestors. 
@@ -182,6 +181,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 ### Guidelines
 
+See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallback strategies for using the Popover API in a cross-browser way.
 - **DO** use `<dialog>` for modal overlays (requires JS `.showModal()`) to automatically trap focus, dim backgrounds, and support dismissing via `Esc`.
 - **DO** utilize the Popover API (`popover` attribute) for non-modal UI (menus, tooltips) that do not require focus traps.
 - **DO** use `::backdrop` to style modal backgrounds.
@@ -267,7 +267,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 ### Guidelines
 
 - **DO** use the global `inert` attribute for entire hidden sections (off-screen menus, background while custom modal is open) to remove them from tab flows and accessibility trees.
-- **DO** pair `[inert]` with CSS (`pointer-events: none; opacity: 0.5`) to visually signify inactivity.
+- **DO** pair `[inert]` with CSS (`opacity: 0.5`) to visually signify inactivity.
 - **DO** rely on natural DOM order for sequential navigation. 
 
 - **DON'T** use positive `tabindex` values (e.g., `1`, `2`). Use `0` to add element to tab flow, or `-1` for JS program focus.
@@ -289,7 +289,6 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 ```css
 [inert], [inert] * {
   opacity: 0.5;
-  pointer-events: none;
   cursor: default;
   user-select: none;
 }
@@ -299,15 +298,21 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 ### Guidelines
 
+See {{ GUIDE_REF("forms") }} for more details on creating modern web forms.
+
 - **DO** group subsets of related fields using `<fieldset>` and `<legend>`.
 - **DO** utilize the `form="form-id"` attribute to decouple inputs from the physical `<form>` tree.
 - **DO** use `<datalist>` coupled with `<input list="id">` for lightweight auto-suggestions (note: visually unstylable and has screen-reader quirks).
 - **DO** use appropriate `autocomplete` attributes for inputs.
 - **DO** distinguish between `autocomplete="current-password"` and `autocomplete="new-password"`.
 - **DO** ensure that all inputs in a form have a corresponding `<label>` element. 
-
+- **DON'T** use `autocomplete="off"` on credential, address, payment,  or contact fields. Browsers and password managers ignore it there by design. Use a specific token instead (`autocomplete="email"`, `"street-address"`, `"cc-number"`, etc.).
+- **DO** distinguish `autocomplete="current-password"` (sign-in) from `autocomplete="new-password"` (registration / password change) so password managers offer the right action.                                                    
+- **DO** match `autocomplete` tokens with appropriate `inputmode` and `type` (`type="email"` + `inputmode="email"` + `autocomplete="email"`). They control different things — keyboard, validation, and autofill respectively — and reinforce each other.
 - **DON'T** use `autocomplete="off"` unless handling highly sensitive tracking tokens (violates standard password manager overrides). Use standard inputs `type="email"`, `type="tel"`.
-- **DON'T** use the `placeholder` attribute as an alternative to a `<label>`.
+- **DON'T** use `autocomplete="off"` on credential, address, payment, or contact fields. Browsers and password managers ignore it there by design. Use a specific token instead (`autocomplete="email"`, `"street-address"`, `"cc-number"`, etc.).
+- **DO** distinguish `autocomplete="current-password"` (sign-in) from `autocomplete="new-password"` (registration / password change) so password managers offer the right action.                                                    
+- **DO** match `autocomplete` tokens with appropriate `inputmode` and `type` (`type="email"` + `inputmode="email"` + `autocomplete="email"`). They control different things — keyboard, validation, and autofill respectively — and reinforce each other.
 
 ### Code Example
 
@@ -332,7 +337,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DO** set `width` and `height` to prevent layout shifts (CLS) on `<video>` and `<audio>`.
 - **DO** provide a `poster` image fallback for videos.
 - **DO** include subtitles and captions with `<track>`.
-- **DO** ensure background videos are `muted`, provide users with full control over playback, and use `role="none"` or `aria-hidden="true"`.
+- **DO** ensure background videos are `muted`, provide users with full control over playback, and use `role="none"` or `aria-hidden="true"`. The `controls` attribute must also be omitted. 
 
 - **DON'T** rely on JS for basic video controls if native `controls` attribute is sufficient.
 
@@ -378,12 +383,12 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
     // Example: Move to 85% and shift color to green (120)
     setTimeout(() => updateProgress(85, 120), 1000);
-  </script>
+  accent-color: hsl(var(--brand-hue, 200) 80% 50%);
 </body>
 ```
 ```css
 .loading-bar {
-  accent-color: hsl(var(--brand-hue, 200), 80%, 50%);
+  accent-color: hsl(var(--brand-hue, 200) 80% 50%);
   transition: accent-color 0.3s ease;
 }
 ```
