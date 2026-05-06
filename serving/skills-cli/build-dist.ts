@@ -112,8 +112,8 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
-async function main(opts: {publishRoot: string, version?: string, npx?: boolean, subset?: number}): Promise<BuildResult | undefined> {
-  const {publishRoot, version, npx, subset} = opts;
+async function main(opts: {publishRoot: string, version?: string, npx?: boolean}): Promise<BuildResult | undefined> {
+  const {publishRoot, version, npx} = opts;
 
   fs.rmSync(publishRoot, { recursive: true, force: true });
   fs.mkdirSync(publishRoot, {recursive: true});
@@ -135,7 +135,6 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
     await processGuides({
       outputDir: DIST_DIR,
       target: npx ? 'skills-cli-npx' : 'skills-cli',
-      subset,
     });
     console.timeEnd("⏳ processGuides");
   } catch (error) {
@@ -414,7 +413,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   (async () => {
     try {
-      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true, subset: 3});
+      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true});
       await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version});
     } catch (err) {
       console.error(err);
