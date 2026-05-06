@@ -107,11 +107,4 @@ If you are not using a package manager, conditionally load the polyfill.
 
 {{ INCLUDE("features/popover.md#polyfill-fallback") }}
 
-**Popover Polyfill Limitations & Styling Caveats**
-MANDATORY: Use `:is()` or `:where()` to combine `:popover-open` with the corresponding polyfill class, otherwise browsers that do not support `:popover-open` will throw away the entire rule.
-
-```css
-[popover]:is(:popover-open, .\:popover-open) {
-  display: block;
-}
-```
+{{ INCLUDE("features/popover.md#css-warning") }}

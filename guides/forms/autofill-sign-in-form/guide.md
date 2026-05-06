@@ -28,7 +28,9 @@ Outlined below are the most important guidelines for building successful sign-in
 
 ### Make the most of HTML attributes
 
-{{ INCLUDE("features/forms.md#forms-html-attributes-text") }}
+{{ INCLUDE("features/forms.md#forms-html-attributes-intro") }}
+
+{{ INCLUDE("features/forms.md#forms-html-attributes-conclusion") }}
 
 ### Make buttons helpful
 
@@ -60,10 +62,6 @@ Validate data entry both in realtime and before form submission. Use `type="emai
 
 {{ INCLUDE("features/auth-forms.md#auth-own-form") }}
 
-### Don't double up inputs
-
-{{ INCLUDE("features/auth-forms.md#auth-dont-double-up") }}
-
 ### Keep passwords private—but enable users to see them if they want
 
 {{ INCLUDE("features/auth-forms.md#auth-keep-passwords-private") }}
@@ -82,28 +80,22 @@ Where possible, avoid this by displaying only the email (or phone) and password 
 
 {{ INCLUDE("features/auth-forms.md#auth-avoid-re-entering") }}
 
-For email inputs use `autocomplete="username"`, since `username` is recognized by password managers in modern browsers—even though you should use `type="email"` and you may want to use `id="email"` and `name="email"`. For password inputs, use the appropriate `autocomplete` and `id` values to help browsers differentiate between new and current passwords.
-
 ### Use autocomplete="current-password" and id="current-password" for an existing password
 
 MANDATORY: Use `autocomplete="current-password"` and `id="current-password"` for the password input in a sign-in form. This tells the browser that you want it to use the current password that it has stored for the site.
 
 For a sign-in form:
 
+```html
+<input type="password" autocomplete="current-password" id="current-password" required>
 ```
-<input type="password" autocomplete="current-password" id="current-password" …>
-```
-
-### Enable the browser to suggest a strong password
-
-{{ INCLUDE("features/auth-forms.md#auth-suggest-strong-password") }}
 
 ### Help save users from accidentally missing inputs
 
 MANDATORY: Add the `required` attribute to both email and password fields. Modern browsers automatically prompt and set focus for missing data.
 
 ```html
-<input type="email" id="email" name="email" autocomplete="username" required>
+<input type="email" id="email" name="email" autocomplete="username webauthn" required>
 <input type="password" id="password" name="password" autocomplete="current-password" required>
 ```
 

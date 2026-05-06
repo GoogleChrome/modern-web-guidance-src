@@ -29,4 +29,4 @@ If you are not using a package manager, dynamically import the polyfill directly
 </script>
 ```
 
-Unlike the native Invoker Commands API, `invokers-polyfill` does not automatically handle ARIA attributes (such as `aria-expanded`) on the command button. If accessibility is a requirement, you MUST manually manage ARIA states using JavaScript.
+**MANDATORY:** Unlike the native Invoker Commands API, `invokers-polyfill` does not automatically handle ARIA attributes (such as `aria-expanded`) on the command button. You MUST manually manage these ARIA states in JavaScript to ensure your UIs remain fully accessible to screen reader users in older browsers.

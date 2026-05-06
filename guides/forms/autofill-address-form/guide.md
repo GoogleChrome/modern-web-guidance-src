@@ -29,7 +29,7 @@ Outlined below are the most important guidelines for building successful address
 
 ### Make the most of HTML attributes
 
-{{ INCLUDE("features/forms.md#forms-html-attributes-text") }}
+{{ INCLUDE("features/forms.md#forms-html-attributes-intro") }}
 
 ```html
 <!-- type="email"/"tel" gives mobile users the right keyboard and enables built-in validation -->
@@ -37,7 +37,7 @@ Outlined below are the most important guidelines for building successful address
 <input type="tel" id="phone" name="phone" autocomplete="tel">
 ```
 
-
+{{ INCLUDE("features/forms.md#forms-html-attributes-conclusion") }}
 
 ### Make buttons helpful
 
@@ -70,7 +70,7 @@ Add the `required` attribute to mandatory fields.
 <input type="text" id="city" name="city" autocomplete="address-level2" required>
 ```
 
-### Fallback strategies
+## Fallback strategies
 
 {{ BASELINE_STATUS("autofill") }}
 

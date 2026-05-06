@@ -28,7 +28,9 @@ Outlined below are the most important guidelines for building successful sign-up
 
 ### Make the most of HTML attributes
 
-{{ INCLUDE("features/forms.md#forms-html-attributes-text") }}
+{{ INCLUDE("features/forms.md#forms-html-attributes-intro") }}
+
+{{ INCLUDE("features/forms.md#forms-html-attributes-conclusion") }}
 
 ### Make buttons helpful
 

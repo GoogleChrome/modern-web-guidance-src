@@ -92,18 +92,13 @@ Popover and popover hint must conditionally be polyfilled with the `@oddbird/pop
 
 {{ INCLUDE("features/popover.md#polyfill-fallback") }}
 
+{{ INCLUDE("features/popover.md#css-warning") }}
+
 {{ BASELINE_STATUS("anchor-positioning") }}
 
 {{ INCLUDE("features/anchor-positioning.md#polyfill-limitations") }}
 
-```html
-<!-- MANDATORY: Conditionally install the anchor positioning polyfill -->
-<script type="module">
-  if (!("anchorName" in document.documentElement.style)) {
-    await import("https://unpkg.com/@oddbird/css-anchor-positioning");
-  }
-</script>
-```
+{{ INCLUDE("features/anchor-positioning.md#polyfill-loading") }}
 
 ```css
 button[interestfor="tooltip-attrs"] {

@@ -29,7 +29,7 @@ Outlined below are the most important guidelines for building successful payment
 
 ### Make the most of HTML attributes
 
-{{ INCLUDE("features/forms.md#forms-html-attributes-text") }}
+{{ INCLUDE("features/forms.md#forms-html-attributes-intro") }}
 
 ```html
 <!-- type="email"/"tel" gives mobile users the right keyboard and enables built-in validation -->
@@ -37,7 +37,7 @@ Outlined below are the most important guidelines for building successful payment
 <input type="tel" id="phone" name="phone" autocomplete="tel">
 ```
 
-
+{{ INCLUDE("features/forms.md#forms-html-attributes-conclusion") }}
 
 ### Make buttons helpful
 
@@ -113,7 +113,7 @@ Allow users to include spaces when they're entering a new payment card number, s
 
 Add the `required` attribute to mandatory fields. Modern browsers automatically prompt and set focus for missing data.
 
-### Fallback strategies
+## Fallback strategies
 
 {{ BASELINE_STATUS("enterkeyhint") }}
 {{ BASELINE_STATUS("input-email-tel-url") }}

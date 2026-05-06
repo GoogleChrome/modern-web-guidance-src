@@ -13,11 +13,13 @@ These enable built-in browser functionality, improve accessibility, and add mean
 
 To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a label with an input by giving the label's `for` attribute the same value as the input's `id`.
 
-## HTML Attributes { #forms-html-attributes-text }
+## HTML Attributes - Intro { #forms-html-attributes-intro }
 
 Make it easy for users to enter data, by using the appropriate `<input>` element `<type>` attribute to provide the right keyboard on mobile and enable basic built-in validation by the browser.
 
 Always use `type="email"` for email addresses and `type="tel"` for phone numbers.
+
+## HTML Attributes - Conclusion { #forms-html-attributes-conclusion }
 
 Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid re-entering data.
 

@@ -64,6 +64,8 @@ document.getElementById('tour-step').showPopover();
 
 {{ INCLUDE("features/popover.md#polyfill-fallback") }}
 
+{{ INCLUDE("features/popover.md#css-warning") }}
+
 Alternatively, for legacy support without a polyfill, use `position: fixed` and manually calculate coordinates via JavaScript `getBoundingClientRect()`.
 
 #### anchor-positioning
@@ -75,13 +77,7 @@ To support browsers without anchor positioning, you can choose between using a p
 ##### Option 1: Polyfill Fallback
 {{ INCLUDE("features/anchor-positioning.md#polyfill-limitations") }}
 
-```html
-<script type="module">
-  if (!CSS.supports('anchor-name: --foo')) {
-    await import("https://unpkg.com/@oddbird/css-anchor-positioning");
-  }
-</script>
-```
+{{ INCLUDE("features/anchor-positioning.md#polyfill-loading") }}
 
 ```css
 #tour-step {
