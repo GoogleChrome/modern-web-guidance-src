@@ -12,7 +12,7 @@ sources:
 
 Scrolling on the web should be smooth and responsive. Executing heavy tasks—such as layout recalculations, analytics data beacons tracking, or dynamic DOM updates—during scrolling can saturate the main thread, resulting in dropped frames and layout thrashing.
 
-Historically, developers have relied on debouncing the `scroll` event using `setTimeout()` to guess when a scroll is finished. However, these debounced functions are notoriously unreliable. They may trigger while the user’s finger is still down on the screen and add arbitrary latency to interactions. 
+Historically, developers have relied on debouncing the `scroll` event using `setTimeout()` to guess when a scroll is finished. However, these debounced functions are notoriously unreliable. They may trigger while the user’s is still scrolling.
 
 The `scrollend` event offers a highly reliable, performance-driven solution. The browser fires a `scrollend` event exactly when a scroll has rested, all transitions are finished, and a touch gesture has been released.
 
