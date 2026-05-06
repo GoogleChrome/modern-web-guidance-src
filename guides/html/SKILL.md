@@ -358,7 +358,7 @@ See {{ GUIDE_REF("forms") }} for more details on creating modern web forms.
 - **DO** set `width` and `height` to prevent layout shifts (CLS) on `<video>` and `<audio>`.
 - **DO** provide a `poster` image fallback for videos.
 - **DO** include subtitles and captions with `<track>`.
-- **DO** ensure background videos are `muted`, provide users with full control over playback, and use `role="none"` or `aria-hidden="true"`. The `controls` attribute must also be omitted. 
+- **DO** ensure background videos are `muted`, provide users with full control over playback, and use `role="none"` or `aria-hidden="true"`. The `controls` attribute must also be omitted to make sure the video is not focusable.  
 
 - **DON'T** rely on JS for basic video controls if native `controls` attribute is sufficient.
 
