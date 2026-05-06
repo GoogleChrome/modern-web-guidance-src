@@ -47,6 +47,6 @@
     "esbuild": "^0.27.4",
     "gh-pages": "^6.3.0",
     "gray-matter": "^4.0.3",
-    "typescript": "^6.0.3"
+    "typescript": "^5.9.3"
   }
 }
