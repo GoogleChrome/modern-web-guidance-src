@@ -37,10 +37,8 @@ Browsers assign default priorities to scripts based on where they appear in the 
 - **DO** use `fetchpriority="high"` specifically for `async` scripts that are known to be critical for Interaction to Next Paint (INP).
 - **DO** deprioritize scripts that are not required for the initial user experience using `fetchpriority="low"`.
 - **DO NOT** use `fetchpriority` on every script tag; it should only be used to change the browser's default heuristic when it is known to be sub-optimal.
-- **DO NOT** use the deprecated `importance` attribute. It has been replaced by `fetchpriority`.
+{{ INCLUDE("features/fetch-priority.md#deprecated-importance") }}
 
 ## Fallback strategy
 
-{{ BASELINE_STATUS("fetch-priority") }}
-
-The `fetchpriority` attribute is a progressive enhancement. Browsers that do not support it will ignore the attribute and use their internal scheduling logic without error. No explicit feature detection or fallback logic is required for basic usage.
+{{ FEATURE_FALLBACKS("fetch-priority") }}

@@ -69,12 +69,8 @@ observer.observe({type: 'long-animation-frame', buffered: true});
 
 ## Best Practices
 
-- **DO** prefer the Long Animation Frames API over alternatives like the JS Self-Profiling API, which carries higher runtime overhead.
+{{ INCLUDE("features/long-animation-frames.md#best-practices") }}
 - **DO** summarize the key information as the Long Animation Frames API contains a lot of detail.
 - **DO** send the required information to an analytics service in production.
 
-## Browser support and fallback strategies
-
-{{ BASELINE_STATUS("long-animation-frames") }}.
-
-The Long Animation Frames API is ignored by browsers that do not support it, so it can be safely used without fallbacks. In most cases the performance opportunities it identifies will apply to other browsers as well.
+{{ FEATURE_FALLBACKS("long-animation-frames") }}

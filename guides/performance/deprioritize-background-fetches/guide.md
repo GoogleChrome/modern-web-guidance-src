@@ -37,10 +37,8 @@ fetch('/api/analytics', {
 - **DO** use `priority: 'low'` for analytics, beacons, or telemetry data that isn't required for the current view.
 - **DO** use `priority: 'low'` for "prefetching" data that the user *might* need later, ensuring it doesn't slow down what they need *now*.
 - **DO NOT** use `priority: 'low'` for fetches that are critical to the user experience.
-- **DO NOT** use the deprecated `importance` key in the fetch options object. The correct key is `priority`.
+{{ INCLUDE("features/fetch-priority.md#deprecated-importance") }}
 
 ## Fallback strategy
 
-{{ BASELINE_STATUS("fetch-priority") }}
-
-The `priority` option in the Fetch API is a progressive enhancement. Browsers that do not support it will ignore the option and treat the request with default priority. No explicit feature detection or fallback logic is required for basic usage.
+{{ FEATURE_FALLBACKS("fetch-priority") }}

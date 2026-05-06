@@ -61,12 +61,8 @@ onINP((metric) => {
 
 ## Best Practices
 
-- **DO** prefer the Long Animation Frames API over alternatives like the JS Self-Profiling API, which carries higher runtime overhead.
+{{ INCLUDE("features/long-animation-frames.md#best-practices") }}
 - **DO** use the `web-vitals` library if no other RUM solution is in place. It can identify the INP interaction and includes information about the scripts that were executed during the interaction (using the Long Animation Frames API).
 - **DO** beacon back the required information to an analytics service rather than just log it locally.
 
-## Browser support and fallback strategies
-
-{{ BASELINE_STATUS("long-animation-frames") }}.
-
-The Long Animation Frames API is ignored by browsers that do not support it, so it can be safely used without fallbacks. In most cases the performance opportunities it identifies will apply to other browsers as well.
+{{ FEATURE_FALLBACKS("long-animation-frames") }}

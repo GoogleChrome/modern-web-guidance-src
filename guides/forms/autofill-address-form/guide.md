@@ -21,22 +21,15 @@ Outlined below are the most important guidelines for building successful address
 
 ### Use meaningful, valid HTML
 
-Make the most of the elements and attributes built for creating forms:
-
--   `<form>`, `<input>`, `<label>`, and `<button>`
--   `type`, `autocomplete`, and `inputmode`
-
-These enable built-in browser functionality, improve accessibility, and add meaning to markup.
+{{ INCLUDE("features/forms.md#forms-meaningful-html") }}
 
 ### Use the <label> element to label form fields for data entry
 
-To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a label with an input by giving the label's `for` attribute the same value as the input's `id`.
+{{ INCLUDE("features/forms.md#forms-label-element") }}
 
 ### Make the most of HTML attributes
 
-Make it easy for users to enter data, by using the appropriate `<input>` element `<type>` attribute to provide the right keyboard on mobile and enable basic built-in validation by the browser.
-
-Always use `type="email"` for email addresses and `type="tel"` for phone numbers.
+{{ INCLUDE("features/forms.md#forms-html-attributes-text") }}
 
 ```html
 <!-- type="email"/"tel" gives mobile users the right keyboard and enables built-in validation -->
@@ -44,19 +37,17 @@ Always use `type="email"` for email addresses and `type="tel"` for phone numbers
 <input type="tel" id="phone" name="phone" autocomplete="tel">
 ```
 
-Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid re-entering data.
+
 
 ### Make buttons helpful
 
-Use `<button>` for buttons. You can also use `<input type="submit">`, but don't use a `div` or some other random element acting as a button. Button elements provide accessible behaviour, built-in form submission functionality, and can easily be styled.
+{{ INCLUDE("features/forms.md#forms-button-element") }}
 
 Give each form submit button a value that says what it does. For each step towards checkout, use a descriptive call-to-action that shows progress and makes the next step obvious. For example, label the submit button on your delivery address form **Proceed to Payment** rather than **Continue** or **Save**.
 
 ### Use a single name input where possible
 
-Allow your users to enter their name using a single input, unless you have a good reason for separately storing given names, family names, honorifics, or other name parts. Using a single name input makes forms less complex, enables cut-and-paste, and makes autofill simpler.
-
-Allow international names. For validation, avoid using regular expressions that only match Latin characters. Latin-only excludes users with names or addresses that include characters that aren't in the Latin alphabet. Allow Unicode letter matching instead—and ensure your backend supports Unicode securely as both input and output. Unicode in regular expressions is well supported by modern browsers.
+{{ INCLUDE("features/forms.md#forms-single-name") }}
 
 ### Allow for a variety of address formats
 

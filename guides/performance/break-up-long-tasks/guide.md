@@ -41,11 +41,7 @@ async function processLargeArray(items) {
 }
 ```
 
-### Fallback strategies
-
-{{ BASELINE_STATUS("scheduler") }}
-
-Some browsers may not support the `scheduler` API. You MUST implement a fallback using `setTimeout` to ensure code executes without breaking.
+{{ FEATURE_FALLBACKS("scheduler") }}
 
 #### Fallback for `scheduler.yield()`
 

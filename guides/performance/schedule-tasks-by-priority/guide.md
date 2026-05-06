@@ -41,11 +41,7 @@ scheduler.postTask(() => {
 }, { priority: 'background' });
 ```
 
-### Fallback strategies
-
-{{ BASELINE_STATUS("scheduler") }}
-
-To support browsers that do not have the Prioritized Task Scheduling API, you must use a polyfill to maintain task prioritization.
+{{ FEATURE_FALLBACKS("scheduler") }}
 
 ```javascript
 // Feature detect the scheduler API

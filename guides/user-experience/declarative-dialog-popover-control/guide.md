@@ -82,38 +82,7 @@ Unlike popovers, modal dialogs typically use separate buttons for opening and cl
 
 Because Invoker Commands and Popovers are not yet universally supported, you MUST use polyfills as fallbacks for older browsers.
 
-### Polyfilling Invoker Commands
-
-MANDATORY: Feature detect support by checking for the `commandForElement` property on the `HTMLButtonElement` prototype. Do NOT check the window or document object. You MUST dynamically import the polyfill only when the native feature is missing. DO NOT unconditionally load the polyfill.
-
-**Option 1: Using a package manager (e.g., npm)**
-Install the polyfill in your project (`npm install invokers-polyfill`).
-
-```javascript
-// MANDATORY: Feature detect 'commandForElement' on HTMLButtonElement.prototype.
-// Conditionally load the invokers-polyfill only in browsers lacking native support.
-if (!('commandForElement' in HTMLButtonElement.prototype)) {
-  import('invokers-polyfill');
-}
-```
-
-**Option 2: Manual installation without npm**
-If you are not using a package manager, dynamically import the polyfill directly from a CDN (such as unpkg) inside a `<script type="module">`.
-
-```html
-<script type="module">
-  // MANDATORY: Feature detect 'commandForElement' on HTMLButtonElement.prototype.
-  // Conditionally load the invokers-polyfill from a CDN only in browsers lacking native support.
-  if (!('commandForElement' in HTMLButtonElement.prototype)) {
-    import('https://unpkg.com/invokers-polyfill@latest/invoker.min.js');
-  }
-</script>
-```
-
-**Invokers Polyfill Limitations**
-Unlike the native Invoker Commands API, `invokers-polyfill` does not automatically handle ARIA attributes (such as `aria-expanded`) on the command button.
-
-MANDATORY: You MUST manually manage these ARIA states to ensure your site remains fully accessible to screen readers in browsers relying on the polyfill.
+{{ INCLUDE("features/invoker-commands.md#polyfill") }}
 
 ### Polyfilling the Popover Attribute
 
@@ -134,19 +103,9 @@ if (!('popover' in HTMLElement.prototype)) {
 ```
 
 **Option 2: Manual installation without npm**
-If you are not using a package manager, dynamically import the polyfill directly from a CDN (such as unpkg) inside a `<script type="module">`.
+If you are not using a package manager, conditionally load the polyfill.
 
-```html
-<script type="module">
-  // MANDATORY: Feature detect 'popover' on HTMLElement.prototype.
-  // Conditionally load the popover-polyfill from a CDN only in browsers lacking native support.
-  if (!('popover' in HTMLElement.prototype)) {
-    import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover-fn.js').then(({ apply }) => {
-      apply();
-    });
-  }
-</script>
-```
+{{ INCLUDE("features/popover.md#polyfill-fallback") }}
 
 **Popover Polyfill Limitations & Styling Caveats**
 MANDATORY: Use `:is()` or `:where()` to combine `:popover-open` with the corresponding polyfill class, otherwise browsers that do not support `:popover-open` will throw away the entire rule.
