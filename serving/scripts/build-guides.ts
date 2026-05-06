@@ -33,7 +33,6 @@ interface UseCase {
 export interface BuildOptions {
   outputDir: string;
   target?: BuildTarget;
-  subset?: number;
   force?: boolean;
   targetGuidePath?: string;
   modelName?: string;
@@ -48,7 +47,7 @@ let TARGET: BuildTarget = 'local-dev';
 
 
 export async function processGuides(opts: BuildOptions) {
-  const { outputDir, target, subset, force, targetGuidePath, modelName, noChunking } = opts;
+  const { outputDir, target, force, targetGuidePath, modelName, noChunking } = opts;
 
   BUILD_GUIDES_DIR = path.join(outputDir, "guides");
   VECTORS_FILE = (target === 'skills-cli')
@@ -60,11 +59,6 @@ export async function processGuides(opts: BuildOptions) {
 
   // Scan guides first to see if we even need to run
   let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
-
-  if (subset) {
-    readyGuides = readyGuides.slice(0, subset);
-    console.log(`Building a subset of ${readyGuides.length} guides.`);
-  }
 
   const crypto = await import("node:crypto");
   const hash = crypto.createHash("sha256");
@@ -268,7 +262,6 @@ async function processSingleGuideFile(
 if (process.argv[1] === import.meta.filename) {
   const options = {
     force: { type: 'boolean' as const },
-    subset: { type: 'string' as const },
     model: { type: 'string' as const },
     'no-chunking': { type: 'boolean' as const },
   };
@@ -279,12 +272,10 @@ if (process.argv[1] === import.meta.filename) {
   const force = values.force;
   const noChunking = values['no-chunking'];
   const modelName = values.model;
-  const subset = values.subset ? parseInt(values.subset, 10) : undefined;
 
   processGuides({
     outputDir: path.join(ROOT_DIR, "build"),
     force,
-    subset,
     targetGuidePath,
     modelName,
     noChunking
