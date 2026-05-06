@@ -1,4 +1,4 @@
-import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $, formatTokens } from './utils.js';
+import { getRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, $, formatTokens, isDisciplineSkillRun } from './utils.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { loadStabilityTrend } from './stability_trend.js';
@@ -596,7 +596,7 @@ function renderGrid(data, testId) {
             if (!unguidedRuns && !guidedRuns) return; // Skip if neither exists
 
             const sampleRun = (unguidedRuns && unguidedRuns[0]) || (guidedRuns && guidedRuns[0]);
-            const isDisciplineSkill = sampleRun ? (sampleRun.isDisciplineSkill !== undefined ? sampleRun.isDisciplineSkill : sampleRun.isSkill) : false;
+            const isDisciplineSkill = isDisciplineSkillRun(sampleRun);
 
             sortedScenarios.push(scenarioName);
 
@@ -810,8 +810,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             const hasExpectedPrefix = run.expectedToolPrefixes && run.expectedToolPrefixes.some(p => g.startsWith(p));
             const isGreen = isExpectedGuide || hasExpectedPrefix;
             
-            const runIsDisciplineSkill = run.isDisciplineSkill !== undefined ? run.isDisciplineSkill : run.isSkill;
-            const isCorrespondingDiscipline = !runIsDisciplineSkill && g === run.discipline;
+            const isCorrespondingDiscipline = !isDisciplineSkillRun(run) && g === run.discipline;
 
             let className = 'default-guide';
             let style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace;';
@@ -901,8 +900,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                              <div class="run-card-row-inner" style="flex-wrap: wrap;">
                                                                    ${toolsUsed.map(t => {
                                       const isCorrectTool = run.expectedToolPrefixes && run.expectedToolPrefixes.some(p => t.startsWith(p));
-                                      const runIsDisciplineSkill = run.isDisciplineSkill !== undefined ? run.isDisciplineSkill : run.isSkill;
-                                       const isCorrespondingDiscipline = !runIsDisciplineSkill && t === run.discipline;
+                                      const isCorrespondingDiscipline = !isDisciplineSkillRun(run) && t === run.discipline;
 
                                       let className = 'default-guide';
                                       let style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace;';

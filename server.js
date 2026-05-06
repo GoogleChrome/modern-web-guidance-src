@@ -177,7 +177,7 @@ const server = http.createServer(async (req, res) => {
   // --- /api/grouped-tasks : lists tasks grouped per guide ---
   if (decodedPath === '/api/grouped-tasks') {
     try {
-      const { getTaskMap } = await import('../lib/guide-validation.ts');
+      const { getTaskMap, isDisciplineSkillDir } = await import('../lib/guide-validation.ts');
       const { USE_CASES } = await import('../serving/lib/practices.ts');
       const taskMap = getTaskMap();
       /** @type {Record<string, Record<string, string[]>>} */
@@ -188,8 +188,7 @@ const server = http.createServer(async (req, res) => {
       for (const [key, info] of taskMap.entries()) {
         const [guide, task] = key.split('/');
         
-        const parentDir = path.basename(path.dirname(info.guideDir));
-        const isDisciplineSkill = parentDir === 'guides';
+        const isDisciplineSkill = isDisciplineSkillDir(info.guideDir);
         
         if (isDisciplineSkill) {
           if (!disciplines[guide]) disciplines[guide] = [];
