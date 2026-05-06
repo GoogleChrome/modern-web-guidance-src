@@ -85,6 +85,33 @@ For more control over the colors of built-in UI such as `accent-color` or `scrol
 ```
 
 ## Best Practices
+  - **Token Resolution and Inheritance**: Be aware that `light-dark()` currently resolves based on the `color-scheme` of the element where the value is **defined**, not where it is **used**.
+  - **The "Inheritance Footgun"**: If you define a theme variable on the `:root`, the browser resolves it to a specific color immediately. Descendant elements that change their `color-scheme` (e.g., a dark-themed card on a light page) will inherit the *already-resolved color* instead of the dynamic function.
+  - **The `@property` Risk**: This issue is particularly critical when using registered custom properties (via `@property`). Because these have a defined `syntax: "<color>"`, they "lock" the resolved color at computed value time, making them non-reactive to local theme changes.
+  - **The Workaround**: For components that might exist in "nested" themes, you must currently redefine your tokens locally whenever you change the `color-scheme`.
+- **Example: Handling Resolution Gaps**
+  ```css
+  /* ⚠️ PROBLEM: Variable resolves at :root (light) and stays 'yellow' */
+  :root {
+    color-scheme: light dark;
+    --color-accent: light-dark(yellow, blue);
+  }
+
+  /* ❌ FAILURE: The card remains yellow even in dark mode */
+  .dark-section {
+    color-scheme: dark;
+  }
+  .dark-section .card {
+    background-color: var(--color-accent); 
+  }
+
+  /* ✅ FIX: Redefine the token where the scheme changes */
+  .dark-section {
+    color-scheme: dark;
+    background-color: var(--color-accent); /* Forces re-resolution */
+  }
+  ```
+
 - **System Colors**: Use system color keywords like `Canvas` (background) and `CanvasText` (text) for your custom components when you want them to match the browser's native themed surfaces exactly. This is ideal for ensuring consistency between your content and the browser's UI (like scrollbars) while automatically respecting OS-level accessibility features like High Contrast mode.
 - **Respect User Preference**: **MANDATORY**: Avoid forcing a single theme on the overall page. While specific components (like a code editor) may benefit from a fixed theme, the main application should respect the user's system preference and ideally provide a manual toggle to allow users to choose between light, dark, or system-default modes.
 - **Forcing a Theme**: Use a single value like `color-scheme: dark` or `color-scheme: light` ONLY for specific sections of your site (like a code editor or a video player) that must remain in one theme. Avoid applying this to the root element unless it's the result of an explicit user selection via a theme toggle.
