@@ -7,35 +7,25 @@ description: Workflow for refactoring discipline-level guides (e.g., JavaScript,
 
 This skill facilitates the "Differential Knowledge Refactor" of technical guides. It ensures that `SKILL.md` files for specific disciplines are lean, context-efficient, and strictly additive to what a modern AI model already knows natively.
 
-## Workflow: Differential Knowledge Refactor
+## Workflow: The Inverse Knowledge Filter
 
-The goal is to apply an **Inverse Knowledge Filter** to a target guide.
+The goal is to aggressively "whittle down" a target guide by removing anything that modern coding models already know natively.
 
-### 1. Identify Reference Points (Sources)
-Before refactoring, identify the "Standard Knowledge" baselines:
-- **Source A (Internal)**: Any existing internal "best practices" or style guides.
-- **Source B (External)**: Industry-standard documentation or modern language guides.
-- **Internal Model Weights**: The inherent knowledge of modern models (GPT-4o, Claude 3.5 Sonnet, Gemini 1.5 Pro).
+### 1. Identify Redundancy References (Sources)
+Identify the baseline documents that represent "Standard Knowledge":
+- **Source A & B**: External or internal guides that cover modern language features (e.g., a modern ES2022+ guide).
+- **Model Inherent Knowledge**: The existing training weights of models like Claude 3.5 or Gemini 1.5.
 
 ### 2. Run the Differential Filter
-Use the attached script to automate the comparison across multiple LLMs. This script uses Gemini 1.5 Flash and Claude 3.5 Sonnet via their REST APIs to identify redundancies.
+Use the attached script to automate the comparison. The script uses multiple models to cross-reference the target against the sources and their own internal weights.
 
 ```bash
-# Set required environment variables
-export GOOGLE_API_KEY="..."
-export ANTHROPIC_API_KEY="..."
-
 # Run the filter
-node .agents/skills/project-discipline-guides/scripts/differential_filter.ts <target_skill_path> <source_1_path> <source_2_path>
+node .agents/skills/project-discipline-guides/scripts/differential_filter.ts <target_skill_path> <redundancy_source_A> <redundancy_source_B>
 ```
 
-### 3. Review and Refine
-The script will output two refactored versions (one from Gemini Flash, one from Claude Sonnet). 
-- **Analyze the deletions**: Ensure no project-specific steering was accidentally pruned.
-- **Merge the best results**: Create a final `SKILL.md` that is surgically focused on:
-    - **Behavioral Steering**: Rules that counter common AI biases (e.g., "CSS-First").
-    - **Project-Specific Choices**: Conventions chosen among valid alternatives (e.g., "Named Exports only").
-    - **Advanced Heuristics**: Expert patterns models often omit unless explicitly guided (e.g., "Shared Observer Instances").
+### 3. Review for "Signal"
+The script will output refactored versions that are strictly additive. Review these to ensure you haven't lost the "Signal"—the high-value expertise that models know but often omit without guidance.
 
 ## Core Principles
 

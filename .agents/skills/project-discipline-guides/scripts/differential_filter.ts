@@ -54,23 +54,29 @@ async function main() {
   const sourcesContent = sourcePaths.map(p => `--- SOURCE: ${p} ---\n${fs.readFileSync(p, 'utf8')}`).join('\n\n');
 
   const prompt = `
-You are an expert technical editor performing a "Differential Knowledge Refactor".
+You are an expert technical editor performing an "Inverse Knowledge Filter" on a guide.
 
 GOAL:
-Identify redundancies in the TARGET document that are already well-covered in the PROVIDED SOURCES. 
-We want to keep the TARGET document "strictly additive" (Differential Knowledge).
+Reduce the TARGET document to its "Differential Knowledge" (only what is unique, additive, or counter-biased). 
+Delete anything that is "Standard Knowledge" (already known by modern coding models).
 
 TARGET DOCUMENT:
 ${targetContent}
 
-PROVIDED SOURCES:
+REDUNDANCY REFERENCE SOURCES (Source A, B, etc.):
 ${sourcesContent}
 
 INSTRUCTIONS:
-1. Analyze every rule, syntax pattern, and best practice in the TARGET.
-2. If an item is already covered in the SOURCES, it is "Standard Knowledge" and should be REMOVED.
-3. If an item is NOT in the sources (e.g., project-specific steering, advanced heuristics, or behavioral counter-biases), it should be KEPT.
-4. Output ONLY the refactored version of the TARGET document. Maintain the original structure but prune the redundancies.
+1. Identify items in the TARGET that are covered in the provided REFERENCE SOURCES. These are redundant.
+2. Identify items in the TARGET that are "Common Knowledge"—things a modern coding model (like you) would already know and do by default (e.g., using 'const' by default, using 'async/await', standard Map/Set methods). These are redundant.
+3. DELETE all redundancies.
+4. PRESERVE only "Differential Knowledge":
+    - Behavioral Steering: Directives that counter common AI biases (e.g., "CSS-First").
+    - Project-Specific Choices: Decisions among multiple valid options (e.g., "Named Exports only").
+    - Advanced/Expert Heuristics: Patterns that models *know* but often omit unless forced (e.g., "Shared Observer instances").
+
+OUTPUT:
+Output ONLY the refactored, reduced version of the TARGET document. Maintain the original structure but prune heavily. Be aggressive in deleting anything that is natively understood by modern models.
 `.trim();
 
   console.log('--- Calling Gemini 1.5 Flash ---');
