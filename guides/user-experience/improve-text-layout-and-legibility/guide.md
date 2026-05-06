@@ -2,8 +2,8 @@
 name: improve-heading-text-layout-and-legibility
 description: Improve the layout and legibility of short standalone text content, such as headings no longer than a few lines, by enabling the browser to apply evenly balanced line breaks when wrapping text.
 web-feature-ids:
-  - text-wrap
   - text-wrap-balance
+  - text-wrap-pretty
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/CSS/text-wrap
   - https://developer.chrome.com/blog/css-text-wrap-balance/
@@ -24,7 +24,7 @@ The `text-wrap: pretty` CSS property allows you to improve the typographic quali
 
 ### 1. **Identify text elements**: 
 
-For `text-wrap: balance`, select short text blocks like headings. Avoid elements that have visible boxes such as borders or backgrounds, as this can create unexpected visually empty areas in the layout.
+For `text-wrap: balance`, select short text blocks like headings and table headers. Avoid elements that have visible boxes such as borders or backgrounds, as this can create unexpected visually empty areas in the layout.
 
 For `text-wrap: pretty`, select elements potentially containing long runs of text where orphaned words (runts) or poor line breaks are most noticeable. This includes the following elements:
   - `<p>`
@@ -47,7 +47,7 @@ Apply `text-wrap: balance` specifically to short, multi-line elements such as he
 
 ```css
 /* Target specific heading elements for balanced wrapping */
-h1, h2, h3, .balanced-heading {
+h1, h2 {
   /* Enables balanced line-breaking logic */
   text-wrap: balance;
 }
@@ -67,7 +67,7 @@ p, blockquote, li, .pretty-text {
 
 #### text-wrap: balance
 
-*   **Line Limit:** Browsers impose a limit on the number of lines they will attempt to balance to maintain performance (typically **6 lines** in Chromium and **10 lines** in Firefox). If the text exceeds this limit, the browser reverts to standard `wrap` behavior.
+*   **Line Limit:** Browsers impose a limit on the number of lines they will attempt to balance to maintain performance (typically **6 lines** in Chromium and **10 lines** in Firefox). If the text exceeds this limit, the browser reverts to standard `wrap` behavior. Avoid using `text-wrap: balance` on text blocks that are likely to exceed these limits.
 *   **Targeted Application:** DO NOT apply `text-wrap: balance` globally (e.g., `* { text-wrap: balance; }`). The iterative "binary search" algorithm used by browsers is computationally expensive. Limit its use to specific, short text elements.
 *   **Interaction with Width:** `text-wrap: balance` does not change the container's width (`inline-size`). It only affects how text wraps *within* that width. This can leave empty space at the end of the container, which may affect layouts relying on full-width text blocks.
 
@@ -83,9 +83,8 @@ p, blockquote, li, .pretty-text {
 
 In browsers that do not support `text-wrap: balance`, the property is ignored, and the text will wrap using the default `wrap` behavior. This is a progressive enhancement that gracefully degrades to standard typography.
 
+For critical layouts where refined text layout is a requirement, use a JavaScript library such as [BalanceText](https://github.com/adobe/balance-text), but be aware that this may be slow and cause performance issues.
 
 {{ BASELINE_STATUS("text-wrap-pretty") }}
 
 `text-wrap: pretty` is a progressive enhancement. Browsers that do not support the property will simply ignore it and fall back to the default wrapping behavior. This ensures that your content remains perfectly readable across all browsers while providing a superior experience to those that support it.
-
-For critical layouts where refined text layout is a requirement, use a JavaScript library such as [BalanceText](https://github.com/adobe/balance-text), but be aware that this may be slow and cause performance issues.
