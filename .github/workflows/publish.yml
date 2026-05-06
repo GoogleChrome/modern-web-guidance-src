@@ -54,9 +54,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: pnpm --filter serving run publish-skills
 
-      - name: Publish to npm via OIDC Provenance
+      - name: Publish to npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           npm install -g npm@latest
           cd dist/skills-cli-npx
-          # Doesn't work unless repo is public. TODO: flip on when we open-source.
-          # npm publish --provenance --access public --registry https://registry.npmjs.org/
+          npm publish --access public --registry https://registry.npmjs.org/
+
+      # - name: Publish to npm via OIDC Provenance
+      #   run: |
+      #     npm install -g npm@latest
+      #     cd dist/skills-cli-npx
+      #     # Doesn't work unless repo is public. TODO: flip on when we open-source.
+      #     # npm publish --provenance --access public --registry https://registry.npmjs.org/
