@@ -11,13 +11,13 @@ This skill facilitates the "Differential Knowledge Refactor" of technical guides
 
 The goal is to aggressively "whittle down" a target guide (the **Target**) by removing any content that is natively understood by modern coding models.
 
-### 1. Harvest Baseline Knowledge (Sources)
-Before refactoring, you must collect the "Redundancy Mirrors"—documents that represent the baseline of what a modern model already knows.
+### 1. Harvest Redundancy Mirrors (Sources)
+Before refactoring, you must collect the "Redundancy Mirrors"—documents that represent the standard set of what a modern model already knows.
 - **Source Guides**: Identify 1-3 guides (Source A, B, etc.) that cover the "Standard" version of the discipline (e.g., a modern JS best practices guide, a standard CSS layout guide).
 - **Validation of Inherent Knowledge**: These sources serve as *proof* that the information is common knowledge and can be safely deleted from the Target.
 
 ### 2. Run the Differential Filter
-Execute the filter script to compare the **Target** against the harvested **Sources** and the models' own inherent weights. 
+Execute the filter script to compare the **Target** against the harvested **Redundancy Mirrors** and the models' own inherent weights. 
 
 ```bash
 # Usage
