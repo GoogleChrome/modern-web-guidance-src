@@ -31,19 +31,19 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "@tensorflow/tfjs-converter": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
     "apache-arrow": "21.1.0",
-    "marked": "^17.0.4",
-    "onnxruntime-node": "^1.24.3",
+    "marked": "^18.0.3",
+    "onnxruntime-node": "^1.25.1",
     "web-features": "latest",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/gh-pages": "^6.1.0",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.6.0",
     "esbuild": "^0.27.4",
     "gh-pages": "^6.3.0",
     "gray-matter": "^4.0.3",
