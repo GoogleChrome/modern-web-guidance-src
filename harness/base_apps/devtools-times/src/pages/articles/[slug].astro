@@ -1,8 +1,8 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Ad from '../../components/AdSlotBanner.tsx';
-import Comments from '../../components/Comments.tsx';
-import { getCollection, getEntry } from 'astro:content';
+
+import { getCollection, getEntry, render } from 'astro:content';
 import type { GetStaticPaths } from 'astro';
 import { Image } from 'astro:assets';
 import { getArticleImage } from '../../utils/images';
@@ -12,7 +12,7 @@ import ArticleTeaser from '../../components/ArticleTeaser.astro';
 export const getStaticPaths = (async () => {
   const articles = await getCollection('articles');
   return articles.map(article => ({
-    params: { slug: article.slug },
+    params: { slug: article.id },
   }));
 }) satisfies GetStaticPaths;
 
@@ -22,22 +22,12 @@ if (!slug) throw new Error('Slug not found');
 const article = await getEntry('articles', slug);
 if (!article) return Astro.redirect('/404');
 
-// Fetch comments for the current article
-let commentCount = 0;
-try {
-    const commentsResponse = await fetch(new URL(`/api/comments/${slug}.json`, Astro.url));
-    if (commentsResponse.ok) {
-        const comments = await commentsResponse.json();
-        commentCount = comments.length;
-    }
-} catch (e) {
-    console.error("Could not fetch comments for article", e);
-}
 
 
-const { Content } = await article.render();
+
+const { Content } = await render(article);
 const allArticles = await getCollection('articles');
-const relatedArticles = allArticles.filter(a => a.slug !== article.slug).slice(0, 3);
+const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3);
 
 const articleImage = await getArticleImage(article);
 const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
@@ -111,13 +101,7 @@ const isBookmarked = readingList.includes(article.slug);
                 </a>
                 <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
             </div>
-            <!-- Comments Link -->
-            <a href="#comments" class="flex items-center space-x-1 text-sm font-semibold text-gray-700 hover:text-amber-400">
-                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443h2.284M7.5 12h.008M12 12h.008m3.75 0h.008m4.5-4.22V12a10.5 10.5 0 0 1-10.5 10.5c-5.798 0-10.5-4.702-10.5-10.5S4.202 1.5 10 1.5c4.628 0 8.59 3.067 9.938 7.22Z" />
-                </svg>
-                <span>{commentCount} Comments</span>
-            </a>
+
         </div>
 
         <!-- Article Body Content -->
@@ -138,6 +122,5 @@ const isBookmarked = readingList.includes(article.slug);
         </div>
     </section>
 
-    <!-- Comments Section -->
-    <Comments slug={article.slug} client:visible />
+
 </Layout>

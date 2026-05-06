@@ -3,13 +3,13 @@ import { defineConfig } from "astro/config";
 import react from "@astrojs/react";
 import tailwindcss from "@tailwindcss/vite";
 import node from "@astrojs/node";
-import db from "@astrojs/db";
+
 
 // https://astro.build/config
 export default defineConfig({
   site: 'https://astro-news-pytrpecapa-uc.a.run.app/',
   base: 'devtools-times/',
-  integrations: [react(), db()],
+  integrations: [react()],
   vite: {
     plugins: [tailwindcss()],
   },
@@ -17,6 +17,7 @@ export default defineConfig({
     mode: "standalone",
   }),
   output: "server",
+
   image: {
     service: {
        entrypoint: 'astro/assets/services/sharp',

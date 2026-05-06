@@ -282,6 +282,10 @@ Guides are read by AI coding agents, not humans directly. Key requirements:
 - Short, commented code snippets with directives in code comments
 - Fallback strategies section if the feature is not Baseline Widely Available
 - Use `{{ BASELINE_STATUS("feature-id") }}` macro for browser support display
+- Use `{{ INCLUDE("path[#section]") }}` to transclude a whole markdown file or one section. Bare paths resolve from repo root; `./`/`../` resolve relative to the calling file
+- Use `{{ FEATURE("feature-id", "section") }}` as a shorthand for `INCLUDE("features/<feature-id>.md#<section>")`
+- Use `{{ FEATURE_FALLBACKS("feature-id") }}` (preferred) inside the "Fallback strategies" section — emits a sub-heading, `BASELINE_STATUS`, and the `#fallbacks` section from `features/<feature-id>.md` if it exists
+- Use `{{ FEATURE_ISSUES("feature-id") }}` to surface known gotchas from `features/<feature-id>.md#issues`, or `""` if no such section exists
 
 ### Writing expectations.md
 

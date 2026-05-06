@@ -15,6 +15,7 @@ const demoUrl = `http://localhost/${demoName}`;
 
 // Tests
 test.describe(`Adapt scrollbar to high-contrast preferences Expectations: ${demoName}`, () => {
+  test.setTimeout(10000);
   
   // 1. CSS variables defined for scrollbar colors
   test('CSS variables are defined for scrollbar thumb and track colors', async () => {

@@ -3,6 +3,8 @@ import path from "path";
 import zlib from "zlib";
 import matter from "gray-matter";
 import { marked } from "marked";
+import { parseArgs } from "node:util";
+
 export interface StoreUseCase {
   id: string;
   description: string;
@@ -12,12 +14,13 @@ export interface StoreUseCase {
   vector?: number[];
   distance?: number;
 }
-import { replaceMacros } from "../lib/macros.ts";
-import { scanAllGuides, type GuideInventory } from "../../lib/guide-validation.ts";
+import { replaceMacros, type BuildTarget } from "../lib/macros.ts";
+
+import { scanAllGuides, type GuideInventory, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
-const BUILD_GUIDES_DIR = path.join(ROOT_DIR, "build/guides");
+const WORKSPACE_ROOT = path.resolve(ROOT_DIR, "..");
 const OUTPUT_FILE = path.join(ROOT_DIR, "lib/use-cases.gen.ts");
 
 interface UseCase {
@@ -27,68 +30,87 @@ interface UseCase {
   featuresUsed: string[];
 }
 
-async function processGuides() {
-  const targetGuidePath = process.argv.slice(2).find(arg => !arg.startsWith("--"));
-  const force = process.argv.includes("--force");
-  const subsetArg = process.argv.find(arg => arg.startsWith("--subset"));
+export interface BuildOptions {
+  outputDir: string;
+  target?: BuildTarget;
+  subset?: number;
+  force?: boolean;
+  targetGuidePath?: string;
+  modelName?: string;
+  noChunking?: boolean;
+}
+
+// Global variables to be set by processGuides
+let BUILD_GUIDES_DIR: string;
+let VECTORS_FILE: string;
+let IS_NO_CHUNKING = false;
+let TARGET: BuildTarget = 'local-dev';
+
+
+export async function processGuides(opts: BuildOptions) {
+  const { outputDir, target, subset, force, targetGuidePath, modelName, noChunking } = opts;
+
+  BUILD_GUIDES_DIR = path.join(outputDir, "guides");
+  VECTORS_FILE = (target === 'skills-cli')
+    ? path.join(outputDir, "use-cases.vectors.gen.json.gz")
+    : path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
+
+  IS_NO_CHUNKING = !!noChunking;
+  TARGET = target || 'local-dev';
 
   // Scan guides first to see if we even need to run
   let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
 
-  if (subsetArg) {
-    const limit = subsetArg.includes("=") ? parseInt(subsetArg.split("=")[1], 10) : 3;
-    readyGuides = readyGuides.slice(0, limit);
+  if (subset) {
+    readyGuides = readyGuides.slice(0, subset);
     console.log(`Building a subset of ${readyGuides.length} guides.`);
   }
 
-  const VECTORS_FILE = path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
+  const crypto = await import("node:crypto");
+  const hash = crypto.createHash("sha256");
 
-  let shouldSkip = !process.env.CI && !targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(VECTORS_FILE);
+  // Bust cache if the build script itself or options change
+  hash.update(fs.readFileSync(import.meta.filename, "utf-8"));
+  hash.update(TARGET);
+  hash.update(IS_NO_CHUNKING.toString());
+
+  // Hash the contents of all active guides to guarantee state accuracy
+  for (const inv of readyGuides) {
+    const guidePath = getGuideMarkdownPath(inv);
+    if (fs.existsSync(guidePath)) {
+      hash.update(path.relative(WORKSPACE_ROOT, guidePath));
+      hash.update(fs.readFileSync(guidePath, "utf-8"));
+    }
+  }
+  const currentHash = hash.digest("hex");
+
+  // Ensure the build directory exists before we reference it for the manifest
+  const manifestDir = path.join(ROOT_DIR, "build");
+  if (!fs.existsSync(manifestDir)) {
+    fs.mkdirSync(manifestDir, { recursive: true });
+  }
+  const manifestPath = path.join(manifestDir, "build-manifest.json");
+
+  let shouldSkip = !process.env.CI && !targetGuidePath && !force;
 
   if (shouldSkip) {
-    // Also check if the count of files in BUILD_GUIDES_DIR matches readyGuides.length
-    const countFiles = (dir: string): number => {
-      let count = 0;
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.isDirectory()) {
-          count += countFiles(path.join(dir, entry.name));
-        } else if (entry.name.endsWith(".md")) {
-          count++;
-        }
-      }
-      return count;
-    };
-
-    if (countFiles(BUILD_GUIDES_DIR) !== readyGuides.length) {
+    if (!fs.existsSync(OUTPUT_FILE) || !fs.existsSync(VECTORS_FILE) || !fs.existsSync(manifestPath)) {
       shouldSkip = false;
+    } else {
+      try {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+        if (manifest.hash !== currentHash) {
+          shouldSkip = false;
+        }
+      } catch (e) {
+        shouldSkip = false; // Corrupt manifest
+      }
     }
   }
 
   if (shouldSkip) {
-    const outputFileMTime = Math.min(
-      fs.statSync(OUTPUT_FILE).mtimeMs,
-      fs.statSync(VECTORS_FILE).mtimeMs
-    );
-    let anyGuideNewer = false;
-
-    if (fs.statSync(import.meta.filename).mtimeMs > outputFileMTime) {
-      anyGuideNewer = true;
-    } else {
-      for (const inv of readyGuides) {
-        const guidePath = path.join(inv.dir, "guide.md");
-        if (fs.existsSync(guidePath) && fs.statSync(guidePath).mtimeMs > outputFileMTime) {
-          anyGuideNewer = true;
-          break;
-        }
-      }
-    }
-
-    if (!anyGuideNewer) {
-      // No guides or script modified since last build. Skipping guide build
-      console.log("👌");
-      return;
-    }
+    console.log("👌");
+    return;
   }
 
   // Ensure clean build/guides exists
@@ -100,14 +122,12 @@ async function processGuides() {
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
 
-  console.log("Initializing Embedder...");
-  const modelArg = process.argv.find((arg) => arg.startsWith("--model="));
-  const modelName = modelArg ? modelArg.split("=")[1] : undefined;
-  
+  console.log("Initializing Embedder…");
+
   if (modelName) {
     console.log(`Using custom embedding model: ${modelName}`);
   }
-  
+
   const { Embedder } = await import("../lib/transformers-embedder.ts");
   const embedder = Embedder.getInstance(modelName);
   await embedder.init();
@@ -129,9 +149,10 @@ async function processGuides() {
 
   console.log("Generating embeddings…");
   for (const inv of readyGuides) {
-    const guidePath = path.join(inv.dir, "guide.md");
+    const guidePath = getGuideMarkdownPath(inv);
     await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder);
   }
+
 
   // Generate TypeScript file
   const tsContent = `// This file is auto-generated by scripts/build-guides.ts
@@ -146,14 +167,16 @@ export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
 `;
 
   fs.writeFileSync(OUTPUT_FILE, tsContent);
-  console.log(`Generated ${useCases.length} use cases to ${OUTPUT_FILE}`);
+  console.log(`Generated ${useCases.length} use cases to ${path.relative(WORKSPACE_ROOT, OUTPUT_FILE)}`);
 
 
   const jsonContent = JSON.stringify(storeUseCases);
   const compressed = zlib.gzipSync(jsonContent);
   fs.writeFileSync(VECTORS_FILE, compressed);
-  console.log(`Vector storage updated at ${VECTORS_FILE}`);
+  console.log(`Vector storage updated at ${path.relative(WORKSPACE_ROOT, VECTORS_FILE)}`);
 
+  // Write manifest only after successful build completes
+  fs.writeFileSync(manifestPath, JSON.stringify({ hash: currentHash }, null, 2));
 }
 
 export function chunkMarkdown(markdown: string): string[] {
@@ -200,7 +223,7 @@ async function processSingleGuideFile(
     return;
   }
 
-  const processedMarkdown = replaceMacros(markdownBody, filePath);
+  const processedMarkdown = replaceMacros(markdownBody, filePath, { target: TARGET });
 
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
@@ -212,9 +235,8 @@ async function processSingleGuideFile(
     featuresUsed,
   });
 
-  const isNoChunking = process.argv.includes("--no-chunking");
-  const chunks = isNoChunking 
-    ? [`${frontmatter}\n\n${processedMarkdown}`] 
+  const chunks = IS_NO_CHUNKING
+    ? [`${frontmatter}\n\n${processedMarkdown}`]
     : [...chunkMarkdown(processedMarkdown), frontmatter];
 
   for (const chunk of chunks) {
@@ -244,5 +266,27 @@ async function processSingleGuideFile(
 
 // Only run automatically if executed directly
 if (process.argv[1] === import.meta.filename) {
-  processGuides().catch(console.error);
+  const options = {
+    force: { type: 'boolean' as const },
+    subset: { type: 'string' as const },
+    model: { type: 'string' as const },
+    'no-chunking': { type: 'boolean' as const },
+  };
+
+  const { values, positionals } = parseArgs({ options, allowPositionals: true });
+
+  const targetGuidePath = positionals[0];
+  const force = values.force;
+  const noChunking = values['no-chunking'];
+  const modelName = values.model;
+  const subset = values.subset ? parseInt(values.subset, 10) : undefined;
+
+  processGuides({
+    outputDir: path.join(ROOT_DIR, "build"),
+    force,
+    subset,
+    targetGuidePath,
+    modelName,
+    noChunking
+  }).catch(console.error);
 }
