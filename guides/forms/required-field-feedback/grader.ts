@@ -123,12 +123,12 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     if (isEnabled) {
       const inputs = page.locator('form input[required]');
       const count = await inputs.count();
-      const initialStyles = [];
+      const initialStyles: any[] = [];
       for (let i = 0; i < count; i++) {
         initialStyles.push(await getStyling(inputs.nth(i)));
       }
       await submitBtn.click();
-      const finalStyles = [];
+      const finalStyles: any[] = [];
       for (let i = 0; i < count; i++) {
         finalStyles.push(await getStyling(inputs.nth(i)));
       }
@@ -152,7 +152,7 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     
     const inputs = page.locator('form input[required]');
     const count = await inputs.count();
-    const initialStyles = [];
+    const initialStyles: any[] = [];
     for (let i = 0; i < count; i++) {
       initialStyles.push(await getStyling(inputs.nth(i)));
     }
