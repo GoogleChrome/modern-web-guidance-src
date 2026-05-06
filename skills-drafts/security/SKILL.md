@@ -7,16 +7,17 @@ description: Preventative security guidelines for web developers (XSS, CSP, Cook
 
 Guidelines for implementing preventative security measures on the web safely and incrementally.
 
-**NOTE**: This skill covers standard web platform defenses but does **not** replace comprehensive backend security, authorization models, or server-side input validation.
+**NOTE**: This skill covers standard web platform defenses, focusing mostly on the browser. Applications still require comprehensive server-side security, authorization models, and input validation.
 
 ## Table of Contents
 
 - When to apply this skill
 - Phase 1: Quick Wins & Obvious Anti-Patterns
-  - 1.1 Avoid Dangerous DOM Sinks
-  - 1.2 Secure Cookies
-  - 1.3 Clickjacking Protection (Frame-Ancestors & X-Frame-Options)
-  - 1.4 Secure Window Messaging (postMessage)
+  - 1.1 Secure Contexts
+  - 1.2 Avoid Dangerous DOM Sinks
+  - 1.3 Secure Cookies
+  - 1.4 Clickjacking Protection (Frame-Ancestors & X-Frame-Options)
+  - 1.5 Secure Window Messaging (postMessage)
 - Phase 2: Discovery & Data Collection (Prerequisites)
   - 2.1 Inspect the Application
   - 2.2 Deploy Report-Only Policies
@@ -56,7 +57,12 @@ If you are unsure which case applies, default to Phase 1 → 2 → 3 in order.
 
 Before attempting to deploy global security policies, focus on code-level hygiene and immediate fixes that do not risk breaking the application.
 
-### 1.1 Avoid Dangerous DOM Sinks
+### 1.1 Secure Contexts
+- **DO**: Deliver resources over HTTPS to protect against both passive and active network attackers.
+- **DO**: Serve a header like `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload` to force HTTPS whenever possible.
+- **TIP**: In production rollout, start with a short `max-age` (e.g., 300 seconds) and incrementally increase to 1 year. A misconfigured HSTS with a long max-age can render the site permanently inaccessible until the cache expires in every browser that saw it.
+
+### 1.2 Avoid Dangerous DOM Sinks
 - **DO**: Prefer `textContent` or `innerText` over `innerHTML` when setting text content.
 - **DO**: Use `setHTML` (part of the Sanitizer API) when available to safely insert HTML.
 - **DO NOT**: Use `innerHTML` or `setHTMLUnsafe` with untrusted or unsanitized input.
@@ -75,12 +81,12 @@ element.textContent = `Hello, ${untrustedName}!`;
 
 Trusted Types can enforce this pattern at runtime by blocking string assignments to dangerous sinks. Deploying it is a CSP enforcement step with real breakage risk — see §3.3.
 
-### 1.2 Secure Cookies
+### 1.3 Secure Cookies
 Ensure new cookies are configured securely by default.
+- **DO**: Prefer naming cookies with the `__Host-` prefix when they'll only be used by one domain. This requires the `Secure` and `Path=/` attributes to be set, and the `Domain` attribute to be omitted. This protects against same-site and network attackers.
+- **DO**: Prefer naming cookies with the `__Secure-` prefix when `__Host-` isn't appropriate. This requires the `Secure` attribute, and protects against network attackers.
 - **DO**: Explicitly set `SameSite=Lax` for standard first-party cookies.
-- **DO**: Set `SameSite=None; Secure; Partitioned` if your application needs to be embedded as an iframe in third-party contexts.
-- **DO**: Use the `__Host-` prefix for cookies scoped to a single origin (requires `Secure`, `Path=/`, and no `Domain` attribute) — the browser rejects writes that don't meet those constraints, preventing subdomain injection.
-- **DO**: Use the `__Secure-` prefix for any cookie that must only be set over HTTPS.
+- **DO**: If your application will be embedded as an iframe in third-party contexts, use `SameSite=None; Secure; Partitioned`.
 - **DO NOT**: Rely on unpartitioned `SameSite=None` — these are being systematically blocked for tracking prevention.
 
 ```http
@@ -88,37 +94,34 @@ Set-Cookie: __Host-session_id=value; SameSite=Lax; HttpOnly; Secure; Path=/
 Set-Cookie: third_party_var=value; SameSite=None; Secure; Partitioned
 ```
 
-### 1.3 Clickjacking Protection (Frame-Ancestors & X-Frame-Options)
+### 1.4 Clickjacking Protection (Frame-Ancestors & X-Frame-Options)
 Clickjacking protection is easy to deploy, carries extremely low risk of breaking legitimate functionality, and provides immediate defense against malicious UI redressing.
 - **DO**: Set the `X-Frame-Options: SAMEORIGIN` header to prevent other sites from embedding your pages in an iframe (or use `DENY` if you should never be embedded).
-- **DO**: For fine-grained control in modern browsers, use `frame-ancestors 'self'` (or specified trusted domains) in your CSP header.
-- **DO**: When *you* embed untrusted content, always use the iframe `sandbox` attribute to restrict its capabilities unless explicitly allowed (e.g., `sandbox="allow-scripts"`).
+- **DO**: For fine-grained control, use `frame-ancestors 'self'` (or specified trusted domains) in your CSP header.
 
 ```http
 X-Frame-Options: SAMEORIGIN
 Content-Security-Policy: frame-ancestors 'self' https://trusted-partner.com;
 ```
 
-### 1.4 Secure Window Messaging (postMessage)
+### 1.5 Secure Window Messaging (postMessage)
 If your application communicates with other origins using `window.postMessage`, you must strictly validate the sender and receiver.
 - **DO**: Always validate the `event.origin` of incoming messages on the receiver side using strict equality against a list of trusted origins. Do **not** trust wildcards (`*`) or unverified payloads.
 - **DO**: Always specify a target origin (rather than the wildcard `*`) when calling `postMessage` to send sensitive data, ensuring only the intended origin can receive it.
-- **DO**: Parse and sanitize message payloads (e.g., using `JSON.parse` and strict schema validation) before performing operations or writing to DOM sinks.
+- **DO**: Validate and sanitize the properties of incoming message payloads before performing operations or writing them to DOM sinks. Manual JSON serialization is unnecessary as `postMessage` handles object cloning internally.
 
 ```javascript
-// Receiver (Safe)
+// Receiver (Safe - traditional string check)
 window.addEventListener('message', (event) => {
   if (event.origin !== 'https://trusted-origin.com') return;
-  try {
-    const data = JSON.parse(event.data);
+  const data = event.data;
+  if (data && data.action === 'update') {
     // Process data safely
-  } catch (e) {
-    // Handle parsing error
   }
 });
 
 // Sender (Safe)
-targetWindow.postMessage(JSON.stringify({ action: 'update' }), 'https://trusted-origin.com');
+targetWindow.postMessage({ action: 'update' }, 'https://trusted-origin.com');
 ```
 
 ## Phase 2: Discovery & Data Collection (Prerequisites)
@@ -127,7 +130,7 @@ Do not blindly apply strict policies to an existing application. You must first 
 
 ### 2.1 Inspect the Application
 Before turning anything on, gather facts:
-- **Grep for existing security headers** in server config, middleware, CDN/edge config, and meta tags: `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options`, `Permissions-Policy`, `Cross-Origin-*`, `Reporting-Endpoints`.
+- **Grep for existing security headers** in server config, middleware, CDN/edge config, and meta tags: `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options`, `Permissions-Policy`, `Cross-Origin-*`, `Access-Control-*`, `Timing-Allow-Origin`, `Reporting-Endpoints`.
 - **Enumerate inline scripts and styles** in server-rendered templates and static HTML — these will need nonces, hashes, or refactoring.
 - **List third-party script origins** loaded by the app (analytics, ads, tag managers, CDNs). These dictate what `script-src` must allow or whether `'strict-dynamic'` is viable.
 - **Identify popup-dependent flows**: OAuth, payment gateways, SSO. These constrain COOP choices.
@@ -143,16 +146,14 @@ Use "Report-Only" headers to identify potential breakages before they happen.
   - `Cross-Origin-Opener-Policy-Report-Only` for COOP isolation.
   - `Cross-Origin-Embedder-Policy-Report-Only` for COEP isolation.
   - `Document-Policy-Report-Only` for document features.
-- **DO**: Define a `Reporting-Endpoints` header so violations have somewhere to go, and reference its name from `report-to`.
+- **DO**: Define a `Reporting-Endpoints` header so violations have somewhere to go, and reference its name from `report-to`. Recommend setting an endpoint named `default`, which will automatically capture deprecation and crash reports.
 - **DO**: Run report-only for long enough to cover real traffic patterns (typically days to weeks), not just synthetic testing.
 
 **Example headers:**
 ```http
-Reporting-Endpoints: main-endpoint="https://reports.example/main"
-Content-Security-Policy-Report-Only: script-src 'nonce-{RANDOM}' 'strict-dynamic' https: 'unsafe-inline'; object-src 'none'; base-uri 'none'; report-to main-endpoint;
+Reporting-Endpoints: default="https://reports.example/default", main-endpoint="https://reports.example/main"
+Content-Security-Policy-Report-Only: script-src 'nonce-{RANDOM}' 'strict-dynamic'; object-src 'none'; base-uri 'none'; report-to main-endpoint;
 ```
-
-The `'strict-dynamic'`, `https:`, and `'unsafe-inline'` tokens together form a backwards-compatibility ladder: modern browsers honor `'strict-dynamic'` (nonce-propagating) and ignore the others; older browsers fall back to `https:`; very old browsers fall back to `'unsafe-inline'`. The fallbacks are harmless on any browser that supports a stricter token.
 
 **Managing report false-positives**: Reporting endpoints receive a significant volume of false-positive violation reports caused by aggressive browser extensions, ancient browsers, web crawlers, or antivirus scanners. When analyzing report-only logs, focus on high-frequency patterns from modern user-agents and filter out noise before making deployment decisions.
 
@@ -181,7 +182,7 @@ After collecting data, decide how to proceed with enforcement. Phase 3 has two t
   - **Decision**: Use `'strict-dynamic'` with a per-request nonce so the analytics loader can attach its dependencies. Do **not** add the analytics origin to a URL allowlist — domain allowlists are bypassable via open redirects, JSONP, and dependency injection on the listed origin.
 - **Scenario**: Trusted Types violations on specific sinks.
   - **Condition**: Legacy code paths still write strings to `innerHTML` etc.
-  - **Decision**: Refactor those sinks (per §1.1) or route them through a Trusted Types policy (§3.3) before enforcing.
+  - **Decision**: Refactor those sinks (per §1.2) or route them through a Trusted Types policy (§3.3) before enforcing.
 
 #### 3.2 Transitioning to CSP Enforcement
 Only move to enforced mode when:
@@ -189,16 +190,16 @@ Only move to enforced mode when:
 2. Reporting remains wired up after the switch — keep `report-to` on the enforced header so regressions are visible.
 
 **Key directives to set:**
-- `default-src 'self'` as a fallback for unspecified fetch directives — anchors the policy so any new resource type defaults to a safe value.
-- `script-src` with nonces or hashes (avoid URL allowlists; see below).
-- `object-src 'none'` and `base-uri 'none'` to block plugin and base-tag injection.
-- `form-action 'self'` to prevent form submissions to attacker-controlled origins. `script-src` alone does not close this exfiltration path.
-- `upgrade-insecure-requests` to auto-upgrade subresource HTTP loads to HTTPS, closing mixed-content gaps that HSTS does not cover for already-loaded pages.
+- `script-src` with nonces or hashes — this is the core directive of any CSP and the primary mechanism to prevent XSS.
+- `base-uri 'none'` to block `<base>` hijacking. Legacy directives like `object-src 'none'` can be omitted in modern, post-Flash web environments.
+- *Optional but potentially breaking*: `default-src 'self'` is sometimes used as a fallback for unspecified fetch directives, but it dramatically complicates deployment and has little security value beyond `script-src`. It is generally safer to focus on robust `script-src` enforcement first.
+- *Optional*: `form-action 'self'` prevents form submissions to attacker-controlled origins.
+- *Optional*: `upgrade-insecure-requests` auto-upgrades subresource HTTP loads to HTTPS, though modern browsers largely auto-upgrade mixed content anyway.
 
 **Enforced Header Example (CSP with reporting):**
 ```http
 Reporting-Endpoints: main-endpoint="https://reports.example/main"
-Content-Security-Policy: default-src 'self'; script-src 'nonce-{RANDOM}' 'strict-dynamic' https: 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'self'; upgrade-insecure-requests; report-to main-endpoint;
+Content-Security-Policy: script-src 'nonce-{RANDOM}' 'strict-dynamic'; object-src 'none'; base-uri 'none'; report-to main-endpoint;
 ```
 
 HTML for nonce-based CSP:
@@ -211,13 +212,14 @@ For static/cached HTML (SPAs) where a per-response nonce is not possible, use ha
 **Avoid**: URL allowlists like `script-src https://cdn.example.com` — they are easily bypassed by open redirects, JSONP endpoints, and dependency injection on the allowed origin.
 
 #### 3.3 Trusted Types Enforcement
-Trusted Types enforces the §1.1 source-level guidance at runtime: once enabled, the browser blocks string assignments to dangerous sinks unless they pass through a named policy.
+Trusted Types enforces the §1.2 source-level guidance at runtime: once enabled, the browser blocks string assignments to dangerous sinks unless they pass through a named policy.
 
+- **Incremental Rollout Strategy**: While full enforcement carries real breakage risk, you do not need to do everything at once. A highly viable approach is to define and roll out a policy for a small portion of the application under refactoring, and slowly expand its usage as you replace sinks. This simplifies eventual global enforcement without short-term breakage risk.
 - **Prerequisite**: Trusted Types requires framework cooperation. If the app's framework (or any third-party widget that writes to DOM sinks) does not produce `TrustedHTML` / `TrustedScript` values, the policy cannot be enforced without breaking that code. Audit framework support before starting the report-only rollout.
-- **Prerequisite**: The code-level sink refactor from Phase 1 is a strict prerequisite for Trusted Types enforcement. (Standard CSP `script-src` enforcement, by contrast, does not police DOM sinks and can be deployed without refactoring them.)
+- **Prerequisite**: The code-level sink refactor from Phase 1 is a prerequisite for complete Trusted Types enforcement. (Standard CSP `script-src` enforcement, by contrast, does not police DOM sinks and can be deployed without refactoring them.)
 - **DO**: Roll out via `Content-Security-Policy-Report-Only: require-trusted-types-for 'script'` first to find every offending sink.
 - **DO**: Define a single named policy that performs sanitization (or escaping) and route all sink writes through it.
-- **DO**: Move to `Content-Security-Policy: require-trusted-types-for 'script'` only after report-only violations have dropped to near zero.
+- **DO**: Move to full global `Content-Security-Policy: require-trusted-types-for 'script'` enforcement once the policy has been successfully integrated and violations in report-only logs drop to zero.
 
 ```javascript
 if (window.trustedTypes && trustedTypes.createPolicy) {
@@ -247,7 +249,7 @@ Set CORP explicitly on each response based on whether it should be embeddable in
 
 Highest deployment breakage risk. You only need to deploy this infrastructure if the application requires features relying on `SharedArrayBuffer` (e.g., WebAssembly multi-threading or shared memory architectures). If not required, skip this policy group.
 
-- **Preferred path (Chromium environments)**: Enable `Document-Isolation-Policy: isolate-and-credentialless`. This provides client-side isolation comparable to COEP while instructing the browser to strip cookies and authentication credentials from non-CORS cross-origin resource fetches rather than blocking them outright. Apps that need to *block* cross-origin resources lacking explicit CORP opt-in (rather than load them with credentials stripped) can adopt `isolate-and-require-corp` instead. This is stricter and harder to deploy — it requires the same subresource audit as the cross-browser path below.
+- **Preferred path (Chromium environments)**: Enable `Document-Isolation-Policy: isolate-and-credentialless`. This provides client-side isolation comparable to COEP while instructing the browser to strip cookies and authentication credentials from non-CORS cross-origin resource fetches rather than blocking them outright. Note that this is supported primarily in Chrome (142+) and other vendors have not yet shown interest, so evaluate carefully based on your target audience. Apps that need to *block* cross-origin resources lacking explicit CORP opt-in (rather than load them with credentials stripped) can adopt `isolate-and-require-corp` instead. This is stricter and harder to deploy — it requires the same subresource audit as the cross-browser path below.
 - **Cross-browser path (Complex enforcement)**: Require `Cross-Origin-Opener-Policy: same-origin` coupled with `Cross-Origin-Embedder-Policy: require-corp`. Every embedded subresource (images, styles, external media) MUST serve an explicit `Cross-Origin-Resource-Policy` header or the browser will prevent it from loading.
 
 ```http
@@ -260,7 +262,9 @@ Cross-Origin-Resource-Policy: same-origin
 Server-side enforcement that uses `Sec-Fetch-*` request headers to reject suspicious cross-site requests. Requires the cross-site integration mapping from §2.1 before enforcing.
 
 - **DO**: Implement a server-side resource isolation policy that checks `Sec-Fetch-*` headers and rejects `cross-site` requests for non-navigational endpoints.
+- **DO**: Reject disallowed requests *before* authentication or authorization checks, so the response does not leak timing information about whether a resource or session exists.
 - **DO**: Include `Vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site` to prevent intermediate caches (CDNs) from serving cached responses to attackers.
+- **CAUTION**: `same-site` trusts every subdomain under your eTLD+1. If any subdomain hosts user-generated content, a legacy app, or otherwise untrusted code, drop `same-site` from the allowlist and accept only `same-origin` and `none`.
 - **CAUTION**: Misconfiguring these checks will block legitimate API requests coming from cross-site integrations, SSO handlers, or Webhooks. Ensure you log and test your `Sec-Fetch-*` constraints beforehand.
 
 ```javascript
@@ -292,9 +296,10 @@ These carry significantly lower breakage risk than the core enforcement track. T
 
 #### X-Content-Type-Options
 - **DO**: Set `X-Content-Type-Options: nosniff` to block MIME-type sniffing.
+- **DO**: Ensure the server serves correct `Content-Type` headers for all resources (`application/javascript` for scripts, `application/json` for APIs, `text/html` for documents, etc.) so the browser can strictly enforce the `nosniff` constraint.
 
 #### Referrer Policy
-- **DO**: Use `strict-origin-when-cross-origin` as a safe default.
+- **DO**: Use `Referrer-Policy: strict-origin-when-cross-origin` as a safe default.
 
 #### Permissions Policy
 - **DO**: Disable unused browser features (camera, geolocation, microphone) for the page and iframes using Structured Fields syntax.
@@ -310,12 +315,12 @@ Permissions-Policy: camera=(), geolocation=(), microphone=()
 ```
 
 #### Subresource Integrity (SRI)
-- **DO**: Use the `integrity` attribute with a cryptographic hash when loading third-party scripts, combined with `crossorigin="anonymous"`.
+- **DO**: Use the `integrity` attribute with a cryptographic hash (preferring `sha256` or `sha512`) when loading third-party scripts, combined with `crossorigin="anonymous"`.
 - **DO**: Ensure the server/CDN sends an appropriate `Access-Control-Allow-Origin` header so the browser can compute the hash.
 - **DO NOT**: Use SRI for dynamic or unversioned assets — silent updates will cause script execution to fail. SRI is strictly for immutable, versioned assets.
 
 ```html
-<script src="https://cdn.example.com/lib.js" integrity="sha384-H8df...39v" crossorigin="anonymous"></script>
+<script src="https://cdn.example.com/lib.js" integrity="sha256-H8df...39v" crossorigin="anonymous"></script>
 ```
 
 #### Cross-Origin Resource Sharing (CORS)
