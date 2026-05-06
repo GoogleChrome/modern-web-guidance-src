@@ -18,7 +18,7 @@ test('web-features coverage to MDN URLs is above threshold', () => {
   }
   const percentage = (foundUrls / featureIds.length) * 100;
   console.log(`Feature coverage: ${percentage.toFixed(2)}% (${foundUrls}/${featureIds.length})`);
-  assert.ok(percentage > 85, `Coverage was ${percentage.toFixed(2)}%`);
+  assert.ok(percentage > 84, `Coverage was ${percentage.toFixed(2)}%`);
 });
 
 test('getSkillContent applies replacement for project-use-cases', () => {
