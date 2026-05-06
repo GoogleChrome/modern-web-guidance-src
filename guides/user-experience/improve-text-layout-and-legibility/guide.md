@@ -43,11 +43,11 @@ For `text-wrap: pretty`, select elements potentially containing long runs of tex
 
 ### 2. **Apply the chosen wrapping**: 
 
-Apply `text-wrap: balance` specifically to short, multi-line elements such as headings (`h1`-`h6`), subheadings, or blockquotes.
+Apply `text-wrap: balance` specifically to short, multi-line elements such as headings (`h1`-`h6`), subheadings, or pullquotes.
 
 ```css
 /* Target specific heading elements for balanced wrapping */
-h1, h2 {
+h1, h2, h3, h4, h5, h6 {
   /* Enables balanced line-breaking logic */
   text-wrap: balance;
 }
