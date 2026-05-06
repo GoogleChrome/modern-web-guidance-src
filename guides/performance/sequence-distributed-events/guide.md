@@ -22,7 +22,7 @@ To sequence high-frequency events using `Temporal`:
 
 1. **Capture exact timestamps**: Use `Temporal.Now.instant()` to get the current exact time with nanosecond precision.
 2. **Sort events chronologically**: Use `Temporal.Instant.compare(a, b)` to sort event objects. This method resolves ordering differences up to the nanosecond level.
-3. **Calculate delays**: Use `Temporal.Instant.prototype.since(other)` to find the precise duration between events.
+3. **Calculate delays**: Calculate differences between the `epochNanoseconds` properties of two instants using `BigInt` subtraction (or use `since()` to get a `Temporal.Duration`). Direct BigInt subtraction of epoch nanoseconds avoids floating-point safe integer limits (> $2^{53}$ ns / ~104 days).
 4. **Serialize for transmission**: Use `Temporal.Instant.prototype.toString()` to convert the timestamp to a standard ISO-8601 string for logging or network transmission.
 
 ## Example Code: High-Frequency Event Sequencing
@@ -49,11 +49,10 @@ function analyzeTelemetry(sortedEvents) {
     const prev = sortedEvents[i - 1];
     const curr = sortedEvents[i];
     
-    // Calculate difference in nanoseconds
-    const duration = curr.timestamp.since(prev.timestamp);
-    const nsDiff = duration.total('nanoseconds');
+    // Calculate difference in nanoseconds using BigInt to prevent safe integer overflow (> 2^53 ns)
+    const nsDiff = curr.timestamp.epochNanoseconds - prev.timestamp.epochNanoseconds;
     
-    console.log(`Delay between Event ${prev.eventType} and Event ${curr.eventType}: ${nsDiff}ns`);
+    console.log(`Delay between Event ${prev.eventType} and Event ${curr.eventType}: ${nsDiff.toString()}ns`);
   }
 }
 ```
