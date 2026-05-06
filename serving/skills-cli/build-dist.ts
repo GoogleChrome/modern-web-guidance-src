@@ -4,9 +4,13 @@ import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import matter from "gray-matter";
 import * as esbuild from "esbuild";
-import { scanAllGuides } from "../../lib/guide-validation.ts";
+import { scanAllGuides, scanDisciplineSkills } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
+import { processGuides } from "../scripts/build-guides.ts";
+import { replaceMacros } from "../lib/macros.ts";
+
+
 
 const SERVING_DIR = path.join(rootDir, "serving");
 const ROOT_DIST_DIR = path.join(rootDir, "dist");
@@ -81,7 +85,34 @@ function convertSkillToUseNpx(skillDest: string) {
   fs.writeFileSync(skillDest, skillText);
 }
 
-async function main(opts: {publishRoot: string, version?: string, npx?: boolean, subset?: boolean | number}): Promise<BuildResult | undefined> {
+export function processSkills(publishRoot: string, distDir: string, npx: boolean) {
+  console.log("Scanning for skills (SKILL.md) in guides/...");
+  const skills = scanDisciplineSkills();
+
+  for (const skill of skills) {
+    const category = skill.category;
+    const source = path.join(skill.dir, "SKILL.md");
+    const skillDestDir = path.join(publishRoot, "skills", category);
+    
+    fs.mkdirSync(skillDestDir, { recursive: true });
+    
+    const target = npx ? 'skills-cli-npx' : 'skills-cli';
+    const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
+    fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
+    
+    console.log(`Processed and copied skill ${category} (SKILL.md) to ${skillDestDir}`);
+  }
+
+  if (npx) {
+    const skillDest = path.join(distDir, "SKILL.md");
+    convertSkillToUseNpx(skillDest);
+  }
+
+  console.log(`Successfully copied ${skills.length} skills to distribution.`);
+  return { skillsCount: skills.length, skillNames: skills.map(s => s.category) };
+}
+
+async function main(opts: {publishRoot: string, version?: string, npx?: boolean, subset?: number}): Promise<BuildResult | undefined> {
   const {publishRoot, version, npx, subset} = opts;
 
   fs.rmSync(publishRoot, { recursive: true, force: true });
@@ -99,15 +130,14 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
     fs.mkdirSync(publishRoot, { recursive: true });
 
   console.log("Generating guides and updating vector store...");
-  // 1. Run build-guides.ts to update .modern-web-data and build/guides
   try {
-    console.time("⏳ build-guides.ts");
-    const subsetFlag = subset ? (typeof subset === 'number' ? `--subset=${subset}` : '--subset') : '';
-    execSync(`node --experimental-strip-types scripts/build-guides.ts ${subsetFlag}`, {
-      cwd: SERVING_DIR,
-      stdio: "inherit",
+    console.time("⏳ processGuides");
+    await processGuides({
+      outputDir: DIST_DIR,
+      target: npx ? 'skills-cli-npx' : 'skills-cli',
+      subset,
     });
-    console.timeEnd("⏳ build-guides.ts");
+    console.timeEnd("⏳ processGuides");
   } catch (error) {
     console.error("Failed to build guides:", error);
     process.exit(1);
@@ -121,27 +151,6 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
   if (version) {
     console.log(`Updating version to ${version} in distribution files...`);
     updateVersionsInDir(publishRoot, version);
-  }
-
-
-  console.log("Copying data files...");
-
-  // 4. Copy build/guides
-  const buildGuidesDir = path.join(SERVING_DIR, "build/guides");
-  const destBuildGuidesDir = path.join(DIST_DIR, "guides");
-  if (fs.existsSync(buildGuidesDir)) {
-    fs.cpSync(buildGuidesDir, destBuildGuidesDir, { recursive: true });
-    console.log(`Copied ${buildGuidesDir} to ${destBuildGuidesDir}`);
-  } else {
-    console.warn(`Warning: ${buildGuidesDir} does not exist.`);
-  }
-
-  console.log("Copying pure JS vector file...");
-  const vectorsFile = path.join(SERVING_DIR, "lib/use-cases.vectors.gen.json.gz");
-  const destVectorsFile = path.join(DIST_DIR, "use-cases.vectors.gen.json.gz");
-  if (fs.existsSync(vectorsFile)) {
-    fs.cpSync(vectorsFile, destVectorsFile);
-    console.log(`Copied ${vectorsFile} to ${destVectorsFile}`);
   }
 
   console.log("Copying TFJS model files...");
@@ -227,6 +236,12 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
       path.join(publishRoot, "THIRD_PARTY_NOTICES")
     );
 
+    const metaFile = path.join(publishRoot, "search.meta.json");
+    if (fs.existsSync(metaFile)) {
+      fs.unlinkSync(metaFile);
+      console.log(`Removed intermediate metafile ${metaFile}`);
+    }
+
   } catch (error) {
     console.error("Failed to bundle with esbuild:", error);
     process.exit(1);
@@ -234,33 +249,7 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
 
 
 
-  console.log("Scanning for skills (SKILL.md) in guides/...");
-  const guidesDirInRoot = path.join(rootDir, "guides");
-  const candidates = fs.readdirSync(guidesDirInRoot, { withFileTypes: true })
-    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
-    .map(d => d.name);
-
-  let skillsCount = 0;
-  const skillNames: string[] = [];
-  for (const candidate of candidates) {
-    const skillSource = path.join(guidesDirInRoot, candidate, "SKILL.md");
-    if (fs.existsSync(skillSource)) {
-      const skillDestDir = path.join(publishRoot, "skills", candidate);
-      const skillDest = path.join(skillDestDir, "SKILL.md");
-      fs.mkdirSync(skillDestDir, { recursive: true });
-      fs.copyFileSync(skillSource, skillDest);
-      console.log(`Copied skill ${candidate} (SKILL.md) to ${skillDestDir}`);
-      skillsCount++;
-      skillNames.push(candidate);
-    }
-  }
-
-  if (npx) {
-    const skillDest = path.join(DIST_DIR, "SKILL.md");
-    convertSkillToUseNpx(skillDest);
-  }
-
-  console.log(`Successfully copied ${skillsCount} skills to distribution.`);
+  const { skillsCount, skillNames } = processSkills(publishRoot, DIST_DIR, !!npx);
 
   const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
 

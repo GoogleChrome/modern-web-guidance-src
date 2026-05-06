@@ -319,6 +319,9 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
             const dateMatch = testId.match(/(\d{4}-\d{2}-\d{2})/);
             if (dateMatch) timestamp = dateMatch[1];
         }
+        if (!timestamp && data && data.timestamp) {
+            timestamp = data.timestamp;
+        }
         if (timestamp) {
             try {
                 const _date = new Date(timestamp);
@@ -593,7 +596,7 @@ function renderGrid(data, testId) {
             if (!unguidedRuns && !guidedRuns) return; // Skip if neither exists
 
             const sampleRun = (unguidedRuns && unguidedRuns[0]) || (guidedRuns && guidedRuns[0]);
-            const isSkill = sampleRun ? sampleRun.isSkill : false;
+            const isDisciplineSkill = sampleRun ? (sampleRun.isDisciplineSkill !== undefined ? sampleRun.isDisciplineSkill : sampleRun.isSkill) : false;
 
             sortedScenarios.push(scenarioName);
 
@@ -626,8 +629,8 @@ function renderGrid(data, testId) {
                 <div class="task-accordion-header">
                     <div class="left-section">
                         <span class="chevron" style="display: inline-block; transition: transform 0.2s; margin-right: 10px;">▶</span>
-                        <span class="feature-chip">${escapeHtml(formatTestName(scenarioName, isSkill).split(': ')[0])}</span>
-                        <span class="task-title">${escapeHtml(formatTestName(scenarioName, isSkill).split(': ')[1] || '')}</span>
+                        <span class="feature-chip">${escapeHtml(formatTestName(scenarioName, isDisciplineSkill).split(': ')[0])}</span>
+                        <span class="task-title">${escapeHtml(formatTestName(scenarioName, isDisciplineSkill).split(': ')[1] || '')}</span>
                     </div>
                     <div class="right-section">
                         <div class="mini-dumbbell-track">
@@ -658,10 +661,10 @@ function renderGrid(data, testId) {
                 }
             };
 
-            const targetGrid = isSkill ? disciplineGrid : guideGrid;
+            const targetGrid = isDisciplineSkill ? disciplineGrid : guideGrid;
             if (targetGrid) {
                 targetGrid.appendChild(accordion);
-                if (isSkill) {
+                if (isDisciplineSkill) {
                     const section = document.getElementById('discipline-section');
                     if (section) section.style.display = 'block';
                 }
@@ -806,10 +809,21 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             const isExpectedGuide = g === run.guideName;
             const hasExpectedPrefix = run.expectedToolPrefixes && run.expectedToolPrefixes.some(p => g.startsWith(p));
             const isGreen = isExpectedGuide || hasExpectedPrefix;
+            
+            const runIsDisciplineSkill = run.isDisciplineSkill !== undefined ? run.isDisciplineSkill : run.isSkill;
+            const isCorrespondingDiscipline = !runIsDisciplineSkill && g === run.discipline;
 
-            const className = isGreen ? 'matching-guide' : 'default-guide';
+            let className = 'default-guide';
+            let style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace;';
 
-            return `<span class="${className}" style="padding: 2px 4px; border-radius: 4px; font-family: monospace;">${escapeHtml(g)}</span>`;
+            if (isGreen) {
+                className = 'matching-guide';
+            } else if (isCorrespondingDiscipline) {
+                className = ''; // Don't use default-guide
+                style += ' background-color: rgba(218, 165, 32, 0.15); color: #daa520; border: 1px solid rgba(218, 165, 32, 0.3);';
+            }
+
+            return `<span class="${className}" style="${style}">${escapeHtml(g)}</span>`;
         };
 
                 const getTfootChips = async (runs, typeLabel) => {
@@ -850,7 +864,6 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                              <button class="tfoot-action-btn" onclick="viewDiff('${escapeHtml(setupPath)}', '${escapeHtml(resultPath)}', '${escapeHtml(scenarioName)}', ${run.runNumber})"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>
                              <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(appUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>
                              ${jsonFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${jsonFile}`)}', '${escapeHtml(`${usedBasePath}/${jsonFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 11.5 2h-7zm0 1h7a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5z"/><path d="M4.5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg> JSON</button>` : ''}
-                             ${files.includes('runtime.json') ? `<button class="tfoot-action-btn" onclick="viewContent('runtime.json', '${escapeHtml(`${usedBasePath}/runtime.json`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0a8 8 0 1 0 8 8A8 8 0 0 0 8 0zm0 14.5A6.5 6.5 0 1 1 14.5 8 6.51 6.51 0 0 1 8 14.5zm.5-10.5h-1v5l4.25 2.55.5-.85-3.75-2.2V4z"/></svg> Runtime</button>` : ''}
                              ${logFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${logFile}`)}', '${escapeHtml(`${usedBasePath}/${logFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
                              <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(playWUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> PlayW</button>
                          </div>
@@ -886,7 +899,23 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                          <div class="run-card-row">
                              <span class="run-card-label">Tools Used:</span>
                              <div class="run-card-row-inner" style="flex-wrap: wrap;">
-                                 ${toolsUsed.map(t => `<span style="background: rgba(255,255,255,0.05); padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); font-family: monospace;">${escapeHtml(t)}</span>`).join('')}
+                                                                   ${toolsUsed.map(t => {
+                                      const isCorrectTool = run.expectedToolPrefixes && run.expectedToolPrefixes.some(p => t.startsWith(p));
+                                      const runIsDisciplineSkill = run.isDisciplineSkill !== undefined ? run.isDisciplineSkill : run.isSkill;
+                                       const isCorrespondingDiscipline = !runIsDisciplineSkill && t === run.discipline;
+
+                                      let className = 'default-guide';
+                                      let style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace;';
+
+                                      if (isCorrectTool) {
+                                          className = 'matching-guide';
+                                      } else if (isCorrespondingDiscipline) {
+                                          className = ''; // Don't use default-guide
+                                          style += ' background-color: rgba(218, 165, 32, 0.15); color: #daa520; border: 1px solid rgba(218, 165, 32, 0.3);';
+                                      }
+
+                                      return `<span class="${className}" style="${style}">${escapeHtml(t)}</span>`;
+                                  }).join('')}
                              </div>
                          </div>` : ''}
 
@@ -905,14 +934,6 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                                  ${fileReadGuides.map(g => renderGuideChip(g, run)).join('')}
                              </div>
                          </div>` : ''}
-
-                         ${files.includes('runtime.json') ? `
-                        <div class="run-card-row">
-                            <span class="run-card-label">Runtime:</span>
-                            <div class="run-card-row-inner">
-                                <button class="tfoot-action-btn" onclick="viewContent('runtime.json', '${escapeHtml(`${usedBasePath}/runtime.json`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0a8 8 0 1 0 8 8A8 8 0 0 0 8 0zm0 14.5A6.5 6.5 0 1 1 14.5 8 6.51 6.51 0 0 1 8 14.5zm.5-10.5h-1v5l4.25 2.55.5-.85-3.75-2.2V4z"/></svg> Runtime</button>
-                            </div>
-                        </div>` : ''}
                      </div>
                  `;
              }

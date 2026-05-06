@@ -275,6 +275,7 @@ export interface GuideInventory {
   hasGrader: boolean;
   hasTask: boolean;
   featureIds: string[];
+  isDisciplineSkill?: boolean;
 }
 
 export interface TaskInfo {
@@ -423,8 +424,8 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
   if (!fs.existsSync(guidesDir)) return guides;
 
   const categories = fs.readdirSync(scanDir, { withFileTypes: true })
-    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
-    .map(d => d.name);
+     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+     .map(d => d.name);
 
   for (const category of categories) {
     const categoryDir = path.join(scanDir, category);
@@ -435,4 +436,50 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
     }
   }
   return guides;
+}
+
+export function scanDisciplineSkills(scanDir = guidesDir): GuideInventory[] {
+  const skills: GuideInventory[] = [];
+  if (!fs.existsSync(scanDir)) return skills;
+
+  const categories = fs.readdirSync(scanDir, { withFileTypes: true })
+    .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+    .map(d => d.name);
+
+  for (const category of categories) {
+    const categoryDir = path.join(scanDir, category);
+    const skillPath = path.join(categoryDir, 'SKILL.md');
+    if (fs.existsSync(skillPath)) {
+      skills.push({
+        dir: categoryDir,
+        name: category,
+        category: category,
+        hasGuide: true,
+        isStub: false,
+        hasDemo: false,
+        hasExpectations: false,
+        expectationsEmpty: true,
+        hasNegativeDemo: false,
+        hasGrader: false,
+        hasTask: false,
+        featureIds: [],
+        isDisciplineSkill: true,
+      });
+    }
+  }
+  return skills;
+}
+
+let cachedGuidesMap: Map<string, GuideInventory> | null = null;
+
+export function getGuidesMap(): Map<string, GuideInventory> {
+  if (!cachedGuidesMap) {
+    const allItems = [...scanAllGuides(), ...scanDisciplineSkills()];
+    cachedGuidesMap = new Map(allItems.map(g => [g.name, g]));
+  }
+  return cachedGuidesMap;
+}
+
+export function resetGuidesMap() {
+  cachedGuidesMap = null;
 }
