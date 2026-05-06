@@ -17,7 +17,6 @@ function incrementVersion(version: string): string {
   return `${parts[0]}.${parts[1]}.${patch}`;
 }
 
-
 const getLatestGitTag = () => execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
 
 export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<string> {
@@ -58,15 +57,23 @@ async function publishToDistributionRepo(publishCliDir: string, newVersion: stri
   console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance!`);
 }
 
+async function buildForNpm(newVersion: string) {
+  console.log(`\nRebuilding distribution with version ${newVersion} for npm...`);
+
+  const publishCliDir = path.join(DIST_DIR, "skills-cli-npx");
+  const result = await buildDist({publishRoot: publishCliDir, version: newVersion, npx: true, subset: 3});
+  if (!result) {
+    throw new Error("Build failed or was already in progress.");
+  }
+}
+
 async function main() {
   const newVersion = await getNextVersion();
-  
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
-  await fs.mkdir(publishCliDir, {recursive: true});
-  await fs.rm(publishCliDir, { recursive: true, force: true });
 
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  const result = await buildDist(newVersion);
+  // TODO: when we release, this should be changed to `npx: true` to publish a npm-ready package.
+  const result = await buildDist({publishRoot: publishCliDir, version: newVersion});
   if (!result) {
     throw new Error("Build failed or was already in progress.");
   }
@@ -115,6 +122,8 @@ ${skillNames.map(skill => `  - ${skill}`).join('\n')}`.trim();
 
     console.log('\nPerhaps also:\n    pushd ~/code/skills-alpha && git pull gh && git push gob && popd');
   }
+
+  await buildForNpm(newVersion);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

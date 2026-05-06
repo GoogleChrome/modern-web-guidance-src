@@ -115,7 +115,7 @@ export function calculateChartData(results) {
 }
 
 
-export function formatTestName(name, isSkill = false) {
+export function formatTestName(name, isDisciplineSkill = false) {
     if (!name) return name;
     const parts = name.split(' - ');
     if (parts.length >= 2) {
@@ -125,7 +125,7 @@ export function formatTestName(name, isSkill = false) {
         const featuresMap = window.__featuresMapping || {};
         let featureId = '';
         
-        if (isSkill) {
+        if (isDisciplineSkill) {
             // For skills, the first part is the discipline (e.g. performance)
             return `${appName}: ${guideName}`; // discipline: task
         }
