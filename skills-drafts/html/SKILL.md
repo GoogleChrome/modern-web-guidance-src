@@ -153,7 +153,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 <img 
   src="hero-large.webp" 
   srcset="hero-small.webp 480w, hero-medium.webp 800w, hero-large.webp 1200w"
-  sizes="(max-width: 600px) 480px, (max-width: 1000px) 800px, 1200px"
+  sizes="(max-width: 600px) 100vw, (max-width: 1200px) 80vw, 70vw"
   alt="Main product view" 
   fetchpriority="high" 
   width="1200" 
@@ -162,9 +162,32 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 <!-- Art direction and format switching with <picture> -->
 <picture>
-  <source srcset="hero-mobile.webp" media="(max-width: 600px)">
+  <!-- Mobile Art Direction: Different aspect ratio (square) and format (AVIF) -->
+  <source 
+    media="(max-width: 600px)" 
+    srcset="hero-mobile.avif 1x, hero-mobile-2x.avif 2x" 
+    type="image/avif"
+    width="600" 
+    height="600"
+  >
+  <source 
+    media="(max-width: 600px)" 
+    srcset="hero-mobile.webp 1x, hero-mobile-2x.webp 2x"
+    width="600" 
+    height="600"
+  >
+  
+  <!-- Desktop: Modern format for primary layout -->
   <source srcset="hero-desktop.avif" type="image/avif">
-  <img src="hero-desktop.webp" alt="Platform dashboard overview" width="1200" height="600">
+
+  <!-- Fallback img defines the default aspect ratio (2:1) -->
+  <img 
+    src="hero-desktop.webp" 
+    alt="Platform dashboard overview" 
+    width="1200" 
+    height="600"
+    loading="lazy"
+  >
 </picture>
 
 <!-- Low-priority decorative footer image -->
