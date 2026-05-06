@@ -205,7 +205,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 ### Guidelines
 
 See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallback strategies for using the Popover API in a cross-browser way.
-- **DO** use `<dialog>` for modal overlays (requires JS `.showModal()`) to automatically trap focus, dim backgrounds, and support dismissing via `Esc`.
+- **DO** use `<dialog>` for modal overlays (requires JS `.showModal()`) to automatically trap focus, dim backgrounds, and support dismissing via `Esc`. Use the `closedby="any"` attribute to enable native "light-dismiss" (closing on backdrop click) without custom JavaScript.
 - **DO** utilize the Popover API (`popover` attribute) for non-modal UI (menus, tooltips) that do not require focus traps.
 - **DO** use `::backdrop` to style modal backgrounds.
 - **DO** use `<form method="dialog">` to dismiss dialogs without manual JS handlers. Combined button `formmethod="dialog"` yields the button's value to the dialog `.returnValue`.
@@ -222,9 +222,10 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
   <p>Standard help text.</p>
 </div>
 
-<!-- Modal Dialog -->
+<!-- Modal Dialog with Form-based closing -->
 <button id="show-dialog">Open dialog</button>
 <dialog id="fav-modal">
+  <!-- method="dialog" closes the dialog natively and sets the returnValue -->
   <form method="dialog">
     <p>Confirm action?</p>
     <button value="cancel">Cancel</button>
@@ -239,7 +240,7 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
   // Show modal dialog
   openModal.addEventListener('click', () => dialog.showModal());
   
-  // Close modal dialog
+  // Listen for the 'close' event to retrieve the user's choice (returnValue)
   dialog.addEventListener('close', () => {
     console.log(dialog.returnValue); // "confirm" or "cancel"
   });
@@ -250,7 +251,7 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
 
 | Feature | Modality | Focus | Dismiss Mechanism | Use Case |
 | :--- | :--- | :--- | :--- | :--- |
-| **`<dialog>`** | Modal / Non-modal | Automatic trap (Modal) | Esc Key / Form submit | Critical Actions, Settings |
+| **`<dialog>`** | Modal / Non-modal | Automatic trap (Modal) | Esc / Form / `closedby` | Critical Actions, Settings |
 | **`[popover]`** | Non-modal | Standard Tab flow | Light-dismiss (Click outside) | Menus, Tooltips, Toasts |
 | **`<details>`** | Inline Disclosure | Standard Tab flow | Toggle summary | Accordions, FAQs |
 
