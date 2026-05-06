@@ -50,7 +50,7 @@ export async function processGuides(opts: BuildOptions) {
   const { outputDir, target, force, targetGuidePath, modelName, noChunking } = opts;
 
   BUILD_GUIDES_DIR = path.join(outputDir, "guides");
-  VECTORS_FILE = (target === 'skills-cli')
+  VECTORS_FILE = (target === 'skills-cli' || target === 'skills-cli-npx')
     ? path.join(outputDir, "use-cases.vectors.gen.json.gz")
     : path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
 
