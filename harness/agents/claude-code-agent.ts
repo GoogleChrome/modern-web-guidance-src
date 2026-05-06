@@ -31,7 +31,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
     const approach = suiteConfig.serving;
 
     if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
-      copySkills(tempHome, Agents.CLAUDE_CODE, approach === Serving.SKILLS_CLI);
+      copySkills(tempHome, Agents.CLAUDE_CODE, approach === Serving.SKILLS_CLI, suiteConfig.skillsToEnable);
     } else if (approach === Serving.MCP) {
       updateMcpConfig(
         path.join(tempHome, '.claude.json'),
@@ -160,8 +160,8 @@ export async function collectClaudeGuidesFromTrajectory(dirPath: string, _servin
             for (const contentItem of obj.message.content) {
               if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input && contentItem.input.command) {
                 const command = contentItem.input.command;
-                if (command.includes('modern-web') && command.includes('--retrieve')) {
-                  const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
+                if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
+                  const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
                   if (match) {
                     const ids = match[1].split(',');
                     for (const id of ids) {

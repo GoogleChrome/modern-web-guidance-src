@@ -46,6 +46,7 @@ If standard research is insufficient or if specifically requested by the user, r
 Once research is complete, synthesize the findings into distinct developer use cases.
 
 - **Apply the `project-use-cases` constraints**: Refer to `project-use-cases` skill for the authoritative rules on what constitutes a good use case (verb-first, WHAT-not-HOW).
+- **Verify Technical Viability**: Discard non-viable use cases immediately if research reveals they are blocked by inconsistent browser behavior or spec limitations, rather than documenting a theoretical solution.
 - **Generic and Common**: Ensure your use cases are generic enough to fit common developer needs, avoiding overly specific or contrived examples (e.g., prefer concepts like "Expose complex UI forms" over overly specific apps like a "Flight Search").
 - **Distinct Value Proposition**: Propose 2-5 distinct use cases. Do not duplicate existing guides. Check `guides/` for similar descriptions.
 - **Save Representative Sources**: For each usecase, select at least one implementation-focused source (not just API reference).

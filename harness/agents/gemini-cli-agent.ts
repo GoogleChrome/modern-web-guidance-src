@@ -43,6 +43,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
 
   // Set environment variables
   process.env.HOME = tempHome;
+  process.env.GEMINI_CLI_TRUST_WORKSPACE = 'true';
 
   // Add GEMINI context and MCP servers for guided runs
   if (runType === 'guided') {
@@ -50,7 +51,7 @@ function setupIsolatedWorkDir(templateDir: string, runType: string): string {
     const approach = suiteConfig.serving;
 
     if (approach === Serving.SKILLS_CLI || approach === Serving.SKILLS) {
-      copySkills(tempHome, Agents.GEMINI_CLI, approach === Serving.SKILLS_CLI);
+      copySkills(tempHome, Agents.GEMINI_CLI, approach === Serving.SKILLS_CLI, suiteConfig.skillsToEnable);
     } else if (approach === Serving.MCP) {
       updateMcpConfig(
         path.join(geminiDest, 'settings.json'),
@@ -152,7 +153,7 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, _servin
                 }
               } else if (tc.name === 'run_shell_command' && tc.args?.command) {
                 const command = tc.args.command as string;
-                const match = command.match(/--retrieve\s+["']?([^"'\s]+)["']?/);
+                const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
                 if (match) {
                   retrievedGuides.push(...match[1].split(',').map(s => s.trim()));
                 }
@@ -228,7 +229,7 @@ export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   return Array.from(new Set(toolsUsed));
 }
 
-export function parseGeminiStreamOutput(outputStr: string, skillName: string = 'modern-web-use-cases'): {
+export function parseGeminiStreamOutput(outputStr: string, skillName: string = 'modern-web'): {
     skillActivated: boolean;
     searchCalled: boolean;
     retrieveCalled: boolean;
@@ -248,10 +249,10 @@ export function parseGeminiStreamOutput(outputStr: string, skillName: string = '
                 }
                 if (event.tool_name === 'run_shell_command') {
                     const command = event.parameters?.command || '';
-                    if (command.includes('--search')) {
+                    if (command.includes('search') || command.includes('--search')) {
                         searchCalled = true;
                     }
-                    if (command.includes('--retrieve')) {
+                    if (command.includes('retrieve') || command.includes('--retrieve')) {
                         retrieveCalled = true;
                     }
                 }
