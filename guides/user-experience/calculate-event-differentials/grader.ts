@@ -102,5 +102,13 @@ test.describe(`Temporal API Guidance Expectations: ${fileName}`, () => {
     expect(isTemporalDefinedAndUsed, 'Temporal should be defined and utilized in the page scripts').toBe(true);
   });
 
-  // Immutability optional check removed, unneeded for this template prompt.
+  // Browser assertions: Verify that immutability is respected if date arithmetic is performed
+  test('Should use immutability correctly if performing date arithmetic', async () => {
+    const usesDateMath = /add\(|subtract\(/.test(scriptContent);
+    if (usesDateMath) {
+      // Check that they don't just call add/subtract on a standalone line without using the result
+      const isAssignedOrChained = /(=|return|\bconst\b|\blet\b|\bvar\b|\.add\(.*?\)\.|\.subtract\(.*?\)\.)/.test(scriptContent);
+      expect(isAssignedOrChained, 'Must use the returned instance of add() or subtract() because Temporal objects are immutable').toBe(true);
+    }
+  });
 });

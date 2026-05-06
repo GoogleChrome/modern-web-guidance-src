@@ -1,4 +1,5 @@
 ---
 base_app: daily-grind
+grader: branded-select-styling
 ---
-- Add a scrollable menu section to the page with class `.scroll-box` containing all coffee options. Customize its scrollbar so it uses standard modern scrollbar styling properties (`scrollbar-width`, `scrollbar-color`, and `scrollbar-gutter: stable`) matching the site's brown color palette, and provide a robust fallback using the legacy `::-webkit-scrollbar` pseudo-elements for older browsers.
+add a coffee roast selector (light, medium, dark) to the hero section. use the new customizable select features so the dropdown list, the arrow, and the checkmark all match the site's dark brown (#4e342e) and orange (#ffab40) palette.

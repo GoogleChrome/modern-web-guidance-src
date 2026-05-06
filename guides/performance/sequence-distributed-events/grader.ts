@@ -65,8 +65,27 @@ test.describe(`Sequencing Distributed Events Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test('Browser: Application should detect and handle missing Temporal support', async () => {
-    expect(true).toBe(true);
+  test('Browser: Application should detect and handle missing Temporal support', async ({ page }) => {
+    // Ensure Temporal is missing initially
+    await page.addInitScript(() => {
+      delete (window as any).Temporal;
+    });
+    await page.reload();
+
+    // Wait a short time for any dynamic polyfill imports to complete
+    await page.waitForTimeout(1000);
+
+    const isHandled = await page.evaluate(() => {
+      const hasPolyfill = typeof (window as any).Temporal !== 'undefined';
+      if (hasPolyfill) return true;
+
+      const bodyText = document.body.innerText.toLowerCase();
+      const hasWarning = bodyText.includes('temporal') && (bodyText.includes('support') || bodyText.includes('available') || bodyText.includes('not supported'));
+      const btn = document.querySelector('button');
+      const isBtnDisabled = btn && (btn as HTMLButtonElement).disabled;
+      return !!(hasWarning || isBtnDisabled);
+    });
+    expect(isHandled).toBe(true);
   });
 
   test('Browser: Application should call Temporal.Now.instant() when generating events', async ({ page }) => {

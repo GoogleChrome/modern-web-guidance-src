@@ -62,10 +62,46 @@ test.describe(`Visually Stable Font Fallbacks: ${demoName}`, () => {
         return style.fontSizeAdjust && style.fontSizeAdjust !== 'none';
       }) as HTMLElement;
       
-      return { hasAdjust: !!target };
+      if (!target) {
+          let maxLen = 0;
+          for (const e of els) {
+              const text = e.textContent?.trim() || '';
+              if (text.length > maxLen) { maxLen = text.length; target = e as HTMLElement; }
+          }
+      }
+      if (!target) return { error: 'No element found' };
+
+      const originalAdjust = window.getComputedStyle(target).fontSizeAdjust;
+      
+      // Create a measurement element
+      const measurer = document.createElement('div');
+      measurer.style.position = 'absolute';
+      measurer.style.visibility = 'hidden';
+      measurer.style.fontSize = '100px';
+      measurer.style.fontSizeAdjust = originalAdjust;
+      
+      const probe = document.createElement('div');
+      probe.style.height = '1ex';
+      measurer.appendChild(probe);
+      document.body.appendChild(measurer);
+
+      measurer.style.fontFamily = 'sans-serif';
+      await new Promise(r => requestAnimationFrame(r));
+      const h1 = probe.getBoundingClientRect().height;
+
+      measurer.style.fontFamily = 'serif';
+      await new Promise(r => requestAnimationFrame(r));
+      const h2 = probe.getBoundingClientRect().height;
+
+      document.body.removeChild(measurer);
+      return { h1, h2, originalAdjust };
     });
 
-    expect(result.hasAdjust).toBe(true);
+    if ('error' in result) throw new Error(result.error);
+    
+    expect(result.originalAdjust).not.toBe('none');
+    // We expect h1 and h2 to be extremely close with font-size-adjust active (allowing minor subpixel differences)
+    expect(Math.abs(result.h1 - result.h2)).toBeLessThan(10);
   });
 
   test('The text remains readable and visually consistent in size', async ({ page }) => {

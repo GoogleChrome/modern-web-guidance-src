@@ -30,7 +30,26 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
   });
 
   async function getElements(page: Page) {
-    const trigger = page.locator('button').first();
+    let trigger = page.locator('button[aria-expanded], button[aria-controls], button[aria-haspopup]').first();
+    if (await trigger.count() === 0) {
+      const buttons = page.locator('button');
+      const count = await buttons.count();
+      for (let i = 0; i < count; i++) {
+        const btn = buttons.nth(i);
+        if (await btn.isVisible()) {
+          const id = await btn.getAttribute('id') || '';
+          const ariaLabel = await btn.getAttribute('aria-label') || '';
+          if (!id.includes('close') && !ariaLabel.toLowerCase().includes('close')) {
+            trigger = btn;
+            break;
+          }
+        }
+      }
+    }
+    if (await trigger.count() === 0) {
+      trigger = page.locator('button').first();
+    }
+
     const controls = await trigger.getAttribute('aria-controls');
     let drawer;
     if (controls) {
