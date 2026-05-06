@@ -67,7 +67,7 @@ Modern browser-native selectors reduce the need for preprocessors and complex st
 
 ### Prefer CSS selectors over JS for complex element targeting
 
-- **DO** use `:has()` to style parents based on child state instead of managing classes in JS (e.g. `label:has(:checked)` instead of a manual `label.has-checked` class)
+- **DO** use `:has()` to style parents based on child state instead of managing classes in JS (e.g. `label:has(:checked)` instead of a manual `label.has-checked` class) For more information, see the guides at {{ GUIDE_REF("child-state-based-styling") }} and {{ GUIDE_REF("content-based-styling") }}.
 - **DO NOT** nest `:has()` or use pseudo-elements inside it (browser API limitation)
 - Use `:nth-child(<An+B> of <selector>)` when you need to style every n-th element of a certain type. E.g. `details:nth-child(1 of [open])` will style the first open `<details>` element it finds, whereas `details[open]:first-child` would style only the first child if and only if it was open.
 
