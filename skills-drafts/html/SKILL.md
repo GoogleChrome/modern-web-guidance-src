@@ -324,15 +324,12 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
 
 See {{ GUIDE_REF("forms") }} for more details on creating modern web forms.
 
-- **DO** group subsets of related fields using `<fieldset>` and `<legend>`.
 - **DO** utilize the `form="form-id"` attribute to decouple inputs from the physical `<form>` tree.
-- **DO** use `<datalist>` coupled with `<input list="id">` for lightweight auto-suggestions (note: visually unstylable and has screen-reader quirks).
-- **DO** use appropriate `autocomplete` attributes for inputs.
-- **DO** distinguish between `autocomplete="current-password"` and `autocomplete="new-password"`.
-- **DO** ensure that all inputs in a form have a corresponding `<label>` element. 
+- **DO** use `<datalist>` coupled with `<input list="id">` for lightweight auto-suggestions (note: visually unstylable and has screen-reader quirks). 
 - **DON'T** use `autocomplete="off"` on credential, address, payment,  or contact fields. Browsers and password managers ignore it there by design. Use a specific token instead (`autocomplete="email"`, `"street-address"`, `"cc-number"`, etc.).
 - **DO** distinguish `autocomplete="current-password"` (sign-in) from `autocomplete="new-password"` (registration / password change) so password managers offer the right action.                                                    
 - **DO** match `autocomplete` tokens with appropriate `inputmode` and `type` (`type="email"` + `inputmode="email"` + `autocomplete="email"`). They control different things — keyboard, validation, and autofill respectively — and reinforce each other.
+
 - **DON'T** use `autocomplete="off"` unless handling highly sensitive tracking tokens (violates standard password manager overrides). Use standard inputs `type="email"`, `type="tel"`.
 - **DON'T** use `autocomplete="off"` on credential, address, payment, or contact fields. Browsers and password managers ignore it there by design. Use a specific token instead (`autocomplete="email"`, `"street-address"`, `"cc-number"`, etc.).
 - **DO** distinguish `autocomplete="current-password"` (sign-in) from `autocomplete="new-password"` (registration / password change) so password managers offer the right action.                                                    
