@@ -389,15 +389,6 @@
           }
         }
 
-        function formatTime(zdt) {
-          const time = zdt.toPlainTime();
-          let hour = time.hour;
-          const ampm = hour >= 12 ? 'PM' : 'AM';
-          hour = hour % 12 || 12;
-          const minute = String(time.minute).padStart(2, '0');
-          return `${hour}:${minute} ${ampm}`;
-        }
-
         // 3. Render Cards
         targetTimezones.forEach(tz => {
           const isHost = tz.zone === hostTz;
@@ -406,12 +397,15 @@
           const card = document.createElement('div');
           card.className = `tz-card ${isHost ? 'host-card' : ''}`;
 
+          // Format localized time cleanly down to minutes with AM/PM using standard toLocaleString()
+          const formattedTime = targetZdt.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+
           card.innerHTML = `
             <div class="card-header">
               <span class="tz-name">${tz.flag} ${tz.name}</span>
               ${isHost ? '<span class="badge badge-host">Host Location</span>' : ''}
             </div>
-            <div class="resolved-time">${formatTime(targetZdt)}</div>
+            <div class="resolved-time">${formattedTime}</div>
             <div class="card-details">
               <div class="detail-item"><span>Full String:</span> <span class="detail-value"><code>${targetZdt.toString()}</code></span></div>
               <div class="detail-item"><span>Offset:</span> <span class="detail-value"><code>${targetZdt.offset}</code></span></div>
