@@ -9,23 +9,23 @@ This skill facilitates the "Differential Knowledge Refactor" of technical guides
 
 ## Workflow: The Inverse Knowledge Filter
 
-The goal is to aggressively "whittle down" a target guide by removing anything that modern coding models already know natively.
+The goal is to aggressively "whittle down" a target guide (the **Target**) by removing any content that is natively understood by modern coding models.
 
-### 1. Identify Redundancy References (Sources)
-Identify the baseline documents that represent "Standard Knowledge":
-- **Source A & B**: External or internal guides that cover modern language features (e.g., a modern ES2022+ guide).
-- **Model Inherent Knowledge**: The existing training weights of models like Claude 3.5 or Gemini 1.5.
+### 1. Harvest Baseline Knowledge (Sources)
+Before refactoring, you must collect the "Redundancy Mirrors"—documents that represent the baseline of what a modern model already knows.
+- **Source Guides**: Identify 1-3 guides (Source A, B, etc.) that cover the "Standard" version of the discipline (e.g., a modern JS best practices guide, a standard CSS layout guide).
+- **Validation of Inherent Knowledge**: These sources serve as *proof* that the information is common knowledge and can be safely deleted from the Target.
 
 ### 2. Run the Differential Filter
-Use the attached script to automate the comparison. The script uses multiple models to cross-reference the target against the sources and their own internal weights.
+Execute the filter script to compare the **Target** against the harvested **Sources** and the models' own inherent weights. 
 
 ```bash
-# Run the filter
-node .agents/skills/project-discipline-guides/scripts/differential_filter.ts <target_skill_path> <redundancy_source_A> <redundancy_source_B>
+# Usage
+node .agents/skills/project-discipline-guides/scripts/differential_filter.ts <target_path> <source_a> [source_b ...]
 ```
 
-### 3. Review for "Signal"
-The script will output refactored versions that are strictly additive. Review these to ensure you haven't lost the "Signal"—the high-value expertise that models know but often omit without guidance.
+### 3. Review the "Signal"
+The script produces a refactored version. Review it to ensure you have successfully deleted the "Volume" (redundancies) while preserving the "Signal" (the expert heuristics that models *know* but often omit without guidance).
 
 ## Core Principles
 
