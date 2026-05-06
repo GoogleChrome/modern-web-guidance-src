@@ -1,5 +1,5 @@
 ---
-name: improve-heading-text-layout-and-legibility
+name: improve-text-layout-and-legibility
 description: Improve the layout and legibility of short standalone text content, such as headings no longer than a few lines, by enabling the browser to apply evenly balanced line breaks when wrapping text.
 web-feature-ids:
   - text-wrap-balance
@@ -80,11 +80,8 @@ p, blockquote, li, .pretty-text {
 ### Fallback strategies
 
 {{ BASELINE_STATUS("text-wrap-balance") }}
-
-In browsers that do not support `text-wrap: balance`, the property is ignored, and the text will wrap using the default `wrap` behavior. This is a progressive enhancement that gracefully degrades to standard typography.
-
-For critical layouts where refined text layout is a requirement, use a JavaScript library such as [BalanceText](https://github.com/adobe/balance-text), but be aware that this may be slow and cause performance issues.
-
 {{ BASELINE_STATUS("text-wrap-pretty") }}
 
-`text-wrap: pretty` is a progressive enhancement. Browsers that do not support the property will simply ignore it and fall back to the default wrapping behavior. This ensures that your content remains perfectly readable across all browsers while providing a superior experience to those that support it.
+In browsers that do not support `text-wrap: balance` or `text-wrap: pretty`, the property is ignored, and the text will wrap using the default `wrap` behavior. This is a progressive enhancement that gracefully degrades to standard typography. This ensures that your content remains perfectly readable across all browsers while providing a superior experience to those that support it.
+
+For critical layouts where refined text layout is a requirement, use a JavaScript library, but be aware that this may be slow and cause performance issues.
