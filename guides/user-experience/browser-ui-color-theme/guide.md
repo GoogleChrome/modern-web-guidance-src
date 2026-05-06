@@ -57,7 +57,7 @@ You can override the global theme for specific elements. This is useful for "dar
 ```
 
 ### 4. Fine-grained control with `light-dark()`
-For more control over the colors of built-in UI such as `accent-color` or `scrollbar-color`, use the `light-dark()` function. This function automatically picks the correct color based on the computed `color-scheme` of the element, eliminating the need for redundant media queries.
+For more control over the colors of built-in UI such as `accent-color` or `scrollbar-color`, use the `light-dark()` function. This function automatically picks the correct color based on the computed `color-scheme` of the element and eliminates the need for redundant media queries.
 
 ```css
 :root {
@@ -96,6 +96,35 @@ For more control over the colors of built-in UI such as `accent-color` or `scrol
 {{ BASELINE_STATUS("light-dark") }}
 
 - **Progressive Enhancement**: Browsers that do not support `color-scheme` or `light-dark()` will simply ignore these properties and use their default light-mode UI.
-- **Handling `light-dark()` Support**: For browsers that support `color-scheme` but not yet `light-dark()`, provide a simple fallback color before the `light-dark()` declaration, or continue using `@media (prefers-color-scheme)` for critical theme overrides.
+- **Handling `light-dark()` Support**: For browsers that support `color-scheme` but not yet `light-dark()`, light and dark versions of colors should first be defined as custom properties, and the `prefers-color-scheme` media query should be used to set colors for the respective mode like in the example below:
+
+```css
+.themed-card {
+  /* Define browser UI accent color for each mode */
+  --card-bg-light: #ffffff;
+  --card-bg-light: #2d2e31;
+  --card-text-dark: #202124;
+  --card-text-dark: #f8f9fa;
+
+  --card-bg: var(--card-bg-light);
+  --card-text: var(--card-text-light);
+}
+
+/* Fallback for browsers without light-dark support */
+@media (prefers-color-scheme: dark) {
+  .themed-card {
+    --card-bg: var(--card-bg-dark);
+    --card-text: var(--card-text-dark);
+  }
+}
+
+/* Set color for each mode */
+@supports (color: light-dark(white, black)) {
+  .themed-card {
+    --card-bg: light-dark(var(--card-bg-light), var(--card-bg-dark));
+    --card-text: light-dark(var(--card-text-light), var(--card-text-dark));
+  }
+}
+```
 - **Manual Dark Mode Styling**: For older browsers, continue to use `prefers-color-scheme` media queries to provide custom styles for your own components.
 - **Custom Scrollbars**: If you need consistent scrollbar styling across all modern browsers, use the `scrollbar-color` property. For older WebKit-based browsers that do not support the standard property, continue to use the non-standard `::-webkit-scrollbar` pseudo-elements.
