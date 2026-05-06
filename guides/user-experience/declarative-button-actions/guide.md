@@ -1,6 +1,6 @@
 ---
 name: declarative-button-actions
-description: Declaratively connect a button to any element to trigger custom, application-specific actions.
+description: Declaratively connect a button to any element to trigger custom, application-specific actions using declarative button commands, invoker commands, button commands, custom commands, or declarative toggle actions.
 web-feature-ids:
   - invoker-commands
 sources:

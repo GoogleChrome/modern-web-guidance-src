@@ -23,10 +23,10 @@ test.describe(`persistent-toast-notifications Expectations: ${demoName}`, () => 
 
     await page.goto(demoUrl);
 
-    // Disable transitions and animations to ensure instant E2E style checks
+    // Speed up transitions and animations to ensure instant E2E style checks without breaking transitionend events
     await page.evaluate(() => {
       const style = document.createElement('style');
-      style.innerHTML = '* { transition: none !important; animation: none !important; }';
+      style.innerHTML = '* { transition-duration: 0.001s !important; animation-duration: 0.001s !important; }';
       document.head.appendChild(style);
     });
   });

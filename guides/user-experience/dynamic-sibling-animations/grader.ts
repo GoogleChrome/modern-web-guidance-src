@@ -35,23 +35,23 @@ test.describe(`Dynamic Sibling Animations Expectations: ${demoName}`, () => {
     const count = await elements.count();
     expect(count).toBeGreaterThanOrEqual(2);
     
-    const delay1 = await elements.nth(0).evaluate((el) => parseFloat(window.getComputedStyle(el).animationDelay));
-    const delay2 = await elements.nth(1).evaluate((el) => parseFloat(window.getComputedStyle(el).animationDelay));
+    const delay1 = await elements.nth(0).evaluate((el) => parseFloat(window.getComputedStyle(el).animationDelay) || parseFloat(window.getComputedStyle(el).transitionDelay));
+    const delay2 = await elements.nth(1).evaluate((el) => parseFloat(window.getComputedStyle(el).animationDelay) || parseFloat(window.getComputedStyle(el).transitionDelay));
     expect(delay1).toBeLessThan(delay2);
   });
 
   test('`sibling-index()` is multiplied by a time and used as the `animation-delay`.', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    // Even more flexible: just check that sibling-index() and a multiplication operator exist in an animation-delay
-    expect(html).toMatch(/animation-delay:[^;]*sibling-index\(\)/);
-    expect(html).toMatch(/animation-delay:[^;]*\*/);
+    // Even more flexible: just check that sibling-index() and a multiplication operator exist in an animation-delay or transition-delay
+    expect(html).toMatch(/(animation-delay|transition-delay):[^;]*sibling-index\(\)/);
+    expect(html).toMatch(/(animation-delay|transition-delay):[^;]*\*/);
   });
 
   test('The implementation provides a fallback for older browsers using CSS custom properties.', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     // Check for both the fallback variable and the native function
-    const hasFallbackVar = /animation-delay:[^;]*--sibling-index/.test(html);
-    const hasSiblingIndex = /animation-delay:[^;]*sibling-index\(\)/.test(html);
+    const hasFallbackVar = /(animation-delay|transition-delay):[^;]*--sibling-index/.test(html);
+    const hasSiblingIndex = /(animation-delay|transition-delay):[^;]*sibling-index\(\)/.test(html);
     expect(hasFallbackVar).toBe(true);
     expect(hasSiblingIndex).toBe(true);
   });

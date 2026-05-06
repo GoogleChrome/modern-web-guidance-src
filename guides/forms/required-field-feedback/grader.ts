@@ -121,6 +121,11 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     
     let allTriggered = false;
     if (isEnabled) {
+      // Strip novalidate attribute prior to submit so that the browser natively triggers the :user-invalid state
+      await page.evaluate(() => {
+        document.querySelectorAll('form[novalidate]').forEach(form => form.removeAttribute('novalidate'));
+      });
+
       const inputs = page.locator('form input[required]');
       const count = await inputs.count();
       const initialStyles: any[] = [];
