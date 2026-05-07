@@ -46,6 +46,14 @@ Because container queries style **descendants**, you must apply the highlight st
 **MANDATORY**: Wrap the styles in ` @media (prefers-reduced-motion: no-preference)` to only show the effect to users who have not requested reduced motion. Depending on your use case, you may retain portions of the effect, but in this case, the cards flash from white to blue in a way that may cause problems for some users, so we disable it completely.
 
 ```css
+/* Specify transition outside of queries so that it is applied regardless of state.  */
+.card {
+  transition:
+    scale 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+    background-color 0.4s,
+    color 0.4s,
+    box-shadow 0.4s;
+}
 /* 
 Only show the effect for users not requesting reduced motion. Disable completely, including the color change, as it causes a flash that may be problematic.
 */
@@ -56,11 +64,7 @@ Only show the effect for users not requesting reduced motion. Disable completely
       background: #007bff;
       color: white;
       scale: 1.15;
-      transition:
-        scale 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
-        background-color 0.4s,
-        color 0.4s,
-        box-shadow 0.4s;
+      box-shadow: 0 10px 25px rgba(0, 123, 255, 0.3);
     }
   }
 }
