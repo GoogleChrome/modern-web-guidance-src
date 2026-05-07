@@ -365,7 +365,8 @@ window.__featuresMapping = {
     "function"
   ],
   "resilient-context-menus-and-nested-dropdowns": [
-    "anchor-positioning"
+    "anchor-positioning",
+    "popover"
   ],
   "same-document-transitions": [
     "view-transitions"
