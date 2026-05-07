@@ -48,47 +48,75 @@ MANDATORY: Apply the `color-scheme` property to the `html` element or the `:root
 You can override the global theme for specific elements. This is useful for "dark mode" sections within a light-themed site (e.g., a dark sidebar or a code editor).
 
 ```css
-.dark-sidebar {
+.contact-form {
   /* Force this element and its children to use dark themed UI */
   color-scheme: dark;
-  background-color: #111;
-  color: #eee;
 }
 ```
 
-### 4. Fine-grained control with `light-dark()`
-For more control over the colors of built-in UI such as `accent-color` or `scrollbar-color`, use the `light-dark()` function. This function automatically picks the correct color based on the computed `color-scheme` of the element and eliminates the need for redundant media queries.
+### 4. Fine-grained control with custom properties and `light-dark()`
+For more control over the colors of built-in UI such as `accent-color` or `scrollbar-color`, authors can add their own dynamic colors with use of custom properties and/or the `light-dark()` function. This function automatically picks the correct color based on the computed `color-scheme` of the element and eliminates the need for redundant media queries.
 
 ```css
 :root {
   /* Define browser UI accent color for each mode */
   --accent-color-dark: #0056b3;
   --accent-color-light: #00e5ff;
-  --accent-color: var(--accent-color-dark);
+  
+
+  /* Define colors for other parts of the theme */
+  --background-color-dark: hsl(212 33% 10%);
+  --background-color-light: hsl(0, 17%, 92%);
+
+  --text-color-dark: hsl(0, 0%, 100%);
+  --text-color-light: hsl(210, 100%, 2%);
+
+  /* Define author provided colors or system colors for default mode (light) */
+  --accent-color: var(--accent-color-dark, AccentColor);
+  --background-color: var(--background-color-dark, Canvas);
+  --text-color: var(--text-color-light, canvasText);
+
 
   /* MANDATORY: Automatically adapt native UI to user system preferences */
   color-scheme: light dark;
-  /* Set accent color */
-  accent-color: var(--accent-color);
+  
 
-  /* MANDATORY: Fallback for browsers without light-dark support */
-  @media (prefers-color-scheme: dark) {
-    --accent-color: var(--accent-color-light);
-  }
-
-  /* Set browser UI accent color for each mode */
+  /* check for light-dark() support */
   @supports (color: light-dark(white, black)) {
+    --background-color: light-dark(var(--background-color-light), var(--background-color-dark));
+    --text-color: light-dark(var(--text-color-light), var(--text-color-dark));
+
+    /* Set dynamic browser UI accent color for each mode */
     /* Blue in light mode, Cyan in dark mode */
     --accent-color: light-dark(var(--accent-color-dark), var(--accent-color-light));
   }
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  /* Apply custom accent color to UI elements*/
+  accent-color: var(--accent-color);
+}
+
+.contact-form {
+  /* Apply dark scheme to built-in UI elements */
+  color-scheme: dark;
+  /* **Mandatory**: when nesting schemes, dynamic properties set with light-dark() must also be defined on the element where the scheme changes */
+  /* Apply custom accent color to UI elements*/
+  accent-color: var(--accent-color);
+  /* Set colors for other theme styles */
+  background-color: var(--background-color);
+  color: var(--text-color);
 }
 ```
 
 ## Best Practices
   - **Token Resolution and Inheritance**: Be aware that `light-dark()` currently resolves based on the `color-scheme` of the element where the value is **defined**, not where it is **used**.
   - **The "Inheritance Footgun"**: If you define a theme variable on the `:root`, the browser resolves it to a specific color immediately. Descendant elements that change their `color-scheme` (e.g., a dark-themed card on a light page) will inherit the *already-resolved color* instead of the dynamic function.
-  - **The `@property` Risk**: This issue is particularly critical when using registered custom properties (via `@property`). Because these have a defined `syntax: "<color>"`, they "lock" the resolved color at computed value time, making them non-reactive to local theme changes.
-  - **The Workaround**: For components that might exist in "nested" themes, you must currently redefine your tokens locally whenever you change the `color-scheme`.
+  - **The `@property` Risk**: This issue is particularly critical when using registered custom properties (via `@property`). Because these have a defined `syntax: "<color>"`, they "lock" the resolved color at computed value time, making them non-reactive to local theme changes. **Mandatory**: Do not register custom properties that should dynamically resolve based on `light-dark()`.
+  - **The Workaround**: For components that might exist in "nested" themes, you must redefine your tokens locally whenever you change the `color-scheme`.
+
 - **Example: Handling Resolution Gaps**
   ```css
   /* ⚠️ PROBLEM: Variable resolves at :root (light) and stays 'yellow' */
@@ -126,31 +154,33 @@ For more control over the colors of built-in UI such as `accent-color` or `scrol
 - **Handling `light-dark()` Support**: For browsers that support `color-scheme` but not yet `light-dark()`, light and dark versions of colors should first be defined as custom properties, and the `prefers-color-scheme` media query should be used to set colors for the respective mode like in the example below:
 
 ```css
-.themed-card {
+:root {
   /* Define browser UI accent color for each mode */
-  --card-bg-light: #ffffff;
-  --card-bg-light: #2d2e31;
-  --card-text-dark: #202124;
-  --card-text-dark: #f8f9fa;
+  --accent-color-dark: #0056b3;
+  --accent-color-light: #00e5ff;
+  --accent-color: var(--accent-color-dark, AccentColor);
 
-  --card-bg: var(--card-bg-light);
-  --card-text: var(--card-text-light);
-}
+  /* MANDATORY: Automatically adapt native UI to user system preferences */
+  color-scheme: light dark;
+  /* Set accent color */
+  accent-color: var(--accent-color);
 
-/* Fallback for browsers without light-dark support */
-@media (prefers-color-scheme: dark) {
-  .themed-card {
-    --card-bg: var(--card-bg-dark);
-    --card-text: var(--card-text-dark);
+  /* MANDATORY: Fallback for browsers without light-dark support */
+  @media (prefers-color-scheme: dark) {
+    --accent-color: var(--accent-color-light);
+  }
+
+  /* Set browser UI accent color for each mode */
+  @supports (color: light-dark(white, black)) {
+    /* Blue in light mode, Cyan in dark mode */
+    --accent-color: light-dark(var(--accent-color-dark), var(--accent-color-light));
   }
 }
 
-/* Set color for each mode */
-@supports (color: light-dark(white, black)) {
-  .themed-card {
-    --card-bg: light-dark(var(--card-bg-light), var(--card-bg-dark));
-    --card-text: light-dark(var(--card-text-light), var(--card-text-dark));
-  }
+textarea {
+  color-scheme: dark;
+  /* **Mandatory**: when nesting schemes, dynamic values set with light-dark() must also be defined on the element where the scheme changes */
+  accent-color: var(--accent-color); 
 }
 ```
 - **Manual Dark Mode Styling**: For older browsers, continue to use `prefers-color-scheme` media queries to provide custom styles for your own components.
