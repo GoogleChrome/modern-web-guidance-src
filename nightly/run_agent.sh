@@ -134,7 +134,7 @@ fi
 STAGE="Branch Isolation"
 # 3. Branch Isolation (Bypass Local main)
 git fetch origin
-git checkout -B "$SUITE_ID" origin/main
+git checkout -B "$SUITE_ID" origin/nightly-fix
 
 STAGE="Setup Dependencies"
 # Install dependencies and setup Playwright
@@ -159,7 +159,7 @@ cat <<EOF >> "$TEMP_CONFIG_FILE"
 // Nightly Run Overrides
 customConfig.agent = Agents.$AGENT_ENUM;
 customConfig.name = "$SUITE_ID";
-delete customConfig.tasks;
+customConfig.tasks = ['batch-analytics-events/task'];
 EOF
 
 if [ -n "$WORKERS" ]; then
