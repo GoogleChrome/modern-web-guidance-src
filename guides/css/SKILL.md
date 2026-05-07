@@ -57,9 +57,10 @@ Instead, use modern CSS features such as cascade layers and `:where()` to make c
 Use cascade layers (`@layer`) to define explicit priority zones (e.g., `reset`, `base`, `theme`, `components`, `utilities`), and declare their order upfront (e.g. `@layer reset, base, theme, components, utilities;`).
 Within each layer, use `:where()` to make selectors only compete based on meaningful signals, not incidental filters (`:not()` edge cases, remote ancestors, etc.) or for one-off easily overridable defaults.
 
-<!-- - **DO** use keywords like `inherit`, `initial`, `unset`, or `revert` to explicitly control inheritance.
-TODO too vague move this elsewhere and ground it on use cases
--->
+Use keywords like `inherit`, `initial`, `unset`, or `revert` instead of explicit values to improve maintainability and better express intent.
+Examples:
+- When specifying a transition on a child that should match the parent's `transition-*` properties, instead of repeating the transition properties on the child, use `transition: inherit` (reduce duplication, improve maintainability)
+- Use `initial` to reset a property to its initial value instead of specifying the value explicitly (clearer expression of intent)
 
 ## 3. Selectors and scoping
 
@@ -292,7 +293,7 @@ For most styling purposes (e.g. colors, borders, backgrounds, typography, etc) t
 
 #### Multiple choice controls (select, radios, checkboxes)
 
-- To select one among many options presented in a dropdown: Use a `<select>` + `appearance: base-select` + `::picker(select)`
+- To select one among many options presented in a dropdown: Use a `<select>` + `appearance: base-select` + `::picker(select)`. For more info see {{ GUIDE_REF("branded-select-styling") }}
 - Selecting one or more among multiple options laid out inline in the page: Use a `<input type=checkbox>` or `<input type=radio>` inside a `<label>` for each option. Style via `label:has(:checked)`.
 - Style checkboxes, radios and switches via `appearance: none` + generated content (`::before`/`::after`) or background images to draw the checked state.
 <!-- Customizable select listbox version currently buggy + this has much better browser support -->
