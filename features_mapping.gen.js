@@ -100,13 +100,11 @@ window.__featuresMapping = {
     "long-animation-frames"
   ],
   "identify-inp-causes": [
-    "long-animation-frames"
+    "long-animation-frames",
+    "event-timing"
   ],
   "improve-next-page-load-performance": [
     "speculation-rules"
-  ],
-  "interaction-latency-attribution": [
-    "event-timing"
   ],
   "interactions-in-complex-layouts": [
     "content-visibility"
