@@ -20,7 +20,7 @@ Keep these principles in mind throughout:
 - **Place all content within landmarks**: Wrap the page in `<header>`, `<nav>`, `<main>`, `<aside>`, and `<footer>` so assistive-tech users can jump between regions.
 - **Structure main content with headings**: Use `<h1>`–`<h6>` sequentially (no jumping `<h1>` → `<h4>`) so screen-reader users get a navigable outline.
 - **Use lists for repeated, contiguous content**: `<ul>`/`<ol>` give assistive tech a count up front and let users skip the entire group.
-- **Provide skip links**: Add a "Skip to content" link at the top of the page so keyboard users can bypass repeated content like site headers or long/infinite lists. Make sure the target is focusable (e.g. `<main id="main" tabindex="-1">`).
+- **Provide skip links** prior to repeated content like site headers with navigation or long/infinite lists, so that keyboard users can easily bypass them. Make sure the target is focusable (e.g. `<main id="content" tabindex="-1">`).
 - **Semantic Tables**: Use `<caption>` and `<th scope="col">` (or `<th scope="row">`) for data tables.
 
 #### DON'Ts
@@ -73,6 +73,8 @@ Keep these principles in mind throughout:
 - **Don't add redundant ARIA roles or properties**: Avoid `<ul role="list">`, `<nav role="navigation">`, or `<input required aria-required="true">`.
   - **Caveat**: Safari removes list semantics from `<ul>`/`<ol>` outside `<nav>` when `list-style: none` or `display: flex`/`grid` is applied. In that case `role="list"` is required to restore them. A similar effect impacts `<table>` with flex/grid across more browsers.
 - **Don't assume custom elements have no ARIA**: Custom elements can attach ARIA via `ElementInternals`, which some automated test tools can't see — so the absence of `role`/`aria-*` attributes in markup doesn't prove the element has no semantics. Verify with the browser's accessibility-tree inspector.
+- **Don't place headings inside `<summary>`, and avoid relying on headings inside `<details>` content**: Headings inside `<summary>` are hidden from screen-reader heading lists and heading-navigation shortcuts entirely; headings inside `<details>` content are only reachable via heading navigation when the disclosure is open.
+  - **Caveat**: If a heading must act as a disclosure trigger, wrap a `<button>` (with `aria-expanded` and `aria-controls`) in the heading instead, e.g. `<h2><button type="button" aria-expanded="false" aria-controls="…">…</button></h2>`.
 
 ## 3. Accessible Names and Descriptions
 
@@ -156,7 +158,7 @@ When the hidden content is focusable (skip links, focus-receiving wrappers), the
 #### DOs
 - **Logical Tab Order**: Ensure tab order matches visual layouts (top-to-bottom).
 - **Visible Focus Indicators**: Always style `:focus-visible` states explicitly. If disabling defaults, provide high-contrast overrides.
-- **Skip Navigation Links**: Provide a "Skip to content" link at the top of the page.
+- **Skip Navigation Links**: Provide skip to content" link at the top of the page, prior to repeated content or long lists so keyboard users can easily bypass them.
 - **Lock Modal Focus**: Ensure focus cannot leave open modal dialogs.
 - **Custom Trigger Keyboards**: Attach Enter/Space handlers for custom simulated interactive elements. When implementing a custom keyboard handler for button-like elements, `Enter` should be a `keydown` handler and `Space` should be a `keyup` handler (matching native `<button>` behavior where `Enter` repeats and `Space` triggers on release).
 - **Use `tabindex` deliberately**: Anything focusable — by keyboard or programmatically — should have an implicit or explicit ARIA role, so don't make every element focusable. When focus is needed, choose `tabindex="0"` to add the element to the tab order or `tabindex="-1"` to make it programmatically focusable only (e.g., a skip-link target).
@@ -216,7 +218,7 @@ function toggleWidgetState() {
 
 #### DOs
 - **Informative Visual Descriptions**: Describe the purpose of the image (e.g., "Search", not "Magnifying glass").
-- **Empty Alt properties for decorative visuals**: Use `alt=""` or `role="presentation"` to hide decorative images from screen readers.
+- **Empty Alt properties for decorative visuals**: Use `alt=""` or `role="presentation"` to remove decorative images from the accessibility tree so they aren't announced.
 - **Synchronous Captions for videos**: Supply WebVTT captions for video tracks.
 - **Transcripts for audio**: Provide text transcripts for purely audio podcasts.
 - **Informative View Descriptions for inline SVGs**: Apply `role="img"` and a nested `<title>` tag for informative visuals.
@@ -343,6 +345,10 @@ Live regions let assistive tech announce content updates that aren't tied to nav
 
 #### DOs
 - **Minimum contrast standards**: Maintain 4.5:1 for normal text and 3:1 for large text or icons.
+- **Ensure non-text contrast standards**: Maintain a minimum contrast ratio of 3:1 for user interface component boundaries and states.
+  - This includes visual elements (borders, backgrounds, box-shadows, underlines) that form the boundary or indicate the presence of a UI component (e.g., input field borders).
+  - This also includes visual elements indicating active states within a component (e.g., checkbox checkmarks or switch thumbs).
+  - **Caveat**: Meeting 3:1 non-text contrast can challenge minimalistic designs. Soft gradients or subtle inset/outset shadows can soften visual boundaries while satisfying accessibility requirements.
 - **Use multiple state indicators**: Do not denote success/errors ONLY with color. Use icons or text.
 - **Relative font size units**: Use `rem` or `em` for font sizes instead of `px`.
 - **Consistent or Start alignment**: Avoid `justify` alignment as it can be more difficult to read.
@@ -425,7 +431,7 @@ Modern browsers provide native mechanisms for focus trapping and modal overlays 
 
 #### DOs
 - **Use the Native `<dialog>` Element**: Invoke the dialog using the `.showModal()` method to automatically lock focus into the popup and dim the background.
-- **Use the `inert` Attribute for Custom Overlays**: Apply the `inert` attribute to background app-shells if you must build a custom viewport container to isolate focus.
+- **Use the `inert` Attribute for Custom Overlays**: When `<dialog>` doesn't fit (e.g., non-modal overlays, framework constraints, or layouts where `<dialog>`'s top-layer/positioning behavior conflicts with the design), apply `inert` to background app-shells to isolate focus.
 
 #### DON'Ts
 - **Don't rebuild focus traps manually**: Avoid using manual `keydown` listeners for focus loops.
@@ -457,7 +463,7 @@ Modern browsers provide native mechanisms for focus trapping and modal overlays 
 #### DOs
 - **Run Automated checks via axe-core or Lighthouse audits**: Catch missing alt texts or low contrasts (e.g., via Lighthouse in Chrome DevTools MCP).
 - **Validate Sequential Navigations using keyboards alone**: Using only keyboard shortcuts, such as Tab/Shift+Tab, arrow keys, Enter, Space, and Esc, confirm every interactive element is reachable and operable, and that focus never gets stuck.
-- **Test on Screen Readers with calibrated browsers**: Rely on standard bindings (e.g., VoiceOver with Safari).
+- **Test on Screen Readers with calibrated browsers**: Rely on standard bindings (e.g., JAWS with Chrome, NVDA with Firefox, Narrator with Edge, VoiceOver with Safari on macOS and iOS, TalkBack with Chrome for Android).
 
 #### DON'Ts
 - **Don't rely purely on scores**: A 100% score does not guarantee real usability.
