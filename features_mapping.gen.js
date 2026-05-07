@@ -83,7 +83,8 @@ window.__featuresMapping = {
     "fetch"
   ],
   "detect-initial-visibility-state": [
-    "page-visibility-state"
+    "page-visibility-state",
+    "page-visibility"
   ],
   "efficient-background-processing": [
     "content-visibility"
