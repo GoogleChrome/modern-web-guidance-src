@@ -305,7 +305,7 @@ async function loadLocalTests() {
 async function loadRemoteTests() {
     try {
         // Fetch from GCS JSON API directly instead of our node proxy
-        const response = await authenticatedFetch(`https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/`);
+        const response = await authenticatedFetch(`https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/&t=${Date.now()}`);
         if (!response.ok) throw new Error('Failed to fetch remote suites');
         
         const data = await response.json();
