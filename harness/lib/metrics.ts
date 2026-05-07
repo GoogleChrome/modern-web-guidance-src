@@ -12,7 +12,7 @@ export interface RunResult {
   guidanceToolsUsed?: string[];
   expectedToolPrefixes?: string[];
   guideName?: string;
-  isSkill?: boolean;
+  isDisciplineSkill?: boolean;
   taskName?: string;
   baseApp?: string;
   prompt?: string;
@@ -60,7 +60,7 @@ export interface Metrics {
     passedChecks: number;
     totalChecks: number;
 
-    isSkill?: boolean;
+    isDisciplineSkill?: boolean;
     earlyFailures?: number;
     avgTokens?: { total: number; cached: number };
   }>;
@@ -139,7 +139,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
         const guidesUsed = run.guidesUsed || [];
         const expectedGuide = run.guideName;
         // For skills, we track guides used but there is no expected guide
-        if (!run.isSkill && expectedGuide && guidesUsed.includes(expectedGuide)) {
+        if (!run.isDisciplineSkill && expectedGuide && guidesUsed.includes(expectedGuide)) {
           guideUsageCount++;
         }
 
@@ -170,7 +170,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
       runsUsingGuide: runType === 'guided' ? guideUsageCount : undefined,
       runsWithToolActivation: runType === 'guided' ? toolActivationCount : undefined,
       runCount: runs.length,
-      isSkill: runs[0]?.isSkill,
+      isDisciplineSkill: runs[0]?.isDisciplineSkill,
       passedChecks,
       totalChecks,
       earlyFailures,
@@ -226,7 +226,7 @@ export function calculateMetrics(allResults: Record<string, RunResult[]>, runsPe
           toolActivationCount += stats.runsWithToolActivation || 0;
           totalGuidedRuns += stats.runCount || 0;
 
-          if (!stats.isSkill) {
+          if (!stats.isDisciplineSkill) {
             totalGuidedNonDisciplineRuns += stats.runCount || 0;
             guidedNonDisciplineEarlyFailures += stats.earlyFailures || 0;
           }

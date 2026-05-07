@@ -70,7 +70,6 @@ EVAL_EXIT_CODE=0
 FAIL_REASON=""
 UPLOAD_EXIT_CODE=0
 EVAL_RAN=false
-UPLOAD_RAN=false
 STAGE="Initialization"
 
 # 1. Idempotent State Resolution (Trap)
@@ -109,9 +108,6 @@ cleanup() {
     fi
     if [ -n "$FAIL_REASON" ]; then
       body="${body}\n\nReason: ${FAIL_REASON}"
-    fi
-    if [ "$UPLOAD_RAN" = "true" ] && [ "$UPLOAD_EXIT_CODE" = "0" ]; then
-      body="${body}\n\nNote: Partial evaluation results were successfully uploaded and are available in the dashboard: ${DASHBOARD_URL}"
     fi
   fi
 
@@ -179,24 +175,17 @@ EVAL_EXIT_CODE=$?
 set -euo pipefail
 
 if [ "$EVAL_EXIT_CODE" -ne 0 ]; then
-  echo "Evaluation completed with failures (exit code ${EVAL_EXIT_CODE}). Proceeding to upload..."
+  echo "Evaluation completed with failures (exit code ${EVAL_EXIT_CODE}). Skipping upload step."
+  FAIL_REASON="Evaluation failed (exit code ${EVAL_EXIT_CODE}). Upload skipped."
+  exit $EVAL_EXIT_CODE
 fi
 
 STAGE="Upload Results"
 # Upload Results
 set +e
-UPLOAD_RAN=true
 pnpm exec gd upload "$SUITE_ID"
 UPLOAD_EXIT_CODE=$?
 set -euo pipefail
-
-# Fail the script if evaluation failed
-if [ "$EVAL_EXIT_CODE" -ne 0 ]; then
-  if [ "$UPLOAD_EXIT_CODE" -gt 0 ]; then
-    FAIL_REASON="Evaluation failed, and attempting to upload partial results also failed."
-  fi
-  exit $EVAL_EXIT_CODE
-fi
 
 # Fail the script if upload failed
 if [ "$UPLOAD_EXIT_CODE" -gt 0 ]; then

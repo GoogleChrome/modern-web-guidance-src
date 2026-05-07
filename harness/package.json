@@ -14,7 +14,6 @@
   },
   "packageManager": "pnpm@10.28.1",
   "dependencies": {
-    "@anthropic-ai/claude-code": "^2.1.123",
     "@anthropic-ai/vertex-sdk": "^0.16.0",
     "@google-cloud/storage": "^7.19.0",
     "@google/gemini-cli": "latest",
@@ -23,9 +22,10 @@
     "colors": "^1.4.0",
     "glob": "^13.0.6",
     "gray-matter": "^4.0.3",
-    "puppeteer-core": "^24.39.1"
+    "puppeteer-core": "^24.42.0"
   },
   "devDependencies": {
+    "@anthropic-ai/claude-code": "^2.1.126",
     "@google/gemini-cli-core": "latest"
   }
 }
