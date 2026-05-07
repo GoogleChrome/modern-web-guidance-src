@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { Agents, type SuiteConfig } from '../config.ts';
-import { getTaskMap } from '../../lib/guide-validation.ts';
+import { getTaskMap, isDisciplineSkillDir } from '../../lib/guide-validation.ts';
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
@@ -202,11 +202,10 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         continue;
       }
 
-      let taskCategory = path.basename(path.dirname(taskInfo.guideDir));
-      const isDisciplineSkill = taskCategory === 'guides';
+      const isDisciplineSkill = isDisciplineSkillDir(taskInfo.guideDir);
+      let taskCategory = isDisciplineSkill ? path.basename(taskInfo.guideDir) : path.basename(path.dirname(taskInfo.guideDir));
       let expectedToolPrefixes = ['modern-web'].filter(Boolean);
       if (isDisciplineSkill) {
-        taskCategory = path.basename(taskInfo.guideDir);
         expectedToolPrefixes = [taskCategory].filter(Boolean);
       }
 

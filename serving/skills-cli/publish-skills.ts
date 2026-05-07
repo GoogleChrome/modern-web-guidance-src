@@ -57,35 +57,39 @@ async function publishToDistributionRepo(publishCliDir: string, newVersion: stri
   console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance!`);
 }
 
-async function buildForNpm(newVersion: string) {
-  console.log(`\nRebuilding distribution with version ${newVersion} for npm...`);
-
-  const publishCliDir = path.join(DIST_DIR, "skills-cli-npx");
-  const result = await buildDist({publishRoot: publishCliDir, version: newVersion, npx: true, subset: 3});
-  if (!result) {
-    throw new Error("Build failed or was already in progress.");
-  }
-}
-
-async function main() {
-  const newVersion = await getNextVersion();
+/**
+ * Validate using the local build.
+ */
+async function validate(newVersion: string) {
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  // TODO: when we release, this should be changed to `npx: true` to publish a npm-ready package.
   const result = await buildDist({publishRoot: publishCliDir, version: newVersion});
   if (!result) {
     throw new Error("Build failed or was already in progress.");
   }
-  const { featuresCount, useCasesCount, skillsCount, skillNames } = result;
-  
+
   console.log(`\nVerifying built distribution with test-dist.test.ts suite...`);
   execSync('node --test skills-cli/*.test.ts', {
     cwd: SERVING_DIR,
     stdio: 'inherit' ,
     env: { ...process.env, TEST_REPORTER: 'spec', SKIP_BUILD: '1' }
   });
-  
+}
+
+async function main() {
+  const newVersion = await getNextVersion();
+
+  await validate(newVersion);
+
+  console.log(`\nRebuilding distribution with version ${newVersion} for npm...`);
+  const publishCliDir = path.join(DIST_DIR, "skills-cli-npx");
+  const result = await buildDist({publishRoot: publishCliDir, version: newVersion, npx: true});
+  if (!result) {
+    throw new Error("Build failed or was already in progress.");
+  }
+
+  const { featuresCount, useCasesCount, skillsCount, skillNames } = result;
 
   if (isDryRun) {
     const files = await fs.readdir(publishCliDir, {recursive: true});
@@ -122,8 +126,6 @@ ${skillNames.map(skill => `  - ${skill}`).join('\n')}`.trim();
 
     console.log('\nPerhaps also:\n    pushd ~/code/skills-alpha && git pull gh && git push gob && popd');
   }
-
-  await buildForNpm(newVersion);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
