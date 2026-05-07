@@ -134,7 +134,7 @@ fi
 STAGE="Branch Isolation"
 # 3. Branch Isolation (Bypass Local main)
 git fetch origin
-git checkout -B "$SUITE_ID" origin/nightly-fix
+git checkout -B "$SUITE_ID" origin/main
 
 STAGE="Setup Dependencies"
 # Install dependencies and setup Playwright
