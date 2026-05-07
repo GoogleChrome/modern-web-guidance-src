@@ -159,7 +159,7 @@ cat <<EOF >> "$TEMP_CONFIG_FILE"
 // Nightly Run Overrides
 customConfig.agent = Agents.$AGENT_ENUM;
 customConfig.name = "$SUITE_ID";
-customConfig.tasks = ['batch-analytics-events/task'];
+delete customConfig.tasks;
 EOF
 
 if [ -n "$WORKERS" ]; then
