@@ -349,7 +349,8 @@ window.__featuresMapping = {
     "dialog-closedby"
   ],
   "position-aware-tooltips": [
-    "container-anchor-position-queries"
+    "container-anchor-position-queries",
+    "popover"
   ],
   "precise-text-alignment": [
     "text-box"
