@@ -36,21 +36,27 @@ async function main() {
 
   if (command === "search") {
     if (!arg) {
+      const logger = new ClearcutLogger();
+      await logger.logSearchResult([], { latencyMs: 0, success: false });
       console.error("No search query provided.");
       process.exit(1);
     }
+    const startTime = Date.now();
     try {
       // Dynamic import to keep the CLI loading fast -- only load the embedder if needed.
       const { searchUseCases } = await import("../lib/search.ts");
       const results = await searchUseCases(arg);
+      const latencyMs = Date.now() - startTime;
 
       if (results.length === 0) {
+        const logger = new ClearcutLogger();
+        await logger.logSearchResult([], { latencyMs, success: true });
         console.log("[]");
       } else {
         // Instantiate logger
         const logger = new ClearcutLogger();
         // Log search results
-        await logger.logSearchResult(results.map(r => r.id));
+        await logger.logSearchResult(results.map(r => r.id), { latencyMs, success: true });
 
         // Do a ~compressed output so users can see some of the results in their coding agent.
         // Also fewer tokens. :p
@@ -58,24 +64,29 @@ async function main() {
         console.log("[" + jsonLines.join(",\n") + "]");
       }
     } catch (error) {
+      const latencyMs = Date.now() - startTime;
+      const logger = new ClearcutLogger();
+      await logger.logSearchResult([], { latencyMs, success: false });
       console.error("Search failed:", error);
       process.exit(1);
     }
   } else if (command === "retrieve") {
     if (!arg) {
+      const logger = new ClearcutLogger();
+      await logger.logRetrieveResult([], { latencyMs: 0, success: false });
       console.error("No IDs provided for retrieve.");
       process.exit(1);
     }
     const ids = arg.split(",").map(id => id.trim()).filter(Boolean);
     if (ids.length === 0) {
+      const logger = new ClearcutLogger();
+      await logger.logRetrieveResult([], { latencyMs: 0, success: false });
       console.error("No IDs provided for retrieve.");
       process.exit(1);
     }
 
-    // Instantiate logger
-    const logger = new ClearcutLogger();
-    // Log retrieve results
-    await logger.logRetrieveResult(ids);
+    const startTime = Date.now();
+    let retrieveErrorObj: any = undefined;
 
     for (const id of ids) {
       try {
@@ -83,9 +94,18 @@ async function main() {
         console.log(`\n--- Guide for ${id} ---`);
         console.log(guide);
       } catch (error) {
+        retrieveErrorObj = error;
         console.error(`Retrieve failed for ${id}:`, error);
-        process.exit(1);
       }
+    }
+
+    // Instantiate logger
+    const logger = new ClearcutLogger();
+    // Log retrieve results
+    await logger.logRetrieveResult(ids, { latencyMs: Date.now() - startTime, success: !retrieveErrorObj });
+
+    if (retrieveErrorObj) {
+      process.exit(1);
     }
   } else {
     console.error(`Unknown command: ${command}`);

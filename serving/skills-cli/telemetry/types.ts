@@ -17,9 +17,22 @@ export interface RetrieveResult {
   guide_id?: string[];
 }
 
+export const OsType = {
+  UNSPECIFIED: 0,
+  WINDOWS: 1,
+  MACOS: 2,
+  LINUX: 3,
+} as const;
+
+export type OsType = typeof OsType[keyof typeof OsType];
+
 export interface ChromeModernWebGuidance {
   search_result?: SearchResult;
   retrieve_result?: RetrieveResult;
+  os?: OsType;
+  cli_version?: string;
+  latency_ms?: number;
+  success?: boolean;
 }
 
 // Clearcut API interfaces

@@ -5,10 +5,13 @@
  */
 
 import process from 'node:process';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { WatchdogClient } from './WatchdogClient.js';
 import {
   type ChromeModernWebGuidance,
   WatchdogMessageType,
+  OsType,
 } from './types.js';
 
 function isTelemetryEnabled(): boolean {
@@ -16,6 +19,36 @@ function isTelemetryEnabled(): boolean {
     return false;
   }
   return true; // Enabled by default!
+}
+
+// TODO (micahjo): after the package install is updated to pull from NPM, update this so it finds the version in the right place
+function getCliVersion(): string {
+  try {
+    const pkgPath = fileURLToPath(new URL('../../package.json', import.meta.url));
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+    return pkg.version || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+export function detectOS(): OsType {
+  const platform = process.platform;
+  if (platform === 'darwin') return OsType.MACOS;
+  if (platform === 'win32') return OsType.WINDOWS;
+  if (platform === 'linux') return OsType.LINUX;
+  return OsType.UNSPECIFIED;
+}
+
+const LATENCY_BUCKETS = [50, 100, 250, 500, 1000, 2500, 5000, 10000];
+
+export function bucketizeLatency(latencyMs: number): number {
+  for (const bucket of LATENCY_BUCKETS) {
+    if (latencyMs <= bucket) {
+      return bucket;
+    }
+  }
+  return LATENCY_BUCKETS[LATENCY_BUCKETS.length - 1];
 }
 
 export class ClearcutLogger {
@@ -39,16 +72,25 @@ export class ClearcutLogger {
     }
   }
 
-  async logSearchResult(guideIds: string[]): Promise<void> {
-    if (!this.#enabled || !this.#watchdog) {
-      return;
-    }
-
+  async logSearchResult(
+    guideIds: string[],
+    metrics?: { latencyMs: number; success?: boolean }
+  ): Promise<void> {
     const payload: ChromeModernWebGuidance = {
       search_result: {
         search_items: guideIds.map(id => ({ guide_id: id })),
       },
+      os: detectOS(),
+      cli_version: getCliVersion(),
+      latency_ms: metrics?.latencyMs !== undefined ? bucketizeLatency(metrics.latencyMs) : undefined,
+      success: metrics?.success,
     };
+
+    console.warn(JSON.stringify(payload));
+
+    if (!this.#enabled || !this.#watchdog) {
+      return;
+    }
 
     this.#watchdog.send({
       type: WatchdogMessageType.LOG_EVENT,
@@ -56,16 +98,25 @@ export class ClearcutLogger {
     });
   }
 
-  async logRetrieveResult(guideIds: string[]): Promise<void> {
-    if (!this.#enabled || !this.#watchdog) {
-      return;
-    }
-
+  async logRetrieveResult(
+    guideIds: string[],
+    metrics?: { latencyMs: number; success?: boolean }
+  ): Promise<void> {
     const payload: ChromeModernWebGuidance = {
       retrieve_result: {
         guide_id: guideIds,
       },
+      os: detectOS(),
+      cli_version: getCliVersion(),
+      latency_ms: metrics?.latencyMs !== undefined ? bucketizeLatency(metrics.latencyMs) : undefined,
+      success: metrics?.success,
     };
+
+    console.warn(JSON.stringify(payload));
+
+    if (!this.#enabled || !this.#watchdog) {
+      return;
+    }
 
     this.#watchdog.send({
       type: WatchdogMessageType.LOG_EVENT,
