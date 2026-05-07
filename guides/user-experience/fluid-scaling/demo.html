@@ -1,1 +1,87 @@
-<!-- TODO -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fluid Scaling Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 2rem;
+      background: #f0f2f5;
+    }
+
+    /* The container that we want to measure */
+    .card-wrapper {
+      container-type: inline-size;
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      
+      /* Make the container resizable for the demo */
+      resize: horizontal;
+      overflow: auto;
+      min-width: 200px;
+      width: 500px;
+    }
+
+    /* The element that scales fluids based on container width */
+    .card-title {
+      /* Fallback for browsers that do not support container units */
+      font-size: clamp(1.2rem, 6vw, 3rem);
+      margin-top: 0;
+      color: #1a0dab;
+    }
+
+    @supports (font-size: 1cqi) {
+      .card-title {
+        /* Use container units where supported */
+        font-size: clamp(1.2rem, 6cqi, 3rem);
+
+        /* Scale padding based on container width */
+        padding: 0 5cqi;
+      }
+    }
+
+    .card-content {
+      font-size: 1rem;
+      color: #4a4a4a;
+      line-height: 1.5;
+    }
+
+    @supports (padding: 5cqi) {
+      .card-content {
+        /* Scale padding based on container width */
+        padding: 0 5cqi;
+      }
+    }
+
+    .instruction {
+      margin-bottom: 1rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="instruction">
+    Notice how the two cards below have different title sizes, even though they share the same CSS declaration, because they have different widths. Drag their bottom-right corners to resize them individually.
+  </div>
+
+  <div class="card-wrapper" style="width: 350px; margin-bottom: 2rem;">
+    <h1 class="card-title">This Title Scales Fluidly</h1>
+    <p class="card-content">
+      This card is narrow (350px width), so the title is small.
+    </p>
+  </div>
+
+  <div class="card-wrapper" style="width: 600px;">
+    <h1 class="card-title">This Title Scales Fluidly</h1>
+    <p class="card-content">
+      This card is wide (600px width), so the title is larger using the exact same CSS rules.
+    </p>
+  </div>
+
+</body>
+</html>

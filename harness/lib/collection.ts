@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { Agents, type SuiteConfig } from '../config.ts';
-import { getTaskMap } from '../../lib/guide-validation.ts';
+import { getTaskMap, isDisciplineSkillDir } from '../../lib/guide-validation.ts';
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
@@ -202,11 +202,10 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         continue;
       }
 
-      let taskCategory = path.basename(path.dirname(taskInfo.guideDir));
-      const isSkill = taskCategory === 'guides';
+      const isDisciplineSkill = isDisciplineSkillDir(taskInfo.guideDir);
+      let taskCategory = isDisciplineSkill ? path.basename(taskInfo.guideDir) : path.basename(path.dirname(taskInfo.guideDir));
       let expectedToolPrefixes = ['modern-web'].filter(Boolean);
-      if (isSkill) {
-        taskCategory = path.basename(taskInfo.guideDir);
+      if (isDisciplineSkill) {
         expectedToolPrefixes = [taskCategory].filter(Boolean);
       }
 
@@ -263,7 +262,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
 
       // For skills, placing the discipline name (`guide`) first ensures it is correctly identified 
       // and displayed as the main category in the dashboard's transposed layout.
-      const testName = isSkill ? `${guide} - ${taskName} - ${runType}` : `${taskName} - ${guide} - ${runType}`;
+      const testName = isDisciplineSkill ? `${guide} - ${taskName} - ${runType}` : `${taskName} - ${guide} - ${runType}`;
       const actualBaseApp = taskInfo.baseApp;
 
       let totalTokens = 0;
@@ -355,14 +354,14 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         fileReadGuides: fileReadGuides,
         guidanceToolsUsed: guidanceToolsUsedResult,
         discipline: taskCategory,
-        isSkill: isSkill,
+        isDisciplineSkill: isDisciplineSkill,
         expectedToolPrefixes: expectedToolPrefixes,
         guideName: guide,
-        taskName: taskName,
         baseApp: actualBaseApp,
+        taskName: taskName,
         prompt: taskInfo.prompt,
         files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
-        tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined
+        tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
       });
     }
   }

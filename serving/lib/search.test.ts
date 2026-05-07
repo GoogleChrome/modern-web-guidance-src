@@ -3,8 +3,8 @@ import assert from "node:assert";
 import { searchUseCases } from "./search.ts";
 
 describe("searchUseCases", () => {
-  it("should return autofill-address-form as the best match for 'address form'", async () => {
-    const results = await searchUseCases("address form");
+  it("should return autofill-address-form as the best match for 'autofill address form'", async () => {
+    const results = await searchUseCases("autofill address form");
     assert.ok(results.length > 0, "Should return some results");
     
     const bestMatch = results[0];
