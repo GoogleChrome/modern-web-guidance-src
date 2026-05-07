@@ -10,6 +10,11 @@ export function getRunStats(checks) {
     return { rate, passed, total };
 }
 
+export function isDisciplineSkillRun(run) {
+    if (!run) return false;
+    return run.isDisciplineSkill !== undefined ? run.isDisciplineSkill : run.isSkill;
+}
+
 export function getColor(percentage) {
     const p = Math.max(0, Math.min(100, percentage));
     
@@ -115,7 +120,7 @@ export function calculateChartData(results) {
 }
 
 
-export function formatTestName(name, isSkill = false) {
+export function formatTestName(name, isDisciplineSkill = false) {
     if (!name) return name;
     const parts = name.split(' - ');
     if (parts.length >= 2) {
@@ -125,7 +130,7 @@ export function formatTestName(name, isSkill = false) {
         const featuresMap = window.__featuresMapping || {};
         let featureId = '';
         
-        if (isSkill) {
+        if (isDisciplineSkill) {
             // For skills, the first part is the discipline (e.g. performance)
             return `${appName}: ${guideName}`; // discipline: task
         }
