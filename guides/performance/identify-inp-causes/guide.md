@@ -51,7 +51,7 @@ onINP((metric) => {
       // These fields give the INP subparts:
       inputDelay: metric.attribution.inputDelay,
       presentationDelay: metric.attribution.presentationDelay,
-      processingDuration: metric.attribution. processingDuration,
+      processingDuration: metric.attribution.processingDuration,
       interactionTarget: metric.attribution.interactionTarget,
       // These fields identify which script function was responsible
       // for the longest processing during the INP interaction.
@@ -72,7 +72,7 @@ onINP((metric) => {
 
 - **DO** use INP subparts initially to identify whether the delay is already running JavaScript (input delay), the event handlers JavaScript for the interaction (processing duration), or the subsequent rendering (presentation delay).
 - **DO** attempt to identify the biggest blocking JavaScript as additional detail, particularly for input delay, and processing duration.
-- **DO** prefer the Long Animation Frames API for providing this futher detail over alternatives like the JS Self-Profiling API, which carries higher runtime overhead.
+- **DO** prefer the Long Animation Frames API for providing this further detail over alternatives like the JS Self-Profiling API, which carries higher runtime overhead.
 - **DO** use the `web-vitals` library if no other RUM solution is in place. It can identify the INP interaction and includes information about the subparts and the scripts that were executed during the interaction (using the Long Animation Frames API).
 - **DO** beacon back the required information to an analytics service rather than just log it locally.
 
@@ -82,6 +82,6 @@ onINP((metric) => {
 
 The Event Timing API is available in most modern browsers and is necessary to calculate INP and the INP subparts. For browsers that do not support this API INP cannot be measured.
 
-{{ BASELINE_STATUS("long-animation-frames") }}.
+{{ BASELINE_STATUS("long-animation-frames") }}
 
 The Long Animation Frames API provides optional, additional details. It can be safely used without fallbacks. In most cases the performance opportunities it identifies will apply to other browsers as well.
