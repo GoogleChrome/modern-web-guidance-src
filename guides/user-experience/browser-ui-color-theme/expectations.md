@@ -1,5 +1,10 @@
-- The document contains a `<meta name="color-scheme" content="light dark">` tag in the `<head>`.
-- The `html` element or `:root` pseudo-class has the `color-scheme: light dark;` CSS property applied (applying it only to the `body` is insufficient for root scrollbars and the canvas background).
-- All built-in browser UI elements and surfaces (including scrollbars and form control backgrounds) automatically switch between light and dark modes based on the system theme preference.
-- **MANDATORY**: The implementation avoids forcing a single theme (e.g., `color-scheme: light` or `color-scheme: dark`) on the entire page/root element unless specifically triggered by a user's manual toggle.
-- Specific elements can override the global theme using `color-scheme: light` or `color-scheme: dark` to force a particular UI theme for that component and its children (e.g., a dark code editor in a light page).
+- **MANDATORY**: The document includes a `<meta name="color-scheme" content="light dark">` tag in the `<head>` to declare theme support early and minimize the risk of un-themed content flashes.
+- **MANDATORY**: The `color-scheme: light dark;` property is applied to the `html` element or the `:root` pseudo-class to ensure the browser themes the entire viewport, including root scrollbars and the canvas background.
+- **MANDATORY**: The implementation avoids forcing a single theme (e.g., `color-scheme: light` or `color-scheme: dark`) on the entire page or root element, unless done as a result of an explicit user manual toggle.
+- **OPTIONAL**: The `light-dark()` function is used to define dynamic colors (such as background, text, and `accent-color`) that automatically respond to the computed `color-scheme`.
+- **MANDATORY (If using `light-dark()`)**: When nesting different color schemes (e.g., a dark section in a light page), all dynamic tokens defined with `light-dark()` are reassigned on the element where the `color-scheme` changes to prevent the "inheritance footgun" (e.g. `accent-color: var(--accent-color);`).
+- **MANDATORY (If using `light-dark()`)**: The implementation includes a fallback strategy for browsers that support `color-scheme` but not `light-dark()` (typically using `prefers-color-scheme` media queries to set custom property values).
+- **MANDATORY (If using `light-dark()`)**: Registered custom properties (via `@property`) are **not** used for values that must dynamically resolve with `light-dark()`, as the registration syntax "locks" the resolved color at computed value time.
+- The `accent-color` property is used to theme built-in interactive elements like checkboxes and radio buttons to match the site's brand across both light and dark modes.
+- System color keywords (e.g., `Canvas`, `CanvasText`, `AccentColor`) are utilized to ensure custom elements or fallbacks remain consistent with the browser's native UI surfaces.
+- Built-in browser UI elements, including scrollbars and form controls, correctly adapt their appearance to match the active color scheme.
