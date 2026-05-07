@@ -1,0 +1,5 @@
+Web Components Reference Links:
+- MDN Web Components: https://developer.mozilla.org/en-US/docs/Web/API/Web_components
+- WebComponents.org: https://www.webcomponents.org/
+- Custom Elements Everywhere: https://custom-elements-everywhere.com/
+- Open Web Components: https://open-wc.org/
