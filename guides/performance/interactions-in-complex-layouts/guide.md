@@ -35,7 +35,7 @@ Apply `content-visibility: auto` to large, self-contained containers that repres
 
 ```css
 .board-column {
-  /* Apply strict containment boundaries */
+  /* Apply containment boundaries */
   content-visibility: auto;
   
   /* Mandatory: Provide a placeholder size to prevent layouts shifts.
@@ -76,7 +76,7 @@ function moveItemToColumn(itemId, columnId) {
 
 The property degrades gracefully. In unsupported browsers:
 *   The property is ignored, and mutations will cause the standard global reflow.
-*   To achieve a similar isolation effect in older browsers, you can fall back to applying strict containment manually:
+*   To achieve a similar isolation effect in older browsers, you can fall back to applying containment manually:
 
 ```css
 @supports not (content-visibility: auto) {
