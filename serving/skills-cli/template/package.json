@@ -20,6 +20,6 @@
     ]
   },
   "bin": {
-    "modern-web": "./skills/modern-web/modern-web.mjs"
+    "modern-web": "skills/modern-web/modern-web.mjs"
   }
 }
