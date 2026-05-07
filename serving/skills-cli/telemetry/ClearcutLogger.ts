@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { WatchdogClient } from './WatchdogClient.js';
 import {
   type ChromeModernWebGuidance,
+  type SearchItem,
   WatchdogMessageType,
   OsType,
 } from './types.js';
@@ -24,7 +25,7 @@ function isTelemetryEnabled(): boolean {
 // TODO (micahjo): after the package install is updated to pull from NPM, update this so it finds the version in the right place
 function getCliVersion(): string {
   try {
-    const pkgPath = fileURLToPath(new URL('../../package.json', import.meta.url));
+    const pkgPath = fileURLToPath(new URL('./package.json', import.meta.url));
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
     return pkg.version || 'unknown';
   } catch {
@@ -73,12 +74,12 @@ export class ClearcutLogger {
   }
 
   async logSearchResult(
-    guideIds: string[],
+    searchItems: SearchItem[],
     metrics?: { latencyMs: number; success?: boolean }
   ): Promise<void> {
     const payload: ChromeModernWebGuidance = {
       search_result: {
-        search_items: guideIds.map(id => ({ guide_id: id })),
+        search_items: searchItems,
       },
       os: detectOS(),
       cli_version: getCliVersion(),

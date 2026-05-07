@@ -7,6 +7,7 @@
 // Protobuf message interfaces for Chrome Modern Web Guidance
 export interface SearchItem {
   guide_id?: string;
+  score?: number;
 }
 
 export interface SearchResult {

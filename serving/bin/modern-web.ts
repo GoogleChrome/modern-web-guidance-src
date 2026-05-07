@@ -56,7 +56,11 @@ async function main() {
         // Instantiate logger
         const logger = new ClearcutLogger();
         // Log search results
-        await logger.logSearchResult(results.map(r => r.id), { latencyMs, success: true });
+        const searchItems = results.map(r => ({
+          guide_id: r.id,
+          score: parseFloat((1 - parseFloat(r.distance)).toFixed(4)),
+        }));
+        await logger.logSearchResult(searchItems, { latencyMs, success: true });
 
         // Do a ~compressed output so users can see some of the results in their coding agent.
         // Also fewer tokens. :p
