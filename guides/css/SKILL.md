@@ -226,7 +226,7 @@ Using `@scope` fixes this:
 
 Use CSS custom properties on `:root` to define core design variables (colors, fonts, sizes, etc) used throughout the design, for visual consistency and to scale UI design across teams.
 **DO NOT** specify nontrivial styling values inline. E.g. `background: transparent` or `padding: 0` is ok, but `background: #f06` or `padding: .3em` are not.
-One exception is use cases where keeping code small and simple is far more important than long-term maintainability and evoliution, such as testcases.
+One exception is use cases where keeping code small and simple is far more important than long-term maintainability and evolution, such as testcases.
 
 Typically these are organized in tiers, with each tier building upon the previous one. For example:
 1. Tier 1: Literal design tokens (e.g. `--color-blue-10`, `--color-gray-90`, `--font-sans-serif`, `--size-xl` etc)
@@ -344,7 +344,7 @@ For most styling purposes (e.g. colors, borders, backgrounds, typography, etc) t
 
 ### Shapes
 
-- Use `corner-shape: squircle` for more aesethically pleasing curves as a progressive enhancement over regular rounded corners.
+- Use `corner-shape: squircle` for more aesthetically pleasing curves as a progressive enhancement over regular rounded corners.
 - Use elliptical `border-radius` (e.g., `10px / 20px`) for proportional curves without extra elements.
 
 ### Gradients and `color-mix()`
