@@ -83,32 +83,18 @@
       });
     }
 
-    // Conditional Polyfill Load Strategy
-    (async () => {
-      if ('onscrollend' in window) {
-        initializeDemo();
-      } else {
-        try {
-          // Dynamic import of scrollyfills CDN
-          await import("https://esm.sh/scrollyfills");
-          initializeDemo();
-        } catch (e) {
-          console.error("Failed to load scrollend polyfill from CDN", e);
-          document.getElementById('status').textContent = "Failed to load scroll polyfill. Using fallback timer.";
-
-          // Last resort fallback: debounced scroll event
-          initializeDemo();
-
-          const scroller = document.getElementById('scroller');
-          scroller.addEventListener('scroll', () => {
-            clearTimeout(window.scrollendtimer);
-            window.scrollendtimer = setTimeout(() => {
-              scroller.dispatchEvent(new CustomEvent('scrollend'));
-            }, 100);
-          });
-        }
-      }
-    })();
+    if ('onscrollend' in window) {
+      initializeDemo();
+    } else {
+      initializeDemo();
+      const scroller = document.getElementById('scroller');
+      scroller.addEventListener('scroll', () => {
+        clearTimeout(window.scrollendtimer);
+        window.scrollendtimer = setTimeout(() => {
+          scroller.dispatchEvent(new CustomEvent('scrollend'));
+        }, 100);
+      });
+    }
   </script>
 </body>
 
