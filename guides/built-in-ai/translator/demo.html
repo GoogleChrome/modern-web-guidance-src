@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Translator Demo</title>
+</head>
+
+<body>
+  <h1>Translator</h1>
+  <p id="source" lang="en">The quick brown fox jumps over the lazy dog.</p>
+  <form id="translate-form">
+    <button type="submit">Translate</button>
+  </form>
+  <p id="translation"></p>
+
+  <script type="module">
+    const options = {
+      sourceLanguage: 'en',
+      targetLanguage: 'es',
+    };
+
+    let translator;
+
+    const translateForm = document.getElementById('translate-form');
+    const submitBtn = translateForm.querySelector('button');
+    const p = document.getElementById('translation');
+
+    if (!('Translator' in window)) {
+      p.textContent = 'Client-side translation is currently unsupported in this browser.';
+      submitBtn.disabled = true;
+    }
+
+    translateForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const availability = await Translator.availability(options);
+        if (availability === 'unavailable') {
+          p.textContent = 'The translation model is unavailable on this device.';
+          return;
+        }
+
+        if (!translator) {
+          submitBtn.textContent = 'Initializing model...';
+          submitBtn.disabled = true;
+          translator = await Translator.create({
+            ...options,
+            monitor(m) {
+              m.addEventListener('downloadprogress', (progressEvent) => {
+                const total = progressEvent.total || 1;
+                const pct = Math.round((progressEvent.loaded / total) * 100);
+                submitBtn.textContent = `Downloading model... ${pct}%`;
+              });
+            },
+          });
+          submitBtn.textContent = 'Translate';
+          submitBtn.disabled = false;
+        }
+
+        const text = document.getElementById('source').textContent;
+        const stream = translator.translateStreaming(text);
+        p.textContent = '';
+        for await (const chunk of stream) {
+          p.append(chunk);
+        }
+      } catch (err) {
+        console.error(err);
+        p.textContent = `Error: ${err.message}`;
+        submitBtn.textContent = 'Translate';
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+
+</html>

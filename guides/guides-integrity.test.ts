@@ -7,6 +7,7 @@ import { marked } from 'marked';
 
 // Import shared utilities
 import { scanAllGuides, processGuideInventory } from '../lib/guide-validation.ts';
+import { MACRO_PATTERN, replaceMacros } from '../serving/lib/macros.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -69,6 +70,32 @@ describe('Guides Validation (Single Source of Truth)', () => {
       for (const marker of conflictMarkers) {
         if (content.includes(marker)) {
           assert.fail(`File contains git conflict marker "${marker}" in ${relativeDir}`);
+        }
+      }
+    });
+
+    // Transclusion macros silently return "" for missing files/sections, which
+    // validateMacros (error-throw based) does not catch. Guard against
+    // accidentally referencing a path/section that doesn't exist.
+    //
+    // Excluded macros:
+    // - FEATURE_ISSUES: "" is its documented return when #issues is empty/missing,
+    //   so an empty result is not a bug.
+    // - BASELINE_STATUS: not a transclusion macro; it either returns content or
+    //   throws (already caught by validateMacros), so a non-empty check is redundant.
+    it(`validates transclusion macros for ${relativeDir}`, () => {
+      const guidePath = path.join(guide.dir, 'guide.md');
+      if (!fs.existsSync(guidePath)) return;
+
+      const { content: body } = matter(fs.readFileSync(guidePath, 'utf8'));
+      const REQUIRED = new Set(['INCLUDE', 'FEATURE', 'FEATURE_FALLBACKS']);
+
+      for (const match of body.matchAll(MACRO_PATTERN)) {
+        const [full, name] = match;
+        if (!REQUIRED.has(name)) continue;
+        const result = replaceMacros(full, guidePath);
+        if (!result.trim()) {
+          assert.fail(`${full} in ${relativeDir} returned empty content (file or section not found).`);
         }
       }
     });
