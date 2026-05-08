@@ -80,8 +80,15 @@ function convertSkillToUseNpx(skillDest: string) {
     skillText = skillText.replaceAll(from, to);
   }
 
-  replace(`node <modern-web-directory>/modern-web.mjs search "<query>"`, `npx -p modern-web-guidance@latest -- modern-web search "<query>"`);
-  replace(`node <modern-web-directory>/modern-web.mjs retrieve "<id>"`, `npx -p modern-web-guidance@latest -- modern-web retrieve "<id>"`);
+  const offlineNotice = '# Note: if this commands hangs, try running again in offline mode: "npx --offline ..."';
+  replace(
+    `node <modern-web-directory>/modern-web.mjs search "<query>"`,
+    `npx -y -p modern-web-guidance@latest -- modern-web search "<query>"\n${offlineNotice}`
+  );
+  replace(
+    `node <modern-web-directory>/modern-web.mjs retrieve "<id>"`,
+    `npx -y -p modern-web-guidance@latest -- modern-web retrieve "<id>"\n${offlineNotice}`
+  );
   fs.writeFileSync(skillDest, skillText);
 }
 
