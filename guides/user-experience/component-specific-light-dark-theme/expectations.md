@@ -1,5 +1,9 @@
 - The component uses the `light-dark()` CSS function to define at least one color property (e.g., `background-color` or `color`).
+- **MANDATORY**: The document includes a `<meta name="color-scheme" content="light dark">` tag in the `<head>` to declare theme support early and minimize the risk of un-themed content flashes.
 - **MANDATORY**: The document or the component has `color-scheme` set to `light dark` (or includes both) to enable the resolution of `light-dark()`.
+- **MANDATORY**: The implementation uses custom properties as a **semantic abstraction layer** for theme-aware variables (e.g., `--card-bg` is the semantic variable, while `--card-bg-light` and `--card-bg-dark` are the raw tokens).
+- **MANDATORY**: The implementation uses the `color-scheme` property (not just color changes) when the component contains native UI elements like scrollbars or form controls to ensure consistent browser-provided styling.
+- **MANDATORY (If using `light-dark()`)**: When nesting different color schemes (e.g., a dark section in a light page), all properties using dynamic tokens defined with `light-dark()` are reassigned their token values (e.g. `accent-color: var(--accent-color);`) on the element where the `color-scheme` changes to prevent the "inheritance footgun".
 - The component supports an override mechanism (e.g., a specific CSS class or data attribute) that sets `color-scheme` to `light` to force light mode.
 - The component supports an override mechanism (e.g., a specific CSS class or data attribute) that sets `color-scheme` to `dark` to force dark mode.
 - When the component is forced to `color-scheme: light`, its computed values match the first argument of the `light-dark()` function, regardless of the system's `prefers-color-scheme`.
@@ -7,4 +11,5 @@
 - **MANDATORY**: Fallback strategies for colors (e.g., manual variable overrides and `@media (prefers-color-scheme)` queries) are provided for browsers that do not support `light-dark()`.
 - **MANDATORY**: The implementation uses progressive enhancement (e.g., `@supports (color: light-dark(white, black))`) to ensure that `light-dark()` logic is preferred over `@media` fallbacks, allowing per-component overrides to work correctly.
 - **MANDATORY**: `light-dark()` is only used for supported types (colors) and not for unsupported properties like `padding` or `font-size`.
+- **MANDATORY**: Registered custom properties (via `@property`) are **not** used for values that must dynamically resolve with `light-dark()`.
 - **MANDATORY**: Each `light-dark()` call contains exactly two arguments.
