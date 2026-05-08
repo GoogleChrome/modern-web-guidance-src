@@ -56,6 +56,7 @@ async function fetchData(url) {
     throw error; // Propagate or handle
   }
 }
+```
 
 ### Async Patterns Decision Matrix
 
@@ -66,7 +67,6 @@ async function fetchData(url) {
 | **`Promise.allSettled()`** | Parallel tasks, independent | Never fails (returns status for all) | Parallel |
 
 **Heuristic Rule**: Use `Promise.all()` when you need all results to proceed (e.g., initial data load). Use `Promise.allSettled()` when results are independent (e.g., batching multiple analytics pings).
-```
 
 ## Objects, Classes, and Prototypes
 
