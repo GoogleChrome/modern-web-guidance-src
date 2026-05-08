@@ -19,13 +19,24 @@
       --accent-dark: #8ab4f8;
       --accent: var(--accent-light);
 
+      --page-text-light: #202124;
+      --page-text-dark: #f8f9fa;
+      --page-text: var(--page-text-light);
+
+      @media (prefers-color-scheme: dark) {
+        --accent: var(--accent-dark);
+        --page-text: var(--page-text-dark);
+      }
+
+
       @supports (color: light-dark(black, white)) {
         --accent: light-dark(var(--accent-light), var(--accent-dark));
+        --page-text: light-dark(var(--page-text-light), var(--page-text-dark));
       }
       
       /* Page-level styles using system colors */
       --page-bg: Canvas;
-      --page-text: CanvasText;
+
       font-family: system-ui, -apple-system, sans-serif;
       line-height: 1.5;
     }
@@ -54,8 +65,9 @@
       /* 1. Define raw brand colors (tokens) */
       --card-bg-light: #ffffff;
       --card-bg-dark: #2d2e31;
-      --card-text-light: #202124;
-      --card-text-dark: #f8f9fa;
+
+      --card-text-light: var(--page-text-light);
+      --card-text-dark: var(--page-text-dark);
       
 
       /* 2. Assign default (light) values for fallback */
@@ -144,16 +156,42 @@
 
     /* Demonstration of "Theme Island" (Nested Context) */
     .theme-island {
+      color: var(--page-text);
       margin-top: 4rem;
       padding: 2rem;
       border-radius: 16px;
-      background-color: color-mix(in srgb, var(--accent), transparent 90%);
+      background-color: color-mix(in srgb, var(--accent), Canvas 90%);
       border: 2px dashed var(--accent);
       color-scheme: dark; /* Force dark context */
     }
 
     .island-grid {
       margin-top: 1rem;
+    }
+
+    /* Theme Switcher Styles */
+    .theme-switcher-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    #global-theme-switcher {
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      border: 1px solid color-mix(in srgb, var(--page-text), transparent 60%);
+      background-color: var(--card-bg-light); /* Fallback */
+      color: var(--page-text);
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    @supports (color: light-dark(white, black)) {
+      #global-theme-switcher {
+        background-color: light-dark(var(--card-bg-light), var(--card-bg-dark));
+      }
     }
 
     /* Re-apply properties in the nested context to ensure variables resolve correctly */
@@ -170,6 +208,15 @@
       <h1>Component-Specific Themes</h1>
       <p>This demo follows the guide's implementation steps for <code>light-dark()</code> and <code>color-scheme</code> overrides.</p>
     </header>
+
+    <div class="theme-switcher-container">
+      <label for="global-theme-switcher">Global Theme Override:</label>
+      <select id="global-theme-switcher">
+        <option value="system">System Default</option>
+        <option value="light">Forced Light Mode</option>
+        <option value="dark">Forced Dark Mode</option>
+      </select>
+    </div>
 
     <div class="grid">
       <!-- Defaults to System Preference -->
@@ -221,6 +268,22 @@
       </div>
     </div>
   </div>
+
+  <script>
+    const switcher = document.getElementById('global-theme-switcher');
+    switcher.addEventListener('change', (e) => {
+      const mode = e.target.value;
+      const root = document.documentElement;
+      
+      if (mode === 'light') {
+        root.style.colorScheme = 'light';
+      } else if (mode === 'dark') {
+        root.style.colorScheme = 'dark';
+      } else {
+        root.style.colorScheme = 'light dark';
+      }
+    });
+  </script>
 </body>
 
 </html>
