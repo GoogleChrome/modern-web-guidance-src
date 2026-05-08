@@ -6,36 +6,6 @@ import { join } from "node:path";
 import { readFileSync } from "node:fs";
 import { retrieveUseCase } from "../lib/retrieve.ts";
 
-function getGitVersion(): string | null {
-  try {
-    const url = execSync("git config --get remote.origin.url", { cwd: import.meta.dirname }).toString().trim();
-
-    if (!url.includes("GoogleChrome/guidance") && !url.includes("GoogleChrome/modern-web-guidance")) {
-      return null;
-    }
-
-    const tag = execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { cwd: import.meta.dirname }).toString().trim();
-    return tag.startsWith("v") ? tag.slice(1) : tag;
-  } catch (e) {
-    return null;
-  }
-}
-
-function getVersion(): string {
-  const gitVersion = getGitVersion();
-  if (gitVersion) {
-    return gitVersion;
-  }
-
-  try {
-    const pkgPath = join(import.meta.dirname, "../../package.json");
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
-    return pkg.version || "unknown";
-  } catch (e) {
-    return "unknown";
-  }
-}
-
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
   options: {
@@ -138,3 +108,34 @@ main().catch(err => {
   console.error("Execution failed:", err);
   process.exit(1);
 });
+
+function getGitVersion(): string | null {
+  try {
+    const url = execSync("git config --get remote.origin.url", { cwd: import.meta.dirname }).toString().trim();
+
+    if (!url.includes("GoogleChrome/guidance") && !url.includes("GoogleChrome/modern-web-guidance")) {
+      return null;
+    }
+
+    const tag = execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { cwd: import.meta.dirname }).toString().trim();
+    return tag.startsWith("v") ? tag.slice(1) : tag;
+  } catch (e) {
+    return null;
+  }
+}
+
+function getVersion(): string {
+  const gitVersion = getGitVersion();
+  if (gitVersion) {
+    return gitVersion;
+  }
+
+  try {
+    const pkgPath = join(import.meta.dirname, "../../package.json");
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+    return pkg.version || "unknown";
+  } catch (e) {
+    return "unknown";
+  }
+}
+

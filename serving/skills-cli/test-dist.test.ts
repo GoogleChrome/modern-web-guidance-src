@@ -139,6 +139,46 @@ test('modern-web CLI search and retrieve', async () => {
   assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
 });
 
+test('modern-web CLI version flags', async () => {
+  const binaryPath = path.join(DIST_DIR, 'skills/modern-web/modern-web.mjs');
+  const pkgJsonRaw = await fs.readFile(path.join(DIST_DIR, 'package.json'), 'utf8');
+  const pkgJson = JSON.parse(pkgJsonRaw);
+  const expectedVersion = pkgJson.version;
+
+  assert.ok(expectedVersion, 'expectedVersion should exist in package.json');
+
+  // 1. Test --version
+  const versionOutLong = execSync(`node "${binaryPath}" --version`, { encoding: 'utf8' }).trim();
+  assert.strictEqual(versionOutLong, expectedVersion, '--version output should match package.json version');
+
+  // 2. Test -v
+  const versionOutShort = execSync(`node "${binaryPath}" -v`, { encoding: 'utf8' }).trim();
+  assert.strictEqual(versionOutShort, expectedVersion, '-v output should match package.json version');
+});
+
+test('modern-web CLI version flags in development', async () => {
+  const devBinaryPath = path.join(ROOT_DIR, 'serving/bin/modern-web.ts');
+  
+  // Get expected version from git describe in dev environment
+  let expectedGitVersion: string | null = null;
+  try {
+    const tag = execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { cwd: ROOT_DIR, encoding: 'utf8' }).trim();
+    expectedGitVersion = tag.startsWith("v") ? tag.slice(1) : tag;
+  } catch {}
+
+  // If git tag isn't available or fails, it should fall back to serving/package.json version
+  if (!expectedGitVersion) {
+    const pkgJsonRaw = await fs.readFile(path.join(ROOT_DIR, 'serving/package.json'), 'utf8');
+    expectedGitVersion = JSON.parse(pkgJsonRaw).version || 'unknown';
+  }
+
+  const versionOutLong = execSync(`node --experimental-strip-types "${devBinaryPath}" --version`, { encoding: 'utf8' }).trim();
+  assert.strictEqual(versionOutLong, expectedGitVersion, 'Development --version output should match tag/fallback version');
+
+  const versionOutShort = execSync(`node --experimental-strip-types "${devBinaryPath}" -v`, { encoding: 'utf8' }).trim();
+  assert.strictEqual(versionOutShort, expectedGitVersion, 'Development -v output should match tag/fallback version');
+});
+
 // TODO: this has been failing locally from publish-skills.ts
 test.skip('THIRD_PARTY_NOTICES validation', async () => {
   const noticesPath = path.join(DIST_DIR, 'THIRD_PARTY_NOTICES');
