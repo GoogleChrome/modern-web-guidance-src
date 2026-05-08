@@ -69,25 +69,4 @@ if (isExpired) {
 
 ## Fallback Strategy
 
-{{ BASELINE_STATUS("temporal") }}
-
-For browsers that do not yet support the native `Temporal` API, use feature detection and a polyfill. The standard reference polyfill is `@js-temporal/polyfill`.
-
-```javascript
-// Check if Temporal is supported natively
-(async () => {
-  if (typeof Temporal === 'undefined') {
-    // Load the polyfill conditionally
-    const module = await import("https://esm.sh/@js-temporal/polyfill");
-    globalThis.Temporal = module.Temporal;
-    // Extend Date.prototype if needed
-    Date.prototype.toTemporalInstant = module.toTemporalInstant;
-    initializeApp();
-  }
-})();
-
-function initializeApp() {
-  const now = Temporal.Now.zonedDateTimeISO();
-  console.log(now.toString());
-}
-```
+{{ FEATURE_FALLBACKS("temporal") }}
