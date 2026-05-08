@@ -188,7 +188,7 @@ test.describe(`Forms Expectations: ${demoName}`, () => {
 
   test('Vertical margin between label and input MUST be less than margin between groups', async ({ page }) => {
     const gestaltProximity = await page.evaluate(() => {
-      const group = document.querySelector('.form-group');
+      const group = document.querySelector('.form-group, .field, .form-row, div:has(label)');
       const nextGroup = group?.nextElementSibling;
       
       if (!group || !nextGroup) return false;
@@ -242,7 +242,7 @@ test.describe(`Forms Expectations: ${demoName}`, () => {
       const fields = Array.from(document.querySelectorAll('input'));
       return fields.some(f => {
         const idOrName = (f.id + f.name + f.placeholder).toLowerCase();
-        return idOrName.includes('zip') || idOrName.includes('phone') || idOrName.includes('code') || idOrName.includes('card');
+        return idOrName.includes('zip') || idOrName.includes('phone') || idOrName.includes('passcode') || idOrName.includes('card');
       });
     });
     
