@@ -104,7 +104,7 @@ async function main() {
   }
 }
 
-// Handle invocations of all these variants         nbvghguytuiuytfiutrfuhf jh jhvjhgvjhgvhjgv:
+// Handle invocations of all these variants:
 //    node serving/bin/modern-web.ts --version
 //    node dist/skillscli/…  --version
 //    npx modern-web-guidance --version
@@ -112,7 +112,9 @@ function getGitVersion(): string | null {
   try {
     const url = execSync("git config --get remote.origin.url", { cwd: import.meta.dirname }).toString().trim();
 
-    if (!url.includes("GoogleChrome/guidance") && !url.includes("GoogleChrome/modern-web-guidance")) {
+    // Match repo name ending in guidance or modern-web-guidance (including forks and .git suffixes)
+    const repoPattern = /(?:^|[\/:])(guidance|modern-web-guidance)(?:\.git)?$/;
+    if (!repoPattern.test(url)) {
       return null;
     }
 
@@ -124,13 +126,19 @@ function getGitVersion(): string | null {
 }
 
 function getVersion(): string {
-  const gitVersion = getGitVersion();
-  if (gitVersion) {
-    return gitVersion;
+  const isDev = import.meta.dirname.endsWith("serving/bin") || import.meta.dirname.endsWith("serving\\bin");
+
+  if (isDev) {
+    const gitVersion = getGitVersion();
+    if (gitVersion) {
+      return gitVersion;
+    }
   }
 
   try {
-    const pkgPath = join(import.meta.dirname, "../../package.json");
+    const pkgPath = isDev
+      ? join(import.meta.dirname, "../package.json")   // Development: serving/package.json
+      : join(import.meta.dirname, "../../package.json"); // Production: dist/skills-cli/package.json
     const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
     return pkg.version || "unknown";
   } catch (e) {

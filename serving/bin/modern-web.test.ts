@@ -12,8 +12,13 @@ test("modern-web CLI version flags in development", async () => {
   // Get expected version from git describe in dev environment
   let expectedGitVersion: string | null = null;
   try {
-    const tag = execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { cwd: ROOT_DIR, encoding: "utf8" }).trim();
-    expectedGitVersion = tag.startsWith("v") ? tag.slice(1) : tag;
+    const url = execSync("git config --get remote.origin.url", { cwd: ROOT_DIR, encoding: "utf8" }).trim();
+    const repoPattern = /(?:^|[\/:])(guidance|modern-web-guidance)(?:\.git)?$/;
+    
+    if (repoPattern.test(url)) {
+      const tag = execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { cwd: ROOT_DIR, encoding: "utf8" }).trim();
+      expectedGitVersion = tag.startsWith("v") ? tag.slice(1) : tag;
+    }
   } catch {}
 
   // If git tag isn't available or fails, it should fall back to serving/package.json version
