@@ -321,7 +321,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
               }
               // Claude Code format
               if (obj.message && obj.message.usage) {
-                claudeTokens += (obj.message.usage.output_tokens || 0) + (obj.message.usage.input_tokens || 0);
+                claudeTokens += (obj.message.usage.output_tokens || 0) + (obj.message.usage.input_tokens || 0) + (obj.message.usage.cache_read_input_tokens || 0);
                 claudeCachedTokens += obj.message.usage.cache_read_input_tokens || 0;
                 fileHasClaudeTokens = true;
               }
