@@ -56,6 +56,8 @@ Caution: While Scroll Snap Events make it possible to visually synchronize other
 
 For a table of contents, ensure the sidebar links use `aria-current="true"` when they are active.
 
+In addition, be careful when using the `mandatory` value for `scroll-snap-type`, as it can cause content in-between snap-points to become inaccessible when longer than the screen.
+
 
 ## Fallback strategies
 
