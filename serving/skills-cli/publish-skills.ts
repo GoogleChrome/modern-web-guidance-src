@@ -17,7 +17,7 @@ function incrementVersion(version: string): string {
   return `${parts[0]}.${parts[1]}.${patch}`;
 }
 
-const getLatestGitTag = () => execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+const getLatestGitTag = () => execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname | head -n 1 | grep .', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
 
 export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<string> {
   console.log("Determining next version...");
