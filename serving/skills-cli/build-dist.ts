@@ -80,8 +80,15 @@ function convertSkillToUseNpx(skillDest: string) {
     skillText = skillText.replaceAll(from, to);
   }
 
-  replace(`node <modern-web-directory>/modern-web.mjs search "<query>"`, `npx -p modern-web-guidance@latest -- modern-web search "<query>"`);
-  replace(`node <modern-web-directory>/modern-web.mjs retrieve "<id>"`, `npx -p modern-web-guidance@latest -- modern-web retrieve "<id>"`);
+  const offlineNotice = '# Note: if this commands hangs, try running again in offline mode: "npx --offline ..."';
+  replace(
+    `node <modern-web-directory>/modern-web.mjs search "<query>"`,
+    `npx -y -p modern-web-guidance@latest -- modern-web search "<query>"\n${offlineNotice}`
+  );
+  replace(
+    `node <modern-web-directory>/modern-web.mjs retrieve "<id>"`,
+    `npx -y -p modern-web-guidance@latest -- modern-web retrieve "<id>"\n${offlineNotice}`
+  );
   fs.writeFileSync(skillDest, skillText);
 }
 
@@ -112,8 +119,8 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
-async function main(opts: {publishRoot: string, version?: string, npx?: boolean, subset?: number}): Promise<BuildResult | undefined> {
-  const {publishRoot, version, npx, subset} = opts;
+async function main(opts: {publishRoot: string, version?: string, npx?: boolean}): Promise<BuildResult | undefined> {
+  const {publishRoot, version, npx} = opts;
 
   fs.rmSync(publishRoot, { recursive: true, force: true });
   fs.mkdirSync(publishRoot, {recursive: true});
@@ -135,7 +142,6 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
     await processGuides({
       outputDir: DIST_DIR,
       target: npx ? 'skills-cli-npx' : 'skills-cli',
-      subset,
     });
     console.timeEnd("⏳ processGuides");
   } catch (error) {
@@ -414,7 +420,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   (async () => {
     try {
-      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true, subset: 3});
+      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true});
       await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version});
     } catch (err) {
       console.error(err);
