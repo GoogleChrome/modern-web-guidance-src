@@ -75,7 +75,7 @@ Build trust by being open about your data practices and providing easy ways for 
 ```html
 <div>
   <label for="phone">Phone Number (Optional)</label>
-  <input id="phone" type="tel" name="phone" aria-describedby="phone-help">
+  <input id="phone" type="tel" name="phone">
   <a href="#phone-help">Why do we ask for this?</a>
   <aside id="phone-help">
     We only use your phone number to send two-factor authentication codes for account security.
@@ -103,112 +103,35 @@ Clear-Site-Data: "*"
 
 ---
 
-### 3. Secure Coding and Data Handling for Privacy
+### 3. Security and Data Handling for Privacy
  
-Privacy relies on a foundation of secure coding. Vulnerabilities like XSS or insecure storage directly lead to privacy violations.
+Privacy relies on a foundation of secure coding. Vulnerabilities in the application or insecure storage directly lead to privacy violations.
  
 #### DOs:
 *   **DO** scrub Personally Identifiable Information (PII) from application logs. Use automated masking for emails, tokens, and IDs.
-*   **DO** use `HttpOnly` and `Secure` flags for cookies storing session identifiers to protect them from XSS attacks.
-*   **DO** use `IndexedDB` or server-side storage for large amounts of user data, rather than stuffing it into cookies or `localStorage`.
+*   **DO** use `HttpOnly` flags for cookies storing session identifiers to prevent other scripts from accessing them.
 *   **DO** implement rate limiting on sensitive endpoints (e.g., user search or profile views) to prevent bulk data scraping.
-*   **DO** enforce HTTPS for all traffic and use HSTS to lock browsers into secure connections.
+*   **DO** use **CHIPS (Cookies Having Independent Partitioned State)** by appending the `Partitioned` attribute for 1:1 embeds that do not share state across top-level sites.
  
 #### DON'Ts:
-*   **DON'T** store sensitive tokens or PII in `localStorage`, as it is accessible by any script on the origin.
-*   **DON'T** return detailed stack traces or database errors to the client in production, as they can leak system details.
+*   **DON'T** store sensitive tokens or PII in `localStorage`, as it is accessible by any embedded script.
+*   **DON'T** rely on unpartitioned `SameSite=None` cookies.
  
 #### Code Examples:
  
 **Secure Session Cookie (HTTP)**
 ```http
-Set-Cookie: session_id=xyz123; Secure; HttpOnly; SameSite=Strict
+Set-Cookie: session_id=xyz123; Secure; HttpOnly; SameSite=Lax
 ```
 
-**HSTS (HTTP)**
+**CHIPS Cookie (HTTP)**
 ```http
-Strict-Transport-Security: max-age=63072000; includeSubDomains
-```
- 
- 
----
- 
-### 4. Cookie Isolation and Partitioned Storage
-
-Architecting for a web without unpartitioned third-party cookies.
-
-#### DOs:
-*   **DO** use **CHIPS (Cookies Having Independent Partitioned State)** by appending the `Partitioned` attribute for 1:1 embeds that do not share state across top-level sites.
-*   **DO** use the **Storage Access API (SAA)** when cross-site state sharing is functionally critical (such as SSO portals).
-*   **DO** trigger SAA permission requests (`requestStorageAccess()`) via direct user interaction (click/keypress).
-
-#### DON'Ts:
-*   **DON'T** rely on unpartitioned `SameSite=None` cookies as they are being systematically blocked by modern browser engines.
-
-#### Code Examples:
-
-**CHIPS `Set-Cookie` (HTTP)**
-```http
-Set-Cookie: session_id=abc123; SameSite=None; Secure; Path=/; Partitioned; HttpOnly
-```
-
-**Storage Access API (JavaScript)**
-```javascript
-document.getElementById('login-btn').addEventListener('click', async () => {
-  try {
-    const hasAccess = await document.hasStorageAccess();
-    if (!hasAccess) {
-      await document.requestStorageAccess();
-    }
-    // Access granted: unpartitioned cookies are now attached to fetch()
-  } catch (err) {
-    console.error('Storage access denied', err);
-  }
-});
-```
-
-### Third-Party State Matrix
-
-| Mechanism | Scope | Requires Interaction | Use Case |
-| :--- | :--- | :--- | :--- |
-| **CHIPS** | 1:1 Partitioned | No | Embeds (Maps, Widgets) |
-| **Storage Access API (SAA)** | Cross-site | Yes | SSO Portals, Analytics |
-
----
-
-### 5. Privacy-Preserving Identity (FedCM)
-
-Moving from opaque navigational redirects to explicit native UI-mediated federation.
-
-#### DOs:
-*   **DO** use the **Federated Credential Management API (FedCM)** to mediate "Sign-In" flows natively, preventing IdP tracking of Relying Parties prior to user consent.
-*   **DO** verify the FedCM-returned un-falsifiable token on your backend.
-
-#### DON'Ts:
-*   **DON'T** bounce users through opaque redirect URL chains if FedCM can fulfill the use-case natively.
-
-#### Code Examples:
-
-**FedCM Sign-In (JavaScript)**
-```javascript
-try {
-  const credential = await navigator.credentials.get({
-    identity: {
-      providers: [{
-        configURL: "https://idp.example/fedcm.json",
-        clientId: "rp-client-id-123"
-      }]
-    }
-  });
-  authenticateWithBackend(credential.token);
-} catch (error) {
-  console.error("FedCM login failed", error);
-}
+Set-Cookie: theme_pref=dark; SameSite=None; Secure; Path=/; Partitioned; HttpOnly
 ```
 
 ---
 
-### 6. Third-Party Audits and Mitigations
+### 4. Third-Party Audits and Mitigations
 
 Third-party scripts and resources are a common source of privacy leaks. You are responsible for the third parties you bring into your application.
 
@@ -217,6 +140,7 @@ Third-party scripts and resources are a common source of privacy leaks. You are 
 *   **DO** use the **Façade Pattern** for heavy embeds (like YouTube or TikTok). Display a static thumbnail and load the interactive iframe only after the user clicks.
 *   **DO** use privacy-preserving options for embeds when available (e.g., `youtube-nocookie.com`).
 *   **DO** replace heavy social sharing SDKs with simple, static HTML links that do not track users.
+*   **DO** use the **Federated Credential Management API (FedCM)** to mediate "Sign-In" flows natively, preventing IdP tracking of Relying Parties prior to user consent.
 
 #### DON'Ts:
 *   **DON'T** assume a third party is privacy-safe just because it is popular.
@@ -236,7 +160,7 @@ Third-party scripts and resources are a common source of privacy leaks. You are 
 **Video Façade Pattern (HTML/JS)**
 ```html
 <div id="video-container" data-video-id="abc123">
-  <img src="thumbnail.jpg" alt="Play Video" id="play-btn">
+  <img src="https://img.youtube.com/vi/abc123/maxresdefault.jpg" alt="Play Video" id="play-btn">
 </div>
 
 <script>
@@ -248,16 +172,33 @@ document.getElementById('play-btn').addEventListener('click', function() {
 </script>
 ```
 
+**FedCM Sign-In (JavaScript)**
+```javascript
+try {
+  const credential = await navigator.credentials.get({
+    identity: {
+      providers: [{
+        configURL: "https://idp.example/fedcm.json",
+        clientId: "rp-client-id-123",
+        nonce: "a_secure_random_nonce_value"
+      }]
+    }
+  });
+  authenticateWithBackend(credential.token);
+} catch (error) {
+  // Handle FedCM login failure
+}
+```
+
 ---
 
-### 7. Privacy-Preserving Headers
+### 5. Privacy-Preserving Headers
 
 Use standard HTTP headers to instruct the browser to enforce privacy boundaries.
 
 #### DOs:
 *   **DO** use `Permissions-Policy` to disable powerful features (like camera, microphone, geolocation) by default, enabling them only where required.
 *   **DO** set a strict `Referrer-Policy` to prevent leaking sensitive URL parameters to third parties.
-*   **DO** use `Content-Security-Policy` (CSP) to restrict where scripts can be loaded from and where data can be sent.
 
 #### Code Examples:
 
@@ -272,23 +213,16 @@ Disables powerful features for all origins by default.
 Permissions-Policy: geolocation=(), camera=(), microphone=(), accelerometer=()
 ```
 
-**CSP Report-Only for Auditing (HTTP)**
-Use this to discover where third parties are sending data without breaking the site.
-```http
-Content-Security-Policy-Report-Only: default-src 'self'; report-uri https://your-report-endpoint.com/csp
-```
-
 ---
 
 
-
-### 8. Fingerprinting and User-Agent Reduction
+### 6. Fingerprinting and User-Agent Reduction
 
 Avoid techniques that attempt to uniquely identify users covertly based on their device configuration. Fingerprinting takes away user control because it relies on unchanging characteristics and happens invisibly, preventing users from opting out or clearing their identifier.
 
 #### DOs:
 *   **DO** use **Feature Detection** instead of User-Agent sniffing to determine if a browser supports a capability.
-*   **DO** prepare for frozen User-Agent strings by migrating to **User-Agent Client Hints** (UA-CH) if specific device targeting is required.
+*   **DO** use **User-Agent Client Hints** (UA-CH) if it supported by the browser, when specific device targeting is required.
 
 #### DON'Ts:
 *   **DON'T** use canvas rendering, font lists, or audio/video device enumerations to build a device fingerprint.
@@ -321,7 +255,7 @@ if (navigator.userAgentData) {
 
 ---
 
-### 9. Data Rights and User Control
+### 7. Data Rights and User Control
 
 Empower users to exercise their rights over their personal data.
 
