@@ -15,7 +15,7 @@ This skill defers to specific use-case guidance found in the `/guides/` director
 - **Never Use `var`**: Deprecate the legacy `var` keyword to avoid function-scoping and hoisting bugs.
 - **Enforce Strict Mode**: Add `"use strict";` at the top of scripts or functions if not inside an ES module or class (which are strict by default).
 - **Prefer Primitives and Literals**: Avoid object wrappers (e.g., `new String()`, `new Number()`). Define variables using literals (e.g., `""`, `0`, `true`),  standard conversion functions (e.g., `Number()`, `String()`) for type conversion, and standard parse functions (e.g.,`parseInt()`, `parseFloat()`) for string-to-number parsing.
-- **Use Strict Equality `===`**: Always use `===` and `!==` over `==` and `!=` to bypass dangerous implicit type coercion. Use `isNaN()` to check if a value is `NaN`.
+- **Use Strict Equality `===`**: Always use `===` and `!==` over `==` and `!=` to bypass dangerous implicit type coercion. Use `Number.isNaN()` to check if a value is `NaN`.
 - **Nullish Operators for Safety**:
     - Use Optional Chaining (`?.`) to safely traverse nested objects without throwing `TypeError`.
     - Use Nullish Coalescing (`??`) for defaults instead of logical OR (`||`) to avoid accidentally overriding valid falsy values like `0` or `""`.
