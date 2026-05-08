@@ -125,6 +125,15 @@ The track configuration is gated behind an `.is-initialized` class on the list i
   /* Row separator (example value; customize to taste). */
   border-bottom: 1px solid #eee;
 }
+
+/* The track is the focusable scroll container, but its overflow is clipped
+   so a default focus ring on the track itself would be invisible. Project
+   the focus affordance onto the content element (which paints above the
+   track) using `:focus-visible` on the track. */
+.SwipeableItem-track:focus-visible .SwipeableItem-content {
+  outline: auto;
+  outline-offset: -2px;
+}
 ```
 
 ### Step 3: Add the action icons to the list item
@@ -368,6 +377,8 @@ With this setup, the spacers no longer need their own background-color (the trac
 - **DO** commit at a threshold *before* the snap settles (e.g., `commitThreshold ≈ 0.2`) rather than waiting for the content to be fully off-screen. This lets the remove animation start during the gesture, which feels significantly more responsive than waiting for the snap to land.
 - **DO NOT** rely on `pointerdown`/`pointermove`/`pointerup` to drive a manual transform. You'll lose momentum, snap-back, keyboard accessibility, and reduced-motion handling that the browser gives you for free.
 - **DO** confirm destructive actions when appropriate. For "remove", consider showing an undo toast after the swipe completes; the gesture is fast and easy to trigger by accident.
+- **DO** ensure the scroll track is focusable, keyboard accessible, and that there is a visual focus affordance.
+- **DO** provide accessible alternatives for any relevant actions triggered by the swipe (e.g., a visible button, context menu, or edit mode).
 
 ## Fallback strategies
 
@@ -392,28 +403,24 @@ Hidden scrollbars are a visual enhancement, not the mechanism that makes swipe-t
 If your Baseline target does not include `scroll-initial-target`, scroll the track to the content programmatically. Detect with `CSS.supports`:
 
 ```js
-async function ensureContentInView(track) {
-  if (CSS.supports('scroll-initial-target', 'nearest')) return;
-
-  // Loop until `scrollLeft` actually matches the content column's offset.
-  while (track.scrollLeft !== track.clientWidth) {
-    track.scrollTo({left: track.clientWidth, top: 0, behavior: 'instant'});
-    await new Promise((r) => requestAnimationFrame(r));
-  }
+if (!CSS.supports('scroll-initial-target', 'nearest')) {
+  track.scrollLeft = track.clientWidth;
 }
 ```
 
-**Call ordering matters.** `ensureContentInView()` MUST run:
+**Call ordering matters.** The programmatic scroll MUST run:
 
-1. **AFTER** `.is-initialized` is added to the list item (the class is what turns the track into a scroll container; calling `scrollTo` on a non-scrollable element is a no-op).
+1. **AFTER** `.is-initialized` is added to the list item (the class is what turns the track into a scroll container; setting `scrollLeft` on a non-scrollable element is a no-op).
 2. **BEFORE** the `IntersectionObserver` from Step 4 is attached. Otherwise the initial programmatic scroll past the left spacer will be observed as a "swipe" and immediately fire the commit handler.
 
-Some browsers (notably Safari) reset scroll position on resize, so re-run `ensureContentInView` on `resize` for resilience.
+Some browsers (notably Safari) reset scroll position on resize, so re-apply the scroll on `resize` for resilience. Gate this behind the same `CSS.supports` check — when `scroll-initial-target` is supported, the browser handles resize-time scroll restoration itself.
 
 ```js
-addEventListener('resize', () => {
-  document.querySelectorAll('.SwipeableItem-track').forEach((track) => {
-    ensureContentInView(track);
+if (!CSS.supports('scroll-initial-target', 'nearest')) {
+  addEventListener('resize', () => {
+    document.querySelectorAll('.SwipeableItem-track').forEach((track) => {
+      track.scrollLeft = track.clientWidth;
+    });
   });
-});
+}
 ```

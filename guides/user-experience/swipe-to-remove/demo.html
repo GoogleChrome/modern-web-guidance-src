@@ -133,20 +133,18 @@
         background: Canvas;
         padding: 1.5em;
       }
+
+      /* Ensure some focus affordance is visible when the track is focused.
+         Since this element has a z-index above the track, and paint outside
+         the track is clipped, ensure this element shows focus. */
+      .SwipeableItem-track:focus-visible .SwipeableItem-content {
+        outline: auto;
+        outline-offset: -2px;
+      }
     }
   </style>
 
   <script type="module">
-    async function ensureContentInView(track) {
-      if (CSS.supports('scroll-initial-target', 'nearest')) return;
-
-      // Loop until `scrollLeft` actually matches the content column's offset.
-      while (track.scrollLeft !== track.clientWidth) {
-        track.scrollTo({ left: track.clientWidth, top: 0, behavior: 'instant' });
-        await new Promise((r) => requestAnimationFrame(r));
-      }
-    }
-
     async function removeItem(item, content, direction, rect) {
       // In a real application, you could perform a different action based on
       // the direction passed here (e.g., archive vs. snooze). For this demo,
@@ -191,7 +189,9 @@
         // programmatically scroll the content into view and wait for this to
         // finish before continuing to ensure that the Intersection Observer
         // doesn't start observing before the content is fully in view.
-        await ensureContentInView(track);
+        if (!CSS.supports('scroll-initial-target', 'nearest')) {
+          track.scrollLeft = track.clientWidth;
+        }
 
         // These are good defaults, but can be tweaked to taste.
         const activateThreshold = 0.80;
@@ -232,9 +232,12 @@
 
       // Safari will sometimes reset scroll position on resize, so update the
       // scroll position on resize to avoid this bug.
-      addEventListener('resize', () => items.forEach((item) => {
-        ensureContentInView(item.querySelector('.SwipeableItem-track'));
-      }));
+      if (!CSS.supports('scroll-initial-target', 'nearest')) {
+        addEventListener('resize', () => items.forEach((item) => {
+          const track = item.querySelector('.SwipeableItem-track');
+          track.scrollLeft = track.clientWidth;
+        }));
+      }
     }
 
     init();
@@ -248,102 +251,102 @@
     <ul>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item One</div>
+          <div class="SwipeableItem-content">Item One</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Two</div>
+          <div class="SwipeableItem-content">Item Two</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Three</div>
+          <div class="SwipeableItem-content">Item Three</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Four</div>
+          <div class="SwipeableItem-content">Item Four</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Five</div>
+          <div class="SwipeableItem-content">Item Five</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Six</div>
+          <div class="SwipeableItem-content">Item Six</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Seven</div>
+          <div class="SwipeableItem-content">Item Seven</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Eight</div>
+          <div class="SwipeableItem-content">Item Eight</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Nine</div>
+          <div class="SwipeableItem-content">Item Nine</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Ten</div>
+          <div class="SwipeableItem-content">Item Ten</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Eleven</div>
+          <div class="SwipeableItem-content">Item Eleven</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Twelve</div>
+          <div class="SwipeableItem-content">Item Twelve</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Thirteen</div>
+          <div class="SwipeableItem-content">Item Thirteen</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Fourteen</div>
+          <div class="SwipeableItem-content">Item Fourteen</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Fifteen</div>
+          <div class="SwipeableItem-content">Item Fifteen</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Sixteen</div>
+          <div class="SwipeableItem-content">Item Sixteen</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Seventeen</div>
+          <div class="SwipeableItem-content">Item Seventeen</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Eighteen</div>
+          <div class="SwipeableItem-content">Item Eighteen</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Nineteen</div>
+          <div class="SwipeableItem-content">Item Nineteen</div>
         </div>
       </li>
       <li class="SwipeableItem">
         <div class="SwipeableItem-track">
-        <div class="SwipeableItem-content">Item Twenty</div>
+          <div class="SwipeableItem-content">Item Twenty</div>
         </div>
       </li>
     </ul>
