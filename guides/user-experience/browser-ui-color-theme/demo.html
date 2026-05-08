@@ -5,6 +5,8 @@
   <!-- 
     MANDATORY: Declare support for both light and dark themes early.
     This helps the browser set the initial canvas color before CSS is parsed.
+    While this helps avoid a "flash of un-themed content" (FOUC), it may not 
+    completely eliminate flashes in all browsers or loading conditions.
   -->
   <meta name="color-scheme" content="light dark">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -26,10 +28,10 @@
       font-family: system-ui, -apple-system, sans-serif;
       line-height: 1.5;
 
-      /* Initial resolution using System Color keywords. */
-      --accent-color: AccentColor;
-      --background-color: Canvas;
-      --text-color: CanvasText;
+      /* Initial resolution using System Color keywords as fallbacks. */
+      --accent-color: var(--brand-accent-light, AccentColor);
+      --background-color: var(--brand-bg-light, Canvas);
+      --text-color: var(--brand-text-light, CanvasText);
 
       /* MANDATORY: Fallback Strategy for browsers without light-dark(). */
       @media (prefers-color-scheme: light) {
@@ -120,6 +122,18 @@
     }
 
     progress { width: 100%; }
+
+    .theme-switcher-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .checkbox-group {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
   </style>
 </head>
 <body>
@@ -133,7 +147,7 @@
       <h2>Global Theme Controls</h2>
       
       <!-- Manual Theme Switcher (Best Practice) -->
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+      <div class="theme-switcher-container">
         <label for="theme-switcher">Manual Theme Toggle:</label>
         <select id="theme-switcher">
           <option value="system">System Default (Respects OS)</option>
@@ -148,7 +162,7 @@
         </div>
       </div>
 
-      <div style="display: flex; gap: 1rem; align-items: center;">
+      <div class="checkbox-group">
         <input type="checkbox" id="check" checked>
         <label for="check">Brand Checkbox</label>
       </div>
@@ -171,7 +185,7 @@
         </div>
       </div>
 
-      <div style="display: flex; gap: 1rem; align-items: center;">
+      <div class="checkbox-group">
         <input type="checkbox" id="dark-check" checked>
         <label for="dark-check">Dark Checkbox</label>
       </div>

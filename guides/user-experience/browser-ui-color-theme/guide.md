@@ -48,8 +48,8 @@ MANDATORY: Apply the `color-scheme` property to the `html` element or the `:root
 You can override the global theme for specific elements. This is useful for "dark mode" sections within a light-themed site (e.g., a dark sidebar or a code editor).
 
 ```css
-.contact-form {
-  /* Force this element and its children to use dark themed UI */
+pre, code {
+  /* Forces element and its children to use dark themed UI */
   color-scheme: dark;
 }
 ```
@@ -98,10 +98,16 @@ body {
   accent-color: var(--accent-color);
 }
 
-.contact-form {
+pre, code {
   /* Apply dark scheme to built-in UI elements */
   color-scheme: dark;
-  /* **Mandatory**: when nesting schemes, dynamic properties set with light-dark() must also be set on the element where the scheme changes */
+  /* **Mandatory**: when nesting schemes, dynamic properties set with 
+    light-dark() must also be set on the element where the scheme changes. 
+
+    When setting a different color-scheme on a component, **DO NOT** redefine custom properties (e.g. --accent-color: light-dark(black, white);) 
+    unless the custom property needs to be updated. The custom property only needs 
+    to be applied to a property (e.g. accent-color: var(--accent-color);).
+  */
   /* Apply custom accent color to UI elements*/
   accent-color: var(--accent-color);
   /* Set colors for other theme styles */
