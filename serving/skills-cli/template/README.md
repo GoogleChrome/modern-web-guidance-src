@@ -4,6 +4,10 @@ This curated collection of skills, tools, and AI-ready documentation injects Chr
 
 ## Installation
 
+```bash
+npx modern-web-guidance install
+```
+
 ### 🍦 Universal Skills Pack
 Consult your coding agent's documentation for installation instructions. You can also use Vercel's `skills` CLI:
 ```bash

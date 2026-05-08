@@ -1,6 +1,7 @@
 #!/usr/bin/env node --experimental-strip-types
 
 import { parseArgs } from "util";
+import { spawnSync } from "child_process";
 import { retrieveUseCase } from "../lib/retrieve.ts";
 
 const { values, positionals } = parseArgs({
@@ -9,6 +10,7 @@ const { values, positionals } = parseArgs({
     help: { type: "boolean", short: "h" },
   },
   allowPositionals: true,
+  strict: false,
 });
 
 function printUsage() {
@@ -18,6 +20,7 @@ Usage: modern-web <command> [args]
 Commands:
   search <query>          Search use cases by query
   retrieve <ids>          Retrieve use case(s) by ID(s), comma-separated
+  install                 Install skills
 
 Options:
   -h, --help              Show this help
@@ -75,6 +78,16 @@ async function main() {
         process.exit(1);
       }
     }
+  } else if (command === "install") {
+    const extraArgs = process.argv.slice(3);
+    const result = spawnSync("npx", ["skills", "add", "GoogleChrome/modern-web-guidance", ...extraArgs], {
+      stdio: "inherit",
+    });
+    if (result.error) {
+      console.error("Install failed:", result.error);
+      process.exit(1);
+    }
+    process.exit(result.status ?? 0);
   } else {
     console.error(`Unknown command: ${command}`);
     printUsage();
