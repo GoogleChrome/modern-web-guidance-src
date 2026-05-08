@@ -152,10 +152,15 @@ Use "Report-Only" headers to identify potential breakages before they happen.
 **Example headers:**
 ```http
 Reporting-Endpoints: default="https://reports.example/default", main-endpoint="https://reports.example/main"
-Content-Security-Policy-Report-Only: script-src 'nonce-{RANDOM}' 'strict-dynamic'; object-src 'none'; base-uri 'none'; report-to main-endpoint;
+Content-Security-Policy-Report-Only: script-src 'nonce-{RANDOM}' 'strict-dynamic' 'report-sample'; object-src 'none'; base-uri 'none'; report-to main-endpoint;
 ```
 
-**Managing report false-positives**: Reporting endpoints receive a significant volume of false-positive violation reports caused by aggressive browser extensions, ancient browsers, web crawlers, or antivirus scanners. When analyzing report-only logs, focus on high-frequency patterns from modern user-agents and filter out noise before making deployment decisions.
+The `'strict-dynamic'`, `https:`, and `'unsafe-inline'` tokens together form a backwards-compatibility ladder: modern browsers honor `'strict-dynamic'` (nonce-propagating) and ignore the others; older browsers fall back to `https:`; very old browsers fall back to `'unsafe-inline'`. The fallbacks are harmless on any browser that supports a stricter token.
+
+**Managing report false-positives**: Reporting endpoints receive a significant volume of false-positive violation reports caused by client-side middleware, aggressive browser extensions, ancient browsers, web crawlers, or antivirus scanners. When analyzing report-only logs, focus on high-frequency patterns from modern user-agents and filter out noise before making deployment decisions. Specifically:
+- **Filter out noise**: Ignore reports sent by old browsers with known bugs triggering spurious violations, reports for markup known to be injected by popular browser extensions or client-side middleware (like identical reports seen across many distinct applications), and reports that do not contain enough information to debug.
+- **Ignore low-volume reports**: If a policy is deployed, a low violation volume often indicates a false positive that can be safely ignored.
+- **Leverage `'report-sample'`**: Always include `'report-sample'` in your `script-src` directives. This instructs the browser to include the first 40 characters of the violating script or inline code snippet in the violation report, which makes debugging much easier.
 
 ### 2.3 Data Hygiene for Reports
 - **DO NOT**: Include sensitive data (PII, authentication tokens, session identifiers, query strings with secrets) in logs or violation reports. Mask or omit them at the edge before they reach the reporting endpoint.
@@ -174,6 +179,13 @@ After collecting data, decide how to proceed with enforcement. Phase 3 has two t
 ### Core enforcement (data-driven rollouts)
 
 #### 3.1 Analyzing CSP Reports
+
+When reviewing CSP violation reports, first separate the noise (per §2.2) from legitimate application issues. For violations that appear to be caused by an incompatibility in your application (usually those where the "Sample" or "Blocked URI" seem like legitimate scripts or assets that might be present in your markup):
+- **Code Search**: Search your codebase for the offending script source, URL, or hash to see if it is present in your code, dynamic server templates, or static HTML files.
+- **Console Auditing**: Open the page that triggered the violation (the "Document URI" in the report) using the same browser, and check the developer tools/console for CSP violations while exercising as much application functionality as possible (some violations only trigger on specific user interactions).
+
+Once filtered and triaged, analyze the reports against the following common scenarios:
+
 - **Scenario**: Many violations for inline scripts.
   - **Condition**: The app uses a framework that relies on inline scripts.
   - **Decision**: Implement Nonces (server-rendered) or Hashes (static) before enforcing.
@@ -199,7 +211,7 @@ Only move to enforced mode when:
 **Enforced Header Example (CSP with reporting):**
 ```http
 Reporting-Endpoints: main-endpoint="https://reports.example/main"
-Content-Security-Policy: script-src 'nonce-{RANDOM}' 'strict-dynamic'; object-src 'none'; base-uri 'none'; report-to main-endpoint;
+Content-Security-Policy: script-src 'nonce-{RANDOM}' 'strict-dynamic' 'report-sample'; object-src 'none'; base-uri 'none'; report-to main-endpoint;
 ```
 
 HTML for nonce-based CSP:
