@@ -51,12 +51,6 @@ scroller.addEventListener('scrollend', () => {
 });
 ```
 
-## Profiling Interaction to Next Paint (INP)
-
-Interaction to Next Paint (INP) is a Core Web Vital that measures layout-responsiveness and Interaction latency over visual events. 
-
-In DevTools, applying layout heavy tasks inside the `scroll` callbacks will saturate the main thread and display long tasks and dropped frames. By shifting dynamic updates to `scrollend`, the interaction latency overhead is removed entirely during visual scroll phase, directly improving the INP responsiveness metrics and preventing dropped frames.
-
 ## Strategic Implementation & Best Practices
 
 - **DO** use `scrollend` instead of debounced `scroll` events when firing layout data beacons or fetching new content content layout dynamically. 
@@ -68,7 +62,7 @@ In DevTools, applying layout heavy tasks inside the `scroll` callbacks will satu
 
 {{ BASELINE_STATUS("scrollend") }}
 
-For unsupported browsers, conditionally load standard dynamic polyfills like `scrollyfills` dynamically from a CDN resource. As a last resort fallback, use a debounced `scroll` event with `setTimeout` to dispatch a `scrollend` event if the polyfill fails to load.
+For unsupported browsers, fall back to a debounced `scroll` event with `setTimeout` to dispatch a custom `scrollend` event.
 
 ```javascript
 function initializeDemo() {
@@ -78,27 +72,16 @@ function initializeDemo() {
   });
 }
 
-(async () => {
-  if ('onscrollend' in window) {
-    initializeDemo();
-  } else {
-    try {
-      // Dynamic import from standard CDN 
-      await import("https://esm.sh/scrollyfills");
-      initializeDemo();
-    } catch (e) {
-      console.error("Failed to load fallback polyfill", e);
-      
-      // Last resort fallback: debounced scroll event
-      initializeDemo();
-      const scroller = document.querySelector('#scroller');
-      scroller.addEventListener('scroll', () => {
-        clearTimeout(window.scrollendtimer);
-        window.scrollendtimer = setTimeout(() => {
-          scroller.dispatchEvent(new CustomEvent('scrollend'));
-        }, 100);
-      });
-    }
-  }
-})();
+if ('onscrollend' in window) {
+  initializeDemo();
+} else {
+  initializeDemo();
+  const scroller = document.querySelector('#scroller');
+  scroller.addEventListener('scroll', () => {
+    clearTimeout(window.scrollendtimer);
+    window.scrollendtimer = setTimeout(() => {
+      scroller.dispatchEvent(new CustomEvent('scrollend'));
+    }, 100);
+  });
+}
 ```
