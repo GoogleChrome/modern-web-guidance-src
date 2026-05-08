@@ -1,8 +1,8 @@
-- The carousel container has `scroll-snap-type: x mandatory` or `scroll-snap-type: both mandatory` applied.
-- Each slide within the carousel has `scroll-snap-align: center` applied.
-- When the user scrolls to a slide, the corresponding navigation dot has `aria-selected="true"`.
-- When the user scrolls to a slide, only one navigation dot has `aria-selected="true"`.
-- Clicking a navigation dot causes the carousel to scroll to the corresponding slide.
-- The implementation uses the `scrollsnapchange` event listener on the carousel container to synchronize state when scroll settles.
-- The implementation uses the `scrollsnapchanging` event listener on the carousel container to optimisticallysynchronize state as scroll happens.
+- The scroll container has `scroll-snap-type: y proximity` or `scroll-snap-type: y mandatory` applied.
+- The section headers (e.g., `h2`) within the container have `scroll-snap-align: start` applied.
+- When the user scrolls to a section, the corresponding link in the Table of Contents (TOC) is visually highlighted (e.g., is styled based on  `[aria-current=true]` class).
+- When a TOC link is selected, it should have appropriate accessibility attributes like `aria-current="true"`.
+- When the user scrolls to a section, only one TOC link is highlighted as the active one.
+- The implementation uses the `scrollsnapchange` event listener on the scroll container to synchronize the TOC state when scroll settles.
 - The implementation includes a fallback (such as `IntersectionObserver`) for browsers that do not support the `scrollsnapchange` event.
+- Clicking a TOC link causes the container to scroll to the corresponding section.

@@ -5,221 +5,296 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Scroll Snap State Sync Demo</title>
     <style>
+      :root {
+        --bg-color: #f8f9fa;
+        --sidebar-bg: #ffffff;
+        --border-color: #e9ecef;
+        --text-color: #212529;
+        --accent-color: #007bff;
+        --header-bg: #343a40;
+        --header-text: #ffffff;
+      }
+
       body {
-        font-family: system-ui, sans-serif;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
         margin: 0;
-        padding: 20px;
+        padding: 0;
+        display: flex;
+        height: 100vh;
+        background: var(--bg-color);
+        color: var(--text-color);
+      }
+
+      nav {
+        width: 280px;
+        background: var(--sidebar-bg);
+        border-right: 1px solid var(--border-color);
+        padding: 24px;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        min-height: 100vh;
-        background: #f5f5f5;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.02);
       }
 
-      h1 {
-        font-size: 1.2rem;
-        margin-bottom: 16px;
+      nav h1 {
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #6c757d;
+        margin-bottom: 24px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border-color);
       }
 
-      .carousel {
-        display: flex;
-        gap: 16px;
-        width: 100%;
-        max-width: 400px;
-        overflow-x: auto;
-        scroll-snap-type: x mandatory;
-        border-radius: 12px;
-        background: #fff;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-
-      .slide {
-        flex: 0 0 100%;
-        height: 250px;
-        scroll-snap-align: center;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #fff;
-      }
-
-      .slide:nth-child(1) {
-        background: #e74c3c;
-      }
-      .slide:nth-child(2) {
-        background: #074f7f;
-      }
-      .slide:nth-child(3) {
-        background: #089041;
-      }
-      .slide:nth-child(4) {
-        background: #c87b01;
-      }
-
-      .dots {
-        display: flex;
-        gap: 8px;
-        margin-top: 16px;
-      }
-
-      .dot {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: #ccc;
-        border: none;
+      nav ul {
+        list-style: none;
         padding: 0;
-        cursor: pointer;
-        transition: background 0.2s;
+        margin: 0;
       }
 
-      .dot:not([aria-selected="false"]) {
-        background: #333;
-      }
-      .dot.scroll-active:not([aria-selected="true"]) {
-        background: #666;
+      nav li {
+        margin-bottom: 8px;
       }
 
-      .caption {
-        margin-top: 12px;
-        min-height: 1.4em;
+      nav a {
+        text-decoration: none;
+        color: var(--text-color);
+        display: block;
+        padding: 8px 12px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        font-size: 0.95rem;
+      }
+
+      nav a:hover {
+        background: #f1f3f5;
+        color: var(--accent-color);
+      }
+
+      nav a[aria-current="true"] {
+        background: #e7f1ff;
+        color: var(--accent-color);
+        font-weight: 600;
+        box-shadow: inset 3px 0 0 var(--accent-color);
+      }
+
+      main {
+        scroll-snap-type: y proximity;
+        overflow-y: auto;
+        scroll-behavior: smooth;
+        padding: 40px 60px;
+      }
+
+      .content-wrapper {
+        max-width: 700px;
+        width: 100%;
+      }
+
+      h2 {
+        scroll-snap-align: start;
+        margin-top: 20vh;
+        padding-top: 20px;
+        font-size: 2rem;
+        border-bottom: 2px solid var(--border-color);
+        padding-bottom: 10px;
+        margin-bottom: 24px;
+      }
+
+      p {
+        font-size: 1.2rem;
+        line-height: 1.6;
+        margin-bottom: 2rem;
+        color: #495057;
       }
     </style>
   </head>
 
   <body>
-    <h1>Image Carousel with Synced Navigation</h1>
-
-    <section aria-roledescription="carousel" aria-label="Example slideshow">
-      <div aria-live="polite" class="carousel" id="carousel" role="tablist">
-        <div
-          class="slide"
-          role="tabpanel"
-          aria-roledescription="slide"
-          aria-label="1 of 4"
-          data-index="1"
-        >
-          <div class="caption">Sunset over the mountains</div>
-        </div>
-        <div
-          class="slide"
-          role="tabpanel"
-          aria-roledescription="slide"
-          aria-label="2 of 4"
-          data-index="2"
-        >
-          <div class="caption">Ocean waves at dawn</div>
-        </div>
-        <div
-          class="slide"
-          role="tabpanel"
-          aria-roledescription="slide"
-          aria-label="3 of 4"
-          data-index="3"
-        >
-          <div class="caption">Forest trail in autumn</div>
-        </div>
-        <div
-          class="slide"
-          role="tabpanel"
-          aria-roledescription="slide"
-          aria-label="4 of 4"
-          data-index="4"
-        >
-          <div class="caption">City skyline at night</div>
-        </div>
+    <nav>
+      <h1>Table of Contents</h1>
+      <ul>
+        <li><a href="#sunset">Sunset over the mountains</a></li>
+        <li><a href="#ocean">Ocean waves at dawn</a></li>
+        <li><a href="#forest">Forest trail in autumn</a></li>
+        <li><a href="#city">City skyline at night</a></li>
+      </ul>
+    </nav>
+    <main id="main">
+      <div class="content-wrapper">
+        <h2 id="sunset">Sunset over the mountains</h2>
+        <p>
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+          eiusmod tempor incididunt ut labore et dolore magna aliqua. Proin
+          tortor purus platea sit eu id nisi litora libero. Neque vulputate
+          consequat ac amet augue blandit maximus aliquet congue. Pharetra
+          vestibulum posuere ornare faucibus fusce dictumst orci aenean eu
+          facilisis ut volutpat commodo senectus purus himenaeos fames primis
+          convallis nisi.
+        </p>
+        <p>
+          Phasellus fermentum malesuada phasellus netus dictum aenean placerat
+          egestas amet. Ornare taciti semper dolor tristique morbi. Sem leo
+          tincidunt aliquet semper eu lectus scelerisque quis. Sagittis vivamus
+          mollis nisi mollis enim fermentum laoreet.
+        </p>
+        <p>
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+          eiusmod tempor incididunt ut labore et dolore magna aliqua. Proin
+          tortor purus platea sit eu id nisi litora libero. Neque vulputate
+          consequat ac amet augue blandit maximus aliquet congue. Pharetra
+          vestibulum posuere ornare faucibus fusce dictumst orci aenean eu
+          facilisis ut volutpat commodo senectus purus himenaeos fames primis
+          convallis nisi.
+        </p>
+        <p>
+          Phasellus fermentum malesuada phasellus netus dictum aenean placerat
+          egestas amet. Ornare taciti semper dolor tristique morbi. Sem leo
+          tincidunt aliquet semper eu lectus scelerisque quis. Sagittis vivamus
+          mollis nisi mollis enim fermentum laoreet.
+        </p>
+        <h2 id="ocean">Ocean waves at dawn</h2>
+        <p>
+          Curabitur semper venenatis lectus viverra ex dictumst nulla maximus.
+          Primis iaculis elementum conubia feugiat venenatis dolor augue ac
+          blandit nullam ac phasellus turpis feugiat mollis. Duis lectus porta
+          mattis imperdiet vivamus augue litora lectus arcu. Justo torquent
+          pharetra volutpat ad blandit bibendum accumsan nec elit cras luctus
+          primis ipsum gravida class congue.
+        </p>
+        <p>
+          Phasellus fermentum malesuada phasellus netus dictum aenean placerat
+          egestas amet. Ornare taciti semper dolor tristique morbi. Sem leo
+          tincidunt aliquet semper eu lectus scelerisque quis. Sagittis vivamus
+          mollis nisi mollis enim fermentum laoreet.
+        </p>
+        <p>
+          Curabitur semper venenatis lectus viverra ex dictumst nulla maximus.
+          Primis iaculis elementum conubia feugiat venenatis dolor augue ac
+          blandit nullam ac phasellus turpis feugiat mollis. Duis lectus porta
+          mattis imperdiet vivamus augue litora lectus arcu. Justo torquent
+          pharetra volutpat ad blandit bibendum accumsan nec elit cras luctus
+          primis ipsum gravida class congue.
+        </p>
+        <p>
+          Phasellus fermentum malesuada phasellus netus dictum aenean placerat
+          egestas amet. Ornare taciti semper dolor tristique morbi. Sem leo
+          tincidunt aliquet semper eu lectus scelerisque quis. Sagittis vivamus
+          mollis nisi mollis enim fermentum laoreet.
+        </p>
+        <h2 id="forest">Forest trail in autumn</h2>
+        <p>
+          Vehicula etiam elementum finibus enim duis feugiat commodo adipiscing
+          tortor tempor elit. Et mollis consectetur habitant turpis tortor
+          consectetur adipiscing vulputate dolor lectus iaculis convallis
+          adipiscing. Nam hendrerit dignissim condimentum ullamcorper diam morbi
+          eget consectetur odio in sagittis.
+        </p>
+        <p>
+          Curabitur semper venenatis lectus viverra ex dictumst nulla maximus.
+          Primis iaculis elementum conubia feugiat venenatis dolor augue ac
+          blandit nullam ac phasellus turpis feugiat mollis. Duis lectus porta
+          mattis imperdiet vivamus augue litora lectus arcu. Justo torquent
+          pharetra volutpat ad blandit bibendum accumsan nec elit cras luctus
+          primis ipsum gravida class congue.
+        </p>
+        <p>
+          Vehicula etiam elementum finibus enim duis feugiat commodo adipiscing
+          tortor tempor elit. Et mollis consectetur habitant turpis tortor
+          consectetur adipiscing vulputate dolor lectus iaculis convallis
+          adipiscing. Nam hendrerit dignissim condimentum ullamcorper diam morbi
+          eget consectetur odio in sagittis.
+        </p>
+        <p>
+          Curabitur semper venenatis lectus viverra ex dictumst nulla maximus.
+          Primis iaculis elementum conubia feugiat venenatis dolor augue ac
+          blandit nullam ac phasellus turpis feugiat mollis. Duis lectus porta
+          mattis imperdiet vivamus augue litora lectus arcu. Justo torquent
+          pharetra volutpat ad blandit bibendum accumsan nec elit cras luctus
+          primis ipsum gravida class congue.
+        </p>
+        <h2 id="city">City skyline at night</h2>
+        <p>
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+          eiusmod tempor incididunt ut labore et dolore magna aliqua. Proin
+          tortor purus platea sit eu id nisi litora libero. Neque vulputate
+          consequat ac amet augue blandit maximus aliquet congue. Pharetra
+          vestibulum posuere ornare faucibus fusce dictumst orci aenean eu
+          facilisis ut volutpat commodo senectus purus himenaeos fames primis
+          convallis nisi.
+        </p>
+        <p>
+          Vehicula etiam elementum finibus enim duis feugiat commodo adipiscing
+          tortor tempor elit. Et mollis consectetur habitant turpis tortor
+          consectetur adipiscing vulputate dolor lectus iaculis convallis
+          adipiscing. Nam hendrerit dignissim condimentum ullamcorper diam morbi
+          eget consectetur odio in sagittis.
+        </p>
+        <p>
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+          eiusmod tempor incididunt ut labore et dolore magna aliqua. Proin
+          tortor purus platea sit eu id nisi litora libero. Neque vulputate
+          consequat ac amet augue blandit maximus aliquet congue. Pharetra
+          vestibulum posuere ornare faucibus fusce dictumst orci aenean eu
+          facilisis ut volutpat commodo senectus purus himenaeos fames primis
+          convallis nisi.
+        </p>
+        <p>
+          Vehicula etiam elementum finibus enim duis feugiat commodo adipiscing
+          tortor tempor elit. Et mollis consectetur habitant turpis tortor
+          consectetur adipiscing vulputate dolor lectus iaculis convallis
+          adipiscing. Nam hendrerit dignissim condimentum ullamcorper diam morbi
+          eget consectetur odio in sagittis.
+        </p>
       </div>
-    </section>
-    <div class="dots" id="dots" role="tablist" aria-label="Slides">
-      <button
-        type="button"
-        role="tab"
-        class="dot active"
-        aria-selected
-        aria-label="Slide 1"
-      ></button>
-      <button
-        type="button"
-        role="tab"
-        class="dot"
-        aria-selected="false"
-        aria-label="Slide 2"
-      ></button>
-      <button
-        type="button"
-        role="tab"
-        class="dot"
-        aria-selected="false"
-        aria-label="Slide 3"
-      ></button>
-      <button
-        type="button"
-        role="tab"
-        class="dot"
-        aria-selected="false"
-        aria-label="Slide 4"
-      ></button>
-    </div>
+    </main>
 
     <script>
-      const carousel = document.getElementById("carousel");
-      const dots = document.querySelectorAll(".dot");
-      const slides = document.querySelectorAll(".slide");
+      const links = document.querySelectorAll("a");
+      const headers = document.querySelectorAll("h2");
 
-      const setActiveSlide = (element) => {
-        const index = parseInt(element.dataset.index);
-        // Update pagination dots.
-        dots.forEach((dot, dotIndex) =>
-          dot.setAttribute("aria-selected", index === dotIndex + 1),
+      function setSelectedParagraph(id) {
+        links.forEach((link) =>
+          link.setAttribute(
+            "aria-current",
+            link.getAttribute("href") === `#${id}`,
+          ),
         );
+        // Track which section the user paused on (analytics).
+        console.log("Section viewed:", id);
+      }
 
-        // Track which slide the user viewed (analytics).
-        console.log("Slide viewed:", index);
-      };
-
-      // Sync dots and caption when the snap target changes after scrolling completes.
-      carousel.addEventListener("scrollsnapchange", (event) => {
-        const snappedSlide = event.snapTargetInline;
-
-        setActiveSlide(snappedSlide);
-      });
-
-      carousel.addEventListener("scrollsnapchanging", (event) => {
-        const pendingElement = event.snapTargetInline;
-
-        const index = [...slides].indexOf(pendingElement);
-
-        dots.forEach((dot, dotIndex) =>
-          dot.classList.toggle("scroll-active", index === dotIndex),
-        );
+      const main = document.getElementById("main");
+      main.addEventListener("scrollsnapchange", (event) => {
+        const snappedSection = event.snapTargetBlock;
+        if (snappedSection) setSelectedParagraph(snappedSection.id);
       });
 
       // Feature detect support for scrollsnapchange
       if (!("onscrollsnapchange" in HTMLElement.prototype)) {
         //Fallback with IntersectionObserver
         const observer = new IntersectionObserver(
-          (entries) => {
-            entries.forEach((entry) => {
-              if (entry.isIntersecting) setActiveSlide(entry.target);
-            });
+          () => {
+            // Each time the set of intersecting headers changes, find the top
+            // header that is visible.
+            const topEntry = [...headers].reduce((currentTop, header) => {
+              // Use the bottom to handle scrolling up, when the top is still offscreen
+              const {bottom} = header.getBoundingClientRect();
+              // Don't match if the header's bottom is aboce the scrollport
+              if (bottom < 0) return;
+              if (!currentTop) return header;
+              return bottom <
+                currentTop.getBoundingClientRect().bottom
+                ? header
+                : currentTop;
+            }, undefined);
+            if (topEntry) setSelectedParagraph(topEntry.id);
           },
-          { root: carousel, threshold: 0.9 },
+          { root: main, threshold: 0.9 },
         );
-        slides.forEach((slide) => observer.observe(slide));
+        headers.forEach((header) => observer.observe(header));
       }
-
-      // Allow clicking dots to scroll to a slide.
-      dots.forEach((dot, i) => {
-        dot.addEventListener("click", () => {
-          slides[i].scrollIntoView({
-            behavior: "smooth",
-            inline: "center",
-            block: "nearest",
-          });
-        });
-      });
     </script>
   </body>
 </html>
