@@ -104,11 +104,10 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error("Execution failed:", err);
-  process.exit(1);
-});
-
+// Handle invocations of all these variants         nbvghguytuiuytfiutrfuhf jh jhvjhgvjhgvhjgv:
+//    node serving/bin/modern-web.ts --version
+//    node dist/skillscli/…  --version
+//    npx modern-web-guidance --version
 function getGitVersion(): string | null {
   try {
     const url = execSync("git config --get remote.origin.url", { cwd: import.meta.dirname }).toString().trim();
@@ -139,3 +138,8 @@ function getVersion(): string {
   }
 }
 
+
+main().catch(err => {
+  console.error("Execution failed:", err);
+  process.exit(1);
+});

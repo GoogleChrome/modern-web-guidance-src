@@ -158,7 +158,7 @@ test('modern-web CLI version flags', async () => {
 
 test('modern-web CLI version flags in development', async () => {
   const devBinaryPath = path.join(ROOT_DIR, 'serving/bin/modern-web.ts');
-  
+
   // Get expected version from git describe in dev environment
   let expectedGitVersion: string | null = null;
   try {
@@ -177,6 +177,20 @@ test('modern-web CLI version flags in development', async () => {
 
   const versionOutShort = execSync(`node --experimental-strip-types "${devBinaryPath}" -v`, { encoding: 'utf8' }).trim();
   assert.strictEqual(versionOutShort, expectedGitVersion, 'Development -v output should match tag/fallback version');
+});
+
+test('modern-web CLI version is realistic (not fallback 1.0.0, starts with 0.0. and last digit > 89)', async () => {
+  const devBinaryPath = path.join(ROOT_DIR, 'serving/bin/modern-web.ts');
+  const versionOut = execSync(`node --experimental-strip-types "${devBinaryPath}" --version`, { encoding: 'utf8' }).trim();
+
+  assert.notStrictEqual(versionOut, '1.0.0', 'Should not return the serving package fallback 1.0.0');
+  assert.match(versionOut, /^0\.0\.\d+$/, 'Should match semver pattern 0.0.x');
+
+  const lastDigitStr = versionOut.split('.').pop();
+  assert.ok(lastDigitStr, 'Should have a patch version');
+  const patchVersion = parseInt(lastDigitStr, 10);
+  assert.ok(!isNaN(patchVersion), 'Patch version should be a valid number');
+  assert.ok(patchVersion > 89, `Version patch number (${patchVersion}) should be greater than 89`);
 });
 
 // TODO: this has been failing locally from publish-skills.ts
