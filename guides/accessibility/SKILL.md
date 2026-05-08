@@ -158,7 +158,7 @@ When the hidden content is focusable (skip links, focus-receiving wrappers), the
 #### DOs
 - **Logical Tab Order**: Ensure tab order matches visual layouts (top-to-bottom).
 - **Visible Focus Indicators**: Always style `:focus-visible` states explicitly. If disabling defaults, provide high-contrast overrides.
-- **Skip Navigation Links**: Provide skip to content" link at the top of the page, prior to repeated content or long lists so keyboard users can easily bypass them.
+- **Skip Navigation Links**: Provide a "skip to content" link at the top of the page, prior to repeated content or long lists so keyboard users can easily bypass them.
 - **Lock Modal Focus**: Ensure focus cannot leave open modal dialogs.
 - **Custom Trigger Keyboards**: Attach Enter/Space handlers for custom simulated interactive elements. When implementing a custom keyboard handler for button-like elements, `Enter` should be a `keydown` handler and `Space` should be a `keyup` handler (matching native `<button>` behavior where `Enter` repeats and `Space` triggers on release).
 - **Use `tabindex` deliberately**: Anything focusable — by keyboard or programmatically — should have an implicit or explicit ARIA role, so don't make every element focusable. When focus is needed, choose `tabindex="0"` to add the element to the tab order or `tabindex="-1"` to make it programmatically focusable only (e.g., a skip-link target).
