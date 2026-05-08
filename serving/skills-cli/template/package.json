@@ -1,7 +1,6 @@
 {
   "name": "modern-web-guidance",
   "displayName": "Modern Web Guidance",
-  "private": true,
   "description": "Curated collection of agent skills for modern web development.",
   "version": "0.0.26",
   "publisher": "GoogleChrome",
@@ -21,6 +20,6 @@
     ]
   },
   "bin": {
-    "modern-web": "./skills/modern-web/modern-web.mjs"
+    "modern-web": "skills/modern-web/modern-web.mjs"
   }
 }

@@ -17,12 +17,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+      - run: git fetch --tags
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: 24
           cache: 'pnpm'
@@ -53,12 +54,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+      - run: git fetch --tags
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: 24
           cache: 'pnpm'

@@ -17,7 +17,6 @@ function incrementVersion(version: string): string {
   return `${parts[0]}.${parts[1]}.${patch}`;
 }
 
-
 const getLatestGitTag = () => execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
 
 export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<string> {
@@ -58,27 +57,39 @@ async function publishToDistributionRepo(publishCliDir: string, newVersion: stri
   console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance!`);
 }
 
-async function main() {
-  const newVersion = await getNextVersion();
-  
+/**
+ * Validate using the local build.
+ */
+async function validate(newVersion: string) {
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
-  await fs.mkdir(publishCliDir, {recursive: true});
-  await fs.rm(publishCliDir, { recursive: true, force: true });
 
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  const result = await buildDist(newVersion);
+  const result = await buildDist({publishRoot: publishCliDir, version: newVersion});
   if (!result) {
     throw new Error("Build failed or was already in progress.");
   }
-  const { featuresCount, useCasesCount, skillsCount, skillNames } = result;
-  
+
   console.log(`\nVerifying built distribution with test-dist.test.ts suite...`);
   execSync('node --test skills-cli/*.test.ts', {
     cwd: SERVING_DIR,
     stdio: 'inherit' ,
     env: { ...process.env, TEST_REPORTER: 'spec', SKIP_BUILD: '1' }
   });
-  
+}
+
+async function main() {
+  const newVersion = await getNextVersion();
+
+  await validate(newVersion);
+
+  console.log(`\nRebuilding distribution with version ${newVersion} for npm...`);
+  const publishCliDir = path.join(DIST_DIR, "skills-cli-npx");
+  const result = await buildDist({publishRoot: publishCliDir, version: newVersion, npx: true});
+  if (!result) {
+    throw new Error("Build failed or was already in progress.");
+  }
+
+  const { featuresCount, useCasesCount, skillsCount, skillNames } = result;
 
   if (isDryRun) {
     const files = await fs.readdir(publishCliDir, {recursive: true});

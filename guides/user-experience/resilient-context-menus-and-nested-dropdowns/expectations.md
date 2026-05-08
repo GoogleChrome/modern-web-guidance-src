@@ -1,0 +1,7 @@
+- The Popover API is used for the dropdown menu (e.g., `popover` attribute) to ensure proper top-layer behavior.
+- The trigger has a `popovertarget` attribute with the id of the dropdown menu to open the menu and set the implicit anchor.
+- `anchor()` is used on inset properties to position the target relative to the anchor.
+- `position-try-fallbacks` is used to provide fallback positions for overflow handling.
+- `flip-block` and `flip-inline` keywords (or equivalent custom `@position-try` rules) are used to handle edge collisions.
+- A popover polyfill is conditionally loaded only if popover is not supported in the browser.
+- An anchor positioning polyfill is conditionally loaded only if anchor positioning is not supported in the browser.

@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "type": "module",
   "bin": {
-    "modern-web": "./modern-web.mjs"
+    "modern-web": "modern-web.mjs"
   }
 }
