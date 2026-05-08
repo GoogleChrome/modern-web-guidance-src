@@ -1,13 +1,46 @@
 #!/usr/bin/env node --experimental-strip-types
 
-import { parseArgs } from "util";
-import { spawnSync } from "child_process";
+import { parseArgs } from "node:util";
+import { spawnSync, execSync } from "node:child_process";
+import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { retrieveUseCase } from "../lib/retrieve.ts";
+
+function getGitVersion(): string | null {
+  try {
+    const url = execSync("git config --get remote.origin.url", { cwd: import.meta.dirname }).toString().trim();
+
+    if (!url.includes("GoogleChrome/guidance") && !url.includes("GoogleChrome/modern-web-guidance")) {
+      return null;
+    }
+
+    const tag = execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { cwd: import.meta.dirname }).toString().trim();
+    return tag.startsWith("v") ? tag.slice(1) : tag;
+  } catch (e) {
+    return null;
+  }
+}
+
+function getVersion(): string {
+  const gitVersion = getGitVersion();
+  if (gitVersion) {
+    return gitVersion;
+  }
+
+  try {
+    const pkgPath = join(import.meta.dirname, "../../package.json");
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+    return pkg.version || "unknown";
+  } catch (e) {
+    return "unknown";
+  }
+}
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
   options: {
     help: { type: "boolean", short: "h" },
+    version: { type: "boolean", short: "v" },
   },
   allowPositionals: true,
   strict: false,
@@ -24,10 +57,16 @@ Commands:
 
 Options:
   -h, --help              Show this help
+  -v, --version           Show version
 `);
 }
 
 async function main() {
+  if (values.version) {
+    console.log(getVersion());
+    process.exit(0);
+  }
+
   if (values.help || positionals.length === 0) {
     printUsage();
     process.exit(values.help ? 0 : 1);
