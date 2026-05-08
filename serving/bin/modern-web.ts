@@ -112,9 +112,7 @@ function getGitVersion(): string | null {
   try {
     const url = execSync("git config --get remote.origin.url", { cwd: import.meta.dirname }).toString().trim();
 
-    // Match repo name ending in guidance or modern-web-guidance (including forks and .git suffixes)
-    const repoPattern = /(?:^|[/:])(guidance|modern-web-guidance)(?:\.git)?$/;
-    if (!repoPattern.test(url)) {
+    if (!url.includes("GoogleChrome/guidance") && !url.includes("GoogleChrome/modern-web-guidance")) {
       return null;
     }
 

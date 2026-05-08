@@ -13,9 +13,7 @@ test("modern-web CLI version flags in development", async () => {
   let expectedGitVersion: string | null = null;
   try {
     const url = execSync("git config --get remote.origin.url", { cwd: ROOT_DIR, encoding: "utf8" }).trim();
-    const repoPattern = /(?:^|[/:])(guidance|modern-web-guidance)(?:\.git)?$/;
-    
-    if (repoPattern.test(url)) {
+    if (url.includes("GoogleChrome/guidance") || url.includes("GoogleChrome/modern-web-guidance")) {
       const tag = execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { cwd: ROOT_DIR, encoding: "utf8" }).trim();
       expectedGitVersion = tag.startsWith("v") ? tag.slice(1) : tag;
     }
