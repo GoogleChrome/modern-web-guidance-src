@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-strip-types
 
 import { parseArgs } from "node:util";
-import { spawnSync, execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
 import { retrieveUseCase } from "../lib/retrieve.ts";
@@ -104,39 +104,10 @@ async function main() {
   }
 }
 
-// Handle invocations of all these variants:
-//    node serving/bin/modern-web.ts --version
-//    node dist/skillscli/…  --version
-//    npx modern-web-guidance --version
-function getGitVersion(): string | null {
-  try {
-    const url = execSync("git config --get remote.origin.url", { cwd: import.meta.dirname }).toString().trim();
-
-    if (!url.includes("GoogleChrome/guidance") && !url.includes("GoogleChrome/modern-web-guidance")) {
-      return null;
-    }
-
-    const tag = execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { cwd: import.meta.dirname }).toString().trim();
-    return tag.startsWith("v") ? tag.slice(1) : tag;
-  } catch (e) {
-    return null;
-  }
-}
-
 function getVersion(): string {
-  const isDev = import.meta.dirname.endsWith("serving/bin") || import.meta.dirname.endsWith("serving\\bin");
-
-  if (isDev) {
-    const gitVersion = getGitVersion();
-    if (gitVersion) {
-      return gitVersion;
-    }
-  }
-
   try {
-    const pkgPath = isDev
-      ? join(import.meta.dirname, "../package.json")   // Development: serving/package.json
-      : join(import.meta.dirname, "../../package.json"); // Production: dist/skills-cli/package.json
+    // Resolves to serving/package.json in dev, or dist/skills-cli/package.json in prod bundles
+    const pkgPath = join(import.meta.dirname, "../../package.json");
     const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
     return pkg.version || "unknown";
   } catch (e) {
