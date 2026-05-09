@@ -84,7 +84,7 @@ async function main() {
       editedList += `- [${guide}](#user-content-${anchor})\n`;
 
       try {
-        execSync(`git diff --no-index "${beforeFile}" "${afterFile}"`, { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] });
+        execSync(`git diff --no-index --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`, { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] });
       } catch (err: any) {
         if (err.stdout) {
           const formattedDiff = err.stdout
