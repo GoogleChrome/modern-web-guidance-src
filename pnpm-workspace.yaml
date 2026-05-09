@@ -1,6 +1,5 @@
 packages:
   - 'serving'
   - 'harness'
-  - 'harness/base_apps/*'
   - 'eval-view'
   - 'guides'
