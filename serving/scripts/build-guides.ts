@@ -83,7 +83,7 @@ export async function processGuides(opts: BuildOptions) {
   if (!fs.existsSync(manifestDir)) {
     fs.mkdirSync(manifestDir, { recursive: true });
   }
-  const manifestPath = path.join(manifestDir, "build-manifest.json");
+  const manifestPath = path.join(manifestDir, `build-manifest-${TARGET}.json`);
 
   let shouldSkip = !targetGuidePath && !force;
 
