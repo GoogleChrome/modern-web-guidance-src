@@ -1,18 +1,27 @@
 import fs from "fs";
 import path from "path";
+import zlib from "zlib";
 import matter from "gray-matter";
 import { marked } from "marked";
-import { Embedder } from "../mcp-server/lib/embedder.ts";
-import { Store, type UseCase as StoreUseCase } from "../mcp-server/lib/store.ts";
-import { Gpt4AllEmbedder } from "../benchmarks/rag/gpt4all-embedder.ts";
-import { replaceMacros } from "../mcp-server/lib/macros.ts";
-import { classifyGuide, scanAllGuides } from "../../lib/guide-validation.ts";
-import { getFeatureName } from "../mcp-server/data/baseline.ts";
+import { parseArgs } from "node:util";
+
+export interface StoreUseCase {
+  id: string;
+  description: string;
+  category: string;
+  featuresUsed: string[];
+  chunkContent?: string;
+  vector?: number[];
+  distance?: number;
+}
+import { replaceMacros, type BuildTarget } from "../lib/macros.ts";
+
+import { scanAllGuides, type GuideInventory, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
+import { getFeatureName } from "../lib/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
-const BUILD_GUIDES_DIR = path.join(ROOT_DIR, "build/guides");
-const DATA_DIR = path.join(ROOT_DIR, "mcp-server/data");
-const OUTPUT_FILE = path.join(DATA_DIR, "use-cases.gen.ts");
+const WORKSPACE_ROOT = path.resolve(ROOT_DIR, "..");
+const OUTPUT_FILE = path.join(ROOT_DIR, "lib/use-cases.gen.ts");
 
 interface UseCase {
   id: string;
@@ -21,35 +30,81 @@ interface UseCase {
   featuresUsed: string[];
 }
 
-async function processGuides() {
-  const targetGuidePath = process.argv.slice(2).find(arg => !arg.startsWith("--"));
-  const force = process.argv.includes("--force");
+export interface BuildOptions {
+  outputDir: string;
+  target?: BuildTarget;
+  force?: boolean;
+  targetGuidePath?: string;
+  modelName?: string;
+  noChunking?: boolean;
+}
+
+// Global variables to be set by processGuides
+let BUILD_GUIDES_DIR: string;
+let VECTORS_FILE: string;
+let IS_NO_CHUNKING = false;
+let TARGET: BuildTarget = 'local-dev';
+
+
+export async function processGuides(opts: BuildOptions) {
+  const { outputDir, target, force, targetGuidePath, modelName, noChunking } = opts;
+
+  BUILD_GUIDES_DIR = path.join(outputDir, "guides");
+  VECTORS_FILE = (target === 'skills-cli' || target === 'skills-cli-npx')
+    ? path.join(outputDir, "use-cases.vectors.gen.json.gz")
+    : path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
+
+  IS_NO_CHUNKING = !!noChunking;
+  TARGET = target || 'local-dev';
 
   // Scan guides first to see if we even need to run
-  const readyGuides = scanAllGuides().filter(inv => classifyGuide(inv) === 'eval-ready');
+  let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
 
-  const LANCE_DB_DIR = path.join(ROOT_DIR, ".modern-web-data");
+  const crypto = await import("node:crypto");
+  const hash = crypto.createHash("sha256");
 
-  if (!targetGuidePath && !force && fs.existsSync(OUTPUT_FILE) && fs.existsSync(BUILD_GUIDES_DIR) && fs.existsSync(LANCE_DB_DIR) && fs.readdirSync(LANCE_DB_DIR).length > 0) {
-    const outputFileMTime = fs.statSync(OUTPUT_FILE).mtimeMs;
-    let anyGuideNewer = false;
+  // Bust cache if the build script itself or options change
+  hash.update(fs.readFileSync(import.meta.filename, "utf-8"));
+  hash.update(TARGET);
+  hash.update(IS_NO_CHUNKING.toString());
 
-    if (fs.statSync(import.meta.filename).mtimeMs > outputFileMTime) {
-      anyGuideNewer = true;
+  // Hash the contents of all active guides to guarantee state accuracy
+  for (const inv of readyGuides) {
+    const guidePath = getGuideMarkdownPath(inv);
+    if (fs.existsSync(guidePath)) {
+      hash.update(path.relative(WORKSPACE_ROOT, guidePath));
+      hash.update(fs.readFileSync(guidePath, "utf-8"));
+    }
+  }
+  const currentHash = hash.digest("hex");
+
+  // Ensure the build directory exists before we reference it for the manifest
+  const manifestDir = path.join(ROOT_DIR, "build");
+  if (!fs.existsSync(manifestDir)) {
+    fs.mkdirSync(manifestDir, { recursive: true });
+  }
+  const manifestPath = path.join(manifestDir, "build-manifest.json");
+
+  let shouldSkip = !process.env.CI && !targetGuidePath && !force;
+
+  if (shouldSkip) {
+    if (!fs.existsSync(OUTPUT_FILE) || !fs.existsSync(VECTORS_FILE) || !fs.existsSync(manifestPath)) {
+      shouldSkip = false;
     } else {
-      for (const inv of readyGuides) {
-        const guidePath = path.join(inv.dir, "guide.md");
-        if (fs.existsSync(guidePath) && fs.statSync(guidePath).mtimeMs > outputFileMTime) {
-          anyGuideNewer = true;
-          break;
+      try {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+        if (manifest.hash !== currentHash) {
+          shouldSkip = false;
         }
+      } catch (e) {
+        shouldSkip = false; // Corrupt manifest
       }
     }
+  }
 
-    if (!anyGuideNewer) {
-      console.log("No guides or script modified since last build. Skipping guide build.");
-      return;
-    }
+  if (shouldSkip) {
+    console.log("👌");
+    return;
   }
 
   // Ensure clean build/guides exists
@@ -61,30 +116,19 @@ async function processGuides() {
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
 
-  console.log("Initializing Embedder...");
-  const modelArg = process.argv.find((arg) => arg.startsWith("--model="));
-  const modelName = modelArg ? modelArg.split("=")[1] : undefined;
-  
+  console.log("Initializing Embedder…");
+
   if (modelName) {
     console.log(`Using custom embedding model: ${modelName}`);
   }
-  
-  let embedder: any;
-  if (modelName && (modelName.includes(".gguf") || modelName.includes("nomic"))) {
-    embedder = Gpt4AllEmbedder.getInstance(modelName);
-  } else {
-    embedder = Embedder.getInstance(modelName);
-  }
+
+  const { Embedder } = await import("../lib/transformers-embedder.ts");
+  const embedder = Embedder.getInstance(modelName);
   await embedder.init();
-
-  console.log("Initializing Store...");
-  const store = new Store();
-
-
 
   if (targetGuidePath) {
     // Single guide mode
-    let absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
+    const absoluteTargetPath = path.resolve(ROOT_DIR, "..", targetGuidePath);
     console.log(`Building single guide from: ${absoluteTargetPath}`);
 
     const guidePath = path.join(absoluteTargetPath, "guide.md");
@@ -93,24 +137,16 @@ async function processGuides() {
     }
 
     const category = path.basename(path.dirname(absoluteTargetPath));
-    const id = path.basename(absoluteTargetPath);
-    await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
-  } else {
-    // Batch process all guides
-
-    if (readyGuides.length === 0) {
-      console.log("No guides found.");
-    }
-
-    for (const inv of readyGuides) {
-      const guideDir = inv.dir;
-      const guidePath = path.join(guideDir, "guide.md");
-      const id = inv.name;
-      const category = inv.category;
-
-      await processSingleGuideFile(guidePath, category, id, useCases, storeUseCases);
-    }
+    const name = path.basename(absoluteTargetPath);
+    readyGuides = [{dir: absoluteTargetPath, name, category, hasGuide: true} as GuideInventory];
   }
+
+  console.log("Generating embeddings…");
+  for (const inv of readyGuides) {
+    const guidePath = getGuideMarkdownPath(inv);
+    await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder);
+  }
+
 
   // Generate TypeScript file
   const tsContent = `// This file is auto-generated by scripts/build-guides.ts
@@ -125,12 +161,16 @@ export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
 `;
 
   fs.writeFileSync(OUTPUT_FILE, tsContent);
-  console.log(`Generated ${useCases.length} use cases to ${OUTPUT_FILE}`);
+  console.log(`Generated ${useCases.length} use cases to ${path.relative(WORKSPACE_ROOT, OUTPUT_FILE)}`);
 
-  console.log("Upserting to LanceDB...");
-  await store.upsert(storeUseCases);
-  console.log("Vector store updated.");
 
+  const jsonContent = JSON.stringify(storeUseCases);
+  const compressed = zlib.gzipSync(jsonContent);
+  fs.writeFileSync(VECTORS_FILE, compressed);
+  console.log(`Vector storage updated at ${path.relative(WORKSPACE_ROOT, VECTORS_FILE)}`);
+
+  // Write manifest only after successful build completes
+  fs.writeFileSync(manifestPath, JSON.stringify({ hash: currentHash }, null, 2));
 }
 
 export function chunkMarkdown(markdown: string): string[] {
@@ -162,7 +202,8 @@ async function processSingleGuideFile(
   category: string,
   id: string,
   useCases: UseCase[],
-  storeUseCases: StoreUseCase[]
+  storeUseCases: StoreUseCase[],
+  embedder: any
 ) {
   const content = fs.readFileSync(filePath, "utf-8");
   const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
@@ -176,7 +217,7 @@ async function processSingleGuideFile(
     return;
   }
 
-  const processedMarkdown = replaceMacros(markdownBody, filePath);
+  const processedMarkdown = replaceMacros(markdownBody, filePath, { target: TARGET });
 
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
@@ -188,12 +229,9 @@ async function processSingleGuideFile(
     featuresUsed,
   });
 
-  const isNoChunking = process.argv.includes("--no-chunking");
-  const chunks = isNoChunking 
-    ? [`${frontmatter}\n\n${processedMarkdown}`] 
+  const chunks = IS_NO_CHUNKING
+    ? [`${frontmatter}\n\n${processedMarkdown}`]
     : [...chunkMarkdown(processedMarkdown), frontmatter];
-
-  const embedder = Embedder.getInstance(); // Singleton, already init
 
   for (const chunk of chunks) {
     const embeddingText = `${id} (${category})\n\n${chunk}`;
@@ -222,5 +260,24 @@ async function processSingleGuideFile(
 
 // Only run automatically if executed directly
 if (process.argv[1] === import.meta.filename) {
-  processGuides().catch(console.error);
+  const options = {
+    force: { type: 'boolean' as const },
+    model: { type: 'string' as const },
+    'no-chunking': { type: 'boolean' as const },
+  };
+
+  const { values, positionals } = parseArgs({ options, allowPositionals: true });
+
+  const targetGuidePath = positionals[0];
+  const force = values.force;
+  const noChunking = values['no-chunking'];
+  const modelName = values.model;
+
+  processGuides({
+    outputDir: path.join(ROOT_DIR, "build"),
+    force,
+    targetGuidePath,
+    modelName,
+    noChunking
+  }).catch(console.error);
 }

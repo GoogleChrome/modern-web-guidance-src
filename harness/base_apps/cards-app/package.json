@@ -1,0 +1,10 @@
+{
+  "name": "cards-app",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "pnpm dlx statikk --port ${PORT:-11221}"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": []
+  }
+}

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { Metrics, RunResult, ScenarioCheck } from './metrics.ts';
+import type { Metrics, RunResult, ScenarioCheck, EvalsReport } from './metrics.ts';
 
 export function generateMarkdownReport(metrics: Metrics, allResults: Record<string, RunResult[]>): string {
   const { summary, testStats, sortedKeys } = metrics;
@@ -13,6 +13,8 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
 | **Guided** | ${summary.guidedPassRate}% (${summary.guidedPassed}/${summary.guidedTotal}) | ${summary.runsPerTest} |
 
 `;
+
+
 
   // Generate detailed sections for each test
   for (const name of sortedKeys) {
@@ -57,7 +59,7 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
   return md;
 }
 
-export function generateJsonReport(metrics: Metrics, allResults: Record<string, RunResult[]>, timestamp: string, runCount: number, agent: string, serving: string, model: string) {
+export function generateJsonReport(metrics: Metrics, allResults: Record<string, RunResult[]>, timestamp: string, runCount: number, agent: string, serving: string, model: string, totalRuntime?: number): EvalsReport {
   return {
     summary: metrics.summary,
     results: allResults,
@@ -66,11 +68,12 @@ export function generateJsonReport(metrics: Metrics, allResults: Record<string, 
     runCount,
     agent,
     serving,
-    model
+    model,
+    totalRuntime
   };
 }
 
-export function saveReports(resultsDir: string, markdown: string, json: any) {
+export function saveReports(resultsDir: string, markdown: string, json: EvalsReport) {
   fs.mkdirSync(resultsDir, { recursive: true });
   fs.writeFileSync(path.join(resultsDir, 'evals.md'), markdown);
   fs.writeFileSync(path.join(resultsDir, 'evals.json'), JSON.stringify(json, null, 2));

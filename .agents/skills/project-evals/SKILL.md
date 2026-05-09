@@ -15,13 +15,13 @@ This is the third of three stages in creating guidance:
 
 **Real-world coding agents see only `guide.md`** — retrieved automatically via the RAG skills system when a developer asks for help. Every other file in a use case directory is eval infrastructure.
 
-**The eval harness** runs a separate coding agent in a controlled environment to test whether the guidance works. This eval agent receives a prompt from `prompts.md` and has access to `guide.md` via the same RAG system. The harness then runs `grader.ts` against the eval agent's output.
+**The eval harness** runs a separate coding agent in a controlled environment to test whether the guidance works. This eval agent receives the first prompt from `tasks/task.md` and has access to `guide.md` via the same RAG system. The harness then runs `grader.ts` against the eval agent's output.
 
 None of the following are ever seen by real-world coding agents:
 
 | File | Role in eval pipeline |
 |---|---|
-| `prompts.md` | Simulated developer prompts fed to the eval agent by the harness |
+| `tasks/task.md` | Simulated developer prompts and base application name fed to the eval agent by the harness |
 | `demo.html` | Reference implementation — grader runs against it to confirm tests pass on correct code |
 | `negative-demo.html` | Anti-example — grader runs against it to confirm tests fail on incorrect code |
 | `expectations.md` | Spec used to generate `grader.ts` |
@@ -29,9 +29,8 @@ None of the following are ever seen by real-world coding agents:
 
 ## How the eval files work together
 
-`prompts.md`, `expectations.md`, and `grader.ts` form a tightly coupled pipeline:
-
-1. **`prompts.md`** — Simulated developer prompts used only by the eval harness. Each prompt should sound like a real developer request, without naming specific APIs or best practices — the eval agent is expected to discover those by reading `guide.md` via RAG. The first prompt is the most important: it drives negative demo generation and is used as the default task.
+`tasks/task.md`, `expectations.md`, and `grader.ts` form a tightly coupled pipeline:
+1. **`tasks/task.md`** — Simulated developer prompts used only by the eval harness. It must start with a YAML frontmatter specifying the `base_app`, followed by a list of prompts. Each prompt should sound like a real developer request, without naming specific APIs or best practices — the eval agent is expected to discover those by reading `guide.md` via RAG. The first prompt is the most important: it is used as the default task.
 
 2. **`expectations.md`** — The ground truth for what a correct implementation looks like. Each bullet becomes exactly one test in `grader.ts`. Write expectations assuming the eval agent read `guide.md` and implemented it faithfully; they describe the observable output, not the implementation approach.
 
@@ -42,13 +41,17 @@ None of the following are ever seen by real-world coding agents:
 Write a natural language, bulleted list of assertions that must be true if an agent implements the `guide.md` correctly (e.g., "The input element is styled with a red border only AFTER a blur event").
 
 * **1:1 with grader tests** — Each bullet becomes exactly one test. Write one bullet per assertion. Do not combine multiple checks into a single bullet.
-* **Concrete and testable** — A grader must be able to write a Playwright assertion for it. Bullets like "Keep form pages visually simple" are best practices, not expectations.
+* **Concrete, Testable Criteria (No API Facts)** — Expectations must be verifiable browser behaviors we can check with Playwright (e.g., computed styles, DOM layout), not just factual statements about an API or code structure.
+* **Exercised in Demo**: Ensure that every expectation written here is actively exercised in the accompanying `demo.html`. Expectations that aren't covered by the demo lead to unreliable grader calibration.
 * **Scoped to this use case** — Only include expectations that apply to the specific use case being graded. Do not copy generic expectations from other guides if they describe behavior that won't appear in an implementation of this guide (e.g., don't include URL input expectations in a sign-in form grader).
 * **No external links** — The grader generator cannot resolve them.
 * **Avoid over-constraining** — Don't assert implementation details that don't affect correctness (e.g., don't require a direct child relationship if a descendant also works).
 
 ## Grading Note
-* Graders (`grader.ts`) live within their respective guide folders. These are Playwright test files, but they are permitted to perform non-browser tests (like `str.includes()` on file contents) as well as actual browser automation checks. A huamn may manually edit them if the generator struggles to get it perfectly tailored.
+* Graders (`grader.ts`) live within their respective guide folders. These are Playwright test files.
+* **AVOID** using static assertions (like regex or `str.includes()` on `fs.readFileSync`) to test CSS or HTML syntax whenever possible. These are extremely brittle and will fail if the agent uses a different class name, semantic element, or formatting.
+* Instead, **PREFER** using Playwright's browser APIs to test computed styles and actual DOM layout. Use `element.evaluate((el) => window.getComputedStyle(el).propertyName)` to robustly verify that the browser is rendering the feature correctly, regardless of how the agent authored the code.
+* A human may manually edit the `.ts` file if the generator struggles to get it perfectly tailored.
 
 ---
 
@@ -56,7 +59,7 @@ Once a guide has its `guide.md`, `demo.html`, and `expectations.md` completely w
 
 ## Generating the Eval Graders
 
-To generate the eval graders, use the `gd dev` tool. 
+To generate the eval graders, use the `gd dev` tool.
 
 Run the following command:
 ```bash
@@ -67,22 +70,23 @@ This command will automatically:
 1. Generate a `negative-demo.html` based on the guidance.
 2. Generate a `grader.ts` Playwright test that asserts your `expectations.md` against both `demo.html` (should pass) and `negative-demo.html` (should fail).
 3. Test and calibrate the grader by running the test suite.
-4. Generate realistic developer `prompts.md` and a task file to run an agent end-to-end.
 
-The human can manually write or revise the grader or prompts if they wish.
+* **Eval Performance Thresholds**: A guide is not considered ready if evaluation pass rates are low. A 0% unguided pass rate is a critical blocker, indicating the guide may lack sufficient scaffolding for the model to discover the solution.
 
-## Writing `prompts.md`
+## Writing `tasks/task.md`
 
-`prompts.md` contains realistic developer prompts used to run AI agents end-to-end against the guide's grader. Each line is a separate prompt the harness can send to an agent.
+`tasks/task.md` contains realistic developer prompts used to run AI agents end-to-end against the guide's grader, prefixed by a YAML frontmatter specifying the base application.
 
-**Format:** Each prompt must be on its own line, prefixed with `- `. No other structure is required.
-
+**Format:**
 ```md
+---
+base_app: daily-grind
+---
 - make my images load faster on the page
 - Optimize the priority of my LCP image 'hero.jpg' and deprioritize the gallery images below the fold.
 ```
 
-**Critical:** The **first prompt** is the most important — it is what the harness uses for negative demo generation and as the task body in `harness/tasks/<guide-name>-task.md`. The task file body **must always match the first prompt exactly**. If you update the first prompt, update the task file body to match. It must be specific enough to produce a grader-testable result.
+**Critical:** The **first prompt** is the most important. It is used as the default task for the harness, and it must be specific enough to produce a grader-testable result.
 
 **Rules:**
 - DO write prompts as a developer talking to an AI coding assistant — casual, lowercase, sometimes vague.
@@ -93,6 +97,9 @@ The human can manually write or revise the grader or prompts if they wish.
 - DO NOT mention the guide, the feature name, or hint that guidance exists.
 - DO NOT name the base app (e.g., "daily-grind") — a real developer wouldn't refer to it that way.
 - DO NOT tell the agent which web API or CSS property to use unless a real developer would naturally do so. The point is to test whether the agent discovers the right solution via the guide.
+  > [!IMPORTANT]
+  > **Functional Locators vs. Technical Solutions**
+  > It is completely acceptable (and sometimes necessary) to mandate specific DOM IDs or CSS classes (e.g., `"add a .fan-card class"`) if the grader requires them to locate elements. What is strictly banned is mandating the underlying implementation technology (e.g., commanding the model to `"use sibling-index()"` or `"use the Temporal API"`).
 
 **Quantity:** 1–4 prompts is typical. A single highly specific prompt is fine for technical use cases. Multiple prompts are useful for use cases with multiple valid entry points (e.g., "accordion", "tabs", "drawer" all exercising the same feature).
 
@@ -105,4 +112,3 @@ The human can manually write or revise the grader or prompts if they wish.
 If `gd dev` fails to calibrate the grader:
 * Read the command output to see which assertions failed.
 * If the grader logic generated by the pipeline is wrong, you may need to tweak the language in `expectations.md` so the generated grader is more accurate, or simply run `gd dev` again (it attempts to fix itself using failure context).
-

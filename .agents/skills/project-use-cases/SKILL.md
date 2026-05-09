@@ -11,42 +11,21 @@ The primary goal of this stage is to translate a technical web platform feature 
 2. Stage 2: Authoring guidance for a use case
 3. Stage 3: Evaluating guidance for a use case
 
-## Manual research and discovery
+## Research and discovery
 
-Instead of relying on your (the agent's) general knowledge to come up with a proposed list of use cases yourself, suggest that the user use [Deep Research in NotebookLM](https://notebooklm.google.com/) to discover sources and real-world implementations they might not be aware of. This tool will help them find complex edge cases, performance implications, and emerging best practices.
+Instead of relying on your (the agent's) general knowledge to come up with a proposed list of use cases yourself, use the `project-use-cases-research` skill to perform grounded research. This skill guides you through using your own tools and optional automated deep research to surface authoritative sources and real-world implementations.
 
-Here is an example process for using NotebookLM with Deep Research:
+### Using `project-use-cases-research`
 
-**Step 1: Research the feature**
+Refer to the `project-use-cases-research` skill file for detailed instructions on how to:
+1.  **Gather inputs** from GitHub issues or arguments.
+2.  **Conduct standard research** using `search_web` and `read_url_content`.
+3.  **Run optional automated deep research** using the `deep_research.js` script.
 
-Go to https://notebooklm.google.com/ and create a new notebook. In the configuration, select "Deep Research" and provide a prompt like the following:
-
-```markdown
-Thoroughly research the `fetchLater()` API using the following resources as a starting point and find additional high-quality information from W3C specifications, MDN, developer blogs, and GitHub discussions. Focus on technical constraints, performance implications, and real-world implementation challenges.
-
-- https://developer.mozilla.org/en-US/docs/Web/API/Window/fetchLater
-- https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Deferred_Fetch
-- https://developer.chrome.com/blog/fetch-later-api-origin-trial
-- https://github.com/WICG/pending-beacon/blob/main/docs/fetch-later-api.md
-```
-
-This seeds the model with known good resources and asks it to perform deep research to surface additional technical details, constraints, and discussions.
-
-**Step 2: Identify use cases**
-
-Once the model has a deep understanding of the feature, prompt it to identify the top use cases:
-
-```markdown
-Based on your research, identify 2-5 distinct developer use cases for the `fetchLater()` API.
-
-Follow these constraints for each use case:
-- **Succinct**: Provide a single-sentence description for each use case.
-- **Action-oriented**: Frame it as a task the developer wants to perform (e.g., "Ensure analytics data is sent reliably when a user navigates away").
-- **Outcome-focused**: Focus on the problem being solved, bridging the gap between what a developer wants to build and the technical solution.
-- **Distinct**: Each use case must represent a unique implementation pattern or a significant variation in application.
-```
-
-The user should manually review the proposed use cases for accuracy and completeness, and select the most relevant ones. Your job is to confirm that their selected use cases follow the constraints described in this skill.
+The process will result in:
+1.  A research report saved to `guides/.research/<feature-id>.md`.
+2.  Proposed use cases that follow the constraints described in this skill.
+3.  Scaffolded `guide.md` and `demo.html` stubs.
 
 ## Identifying action-oriented tasks
 
@@ -54,11 +33,15 @@ A "use case" in this project is not a description of a feature; it's a task that
 
 * **Action-oriented thinking**: Frame every use case as a task, and make sure it starts with a verb. Instead of "Scroll-driven animations support horizontal scrolling," use something like "Synchronize an animation's progress with the horizontal scroll distance of a container."
 * **Bridge the knowledge gap**: Assume the developer knows *what* they want to build (e.g., "I need a sticky header that shrinks on scroll") but might not know *which* modern web feature is the best solution (e.g., scroll-driven animations). Your use cases should facilitate this discovery by focusing on the desired outcome.
-* **Don't get too specific**: The use case must be general enough to match a wide range of relevant user prompts. Try to be as general as possible, while still faithfully representing the use case. For example, instead of saying "Fade an image in/out..." say "Smoothly hide/show a component...".
-* **Focus on the WHAT not the HOW**: Do not mention the solution in the use case description. For example, avoid phrases like "...by doing..." or "...through the use of...". Ideally, the use case description should remain constant, even if the recommended features or best practices for implementing it change over time.
+* **Balance Generality and Distinctness**: The use case **description** should be general enough to capture the overall intent and match a wide range of user prompts. However, to leverage the vector search effectively, ensure the guide uses **clear, descriptive headings**. The RAG system chunks content by heading, making specific parts of your guide discoverable for specific prompts. The implementation details within those chunks must remain **distinct and specific** to ensure the agent receives an unambiguous solution. For example, instead of saying "Fade an image in/out..." in the description, say "Smoothly hide/show a component...".
+* **Focus on the WHAT not the HOW**: Do not mention the solution in the use case description. **NEVER** mention the specific API methods, properties, or the target feature name in the description itself. For example, avoid phrases like "...by doing..." or "...through the use of...". Ideally, the use case description should remain constant, even if the recommended features or best practices for implementing it change over time.
 * **Scope**: Aim for 2-5 distinct use cases per feature. Each use case should represent a distinct implementation pattern or a significant variation in how the feature is applied. IMPORTANT: Not every sub-feature or feature variation needs a use case.
-* **Drop niche use cases**: If a use case is unlikely to match real developer prompts (e.g., very specific visual effects, obscure layout tricks), omit it. Prefer use cases that represent common, everyday developer needs.
+* **MANDATORY: Drop niche use cases**: Every guide must solve a tangible, high-priority developer need. Do not document niche features or visual tricks with negligible practical impact. Omit use cases unlikely to match real developer prompts.
 * **Merge rather than split**: If two proposed use cases would result in guides that are 99% identical, combine them into one, more general use case. Duplicate guides bloat context windows and create confusing contradictions.
+* **Break down complex features**: Conversely, do not cram multi-step, intricate features (like passkeys) into a single generic guide. Split them into logical, detailed use cases.
+* **UX-Driven, Not Feature-Driven**: Do not simply list every method, property, or option of an API as a separate use case. A use case must represent a distinct user experience goal or a distinct developer problem, not just a variation in API usage. If the implementation across proposed use cases is 90% identical, consolidate them.
+* **Avoid Forcing Use Cases on Low-Level Utilities**: If a feature is a low-level utility (like a new Promise method or a general object cloning function) that primarily acts as a drop-in replacement for legacy patterns, avoid forcing it into multiple outcome-oriented use cases. Instead, consider recommending a single 'Fundamental Guide' (e.g., "Deep cloning complex objects") or placing it in a top-level discipline skill file.
+
 
 ## Minimizing overlap
 
@@ -119,6 +102,9 @@ The following steps are REQUIRED for creating a new use case:
   Create a `demo.html` file in the new subdirectory. This file is **eval infrastructure** — it is used by `grader.ts` to verify that a correct implementation passes all tests. Real-world coding agents never see this file.
 
   Because it is not shown to agents, `demo.html` does not need to be a polished or production-ready example. It just needs to be a correct, minimal implementation of the use case. Keep it self-contained with inline scripts and styles. Use placeholder URLs for any subresources like images or videos.
+
+  **Quality Rules for Demos:**
+  * **Identifiable Test Targets**: Make target elements in HTML demos explicitly identifiable using clear data attributes like `data-testid` and specific class names to aid in grading.
 
   See [demo.html](examples/demo.html) for an example from the `deprioritize-background-fetches` use case.
 

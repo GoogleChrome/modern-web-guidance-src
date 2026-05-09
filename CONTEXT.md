@@ -38,7 +38,6 @@ guidance/
     config.ts                 # Central configuration (agent selection, MCP servers, etc.)
     run_suite.ts              # Suite runner (discovers tasks, runs agents, grades output)
     evaluate.ts               # Evaluation and reporting
-    tasks/                    # Task files that define eval scenarios
     base_apps/                # Base applications that agents modify (e.g. daily-grind)
     agents/                   # Agent runner scripts (gemini_cli, claude_code, jetski)
     lib/                      # Shared utilities (isolation, file helpers)
@@ -60,35 +59,43 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 
 | File | Author | Purpose |
 |---|---|---|
-| `guide.md` | SME (human) | The guidance itself. Read by coding agents via MCP. Contains YAML frontmatter (name, description, web-feature-ids, sources) and structured markdown with DO/DO NOT directives, code snippets, and fallback strategies. |
+| `guide.md` / `SKILL.md` | SME (human) | The guidance itself. Read by coding agents via MCP. `SKILL.md` is used for discipline-level skills. Contains YAML frontmatter (name, description, web-feature-ids, sources) and structured markdown with DO/DO NOT directives, code snippets, and fallback strategies. |
 | `demo.html` | SME (human) | Gold-standard implementation of the use case. Must score 100% against the grader. |
 | `expectations.md` | SME (human) | Natural-language bulleted list of assertions that must be true if the guidance is followed correctly. Used as input for grader generation. |
 | `negative-demo.html` | Generated (Gemini CLI) | A deliberately incorrect implementation. Must score 0% against the grader. Used for grader calibration. |
 | `grader.ts` | Generated (Gemini CLI) | A Playwright test file that grades any HTML file against the expectations. May include both browser automation checks and static content checks. |
-| `prompts.md` | Generated (Gemini CLI) | Realistic developer prompts (1-2) that an AI coding assistant might receive. Used for agent testing. |
+| `tasks/task.md` | Generated (Gemini CLI) & Reviewed | Simulated developer prompts and base_app fed to the eval agent by the harness |
 
-Additionally, each guide that is ready for evaluation has a **task file** in `harness/tasks/`:
+The **task file** looks like:
 
 ```yaml
 ---
 base_app: daily-grind
-grader: batch-analytics-events
 ---
-Implement Core Web Vitals monitoring on a web page...
+- Implement Core Web Vitals monitoring on a web page...
+- Alternative prompt...
 ```
 
-The task file connects a grader (by guide directory name), a base application the agent will modify, and the prompt the agent receives.
+The task file connects a base application the agent will modify, and the prompt the agent receives (first prompt in the list). The grader is implicit (the same directory).
 
-### Guide maturity stages
+### Guide Development Stages
 
-A guide progresses through these stages:
+A guide progresses through three main stages:
 
-1. **Stub**: Directory exists with `guide.md` containing only YAML frontmatter (no body content). The SME has identified the use case but hasn't written the guidance yet.
-2. **Incomplete**: Has `guide.md` content but is missing `demo.html` and/or `expectations.md`.
-3. **Needs expectations**: Has guide + demo but no `expectations.md` (or it's empty). Cannot proceed to automated generation without this.
-4. **Needs calibration**: Has all three human-authored files. Ready for `gd dev` to generate `negative-demo.html`, `grader.ts`, and calibrate.
-5. **Needs test**: Grader is calibrated but missing `prompts.md` or a task file. Agent tests haven't been run.
-6. **Eval-ready**: All artifacts exist. The guide is included in `gd eval suite` runs.
+1. **Stage 1: Identifying use cases (Stub state)**
+   - **Goal**: Translate a web platform feature into distinct use cases.
+   - **Artifacts**: Directory structure, `guide.md` with only YAML frontmatter (stub), and a basic `demo.html`.
+   - SME contributes via PR for review.
+
+2. **Stage 2: Authoring guidance (Needs calibration state)**
+   - **Goal**: Flesh out the guidance and define testable expectations.
+   - **Artifacts**: Full `guide.md` content (DO/DO NOT directives, snippets, fallbacks), completed `demo.html`, and `expectations.md`.
+   - SME creates these files after use case approval.
+
+3. **Stage 3: Evaluating guidance (Eval-ready state)**
+   - **Goal**: Generate evaluation artifacts and prove the guidance works.
+   - **Artifacts**: `negative-demo.html`, `grader.ts`, `tasks/task.md`.
+   - Handled by `gd dev` pipeline for auto-generation and calibration.
 
 ---
 
@@ -110,7 +117,7 @@ pnpm link --global && gd setup-completion
 
 | Command | What it does |
 |---|---|
-| `gd audit` | Prints a matrix of all 44 guides showing which artifacts each has, grouped by maturity stage. Suggests the next action to take. |
+| `gd audit` | Prints a matrix of all guides. |
 | `gd dev <dir>` | The main pipeline command. Takes a guide from "has guide.md + demo.html + expectations.md" to "grader calibrated, agent tests run." See section 4. |
 | `gd dev <dir> --gen-negative` | Generate only the `negative-demo.html` |
 | `gd dev <dir> --gen-grader` | Generate only the `grader.ts` |
@@ -122,7 +129,7 @@ pnpm link --global && gd setup-completion
 
 | Command | What it does |
 |---|---|
-| `gd eval` | Run the full evaluation suite (discovers all tasks in `harness/tasks/`) |
+| `gd eval` | Run the full evaluation suite (discovers all tasks in guide folders) |
 | `gd eval [task1] [task2]` | Run specific tasks only |
 | `gd eval --config <custom_config>` | Run with config overrides (`--config my_custom_config.ts`, defaults to `config.ts`, or falls back to defaults in `harness/config.ts`) |
 | `gd dashboard` | Start the eval results dashboard (eval-view) |
@@ -151,8 +158,7 @@ Runs the grader against both `demo.html` (should pass 100%) and `negative-demo.h
 
 ### Step 5: Agent test (runs by default)
 After successful calibration:
-1. Generates `prompts.md` if missing (via Gemini CLI, using the base app as context)
-2. Finds or creates a task file in `harness/tasks/`
+1. Generates `tasks/task.md` if missing (via Gemini CLI, using the base app as context). This file serves as a scaffold that requires SME review and refinement.
 3. Grades the base app as-is (pre-score baseline)
 4. Runs the configured agent in both **unguided** (no MCP guide access) and **guided** (with MCP guide access) modes
 5. Grades both outputs and prints a comparison showing guide impact
@@ -171,23 +177,25 @@ The eval harness measures whether guides actually improve agent output.
 
 ### How a suite run works (`gd eval`)
 
-1. **Build MCP index**: Compiles all guides into the MCP server's searchable index.
-2. **Discover tasks**: Scans `harness/tasks/*.md` for task definitions (or uses explicitly configured tasks).
+1. **Build Guide Index**: Compiles all guides into a searchable index (RAG).
+2. **Discover tasks**: Scans guide directories for `tasks/task.md` definitions (or uses explicitly configured tasks).
 3. **For each task, for each run** (configurable `numRuns`, default 2):
    - Set up an isolated working directory with the base app
-   - Run the agent in **unguided mode** (no MCP servers)
-   - Run the agent in **guided mode** (with configured MCP servers)
+   - Run the agent in **unguided mode** (no guidance)
+   - Run the agent in **guided mode** (with configured guidance)
    - Grade both outputs using the task's grader
 4. **Generate reports**: JSON results + HTML report in the output directory.
 5. **Upload** (optional): `pnpm upload <suite-name>` pushes results to GCS for the dashboard.
 
 ### Agents
 
-Three agents are supported, configured in `harness/config.ts`:
+Five agents are supported, configured in `harness/config.ts`:
 
 - **Jetski** (default): Google's internal IDE agent. Requires the Jetski app.
+- **Jetski CLI**: CLI version of Jetski.
 - **Gemini CLI**: Uses `GEMINI_API_KEY` and `GEMINI_MODEL` env vars.
 - **Claude Code**: Uses Claude on Vertex AI. Requires GCP setup.
+- **Codex CLI**: Requires requesting an exception and PCounsel approval. See root README for details.
 
 ### Base apps
 
@@ -208,7 +216,7 @@ The code in `serving/` provides both the MCP server and standalone tools used by
 
 ### Build process
 
-`pnpm build:mcp` compiles all `guide.md` files (that have valid frontmatter and content) into a searchable index. The build script also generates a "megaskill" — a concatenated document of all guides for agents that support skill-based injection rather than MCP.
+`pnpm build:mcp` compiles all `guide.md` and `SKILL.md` files (that have valid frontmatter and content) into a searchable index. The build script also generates a "megaskill" — a concatenated document of all guides for agents that support skill-based injection rather than MCP.
 
 ### How agents access guidance
 
@@ -222,25 +230,16 @@ The code in `serving/` provides both the MCP server and standalone tools used by
 
 ### Guide inventory
 
-**44 total guides** across 2 categories (performance: 15, user-experience: 29).
+An evolving list of guides organized across multiple categories.
 
-| Status | Count | Description |
-|---|---|---|
-| Eval-ready | 4 | All artifacts exist, included in suite runs |
-| Needs test | 1 | Grader calibrated, missing prompts/task |
-| Needs calibration | 3 | Has guide + demo + expectations, needs `gd dev` |
-| Stub | 36 | YAML frontmatter only, no guide content yet |
+| Stage | Status | Count | Description |
+|---|---|---|---|
+| **Stage 3** | Eval-ready | 4 | All artifacts exist, included in suite runs |
+| **Stage 3** | Needs test | 1 | Grader calibrated, missing prompts/task |
+| **Stage 2** | Needs calibration | 3 | Has guide + demo + expectations, needs `gd dev` |
+| **Stage 1** | Stub | 36 | YAML frontmatter only, no guide content yet |
 
 The 4 eval-ready guides: `batch-analytics-events`, `full-session-analytics`, `adapt-scrollbar-to-contrast-preferences`, `customize-scrollbar-color-and-thickness`.
-
-### Active branch: `cli-plus-dev`
-
-This branch (diverged from `main`) introduces:
-- The `gd` CLI with all commands
-- The `gd dev` automated pipeline with retry loop
-- The `gd audit` command
-- Refactored grader internals (CalibrationResult, programmatic API)
-- Agent test integration into the dev pipeline
 
 ### Open PRs (representative)
 
@@ -283,6 +282,10 @@ Guides are read by AI coding agents, not humans directly. Key requirements:
 - Short, commented code snippets with directives in code comments
 - Fallback strategies section if the feature is not Baseline Widely Available
 - Use `{{ BASELINE_STATUS("feature-id") }}` macro for browser support display
+- Use `{{ INCLUDE("path[#section]") }}` to transclude a whole markdown file or one section. Bare paths resolve from repo root; `./`/`../` resolve relative to the calling file
+- Use `{{ FEATURE("feature-id", "section") }}` as a shorthand for `INCLUDE("features/<feature-id>.md#<section>")`
+- Use `{{ FEATURE_FALLBACKS("feature-id") }}` (preferred) inside the "Fallback strategies" section — emits a sub-heading, `BASELINE_STATUS`, and the `#fallbacks` section from `features/<feature-id>.md` if it exists
+- Use `{{ FEATURE_ISSUES("feature-id") }}` to surface known gotchas from `features/<feature-id>.md#issues`, or `""` if no such section exists
 
 ### Writing expectations.md
 
@@ -316,7 +319,7 @@ Grader and negative-demo generation use Gemini CLI (not API calls) because the g
 Graders are Playwright test files because many expectations require browser rendering to verify (CSS properties, layout, visibility, animation behavior). However, graders can also include non-browser checks (string matching on file contents, DOM structure analysis on raw HTML) for simpler assertions.
 
 ### Why both MCP and skills modes?
-Different agents have different integration capabilities. MCP provides dynamic, search-based access. Skills provides static, file-based access. Supporting both ensures the guidance can reach agents regardless of their integration model.
+Different agents have different integration capabilities. MCP provides dynamic, search-based access. Skills provides static, file-based access. Supporting both ensures the guidance can reach agents regardless of their integration model, though **Skills via CLI (`skills_cli`) is the current primary serving mechanism** for evaluation stability and ease of distribution.
 
 ### Why a retry loop for calibration?
 Gemini-generated graders frequently fail calibration on the first attempt — tests may be too strict, too lenient, or check the wrong thing. Feeding failure context back into regeneration significantly improves success rates. The retry loop (up to 3 total attempts) automates what was previously a tedious manual cycle.
@@ -365,7 +368,7 @@ MCP_API_KEY=...
 
 Suite configuration in `harness/config.ts`:
 - `numRuns`: Number of agent runs per task (default: 2)
-- `tasks`: Empty array = discover all tasks in `harness/tasks/`. Set explicitly to run a subset.
+- `tasks`: Empty array = discover all tasks by scanning guide folders. Set explicitly to run a subset.
 - `mcpServersToEnable`: Which MCP servers agents can access (`['modern-web']`, `['google-developer-knowledge']`, or both)
 - `serving`: The approach used to serve guidance (`skills_cli`, `skills`, or `mcp`)
 - `agent`: Which agent to use (`Agents.GEMINI_CLI`, `Agents.CLAUDE_CODE`, `Agents.JETSKI`)

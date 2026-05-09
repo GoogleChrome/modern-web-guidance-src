@@ -26,7 +26,6 @@ export function getSuiteConfig(): SuiteConfig {
   throw new Error('GD_SUITE_CONFIG environment variable is missing.');
 }
 
-
 /**
  * Promisified version of child_process.spawn.
  */
@@ -52,6 +51,20 @@ export function createIsolatedHome(prefix: string): string {
   // Provide authentication to the isolated environment so npm tasks work
   const originalHome = process.env.HOME || process.cwd();
   copyFileIfExists(path.join(originalHome, '.npmrc'), path.join(tempHome, '.npmrc'));
+
+  // Pre-populate projects.json to prevent concurrent write race conditions in geminicli. https://github.com/GoogleChrome/guidance/pull/479
+  try {
+    const geminiDir = path.join(tempHome, '.gemini');
+    fs.mkdirSync(geminiDir, { recursive: true });
+    const mockProjects = {
+      projects: {
+        [path.join(tempHome, 'work')]: 'work'
+      }
+    };
+    fs.writeFileSync(path.join(geminiDir, 'projects.json'), JSON.stringify(mockProjects, null, 2));
+  } catch (err) {
+    console.warn('Warning: Failed to pre-populate projects.json:', err);
+  }
 
   console.log(`Setting up isolated HOME at ${tempHome}...`);
   return tempHome;
@@ -210,7 +223,7 @@ export function updateMcpConfig(
  * @param agent The agent type
  * @returns True if successful, false otherwise
  */
-export function copySkills(homeDir: string, agent: string, cli: boolean): boolean {
+export function copySkills(homeDir: string, agent: string, cli: boolean, skillsToEnable: string[] = ['modern-web']): boolean {
   const guidesSource = guidesDir;
 
   let destDir = '';
@@ -218,7 +231,7 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
     destDir = path.join(homeDir, '.claude', 'skills');
   } else if (agent === Agents.CODEX_CLI) {
     destDir = path.join(homeDir, '.agents', 'skills');
-  } else if (agent === Agents.JETSKI) {
+  } else if (agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
     destDir = path.join(homeDir, '.gemini', 'jetski', 'skills');
   } else {
     destDir = path.join(homeDir, '.gemini', 'skills');
@@ -227,12 +240,12 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
   try {
     fs.mkdirSync(destDir, { recursive: true });
 
-    if (cli) { // Add modern-web-use-cases Skill (& resources) from skills-cli dist
-      const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web-use-cases');
+    if (cli && skillsToEnable.includes('modern-web')) { // Add modern-web Skill (& resources) from skills-cli dist
+      const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web');
       if (!fs.existsSync(distSource)) {
-        console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter modern-web-mcp build-dist' automatically...`);
+        console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter serving build-dist' automatically...`);
         try {
-          execSync('pnpm --filter modern-web-mcp build-dist', {
+          execSync('pnpm --filter serving build-dist', {
             cwd: rootDir,
             stdio: 'inherit'
           });
@@ -244,7 +257,7 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
       }
 
       try {
-        const destSkillDir = path.join(destDir, 'modern-web-use-cases');
+        const destSkillDir = path.join(destDir, 'modern-web');
         fs.mkdirSync(destSkillDir, { recursive: true });
 
         if (fs.existsSync(distSource)) {
@@ -264,7 +277,6 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
       }
     }
 
-    // Skills-discipline mode
     if (!fs.existsSync(guidesSource)) {
       console.warn(`Warning: Guides directory not found at ${guidesSource}`);
       return false;
@@ -276,7 +288,8 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
         d => d.isDirectory() &&
         !d.name.startsWith('.') &&
         d.name !== 'node_modules' &&
-        d.name !== 'modern-web-use-cases' // only needed when using Skills (CLI), already added above
+        d.name !== 'modern-web' && // only needed when using Skills (CLI), already added above
+        skillsToEnable.includes(d.name)
       );
 
     for (const dir of topLevelDirs) {
@@ -290,18 +303,20 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
       }
     }
 
-    // 2. Scan and copy guide.md for eval-ready guides
-    const allGuides = scanAllGuides();
+    if (!cli) {
+      // 2. Scan and copy guide.md for eval-ready guides
+      const allGuides = scanAllGuides();
 
-    for (const inv of allGuides) {
-      if (classifyGuide(inv) === 'eval-ready') {
-        const catDest = path.join(destDir, inv.category);
-        const guideDest = path.join(catDest, inv.name);
-        fs.mkdirSync(guideDest, { recursive: true });
+      for (const inv of allGuides) {
+        if (classifyGuide(inv) === 'eval-ready') {
+          const catDest = path.join(destDir, inv.category);
+          const guideDest = path.join(catDest, inv.name);
+          fs.mkdirSync(guideDest, { recursive: true });
 
-        const guideFileSrc = path.join(inv.dir, 'guide.md');
-        const guideFileDest = path.join(guideDest, 'guide.md');
-        fs.copyFileSync(guideFileSrc, guideFileDest);
+          const guideFileSrc = path.join(inv.dir, 'guide.md');
+          const guideFileDest = path.join(guideDest, 'guide.md');
+          fs.copyFileSync(guideFileSrc, guideFileDest);
+        }
       }
     }
 
@@ -499,37 +514,63 @@ export async function runCliAgentCommand(
   child.stdout?.on('data', (data) => {
     const chunk = data.toString();
     stdoutData += chunk;
-    // Manually mirror to console so we can see progress while capturing
     process.stdout.write(chunk);
   });
 
   child.stderr?.on('data', (data) => {
     const chunk = data.toString();
     stderrData += chunk;
-    // Manually mirror to console so we can see progress while capturing
     process.stderr.write(chunk);
   });
 
-  const exitCode = await new Promise((resolve) => {
-    child.on('close', resolve);
-  });
+  try {
+    const exitCode = await new Promise<number>((resolve, reject) => {
+      child.on('close', (code) => resolve(code ?? 1));
+      child.on('error', (err) => reject(err));
+    });
 
-  if (exitCode !== 0) {
-    throw new Error(`${agentName} exited with code ${exitCode}`);
-  }
+    // Save output to chat_log.txt
+    const chatLogPath = path.join(targetDir, 'chat_log.txt');
+    fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
+    console.log(`Saved output to: ${chatLogPath}`);
 
-  copyResultsToTarget(workDir, targetDir);
+    // Save stderr to agent_stderr.log to surface unexpected problems
+    if (stderrData.length > 0) {
+      const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
+      fs.writeFileSync(stderrLogPath, stderrData, 'utf8');
+      console.log(`Saved stderr to: ${stderrLogPath}`);
+    }
 
-  // Save output to chat_log.txt
-  const chatLogPath = path.join(targetDir, 'chat_log.txt');
-  fs.writeFileSync(chatLogPath, stdoutData, 'utf8');
-  console.log(`Saved output to: ${chatLogPath}`);
+    try {
+      copyResultsToTarget(workDir, targetDir);
+    } catch (e) {
+      console.error(`Failed to copy results from ${workDir} to ${targetDir}:`, e);
+    }
 
-  // Save stderr to agent_stderr.log to surface unexpected problems
-  if (stderrData.length > 0) {
+    if (exitCode !== 0) {
+      const failureFile = path.join(targetDir, 'generation_failed.json');
+      fs.writeFileSync(failureFile, JSON.stringify({
+        agentName,
+        exitCode,
+        stderr: stderrData,
+        stdout: stdoutData
+      }, null, 2));
+      console.log(`Saved generation failure info to: ${failureFile}`);
+      throw new Error(`${agentName} exited with code ${exitCode}`);
+    }
+  } catch (err: any) {
+    console.error(`Error in runCliAgentCommand:`, err);
+    
+    // Fallback: Save whatever we have to agent_stderr.log even if it failed
     const stderrLogPath = path.join(targetDir, 'agent_stderr.log');
-    fs.writeFileSync(stderrLogPath, stderrData, 'utf8');
-    console.log(`Saved stderr to: ${stderrLogPath}`);
+    let fallbackContent = `Execution failed: ${err.message || err}\n`;
+    if (stderrData) {
+      fallbackContent += `\nCaptured stderr:\n${stderrData}`;
+    }
+    fs.writeFileSync(stderrLogPath, fallbackContent, 'utf8');
+    console.log(`Saved fallback error log to: ${stderrLogPath}`);
+    
+    throw err; // Re-throw to propagate failure
   }
 }
 
@@ -611,5 +652,55 @@ export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, pro
     </script>
 </body>
 </html>`;
+}
+
+/**
+ * Generates the content for the grader script used to run Playwright tests.
+ */
+export function getGraderScriptContent(
+  targetDir: string,
+  graderPath: string,
+  guideName: string
+): string {
+  const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
+  const targetPkgJson = path.join(targetDir, 'package.json');
+  const targetFile = path.join(targetDir, 'index.html');
+  const gradeReportDir = path.join(targetDir, 'grade-report');
+  const graderResults = path.join(targetDir, `${guideName}_results.json`);
+
+  return `import fs from 'fs';
+import { spawnSync } from 'child_process';
+import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
+
+async function run() {
+  try {
+    const pkgJsonPath = ${JSON.stringify(targetPkgJson)};
+    if (fs.existsSync(pkgJsonPath)) {
+      const installResult = spawnSync('pnpm', ['install', '--no-frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
+        cwd: ${JSON.stringify(targetDir)},
+        stdio: 'inherit',
+        shell: true,
+        env: { ...process.env, CI: 'true' }
+      });
+      if (installResult.status !== 0) {
+        console.error("pnpm install failed");
+        process.exit(1);
+      }
+    }
+
+    const json = await runPlaywright(
+      ${JSON.stringify(targetFile)},
+      ${JSON.stringify(graderPath)},
+      ${JSON.stringify(gradeReportDir)},
+      'inherit'
+    );
+    fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
+  } catch (err) {
+    console.error("Playwright test execution failed:", err);
+    process.exit(1); 
+  }
+}
+
+run();`.trim();
 }
 

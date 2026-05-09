@@ -1,0 +1,8 @@
+- The `<dialog>` element must have the `closedby="any"` attribute.
+- The `<dialog>` element should have an accessible name using `aria-labelledby`, `aria-label`, or similar.
+- The dialog must be opened with the `showModal()` method when the trigger button or link is clicked.
+- Clicking the backdrop (the area outside the dialog content) must close the dialog.
+- Pressing the `Esc` key must close the dialog.
+- Clicking the close or cancel button inside the dialog must close the dialog.
+- Clicking inside the dialog content (but not on the backdrop) should NOT close the dialog.
+- The implementation should include a fallback mechanism for light-dismiss in browsers where the `closedby` attribute is not supported.

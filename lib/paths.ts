@@ -6,8 +6,12 @@ import path from 'path';
  */
 export function getRootDir(): string {
   try {
+    const env = { ...process.env };
+    delete env.GIT_DIR;
+    delete env.GIT_WORK_TREE;
     return execSync('git rev-parse --show-toplevel', {
       encoding: 'utf-8',
+      env,
       stdio: ['pipe', 'pipe', 'pipe'],
     }).trim();
   } catch {
@@ -20,7 +24,6 @@ export const rootDir = getRootDir();
 
 export const guidesDir = path.join(rootDir, 'guides');
 export const harnessDir = path.join(rootDir, 'harness');
-export const tasksDir = path.join(harnessDir, 'tasks');
 export const baseAppsDir = path.join(harnessDir, 'base_apps');
 export const resultsDir = path.join(harnessDir, 'results');
 export const evalViewDir = path.join(rootDir, 'eval-view');

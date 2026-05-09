@@ -48,9 +48,9 @@ You can use `gd audit` to see exactly where every guide sits in the Kanban board
 gd audit
 ```
 
-This will output a categorized table sorted into the 4 workflow states (`Needs use cases`, `Needs guidance`, `Needs evals`, `Done`), along with recommended next steps.
+This will output a categorized table sorted into the 6 maturity stages (`Stub`, `Incomplete`, `Needs expectations`, `Needs calibration`, `Needs test`, `Eval-ready`), along with recommended next steps.
 
-### Manual Piece-wise execution 
+### Manual Piece-wise execution
 
 Occasionally, you may want to generate or test specific pieces of the pipeline manually.
 Ensure `GEMINI_API_KEY` and `GEMINI_MODEL` environment variables are in `guidance/.env`:
@@ -109,11 +109,10 @@ gd dev <path/to/guide_dir>
 
 This runs the following pipeline after the grader calibrates successfully:
 
-1. **Generate `prompts.md`** if missing — uses Gemini CLI to create a set of developer-facing prompts derived from the guide
-2. **Find or create a task file** in `harness/tasks/` — scans existing tasks for a matching `grader:` field, or creates `<guideName>-task.md` using the first prompt from `prompts.md` (defaults to `daily-grind` base app)
-3. **Grade the base app as-is** (pre-score) — establishes a baseline before any agent runs
-4. **Run the agent** in both `unguided` (no guide access) and `guided` (with MCP guide access) modes against the base app
-5. **Grade both outputs** and print a comparison:
+1. **Generate `tasks/task.md`** if missing — uses Gemini CLI to create a set of developer-facing prompts derived from the guide and adds `base_app: daily-grind` frontmatter.
+2. **Grade the base app as-is** (pre-score) — establishes a baseline before any agent runs
+3. **Run the agent** in both `unguided` (no guide access) and `guided` (with MCP guide access) modes against the base app
+4. **Grade both outputs** and print a comparison:
 
 ```
 Agent test results:
@@ -123,28 +122,16 @@ Agent test results:
   Guide impact:     +56% (vs unguided)
 ```
 
-The agent and base app are selected from the [harness config](../harness/config.ts) (`suite.agent` and the task's `base_app` field).
+The agent is selected from the specified [config](../config.ts) if it exists, otherwise uses default in the [harness config](../harness/config.ts).
+The base app is selected from the generated `tasks/task.md` file (which defaults to `daily-grind`).
 
-The generated task file is automatically included in future `gd eval suite` runs — the suite discovers all task files in `harness/tasks/` by default.
+### Negative Evals
 
-### Negative Suite
+To verify that guides improve agent performance starting from a "bad" implementation, you can run against the `negative-demo.html`.
 
-To verify that guides improve agent performance starting from a "bad" implementation, you can run a **Negative Suite**.
-
-1. **Generate negative suite resources**:
-   ```bash
-   gd gen-negative-suite
-   ```
-   This script scans for "eval-ready" guides and creates:
-   - A base app in `harness/base_apps/negative/<guideName>/` using the `negative-demo.html`.
-   - A task in `harness/tasks/negative/<guideName>-task-negative.md` pointing to that base app.
-
-2. **Run the negative suite**:
-   Ensure your local configuration (`guidance/config.ts`) has `negative: true`, then run:
-   ```bash
-   gd eval
-   ```
-   *(Alternatively, you can specify a custom config with `gd eval --config my_negative_config.ts`)*
+```bash
+gd eval <guideName>/negative
+```
 
 ### Manual Steps
 
@@ -189,3 +176,112 @@ gd dev <path/to/guide_dir>/test-app-result/index.html --grade
 ```
 
 Use the results to validate guide quality, and make changes as needed. A useful sanity check is to examine the result of the agent run *without* guide access.
+
+## Pipeline V2 Architecture
+
+The `pipelinev2` in this repository is an automated system for generating, calibrating, and testing web platform guidance. It facilitates a multi-stage workflow that takes a web feature from initial use case identification to a fully tested and calibrated guidance package ready for evaluation.
+
+### Workflow Stages
+
+#### Stage 1 & 2: Use Case Identification and Scaffolding (`guide-gen.ts`)
+This stage is triggered by `gd gen-guide <feature-id>`.
+
+1.  **Feature Lookup**: Looks up the feature in the `web-features` package.
+2.  **Deep Research**: Checks if `features/<feature-id>/research.md` exists. If not, it automatically invokes the deep research script (using the specialized `deep-research-pro` model) to generate a comprehensive research report.
+3.  **Use Case Identification**: Uses Gemini to identify 2-5 distinct developer use cases for the feature, reading the deep research report primarily if available.
+4.  **Scaffolding**: For each identified use case, it scaffolds:
+    *   `guide.md`: The guidance documentation.
+    *   `demo.html`: A minimal reference implementation.
+    *   `expectations.md`: Must pass/fail rules for verification.
+
+#### Stage 3: Calibration and Testing (`dev-guide.ts`)
+This stage is triggered by `gd dev <path/to/guide_dir>` or called automatically by Stage 1/2.
+
+1.  **Inventory**: Verifies that `guide.md`, `demo.html`, and `expectations.md` exist.
+2.  **Artifact Generation**:
+    *   **Negative Demo**: Generates `negative-demo.html` (violates guidance) using Gemini.
+    *   **Grader**: Generates `grader.ts` (Playwright tests) using Gemini based on `expectations.md`.
+3.  **Calibration**:
+    *   Runs `grader.ts` against `demo.html`. Expects 100% pass.
+    *   Runs `grader.ts` against `negative-demo.html`. Expects 100% fail (0% pass).
+    *   **Auto-Retry**: If calibration fails, it regenerates `grader.ts` with the failure context and retries (up to 2 times).
+4.  **Task Generation**: Generates `tasks/task.md` containing test prompts for the agent.
+5.  **Agent Testing** (Optional but default):
+    *   Runs the agent on a base app (e.g., `daily-grind`) in both unguided (no guide) and guided (with guide) modes.
+    *   Grades the outputs using `grader.ts`.
+    *   Compares results to assess guide impact.
+
+### Workflow Comparison
+
+```text
+           Previous guidance pipeline            │        Pipeline V2
+─────────────────────────────────────────────────┼──────────────────────────────────────────────────
+                                                 │
+ 🧠 Stage 1: Identify Use Cases                  │  🤖 Deep Research & Usecase Gen
+    SME reads specs, writes stubs & demo.        │     Agent crawls, determines usecases.
+                                                 │
+ First PR: 👥 Approve Use Cases                  │
+    Team reviews selection & naming.             │
+                                                 │
+ 🧠 Stage 2: Author Guidance                     │  🤖 Agent authors guide/expectations/demo
+    SME fleshes out guide & expectations.        │
+                                                 │
+ 🤖 Stage 3: Task & Grader Generation            │  🤖 Task & Grader Generation
+    `gd dev`                                     │     `gd dev`
+                                                 │
+ Second PR: 👥 Final Review                      │  First PR: 🧠 SME Review
+    Team reviews full package.                   │     Bot opens PR. SME reviews key files.
+                                                 │
+                                                 │  🤖 Feedback Iteration
+                                                 │     Bot handles SME feedback automatically.
+─────────────────────────────────────────────────┴──────────────────────────────────────────────────
+Key: 🧠 Subject Matter Expert | 👥 Team Reviewers | 🤖 Automation/Agent
+```
+
+### Execution Flow Detail
+
+```text
++--------------------------------------------------+
+| Stage 1 & 2: Identification & Scaffolding        |
+| (guide-gen.ts)                                  |
++--------------------------------------------------+
+        |
+        | 1. Lookup Feature (web-features)
+        | 2. Deep Research (Auto if missing) ------> [features/<feature-id>/research.md]
+        | 3. Identify Use Cases (Gemini)
+        v
++--------------------------------------------------+
+| Scaffolded Files (per use case)                  |
+| - guide.md                                       |
+| - demo.html                                      |
+| - expectations.md                                |
++--------------------------------------------------+
+        |
+        | calls / triggered by gd dev
+        v
++--------------------------------------------------+
+| Stage 3: Calibration & Testing                   |
+| (dev-guide.ts)                                   |
++--------------------------------------------------+
+        |
+        |---[Generate missing artifacts]-->
+        |   - negative-demo.html (negative-gen.ts) |
+        |   - grader.ts (grader-gen.ts)            |
+        |
+        |---[Calibration Loop]-->
+        |   - Run grader on demo.html (100% pass)  |
+        |   - Run grader on neg-demo.html (0% pass)|
+        |   - If fail: Regenerate grader w/ context|
+        |
+        |---[Task Generation]-->
+        |   - tasks/task.md (Gemini)               |
+        |
+        |---[Agent Test (Optional)]-->
+        |   - Run agent (Unguided vs Guided)       |
+        |   - Grade outputs                        |
+        |   - Compare impact                       |
+        v
++--------------------------------------------------+
+| Final Output: Calibrated & Tested Guide Package |
++--------------------------------------------------+
+```

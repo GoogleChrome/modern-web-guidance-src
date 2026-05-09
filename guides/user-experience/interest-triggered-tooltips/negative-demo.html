@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tooltips</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 50px;
+      }
+      .tooltip {
+        position: relative;
+        border-bottom: 1px dotted black;
+        cursor: pointer;
+      }
+      .tooltip::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -60px;
+        width: 120px;
+        background-color: black;
+        color: white;
+        text-align: center;
+        padding: 5px;
+        border-radius: 6px;
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      .tooltip:hover::after {
+        visibility: visible;
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Information Page</h1>
+    <p>
+      For more details on our <span class="tooltip" data-tooltip="Terms and conditions apply to all users.">policy</span>, please contact support.
+    </p>
+    <p>
+      Our <span class="tooltip" data-tooltip="We use industry standard encryption.">security</span> protocols are updated regularly.
+    </p>
+  </body>
+</html>

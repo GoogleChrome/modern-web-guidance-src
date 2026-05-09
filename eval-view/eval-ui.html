@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guidance Eval Runner</title>
+    <link rel="stylesheet" href="eval-ui.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap">
+</head>
+<body>
+    <div class="glass-orb orb-1"></div>
+    <div class="glass-orb orb-2"></div>
+
+    <div class="dashboard-container">
+        <header class="fancy-header">
+            <div class="header-text">
+                <div class="logo">Guidance <span>Eval Runner</span></div>
+                <p>Set configurations, interactively select tasks, and run an evaluation.</p>
+            </div>
+            <button type="submit" class="btn-primary" id="launch-btn-header" form="launch-form">
+                <span>Start Evaluation</span>
+                <svg class="run-icon" viewBox="0 0 24 24">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </button>
+        </header>
+
+        <form id="launch-form">
+            <section class="config-grid">
+                <div class="glass-panel">
+                    <h3>Suite Configuration</h3>
+                    <div class="input-group">
+                        <label for="name">Suite Name (Optional)</label>
+                        <input type="text" id="name" placeholder="Leave empty for auto-generated name">
+                    </div>
+                    <div class="row">
+                        <div class="input-group" style="flex: 0 0 auto;">
+                            <label for="numRuns">Number of Runs</label>
+                            <input type="number" id="numRuns" value="1" min="1">
+                        </div>
+                        <div class="input-group" style="flex: 0 0 auto;">
+                            <label for="workerCount">Worker Count</label>
+                            <input type="number" id="workerCount" placeholder="Auto" min="1">
+                        </div>
+                        <div class="input-group">
+                            <label>Agent</label>
+                            <div class="btn-toggle-group" id="agent-group">
+                                <button type="button" class="btn-toggle active" data-value="gemini_cli">Gemini CLI</button>
+                                <button type="button" class="btn-toggle" data-value="jetski">Jetski</button>
+                                <button type="button" class="btn-toggle" data-value="jetski_cli">Jetski CLI</button>
+                                <button type="button" class="btn-toggle" data-value="claude_code">Claude Code</button>
+                                <button type="button" class="btn-toggle" data-value="codex_cli">Codex CLI</button>
+                            </div>
+                            <input type="hidden" id="agent" value="gemini_cli">
+                        </div>
+                        <div class="input-group">
+                            <label>Serving</label>
+                            <div class="btn-toggle-group" id="serving-group">
+                                <button type="button" class="btn-toggle active" data-value="skills_cli">Skills (CLI)</button>
+                                <button type="button" class="btn-toggle" data-value="skills">Skills</button>
+                                <button type="button" class="btn-toggle" data-value="mcp">MCP</button>
+                            </div>
+                            <input type="hidden" id="serving" value="skills_cli">
+                        </div>
+                    </div>
+                    
+                    <div class="input-group" style="margin-top: 15px;">
+                        <label>Skills to Enable</label>
+
+                        <div class="skills-container" id="skills-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <!-- Skill buttons will be injected here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="panel-header">
+                <h3>Task Selector</h3>
+            </div>
+
+            <section class="tasks-section" style="margin-top: 0;">
+                <div class="glass-panel" style="margin-bottom: 30px;">
+                    <div class="panel-header">
+                        <h3 id="discipline-header">Discipline Tasks</h3>
+                        <div class="quick-actions">
+                            <button type="button" class="btn-secondary" id="action-clear-disciplines">Clear All</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table id="disciplines-table">
+                            <thead>
+                                <tr id="disciplines-table-headers">
+                                    <th>Discipline</th>
+                                    <th class="checkbox-header">
+                                        <label class="custom-checkbox">
+                                            <input type="checkbox" class="header-check" data-task="task" checked>
+                                            <span class="checkmark"></span>
+                                        </label>
+                                    </th>
+                                    <th class="checkbox-header">
+                                        <label class="custom-checkbox">
+                                            <input type="checkbox" class="header-check" data-task="negative">
+                                            <span class="checkmark"></span>
+                                        </label>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Disciplines go here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="glass-panel">
+                    <div class="panel-header">
+                        <h3 id="guide-header">Guide Tasks</h3>
+                        <div class="quick-actions">
+                            <button type="button" class="btn-secondary" id="action-clear-guides">Clear All</button>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="tasks-table">
+                            <thead>
+                                <tr id="table-headers">
+                                    <th>Guide</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Grouped tasks go here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <div class="footer-actions">
+                <button type="submit" class="btn-primary" id="launch-btn">
+                    <span>Start Evaluation</span>
+                    <svg class="run-icon" viewBox="0 0 24 24">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script src="eval-ui.js"></script>
+</body>
+</html>

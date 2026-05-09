@@ -16,11 +16,11 @@ function removeTempDir(dir: string) {
 test('inventoryGuide detects missing files when directory is empty', () => {
   const tempDir = createTempDir();
   try {
-    const inv = inventoryGuide(tempDir, new Map());
+    const inv = inventoryGuide(tempDir);
     assert.strictEqual(inv.hasGuide, false);
     assert.strictEqual(inv.hasDemo, false);
     assert.strictEqual(inv.hasGrader, false);
-    assert.strictEqual(inv.hasPrompts, false);
+    assert.strictEqual(inv.hasTask, false);
     assert.strictEqual(inv.hasExpectations, false);
   } finally {
     removeTempDir(tempDir);
@@ -33,7 +33,7 @@ test('inventoryGuide detects guide.md', () => {
     const useCase = path.join(tempDir, 'my-use-case');
     fs.mkdirSync(useCase);
     fs.writeFileSync(path.join(useCase, 'guide.md'), 'content');
-    const inv = inventoryGuide(useCase, new Map());
+    const inv = inventoryGuide(useCase);
     assert.strictEqual(inv.hasGuide, true);
   } finally {
     removeTempDir(tempDir);
@@ -48,7 +48,7 @@ test('inventoryGuide detects stub guide.md', () => {
     fs.writeFileSync(path.join(useCase, 'guide.md'), `---
 name: my-use-case
 ---`);
-    const inv = inventoryGuide(useCase, new Map());
+    const inv = inventoryGuide(useCase);
     assert.strictEqual(inv.isStub, true);
     assert.strictEqual(inv.hasGuide, false); // No content outside frontmatter
   } finally {
@@ -62,7 +62,7 @@ test('inventoryGuide detects demo.html', () => {
     const useCase = path.join(tempDir, 'my-use-case');
     fs.mkdirSync(useCase);
     fs.writeFileSync(path.join(useCase, 'demo.html'), '<html></html>');
-    const inv = inventoryGuide(useCase, new Map());
+    const inv = inventoryGuide(useCase);
     assert.strictEqual(inv.hasDemo, true);
   } finally {
     removeTempDir(tempDir);
@@ -75,21 +75,23 @@ test('inventoryGuide detects grader.ts', () => {
     const useCase = path.join(tempDir, 'my-use-case');
     fs.mkdirSync(useCase);
     fs.writeFileSync(path.join(useCase, 'grader.ts'), 'export {}');
-    const inv = inventoryGuide(useCase, new Map());
+    const inv = inventoryGuide(useCase);
     assert.strictEqual(inv.hasGrader, true);
   } finally {
     removeTempDir(tempDir);
   }
 });
 
-test('inventoryGuide detects prompts.md', () => {
+test('inventoryGuide detects task.md', () => {
   const tempDir = createTempDir();
   try {
     const useCase = path.join(tempDir, 'my-use-case');
     fs.mkdirSync(useCase);
-    fs.writeFileSync(path.join(useCase, 'prompts.md'), 'prompts');
-    const inv = inventoryGuide(useCase, new Map());
-    assert.strictEqual(inv.hasPrompts, true);
+    const tasksDir = path.join(useCase, 'tasks');
+    fs.mkdirSync(tasksDir);
+    fs.writeFileSync(path.join(tasksDir, 'task.md'), 'prompts');
+    const inv = inventoryGuide(useCase);
+    assert.strictEqual(inv.hasTask, true);
   } finally {
     removeTempDir(tempDir);
   }
@@ -106,7 +108,7 @@ web-feature-ids:
   - view-transitions
 ---
 Some content.`);
-    const inv = inventoryGuide(useCase, new Map());
+    const inv = inventoryGuide(useCase);
     assert.deepStrictEqual(inv.featureIds, ['dialog-closedby', 'view-transitions']);
   } finally {
     removeTempDir(tempDir);
@@ -119,7 +121,7 @@ test('inventoryGuide detects expectations.md empty state', () => {
     const useCase = path.join(tempDir, 'my-use-case');
     fs.mkdirSync(useCase);
     fs.writeFileSync(path.join(useCase, 'expectations.md'), '');
-    const inv = inventoryGuide(useCase, new Map());
+    const inv = inventoryGuide(useCase);
     assert.strictEqual(inv.hasExpectations, true);
     assert.strictEqual(inv.expectationsEmpty, true);
   } finally {
