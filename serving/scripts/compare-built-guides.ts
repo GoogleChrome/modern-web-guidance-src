@@ -84,12 +84,12 @@ async function main() {
       editedList += `- [${guide}](#user-content-${anchor})\n`;
 
       try {
-        execSync(`diff -u "${beforeFile}" "${afterFile}"`, { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] });
+        execSync(`git diff --no-index "${beforeFile}" "${afterFile}"`, { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] });
       } catch (err: any) {
         if (err.stdout) {
           const formattedDiff = err.stdout
             .split("\n")
-            .slice(2) // Skip path header lines
+            .slice(4) // Skip git diff command and index header lines
             .map((line: string) => {
               if (line.startsWith("+")) return line.startsWith("+++") ? line : `+ ${line.slice(1)}`;
               if (line.startsWith("-")) return line.startsWith("---") ? line : `- ${line.slice(1)}`;
