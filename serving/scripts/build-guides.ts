@@ -49,6 +49,11 @@ let TARGET: BuildTarget = 'local-dev';
 export async function processGuides(opts: BuildOptions) {
   const { outputDir, target, force, targetGuidePath, modelName, noChunking } = opts;
 
+  if (process.env.SKIP_BUILD === "true") {
+    console.log("⏭️ Skipping guide compilation: SKIP_BUILD is set.");
+    return;
+  }
+
   BUILD_GUIDES_DIR = path.join(outputDir, "guides");
   VECTORS_FILE = (target === 'skills-cli' || target === 'skills-cli-npx')
     ? path.join(outputDir, "use-cases.vectors.gen.json.gz")
