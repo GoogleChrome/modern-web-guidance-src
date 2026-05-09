@@ -31,11 +31,7 @@ You can help browsers store data correctly and autofill inputs, so users don't h
 
 For email inputs use `autocomplete="username"`, since `username` is recognized by password managers in modern browsers—even though you should use `type="email"` and you may want to use `id="email"` and `name="email"`. For password inputs, use the appropriate `autocomplete` and `id` values to help browsers differentiate between new and current passwords.
 
-## Suggest Strong Password { #auth-suggest-strong-password }
 
-Modern browsers use heuristics to decide when to show the password manager UI and suggest a strong password.
-
-Built-in browser password generators mean users and developers don't need to work out what a "strong password" is. Since browsers can securely store passwords and autofill them as necessary, there's no need for users to remember or enter passwords. Encouraging users to take advantage of built-in browser password generators also means they're more likely to use a unique, strong password on your site, and less likely to reuse a password that could be compromised elsewhere.
 
 ## Allow Password Pasting { #auth-allow-password-pasting }
 
