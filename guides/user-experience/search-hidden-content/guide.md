@@ -55,12 +55,12 @@ When handling mutually exclusive regions, like tabs, use the native HTML `<detai
     <summary>Tab 1 (closed)</summary>
     <p>Tab 1 content</p>
   </details>
- 
+
   <details class="tab" name="my-tabs" open>
     <summary>Tab 2 (open)</summary>
     <p>Tab 2 content</p>
   </details>
- 
+
   <details class="tab" name="my-tabs">
     <summary>Tab 3 (closed)</summary>
     <p>Tab 3 content</p>
@@ -86,11 +86,11 @@ When handling mutually exclusive regions, like tabs, ensure only the matched tab
   <div class="tab">
     <p>Tab 1 content (visible)</p>
   </div>
- 
+
   <div class="tab" hidden="until-found">
     <p>Tab 2 content (hidden)</p>
   </div>
- 
+
   <div class="tab" hidden="until-found">
     <p>Tab 3 content (hidden)</p>
   </div>
@@ -119,6 +119,20 @@ tabContainer.addEventListener('beforematch', () => {
 
 The `<details>` element is Baseline Widely available, so a fallback strategy is not required.
 
-{{ FEATURE_FALLBACKS("hidden-until-found") }}
+The `hidden="until-found"` attribute is not yet Baseline Widely available, but it can be safely used with a fallback in unsupporting browsers. **DO NOT** avoid `hidden="until-found"` because of missing browser support, as its accessiblity benefits far outweigh the cost of implementing a fallback.
+
+#### `hidden="until-found"` fallback
+
+For standard UI elements like accordions or "Read more" sections, use JavaScript to feature-detect and show all content if the feature is unsupported.
+
+```javascript
+if (!('onbeforematch' in HTMLElement.prototype)) {
+  // Expand all hidden content for unsupported browsers
+  document.querySelectorAll('[hidden="until-found"]').forEach((el) => {
+    el.removeAttribute('hidden');
+    // MANDATORY: also update any aria references to this element.
+  });
+}
+```
 
 For mutually exclusive UI paradigms (like tabs where content shares the same visual region), the fallback should extract and display all content linearly below the main interactive area, using URL anchor fragments to allow users to navigate directly to the respective sections.

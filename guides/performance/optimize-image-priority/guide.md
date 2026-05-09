@@ -62,8 +62,10 @@ Browsers use heuristics to assign loading priorities to images, but these defaul
 - **MANDATORY**: **Do not** use `fetchpriority="low"` on standard below-the-fold images that are already using `loading="lazy"`. These images should load at normal priority once they enter the viewport.
 - **RECOMMENDED**: Avoid using `fetchpriority="auto"`. If you want the default priority, omit the attribute entirely to keep your HTML clean.
 - **DO NOT** combine `fetchpriority="high"` with `loading="lazy"` for the LCP image.
-{{ INCLUDE("features/fetch-priority.md#deprecated-importance") }}
+- **DO NOT** use the deprecated `importance` attribute. It has been replaced by `fetchpriority` and is not supported by any browser.
 
 ## Fallback strategy
 
-{{ FEATURE_FALLBACKS("fetch-priority") }}
+{{ BASELINE_STATUS("fetch-priority") }}
+
+The `fetchpriority` attribute is a progressive enhancement for the `<img>` element. If a browser does not support it, the attribute is ignored, and the browser uses its default priority heuristics.

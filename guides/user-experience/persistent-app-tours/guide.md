@@ -62,9 +62,15 @@ document.getElementById('tour-step').showPopover();
 
 {{ BASELINE_STATUS("popover") }}
 
-{{ INCLUDE("features/popover.md#polyfill-fallback") }}
+If the browser does not support Popover, use the `@oddbird/popover-polyfill`:
 
-{{ INCLUDE("features/popover.md#css-warning") }}
+```html
+<script type="module">
+  if (!HTMLElement.prototype.hasOwnProperty('popover')) {
+    await import('https://unpkg.com/@oddbird/popover-polyfill');
+  }
+</script>
+```
 
 Alternatively, for legacy support without a polyfill, use `position: fixed` and manually calculate coordinates via JavaScript `getBoundingClientRect()`.
 
@@ -75,9 +81,15 @@ Alternatively, for legacy support without a polyfill, use `position: fixed` and 
 To support browsers without anchor positioning, you can choose between using a polyfill or a pure CSS fallback.
 
 ##### Option 1: Polyfill Fallback
-{{ INCLUDE("features/anchor-positioning.md#polyfill-limitations") }}
+The `@oddbird/css-anchor-positioning` polyfill can be used to emulate anchor positioning. It does not support implicit anchors, so you MUST add explicit anchor names to the trigger. Additionally, `position-area` is not supported on popovers by the polyfill, so you MUST use `anchor()` on the desired insets instead of `position-area`.
 
-{{ INCLUDE("features/anchor-positioning.md#polyfill-loading") }}
+```html
+<script type="module">
+  if (!CSS.supports('anchor-name: --foo')) {
+    await import("https://unpkg.com/@oddbird/css-anchor-positioning");
+  }
+</script>
+```
 
 ```css
 #tour-step {

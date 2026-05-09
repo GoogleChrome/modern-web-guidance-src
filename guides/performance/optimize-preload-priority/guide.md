@@ -43,8 +43,10 @@ Preloading resources with `<link rel="preload">` signals to the browser that a r
 - **DO** specify the `as` attribute correctly to ensure the preload will be used.
 - **DO** prefer making critical resources (like LCP images) statically discoverable in HTML via `<img>` tags rather than relying on preloads for background images.
 - **DO** ensure that font preloads always have the `crossorigin` attribute (even if same-origin).
-{{ INCLUDE("features/fetch-priority.md#deprecated-importance") }}
+- **DO NOT** use the deprecated `importance` attribute. It has been replaced by `fetchpriority`.
 
 ## Fallback strategy
 
-{{ FEATURE_FALLBACKS("fetch-priority") }}
+{{ BASELINE_STATUS("fetch-priority") }}
+
+The `fetchpriority` attribute on `<link rel="preload">` is a progressive enhancement. Browsers that do not support it will still preload the resource using their default priority for that resource type. To ensure compatibility, always provide correct `as` and `type` attributes.

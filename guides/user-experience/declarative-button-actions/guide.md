@@ -13,7 +13,6 @@ sources:
 ---
 
 # Declarative Button Actions
-
 The Invoker Commands API allows buttons to trigger actions on target elements declaratively using HTML attributes. This approach reduces the need for manual event listeners and ensures interactivity as soon as the HTML is parsed.
 
 For custom, application-specific actions, you can define your own command names. Custom commands must be prefixed with a double dash (`--`) to avoid collisions with future built-in browser commands.
@@ -76,7 +75,28 @@ For custom, application-specific actions, you can define your own command names.
 
 {{ BASELINE_STATUS("invoker-commands") }}
 
-{{ INCLUDE("features/invoker-commands.md#polyfill") }}
+If the Invoker Commands API is not supported, the `command` event will not fire. For full support across all modern browsers, it is recommended to use the invokers-polyfill from https://github.com/keithamus/invokers-polyfill via `npm install` or CDN.
+
+This polyfill fully supports custom actions (starting with `--`) and dispatches the `command` event exactly like the native API.
+
+### Dynamic Import (Performance Optimization)
+
+For the best performance, you should only load the polyfill if the browser doesn't support the API natively. This saves bandwidth and reduces script execution time for users on modern browsers.
+
+```javascript
+// Check for native support first
+const hasNativeSupport = 'commandForElement' in HTMLButtonElement.prototype;
+
+if (!hasNativeSupport) {
+  // Dynamically import the polyfill only when needed
+  try {
+    await import('https://cdn.jsdelivr.net/npm/invokers-polyfill@latest/dist/index.min.js');
+    console.log('Invoker Commands polyfill loaded');
+  } catch (err) {
+    console.error('Error loading fallback:', err);
+  }
+}
+```
 
 ### Manual fallback (Traditional pattern)
 

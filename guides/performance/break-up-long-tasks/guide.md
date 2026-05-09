@@ -41,8 +41,33 @@ async function processLargeArray(items) {
 }
 ```
 
-{{ FEATURE_FALLBACKS("scheduler") }}
+### Fallback strategies
+
+{{ BASELINE_STATUS("scheduler") }}
+
+Some browsers may not support the `scheduler` API. You MUST implement a fallback using `setTimeout` to ensure code executes without breaking.
 
 #### Fallback for `scheduler.yield()`
 
-{{ INCLUDE("features/scheduler.md#fallback-yield") }}
+```javascript
+async function processLargeArrayWithFallback(items) {
+  // DO: Set a time-based deadline 50 milliseconds into the future.
+  let deadline = performance.now() + 50;
+
+  for (const item of items) {
+    processItem(item);
+    
+    // MANDATORY: Yield to the main thread periodically to keep the UI responsive.
+    if (performance.now() >= deadline) {
+      // DO: Feature detect scheduler.yield
+      if ('scheduler' in window && 'yield' in window.scheduler) {
+        await scheduler.yield();
+      } else {
+        // DO: Fallback to setTimeout for older browsers
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+      deadline = performance.now() + 50;
+    }
+  }
+}
+```

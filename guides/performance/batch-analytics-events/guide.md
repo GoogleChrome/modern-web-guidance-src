@@ -96,8 +96,65 @@ window.addEventListener('click', (event) => {
 
 ## Browser support and fallback strategies
 
-{{ FEATURE_FALLBACKS("fetchlater") }}
+{{ BASELINE_STATUS("fetchlater") }}. Therefore, a fallback strategy is typically required.
+
+However, given the improved reliability and performance benefits of this API, `fetchLater()` should be used if the browser supports it.
 
 ### `fetchLater()` polyfill
 
-{{ INCLUDE("features/fetchlater.md#polyfill") }}
+Use the following minimal `fetchLater()` polyfill, which implements the API as closely as possible in unsupporting browsers.
+
+The only notable behavior difference with this polyfill is instead of sending the payload when the user leaves the page, it sends it whenever the page's `visibilityState` changes to "hidden", since this is the most reliable end-of-session signal that's widely available today.
+
+```js
+globalThis.fetchLater ??= function fetchLater(url, init = {}) {
+  let timeoutHandle;
+  let activated = false;
+
+  function sendNow() {
+    if (!(init.signal && init.signal.aborted)) {
+      // Use fetch keepalive if the browser supports it or if custom fetch
+      // parameters are specified (e.g. custom headers or methods).
+      // Otherwise fall back to `navigator.sendBeacon()`.
+      if (
+        'keepalive' in Request.prototype ||
+        init.method !== 'POST' ||
+        init.headers
+      ) {
+        fetch(url, Object.assign({}, init, {keepalive: true}));
+        activated = true;
+      } else {
+        activated = navigator.sendBeacon(url, init.body);
+      }
+    }
+    destroy();
+  }
+
+  function destroy() {
+    document.removeEventListener('visibilitychange', sendNow);
+    clearTimeout(timeoutHandle);
+  }
+
+  if (document.visibilityState === 'hidden') {
+    // If the beacon was created while the page is already hidden, send data
+    // ASAP but wait until the next microtask to allow all sync code to run.
+    queueMicrotask(sendNow);
+  } else {
+    document.addEventListener('visibilitychange', sendNow);
+
+    if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
+      timeoutHandle = setTimeout(sendNow, init.activateAfter);
+    }
+  }
+
+  if (init.signal) {
+    init.signal.addEventListener('abort', destroy);
+  }
+
+  return {
+    get activated() {
+      return activated;
+    },
+  };
+};
+```

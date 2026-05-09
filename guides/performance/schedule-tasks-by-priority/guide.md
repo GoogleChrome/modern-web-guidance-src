@@ -41,6 +41,31 @@ scheduler.postTask(() => {
 }, { priority: 'background' });
 ```
 
-{{ FEATURE_FALLBACKS("scheduler") }}
+### Fallback strategies
 
-{{ INCLUDE("features/scheduler.md#fallback-posttask") }}
+{{ BASELINE_STATUS("scheduler") }}
+
+To support browsers that do not have the Prioritized Task Scheduling API, you must use a polyfill to maintain task prioritization.
+
+```javascript
+// Feature detect the scheduler API
+if (!('scheduler' in window && 'postTask' in window.scheduler)) {
+  // DO: Conditionally load the polyfill for browsers that need it
+  const script = document.createElement('script');
+  script.src = 'https://unpkg.com/scheduler-polyfill';
+  script.onload = () => {
+    // Polyfill is loaded and ready to use
+    runScheduledTasks();
+  };
+  document.head.appendChild(script);
+} else {
+  runScheduledTasks();
+}
+
+function runScheduledTasks() {
+  // Now safe to use scheduler.postTask in all browsers
+  scheduler.postTask(() => {
+    console.log('Task with priority support');
+  }, { priority: 'background' });
+}
+```

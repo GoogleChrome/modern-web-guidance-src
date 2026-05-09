@@ -90,15 +90,26 @@ Interest invokers must be conditionally polyfilled with the `interestfor` polyfi
 
 Popover and popover hint must conditionally be polyfilled with the `@oddbird/popover-polyfill` polyfill. The hint behavior will not be polyfilled in browsers that support `popover` but not `popover="hint"`. For those browsers, a tooltip opened via focus may stay open when a second tooltip opened via hover.
 
-{{ INCLUDE("features/popover.md#polyfill-fallback") }}
-
-{{ INCLUDE("features/popover.md#css-warning") }}
+```html
+<script type="module">
+  if(!HTMLElement.prototype.hasOwnProperty("popover")){
+    await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
+  }
+</script>
+```
 
 {{ BASELINE_STATUS("anchor-positioning") }}
 
-{{ INCLUDE("features/anchor-positioning.md#polyfill-limitations") }}
+**MANDATORY:** To support browsers without anchor positioning, you MUST use the `@oddbird/css-anchor-positioning` polyfill. It does not support implicit anchors, so you MUST add anchor names to the trigger. Additionally, `position-area` is not supported on popovers by the polyfill, so you MUST use `anchor()` on the desired insets. 
 
-{{ INCLUDE("features/anchor-positioning.md#polyfill-loading") }}
+```html
+<!-- MANDATORY: Conditionally install the anchor positioning polyfill -->
+<script type="module">
+  if (!("anchorName" in document.documentElement.style)) {
+    await import("https://unpkg.com/@oddbird/css-anchor-positioning");
+  }
+</script>
+```
 
 ```css
 button[interestfor="tooltip-attrs"] {

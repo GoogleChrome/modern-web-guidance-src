@@ -120,6 +120,38 @@ heavySection.addEventListener('beforematch', (event) => {
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("content-visibility") }}
+### `content-visibility` fallback
 
-{{ FEATURE_FALLBACKS("hidden-until-found") }}
+{{ BASELINE_STATUS("content-visibility") }}
+
+When `content-visibility` is not supported it will be ignored by the browser. In most cases `content-visibility: auto` will not need a fallback, though without it performance gains will be lost. An unsupported browser will leave `content-visibility: hidden` elements completely visible. Use feature detection to implement a fallback.
+
+```css
+/* Default for everyone */
+.inactive {
+  display: none;
+}
+
+/* Modern Browsers only */
+@supports (content-visibility: hidden) {
+ .inactive {
+    display: block; /* Turn the layout box back on */
+    content-visibility: hidden;
+  }
+}
+```
+
+### `hidden="until-found"` fallback
+
+{{ BASELINE_STATUS("hidden-until-found") }}
+
+When `hidden="until-found"` is not supported elements will remain hidden. Use feature detection targeting `onbeforematch` and extract or reveal content accordingly. Feature detection MUST check for the existence of `onbeforematch` in `HTMLElement.prototype`.
+
+```javascript
+if (!('onbeforematch' in HTMLElement.prototype)) {
+  document.querySelectorAll('[hidden="until-found"]').forEach(el => {
+    // Unsupported browsers show content to maintain searchability
+    el.removeAttribute('hidden'); 
+  });
+}
+```
