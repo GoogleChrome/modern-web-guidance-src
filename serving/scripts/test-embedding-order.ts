@@ -24,28 +24,33 @@ Create performant, accessible, and lightweight user interfaces using current web
 Use this skill at the start of every web development task, including when implementing, modifying, or optimizing HTML, CSS, or JS/TS for web components, pages, landing pages, dashboards, layouts, or web applications.`;
 
 // 3. Comprehensive Query Battery (Target Matches & Edge Cases)
-const targetDeveloperQueries = [
-  // Category A: Direct / Explicit Platform requests
+// 3. COMPREHENSIVE NOISY, CONTESTED, AND DISTRACTOR QUERY BATTERIES
+const cleanDeveloperQueries = [
   "create a responsive CSS dashboard grid template",
-  "lazy load images in the image gallery container",
   "implement dynamic accessible popover overlays",
-  "autofill form elements with address autocomplete properties",
-  "optimize page INP using performance scroll animations",
-  // Category B: Implicit / Long-tail abstract styling
-  "make my dashboard page look cleaner and aligned",
-  "help me resolve standard element layout alignment centering bugs",
-  "improve site outlines for keyboard accessible focus indicators",
-  "refactor this custom button element to be lightweight",
   "styling a navigation header container widget"
 ];
 
-const negativeQueries = [
-  // Category C: Out-of-Scope / Backend / Tool commands
-  "how to implement a flask server routing decorator in python",
-  "query spanner database instances using distributed sql",
-  "configure a github actions build validation pipeline workflow",
-  "write a shell script runner to clean local directories",
-  "analyze pipeline heap memory allocations in Borg configurations"
+// Noise blocks designed to test token attention window dilution
+const noisePrefix = `Task status: WIP. Sprint backlog ID: 90912. Dependencies: spanner-db, docker-compose. 
+Kubernetes configurations for deployment pods have completed replication checks successfully. 
+Borg metrics dashboard configured on dev environment pipelines. Clean local workspace folder directory.`;
+
+const noiseSuffix = `Verify that backend system services are responsive via internal REST adapters. 
+Check spanner-db heap allocation limits. Project manager approvals needed before final merge.`;
+
+const semanticNoiseQueries = cleanDeveloperQueries.map(q => `${noisePrefix} ${q} ${noiseSuffix}`);
+
+const contestedIntentQueries = [
+  "help me design a flask backend database structure for postgres and write code to configure spanner schemas, also construct an accessible navigation CSS layout for standard headers",
+  "debugging spanner instances on distributed databases, but configure dynamic popovers layout styling so images are aligned inside retro frames",
+  "configure validation files for test running automation scripts in CI/CD containers, then build an optimized navigation layout bar centering page elements"
+];
+
+const outOfScopeNegatives = [
+  "configure distributed database shards and review deployment logs on development system structures",
+  "write spanner database migrations in pure sql format and test backend system connectivity metrics",
+  "deploy a python flask container script on dev borg pipeline environments"
 ];
 
 // 4. Helper: Mathematical Cosine Similarity logic
@@ -97,7 +102,7 @@ async function runEmbeddingSimilarityTest() {
   console.log('│  %-65s | %-15s | %-15s | %-10s', 'Query Prompt', 'Scope-First %', 'Warning-First %', 'Advantage');
   console.log('│  ' + '-'.repeat(115));
 
-  for (const query of targetDeveloperQueries) {
+  for (const query of cleanDeveloperQueries) {
     const queryEmbed = await fetchEmbedding(query);
     const scoreScopeFirst = calculateSimilarity(queryEmbed, embedScopeFirst);
     const scoreWarningFirst = calculateSimilarity(queryEmbed, embedWarningFirst);
@@ -118,7 +123,7 @@ async function runEmbeddingSimilarityTest() {
   console.log('│  %-65s | %-15s | %-15s | %-10s', 'Query Prompt', 'Scope-First %', 'Warning-First %', 'Advantage');
   console.log('│  ' + '-'.repeat(115));
 
-  for (const query of negativeQueries) {
+  for (const query of outOfScopeNegatives) {
     const queryEmbed = await fetchEmbedding(query);
     const scoreScopeFirst = calculateSimilarity(queryEmbed, embedScopeFirst);
     const scoreWarningFirst = calculateSimilarity(queryEmbed, embedWarningFirst);
@@ -136,13 +141,15 @@ async function runEmbeddingSimilarityTest() {
   }
 }
 
-async function runToolSelectionRoutingTest() {
+async function runHighLoadToolSelectionRoutingTest() {
   console.log('\n================================================================');
   console.log('🧪 TEST 2: Semantic Tool Routing Selection (gemini-flash-latest)');
   console.log('================================================================');
 
-  const systemPrompt = `You are an orchestration agent. You are equipped with a set of skills.
-For each user request, you must output only the name of the skill you decide to trigger, or "none" if no skill is relevant.
+  // Added Competitor Distractors to check trigger boundary precision
+  const systemPrompt = `You are an orchestration agent. You are equipped with a list of specialized skills.
+For each user request, you must choose and output ONLY the name of the skill you decide to trigger. 
+If no available skill is highly relevant to the user's core frontend request, output "none".
 
 Available Skills:
 1. Skill Name: "modern-web"
@@ -150,97 +157,101 @@ Available Skills:
    [DESCRIPTION_PLACEHOLDER]
 
 2. Skill Name: "python-database"
-   Skill Description: "Use this skill for python flask db integrations, spanner SQL, or database schemas."
+   Skill Description: "Use this for Flask routers, database connections, SQL tables, or Spanner queries."
+
+3. Skill Name: "web-performance"
+   Skill Description: "Optimize page layouts for core web vitals, lazy load images, dynamic performance metrics, scroll adjustments, layout shifts, and INP improvements."
+
+4. Skill Name: "legacy-jquery-migration"
+   Skill Description: "For resolving older frame alignments, classic table UI layouts, retro JSP components, and basic styling alignment modifications in vintage structures."
 `;
 
-  const evaluateQueries = async (descBlock: string, label: string): Promise<{ tpr: number; fpr: number; selectionList: string[] }> => {
-    const currentSystemPrompt = systemPrompt.replace('[DESCRIPTION_PLACEHOLDER]', descBlock);
-    const results: string[] = [];
-    
-    let truePositives = 0;
-    let falsePositives = 0;
+  const evaluateStressSuite = async (descBlock: string, label: string) => {
+    const promptText = systemPrompt.replace('[DESCRIPTION_PLACEHOLDER]', descBlock);
+    let tpClean = 0, tpNoise = 0, tpContested = 0, fpNeg = 0;
+    const selectionResults: string[] = [];
 
-    // Target Developer queries dispatcher loops
-    for (const query of targetDeveloperQueries) {
-      try {
-        const response = await ai.models.generateContent({
-          model: 'gemini-flash-latest',
-          contents: query,
-          config: {
-            systemInstruction: currentSystemPrompt,
-            temperature: 0.0, // absolute deterministic verification
-          }
-        });
-        
-        const selection = response.text ? response.text.trim().toLowerCase() : 'none';
-        results.push(selection);
-        if (selection.includes('modern-web')) {
-          truePositives++;
-        }
-      } catch (e: any) {
-        console.error(`❌ Error during ${label} test loop for query: "${query}". Msg: ${e.message}`);
-        results.push('error');
-      }
-      // Sleep slight context frames to prevent rate limits
-      await new Promise(r => setTimeout(r, 300));
+    console.log(`\n🔍 Running evaluations under: ${label}...`);
+
+    // Class 1: Clean Inputs
+    for (const q of cleanDeveloperQueries) {
+      const sel = await queryModel(promptText, q);
+      if (sel === 'modern-web') tpClean++;
+      selectionResults.push(sel);
+      await new Promise(r => setTimeout(r, 250));
     }
 
-    // Out-of-Scope / Negative queries dispatcher loops
-    for (const query of negativeQueries) {
-      try {
-        const response = await ai.models.generateContent({
-          model: 'gemini-flash-latest',
-          contents: query,
-          config: {
-            systemInstruction: currentSystemPrompt,
-            temperature: 0.0,
-          }
-        });
-        
-        const selection = response.text ? response.text.trim().toLowerCase() : 'none';
-        if (selection.includes('modern-web')) {
-          falsePositives++;
-        }
-      } catch (e: any) {
-        console.error(`❌ Error during negative evaluation loop: "${query}". Msg: ${e.message}`);
-      }
-      await new Promise(r => setTimeout(r, 300));
+    // Class 2: Diluted Semantic Noise
+    for (const q of semanticNoiseQueries) {
+      const sel = await queryModel(promptText, q);
+      if (sel === 'modern-web') tpNoise++;
+      selectionResults.push(sel);
+      await new Promise(r => setTimeout(r, 250));
+    }
+
+    // Class 3: Contested Intent
+    for (const q of contestedIntentQueries) {
+      const sel = await queryModel(promptText, q);
+      if (sel === 'modern-web') tpContested++;
+      selectionResults.push(sel);
+      await new Promise(r => setTimeout(r, 250));
+    }
+
+    // Class 4: Hard Negatives (Avoid bleed False Positives)
+    for (const q of outOfScopeNegatives) {
+      const sel = await queryModel(promptText, q);
+      if (sel === 'modern-web') fpNeg++;
+      await new Promise(r => setTimeout(r, 250));
     }
 
     return {
-      tpr: (truePositives / targetDeveloperQueries.length) * 100,
-      fpr: (falsePositives / negativeQueries.length) * 100,
-      selectionList: results
+      tprClean: (tpClean / cleanDeveloperQueries.length) * 100,
+      tprNoise: (tpNoise / semanticNoiseQueries.length) * 100,
+      tprContested: (tpContested / contestedIntentQueries.length) * 100,
+      fpr: (fpNeg / outOfScopeNegatives.length) * 100,
+      selectionList: selectionResults
     };
   };
 
-  console.log('Evaluating Option A: Scope-First Description (GOAL + TRIGGER + BYPASS)...');
-  const statsA = await evaluateQueries(candidateScopeFirst, 'Option A');
-  
-  console.log('\nEvaluating Option B: Warning-First Description (BYPASS + GOAL + TRIGGER)...');
-  const statsB = await evaluateQueries(candidateWarningFirst, 'Option B');
+  async function queryModel(sysInstruction: string, prompt: string): Promise<string> {
+    try {
+      const res = await ai.models.generateContent({
+        model: 'gemini-flash-latest',
+        contents: prompt,
+        config: {
+          systemInstruction: sysInstruction,
+          temperature: 0.0
+        }
+      });
+      return res.text ? res.text.trim().toLowerCase() : 'none';
+    } catch (err) {
+      return 'error';
+    }
+  }
 
-  console.log('\n' + '='.repeat(65));
-  console.log('📈 SYSTEM COMPARATIVE ACTIVATION METRICS SUMMARY');
-  console.log('='.repeat(65));
-  
-  console.log('├─ Option A (Scope-First - GOAL + TRIGGER + BYPASS):');
-  console.log(`│  True Positive Rate (Successful Activations):  ${statsA.tpr.toFixed(2)}% (${targetDeveloperQueries.length} targets)`);
-  console.log(`│  False Positive Rate (Irrelevant Triggers):    ${statsA.fpr.toFixed(2)}% (${negativeQueries.length} negative targets)`);
+  const statsA = await evaluateStressSuite(candidateScopeFirst, 'Option A (Scope-First)');
+  const statsB = await evaluateStressSuite(candidateWarningFirst, 'Option B (Warning-First)');
 
-  console.log('\n├─ Option B (Warning-First - BYPASS + GOAL + TRIGGER):');
-  console.log(`│  True Positive Rate (Successful Activations):  ${statsB.tpr.toFixed(2)}% (${targetDeveloperQueries.length} targets)`);
-  console.log(`│  False Positive Rate (Irrelevant Triggers):    ${statsB.fpr.toFixed(2)}% (${negativeQueries.length} negative targets)`);
-  console.log('│');
+  console.log('\n' + '='.repeat(80));
+  console.log('📈 COMPARATIVE COMPREHENSIVE STRESS PERFORMANCE RESULTS');
+  console.log('='.repeat(80));
+  console.log('Metrics Metric                     | Option A (Scope-First) | Option B (Warning-First)');
+  console.log('-'.repeat(80));
+  console.log(`TPR - Clean Targets (0% Noise)     | ${statsA.tprClean.toFixed(2)}%                | ${statsB.tprClean.toFixed(2)}%`);
+  console.log(`TPR - Diluted Noise Targets        | ${statsA.tprNoise.toFixed(2)}%                | ${statsB.tprNoise.toFixed(2)}%`);
+  console.log(`TPR - Contested Mixed Intents      | ${statsA.tprContested.toFixed(2)}%                | ${statsB.tprContested.toFixed(2)}%`);
+  console.log(`FPR - Out-of-Scope Distractors    | ${statsA.fpr.toFixed(2)}%                | ${statsB.fpr.toFixed(2)}%`);
+  console.log('='.repeat(80));
 
-  console.log('├─ Detailed Target Selection Comparisons:');
-  console.log('│  %-65s | %-18s | %-18s', 'User Query', 'Option A (Scope)', 'Option B (Warning)');
-  console.log('│  ' + '-'.repeat(109));
+  console.log('\n├─ Detailed Target Selection Comparisons:');
+  console.log('│  %-65s | %-20s | %-20s', 'User Query', 'Option A (Scope)', 'Option B (Warning)');
+  console.log('│  ' + '-'.repeat(113));
   
-  for (let i = 0; i < targetDeveloperQueries.length; i++) {
+  const allTests = [...cleanDeveloperQueries, ...semanticNoiseQueries, ...contestedIntentQueries];
+  for (let i = 0; i < allTests.length; i++) {
     console.log(
-      '│  %-65s | %-18s | %-18s',
-      `"${targetDeveloperQueries[i]}"`,
+      '│  %-65s | %-20s | %-20s',
+      `"${allTests[i].length > 60 ? allTests[i].substring(0, 57) + '...' : allTests[i]}"`,
       statsA.selectionList[i],
       statsB.selectionList[i]
     );
@@ -251,7 +262,7 @@ Available Skills:
 async function main() {
   console.log('🚀 Starting Compendious Empirical Prompt-Triggering Evaluation');
   await runEmbeddingSimilarityTest();
-  await runToolSelectionRoutingTest();
+  await runHighLoadToolSelectionRoutingTest();
   console.log('\n🏁 Validation Suite Finished.\n');
 }
 
