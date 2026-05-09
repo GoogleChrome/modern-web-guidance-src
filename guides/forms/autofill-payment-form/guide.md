@@ -19,13 +19,7 @@ Create a form that makes it as easy as possible for users to enter payment detai
 
 Outlined below are the most important guidelines for building successful payment forms.
 
-### Use meaningful, valid HTML
-
-{{ INCLUDE("features/forms.md#forms-meaningful-html") }}
-
-### Use the <label> element to label form fields for data entry
-
-{{ INCLUDE("features/forms.md#forms-label-element") }}
+{{ INCLUDE("features/forms.md#forms-markup-best-practices") }}
 
 ### Make the most of HTML attributes
 

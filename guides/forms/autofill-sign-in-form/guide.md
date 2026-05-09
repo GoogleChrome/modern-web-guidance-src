@@ -18,13 +18,7 @@ If users ever need to sign in to your site, then good sign-in form design is cri
 
 Outlined below are the most important guidelines for building successful sign-in forms.
 
-### Use meaningful, valid HTML
-
-{{ INCLUDE("features/forms.md#forms-meaningful-html") }}
-
-### Use the <label> element to label form fields for data entry
-
-{{ INCLUDE("features/forms.md#forms-label-element") }}
+{{ INCLUDE("features/forms.md#forms-markup-best-practices") }}
 
 ### Make the most of HTML attributes
 
@@ -58,17 +52,7 @@ This enables browsers to help users by securely storing sign-in details and corr
 
 Validate data entry both in realtime and before form submission. Use `type="email"` for email inputs — the browser will validate the format automatically. Add the `required` attribute to mandatory fields to prevent empty submissions.
 
-### Put sign-in in its own <form> element
-
-{{ INCLUDE("features/auth-forms.md#auth-own-form") }}
-
-### Keep passwords private—but enable users to see them if they want
-
-{{ INCLUDE("features/auth-forms.md#auth-keep-passwords-private") }}
-
-### Give mobile users the right keyboard
-
-{{ INCLUDE("features/auth-forms.md#auth-mobile-keyboard") }}
+{{ INCLUDE("features/auth-forms.md#auth-signin-practices") }}
 
 ### Prevent mobile keyboard from obstructing the Sign in button
 

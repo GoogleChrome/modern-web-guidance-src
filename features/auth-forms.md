@@ -44,3 +44,47 @@ Some sites don't allow text to be pasted into password inputs.
 Disallowing password pasting annoys users, encourages passwords that are memorable (and therefore may be easier to compromise) and, according to organizations such as the UK National Cyber Security Centre, may actually reduce security. Users only become aware that pasting is disallowed after they try to paste their password, so disallowing password pasting doesn't avoid clipboard vulnerabilities.
 
 Note that modern browsers actively ignore `onpaste="return false"` overrides on password fields to protect users against these exact security anti-patterns.
+
+## Registration Form Security and Layout { #auth-registration-practices }
+
+### Put sign-up in its own <form> element
+
+Always use the `<form>` element when you're getting users to enter data.
+
+Don't wrap inputs in a `<div>` and handle input data submission purely with JavaScript. It's generally better to use a `<form>` element. This makes your site accessible to screenreaders and other assistive devices, enables a range of built-in browser features, makes it simpler to build basic functional authentication for older browsers, and can still work even if JavaScript fails.
+
+### Don't double up inputs
+
+Some sites force users to enter emails or passwords twice. That might reduce errors for a few users, but causes extra work for all users, and increases abandonment rates. Asking twice also makes no sense where browsers autofill email addresses or suggest strong passwords. It's better to enable users to confirm their email address (you'll need to do that anyway) and make it easy for them to reset their password if necessary.
+
+### Keep passwords private—but enable users to see them if they want
+
+Passwords inputs should have `type="password"` to hide password text and help the browser understand that the input is for passwords. (Note that browsers use a variety of techniques to understand input roles and decide whether or not to offer to save passwords.)
+
+You should add a **Show password** toggle to enable users to check the text they've entered—and don't forget to add a **Forgot password** link.
+
+### Give mobile users the right keyboard
+
+Use `<input type="email">` to give mobile users an appropriate keyboard and enable basic built-in email address validation by the browser… no JavaScript required!
+
+If you need to use a telephone number instead of an email address, `<input type="tel">` enables a telephone keypad on mobile. You can also use the `inputmode` attribute where necessary: `inputmode="numeric"` is ideal for PIN numbers.
+
+## Sign-In Form Security and Layout { #auth-signin-practices }
+
+### Put sign-in in its own <form> element
+
+Always use the `<form>` element when you're getting users to enter data.
+
+Don't wrap inputs in a `<div>` and handle input data submission purely with JavaScript. It's generally better to use a `<form>` element. This makes your site accessible to screenreaders and other assistive devices, enables a range of built-in browser features, makes it simpler to build basic functional authentication for older browsers, and can still work even if JavaScript fails.
+
+### Keep passwords private—but enable users to see them if they want
+
+Passwords inputs should have `type="password"` to hide password text and help the browser understand that the input is for passwords. (Note that browsers use a variety of techniques to understand input roles and decide whether or not to offer to save passwords.)
+
+You should add a **Show password** toggle to enable users to check the text they've entered—and don't forget to add a **Forgot password** link.
+
+### Give mobile users the right keyboard
+
+Use `<input type="email">` to give mobile users an appropriate keyboard and enable basic built-in email address validation by the browser… no JavaScript required!
+
+If you need to use a telephone number instead of an email address, `<input type="tel">` enables a telephone keypad on mobile. You can also use the `inputmode` attribute where necessary: `inputmode="numeric"` is ideal for PIN numbers.
