@@ -4,42 +4,31 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
-    "start": "HOST=0.0.0.0 PORT=${PORT:-11224} ASTRO_DB_REMOTE_URL=file://db.file node ./dist/server/entry.mjs",
-    "build": "ASTRO_DATABASE_FILE=db.file astro build",
+    "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+    "build": "astro build",
     "preview": "astro preview",
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/db": "^0.18.2",
-    "@astrojs/node": "^10.0.5",
-    "@astrojs/react": "^4.4.1",
+    "@astrojs/node": "^10.0.6",
+    "@astrojs/react": "^5.0.4",
     "@heroicons/react": "^2.2.0",
-    "@lexical/react": "^0.35.0",
-    "@libsql/client": "^0.15.15",
-    "@tailwindcss/vite": "^4.1.13",
-    "@types/react": "^19.1.13",
-    "@types/react-dom": "^19.1.9",
-    "astro": "^6.1.6",
-    "firebase-tools": "^14.16.0",
-    "lexical": "^0.35.0",
-    "quill": "^2.0.3",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "sharp": "^0.34.3",
-    "tailwindcss": "^4.1.13"
+    "@tailwindcss/vite": "^4.2.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "astro": "^6.1.9",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^4.2.4"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.16",
-    "concurrently": "^9.2.1",
-    "express": "^5.1.0",
-    "http-proxy-middleware": "^3.0.5",
-    "sass": "^1.92.1"
+    "@tailwindcss/typography": "^0.5.19"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
-      "sharp",
-      "@libsql/client"
+      "sharp"
     ]
   }
 }

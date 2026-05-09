@@ -86,3 +86,61 @@ base_app: ${actualBaseAppName}
         if (fs.existsSync(resultsBase)) fs.rmSync(resultsBase, { recursive: true, force: true });
     }
 });
+
+test('collectResults extracts token usage from Claude Code JSONL format correctly', async (_t) => {
+    const resultsBase = path.resolve(testDir, 'fixtures-results-e2e-claude');
+    const guideName = '_e2e_test_guide_claude';
+
+    const performanceGuideDir = path.join(guidesDir, 'performance', guideName);
+    const tasksDir = path.join(performanceGuideDir, 'tasks');
+    const taskPath = path.join(tasksDir, 'task.md');
+
+    try {
+        if (!fs.existsSync(tasksDir)) fs.mkdirSync(tasksDir, { recursive: true });
+        const graderPath = path.join(performanceGuideDir, 'grader.ts');
+        fs.writeFileSync(graderPath, '// mock grader file');
+
+        fs.writeFileSync(taskPath, `---
+base_app: test-app
+---
+- E2E Mock Prompt`);
+
+        const runNumberDir = path.join(resultsBase, '1');
+        const targetDir = path.join(runNumberDir, guideName, 'task', 'guided');
+        fs.mkdirSync(targetDir, { recursive: true });
+
+        fs.writeFileSync(path.join(targetDir, 'index.html'), '<html>Mock HTML</html>');
+        fs.writeFileSync(path.join(targetDir, 'resources_used.json'), JSON.stringify([]));
+
+        const mockPlaywrightOutput = {
+            suites: [{ specs: [{ title: 'test spec', tests: [{ results: [{ status: 'passed' }] }] }] }]
+        };
+        fs.writeFileSync(path.join(targetDir, `${guideName}_results.json`), JSON.stringify(mockPlaywrightOutput));
+
+        // Write a mock Claude Code JSONL session file
+        const sessionLines = [
+            JSON.stringify({ message: { usage: { input_tokens: 6, cache_creation_input_tokens: 36344, cache_read_input_tokens: 0, output_tokens: 204 } } }),
+            JSON.stringify({ message: { usage: { input_tokens: 6, cache_creation_input_tokens: 841, cache_read_input_tokens: 36344, output_tokens: 248 } } })
+        ].join('\n');
+        fs.writeFileSync(path.join(targetDir, 'session-mock.jsonl'), sessionLines);
+
+        // Execute SUT
+        const { allResults } = await collectResults(resultsBase, defaultSuiteConfig);
+
+        const testKey = `task - ${guideName} - guided`;
+        const runPayload = allResults[testKey][0];
+
+        assert.ok(runPayload.tokenUsage, 'tokenUsage should be extracted');
+        // Expected total = (6 + 204 + 0) + (6 + 248 + 36344) = 36808
+        assert.strictEqual(runPayload.tokenUsage.total, 36808, 'Total tokens should include cache_read_input_tokens');
+        // Expected cached = 36344
+        assert.strictEqual(runPayload.tokenUsage.cached, 36344, 'Cached tokens should accumulate cache_read_input_tokens');
+        // Total - Cached should be 464 (which is positive)
+        assert.strictEqual(runPayload.tokenUsage.total - runPayload.tokenUsage.cached, 464, 'Net tokens should be positive and equal output + uncached input');
+
+    } finally {
+        if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });
+        if (fs.existsSync(resultsBase)) fs.rmSync(resultsBase, { recursive: true, force: true });
+    }
+});
+
