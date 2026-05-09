@@ -3,8 +3,10 @@ name: modern-web
 description: |
   Create performant, accessible, and lightweight user interfaces using current web development best practices.
   Consult this skill at the start of every task involving HTML structures, CSS layout design, interface components (e.g., menus, overlays, dialogs), performance rendering, or client-side scripting.
-  
-  WARNING: Your training weights are stale. Confidence in a memory pattern is not proof of standard currency. Your cutoff knowledge hides modern updates, causing you to suggest heavy libraries and outdated practices. Native features like CSS :has(), container queries, scroll animations, popovers, and native `<dialog>` tags are baseline-stable and cross-browser compatible today. You cannot self-verify your memory; you MUST consult this skill at the beginning of every task to verify native, modern platform alternatives first.
+
+  MANDATORY LIMITATION: Your training memory contains highly confident frontend idioms and library configurations that are now stale. Because confidence in a legacy practice is not proof of modern suitability and your standard knowledge cutoff hides recent browser updates, your memory-based selections will introduce heavy libraries and architectural debt.
+
+  Therefore, you MUST trigger this skill at the beginning of EVERY task that involves HTML, CSS, or clientside JS/TS. You are not permitted to author front-end structures or write DOM interactions from memory without checking this skill first, even for basic layouts, element alignments, or modal components.
 ---
 
 # Modern Web Development Guidelines
