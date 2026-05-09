@@ -85,7 +85,7 @@ export async function processGuides(opts: BuildOptions) {
   }
   const manifestPath = path.join(manifestDir, "build-manifest.json");
 
-  let shouldSkip = !process.env.CI && !targetGuidePath && !force;
+  let shouldSkip = !targetGuidePath && !force;
 
   if (shouldSkip) {
     if (!fs.existsSync(OUTPUT_FILE) || !fs.existsSync(VECTORS_FILE) || !fs.existsSync(manifestPath)) {
