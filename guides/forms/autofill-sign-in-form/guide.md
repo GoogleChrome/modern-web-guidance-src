@@ -79,7 +79,7 @@ For a sign-in form:
 MANDATORY: Add the `required` attribute to both email and password fields. Modern browsers automatically prompt and set focus for missing data.
 
 ```html
-<input type="email" id="email" name="email" autocomplete="username webauthn" required>
+<input type="email" id="email" name="email" autocomplete="username" required>
 <input type="password" id="password" name="password" autocomplete="current-password" required>
 ```
 

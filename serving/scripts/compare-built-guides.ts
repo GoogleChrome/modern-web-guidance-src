@@ -123,7 +123,7 @@ export function compareGuides(modifiedGuides: string[], baseline: string = BASEL
   }
 
   let md = `## 📝 Built Guides Diff\n\n`;
-  md += `To observe the effect of macro expansions, etc.  in this Pull Request vs. merge-base.\n\n### Summary\n`;
+  md += `Observe the effect of macro expansions, etc.  in this Pull Request vs. merge-base.\n\n### Summary\n`;
   md += `- **Verbatim (Macro rendering parity):** ${verbatimCount} guides\n`;
   md += `- **Refactored & Improved (Visual diffs):** ${editedCount} guides\n\n`;
 
