@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { parseArgs } from "util";
+import { fileURLToPath } from "node:url";
 
 interface CompareConfig {
   targetRef: string;
@@ -100,7 +101,7 @@ function getModifiedGuides(targetRef: string): string[] {
   }
 }
 
-function compareGuides(modifiedGuides: string[], baselineDir: string, branchDir: string): string {
+export function compareGuides(modifiedGuides: string[], baselineDir: string, branchDir: string): string {
   let verbatimCount = 0;
   let editedCount = 0;
   let verbatimList = "";
@@ -143,7 +144,7 @@ function compareGuides(modifiedGuides: string[], baselineDir: string, branchDir:
       verbatimList += `- \`${guide}\`\n`;
     } else {
       try {
-        execSync(`git diff --no-index --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`, { env: safeEnv });
+        execSync(`git diff --no-index --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`, { env: safeEnv, encoding: "utf-8" });
         // If no difference is resolved, classify as verbatim changes only
         verbatimCount++;
         verbatimList += `- \`${guide}\` (whitespace changes only)\n`;
@@ -229,9 +230,11 @@ function main() {
   }
 }
 
-try {
-  main();
-} catch (err: any) {
-  console.error("Execution failure:", err);
-  process.exit(1);
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  try {
+    main();
+  } catch (err: any) {
+    console.error("Execution failure:", err);
+    process.exit(1);
+  }
 }

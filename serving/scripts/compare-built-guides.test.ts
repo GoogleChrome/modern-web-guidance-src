@@ -5,7 +5,6 @@ import path from "node:path";
 import { compareGuides } from "./compare-built-guides.ts";
 
 test("compareGuides processes file-based diffs using local git diff --no-index without mocks", (t) => {
-  // Setup isolated temporary directories for the baseline and active branch compile outputs
   const tmpTestDir = fs.mkdtempSync("/tmp/test-guides-compare-");
   const baselineDir = path.join(tmpTestDir, "baseline");
   const branchDir = path.join(tmpTestDir, "branch");
@@ -13,7 +12,6 @@ test("compareGuides processes file-based diffs using local git diff --no-index w
   fs.mkdirSync(path.join(baselineDir, "forms"), { recursive: true });
   fs.mkdirSync(path.join(branchDir, "forms"), { recursive: true });
 
-  // Guarantee workspace cleanup when test iteration completes
   t.after(() => {
     try {
       fs.rmSync(tmpTestDir, { recursive: true, force: true });
@@ -21,43 +19,20 @@ test("compareGuides processes file-based diffs using local git diff --no-index w
   });
 
   // 1. Verbatim Scenario: Exact parity matches
-  fs.writeFileSync(
-    path.join(baselineDir, "forms/autofill-sign-in-form.md"),
-    "This is a standard sign-in guide prose content.\n"
-  );
-  fs.writeFileSync(
-    path.join(branchDir, "forms/autofill-sign-in-form.md"),
-    "This is a standard sign-in guide prose content.\n"
-  );
+  fs.writeFileSync(path.join(baselineDir, "forms/autofill-sign-in-form.md"), "This is a standard sign-in guide prose content.\n");
+  fs.writeFileSync(path.join(branchDir, "forms/autofill-sign-in-form.md"), "This is a standard sign-in guide prose content.\n");
 
   // 2. Modified Scenario: Prose delta
-  fs.writeFileSync(
-    path.join(baselineDir, "forms/autofill-sign-up-form.md"),
-    "Original text line.\n"
-  );
-  fs.writeFileSync(
-    path.join(branchDir, "forms/autofill-sign-up-form.md"),
-    "Original text line.\nAdded modification here.\n"
-  );
+  fs.writeFileSync(path.join(baselineDir, "forms/autofill-sign-up-form.md"), "Original text line.\n");
+  fs.writeFileSync(path.join(branchDir, "forms/autofill-sign-up-form.md"), "Original text line.\nAdded modification here.\n");
 
   // 3. Newly Created File Scenario
-  fs.writeFileSync(
-    path.join(branchDir, "forms/autofill-payment-form.md"),
-    "New payment form content.\n"
-  );
+  fs.writeFileSync(path.join(branchDir, "forms/autofill-payment-form.md"), "New payment form content.\n");
 
   // 4. Deleted File Scenario
-  fs.writeFileSync(
-    path.join(baselineDir, "forms/autofill-address-form.md"),
-    "Address form content.\n"
-  );
+  fs.writeFileSync(path.join(baselineDir, "forms/autofill-address-form.md"), "Address form content.\n");
 
-  const modifiedGuides = [
-    "forms/autofill-sign-in-form",
-    "forms/autofill-sign-up-form",
-    "forms/autofill-payment-form",
-    "forms/autofill-address-form"
-  ];
+  const modifiedGuides = ["forms/autofill-sign-in-form", "forms/autofill-sign-up-form", "forms/autofill-payment-form", "forms/autofill-address-form"];
 
   // Run comparative extraction directly.
   // Note that no git mock models are required because git diff --no-index runs on plain directories on-disk
