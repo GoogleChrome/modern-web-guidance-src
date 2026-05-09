@@ -25,6 +25,8 @@ Keep these principles in mind throughout:
 
 #### DON'Ts
 - **Don't use fake headings**: Never style `<div>` or `<span>` to look like headings without standard `<h1>`–`<h6>` tags.
+- **Don't place headings inside `<summary>`, and avoid relying on headings inside `<details>` content**: Headings inside `<summary>` may be hidden from screen-reader heading lists and heading-navigation shortcuts entirely; headings inside `<details>` content are only reachable via heading navigation when the disclosure is open.
+  - **Caveat**: If a heading must act as a disclosure trigger, use a more robust alternative to `<details>`/`<summary>` instead, e.g. an accordion or a disclosure implemented with ARIA where the heading wraps the button.
 - **Don't use tables for layout**: Use CSS Grid/Flexbox for visual layouts.
 - **Don't overuse landmarks**: Too many landmarks dilute their value. In particular, avoid labeling a `<section>` (which turns it into a `region` landmark) — `region` should be a last resort when no other landmark fits.
 
@@ -71,10 +73,8 @@ Keep these principles in mind throughout:
 #### DON'Ts
 - **Don't use ARIA when native HTML exists**: Avoid `<div role="button">` or `<a role="button">` if `<button>` works.
 - **Don't add redundant ARIA roles or properties**: Avoid `<ul role="list">`, `<nav role="navigation">`, or `<input required aria-required="true">`.
-  - **Caveat**: Safari removes list semantics from `<ul>`/`<ol>` outside `<nav>` when `list-style: none` or `display: flex`/`grid` is applied. In that case `role="list"` is required to restore them. A similar effect impacts `<table>` with flex/grid across more browsers.
+  - **Caveat**: Safari removes list semantics from `<ul>`/`<ol>` outside `<nav>` when `list-style: none` or `display: flex`/`grid` is applied. In that case `role="list"` is required to restore them.
 - **Don't assume custom elements have no ARIA**: Custom elements can attach ARIA via `ElementInternals`, which some automated test tools can't see — so the absence of `role`/`aria-*` attributes in markup doesn't prove the element has no semantics. Verify with the browser's accessibility-tree inspector.
-- **Don't place headings inside `<summary>`, and avoid relying on headings inside `<details>` content**: Headings inside `<summary>` may be hidden from screen-reader heading lists and heading-navigation shortcuts entirely; headings inside `<details>` content are only reachable via heading navigation when the disclosure is open.
-  - **Caveat**: If a heading must act as a disclosure trigger, use a more robust alternative to `<details>`/`<summary>` instead, e.g. an accordion or a disclosure implemented with ARIA where the heading wraps the button.
 
 ## 3. Accessible Names and Descriptions
 
@@ -120,7 +120,7 @@ A `.visually-hidden` utility lets you provide text for screen readers without re
 }
 ```
 
-When the hidden content is focusable (skip links, focus-receiving wrappers), the `:focus-within`/`:active` exception lets it become visible. Style the visible state per situation — a skip link typically wants fixed positioning at the top-left of the viewport so the rest of the page doesn't shift.
+When the hidden content is focusable (skip links, focus-receiving wrappers), the `:focus-within`/`:active` exception lets it become visible. Style the visible state per situation, e.g. a skip link to the main content typically wants fixed positioning at the top-left of the viewport so the rest of the page doesn't shift.
 
 ## 4. Document Metadata and Language
 
@@ -157,8 +157,7 @@ When the hidden content is focusable (skip links, focus-receiving wrappers), the
 
 #### DOs
 - **Logical Tab Order**: Ensure tab order matches visual layouts (top-to-bottom).
-- **Visible Focus Indicators**: Always style `:focus-visible` states explicitly. If disabling defaults, provide high-contrast overrides.
-- **Skip Navigation Links**: Provide a "skip to content" link at the top of the page, prior to repeated content or long lists so keyboard users can easily bypass them.
+- **Visible Focus Indicators**: Always style `:focus-visible` states explicitly. If disabling defaults, provide overrides with sufficient contrast.
 - **Lock Modal Focus**: Ensure focus cannot leave open modal dialogs.
 - **Custom Trigger Keyboards**: Attach Enter/Space handlers for custom simulated interactive elements. When implementing a custom keyboard handler for button-like elements, `Enter` should be a `keydown` handler and `Space` should be a `keyup` handler (matching native `<button>` behavior where `Enter` repeats and `Space` triggers on release).
 - **Use `tabindex` deliberately**: Anything focusable — by keyboard or programmatically — should have an implicit or explicit ARIA role, so don't make every element focusable. When focus is needed, choose `tabindex="0"` to add the element to the tab order or `tabindex="-1"` to make it programmatically focusable only (e.g., a skip-link target).
@@ -224,6 +223,7 @@ function toggleWidgetState() {
 - **Informative View Descriptions for inline SVGs**: Apply `role="img"` and a nested `<title>` tag for informative visuals.
 - **Decorative SVGs removal**: Apply `aria-hidden="true"` to remove decorative SVGs from reading flows.
 - **Long descriptions for complex images**: Use `<figure>`/`<figcaption>` or `aria-describedby` for charts and infographics.
+- **Provide data tables as alternatives**: Consider providing semantic data tables as accessible alternatives for charts and other complex data visualizations.
 
 #### DON'Ts
 - **Don't use clichéd prefixes**: Avoid "Image of..." or "Picture of...".
