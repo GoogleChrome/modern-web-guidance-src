@@ -77,6 +77,8 @@ function getModifiedGuides(): string[] {
   }
 }
 
+const readOrNull = (p: string): string | null => { try { return fs.readFileSync(p, "utf-8"); } catch { return null; } };
+
 export function compareGuides(modifiedGuides: string[], baseline: string = BASELINE_DIR, branch: string = BRANCH_DIR): string {
   let [verbatimCount, editedCount] = [0, 0];
   let [verbatimList, editedList] = ["", ""];
@@ -87,26 +89,16 @@ export function compareGuides(modifiedGuides: string[], baseline: string = BASEL
     const beforeFile = path.join(baseline, filename);
     const afterFile = path.join(branch, filename);
 
-    // BAN TOCTOU: Read file paths directly and handle file missing ENOENT states in catch blocks
-    let beforeText = "", afterText = "";
-    try {
-      beforeText = fs.readFileSync(beforeFile, "utf-8");
-    } catch (e: any) {
-      if (e.code === "ENOENT") {
-        diffSections.push(`### 🆕 [NEW] ${guide}\n\nGuide newly created in this PR.\n`);
-        continue;
-      }
-      throw e;
+    const beforeText = readOrNull(beforeFile);
+    if (beforeText === null) {
+      diffSections.push(`### 🆕 [NEW] ${guide}\n\nGuide newly created in this PR.\n`);
+      continue;
     }
 
-    try {
-      afterText = fs.readFileSync(afterFile, "utf-8");
-    } catch (e: any) {
-      if (e.code === "ENOENT") {
-        diffSections.push(`### 🗑️ [DELETED] ${guide}\n\nGuide deleted in this PR.\n`);
-        continue;
-      }
-      throw e;
+    const afterText = readOrNull(afterFile);
+    if (afterText === null) {
+      diffSections.push(`### 🗑️ [DELETED] ${guide}\n\nGuide deleted in this PR.\n`);
+      continue;
     }
 
     if (beforeText.replace(/\r\n/g, "\n").trim() === afterText.replace(/\r\n/g, "\n").trim()) {
