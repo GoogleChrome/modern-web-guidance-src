@@ -39,8 +39,6 @@ Some sites don't allow text to be pasted into password inputs.
 
 Disallowing password pasting annoys users, encourages passwords that are memorable (and therefore may be easier to compromise) and, according to organizations such as the UK National Cyber Security Centre, may actually reduce security. Users only become aware that pasting is disallowed after they try to paste their password, so disallowing password pasting doesn't avoid clipboard vulnerabilities.
 
-Note that modern browsers actively ignore `onpaste="return false"` overrides on password fields to protect users against these exact security anti-patterns.
-
 ## Registration Form Security and Layout { #auth-registration-practices }
 
 ### Put sign-up in its own <form> element
