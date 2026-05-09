@@ -1,25 +1,78 @@
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
+import { parseArgs } from "util";
 
-// Environment / inputs
-const TARGET_REF = process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : "origin/main";
-const BASELINE_DIR = process.env.BASELINE_BUILD_DIR || "/tmp/guides-baseline";
+// 1. Parse CLI and environment inputs
+const parsed = parseArgs({
+  options: {
+    "base-ref": { type: "string" },
+    "baseline-dir": { type: "string" },
+    "output-path": { type: "string" }
+  }
+});
+
+const TARGET_REF = parsed.values["base-ref"] || (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : "origin/main");
+const BASELINE_DIR = parsed.values["baseline-dir"] || process.env.BASELINE_BUILD_DIR || "/tmp/guides-baseline";
 const BRANCH_DIR = path.resolve(import.meta.dirname, "../build/guides");
-const OUTPUT_PATH = process.env.REPORT_OUTPUT_PATH || "";
+const OUTPUT_PATH = parsed.values["output-path"] || process.env.REPORT_OUTPUT_PATH || "";
 
-function runCommand(cmd: string): string {
-  return execSync(cmd, { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+const TEMP_REPO_DIR = "/tmp/guides-baseline-repo";
+
+function runCommand(cmd: string, cwd?: string): string {
+  return execSync(cmd, { cwd, encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 }
 
 async function main() {
+  // A. Safe Baseline Workspace Generation
+  try {
+    // Resolve merge base to compare relative content accurately
+    const mergeBase = runCommand(`git merge-base ${TARGET_REF} HEAD`);
+    console.log(`Resolved base git merge ancestor hash: ${mergeBase}`);
+
+    // Clean up active baselines
+    try {
+      if (fs.existsSync(TEMP_REPO_DIR)) {
+        runCommand(`git worktree remove -f "${TEMP_REPO_DIR}"`);
+      }
+    } catch (e) {}
+
+    console.log(`Setting up detached baseline worktree at "${TEMP_REPO_DIR}" for hash "${mergeBase}"...`);
+    runCommand(`git worktree add --detach "${TEMP_REPO_DIR}" "${mergeBase}"`);
+
+    console.log("Compiling baseline visual guides in worktree...");
+    execSync("pnpm install --frozen-lockfile", { cwd: TEMP_REPO_DIR, stdio: "inherit" });
+    execSync("pnpm --filter serving build", { cwd: TEMP_REPO_DIR, stdio: "inherit" });
+
+    console.log(`Syncing baseline guides compilation to: ${BASELINE_DIR}`);
+    if (fs.existsSync(BASELINE_DIR)) {
+      fs.rmSync(BASELINE_DIR, { recursive: true, force: true });
+    }
+    fs.mkdirSync(BASELINE_DIR, { recursive: true });
+    fs.cpSync(path.join(TEMP_REPO_DIR, "serving/build/guides"), BASELINE_DIR, { recursive: true });
+    console.log("Baseline guides setup completed.");
+
+  } catch (err: any) {
+    console.error("Fatal: Failed to bootstrap baseline comparison guide assets.", err);
+    process.exit(1);
+  } finally {
+    // Cleanup worktree sandbox
+    try {
+      if (fs.existsSync(TEMP_REPO_DIR)) {
+        console.log(`Removing baseline git worktree at "${TEMP_REPO_DIR}"...`);
+        runCommand(`git worktree remove -f "${TEMP_REPO_DIR}"`);
+      }
+    } catch (cleanErr: any) {
+      console.warn("Cleanup warning:", cleanErr.message);
+    }
+  }
+
   console.log(`Comparing branch build at "${BRANCH_DIR}" against baseline at "${BASELINE_DIR}" (target ref: ${TARGET_REF})`);
 
   let modifiedGuides: string[] = [];
 
-  // 1. Extract modified guides via git history
+  // 2. Extract modified guides via git history relative to merge-base
   try {
-    // Resolve common ancestor to avoid showing differences from master ahead shifts
     const mergeBase = runCommand(`git merge-base ${TARGET_REF} HEAD`);
     const gitDiff = runCommand(`git diff --name-only ${mergeBase} HEAD`);
     
