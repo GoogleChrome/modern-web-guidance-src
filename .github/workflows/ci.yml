@@ -17,7 +17,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-      - run: git fetch --tags
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
@@ -35,6 +36,21 @@ jobs:
         env:
           TEST_REPORTER: spec
         run: pnpm run preflight
+
+      - name: Compile Baseline Built Guides
+        run: |
+          git clone --depth 1 -b main https://github.com/GoogleChrome/guidance.git /tmp/baseline-repo
+          cd /tmp/baseline-repo
+          pnpm install
+          pnpm --filter serving build
+
+      - name: Compile Branch Guides & Compare
+        run: |
+          pnpm --filter serving build
+          BASELINE_BUILD_DIR=/tmp/baseline-repo/serving/build/guides REPORT_OUTPUT_PATH=/tmp/built-guides-diff.md node serving/scripts/compare-built-guides.ts
+          if [ -f /tmp/built-guides-diff.md ]; then
+            cat /tmp/built-guides-diff.md >> $GITHUB_STEP_SUMMARY
+          fi
 
       # Fail if any changes were written to any source files or generated untracked files
       - run: git add -A && git diff --cached --exit-code
