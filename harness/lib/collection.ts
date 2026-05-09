@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { collectGuidesUsed, collectGuidanceToolsUsed } from './guidance_validation.ts';
 import { Agents, type SuiteConfig } from '../config.ts';
-import { getTaskMap } from '../../lib/guide-validation.ts';
+import { getTaskMap, isDisciplineSkillDir } from '../../lib/guide-validation.ts';
 import { extractGeminiCliModel } from '../agents/gemini-cli-agent.ts';
 import { extractClaudeCodeModel } from '../agents/claude-code-agent.ts';
 import { extractCodexCliModel } from '../agents/codex-cli-agent.ts';
@@ -202,11 +202,10 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         continue;
       }
 
-      let taskCategory = path.basename(path.dirname(taskInfo.guideDir));
-      const isDisciplineSkill = taskCategory === 'guides';
+      const isDisciplineSkill = isDisciplineSkillDir(taskInfo.guideDir);
+      let taskCategory = isDisciplineSkill ? path.basename(taskInfo.guideDir) : path.basename(path.dirname(taskInfo.guideDir));
       let expectedToolPrefixes = ['modern-web'].filter(Boolean);
       if (isDisciplineSkill) {
-        taskCategory = path.basename(taskInfo.guideDir);
         expectedToolPrefixes = [taskCategory].filter(Boolean);
       }
 
@@ -322,7 +321,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
               }
               // Claude Code format
               if (obj.message && obj.message.usage) {
-                claudeTokens += (obj.message.usage.output_tokens || 0) + (obj.message.usage.input_tokens || 0);
+                claudeTokens += (obj.message.usage.output_tokens || 0) + (obj.message.usage.input_tokens || 0) + (obj.message.usage.cache_read_input_tokens || 0);
                 claudeCachedTokens += obj.message.usage.cache_read_input_tokens || 0;
                 fileHasClaudeTokens = true;
               }
@@ -347,6 +346,17 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
       if (!allResults[testName]) {
         allResults[testName] = [];
       }
+
+      const runtimeJsonPath = path.join(dir, 'runtime.json');
+      let runtimeData = undefined;
+      if (fs.existsSync(runtimeJsonPath)) {
+        try {
+          runtimeData = JSON.parse(fs.readFileSync(runtimeJsonPath, 'utf-8'));
+        } catch (e) {
+          console.error(`Error parsing runtime.json for ${dir}:`, e);
+        }
+      }
+
       allResults[testName].push({
         runNumber: parseInt(runDir),
         results: scenarioResults,
@@ -362,6 +372,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
         taskName: taskName,
         prompt: taskInfo.prompt,
         files: fs.readdirSync(dir).filter(f => !fs.statSync(path.join(dir, f)).isDirectory()),
+        runtime: runtimeData,
         tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
       });
     }

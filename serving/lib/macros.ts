@@ -1,5 +1,6 @@
+import path from "node:path";
 import { validateFeature, getStatusMessage, getFeatureName } from "./baseline.ts";
-import { getGuidesMap } from "../../lib/guide-validation.ts";
+import { getGuidesMap, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
 import { resolveInclude } from "./include.ts";
 
 /**
@@ -93,11 +94,8 @@ const MACRO_HANDLERS: Record<string, MacroHandler> = {
       return `\`${guideId}\` (via \`npx -p modern-web-guidance@latest -- modern-web retrieve "${guideId}"\`)`;
     }
 
-    if (guideInfo.isDisciplineSkill) {
-      return `\`${guideInfo.category}/SKILL.md\``;
-    }
-
-    return `\`${guideInfo.category}/${guideId}/guide.md\``;
+    const relativePath = path.relative(path.dirname(filePath), getGuideMarkdownPath(guideInfo));
+    return `\`${relativePath}\``;
   }
 };
 

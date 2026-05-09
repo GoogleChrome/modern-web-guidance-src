@@ -1,6 +1,6 @@
 ---
 name: batch-analytics-events
-description: Debounce and batch multiple analytics events together in a single beacon to minimize network contention and reduce server load, while still delivering real-time updates.
+description: Debounce and batch multiple analytics events or Core Web Vitals together in a single beacon using the web-vitals library to minimize network contention and reduce server load, while still delivering real-time updates.
 web-feature-ids:
   - fetchlater
   - aborting

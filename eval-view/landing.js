@@ -304,12 +304,21 @@ async function loadLocalTests() {
 
 async function loadRemoteTests() {
     try {
-        // Fetch from GCS JSON API directly instead of our node proxy
-        const response = await authenticatedFetch(`https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/`);
-        if (!response.ok) throw new Error('Failed to fetch remote suites');
+        const prefixes = [];
+        let pageToken = '';
         
-        const data = await response.json();
-        const prefixes = data.prefixes || [];
+        // Paginate GCS to retrieve all prefixes without truncation limits
+        do {
+            const url = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/&t=${Date.now()}${pageToken ? `&pageToken=${pageToken}` : ''}`;
+            const response = await authenticatedFetch(url);
+            if (!response.ok) throw new Error('Failed to fetch remote suites');
+            
+            const data = await response.json();
+            if (data.prefixes) {
+                prefixes.push(...data.prefixes);
+            }
+            pageToken = data.nextPageToken || '';
+        } while (pageToken);
         
         if (prefixes.length > 0) {
              document.getElementById('empty-state').style.display = 'none';
