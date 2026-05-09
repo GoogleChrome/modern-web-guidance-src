@@ -29,7 +29,7 @@ You can help browsers store data correctly and autofill inputs, so users don't h
 1. The `autocomplete`, `name`, `id`, and `type` attributes help browsers understand the role of inputs in order to store data that can later be used for autofill. To allow data to be stored for autofill, modern browsers also require inputs to have a stable `name` or `id` value (not randomly generated on each page load or site deployment), and to be in a `<form>` element with a `submit` button.
 2. The `autocomplete` attribute helps browsers correctly autofill inputs using stored data.
 
-For email inputs use `autocomplete="username webauthn"`, since `username` is recognized by password managers in modern browsers and `webauthn` enables WebAuthn Conditional UI (Passkey Autofill) so users can log in seamlessly with biometric sensors. You should still use `type="email"` and you may want to use `id="email"` and `name="email"`. For password inputs, use the appropriate `autocomplete` and `id` values to help browsers differentiate between new and current passwords.
+For email inputs use `autocomplete="username"`, since `username` is recognized by password managers in modern browsers—even though you should use `type="email"` and you may want to use `id="email"` and `name="email"`. For password inputs, use the appropriate `autocomplete` and `id` values to help browsers differentiate between new and current passwords.
 
 ## Suggest Strong Password { #auth-suggest-strong-password }
 
