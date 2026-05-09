@@ -10,16 +10,6 @@ if (typeof process.loadEnvFile === 'function') {
   }
 }
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-
-if (!ANTHROPIC_API_KEY) {
-  console.warn('Warning: ANTHROPIC_API_KEY environment variable is not set. Claude mirror may fail.');
-}
-if (!GOOGLE_API_KEY) {
-  console.warn('Warning: GOOGLE_API_KEY environment variable is not set. Gemini mirror may fail.');
-}
-
 async function callGemini(prompt) {
   const command = process.env.GEMINI_CLI_BIN || 'gemini';
   console.log(`Executing Gemini CLI: ${command} ...`);
