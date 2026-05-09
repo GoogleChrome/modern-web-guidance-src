@@ -4,7 +4,6 @@ description: Register a passkey for an existing user account.
 web-feature-ids:
   - webauthn
   - webauthn-signals
-  - webauthn-public-key-easy
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
   - https://www.w3.org/TR/webauthn-3/
@@ -189,7 +188,7 @@ To silently and automatically register a passkey for a user immediately followin
 
 ### Biometrics Registration Fallback
 
-{{ BASELINE_STATUS("webauthn") }}
+{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
 Passkey registration is a progressive enhancement. If biometrics or platform authenticators are unsupported by the browser or device, the application MUST fall back immediately to standard forms.
 *   **Fallback Experience**: Gracefully fallback to traditional secure password flows (with optional Multi-Factor authentication) or standard credential fields.
@@ -210,7 +209,7 @@ The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used 
 
 ### Easy JSON Serialization Fallback
 
-{{ BASELINE_STATUS("webauthn-public-key-easy") }}
+{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseCreationOptionsFromJSON_static") }}
 
 The WebAuthn JSON serialization helper methods represent progressive optimizations.
 *   **Fallback Experience**: If `PublicKeyCredential.parseCreationOptionsFromJSON` or `credential.toJSON` are unsupported by the browser, the application MUST gracefully fall back to manual base64url-to-ArrayBuffer encoding and decoding helper scripts to parse options and verify credentials safely.

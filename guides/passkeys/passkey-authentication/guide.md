@@ -4,7 +4,6 @@ description: Authenticate a returning user with a passkey for primary sign-in.
 web-feature-ids:
   - webauthn
   - webauthn-signals
-  - webauthn-public-key-easy
 sources:
   - https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
   - https://www.w3.org/TR/webauthn-3/
@@ -187,7 +186,7 @@ window.addEventListener('DOMContentLoaded', initializeConditionalAutofill);
 
 ### Biometrics Authentication Fallback
 
-{{ BASELINE_STATUS("webauthn") }}
+{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
 Passkey authentication is a progressive enhancement. If platform authenticators are unsupported by the device, the application MUST fallback immediately to standard forms.
 *   **Fallback Experience**: Gracefully fallback to traditional password inputs or browser-stored password autofill flows natively.
@@ -208,7 +207,7 @@ The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used 
 
 ### Easy JSON Serialization Fallback
 
-{{ BASELINE_STATUS("webauthn-public-key-easy") }}
+{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseRequestOptionsFromJSON_static") }}
 
 The WebAuthn JSON serialization helper methods represent progressive optimizations.
 *   **Fallback Experience**: If `PublicKeyCredential.parseRequestOptionsFromJSON` or `credential.toJSON` are unsupported by the browser, the application MUST gracefully fall back to manual base64url-to-ArrayBuffer encoding and decoding helper scripts to parse options and verify credentials safely.

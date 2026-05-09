@@ -152,7 +152,7 @@ async function performRename(credentialId, updatedName, updatedDisplayName) {
 
 ### Biometrics Management Fallback
 
-{{ BASELINE_STATUS("webauthn") }}
+{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
 Passkey management is a progressive enhancement. If browser or device environments do not support platform capabilities, the application MUST fallback immediately to standard profile options.
 *   **Fallback Experience**: Surface standard profile panels allowing users to manage MFA devices, passwords, or security questions natively.

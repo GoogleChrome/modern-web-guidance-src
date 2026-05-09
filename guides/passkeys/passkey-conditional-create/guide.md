@@ -4,7 +4,6 @@ description: Silently register a passkey for an existing user after a successful
 web-feature-ids:
   - webauthn
   - webauthn-signals
-  - webauthn-public-key-easy
 sources:
   - https://web.dev/articles/passkey-registration
   - https://www.w3.org/TR/webauthn-3/
@@ -112,7 +111,7 @@ async function triggerConditionalCreate(loginAbortController) {
 
 ### Conditional Create Fallback
 
-{{ BASELINE_STATUS("webauthn") }}
+{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
 Conditional passkey creation is an optional progressive optimization. If the device does not support `conditionalCreate`:
 *   **Fallback Experience**: The page should complete the password login successfully and direct the user to their home feed normally, without displaying any fallback error or biometrics dialogs.
@@ -127,7 +126,7 @@ The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used 
 
 ### Easy JSON Serialization Fallback
 
-{{ BASELINE_STATUS("webauthn-public-key-easy") }}
+{{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseCreationOptionsFromJSON_static") }}
 
 The WebAuthn JSON serialization helper methods represent progressive optimizations.
 *   **Fallback Experience**: If `PublicKeyCredential.parseCreationOptionsFromJSON` or `credential.toJSON` are unsupported by the browser, the application MUST gracefully fall back to manual base64url-to-ArrayBuffer encoding and decoding helper scripts to parse options and verify credentials safely.
