@@ -97,9 +97,15 @@ async function main() {
             })
             .join("\n");
 
-          diffSections.push(`<h3 id="${anchor}">${guide}</h3>\n\n\`\`\`diff\n${formattedDiff}\n\`\`\`\n`);
+          const escapedDiff = formattedDiff
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/`/g, "&#96;");
+
+          diffSections.push(`<h3 id="${anchor}">${guide}</h3>\n\n<pre><code class="language-diff">${escapedDiff}</code></pre>\n`);
         } else {
-          diffSections.push(`<h3 id="${anchor}">${guide}</h3>\n\n*Error displaying differences.*\n`);
+          diffSections.push(`<h3 id="${anchor}">${guide}</h3>\n\n<pre><code>Error displaying differences.</code></pre>\n`);
         }
       }
     }
