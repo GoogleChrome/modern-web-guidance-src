@@ -17,7 +17,7 @@ async function main() {
 
   let modifiedGuides: string[] = [];
 
-  // 1. Attempt to extract modified guides via git history
+  // 1. Extract modified guides via git history
   try {
     // Resolve common ancestor to avoid showing differences from master ahead shifts
     const mergeBase = runCommand(`git merge-base ${TARGET_REF} HEAD`);
@@ -36,31 +36,9 @@ async function main() {
     }
     modifiedGuides = Array.from(guideSet);
     console.log(`Git detected ${modifiedGuides.length} modified guides.`);
-  } catch (err) {
-    console.warn("Shallow clone or Git error, falling back to directory search comparison...");
-    // Fallback: compare all directories that exist in both
-    const scanDir = (dir: string): string[] => {
-      if (!fs.existsSync(dir)) return [];
-      const results: string[] = [];
-      const categories = fs.readdirSync(dir);
-      for (const cat of categories) {
-        const catPath = path.join(dir, cat);
-        if (fs.statSync(catPath).isDirectory()) {
-          const files = fs.readdirSync(catPath);
-          for (const file of files) {
-            if (file.endsWith(".md")) {
-              results.push(`${cat}/${file.slice(0, -3)}`);
-            }
-          }
-        }
-      }
-      return results;
-    };
-
-    const branchGuides = scanDir(BRANCH_DIR);
-    const baselineGuides = scanDir(BASELINE_DIR);
-    modifiedGuides = branchGuides.filter(g => baselineGuides.includes(g));
-    console.log(`Fallback scan resolved ${modifiedGuides.length} shared guides.`);
+  } catch (err: any) {
+    console.error("Fatal: Failed to resolve Git merge differences. Guide comparison runs require a non-shallow target merge tree.", err);
+    process.exit(1);
   }
 
   if (modifiedGuides.length === 0) {
