@@ -98,14 +98,11 @@ async function main() {
             .join("\n");
 
           const escapedDiff = formattedDiff
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/`/g, "&#96;");
+            .replace(/`/g, "`\u200b");
 
-          diffSections.push(`<h3 id="${anchor}">${guide}</h3>\n\n<pre><code class="language-diff">${escapedDiff}</code></pre>\n`);
+          diffSections.push(`<h3 id="${anchor}">${guide}</h3>\n\n\`\`\`diff\n${escapedDiff}\n\`\`\`\n`);
         } else {
-          diffSections.push(`<h3 id="${anchor}">${guide}</h3>\n\n<pre><code>Error displaying differences.</code></pre>\n`);
+          diffSections.push(`<h3 id="${anchor}">${guide}</h3>\n\n\`\`\`diff\nError displaying differences.\n\`\`\`\n`);
         }
       }
     }
