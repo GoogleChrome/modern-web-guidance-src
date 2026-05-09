@@ -39,7 +39,7 @@ jobs:
 
       - name: Compile Baseline Built Guides
         run: |
-          git clone --depth 1 -b ${{ github.base_ref || github.event.repository.default_branch }} https://github.com/GoogleChrome/guidance.git /tmp/baseline-repo
+          git worktree add /tmp/baseline-repo origin/${{ github.base_ref || github.event.repository.default_branch }}
           cd /tmp/baseline-repo
           pnpm install
           pnpm --filter serving build
