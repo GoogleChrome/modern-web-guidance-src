@@ -1,7 +1,9 @@
 import fs from "fs";
 import path from "path";
-import { execSync } from "child_process";
-import { parseArgs } from "util";
+import { execSync, exec } from "child_process";
+import { parseArgs, promisify } from "util";
+
+const execPromise = promisify(exec);
 
 // 1. Parse CLI and environment inputs
 const parsed = parseArgs({
@@ -23,18 +25,32 @@ function runCommand(cmd: string, cwd?: string): string {
   return execSync(cmd, { cwd, encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 }
 
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let index = 0;
+  async function worker() {
+    while (index < items.length) {
+      const i = index++;
+      results[i] = await fn(items[i]);
+    }
+  }
+  const workers = Array.from({ length: Math.min(limit, items.length) }, worker);
+  await Promise.all(workers);
+  return results;
+}
+
 async function main() {
+  let mergeBase = "";
+
   // A. Safe Baseline Workspace Generation
   try {
     // Resolve merge base to compare relative content accurately
-    const mergeBase = runCommand(`git merge-base ${TARGET_REF} HEAD`);
+    mergeBase = runCommand(`git merge-base ${TARGET_REF} HEAD`);
     console.log(`Resolved base git merge ancestor hash: ${mergeBase}`);
 
-    // Clean up active baselines
+    // Clean up active baselines directly
     try {
-      if (fs.existsSync(TEMP_REPO_DIR)) {
-        runCommand(`git worktree remove -f "${TEMP_REPO_DIR}"`);
-      }
+      runCommand(`git worktree remove -f "${TEMP_REPO_DIR}"`);
     } catch (e) {}
 
     console.log(`Setting up detached baseline worktree at "${TEMP_REPO_DIR}" for hash "${mergeBase}"...`);
@@ -45,9 +61,7 @@ async function main() {
     execSync("pnpm --filter serving build", { cwd: TEMP_REPO_DIR, stdio: "inherit" });
 
     console.log(`Syncing baseline guides compilation to: ${BASELINE_DIR}`);
-    if (fs.existsSync(BASELINE_DIR)) {
-      fs.rmSync(BASELINE_DIR, { recursive: true, force: true });
-    }
+    fs.rmSync(BASELINE_DIR, { recursive: true, force: true });
     fs.mkdirSync(BASELINE_DIR, { recursive: true });
     fs.cpSync(path.join(TEMP_REPO_DIR, "serving/build/guides"), BASELINE_DIR, { recursive: true });
     console.log("Baseline guides setup completed.");
@@ -56,12 +70,10 @@ async function main() {
     console.error("Fatal: Failed to bootstrap baseline comparison guide assets.", err);
     process.exit(1);
   } finally {
-    // Cleanup worktree sandbox
+    // Cleanup worktree sandbox directly
     try {
-      if (fs.existsSync(TEMP_REPO_DIR)) {
-        console.log(`Removing baseline git worktree at "${TEMP_REPO_DIR}"...`);
-        runCommand(`git worktree remove -f "${TEMP_REPO_DIR}"`);
-      }
+      console.log(`Removing baseline git worktree at "${TEMP_REPO_DIR}"...`);
+      runCommand(`git worktree remove -f "${TEMP_REPO_DIR}"`);
     } catch (cleanErr: any) {
       console.warn("Cleanup warning:", cleanErr.message);
     }
@@ -73,7 +85,6 @@ async function main() {
 
   // 2. Extract modified guides via git history relative to merge-base
   try {
-    const mergeBase = runCommand(`git merge-base ${TARGET_REF} HEAD`);
     const gitDiff = runCommand(`git diff --name-only ${mergeBase} HEAD`);
     
     const lines = gitDiff.split("\n");
@@ -104,60 +115,116 @@ async function main() {
     process.exit(0);
   }
 
+  // Guide process definition that runs concurrently
+  async function processGuide(guide: string) {
+    const filename = `${guide}.md`;
+    const beforeFile = path.join(BASELINE_DIR, filename);
+    const afterFile = path.join(BRANCH_DIR, filename);
+
+    let beforeExists = false;
+    let afterExists = false;
+
+    try {
+      await fs.promises.access(beforeFile);
+      beforeExists = true;
+    } catch {}
+
+    try {
+      await fs.promises.access(afterFile);
+      afterExists = true;
+    } catch {}
+
+    if (!beforeExists) {
+      return {
+        guide,
+        status: "new" as const,
+        diffSection: `### 🆕 [NEW] ${guide}\n\nGuide newly created in this Pull Request.\n`
+      };
+    }
+
+    if (!afterExists) {
+      return {
+        guide,
+        status: "deleted" as const,
+        diffSection: `### 🗑️ [DELETED] ${guide}\n\nGuide deleted in this Pull Request.\n`
+      };
+    }
+
+    // Concurrent async reads
+    const [beforeText, afterText] = await Promise.all([
+      fs.promises.readFile(beforeFile, "utf-8"),
+      fs.promises.readFile(afterFile, "utf-8")
+    ]);
+
+    const normBefore = beforeText.replace(/\r\n/g, "\n").trim();
+    const normAfter = afterText.replace(/\r\n/g, "\n").trim();
+
+    if (normBefore === normAfter) {
+      return {
+        guide,
+        status: "verbatim" as const,
+        verbatimListLine: `- \`${guide}\`\n`
+      };
+    }
+
+    const anchor = guide.replace(/\//g, "-");
+    const editedListLine = `- [${guide}](#user-content-${anchor})\n`;
+    let diffSection = "";
+
+    try {
+      await execPromise(`git diff --no-index --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`);
+      // If no difference was found under whitespace/blank lines options, treat as verbatim
+      return {
+        guide,
+        status: "verbatim" as const,
+        verbatimListLine: `- \`${guide}\` (whitespace changes only)\n`
+      };
+    } catch (err: any) {
+      if (err.stdout) {
+        const formattedDiff = err.stdout
+          .split("\n")
+          .slice(4)
+          .map((line: string) => {
+            if (line.startsWith("+")) return line.startsWith("+++") ? line : `+ ${line.slice(1)}`;
+            if (line.startsWith("-")) return line.startsWith("---") ? line : `- ${line.slice(1)}`;
+            return line;
+          })
+          .join("\n");
+
+        const escapedDiff = formattedDiff.replace(/`/g, "`\u200b");
+        diffSection = `<h3 id="${anchor}">${guide}</h3>\n\n\`\`\`diff\n${escapedDiff}\n\`\`\`\n`;
+      } else {
+        diffSection = `<h3 id="${anchor}">${guide}</h3>\n\n\`\`\`diff\nError displaying differences.\n\`\`\`\n`;
+      }
+    }
+
+    return {
+      guide,
+      status: "edited" as const,
+      editedListLine,
+      diffSection
+    };
+  }
+
+  // Limit concurrency to 10 concurrent processes to respect resource constraints
+  const results = await mapLimit(modifiedGuides, 10, processGuide);
+
   let verbatimCount = 0;
   let editedCount = 0;
   let verbatimList = "";
   let editedList = "";
   const diffSections: string[] = [];
 
-  for (const guide of modifiedGuides) {
-    const filename = `${guide}.md`;
-    const beforeFile = path.join(BASELINE_DIR, filename);
-    const afterFile = path.join(BRANCH_DIR, filename);
-
-    if (!fs.existsSync(beforeFile)) {
-      diffSections.push(`### 🆕 [NEW] ${guide}\n\nGuide newly created in this Pull Request.\n`);
-      continue;
-    }
-
-    if (!fs.existsSync(afterFile)) {
-      diffSections.push(`### 🗑️ [DELETED] ${guide}\n\nGuide deleted in this Pull Request.\n`);
-      continue;
-    }
-
-    const beforeText = fs.readFileSync(beforeFile, "utf-8").replace(/\r\n/g, "\n").trim();
-    const afterText = fs.readFileSync(afterFile, "utf-8").replace(/\r\n/g, "\n").trim();
-
-    if (beforeText === afterText) {
+  for (const res of results) {
+    if (res.status === "new" || res.status === "deleted") {
+      if (res.diffSection) diffSections.push(res.diffSection);
+    } else if (res.status === "verbatim") {
       verbatimCount++;
-      verbatimList += `- \`${guide}\`\n`;
-    } else {
+      if (res.verbatimListLine) verbatimList += res.verbatimListLine;
+    } else if (res.status === "edited") {
       editedCount++;
-      const anchor = guide.replace(/\//g, "-");
-      editedList += `- [${guide}](#user-content-${anchor})\n`;
-
-      try {
-        execSync(`git diff --no-index --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`, { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] });
-      } catch (err: any) {
-        if (err.stdout) {
-          const formattedDiff = err.stdout
-            .split("\n")
-            .slice(4) // Skip git diff command and index header lines
-            .map((line: string) => {
-              if (line.startsWith("+")) return line.startsWith("+++") ? line : `+ ${line.slice(1)}`;
-              if (line.startsWith("-")) return line.startsWith("---") ? line : `- ${line.slice(1)}`;
-              return line;
-            })
-            .join("\n");
-
-          const escapedDiff = formattedDiff
-            .replace(/`/g, "`\u200b");
-
-          diffSections.push(`<h3 id="${anchor}">${guide}</h3>\n\n\`\`\`diff\n${escapedDiff}\n\`\`\`\n`);
-        } else {
-          diffSections.push(`<h3 id="${anchor}">${guide}</h3>\n\n\`\`\`diff\nError displaying differences.\n\`\`\`\n`);
-        }
-      }
+      if (res.editedListLine) editedList += res.editedListLine;
+      if (res.diffSection) diffSections.push(res.diffSection);
     }
   }
 
