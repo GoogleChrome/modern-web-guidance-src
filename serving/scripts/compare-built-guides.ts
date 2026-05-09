@@ -3,23 +3,15 @@ import path from "path";
 import { execSync } from "child_process";
 import { parseArgs } from "util";
 
-// 1. Parse CLI and environment inputs
-const parsed = parseArgs({
-  options: {
-    "base-ref": { type: "string" },
-    "baseline-dir": { type: "string" },
-    "output-path": { type: "string" }
-  }
-});
+interface CompareConfig {
+  targetRef: string;
+  baselineDir: string;
+  branchDir: string;
+  outputPath: string;
+  tempRepoDir: string;
+}
 
-const rand = Math.random().toString(36).substring(2, 10);
-const TARGET_REF = parsed.values["base-ref"] || (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : "origin/main");
-const BASELINE_DIR = parsed.values["baseline-dir"] || process.env.BASELINE_BUILD_DIR || `/tmp/guides-baseline-${rand}`;
-const BRANCH_DIR = path.resolve(import.meta.dirname, "../build/guides");
-const OUTPUT_PATH = parsed.values["output-path"] || process.env.REPORT_OUTPUT_PATH || "";
-
-const TEMP_REPO_DIR = `/tmp/guides-baseline-repo-${rand}`;
-
+// Duplicate process environments to isolate git index settings inside child sandboxes
 const safeEnv = { ...process.env };
 delete safeEnv.GIT_DIR;
 delete safeEnv.GIT_WORK_TREE;
@@ -28,58 +20,64 @@ function runCommand(cmd: string, cwd?: string): string {
   return execSync(cmd, { cwd, env: safeEnv, encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 }
 
-function main() {
-  let mergeBase = "";
+function parseConfig(): CompareConfig {
+  const parsed = parseArgs({
+    options: {
+      "base-ref": { type: "string" },
+      "baseline-dir": { type: "string" },
+      "output-path": { type: "string" }
+    }
+  });
 
-  // A. Safe Baseline Workspace Generation
+  return {
+    targetRef: parsed.values["base-ref"] || (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : "origin/main"),
+    baselineDir: parsed.values["baseline-dir"] || process.env.BASELINE_BUILD_DIR || "/tmp/guides-baseline",
+    branchDir: path.resolve(import.meta.dirname, "../build/guides"),
+    outputPath: parsed.values["output-path"] || process.env.REPORT_OUTPUT_PATH || "",
+    tempRepoDir: "/tmp/guides-baseline-repo"
+  };
+}
+
+function setupBaselineWorkspace(config: CompareConfig) {
+  const { targetRef, tempRepoDir, baselineDir } = config;
+
+  const mergeBase = runCommand(`git merge-base ${targetRef} HEAD`);
+  console.log(`Resolved base git merge ancestor hash: ${mergeBase}`);
+
+  // Clean up active baseline repositories directly if lingering from previous runs
   try {
-    // Resolve merge base to compare relative content accurately
-    mergeBase = runCommand(`git merge-base ${TARGET_REF} HEAD`);
-    console.log(`Resolved base git merge ancestor hash: ${mergeBase}`);
+    runCommand(`git worktree remove -f "${tempRepoDir}"`);
+  } catch (e) {}
 
-    // Clean up active baselines directly
-    try {
-      runCommand(`git worktree remove -f "${TEMP_REPO_DIR}"`);
-    } catch (e) {}
-
-    console.log(`Setting up detached baseline worktree at "${TEMP_REPO_DIR}" for hash "${mergeBase}"...`);
-    runCommand(`git worktree add --detach "${TEMP_REPO_DIR}" "${mergeBase}"`);
+  try {
+    console.log(`Setting up detached baseline worktree at "${tempRepoDir}" for hash "${mergeBase}"...`);
+    runCommand(`git worktree add --detach "${tempRepoDir}" "${mergeBase}"`);
 
     console.log("Compiling baseline visual guides in worktree...");
-    execSync("pnpm install --frozen-lockfile", { cwd: TEMP_REPO_DIR, env: safeEnv, stdio: "inherit" });
-    execSync("pnpm --filter serving build", { cwd: TEMP_REPO_DIR, env: safeEnv, stdio: "inherit" });
+    execSync("pnpm install --frozen-lockfile", { cwd: tempRepoDir, env: safeEnv, stdio: "inherit" });
+    execSync("pnpm --filter serving build", { cwd: tempRepoDir, env: safeEnv, stdio: "inherit" });
 
-    console.log(`Syncing baseline guides compilation to: ${BASELINE_DIR}`);
-    fs.rmSync(BASELINE_DIR, { recursive: true, force: true });
-    fs.mkdirSync(BASELINE_DIR, { recursive: true });
-    fs.cpSync(path.join(TEMP_REPO_DIR, "serving/build/guides"), BASELINE_DIR, { recursive: true });
+    console.log(`Syncing baseline guides compilation to: ${baselineDir}`);
+    fs.rmSync(baselineDir, { recursive: true, force: true });
+    fs.mkdirSync(baselineDir, { recursive: true });
+    fs.cpSync(path.join(tempRepoDir, "serving/build/guides"), baselineDir, { recursive: true });
     console.log("Baseline guides setup completed.");
-
-  } catch (err: any) {
+  } catch (err) {
     console.error("Fatal: Failed to bootstrap baseline comparison guide assets.", err);
     process.exit(1);
   } finally {
-    // Cleanup worktree sandbox directly
     try {
-      console.log(`Removing baseline git worktree at "${TEMP_REPO_DIR}"...`);
-      runCommand(`git worktree remove -f "${TEMP_REPO_DIR}"`);
+      console.log(`Removing baseline git worktree at "${tempRepoDir}"...`);
+      runCommand(`git worktree remove -f "${tempRepoDir}"`);
     } catch (cleanErr: any) {
       console.warn("Cleanup warning:", cleanErr.message);
     }
-    try {
-      if (fs.existsSync(BASELINE_DIR)) {
-        console.log(`Cleaning up temporary baseline guides build folder at "${BASELINE_DIR}"...`);
-        fs.rmSync(BASELINE_DIR, { recursive: true, force: true });
-      }
-    } catch (e) {}
   }
+}
 
-  console.log(`Comparing branch build at "${BRANCH_DIR}" against baseline at "${BASELINE_DIR}" (target ref: ${TARGET_REF})`);
-
-  let modifiedGuides: string[] = [];
-
-  // 2. Extract modified guides via git history relative to merge-base
+function getModifiedGuides(targetRef: string): string[] {
   try {
+    const mergeBase = runCommand(`git merge-base ${targetRef} HEAD`);
     const gitDiff = runCommand(`git diff --name-only ${mergeBase} HEAD`);
     
     const lines = gitDiff.split("\n");
@@ -93,23 +91,16 @@ function main() {
         }
       }
     }
-    modifiedGuides = Array.from(guideSet);
-    console.log(`Git detected ${modifiedGuides.length} modified guides.`);
-  } catch (err: any) {
+    const modified = Array.from(guideSet);
+    console.log(`Git detected ${modified.length} modified guides.`);
+    return modified;
+  } catch (err) {
     console.error("Fatal: Failed to resolve Git merge differences. Guide comparison runs require a non-shallow target merge tree.", err);
     process.exit(1);
   }
+}
 
-  if (modifiedGuides.length === 0) {
-    const report = `### 📝 Built Guides Diff Review\n\nNo modified guides detected compared to baseline.`;
-    if (OUTPUT_PATH) {
-      fs.writeFileSync(OUTPUT_PATH, report);
-    } else {
-      console.log(report);
-    }
-    process.exit(0);
-  }
-
+function compareGuides(modifiedGuides: string[], baselineDir: string, branchDir: string): string {
   let verbatimCount = 0;
   let editedCount = 0;
   let verbatimList = "";
@@ -118,29 +109,42 @@ function main() {
 
   for (const guide of modifiedGuides) {
     const filename = guide.endsWith("SKILL.md") ? guide : `${guide}.md`;
-    const beforeFile = path.join(BASELINE_DIR, filename);
-    const afterFile = path.join(BRANCH_DIR, filename);
+    const beforeFile = path.join(baselineDir, filename);
+    const afterFile = path.join(branchDir, filename);
 
-    if (!fs.existsSync(beforeFile)) {
-      diffSections.push(`### 🆕 [NEW] ${guide}\n\nGuide newly created in this Pull Request.\n`);
-      continue;
+    // BAN TOCTOU: Read file paths directly and handle file missing ENOENT states in catch blocks
+    let beforeText = "";
+    try {
+      beforeText = fs.readFileSync(beforeFile, "utf-8");
+    } catch (e: any) {
+      if (e.code === "ENOENT") {
+        diffSections.push(`### 🆕 [NEW] ${guide}\n\nGuide newly created in this Pull Request.\n`);
+        continue;
+      }
+      throw e;
     }
 
-    if (!fs.existsSync(afterFile)) {
-      diffSections.push(`### 🗑️ [DELETED] ${guide}\n\nGuide deleted in this Pull Request.\n`);
-      continue;
+    let afterText = "";
+    try {
+      afterText = fs.readFileSync(afterFile, "utf-8");
+    } catch (e: any) {
+      if (e.code === "ENOENT") {
+        diffSections.push(`### 🗑️ [DELETED] ${guide}\n\nGuide deleted in this Pull Request.\n`);
+        continue;
+      }
+      throw e;
     }
 
-    const beforeText = fs.readFileSync(beforeFile, "utf-8").replace(/\r\n/g, "\n").trim();
-    const afterText = fs.readFileSync(afterFile, "utf-8").replace(/\r\n/g, "\n").trim();
+    const normBefore = beforeText.replace(/\r\n/g, "\n").trim();
+    const normAfter = afterText.replace(/\r\n/g, "\n").trim();
 
-    if (beforeText === afterText) {
+    if (normBefore === normAfter) {
       verbatimCount++;
       verbatimList += `- \`${guide}\`\n`;
     } else {
       try {
         execSync(`git diff --no-index --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`, { env: safeEnv });
-        // If no difference was found under space/blank line ignores, treat as verbatim
+        // If no difference is resolved, classify as verbatim changes only
         verbatimCount++;
         verbatimList += `- \`${guide}\` (whitespace changes only)\n`;
       } catch (err: any) {
@@ -187,12 +191,41 @@ function main() {
     md += diffSections.join("\n---\n\n");
   }
 
-  if (OUTPUT_PATH) {
-    fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
-    fs.writeFileSync(OUTPUT_PATH, md);
-    console.log(`Output report successfully built at: ${OUTPUT_PATH}`);
+  return md;
+}
+
+function writeReport(outputPath: string, report: string) {
+  if (outputPath) {
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    fs.writeFileSync(outputPath, report);
+    console.log(`Output report successfully built at: ${outputPath}`);
   } else {
-    console.log(md);
+    console.log(report);
+  }
+}
+
+function cleanupWorkspace(baselineDir: string) {
+  try {
+    fs.rmSync(baselineDir, { recursive: true, force: true });
+    console.log(`Cleaning up temporary baseline guides folder at "${baselineDir}"...`);
+  } catch (e) {}
+}
+
+function main() {
+  const config = parseConfig();
+  setupBaselineWorkspace(config);
+
+  try {
+    const modifiedGuides = getModifiedGuides(config.targetRef);
+    if (modifiedGuides.length === 0) {
+      writeReport(config.outputPath, "### 📝 Built Guides Diff Review\n\nNo modified guides detected compared to baseline.");
+      return;
+    }
+
+    const report = compareGuides(modifiedGuides, config.baselineDir, config.branchDir);
+    writeReport(config.outputPath, report);
+  } finally {
+    cleanupWorkspace(config.baselineDir);
   }
 }
 
