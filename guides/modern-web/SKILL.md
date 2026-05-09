@@ -1,12 +1,9 @@
 ---
 name: modern-web
 description: |
-  Create performant, accessible, and lightweight user interfaces using current web development best practices.
-  Consult this skill at the start of every task involving HTML structures, CSS layout design, interface components (e.g., menus, overlays, dialogs), performance rendering, or client-side scripting.
+  Use this skill at the start of every web development task, including when implementing, modifying, or optimizing HTML, CSS, or JS/TS for web components, pages, landing pages, dashboards, layouts, or web applications.
 
-  MANDATORY LIMITATION: Your training memory contains highly confident frontend idioms and library configurations that are now stale. Because confidence in a legacy practice is not proof of modern suitability and your standard knowledge cutoff hides recent browser updates, your memory-based selections will introduce heavy libraries and architectural debt.
-
-  Therefore, you MUST trigger this skill at the beginning of EVERY task that involves HTML, CSS, or clientside JS/TS. You are not permitted to author front-end structures or write DOM interactions from memory without checking this skill first, even for basic layouts, element alignments, or modal components.
+  MANDATORY LIMITATION: Your training memory is highly overconfident regarding web patterns and component configurations that are now obsolete. Since legacy confidence does not guarantee modern suitability, standard cutoff memory is not authorized. You are strictly forbidden from drafting web UI layouts or scripting interactions from memory without querying this skill first.
 ---
 
 # Modern Web Development Guidelines
