@@ -61,7 +61,7 @@ You can use `@media` or other queries directly inside a function to return diffe
   }
 }
 
-.container {
+main {
   display: grid;
   grid-template-columns: --grid-template(2);
 }
@@ -72,3 +72,26 @@ You can use `@media` or other queries directly inside a function to return diffe
 - **Provide Defaults:** Make your functions more robust by providing sensible default values.
 - **Keep it Simple:** Use functions for logic that is actually repeated or complex. Don't over-engineer simple property-value pairs.
 - **Use Types:** Ensure your parameters and return values are the expected types.
+- **Consider Precompiled Alternatives:** For functions that do not depend on user input, media queries or other client-side variation, consider using a CSS precompiler to avoid doing unnecessary work on the client. 
+
+### Fallback strategies
+
+{{ BASELINE_STATUS("function") }}
+
+In browsers that do not support CSS Functions, values set using CSS functions will be invalid. To support other browsers, provide a fallback value for the property first. This will be overridden in browsers with CSS function support.
+
+```css
+.card {
+  /* Provide fallback, in this case a solid color. */
+  background: #5d87e9;
+  background: --fancy-gradient(#ed73d7, #5d87e9);
+}
+
+main {
+  /* Provide fallback, in this case a simple stacked default. */
+  grid-template-columns: 1fr;
+  grid-template-columns: --grid-template(2);
+}
+```
+
+If it is a requirement to reduce style repetition while supporting other browsers, consider a CSS precompiler with functions, like Sass.
