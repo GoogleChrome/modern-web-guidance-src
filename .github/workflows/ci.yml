@@ -32,11 +32,6 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Preflight (Typecheck, Lint, Tests)
-        env:
-          TEST_REPORTER: spec
-        run: pnpm run preflight
-
       - name: Compile Baseline Built Guides
         run: |
           git worktree add /tmp/baseline-repo origin/${{ github.base_ref || github.event.repository.default_branch }}
@@ -51,6 +46,11 @@ jobs:
           if [ -f /tmp/built-guides-diff.md ]; then
             cat /tmp/built-guides-diff.md >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Preflight (Typecheck, Lint, Tests)
+        env:
+          TEST_REPORTER: spec
+        run: pnpm run preflight
 
       # Fail if any changes were written to any source files or generated untracked files
       - run: git add -A && git diff --cached --exit-code
