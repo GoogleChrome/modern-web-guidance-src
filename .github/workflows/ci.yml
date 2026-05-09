@@ -39,7 +39,7 @@ jobs:
           TEST_REPORTER: spec
         run: pnpm run preflight
 
-      - name: Compile Branch Guides & Compare Diffs
+      - name: Compare built (post-macro) guides 
         run: |
           pnpm --filter serving build
           REPORT_OUTPUT_PATH=/tmp/built-guides-diff.md node serving/scripts/compare-built-guides.ts --base-ref "origin/${{ github.base_ref || github.event.repository.default_branch }}"
