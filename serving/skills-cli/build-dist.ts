@@ -122,8 +122,20 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
 async function main(opts: {publishRoot: string, version?: string, npx?: boolean}): Promise<BuildResult | undefined> {
   const {publishRoot, version, npx} = opts;
 
-  fs.rmSync(publishRoot, { recursive: true, force: true });
-  fs.mkdirSync(publishRoot, {recursive: true});
+  // Instead of wiping the entire directory (which destroys the cached vectors and guides),
+  // we only clean up other skills to ensure freshness, preserving modern-web's cache.
+  if (fs.existsSync(publishRoot)) {
+    const skillsDir = path.join(publishRoot, "skills");
+    if (fs.existsSync(skillsDir)) {
+      for (const s of fs.readdirSync(skillsDir)) {
+        if (s !== "modern-web") {
+          fs.rmSync(path.join(skillsDir, s), { recursive: true, force: true });
+        }
+      }
+    }
+  } else {
+    fs.mkdirSync(publishRoot, { recursive: true });
+  }
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web");
 
@@ -420,7 +432,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   (async () => {
     try {
-      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true});
       await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version});
     } catch (err) {
       console.error(err);

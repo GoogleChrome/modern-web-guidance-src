@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "^2.1.126",
-    "@google/gemini-cli-core": "latest"
+    "@google/gemini-cli-core": "latest",
+    "serving": "workspace:*"
   }
 }
