@@ -695,7 +695,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                         const arr = JSON.parse(arrayStr);
                         promptText = arr[1];
                         const baseAppPath = arr[4];
-                        if (baseAppPath) baseApp = baseAppPath.split('/').pop();
+                        if (baseAppPath) baseApp = sampleRun.baseApp || baseAppPath.split('/').pop();
                     }
                 } catch (e) {
                     console.log('Falling back to living guide file:', e);
