@@ -113,7 +113,12 @@ export class DumbbellChart {
 
     this.svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     this.svg.setAttribute("width", "100%");
-    this.svg.setAttribute("height", this.options.height || height);
+    let svgHeight = this.options.height || height;
+    const cWidth = this.container.clientWidth;
+    if (cWidth > 0 && cWidth < width) {
+        svgHeight = Math.min(svgHeight, cWidth * (height / width));
+    }
+    this.svg.setAttribute("height", svgHeight.toString());
     this.svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
     // If fixed height is forced, we want it to stretch to fill it!
     this.svg.setAttribute("preserveAspectRatio", this.options.height ? "none" : "xMidYMin meet");

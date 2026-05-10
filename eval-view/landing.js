@@ -614,7 +614,7 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
 
     if (!tooltipChartInstance) {
         tooltipChartInstance = new DumbbellChart('tooltip-chart', {
-            size: 400, maxHeight: 250, rowHeight: 20, margin: { top: 15, right: 15, bottom: 15, left: 15 }, hideLegend: true, hideLabels: true, hideSeparators: true, hideZeros: true, hideAxes: true
+            size: 270, maxHeight: 250, rowHeight: 20, margin: { top: 15, right: 15, bottom: 15, left: 15 }, hideLegend: true, hideLabels: true, hideSeparators: true, hideZeros: true, hideAxes: true
         });
     }
 
