@@ -7,6 +7,12 @@ import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
 
+const TRAJECTORY_GLOB = 'session-*.jsonl';
+
+function getSessionFiles(dir: string, recursive = false): string[] {
+  return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
+}
+
 
 // Usage: node claude-code-agent.ts <prompt> <runType> <targetDir> <templateDir>
 /**
@@ -144,8 +150,7 @@ async function run() {
 export async function collectClaudeGuidesFromTrajectory(dirPath: string, _serving: string): Promise<{ retrievedGuides: string[]; fileReadGuides: string[] }> {
   const result = { retrievedGuides: [] as string[], fileReadGuides: [] as string[] };
   try {
-    const files = fs.readdirSync(dirPath);
-    const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
+    const sessionFiles = getSessionFiles(dirPath);
 
     for (const file of sessionFiles) {
       const sessionPath = path.join(dirPath, file);
@@ -195,7 +200,7 @@ export async function collectClaudeGuidesFromTrajectory(dirPath: string, _servin
 }
 
 export function extractClaudeCodeModel(resultsDir: string): string {
-  const sessionFiles = fs.globSync('**/session-*.jsonl', { cwd: resultsDir });
+  const sessionFiles = getSessionFiles(resultsDir, true);
   if (sessionFiles.length === 0) return 'unknown';
 
   const counts: Record<string, number> = {};
@@ -232,8 +237,7 @@ export function extractClaudeCodeTokenUsage(dir: string): { total: number; cache
   let cached = 0;
   let hasData = false;
   try {
-    const files = fs.readdirSync(dir);
-    const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
+    const sessionFiles = getSessionFiles(dir);
     for (const file of sessionFiles) {
       const filePath = path.join(dir, file);
       const content = fs.readFileSync(filePath, 'utf8');
@@ -261,7 +265,7 @@ export function extractClaudeCodeTokenUsage(dir: string): { total: number; cache
 
 export function collectClaudeToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
-  const sessionFiles = fs.globSync('**/*.jsonl', { cwd: dir });
+  const sessionFiles = getSessionFiles(dir);
   const firstSession = sessionFiles[0];
   if (!firstSession) return toolsUsed;
 

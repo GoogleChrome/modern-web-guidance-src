@@ -15,6 +15,12 @@ export interface GuidedUsage {
 
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 
+const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
+
+function getSessionFiles(dir: string, recursive = false): string[] {
+  return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
+}
+
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
 /**
  * Sets up an isolated HOME and work directory to ensure test isolation.
@@ -134,8 +140,7 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, _servin
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
   try {
-    const files = fs.readdirSync(dirPath);
-    const sessionFiles = files.filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl')));
+    const sessionFiles = getSessionFiles(dirPath);
 
     for (const file of sessionFiles) {
       const sessionPath = path.join(dirPath, file);
@@ -179,10 +184,7 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, _servin
 }
 
 export function extractGeminiCliModel(resultsDir: string): string {
-  const sessionFiles = [
-    ...fs.globSync('**/session-*.json', { cwd: resultsDir }),
-    ...fs.globSync('**/session-*.jsonl', { cwd: resultsDir })
-  ];
+  const sessionFiles = getSessionFiles(resultsDir, true);
   if (sessionFiles.length === 0) return 'unknown';
 
   const counts: Record<string, number> = {};
@@ -213,8 +215,7 @@ export function extractGeminiCliTokenUsage(dir: string): { total: number; cached
   let cached = 0;
   let hasData = false;
   try {
-    const files = fs.readdirSync(dir);
-    const sessionFiles = files.filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl')));
+    const sessionFiles = getSessionFiles(dir);
     for (const file of sessionFiles) {
       try {
         const session = readTrajectory(path.join(dir, file));
@@ -239,8 +240,7 @@ export function extractGeminiCliTokenUsage(dir: string): { total: number; cached
 
 export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
-  const files = fs.readdirSync(dir);
-  const sessionFiles = files.filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl')));
+  const sessionFiles = getSessionFiles(dir);
   const firstSession = sessionFiles[0];
   if (!firstSession) return toolsUsed;
 

@@ -5,8 +5,13 @@ import { getSuiteConfig, createIsolatedHome, cleanupIsolatedHome, parseAgentArgs
 import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
-
 import { fileURLToPath } from 'url';
+
+const TRAJECTORY_GLOB = 'session-*.jsonl';
+
+function getSessionFiles(dir: string, recursive = false): string[] {
+  return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
+}
 
 // Usage: node codex-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
 /**
@@ -138,8 +143,7 @@ async function run() {
 export async function collectCodexGuidesFromTrajectory(dirPath: string, serving: string): Promise<string[]> {
   const guidesFromSkills: string[] = [];
   try {
-    const files = fs.readdirSync(dirPath);
-    const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
+    const sessionFiles = getSessionFiles(dirPath);
 
     for (const file of sessionFiles) {
       const sessionPath = path.join(dirPath, file);
@@ -189,7 +193,7 @@ export async function collectCodexGuidesFromTrajectory(dirPath: string, serving:
 }
 
 export function extractCodexCliModel(resultsDir: string): string {
-  const sessionFiles = fs.globSync('**/session-*.jsonl', { cwd: resultsDir });
+  const sessionFiles = getSessionFiles(resultsDir, true);
   if (sessionFiles.length === 0) return 'unknown';
 
   const counts: Record<string, number> = {};
@@ -226,8 +230,7 @@ export function extractCodexCliTokenUsage(dir: string): { total: number; cached:
   let cached = 0;
   let hasData = false;
   try {
-    const files = fs.readdirSync(dir);
-    const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
+    const sessionFiles = getSessionFiles(dir);
     for (const file of sessionFiles) {
       const filePath = path.join(dir, file);
       const content = fs.readFileSync(filePath, 'utf8');
@@ -268,7 +271,7 @@ export function extractCodexCliTokenUsage(dir: string): { total: number; cached:
 
 export function collectCodexToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
-  const sessionFiles = fs.globSync('session-*.jsonl', { cwd: dir });
+  const sessionFiles = getSessionFiles(dir);
   const firstSession = sessionFiles[0];
   if (!firstSession) return toolsUsed;
 
