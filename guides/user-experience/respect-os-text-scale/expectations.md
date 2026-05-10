@@ -1,0 +1,5 @@
+- The document contains exactly one `<meta name="text-scale">` element, and it is located inside the `<head>`.
+- That meta element's `content` attribute is the literal value `scale` (case-insensitive match), not `legacy` or any other value.
+- The CSS rule that sets `font-size` on `body` (or on `html`/`:root`) declares the value with a font-relative unit (`rem` or `em`), not with `px`, `pt`, `cm`, or `in`.
+- The `:root` (or `html`) `font-size` is NOT declared as `calc(... * env(preferred-text-scale)...)`, so the OS-level scale is not applied twice.
+- On the root, body, and any container holding the primary text content, `text-size-adjust` is either omitted entirely or set to `none`; no other value (such as `auto`, a percentage, or a length) appears in the stylesheet.
