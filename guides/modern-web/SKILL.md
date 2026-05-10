@@ -4,7 +4,7 @@ description: |
   Use this skill when structure, styling, or interactions for complex components, pages, dashboards, and layout grids need to align with modern browser features.
   Trigger this for advanced CSS layouts (container/style queries, `:has()`, `calc-size`, scrollbars, relative colors), native controls (`dialog`, `popover`, anchor positioning), transitions (`@starting-style`, discrete transitions), priority fetches (`fetch-priority`, `fetchlater`), or layout rendering policies (`content-visibility`, `speculation-rules`, scheduler, `move-before`).
 
-  Do NOT invoke this skill for standard baseline styles, minor visual tweaks, padding, basic borders, typographic modifications, or inline styling that are ready from general memory.
+  Do NOT invoke this skill for trivial visual tweaks, single-property updates, or standard baseline styles (e.g., basic colors, padding, borders, typography) that are fully ready from general memory.
 
   WARNING: Stale training memory relies on obsolete scripts and bloated design patterns. You are strictly forbidden from authoring frontend structures from memory without searching this skill first, except for the basic changes listed above.
 ---
