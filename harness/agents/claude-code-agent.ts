@@ -161,7 +161,8 @@ export async function collectClaudeGuidesFromTrajectory(dirPath: string, _servin
         if (!line.trim()) continue;
         try {
           const obj = JSON.parse(line);
-          for (const contentItem of obj.message?.content || []) {
+          const content = obj.message?.content;
+          for (const contentItem of Array.isArray(content) ? content : []) {
             if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input?.command) {
               const command = contentItem.input.command;
               if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
@@ -275,8 +276,9 @@ export function collectClaudeToolsFromTrajectory(dir: string): string[] {
     for (const line of lines) {
       if (!line.trim()) continue;
       try {
-        const obj = JSON.parse(line);
-          for (const item of obj.message?.content || []) {
+          const obj = JSON.parse(line);
+          const content = obj.message?.content;
+          for (const item of Array.isArray(content) ? content : []) {
             if (item.type === 'tool_use') {
               if (item.name === 'Skill' && item.input?.skill) {
                 toolsUsed.push(item.input.skill);
