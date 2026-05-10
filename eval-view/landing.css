@@ -58,6 +58,20 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
+.insight-dumbbell-cell {
+  width: 150px;
+  vertical-align: middle;
+}
+
+.insight-dumbbell-track {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 5px;
+  position: relative;
+  padding: 1px;
+  width: 130px;
+}
+
 .suites-table {
   width: 100%;
   border-collapse: collapse;

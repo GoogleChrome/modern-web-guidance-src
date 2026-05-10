@@ -524,7 +524,7 @@ function renderSuites() {
             <tr class="suite-table-row ${isFaulty ? 'faulty' : ''}">
                 <td style="text-align: left; font-weight: 600;">
                     <a href="${localLink}" class="suite-link" style="color: inherit; text-decoration: none;">
-                        <div style="color: var(--text-primary); font-size: 0.95rem;">${testId}</div>
+                        <div style="color: var(--text-primary); font-size: 0.95rem;" title="${escapeHtml(testId)}">${escapeHtml(formatSuiteLabel(testInfo))}</div>
                         <div style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${timeAgoStr} • <span style="font-size: 0.75rem;">${displayTimestamp}</span></div>
                     </a>
                 </td>
@@ -662,6 +662,44 @@ function hideTooltipChart() {
 // HELPERS
 // ==========================================
 
+function formatSuiteLabel(testInfo) {
+    const { testId, agent, serving } = testInfo;
+    if (!testId) return 'Evaluation Run';
+
+    const timeRegex = /[-_]?\b\d{4}-\d{2}-\d{2}(?:[T_]\d{2}-\d{2}-\d{2})?\b[-_]?/;
+    const parts = testId.split(timeRegex);
+    
+    let prefix = parts[0] || '';
+    let suffix = parts[1] || '';
+    
+    prefix = prefix.replace(/^[-_]+|[-_]+$/g, '');
+    suffix = suffix.replace(/^[-_]+|[-_]+$/g, '');
+    
+    let runType = prefix || 'Evaluation Run';
+    runType = runType.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    
+    if (!suffix) return runType;
+    
+    const normalize = s => (s || '').toLowerCase().replace(/[-_]+/g, '');
+    const normAgent = normalize(agent);
+    const normServing = normalize(serving);
+    
+    const suffixParts = suffix.split('-');
+    const meaningfulParts = suffixParts.filter(part => {
+        const normPart = normalize(part);
+        if (normPart === normAgent || normPart === normServing) return false;
+        if (normPart === 'cli' || normPart === 'run') return false;
+        return true;
+    });
+    
+    if (meaningfulParts.length > 0) {
+        const userOrTag = meaningfulParts.join('-');
+        return `${runType} • ${userOrTag}`;
+    }
+    
+    return runType;
+}
+
 function calculateGroupTotalStats(results, groupType) {
     let passed = 0;
     let total = 0;
@@ -742,8 +780,8 @@ function renderPivotInsights() {
                         <div style="font-weight: 600;">${filterKey === 'serving' ? (servingDisplayNames[key] || key) : key}</div>
                         <div style="font-size: 0.75rem; color: var(--text-secondary);">${items.length} trials</div>
                     </td>
-                    <td style="width: 120px; vertical-align: middle;">
-                        <div style="height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; position: relative; padding: 1px; width: 100px;">
+                    <td class="insight-dumbbell-cell">
+                        <div class="insight-dumbbell-track">
                             <div style="position: absolute; left: calc(${uRate}% - 2px); width: 4px; height: 4px; border: 1px solid #8b949e; background: transparent; border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
                             <div style="position: absolute; left: calc(${gRate}% - 3px); width: 6px; height: 6px; background: var(--color-primary); border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
                             <div style="position: absolute; left: calc(${Math.min(uRate, gRate)}% + 1px); width: calc(${Math.abs(gRate - uRate)}% - 2px); height: 1.5px; background: var(--color-primary); top: 50%; transform: translateY(-50%);"></div>
