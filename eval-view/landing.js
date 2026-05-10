@@ -530,7 +530,7 @@ function renderSuites() {
                         <div style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${timeAgoStr} • <span style="font-size: 0.75rem;">${displayTimestamp}</span>${ldap ? ` • <span>${escapeHtml(ldap)}</span>` : ''}</div>
                     </a>
                 </td>
-                <td>${testInfo.agent}</td>
+                <td>${getAgentBadge(testInfo.agent)}${escapeHtml(testInfo.agent)}</td>
                 <td>${servingDisplayNames[testInfo.serving] || testInfo.serving}</td>
                 <td style="font-size: 0.85rem; color: var(--text-secondary); word-break: break-word; width: 120px;">${escapeHtml(testInfo.model).replaceAll('-', '-&shy;')}</td>
                 <td style="font-weight: 600;">${taskCount} ${maxRuns > 1 ? `<span style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 400;">×${maxRuns}</span>` : ''}</td>
@@ -706,6 +706,20 @@ function formatSuiteLabel(testInfo) {
     }
     
     return { label: finalLabel, ldap };
+}
+
+function getAgentBadge(agentName) {
+    const name = (agentName || '').toLowerCase();
+    if (name.includes('gemini') || name.includes('jetski')) {
+        return '<span style="color: #8B5CF6; margin-right: 4px;">✦</span>';
+    }
+    if (name.includes('codex') || name.includes('openai')) {
+        return '<span style="color: #10A37F; margin-right: 4px;">❂</span>';
+    }
+    if (name.includes('claude')) {
+        return '<span style="color: #E06A3B; margin-right: 4px;">✱</span>';
+    }
+    return '';
 }
 
 function calculateGroupTotalStats(results, groupType) {
