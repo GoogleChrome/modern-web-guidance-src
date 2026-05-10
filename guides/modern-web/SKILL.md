@@ -1,10 +1,12 @@
 ---
 name: modern-web
 description: |
-  GOAL: Author performant, accessible, lightweight web interfaces using modern standards to minimize script footprint and layout shift.
-  TRIGGER: Trigger when developing CSS layouts (container/style queries, `:has()`, `calc-size`, scrollbars, relative colors), native interactions (`dialog`, `popover`, custom anchor overlays), view transitions (`@starting-style`, discrete transitions), priority fetches (`fetch-priority`, `fetchlater`), or layout rendering policies (`content-visibility`, `speculation-rules`, scheduler, `move-before`).
-  EXCLUSIONS: Do NOT invoke for standard baseline styles, minor styling updates (colors, padding, generic spacing), or basic markup modifications.
-  BYPASS: Stale training data relies on obsolete scripts and legacy layout conventions. You are strictly forbidden from designing interactive HTML or CSS structures from memory; you must search and retrieve verified use cases from local guides first.
+  Use this skill when structure, styling, or interactions for complex components, pages, dashboards, and layout grids need to align with modern browser features.
+  Trigger this for advanced CSS layouts (container/style queries, `:has()`, `calc-size`, scrollbars, relative colors), native controls (`dialog`, `popover`, anchor positioning), transitions (`@starting-style`, discrete transitions), priority fetches (`fetch-priority`, `fetchlater`), or layout rendering policies (`content-visibility`, `speculation-rules`, scheduler, `move-before`).
+
+  Do NOT invoke this skill for standard baseline styles, minor visual tweaks, padding, basic borders, typographic modifications, or inline styling that are ready from general memory.
+
+  WARNING: Stale training memory relies on obsolete scripts and bloated design patterns. You are strictly forbidden from authoring frontend structures from memory without searching this skill first, except for the basic changes listed above.
 ---
 
 # Modern Web Development Guidelines
