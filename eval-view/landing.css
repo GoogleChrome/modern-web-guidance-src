@@ -78,6 +78,70 @@
   position: relative;
 }
 
+.agent-badge {
+  margin-right: 4px;
+}
+.agent-badge.gemini {
+  color: #8B5CF6;
+}
+.agent-badge.openai {
+  color: #10A37F;
+}
+.agent-badge.claude {
+  color: #E06A3B;
+}
+
+.insight-dumbbell-track .dot,
+.suite-dumbbell-track .dot {
+  position: absolute;
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.insight-dumbbell-track .dot.unguided,
+.suite-dumbbell-track .dot.unguided {
+  border: 1.5px solid #8b949e;
+  background: transparent;
+}
+
+.insight-dumbbell-track .dot.guided,
+.suite-dumbbell-track .dot.guided {
+  background: var(--color-primary);
+}
+
+.insight-dumbbell-track .connector,
+.suite-dumbbell-track .connector {
+  position: absolute;
+  background: var(--color-primary);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.insight-dumbbell-track .dot.unguided {
+  width: 4px;
+  height: 4px;
+}
+.insight-dumbbell-track .dot.guided {
+  width: 6px;
+  height: 6px;
+}
+.insight-dumbbell-track .connector {
+  height: 1.5px;
+}
+
+.suite-dumbbell-track .dot.unguided {
+  width: 6px;
+  height: 6px;
+}
+.suite-dumbbell-track .dot.guided {
+  width: 8px;
+  height: 8px;
+}
+.suite-dumbbell-track .connector {
+  height: 2px;
+}
+
 .suites-table {
   width: 100%;
   border-collapse: collapse;

@@ -537,9 +537,9 @@ function renderSuites() {
                 <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 0; vertical-align: middle; position: relative; z-index: 2;">
                     <a href="${localLink}" style="display: block; color: inherit; text-decoration: none; padding: 10px 15px;">
                         <div class="suite-dumbbell-track">
-                            <div style="position: absolute; left: calc(${uRate}% - 3px); width: 6px; height: 6px; border: 1.5px solid #8b949e; background: transparent; border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
-                            <div style="position: absolute; left: calc(${gRate}% - 4px); width: 8px; height: 8px; background: var(--color-primary); border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
-                            <div style="position: absolute; left: calc(${Math.min(uRate, gRate)}% + 2px); width: calc(${Math.abs(gRate - uRate)}% - 4px); height: 2px; background: var(--color-primary); top: 50%; transform: translateY(-50%);"></div>
+                            <div class="connector" style="left: calc(${Math.min(uRate, gRate)}% + 2px); width: calc(${Math.abs(gRate - uRate)}% - 4px);"></div>
+                            <div class="dot unguided" style="left: calc(${uRate}% - 3px);"></div>
+                            <div class="dot guided" style="left: calc(${gRate}% - 4px);"></div>
                         </div>
                         <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; text-align: center;">
                             <span style="font-weight: bold; color: var(--text-primary);">${gRate - uRate >= 0 ? '+' : ''}${gRate - uRate}%</span>
@@ -711,13 +711,13 @@ function formatSuiteLabel(testInfo) {
 function getAgentBadge(agentName) {
     const name = (agentName || '').toLowerCase();
     if (name.includes('gemini') || name.includes('jetski')) {
-        return '<span style="color: #8B5CF6; margin-right: 4px;">✦</span>';
+        return '<span class="agent-badge gemini">✦</span>';
     }
     if (name.includes('codex') || name.includes('openai')) {
-        return '<span style="color: #10A37F; margin-right: 4px;">❂</span>';
+        return '<span class="agent-badge openai">❂</span>';
     }
     if (name.includes('claude')) {
-        return '<span style="color: #E06A3B; margin-right: 4px;">✱</span>';
+        return '<span class="agent-badge claude">✱</span>';
     }
     return '';
 }
@@ -804,9 +804,9 @@ function renderPivotInsights() {
                     </td>
                     <td class="insight-dumbbell-cell">
                         <div class="insight-dumbbell-track">
-                            <div style="position: absolute; left: calc(${uRate}% - 2px); width: 4px; height: 4px; border: 1px solid #8b949e; background: transparent; border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
-                            <div style="position: absolute; left: calc(${gRate}% - 3px); width: 6px; height: 6px; background: var(--color-primary); border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
-                            <div style="position: absolute; left: calc(${Math.min(uRate, gRate)}% + 1px); width: calc(${Math.abs(gRate - uRate)}% - 2px); height: 1.5px; background: var(--color-primary); top: 50%; transform: translateY(-50%);"></div>
+                            <div class="connector" style="left: calc(${Math.min(uRate, gRate)}% + 1px); width: calc(${Math.abs(gRate - uRate)}% - 2px);"></div>
+                            <div class="dot unguided" style="left: calc(${uRate}% - 2px);"></div>
+                            <div class="dot guided" style="left: calc(${gRate}% - 3px);"></div>
                         </div>
                         <div style="font-size: 0.8rem; color: var(--text-secondary); text-align: center; margin-top: 2px;">${medUplift >= 0 ? '+' : ''}${medUplift}%</div>
                     </td>
