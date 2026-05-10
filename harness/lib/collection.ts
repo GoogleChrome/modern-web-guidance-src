@@ -289,7 +289,7 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
           }
         }
 
-        // JSONL sessions (Codex or Claude Code)
+        // JSONL sessions (Codex, Claude Code, or Gemini CLI)
         const jsonlSessions = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
         for (const file of jsonlSessions) {
           const filePath = path.join(dir, file);
@@ -301,6 +301,9 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
           let claudeTokens = 0;
           let claudeCachedTokens = 0;
           let fileHasClaudeTokens = false;
+          let geminiTotalTokens = 0;
+          let geminiCachedTokens = 0;
+          let fileHasGeminiTokens = false;
           
           for (const line of lines) {
             const trimmedLine = line.trim();
@@ -325,6 +328,12 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
                 claudeCachedTokens += obj.message.usage.cache_read_input_tokens || 0;
                 fileHasClaudeTokens = true;
               }
+              // Gemini format
+              if (obj.tokens && obj.tokens.total !== undefined) {
+                geminiTotalTokens = obj.tokens.total || 0;
+                geminiCachedTokens = obj.tokens.cached || 0;
+                fileHasGeminiTokens = true;
+              }
             } catch (e) {
               // Ignore parse errors
             }
@@ -336,6 +345,10 @@ export async function collectResults(resultsDir: string, suiteConfig: SuiteConfi
           } else if (fileHasClaudeTokens) {
             totalTokens += claudeTokens;
             cachedTokens += claudeCachedTokens;
+            hasTokenData = true;
+          } else if (fileHasGeminiTokens) {
+            totalTokens += geminiTotalTokens;
+            cachedTokens += geminiCachedTokens;
             hasTokenData = true;
           }
         }

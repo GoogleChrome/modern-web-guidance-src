@@ -108,6 +108,7 @@ async function run() {
 
     const tmpDir = path.join(path.dirname(workDir), '.gemini', 'tmp');
     exportTrajectories(tmpDir, '*/chats/*.json', targetDir);
+    exportTrajectories(tmpDir, '*/chats/*.jsonl', targetDir);
 
     console.log("Gemini CLI agent finished successfully.");
 
@@ -121,6 +122,11 @@ async function run() {
 
 function readTrajectory(filePath: string): ConversationRecord {
   const content = fs.readFileSync(filePath, 'utf8');
+  if (filePath.endsWith('.jsonl')) {
+    const lines = content.split('\n').filter(l => l.trim().length > 0);
+    const messages = lines.map(l => JSON.parse(l));
+    return { messages } as unknown as ConversationRecord;
+  }
   return JSON.parse(content) as ConversationRecord;
 }
 
@@ -129,7 +135,7 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, _servin
   const fileReadGuides: string[] = [];
   try {
     const files = fs.readdirSync(dirPath);
-    const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
+    const sessionFiles = files.filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl')));
 
     for (const file of sessionFiles) {
       const sessionPath = path.join(dirPath, file);
@@ -173,7 +179,10 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, _servin
 }
 
 export function extractGeminiCliModel(resultsDir: string): string {
-  const sessionFiles = fs.globSync('**/session-*.json', { cwd: resultsDir });
+  const sessionFiles = [
+    ...fs.globSync('**/session-*.json', { cwd: resultsDir }),
+    ...fs.globSync('**/session-*.jsonl', { cwd: resultsDir })
+  ];
   if (sessionFiles.length === 0) return 'unknown';
 
   const counts: Record<string, number> = {};
@@ -202,7 +211,7 @@ export function extractGeminiCliModel(resultsDir: string): string {
 export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
   const files = fs.readdirSync(dir);
-  const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
+  const sessionFiles = files.filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl')));
   const firstSession = sessionFiles[0];
   if (!firstSession) return toolsUsed;
 
