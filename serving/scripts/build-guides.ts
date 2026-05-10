@@ -49,6 +49,11 @@ let TARGET: BuildTarget = 'local-dev';
 export async function processGuides(opts: BuildOptions) {
   const { outputDir, target, force, targetGuidePath, modelName, noChunking } = opts;
 
+  if (process.env.SKIP_BUILD === "true") {
+    console.log("⏭️ Skipping guide compilation: SKIP_BUILD is set.");
+    return;
+  }
+
   BUILD_GUIDES_DIR = path.join(outputDir, "guides");
   VECTORS_FILE = (target === 'skills-cli' || target === 'skills-cli-npx')
     ? path.join(outputDir, "use-cases.vectors.gen.json.gz")
@@ -83,9 +88,9 @@ export async function processGuides(opts: BuildOptions) {
   if (!fs.existsSync(manifestDir)) {
     fs.mkdirSync(manifestDir, { recursive: true });
   }
-  const manifestPath = path.join(manifestDir, "build-manifest.json");
+  const manifestPath = path.join(manifestDir, `build-manifest-${TARGET}.json`);
 
-  let shouldSkip = !process.env.CI && !targetGuidePath && !force;
+  let shouldSkip = !targetGuidePath && !force;
 
   if (shouldSkip) {
     if (!fs.existsSync(OUTPUT_FILE) || !fs.existsSync(VECTORS_FILE) || !fs.existsSync(manifestPath)) {
