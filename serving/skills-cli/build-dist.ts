@@ -69,7 +69,7 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   console.log(`Updated ${marketplacePath}`);
 }
 
-export function processSkills(publishRoot: string, distDir: string, npx: boolean) {
+export function processSkills(publishRoot: string) {
   console.log("Scanning for skills (SKILL.md) in guides/...");
   const skills = scanDisciplineSkills();
 
@@ -80,7 +80,7 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
     
     fs.mkdirSync(skillDestDir, { recursive: true });
     
-    const target = npx ? 'skills-cli-npx' : 'skills-cli';
+    const target = 'skills-cli';
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
     
@@ -91,8 +91,8 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
-async function main(opts: {publishRoot: string, version?: string, npx?: boolean}): Promise<BuildResult | undefined> {
-  const {publishRoot, version, npx} = opts;
+async function main(opts: {publishRoot: string, version?: string}): Promise<BuildResult | undefined> {
+  const {publishRoot, version} = opts;
 
   fs.rmSync(publishRoot, { recursive: true, force: true });
   fs.mkdirSync(publishRoot, {recursive: true});
@@ -113,7 +113,7 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
     console.time("⏳ processGuides");
     await processGuides({
       outputDir: DIST_DIR,
-      target: npx ? 'skills-cli-npx' : 'skills-cli',
+      target: 'skills-cli',
     });
     console.timeEnd("⏳ processGuides");
   } catch (error) {
@@ -227,7 +227,7 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
 
 
 
-  const { skillsCount, skillNames } = processSkills(publishRoot, DIST_DIR, !!npx);
+  const { skillsCount, skillNames } = processSkills(publishRoot);
 
   const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
 
@@ -392,7 +392,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   (async () => {
     try {
-      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true});
       await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version});
     } catch (err) {
       console.error(err);

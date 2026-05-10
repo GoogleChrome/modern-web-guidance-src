@@ -29,9 +29,8 @@ describe('processSkills', () => {
 
   it('processes macros in SKILL.md', () => {
     const publishRoot = testOutputDir;
-    const distDir = path.join(publishRoot, 'skills/modern-web');
 
-    processSkills(publishRoot, distDir, false);
+    processSkills(publishRoot);
 
     const builtSkillPath = path.join(publishRoot, 'skills', dummySkillName, 'SKILL.md');
     assert.ok(fs.existsSync(builtSkillPath), 'Built SKILL.md should exist');
@@ -45,9 +44,8 @@ describe('processSkills', () => {
 
   it('processes GUIDE_REF macros in real CSS SKILL.md', () => {
     const publishRoot = testOutputDir;
-    const distDir = path.join(publishRoot, 'skills/modern-web-guidance');
 
-    processSkills(publishRoot, distDir, false);
+    processSkills(publishRoot);
 
     const builtSkillPath = path.join(publishRoot, 'skills', 'css', 'SKILL.md');
     assert.ok(fs.existsSync(builtSkillPath), 'Built CSS SKILL.md should exist');

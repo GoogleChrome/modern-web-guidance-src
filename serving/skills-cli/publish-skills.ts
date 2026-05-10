@@ -86,19 +86,15 @@ async function validate(newVersion: string) {
     stdio: 'inherit' ,
     env: { ...process.env, TEST_REPORTER: 'spec', SKIP_BUILD: '1' }
   });
+
+  return result;
 }
 
 async function main() {
   const newVersion = await getNextVersion();
 
-  await validate(newVersion);
-
-  console.log(`\nRebuilding distribution with version ${newVersion} for npm...`);
-  const publishCliDir = path.join(DIST_DIR, "skills-cli-npx");
-  const result = await buildDist({publishRoot: publishCliDir, version: newVersion, npx: true});
-  if (!result) {
-    throw new Error("Build failed or was already in progress.");
-  }
+  const result = await validate(newVersion);
+  const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
   const { featuresCount, useCasesCount, skillsCount, skillNames } = result;
 
