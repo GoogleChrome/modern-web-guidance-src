@@ -27,7 +27,6 @@ Search with an action-oriented query summarizing what you want to achieve using 
 
 ```sh
 npx -y modern-web-guidance@latest search "<query>"
-# Note: if this command hangs, try running again in offline mode: "npx --offline ..."
 ```
 
 **Example Output**:
@@ -50,7 +49,6 @@ Once you have a relevant `id` from the search results, call this script using th
 
 ```sh
 npx -y modern-web-guidance@latest retrieve "<id>"
-# Note: if this command hangs, try running again in offline mode: "npx --offline ..."
 ```
 
 
@@ -62,3 +60,4 @@ npx -y modern-web-guidance@latest retrieve "<id>"
 -   Always search **first** to find the most specific design/performance patterns.
 -   These guides are usually framework-agnostic; adapt them correctly to your setup.
 -   Do not hallucinate guides or ignore them; they represent the preferred local standard for the user's project.
+-   Note: if the `npx -y modern-web-guidance…` command hangs, try running again in offline mode: `npx --offline …`
