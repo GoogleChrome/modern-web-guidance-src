@@ -23,7 +23,14 @@ const candidateWarningFirst = `MANDATORY LIMITATION: Your training memory is hig
 Create performant, accessible, and lightweight user interfaces using current web development best practices.
 Use this skill at the start of every web development task, including when implementing, modifying, or optimizing HTML, CSS, or JS/TS for web components, pages, landing pages, dashboards, layouts, or web applications.`;
 
-// 3. Comprehensive Query Battery (Target Matches & Edge Cases)
+// Variant C: Prose-Canonical with Explicit Exclusions (agentskills.io standard)
+const candidateExclusions = `Use this skill when structure, styling, or interactions for complex components, pages, dashboards, and layout grids need to align with modern browser features.
+Trigger this for advanced CSS layouts (container/style queries, :has(), calc-size, scrollbars, relative colors), native controls (dialog, popover, anchor positioning), transitions (@starting-style, discrete transitions), priority fetches (fetch-priority, fetchlater), or layout rendering policies (content-visibility, speculation-rules, scheduler, move-before).
+
+Do NOT invoke this skill for standard baseline styles, minor visual tweaks, padding, basic borders, typographic modifications, or inline styling that are ready from general memory.
+
+WARNING: Stale training memory relies on obsolete scripts and bloated design patterns. You are strictly forbidden from authoring frontend structures from memory without searching this skill first, except for the basic changes listed above.`;
+
 // 3. COMPREHENSIVE NOISY, CONTESTED, AND DISTRACTOR QUERY BATTERIES
 const cleanDeveloperQueries = [
   "create a responsive CSS dashboard grid template",
@@ -51,6 +58,12 @@ const outOfScopeNegatives = [
   "configure distributed database shards and review deployment logs on development system structures",
   "write spanner database migrations in pure sql format and test backend system connectivity metrics",
   "deploy a python flask container script on dev borg pipeline environments"
+];
+
+const softballNearMissQueries = [
+  "change the background color of the container to #f5f5f5",
+  "increase the padding on the primary layout button by 8px",
+  "update the font-family to inter and set font-size to 14px"
 ];
 
 // 4. Helper: Mathematical Cosine Similarity logic
@@ -168,7 +181,7 @@ Available Skills:
 
   const evaluateStressSuite = async (descBlock: string, label: string) => {
     const promptText = systemPrompt.replace('[DESCRIPTION_PLACEHOLDER]', descBlock);
-    let tpClean = 0, tpNoise = 0, tpContested = 0, fpNeg = 0;
+    let tpClean = 0, tpNoise = 0, tpContested = 0, fpNeg = 0, fpSoftball = 0;
     const selectionResults: string[] = [];
 
     console.log(`\n🔍 Running evaluations under: ${label}...`);
@@ -178,7 +191,7 @@ Available Skills:
       const sel = await queryModel(promptText, q);
       if (sel === 'modern-web') tpClean++;
       selectionResults.push(sel);
-      await new Promise(r => setTimeout(r, 250));
+      await new Promise(r => setTimeout(r, 200));
     }
 
     // Class 2: Diluted Semantic Noise
@@ -186,7 +199,7 @@ Available Skills:
       const sel = await queryModel(promptText, q);
       if (sel === 'modern-web') tpNoise++;
       selectionResults.push(sel);
-      await new Promise(r => setTimeout(r, 250));
+      await new Promise(r => setTimeout(r, 200));
     }
 
     // Class 3: Contested Intent
@@ -194,14 +207,23 @@ Available Skills:
       const sel = await queryModel(promptText, q);
       if (sel === 'modern-web') tpContested++;
       selectionResults.push(sel);
-      await new Promise(r => setTimeout(r, 250));
+      await new Promise(r => setTimeout(r, 200));
     }
 
     // Class 4: Hard Negatives (Avoid bleed False Positives)
     for (const q of outOfScopeNegatives) {
       const sel = await queryModel(promptText, q);
       if (sel === 'modern-web') fpNeg++;
-      await new Promise(r => setTimeout(r, 250));
+      selectionResults.push(sel);
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    // Class 5: Softball Near-Misses (Check if exclusions prevent activation!)
+    for (const q of softballNearMissQueries) {
+      const sel = await queryModel(promptText, q);
+      if (sel === 'modern-web') fpSoftball++;
+      selectionResults.push(sel);
+      await new Promise(r => setTimeout(r, 200));
     }
 
     return {
@@ -209,6 +231,7 @@ Available Skills:
       tprNoise: (tpNoise / semanticNoiseQueries.length) * 100,
       tprContested: (tpContested / contestedIntentQueries.length) * 100,
       fpr: (fpNeg / outOfScopeNegatives.length) * 100,
+      fprSoftball: (fpSoftball / softballNearMissQueries.length) * 100,
       selectionList: selectionResults
     };
   };
@@ -231,29 +254,32 @@ Available Skills:
 
   const statsA = await evaluateStressSuite(candidateScopeFirst, 'Option A (Scope-First)');
   const statsB = await evaluateStressSuite(candidateWarningFirst, 'Option B (Warning-First)');
+  const statsC = await evaluateStressSuite(candidateExclusions, 'Option C (Prose + Exclusions)');
 
-  console.log('\n' + '='.repeat(80));
+  console.log('\n' + '='.repeat(105));
   console.log('📈 COMPARATIVE COMPREHENSIVE STRESS PERFORMANCE RESULTS');
-  console.log('='.repeat(80));
-  console.log('Metrics Metric                     | Option A (Scope-First) | Option B (Warning-First)');
-  console.log('-'.repeat(80));
-  console.log(`TPR - Clean Targets (0% Noise)     | ${statsA.tprClean.toFixed(2)}%                | ${statsB.tprClean.toFixed(2)}%`);
-  console.log(`TPR - Diluted Noise Targets        | ${statsA.tprNoise.toFixed(2)}%                | ${statsB.tprNoise.toFixed(2)}%`);
-  console.log(`TPR - Contested Mixed Intents      | ${statsA.tprContested.toFixed(2)}%                | ${statsB.tprContested.toFixed(2)}%`);
-  console.log(`FPR - Out-of-Scope Distractors    | ${statsA.fpr.toFixed(2)}%                | ${statsB.fpr.toFixed(2)}%`);
-  console.log('='.repeat(80));
+  console.log('='.repeat(105));
+  console.log(' %-32s | %-20s | %-20s | %-20s', 'Metrics Metric', 'Option A (Scope)', 'Option B (Warning)', 'Option C (Exclusions)');
+  console.log('-'.repeat(105));
+  console.log(' %-32s | %-20s | %-20s | %-20s', 'TPR - Clean Targets (0% Noise)', `${statsA.tprClean.toFixed(1)}%`, `${statsB.tprClean.toFixed(1)}%`, `${statsC.tprClean.toFixed(1)}%`);
+  console.log(' %-32s | %-20s | %-20s | %-20s', 'TPR - Diluted Semantic Noise', `${statsA.tprNoise.toFixed(1)}%`, `${statsB.tprNoise.toFixed(1)}%`, `${statsC.tprNoise.toFixed(1)}%`);
+  console.log(' %-32s | %-20s | %-20s | %-20s', 'TPR - Contested Mixed Intents', `${statsA.tprContested.toFixed(1)}%`, `${statsB.tprContested.toFixed(1)}%`, `${statsC.tprContested.toFixed(1)}%`);
+  console.log(' %-32s | %-20s | %-20s | %-20s', 'FPR - Out-of-Scope Distractors', `${statsA.fpr.toFixed(1)}%`, `${statsB.fpr.toFixed(1)}%`, `${statsC.fpr.toFixed(1)}%`);
+  console.log(' %-32s | %-20s | %-20s | %-20s', 'FPR - Softball Near-Misses 🎯', `${statsA.fprSoftball.toFixed(1)}%`, `${statsB.fprSoftball.toFixed(1)}%`, `${statsC.fprSoftball.toFixed(1)}%`);
+  console.log('='.repeat(105));
 
   console.log('\n├─ Detailed Target Selection Comparisons:');
-  console.log('│  %-65s | %-20s | %-20s', 'User Query', 'Option A (Scope)', 'Option B (Warning)');
-  console.log('│  ' + '-'.repeat(113));
+  console.log('│  %-55s | %-16s | %-16s | %-16s', 'User Query Prompt', 'Option A', 'Option B', 'Option C');
+  console.log('│  ' + '-'.repeat(115));
   
-  const allTests = [...cleanDeveloperQueries, ...semanticNoiseQueries, ...contestedIntentQueries];
+  const allTests = [...cleanDeveloperQueries, ...semanticNoiseQueries, ...contestedIntentQueries, ...outOfScopeNegatives, ...softballNearMissQueries];
   for (let i = 0; i < allTests.length; i++) {
     console.log(
-      '│  %-65s | %-20s | %-20s',
-      `"${allTests[i].length > 60 ? allTests[i].substring(0, 57) + '...' : allTests[i]}"`,
+      '│  %-55s | %-16s | %-16s | %-16s',
+      `"${allTests[i].length > 50 ? allTests[i].substring(0, 47) + '...' : allTests[i]}"`,
       statsA.selectionList[i],
-      statsB.selectionList[i]
+      statsB.selectionList[i],
+      statsC.selectionList[i]
     );
   }
   console.log('│');
