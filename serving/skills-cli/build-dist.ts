@@ -93,10 +93,16 @@ function convertSkillToUseNpx(skillDest: string) {
   fs.writeFileSync(skillDest, skillText);
 }
 
-async function getTokenCountString(text: string, tokenizer: any): Promise<string> {
-  if (!tokenizer || !text) return "";
-  const tokens = await tokenizer(text, { add_special_tokens: false });
-  return ` (${tokens.input_ids.data.length} tokens)`;
+async function getDescriptionTokenCount(content: string, tokenizer: any): Promise<string> {
+  if (!tokenizer || !content) return "";
+  try {
+    const parsed = matter(content).data;
+    if (!parsed.description) return "";
+    const tokens = await tokenizer(parsed.description, { add_special_tokens: false });
+    return ` (${tokens.input_ids.data.length} tokens)`;
+  } catch (err) {
+    return "";
+  }
 }
 
 export async function processSkills(publishRoot: string, distDir: string, npx: boolean) {
@@ -119,13 +125,7 @@ export async function processSkills(publishRoot: string, distDir: string, npx: b
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
     
-    let description = "";
-    try {
-      const parsed = matter(content).data;
-      if (parsed.description) description = parsed.description;
-    } catch (e) {}
-
-    const tokenStr = await getTokenCountString(description, tokenizer);
+    const tokenStr = await getDescriptionTokenCount(content, tokenizer);
     console.log(`Processed and copied skill ${skillName} (SKILL.md)${tokenStr} to ${skillDestDir}`);
   }
 
