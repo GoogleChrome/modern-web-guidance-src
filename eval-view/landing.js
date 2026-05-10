@@ -517,8 +517,11 @@ function renderSuites() {
         let maxRuns = 1;
         scenarioKeys.forEach(k => { if (data.results[k].length > maxRuns) maxRuns = data.results[k].length; });
 
+        const earlyFailureRate = data.summary?.unguidedEarlyFailureRate || 0;
+        const isFaulty = earlyFailureRate === 100;
+
         html += `
-            <tr class="suite-table-row">
+            <tr class="suite-table-row ${isFaulty ? 'faulty' : ''}">
                 <td style="text-align: left; font-weight: 600;">
                     <a href="${localLink}" class="suite-link" style="color: inherit; text-decoration: none;">
                         <div style="color: var(--text-primary); font-size: 0.95rem;">${testId}</div>

@@ -85,6 +85,10 @@
   transition: background-color 0.2s;
 }
 
+.suite-table-row.faulty {
+  opacity: 0.2;
+}
+
 /* Stretched link: expands the clickable area of the first column's <a> tag to cover the entire row (<tr>). */
 .suite-link::after {
   content: '';
