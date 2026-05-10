@@ -398,6 +398,23 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
     }
 }
 
+function renderSparkline(uRate, gRate, isSmall = false, uTitle = '', gTitle = '') {
+    const barClass = isSmall ? 'sparkline-bar small' : 'sparkline-bar';
+    const dotClass = isSmall ? 'sparkline-dot small' : 'sparkline-dot';
+    const rangeClass = isSmall ? 'sparkline-range small' : 'sparkline-range';
+    const min = Math.min(uRate, gRate);
+    const abs = Math.abs(gRate - uRate);
+    const leftOffset = uRate < gRate ? 3 : 4;
+    
+    return `
+        <div class="${barClass}">
+            <div class="${dotClass} unguided" style="left: calc(${uRate}% - 3px);" title="${escapeHtml(uTitle)}"></div>
+            <div class="${dotClass} guided" style="left: calc(${gRate}% - 4px);" title="${escapeHtml(gTitle)}"></div>
+            <div class="${rangeClass}" style="left: calc(${min}% + ${leftOffset}px); width: calc(${abs}% - 7px);"></div>
+        </div>
+    `;
+}
+
 function renderSummary(data) {
     const container = document.getElementById('summary-side-panel');
     if (!container) return;
@@ -465,11 +482,7 @@ function renderSummary(data) {
                 <span class="meta-value-highlight">+${upliftDelta}%</span>
             </div>
             <div class="sparkline-container">
-                                <div class="sparkline-bar">
-                    <div class="sparkline-dot unguided" style="left: calc(${unguidedPassRate}% - 3px);" title="Unguided: ${unguidedPassRate}%"></div>
-                    <div class="sparkline-dot guided" style="left: calc(${guidedPassRate}% - 4px);" title="Guided: ${guidedPassRate}%"></div>
-                    <div class="sparkline-range" style="left: calc(${Math.min(unguidedPassRate, guidedPassRate)}% + ${unguidedPassRate < guidedPassRate ? 3 : 4}px); width: calc(${Math.abs(guidedPassRate - unguidedPassRate)}% - 7px);"></div>
-                </div>
+                    ${renderSparkline(unguidedPassRate, guidedPassRate, false, `Unguided: ${unguidedPassRate}%`, `Guided: ${guidedPassRate}%`)}
                 <span class="sparkline-labels">${unguidedPassRate}% → <span>${guidedPassRate}%</span></span>
             </div>
             ${summary.expectedTotalRuns !== undefined ? `
@@ -492,17 +505,11 @@ function renderSummary(data) {
                 <span class="meta-label">Assertions Passed</span>
             </div>
             <div class="sparkline-container">
-                <div class="sparkline-bar small">
                     ${(() => {
                         const uPct = (totalUnguidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100;
                         const gPct = (totalGuidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100;
-                        return `
-                            <div class="sparkline-dot unguided small" style="left: calc(${uPct}% - 3px);" title="Unguided Count: ${totalUnguidedPassed}"></div>
-                            <div class="sparkline-dot guided small" style="left: calc(${gPct}% - 4px);" title="Guided Count: ${totalGuidedPassed}"></div>
-                            <div class="sparkline-range small" style="left: calc(${Math.min(uPct, gPct)}% + ${uPct < gPct ? 3 : 4}px); width: calc(${Math.abs(gPct - uPct)}% - 7px);"></div>
-                        `;
+                        return renderSparkline(uPct, gPct, true, `Unguided Count: ${totalUnguidedPassed}`, `Guided Count: ${totalGuidedPassed}`);
                     })()}
-                </div>
                 <span class="sparkline-labels-small">${totalUnguidedPassed} → <span>${totalGuidedPassed}</span> <span>/ ${Math.max(totalUnguidedChecks, totalGuidedChecks)}</span></span>
             </div>
         </div>
