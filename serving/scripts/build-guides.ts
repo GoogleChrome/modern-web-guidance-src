@@ -41,7 +41,6 @@ export interface BuildOptions {
 
 // Global variables to be set by processGuides
 let BUILD_GUIDES_DIR: string;
-let VECTORS_FILE: string;
 let IS_NO_CHUNKING = false;
 let TARGET: BuildTarget = 'local-dev';
 
@@ -49,13 +48,16 @@ let TARGET: BuildTarget = 'local-dev';
 export async function processGuides(opts: BuildOptions) {
   const { outputDir, target, force, targetGuidePath, modelName, noChunking } = opts;
 
-  BUILD_GUIDES_DIR = path.join(outputDir, "guides");
-  VECTORS_FILE = (target === 'skills-cli' || target === 'skills-cli-npx')
-    ? path.join(outputDir, "use-cases.vectors.gen.json.gz")
-    : path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz");
-
-  IS_NO_CHUNKING = !!noChunking;
   TARGET = target || 'local-dev';
+  IS_NO_CHUNKING = !!noChunking;
+
+  const CACHE_DIR = path.join(WORKSPACE_ROOT, `dist/.cache/${TARGET}`);
+  const CACHED_VECTORS = path.join(CACHE_DIR, "use-cases.vectors.gen.json.gz");
+  const CACHED_TS = path.join(CACHE_DIR, "use-cases.gen.ts");
+  const CACHED_MANIFEST = path.join(CACHE_DIR, "manifest.json");
+  const CACHED_GUIDES = path.join(CACHE_DIR, "guides");
+
+  BUILD_GUIDES_DIR = CACHED_GUIDES;
 
   // Scan guides first to see if we even need to run
   let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
@@ -68,7 +70,6 @@ export async function processGuides(opts: BuildOptions) {
   hash.update(TARGET);
   hash.update(IS_NO_CHUNKING.toString());
 
-  // Hash the contents of all active guides to guarantee state accuracy
   for (const inv of readyGuides) {
     const guidePath = getGuideMarkdownPath(inv);
     if (fs.existsSync(guidePath)) {
@@ -78,40 +79,50 @@ export async function processGuides(opts: BuildOptions) {
   }
   const currentHash = hash.digest("hex");
 
-  // Ensure the build directory exists before we reference it for the manifest
-  const manifestDir = path.join(ROOT_DIR, "build");
-  if (!fs.existsSync(manifestDir)) {
-    fs.mkdirSync(manifestDir, { recursive: true });
-  }
-  const manifestPath = path.join(manifestDir, "build-manifest.json");
-
-  let shouldSkip = !process.env.CI && !targetGuidePath && !force;
+  let shouldSkip = !targetGuidePath && !force;
 
   if (shouldSkip) {
-    if (!fs.existsSync(OUTPUT_FILE) || !fs.existsSync(VECTORS_FILE) || !fs.existsSync(manifestPath)) {
+    if (!fs.existsSync(CACHED_TS) || !fs.existsSync(CACHED_VECTORS) || !fs.existsSync(CACHED_MANIFEST)) {
       shouldSkip = false;
     } else {
       try {
-        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+        const manifest = JSON.parse(fs.readFileSync(CACHED_MANIFEST, "utf-8"));
         if (manifest.hash !== currentHash) {
           shouldSkip = false;
         }
       } catch (e) {
-        shouldSkip = false; // Corrupt manifest
+        shouldSkip = false;
       }
     }
   }
 
+  const restoreToTarget = () => {
+    if (TARGET === 'skills-cli' || TARGET === 'skills-cli-npx') {
+      fs.mkdirSync(outputDir, { recursive: true });
+      fs.copyFileSync(CACHED_VECTORS, path.join(outputDir, "use-cases.vectors.gen.json.gz"));
+      fs.cpSync(CACHED_GUIDES, path.join(outputDir, "guides"), { recursive: true });
+    } else {
+      fs.mkdirSync(path.join(ROOT_DIR, "lib"), { recursive: true });
+      fs.mkdirSync(path.join(ROOT_DIR, "build"), { recursive: true });
+      fs.copyFileSync(CACHED_VECTORS, path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz"));
+      fs.copyFileSync(CACHED_TS, OUTPUT_FILE);
+      fs.cpSync(CACHED_GUIDES, path.join(ROOT_DIR, "build/guides"), { recursive: true });
+    }
+  };
+
   if (shouldSkip) {
+    console.log(`⏭️ Cache hit for ${TARGET}. Restoring from ${path.relative(WORKSPACE_ROOT, CACHE_DIR)}...`);
+    restoreToTarget();
     console.log("👌");
     return;
   }
 
-  // Ensure clean build/guides exists
-  if (fs.existsSync(BUILD_GUIDES_DIR)) {
-    fs.rmSync(BUILD_GUIDES_DIR, { recursive: true, force: true });
+  // Miss: clean cache dir
+  if (fs.existsSync(CACHE_DIR)) {
+    fs.rmSync(CACHE_DIR, { recursive: true, force: true });
   }
-  fs.mkdirSync(BUILD_GUIDES_DIR, { recursive: true });
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
+  fs.mkdirSync(CACHED_GUIDES, { recursive: true });
 
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
@@ -160,17 +171,18 @@ export interface UseCase {
 export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
 `;
 
-  fs.writeFileSync(OUTPUT_FILE, tsContent);
-  console.log(`Generated ${useCases.length} use cases to ${path.relative(WORKSPACE_ROOT, OUTPUT_FILE)}`);
+  fs.writeFileSync(CACHED_TS, tsContent);
+  console.log(`Generated ${useCases.length} use cases to ${path.relative(WORKSPACE_ROOT, CACHED_TS)}`);
 
 
   const jsonContent = JSON.stringify(storeUseCases);
   const compressed = zlib.gzipSync(jsonContent);
-  fs.writeFileSync(VECTORS_FILE, compressed);
-  console.log(`Vector storage updated at ${path.relative(WORKSPACE_ROOT, VECTORS_FILE)}`);
+  fs.writeFileSync(CACHED_VECTORS, compressed);
+  console.log(`Vector storage updated at ${path.relative(WORKSPACE_ROOT, CACHED_VECTORS)}`);
 
-  // Write manifest only after successful build completes
-  fs.writeFileSync(manifestPath, JSON.stringify({ hash: currentHash }, null, 2));
+  fs.writeFileSync(CACHED_MANIFEST, JSON.stringify({ hash: currentHash }, null, 2));
+
+  restoreToTarget();
 }
 
 export function chunkMarkdown(markdown: string): string[] {
