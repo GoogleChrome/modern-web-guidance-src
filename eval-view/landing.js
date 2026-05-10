@@ -527,7 +527,7 @@ function renderSuites() {
                 <td style="text-align: left; font-weight: 600;">
                     <a href="${localLink}" class="suite-link" style="color: inherit; text-decoration: none;">
                         <div style="color: var(--text-primary); font-size: 0.95rem;" title="${escapeHtml(testId)}">${escapeHtml(label)}</div>
-                        <div style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${timeAgoStr} • <span style="font-size: 0.75rem;">${displayTimestamp}</span>${ldap ? ` • <span style="font-weight: 600;">${escapeHtml(ldap)}</span>` : ''}</div>
+                        <div style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${timeAgoStr} • <span style="font-size: 0.75rem;">${displayTimestamp}</span>${ldap ? ` • <span>${escapeHtml(ldap)}</span>` : ''}</div>
                     </a>
                 </td>
                 <td>${testInfo.agent}</td>
