@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
 const targetFile = process.env.TARGET_FILE;
 
 test.describe('Scoped Component Transitions', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async () => {
     if (!targetFile) {
       throw new Error('TARGET_FILE environment variable is required');
     }
