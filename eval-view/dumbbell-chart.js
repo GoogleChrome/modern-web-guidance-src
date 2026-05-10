@@ -10,6 +10,7 @@ export class DumbbellChart {
       title: options.title || '',
       hideZeros: options.hideZeros || false,
       height: options.height || null,
+      maxHeight: options.maxHeight || null,
       hideSeparators: options.hideSeparators || false,
       hideLabels: options.hideLabels || false,
       ...options
