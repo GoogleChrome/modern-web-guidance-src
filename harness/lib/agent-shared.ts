@@ -101,6 +101,29 @@ export function copyFileIfExists(src: string, dest: string): void {
 }
 
 /**
+ * Safely reads and parses a JSONL file, filtering out empty or malformed lines.
+ */
+export function parseJsonlFile<T = any>(filePath: string): T[] {
+  try {
+    if (!fs.existsSync(filePath)) return [];
+    const content = fs.readFileSync(filePath, 'utf8');
+    return content
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+      .flatMap(line => {
+        try {
+          return [JSON.parse(line) as T];
+        } catch {
+          return [];
+        }
+      });
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Creates a trustedFolders.json file to avoid "untrusted folder" errors.
  * @param contentsDir Directory to write the trustedFolders.json file to (e.g. .gemini or .gemini/jetski)
  * @param folders List of absolute paths to trust
