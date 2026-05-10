@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>System Page</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      --mode: standard;
+    }
+    body.alt {
+      --mode: alternate;
+    }
+    .card {
+      background-color: if(style(--mode: alternate): #ff0000);
+      color: if(style(--mode: alternate): #00ff00);
+      padding: if(min-width: 800px: 50px);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <p>Content block</p>
+  </div>
+</body>
+</html>
