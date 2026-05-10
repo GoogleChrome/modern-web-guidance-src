@@ -645,6 +645,11 @@
   display: block;
 }
 
+#tooltip-chart {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
 .tooltip-title {
   font-size: 0.9em;
   font-weight: 700;
