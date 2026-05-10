@@ -27,6 +27,7 @@ Search with an action-oriented query summarizing what you want to achieve using 
 
 ```sh
 npx -y modern-web-guidance@latest search "<query>"
+# Note: if this command hangs, try running again in offline mode: "npx --offline ..."
 ```
 
 **Example Output**:
@@ -49,6 +50,7 @@ Once you have a relevant `id` from the search results, call this script using th
 
 ```sh
 npx -y modern-web-guidance@latest retrieve "<id>"
+# Note: if this command hangs, try running again in offline mode: "npx --offline ..."
 ```
 
 

@@ -69,29 +69,6 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   console.log(`Updated ${marketplacePath}`);
 }
 
-function convertSkillToUseNpx(skillDest: string) {
-  let skillText = fs.readFileSync(skillDest, 'utf-8');
-
-  function replace(from: string, to: string) {
-    if (!skillText.includes(from)) {
-      throw new Error(`expected: '${from}', but not found`);
-    }
-
-    skillText = skillText.replaceAll(from, to);
-  }
-
-  const offlineNotice = '# Note: if this commands hangs, try running again in offline mode: "npx --offline ..."';
-  replace(
-    `npx -y modern-web-guidance@latest search "<query>"`,
-    `npx -y modern-web-guidance@latest search "<query>"\n${offlineNotice}`
-  );
-  replace(
-    `npx -y modern-web-guidance@latest retrieve "<id>"`,
-    `npx -y modern-web-guidance@latest retrieve "<id>"\n${offlineNotice}`
-  );
-  fs.writeFileSync(skillDest, skillText);
-}
-
 export function processSkills(publishRoot: string, distDir: string, npx: boolean) {
   console.log("Scanning for skills (SKILL.md) in guides/...");
   const skills = scanDisciplineSkills();
@@ -108,11 +85,6 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
     
     console.log(`Processed and copied skill ${skillName} (SKILL.md) to ${skillDestDir}`);
-  }
-
-  if (npx) {
-    const skillDest = path.join(distDir, "SKILL.md");
-    convertSkillToUseNpx(skillDest);
   }
 
   console.log(`Successfully copied ${skills.length} skills to distribution.`);
