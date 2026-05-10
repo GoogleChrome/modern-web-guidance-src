@@ -214,7 +214,7 @@ export function collectGeminiToolsFromTrajectory(dir: string): string[] {
         if (msg.type === 'gemini' && Array.isArray(msg.toolCalls)) {
           for (const tc of msg.toolCalls) {
             if (tc.name.includes('get_best_practices')) {
-              toolsUsed.push('modern-web');
+              toolsUsed.push('modern-web-guidance');
             } else if (tc.name === 'activate_skill' && tc.args && tc.args.name) {
               toolsUsed.push(tc.args.name as string);
             }
@@ -229,7 +229,7 @@ export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   return Array.from(new Set(toolsUsed));
 }
 
-export function parseGeminiStreamOutput(outputStr: string, skillName: string = 'modern-web'): {
+export function parseGeminiStreamOutput(outputStr: string, skillName: string = 'modern-web-guidance'): {
     skillActivated: boolean;
     searchCalled: boolean;
     retrieveCalled: boolean;

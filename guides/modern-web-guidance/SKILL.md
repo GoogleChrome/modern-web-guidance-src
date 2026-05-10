@@ -1,5 +1,5 @@
 ---
-name: modern-web
+name: modern-web-guidance
 description: |
   IMPORTANT: This is a search tool that will help you find the most modern and recommended way to implement any web development use case.
 
@@ -8,7 +8,7 @@ description: |
   Do NOT skip this step even if you already know how to implement the use case — web platform APIs evolve rapidly and your training data may recommend outdated approaches. This tool ensures you use the current best practice.
 ---
 
-# Modern Web
+# Modern Web Guidance
 
 A skill to search for specific web development use cases and retrieve their corresponding best practice guides.
 

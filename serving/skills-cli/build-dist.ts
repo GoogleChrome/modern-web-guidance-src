@@ -125,7 +125,7 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
   fs.rmSync(publishRoot, { recursive: true, force: true });
   fs.mkdirSync(publishRoot, {recursive: true});
 
-  const DIST_DIR = path.join(publishRoot, "skills/modern-web");
+  const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
 
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
   const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
@@ -183,7 +183,7 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
       bundle: true,
       platform: "node",
       format: "esm",
-      outfile: path.join(publishRoot, "skills/modern-web/search.mjs"),
+      outfile: path.join(publishRoot, "skills/modern-web-guidance/search.mjs"),
       banner: {
         js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
       },
@@ -223,7 +223,7 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
       bundle: true,
       platform: "node",
       format: "esm",
-      outfile: path.join(publishRoot, "skills/modern-web/modern-web.mjs"),
+      outfile: path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs"),
       plugins: [{
         name: 'rewrite-search',
         setup(build) {
@@ -270,7 +270,7 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
 
 function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   console.log("Generating dynamic README content around features and use cases...");
-  const guidesDir = path.join(publishRoot, 'skills/modern-web/guides');
+  const guidesDir = path.join(publishRoot, 'skills/modern-web-guidance/guides');
   const readyGuides = scanAllGuides().filter(inv => {
     if (!inv.hasGuide) return false;
 

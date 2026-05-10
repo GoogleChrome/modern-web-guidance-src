@@ -45,7 +45,7 @@ describe('processSkills', () => {
 
   it('processes GUIDE_REF macros in real CSS SKILL.md', () => {
     const publishRoot = testOutputDir;
-    const distDir = path.join(publishRoot, 'skills/modern-web');
+    const distDir = path.join(publishRoot, 'skills/modern-web-guidance');
 
     processSkills(publishRoot, distDir, false);
 
@@ -58,14 +58,14 @@ describe('processSkills', () => {
     assert.ok(content.includes('`content-based-styling` (via `npx -y modern-web-guidance@latest retrieve "content-based-styling"`)'), 'Should contain command for content-based-styling');
   });
 
-  it('uses the same command text as in modern-web/SKILL.md', () => {
-    const skillFilePath = path.join(rootDir, 'guides/modern-web/SKILL.md');
-    assert.ok(fs.existsSync(skillFilePath), 'modern-web/SKILL.md should exist');
+  it('uses the same command text as in modern-web-guidance/SKILL.md', () => {
+    const skillFilePath = path.join(rootDir, 'guides/modern-web-guidance/SKILL.md');
+    assert.ok(fs.existsSync(skillFilePath), 'modern-web-guidance/SKILL.md should exist');
 
     const skillContent = fs.readFileSync(skillFilePath, 'utf8');
 
     const expectedPattern = 'npx -y modern-web-guidance@latest retrieve "<id>"';
-    assert.ok(skillContent.includes(expectedPattern), 'modern-web/SKILL.md should contain the expected command pattern');
+    assert.ok(skillContent.includes(expectedPattern), 'modern-web-guidance/SKILL.md should contain the expected command pattern');
 
     const result = replaceMacros('{{ GUIDE_REF("break-up-long-tasks") }}', 'test.md', { target: 'skills-cli' });
 
