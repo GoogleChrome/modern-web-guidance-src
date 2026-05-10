@@ -161,26 +161,24 @@ export async function collectClaudeGuidesFromTrajectory(dirPath: string, _servin
         if (!line.trim()) continue;
         try {
           const obj = JSON.parse(line);
-          if (obj.message && obj.message.content) {
-            for (const contentItem of obj.message.content) {
-              if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input && contentItem.input.command) {
-                const command = contentItem.input.command;
-                if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
-                  const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-                  if (match) {
-                    const ids = match[1].split(',');
-                    for (const id of ids) {
-                      result.retrievedGuides.push(id.trim());
-                    }
+          for (const contentItem of obj.message?.content || []) {
+            if (contentItem.type === 'tool_use' && contentItem.name === 'Bash' && contentItem.input?.command) {
+              const command = contentItem.input.command;
+              if (command.includes('modern-web') && (command.includes('retrieve') || command.includes('--retrieve'))) {
+                const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
+                if (match) {
+                  const ids = match[1].split(',');
+                  for (const id of ids) {
+                    result.retrievedGuides.push(id.trim());
                   }
                 }
-              } else if (contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input && contentItem.input.file_path) {
-                const filePath = contentItem.input.file_path;
-                if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
-                  const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
-                  if (match) {
-                    result.fileReadGuides.push(match[1]);
-                  }
+              }
+            } else if (contentItem.type === 'tool_use' && contentItem.name === 'Read' && contentItem.input?.file_path) {
+              const filePath = contentItem.input.file_path;
+              if (filePath.includes('/skills/') && filePath.endsWith('/guide.md')) {
+                const match = filePath.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+                if (match) {
+                  result.fileReadGuides.push(match[1]);
                 }
               }
             }
@@ -213,7 +211,7 @@ export function extractClaudeCodeModel(resultsDir: string): string {
         if (!line.trim() || !line.includes('"model"')) continue;
         try {
           const obj = JSON.parse(line);
-          if (obj.message && obj.message.model) {
+          if (obj.message?.model) {
             const m = obj.message.model;
             counts[m] = (counts[m] || 0) + 1;
           }
@@ -247,9 +245,10 @@ export function extractClaudeCodeTokenUsage(dir: string): { total: number; cache
         if (!trimmed) continue;
         try {
           const obj = JSON.parse(trimmed);
-          if (obj.message && obj.message.usage) {
-            total += (obj.message.usage.output_tokens || 0) + (obj.message.usage.input_tokens || 0) + (obj.message.usage.cache_read_input_tokens || 0);
-            cached += obj.message.usage.cache_read_input_tokens || 0;
+          if (obj.message?.usage) {
+            const usage = obj.message.usage;
+            total += (usage.output_tokens || 0) + (usage.input_tokens || 0) + (usage.cache_read_input_tokens || 0);
+            cached += usage.cache_read_input_tokens || 0;
             hasData = true;
           }
         } catch {
@@ -277,8 +276,7 @@ export function collectClaudeToolsFromTrajectory(dir: string): string[] {
       if (!line.trim()) continue;
       try {
         const obj = JSON.parse(line);
-        if (obj.message && Array.isArray(obj.message.content)) {
-          for (const item of obj.message.content) {
+          for (const item of obj.message?.content || []) {
             if (item.type === 'tool_use') {
               if (item.name === 'Skill' && item.input?.skill) {
                 toolsUsed.push(item.input.skill);
@@ -287,7 +285,6 @@ export function collectClaudeToolsFromTrajectory(dir: string): string[] {
               }
             }
           }
-        }
       } catch (e) {
         console.error(`Failed to parse jsonl line in ${sessionPath}:`, e);
       }
