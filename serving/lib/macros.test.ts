@@ -317,13 +317,13 @@ describe('INCLUDE', () => {
     it('replaces macro with category-level skill command for skills-cli', () => {
       const content = '{{ GUIDE_REF("forms") }}';
       const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'skills-cli' });
-      assert.equal(result, '`forms` (via `node <modern-web-directory>/modern-web.mjs retrieve "forms"`)');
+      assert.equal(result, '`forms` (via `npx -y modern-web-guidance@latest retrieve "forms"`)');
     });
 
     it('replaces macro with category-level skill command for skills-cli-npx', () => {
       const content = '{{ GUIDE_REF("forms") }}';
       const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'skills-cli-npx' });
-      assert.equal(result, '`forms` (via `npx -p modern-web-guidance@latest -- modern-web retrieve "forms"`)');
+      assert.equal(result, '`forms` (via `npx -y modern-web-guidance@latest retrieve "forms"`)');
     });
 
     it('throws error for non-existent guide', () => {
