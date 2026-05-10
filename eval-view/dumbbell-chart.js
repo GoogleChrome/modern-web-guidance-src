@@ -32,7 +32,7 @@ export class DumbbellChart {
   }
 
   render(data) {
-    const offsetStep = 8;
+    let offsetStep = 8;
     this.init();
 
     const labels = data.labels || [];
@@ -97,6 +97,17 @@ export class DumbbellChart {
         totalHeight += this.options.rowHeight + (count - 1) * offsetStep;
     });
     totalHeight += this.options.margin.bottom;
+
+    if (this.options.maxHeight && totalHeight > this.options.maxHeight) {
+        const available = this.options.maxHeight - this.options.margin.top - this.options.margin.bottom;
+        const natural = totalHeight - this.options.margin.top - this.options.margin.bottom;
+        if (natural > 0) {
+            const factor = available / natural;
+            this.options.rowHeight *= factor;
+            offsetStep *= factor;
+            totalHeight = this.options.maxHeight;
+        }
+    }
 
     const height = totalHeight;
 

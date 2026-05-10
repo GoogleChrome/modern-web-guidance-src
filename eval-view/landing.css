@@ -646,8 +646,8 @@
 }
 
 #tooltip-chart {
-  max-height: 300px;
-  overflow-y: auto;
+  max-height: 250px;
+  overflow: hidden;
 }
 
 .tooltip-title {
