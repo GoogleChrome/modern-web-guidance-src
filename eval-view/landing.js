@@ -505,8 +505,8 @@ function renderSuites() {
         const gStats = calculateGroupTotalStats(results, 'guided');
         const uStats = calculateGroupTotalStats(results, 'unguided');
 
-        const gRate = gStats.rate;
-        const uRate = uStats.rate;
+        const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
+        const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
 
         const localLink = `dashboard.html?testId=${testId}&source=${testInfo.source}`;
         const timeAgoStr = timeAgo(_date);
@@ -723,33 +723,23 @@ function getAgentBadge(agentName) {
 }
 
 function calculateGroupTotalStats(results, groupType) {
-    let globalPassed = 0;
-    let globalTotal = 0;
-    let taskRatesSum = 0;
-    let taskCount = 0;
+    let passed = 0;
+    let total = 0;
 
-    if (!results) return { passed: 0, total: 0, rate: 0 };
+    if (!results) return { passed, total }; // Guard against missing results
 
     Object.keys(results).forEach(key => {
+        // key format: "scenario - prompt - agent"
         if (key.endsWith(` - ${groupType}`)) {
-            let taskPassed = 0;
-            let taskTotal = 0;
             results[key].forEach(run => {
                 const s = getRunStats(run.results);
-                taskPassed += s.passed;
-                taskTotal += s.total;
-                globalPassed += s.passed;
-                globalTotal += s.total;
+                passed += s.passed;
+                total += s.total;
             });
-            if (taskTotal > 0) {
-                taskRatesSum += (taskPassed / taskTotal) * 100;
-                taskCount++;
-            }
         }
     });
 
-    const rate = taskCount > 0 ? Math.round(taskRatesSum / taskCount) : 0;
-    return { passed: globalPassed, total: globalTotal, rate };
+    return { passed, total };
 }
 
 function getSortedTestIds() {
@@ -776,8 +766,8 @@ function renderPivotInsights() {
         const data = testInfo.data;
         const gStats = calculateGroupTotalStats(data.results, 'guided');
         const uStats = calculateGroupTotalStats(data.results, 'unguided');
-        const gRate = gStats.rate;
-        const uRate = uStats.rate;
+        const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
+        const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
         const uplift = gRate - uRate;
 
         if (!grouped.agent[testInfo.agent]) grouped.agent[testInfo.agent] = [];
