@@ -520,12 +520,14 @@ function renderSuites() {
         const earlyFailureRate = data.summary?.unguidedEarlyFailureRate || 0;
         const isFaulty = earlyFailureRate === 100;
 
+        const { label, ldap } = formatSuiteLabel(testInfo);
+
         html += `
             <tr class="suite-table-row ${isFaulty ? 'faulty' : ''}">
                 <td style="text-align: left; font-weight: 600;">
                     <a href="${localLink}" class="suite-link" style="color: inherit; text-decoration: none;">
-                        <div style="color: var(--text-primary); font-size: 0.95rem;" title="${escapeHtml(testId)}">${escapeHtml(formatSuiteLabel(testInfo))}</div>
-                        <div style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${timeAgoStr} • <span style="font-size: 0.75rem;">${displayTimestamp}</span></div>
+                        <div style="color: var(--text-primary); font-size: 0.95rem;" title="${escapeHtml(testId)}">${escapeHtml(label)}</div>
+                        <div style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${timeAgoStr} • <span style="font-size: 0.75rem;">${displayTimestamp}</span>${ldap ? ` • <span style="font-weight: 600;">${escapeHtml(ldap)}</span>` : ''}</div>
                     </a>
                 </td>
                 <td>${testInfo.agent}</td>
@@ -664,7 +666,7 @@ function hideTooltipChart() {
 
 function formatSuiteLabel(testInfo) {
     const { testId, agent, serving } = testInfo;
-    if (!testId) return 'Evaluation Run';
+    if (!testId) return { label: 'evaluation-run', ldap: '' };
 
     const timeRegex = /[-_]?\b\d{4}-\d{2}-\d{2}(?:[T_]\d{2}-\d{2}-\d{2})?\b[-_]?/;
     const parts = testId.split(timeRegex);
@@ -675,29 +677,35 @@ function formatSuiteLabel(testInfo) {
     prefix = prefix.replace(/^[-_]+|[-_]+$/g, '');
     suffix = suffix.replace(/^[-_]+|[-_]+$/g, '');
     
-    let runType = prefix || 'Evaluation Run';
-    runType = runType.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    const label = prefix || 'evaluation-run';
     
-    if (!suffix) return runType;
+    if (!suffix) return { label, ldap: '' };
     
     const normalize = s => (s || '').toLowerCase().replace(/[-_]+/g, '');
     const normAgent = normalize(agent);
     const normServing = normalize(serving);
     
     const suffixParts = suffix.split('-');
-    const meaningfulParts = suffixParts.filter(part => {
+    let ldap = '';
+    const otherTags = [];
+    
+    suffixParts.forEach(part => {
         const normPart = normalize(part);
-        if (normPart === normAgent || normPart === normServing) return false;
-        if (normPart === 'cli' || normPart === 'run') return false;
-        return true;
+        if (normPart === normAgent || normPart === normServing) return;
+        if (normPart === 'cli' || normPart === 'run' || normPart === 'skills') return;
+        otherTags.push(part);
     });
     
-    if (meaningfulParts.length > 0) {
-        const userOrTag = meaningfulParts.join('-');
-        return `${runType} • ${userOrTag}`;
+    if (otherTags.length > 0) {
+        ldap = otherTags.pop();
     }
     
-    return runType;
+    let finalLabel = label;
+    if (otherTags.length > 0) {
+        finalLabel += '-' + otherTags.join('-');
+    }
+    
+    return { label: finalLabel, ldap };
 }
 
 function calculateGroupTotalStats(results, groupType) {
