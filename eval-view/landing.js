@@ -518,24 +518,28 @@ function renderSuites() {
         scenarioKeys.forEach(k => { if (data.results[k].length > maxRuns) maxRuns = data.results[k].length; });
 
         html += `
-            <tr class="suite-table-row" onclick="window.location.href='${localLink}'" style="cursor: pointer;">
+            <tr class="suite-table-row">
                 <td style="text-align: left; font-weight: 600;">
-                    <div style="color: var(--text-primary); font-size: 0.95rem;">${testId}</div>
-                    <div style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${timeAgoStr} • <span style="font-size: 0.75rem;">${displayTimestamp}</span></div>
+                    <a href="${localLink}" class="suite-link" style="color: inherit; text-decoration: none;">
+                        <div style="color: var(--text-primary); font-size: 0.95rem;">${testId}</div>
+                        <div style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${timeAgoStr} • <span style="font-size: 0.75rem;">${displayTimestamp}</span></div>
+                    </a>
                 </td>
                 <td>${testInfo.agent}</td>
                 <td>${servingDisplayNames[testInfo.serving] || testInfo.serving}</td>
                 <td style="font-size: 0.85rem; color: var(--text-secondary); word-break: break-word; width: 120px;">${escapeHtml(testInfo.model).replaceAll('-', '-&shy;')}</td>
                 <td style="font-weight: 600;">${taskCount} ${maxRuns > 1 ? `<span style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 400;">×${maxRuns}</span>` : ''}</td>
-                <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 10px 15px; vertical-align: middle;">
-                    <div style="height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; position: relative; padding: 2px;">
-                        <div style="position: absolute; left: calc(${uRate}% - 3px); width: 6px; height: 6px; border: 1.5px solid #8b949e; background: transparent; border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
-                        <div style="position: absolute; left: calc(${gRate}% - 4px); width: 8px; height: 8px; background: var(--color-primary); border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
-                        <div style="position: absolute; left: calc(${Math.min(uRate, gRate)}% + 2px); width: calc(${Math.abs(gRate - uRate)}% - 4px); height: 2px; background: var(--color-primary); top: 50%; transform: translateY(-50%);"></div>
-                    </div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; text-align: center;">
-                        <span style="font-weight: bold; color: var(--text-primary);">${gRate - uRate >= 0 ? '+' : ''}${gRate - uRate}%</span>
-                    </div>
+                <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 0; vertical-align: middle; position: relative; z-index: 2;">
+                    <a href="${localLink}" style="display: block; color: inherit; text-decoration: none; padding: 10px 15px;">
+                        <div style="height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; position: relative; padding: 2px;">
+                            <div style="position: absolute; left: calc(${uRate}% - 3px); width: 6px; height: 6px; border: 1.5px solid #8b949e; background: transparent; border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
+                            <div style="position: absolute; left: calc(${gRate}% - 4px); width: 8px; height: 8px; background: var(--color-primary); border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
+                            <div style="position: absolute; left: calc(${Math.min(uRate, gRate)}% + 2px); width: calc(${Math.abs(gRate - uRate)}% - 4px); height: 2px; background: var(--color-primary); top: 50%; transform: translateY(-50%);"></div>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; text-align: center;">
+                            <span style="font-weight: bold; color: var(--text-primary);">${gRate - uRate >= 0 ? '+' : ''}${gRate - uRate}%</span>
+                        </div>
+                    </a>
                 </td>
                 ${isRemoteDashboard() ? '' : `<td style="text-transform: capitalize;">${testInfo.source}</td>`}
             </tr>
