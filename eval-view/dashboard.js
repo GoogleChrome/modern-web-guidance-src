@@ -417,6 +417,11 @@ function renderSummary(data) {
     let guidedRunsCount = 0;
 
 
+    let unguidedTaskRatesSum = 0;
+    let unguidedTaskCount = 0;
+    let guidedTaskRatesSum = 0;
+    let guidedTaskCount = 0;
+
     const baseKeys = new Set();
     const tasksWithTools = new Set();
     const tasksWithGuides = new Set();
@@ -429,6 +434,9 @@ function renderSummary(data) {
         const isGuided = key.endsWith(' - guided');
         if (isGuided) guidedRunsCount += runs.length;
 
+        let taskPassed = 0;
+        let taskTotal = 0;
+
         runs.forEach(run => {
             const hasTools = run.guidanceToolsUsed && run.guidanceToolsUsed.length > 0;
             const hasGuides = (run.guidesUsed && run.guidesUsed.length > 0) || (run.guideUsed && typeof run.guideUsed === 'object' && run.guideUsed.guidesUsed && run.guideUsed.guidesUsed.length > 0);
@@ -437,20 +445,32 @@ function renderSummary(data) {
             if (isGuided && hasGuides) tasksWithGuides.add(base);
 
             const stats = getRunStats(run.results);
+            taskPassed += stats.passed;
+            taskTotal += stats.total;
+
             if (isGuided) {
                 totalGuidedPassed += stats.passed;
                 totalGuidedChecks += stats.total;
-
             } else {
                 totalUnguidedPassed += stats.passed;
                 totalUnguidedChecks += stats.total;
             }
         });
+
+        if (taskTotal > 0) {
+            if (isGuided) {
+                guidedTaskRatesSum += (taskPassed / taskTotal) * 100;
+                guidedTaskCount++;
+            } else {
+                unguidedTaskRatesSum += (taskPassed / taskTotal) * 100;
+                unguidedTaskCount++;
+            }
+        }
     });
 
     const tasksCount = baseKeys.size;
-    const unguidedPassRate = totalUnguidedChecks > 0 ? Math.round((totalUnguidedPassed / totalUnguidedChecks) * 100) : 0;
-    const guidedPassRate = totalGuidedChecks > 0 ? Math.round((totalGuidedPassed / totalGuidedChecks) * 100) : 0;
+    const unguidedPassRate = unguidedTaskCount > 0 ? Math.round(unguidedTaskRatesSum / unguidedTaskCount) : 0;
+    const guidedPassRate = guidedTaskCount > 0 ? Math.round(guidedTaskRatesSum / guidedTaskCount) : 0;
     const toolActivationRate = tasksCount > 0 ? Math.round((tasksWithTools.size / tasksCount) * 100) : 0;
     const guideUsageRate = tasksCount > 0 ? Math.round((tasksWithGuides.size / tasksCount) * 100) : 0;
 
