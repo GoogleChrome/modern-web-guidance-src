@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Animation Demo</title>
+<style>
+  :root {
+    --animation-easing: linear(0, 1);
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    background-color: #ffffff;
+    font-family: sans-serif;
+  }
+
+  .box {
+    width: 100px;
+    height: 100px;
+    background-color: #3498db;
+    animation: move 3s var(--animation-easing) infinite;
+  }
+
+  @keyframes move {
+    0% { transform: translateX(-100px); }
+    100% { transform: translateX(100px); }
+  }
+</style>
+</head>
+<body>
+  <div class="box"></div>
+</body>
+</html>
