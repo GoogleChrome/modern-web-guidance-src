@@ -302,7 +302,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
   const serving = suiteConfig ? suiteConfig.serving : defaultSuiteConfig.serving;
   if (serving === Serving.MCP) {
     console.log(`\nBuilding MCP index...`);
-    buildCode = await spawnAsync('pnpm', ['build:mcp'], { cwd: rootDir, stdio: 'inherit' });
+    buildCode = await spawnAsync('pnpm', ['build:embeddings'], { cwd: rootDir, stdio: 'inherit' });
   } else if (serving === Serving.SKILLS_CLI) {
     console.log(`\nBuilding skills-cli dist...`);
     buildCode = await spawnAsync('pnpm', ['--filter', 'serving', 'build-dist'], { cwd: rootDir, stdio: 'inherit' });

@@ -3,6 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import matter from 'gray-matter';
 
 export function assertSearchResults(output: string) {
@@ -25,6 +26,10 @@ const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
 if (process.env.SKIP_BUILD) {
+  if (!existsSync(DIST_DIR)) {
+    console.log("Skipping distribution tests because dist/ does not exist...");
+    process.exit(0);
+  }
   console.log("Skipping build-dist as requested via SKIP_BUILD...");
 } else {
   console.log("Running build-dist to ensure fresh build...");
