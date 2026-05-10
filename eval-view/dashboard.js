@@ -622,9 +622,8 @@ function renderGrid(data, testId) {
             accordion.className = 'task-accordion';
             accordion.id = `item-${scenarioName.replace(/\s+/g, '-').toLowerCase()}`;
 
-            // Draw mini dumbbell slider track
-            const leftDot = Math.min(unguidedAvg, guidedAvg) + 2;
-            const rightDot = Math.max(unguidedAvg, guidedAvg);
+            const minVal = Math.min(unguidedAvg, guidedAvg);
+            const maxVal = Math.max(unguidedAvg, guidedAvg);
             const trackWidth = 250; // matches css
             const scale = (val) => (val / 100) * trackWidth;
 
@@ -637,7 +636,7 @@ function renderGrid(data, testId) {
                     </div>
                     <div class="right-section">
                         <div class="mini-dumbbell-track">
-                            <div class="connector" style="left: ${scale(leftDot)}px; width: ${scale(rightDot - leftDot)}px;"></div>
+                            <div class="connector" style="left: ${scale(minVal)}px; width: ${scale(maxVal - minVal)}px;"></div>
                             <div class="dot unguided" style="left: ${scale(unguidedAvg)}px;"></div>
                             <div class="dot guided" style="left: ${scale(guidedAvg)}px;"></div>
                         </div>
