@@ -227,6 +227,38 @@ export function extractClaudeCodeModel(resultsDir: string): string {
   return 'unknown';
 }
 
+export function extractClaudeCodeTokenUsage(dir: string): { total: number; cached: number } | undefined {
+  let total = 0;
+  let cached = 0;
+  let hasData = false;
+  try {
+    const files = fs.readdirSync(dir);
+    const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
+    for (const file of sessionFiles) {
+      const filePath = path.join(dir, file);
+      const content = fs.readFileSync(filePath, 'utf8');
+      const lines = content.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const obj = JSON.parse(trimmed);
+          if (obj.message && obj.message.usage) {
+            total += (obj.message.usage.output_tokens || 0) + (obj.message.usage.input_tokens || 0) + (obj.message.usage.cache_read_input_tokens || 0);
+            cached += obj.message.usage.cache_read_input_tokens || 0;
+            hasData = true;
+          }
+        } catch {
+          // Ignore
+        }
+      }
+    }
+  } catch {
+    // Ignore
+  }
+  return hasData ? { total, cached } : undefined;
+}
+
 export function collectClaudeToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
   const sessionFiles = fs.globSync('**/*.jsonl', { cwd: dir });

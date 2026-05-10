@@ -208,6 +208,35 @@ export function extractGeminiCliModel(resultsDir: string): string {
   return 'unknown';
 }
 
+export function extractGeminiCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
+  let total = 0;
+  let cached = 0;
+  let hasData = false;
+  try {
+    const files = fs.readdirSync(dir);
+    const sessionFiles = files.filter(f => f.startsWith('session-') && (f.endsWith('.json') || f.endsWith('.jsonl')));
+    for (const file of sessionFiles) {
+      try {
+        const session = readTrajectory(path.join(dir, file));
+        if (session.messages) {
+          const messagesWithTokens = (session.messages as any[]).filter(m => m && typeof m === 'object' && 'tokens' in m) as Array<{ tokens: { total?: number; cached?: number } }>;
+          const lastMsg = messagesWithTokens[messagesWithTokens.length - 1];
+          if (lastMsg) {
+            total += lastMsg.tokens.total || 0;
+            cached += lastMsg.tokens.cached || 0;
+            hasData = true;
+          }
+        }
+      } catch {
+        // Ignore
+      }
+    }
+  } catch {
+    // Ignore
+  }
+  return hasData ? { total, cached } : undefined;
+}
+
 export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
   const files = fs.readdirSync(dir);

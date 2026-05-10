@@ -221,6 +221,51 @@ export function extractCodexCliModel(resultsDir: string): string {
   return 'unknown';
 }
 
+export function extractCodexCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
+  let total = 0;
+  let cached = 0;
+  let hasData = false;
+  try {
+    const files = fs.readdirSync(dir);
+    const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.jsonl'));
+    for (const file of sessionFiles) {
+      const filePath = path.join(dir, file);
+      const content = fs.readFileSync(filePath, 'utf8');
+      const lines = content.split('\n');
+      let lastTotal = 0;
+      let lastCached = 0;
+      let fileHasTokens = false;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const obj = JSON.parse(trimmed);
+          if (obj.type === 'token_count' && obj.info && obj.info.total_token_usage) {
+            lastTotal = obj.info.total_token_usage.total_tokens || 0;
+            lastCached = obj.info.total_token_usage.cached_input_tokens || 0;
+            fileHasTokens = true;
+          }
+          if (obj.type === 'event_msg' && obj.payload && obj.payload.type === 'token_count' && obj.payload.info && obj.payload.info.total_token_usage) {
+            lastTotal = obj.payload.info.total_token_usage.total_tokens || 0;
+            lastCached = obj.payload.info.total_token_usage.cached_input_tokens || 0;
+            fileHasTokens = true;
+          }
+        } catch {
+          // Ignore
+        }
+      }
+      if (fileHasTokens) {
+        total += lastTotal;
+        cached += lastCached;
+        hasData = true;
+      }
+    }
+  } catch {
+    // Ignore
+  }
+  return hasData ? { total, cached } : undefined;
+}
+
 export function collectCodexToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
   const sessionFiles = fs.globSync('session-*.jsonl', { cwd: dir });
