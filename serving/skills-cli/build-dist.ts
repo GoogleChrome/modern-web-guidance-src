@@ -95,12 +95,8 @@ function convertSkillToUseNpx(skillDest: string) {
 
 async function getTokenCountString(content: string, tokenizer: any): Promise<string> {
   if (!tokenizer) return "";
-  try {
-    const tokens = await tokenizer(content, { add_special_tokens: false });
-    return ` (${tokens.input_ids.data.length} tokens)`;
-  } catch (err) {
-    return "";
-  }
+  const tokens = await tokenizer(content, { add_special_tokens: false });
+  return ` (${tokens.input_ids.data.length} tokens)`;
 }
 
 export async function processSkills(publishRoot: string, distDir: string, npx: boolean) {
