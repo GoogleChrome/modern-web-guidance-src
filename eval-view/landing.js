@@ -536,7 +536,7 @@ function renderSuites() {
                 <td style="font-weight: 600;">${taskCount} ${maxRuns > 1 ? `<span style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 400;">×${maxRuns}</span>` : ''}</td>
                 <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 0; vertical-align: middle; position: relative; z-index: 2;">
                     <a href="${localLink}" style="display: block; color: inherit; text-decoration: none; padding: 10px 15px;">
-                        <div style="height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; position: relative; padding: 2px;">
+                        <div class="suite-dumbbell-track">
                             <div style="position: absolute; left: calc(${uRate}% - 3px); width: 6px; height: 6px; border: 1.5px solid #8b949e; background: transparent; border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
                             <div style="position: absolute; left: calc(${gRate}% - 4px); width: 8px; height: 8px; background: var(--color-primary); border-radius: 50%; top: 50%; transform: translateY(-50%);"></div>
                             <div style="position: absolute; left: calc(${Math.min(uRate, gRate)}% + 2px); width: calc(${Math.abs(gRate - uRate)}% - 4px); height: 2px; background: var(--color-primary); top: 50%; transform: translateY(-50%);"></div>

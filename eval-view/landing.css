@@ -65,11 +65,19 @@
 
 .insight-dumbbell-track {
   height: 10px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--border-color);
   border-radius: 5px;
   position: relative;
   padding: 1px;
   width: 130px;
+}
+
+.suite-dumbbell-track {
+  height: 12px;
+  background: var(--border-color);
+  border-radius: 6px;
+  position: relative;
+  padding: 2px;
 }
 
 .suites-table {
