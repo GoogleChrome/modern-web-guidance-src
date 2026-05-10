@@ -354,6 +354,7 @@ async function runAgentTest(targetDir: string, guideName: string, guidedOnly = f
     numRuns: 1,
     skipEval: true,
     guidedOnly,
+    suiteConfig,
   });
 
   // 3. Grade agent output (unguided + guided)

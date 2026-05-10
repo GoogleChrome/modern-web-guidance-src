@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Context-Sensitive Sticky Headers</title>
+  <title>State-Aware Sticky Headers</title>
   <style>
     body {
       font-family: system-ui, sans-serif;
@@ -32,7 +32,7 @@
       padding: 20px;
       font-size: 1.5rem;
       font-weight: bold;
-      transition: background-color 0.3s, box-shadow 0.3s, padding 0.3s, color 0.3s;
+      transition: background-color 0.3s, box-shadow 0.3s, color 0.3s;
     }
 
     /* Target the inner header when the container is stuck */
@@ -40,9 +40,15 @@
       .sticky-header {
         background: #0056b3;
         color: white;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.15);
-        padding: 10px 20px; /* Switch to a more compact layout */
+        box-shadow: 0 4px 6px rgb(0 0 0 / 0.15);
       }
+    }
+
+    /* Fallback styles for browsers without scroll-state support */
+    .sticky-container.is-stuck .sticky-header {
+      background: #0056b3;
+      color: white;
+      box-shadow: 0 4px 6px rgb(0 0 0 / 0.15);
     }
 
     .content {
@@ -93,5 +99,42 @@
       </div>
     </div>
 
+  <script>
+    // JS Fallback for browsers that don't support scroll-state queries
+    if (!CSS.supports('container-type', 'scroll-state')) {
+      function getScrollParent(node) {
+        if (node == null || node === document.body || node === document.documentElement) {
+          return null; // default to viewport
+        }
+        if (node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth) {
+          const overflow = getComputedStyle(node).overflow;
+          if (overflow !== 'visible' && overflow !== 'clip') {
+            return node;
+          }
+        }
+        return getScrollParent(node.parentNode);
+      }
+
+      document.querySelectorAll('.sticky-container').forEach(container => {
+        const root = getScrollParent(container);
+        
+        const topOffset = parseFloat(getComputedStyle(container).top) || 0;
+        
+        const observer = new IntersectionObserver(
+          ([e]) => {
+            // Toggle class when element moves above the top edge
+            e.target.classList.toggle('is-stuck', e.intersectionRatio < 1);
+          },
+          { 
+            root: root,
+            threshold: [1],
+            rootMargin: `-${topOffset + 1}px 0px 0px 0px`
+          }
+        );
+        
+        observer.observe(container);
+      });
+    }
+  </script>
 </body>
 </html>
