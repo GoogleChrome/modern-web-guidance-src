@@ -244,7 +244,7 @@ export function parseGeminiStreamOutput(outputStr: string, skillName: string = '
         try {
             const event = JSON.parse(line);
             if (event.type === 'tool_use') {
-                if (event.tool_name === 'activate_skill' && event.parameters?.name === skillName) {
+                if (event.tool_name === 'activate_skill' && event.parameters?.name && event.parameters.name.startsWith('modern-web')) {
                     skillActivated = true;
                 }
                 if (event.tool_name === 'run_shell_command') {
