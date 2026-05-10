@@ -1,145 +1,161 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-
-<head>
-  <meta charset="UTF-8">
-  <title>Direction-Aware Transitions</title>
-  <style>
-    /* CORE: View Transitions API */
-    html:active-view-transition-type(forward)::view-transition-old(root) {
-      animation: slide-left 0.4s ease-out forwards;
-    }
-
-    html:active-view-transition-type(forward)::view-transition-new(root) {
-      animation: slide-from-right 0.4s ease-out forwards;
-    }
-
-    html:active-view-transition-type(backward)::view-transition-old(root) {
-      animation: slide-right 0.4s ease-out forwards;
-    }
-
-    html:active-view-transition-type(backward)::view-transition-new(root) {
-      animation: slide-from-left 0.4s ease-out forwards;
-    }
-
-    @keyframes slide-left {
-      to {
-        transform: translateX(-100%);
+  <head>
+    <meta charset="UTF-8" />
+    <title>Direction-Aware Transitions</title>
+    <style>
+      ::view-transition-group(root) {
+        animation: 0.4s ease-in-out both;
       }
-    }
-
-    @keyframes slide-from-right {
-      from {
-        transform: translateX(100%);
+      html:active-view-transition-type(forward)::view-transition-old(root) {
+        animation-name: slide-to-left;
       }
-    }
-
-    @keyframes slide-right {
-      to {
-        transform: translateX(100%);
+      html:active-view-transition-type(forward)::view-transition-new(root) {
+        animation-name: slide-from-right;
       }
-    }
-
-    @keyframes slide-from-left {
-      from {
-        transform: translateX(-100%);
+      html:active-view-transition-type(backward)::view-transition-old(root) {
+        animation-name: slide-to-right;
       }
-    }
+      html:active-view-transition-type(backward)::view-transition-new(root) {
+        animation-name: slide-from-left;
+      }
 
-    /* DEMO: Styling */
-    body {
-      font-family: monospace;
-      max-width: 500px;
-      margin: 40px auto;
-      padding: 0 20px;
-    }
+      @media (prefers-reduced-motion: reduce) {
+        ::view-transition-group(root) {
+          animation: none !important;
+        }
+      }
 
-    .slide {
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 40px;
-      text-align: center;
-      margin: 20px 0;
-    }
+      @keyframes slide-to-left {
+        to {
+          transform: translateX(-100%);
+        }
+      }
 
-    .emoji {
-      font-size: 60px;
-      margin: 20px 0;
-    }
+      @keyframes slide-from-right {
+        from {
+          transform: translateX(100%);
+        }
+      }
 
-    .controls {
-      text-align: center;
-      margin: 20px 0;
-    }
+      @keyframes slide-to-right {
+        to {
+          transform: translateX(100%);
+        }
+      }
 
-    button {
-      padding: 8px 16px;
-      margin: 0 5px;
-      background: #0066cc;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
+      @keyframes slide-from-left {
+        from {
+          transform: translateX(-100%);
+        }
+      }
 
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
+      /* DEMO: Styling */
 
-    a {
-      color: #0066cc;
-      display: block;
-      margin-top: 30px;
-      text-decoration: none;
-    }
-  </style>
-</head>
+      body {
+        font-family: monospace;
+        max-width: 500px;
+        margin: 40px auto;
+        padding: 0 20px;
+      }
 
-<body>
-  <h1>Direction-Aware Transitions</h1>
+      .slide {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 40px;
+        text-align: center;
+        margin: 20px 0;
+      }
 
-  <div class="slide">
-    <div class="emoji" id="emoji">→</div>
-    <h2>Navigate Forward → Backward</h2>
-    <p id="text">Each direction has its own animation</p>
-  </div>
+      .emoji {
+        font-size: 60px;
+        margin: 20px 0;
+      }
 
-  <div class="controls">
-    <button id="prev" onclick="prev()" disabled>← Previous</button>
-    <span id="counter">Slide 1</span>
-    <button id="next" onclick="next()">Next →</button>
-  </div>
+      .controls {
+        text-align: center;
+        margin: 20px 0;
+      }
 
-  <script>
-    /* DEMO: Slide data */
-    const slides = ['→', '↗', '↓', '↙', '←'];
-    let i = 0;
+      button {
+        padding: 8px 16px;
+        margin: 0 5px;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
 
-    /* CORE: Forward transition with types: ['forward'] */
-    function next() {
-      if (i >= slides.length - 1) return;
-      if (!document.startViewTransition) { i++; show(); return; }
-      document.startViewTransition({ update: () => { i++; show(); }, types: ['forward'] });
-    }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
 
-    /* CORE: Backward transition with types: ['backward'] */
-    function prev() {
-      if (i <= 0) return;
-      if (!document.startViewTransition) { i--; show(); return; }
-      document.startViewTransition({ update: () => { i--; show(); }, types: ['backward'] });
-    }
+      a {
+        color: #0066cc;
+        display: block;
+        margin-top: 30px;
+        text-decoration: none;
+      }
+    </style>
+  </head>
 
-    /* DEMO: Update DOM */
-    function show() {
-      document.getElementById('emoji').textContent = slides[i];
-      document.getElementById('counter').textContent = `Slide ${i + 1}`;
-      document.getElementById('prev').disabled = i === 0;
-      document.getElementById('next').disabled = i === slides.length - 1;
-    }
-    show();
-  </script>
-</body>
-</body>
+  <body>
+    <h1>Direction-Aware Transitions</h1>
 
+    <div class="slide">
+      <div class="emoji" id="emoji">→</div>
+      <h2>Navigate Forward → Backward</h2>
+      <p id="text">Each direction has its own animation</p>
+    </div>
+
+    <div class="controls">
+      <button id="prev" onclick="prev()" disabled>← Previous</button>
+      <span id="counter">Slide 1</span>
+      <button id="next" onclick="next()">Next →</button>
+    </div>
+
+    <script>
+      /* DEMO: Slide data */
+      const slides = ["→", "↗", "↓", "↙", "←"];
+      let i = 0;
+
+      function navigate(updateDOM, direction) {
+        // Feature detect for browsers that do not support View Transitions
+        if (!document.startViewTransition) {
+          updateDOM();
+          return;
+        }
+
+        // Start transition with the specific navigation type
+        document.startViewTransition({
+          update: updateDOM,
+          types: [direction], // Matches the CSS :active-view-transition-type() selectors
+        });
+      }
+
+      /* CORE: Forward transition with types: ['forward'] */
+      function next() {
+        if (i >= slides.length - 1) return;
+        i++;
+        navigate(show, "forward");
+      }
+
+      /* CORE: Backward transition with types: ['backward'] */
+      function prev() {
+        if (i <= 0) return;
+        i--;
+        navigate(show, "backward");
+      }
+
+      function show() {
+        document.getElementById("emoji").textContent = slides[i];
+        document.getElementById("counter").textContent = `Slide ${i + 1}`;
+        document.getElementById("prev").disabled = i === 0;
+        document.getElementById("next").disabled = i === slides.length - 1;
+      }
+      show();
+    </script>
+  </body>
 </html>

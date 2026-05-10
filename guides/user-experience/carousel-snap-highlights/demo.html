@@ -1,77 +1,106 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Carousel Snap Highlights</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      background: #f9f9f9;
-    }
-
-    .carousel {
-      display: flex;
-      gap: 20px;
-      width: 100%;
-      max-width: 600px;
-      overflow-x: auto;
-      scroll-snap-type: x mandatory;
-      padding: 40px calc(50% - 100px); /* Center the first and last items */
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-    }
-
-    .carousel-item {
-      flex: 0 0 200px;
-      height: 250px;
-      scroll-snap-align: center;
-      
-      /* Make each snap target a scroll-state query container */
-      container-type: scroll-state;
-    }
-
-    .card {
-      width: 100%;
-      height: 100%;
-      background: #e0e0e0;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2rem;
-      font-weight: bold;
-      color: #666;
-      transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.4s, color 0.4s, box-shadow 0.4s;
-    }
-
-    /* Style the decendants of the container only when it is snapped horizontally */
-    @container scroll-state(snapped: x) {
-      .card {
-        background: #007bff;
-        color: white;
-        transform: scale(1.15);
-        box-shadow: 0 10px 25px rgba(0, 123, 255, 0.3);
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Carousel Snap Highlights</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: #f9f9f9;
       }
-    }
-  </style>
-</head>
-<body>
 
-  <div class="carousel">
-    <div class="carousel-item"><div class="card">1</div></div>
-    <div class="carousel-item"><div class="card">2</div></div>
-    <div class="carousel-item"><div class="card">3</div></div>
-    <div class="carousel-item"><div class="card">4</div></div>
-    <div class="carousel-item"><div class="card">5</div></div>
-  </div>
+      .carousel {
+        display: flex;
+        gap: 20px;
+        width: 100%;
+        max-width: 600px;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        padding: 40px calc(50% - 100px); /* Center the first and last items */
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      }
 
-</body>
+      .carousel-item {
+        flex: 0 0 200px;
+        height: 250px;
+        scroll-snap-align: center;
+
+        /* Make each snap target a scroll-state query container */
+        container-type: scroll-state;
+      }
+
+      .card {
+        height: 100%;
+        background: #e0e0e0;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        font-weight: bold;
+        color: #666;
+        transition:
+          scale 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+          background-color 0.4s,
+          color 0.4s,
+          box-shadow 0.4s;
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        /* Style the decendants of the container only when it is snapped horizontally */
+        @container scroll-state(snapped: x) {
+          .card {
+            background: #007bff;
+            color: white;
+            scale: 1.15;
+            box-shadow: 0 10px 25px rgba(0, 123, 255, 0.3);
+          }
+        }
+        /* Styles for fallback class applied by JavaScript */
+        .is-snapped .card {
+          background: #007bff;
+          color: white;
+          scale: 1.15;
+          box-shadow: 0 10px 25px rgba(0, 123, 255, 0.3);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="carousel">
+      <div class="carousel-item"><div class="card">1</div></div>
+      <div class="carousel-item"><div class="card">2</div></div>
+      <div class="carousel-item"><div class="card">3</div></div>
+      <div class="carousel-item"><div class="card">4</div></div>
+      <div class="carousel-item"><div class="card">5</div></div>
+    </div>
+    <script>
+      if (!CSS.supports("container-type", "scroll-state")) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              // Toggle a class based on intersection
+              entry.target.classList.toggle("is-snapped", entry.isIntersecting);
+            });
+          },
+          {
+            root: document.querySelector(".carousel"),
+            rootMargin: "0px -49%",
+          },
+        );
+
+        document.querySelectorAll(".carousel-item").forEach((item) => {
+          observer.observe(item);
+        });
+      }
+    </script>
+  </body>
 </html>

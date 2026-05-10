@@ -9,6 +9,10 @@ on:
       - '.github/workflows/publish.yml'
   workflow_dispatch: {}
 
+concurrency:
+  group: publish-skills
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -28,15 +32,17 @@ jobs:
       - uses: actions/checkout@v6
         with:
           token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: 24
           cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org/'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -49,25 +55,20 @@ jobs:
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "git@github.com:"
 
       - name: Publish Skills to GitHub (modern-web-guidance)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: pnpm --filter serving run publish-skills
 
-      # =========================================================================
-      # Future: Enable these steps when ready to publish to npm publicly!
-      # =========================================================================
-      # - name: Setup Node with npm registry
-      #   uses: actions/setup-node@v6
-      #   with:
-      #     node-version: 24
-      #     registry-url: 'https://registry.npmjs.org'
-      # 
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd dist/skills-cli-npx
+          npm publish --access public
+
       # - name: Publish to npm via OIDC Provenance
       #   run: |
       #     npm install -g npm@latest
-      #     cd dist/skills-cli
-      #     
-      #     # Run dry-run for safety or full publish
+      #     cd dist/skills-cli-npx
+      #     # Doesn't work unless repo is public. TODO: flip on when we open-source.
       #     # npm publish --provenance --access public --registry https://registry.npmjs.org/
-      #     npm publish --dry-run --provenance --access public --registry https://registry.npmjs.org/
-      # =========================================================================
-
-

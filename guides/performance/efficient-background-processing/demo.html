@@ -289,24 +289,51 @@
     const targetContainer = document.getElementById('target-container');
     const badge = document.getElementById('status-badge');
 
-    // This event fires whenever the browser decides to skip or un-skip rendering the element
-    targetContainer.addEventListener('contentvisibilityautostatechange', (event) => {
-      if (event.skipped) {
-        // The element is off-screen. We can safely pause our expensive work!
-        stopSimulation();
+    // Check if content-visibility is supported
+    const isContentVisibilitySupported = 'contentVisibility' in document.documentElement.style;
 
-        badge.textContent = 'PAUSED (Skipped)';
-        badge.className = 'status-badge badge-paused';
-        console.log("Component is skipped. Simulation paused.");
-      } else {
-        // The element is approaching or in the viewport. Start our work!
-        startSimulation();
+    if (!isContentVisibilitySupported) {
+      console.log("Using IntersectionObserver fallback");
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            // The element is close to the screen. Start work!
+            startSimulation();
+            badge.textContent = 'RUNNING (Visible)';
+            badge.className = 'status-badge badge-running';
+          } else {
+            // The element is far away. Pause work!
+            stopSimulation();
+            badge.textContent = 'PAUSED (Skipped)';
+            badge.className = 'status-badge badge-paused';
+          }
+        });
+      }, {
+        // Use rootMargin to start rendering before it hits the screen
+        rootMargin: '200px'
+      });
+      observer.observe(targetContainer);
+    } else {
+      console.log("Using native contentvisibilityautostatechange");
+      // This event fires whenever the browser decides to skip or un-skip rendering the element
+      targetContainer.addEventListener('contentvisibilityautostatechange', (event) => {
+        if (event.skipped) {
+          // The element is off-screen. We can safely pause our expensive work!
+          stopSimulation();
 
-        badge.textContent = 'RUNNING (Visible)';
-        badge.className = 'status-badge badge-running';
-        console.log("Component is visible. Simulation running.");
-      }
-    });
+          badge.textContent = 'PAUSED (Skipped)';
+          badge.className = 'status-badge badge-paused';
+          console.log("Component is skipped. Simulation paused.");
+        } else {
+          // The element is approaching or in the viewport. Start our work!
+          startSimulation();
+
+          badge.textContent = 'RUNNING (Visible)';
+          badge.className = 'status-badge badge-running';
+          console.log("Component is visible. Simulation running.");
+        }
+      });
+    }
 
   </script>
 </body>

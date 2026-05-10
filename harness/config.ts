@@ -60,8 +60,10 @@ export const defaultSuiteConfig: SuiteConfig = {
   numRuns: 1,
   tasks: [], // Empty = discover all tasks in harness/tasks/. Set explicitly to run a subset.
   mcpServersToEnable: ['modern-web'],
+  skillsToEnable: ['modern-web'],
   serving: Serving.SKILLS_CLI,
-  agent: Agents.JETSKI_CLI,
+  agent: Agents.GEMINI_CLI,
+  workerCount: undefined,
 };
 
 export function mergeSuiteConfig(overrides: Partial<SuiteConfig>): SuiteConfig {
@@ -112,8 +114,10 @@ export interface SuiteConfig {
   numRuns: number;
   tasks: string[];
   mcpServersToEnable: string[];
+  skillsToEnable: string[];
   serving: Serving;
   agent: string;
+  workerCount?: number;
 }
 
 export const config = {

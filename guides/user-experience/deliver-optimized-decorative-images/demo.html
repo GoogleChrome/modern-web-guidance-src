@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Deliver optimized decorative images</title>
+  <style>
+    .gallery-item {
+      width: 100%;
+      height: 400px;
+      
+      /* Fallback for browsers that do not support image-set() */
+      background-image: url("https://picsum.photos/id/10/800/400.jpg");
+      
+      /* Modern browsers will apply this and override the fallback */
+      background-image: image-set(
+        url("https://picsum.photos/id/10/800/400.webp") type("image/webp") 1x,
+        url("https://picsum.photos/id/10/1600/800.webp") type("image/webp") 2x,
+        url("https://picsum.photos/id/10/800/400.jpg") type("image/jpeg") 1x,
+        url("https://picsum.photos/id/10/1600/800.jpg") type("image/jpeg") 2x
+      );
+      
+      background-size: cover;
+      background-position: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="gallery-item"></div>
+</body>
+</html>

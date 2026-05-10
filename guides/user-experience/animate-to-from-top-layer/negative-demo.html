@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Top Layer Animation Demo</title>
+    <style>
+      :root {
+        --bg: #121212;
+        --text: #ffffff;
+        --accent: #ff4081;
+      }
+
+      body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .controls {
+        display: flex;
+        gap: 10px;
+      }
+
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        background: var(--accent);
+        border: none;
+        color: white;
+        border-radius: 4px;
+      }
+
+      dialog, [popover] {
+        border: none;
+        border-radius: 8px;
+        padding: 20px;
+        background: #333;
+        color: white;
+        width: 300px;
+        opacity: 0;
+        transform: translateY(-20px);
+        transition: opacity 0.5s ease, transform 0.5s ease;
+      }
+
+      dialog[open], [popover]:popover-open {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      dialog::backdrop, [popover]::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <button id="openDialog">Open Dialog</button>
+      <button popovertarget="myPopover">Open Popover</button>
+    </div>
+
+    <dialog id="myDialog">
+      <h2>Dialog Header</h2>
+      <p>This is a standard dialog element.</p>
+      <button id="closeDialog">Close</button>
+    </dialog>
+
+    <div id="myPopover" popover>
+      <h2>Popover Header</h2>
+      <p>This is a standard popover element.</p>
+    </div>
+
+    <script>
+      const dialog = document.getElementById('myDialog');
+      const openBtn = document.getElementById('openDialog');
+      const closeBtn = document.getElementById('closeDialog');
+
+      openBtn.addEventListener('click', () => {
+        dialog.showModal();
+      });
+
+      closeBtn.addEventListener('click', () => {
+        dialog.close();
+      });
+    </script>
+  </body>
+</html>

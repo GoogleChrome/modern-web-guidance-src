@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   let allGuides = {};
+  let selectedSkills = new Set(['modern-web']);
 
   try {
     const response = await fetch('/api/grouped-tasks');
@@ -38,9 +39,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     allGuides = data.guides || {};
     renderGuides(allGuides);
     renderDisciplines(data.disciplines || {});
+    
+    const skillsResponse = await fetch('/api/available-skills');
+    const skillsData = await skillsResponse.json();
+    console.log('Skills received from API:', skillsData.skills);
+    renderSkills(skillsData.skills || []);
+    
     updateTaskCount();
   } catch (e) {
-    console.error('Failed to fetch tasks:', e);
+    console.error('Failed to fetch tasks or skills:', e);
+  }
+
+  function renderSkills(skills) {
+    // Sort skills to put modern-web first
+    const sortedSkills = [...skills].sort((a, b) => {
+      if (a === 'modern-web') return -1;
+      if (b === 'modern-web') return 1;
+      return a.localeCompare(b);
+    });
+
+    const container = document.getElementById('skills-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    sortedSkills.forEach(skill => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-toggle';
+      if (selectedSkills.has(skill)) {
+        btn.classList.add('active');
+      }
+      btn.setAttribute('data-value', skill);
+      btn.textContent = skill;
+      
+      btn.addEventListener('click', () => {
+        if (selectedSkills.has(skill)) {
+          selectedSkills.delete(skill);
+          btn.classList.remove('active');
+        } else {
+          selectedSkills.add(skill);
+          btn.classList.add('active');
+        }
+      });
+      
+      container.appendChild(btn);
+    });
   }
 
   function updateTaskCount() {
@@ -392,15 +435,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const nameEl = document.getElementById('name');
     const numRunsEl = document.getElementById('numRuns');
+    const workerCountEl = document.getElementById('workerCount');
     const agentEl = document.getElementById('agent');
     const servingEl = document.getElementById('serving');
 
     const payload = {
       name: (nameEl instanceof HTMLInputElement) ? nameEl.value || null : null,
       numRuns: (numRunsEl instanceof HTMLInputElement) ? parseInt(numRunsEl.value) : 0,
+      workerCount: (workerCountEl instanceof HTMLInputElement && workerCountEl.value) ? parseInt(workerCountEl.value) : null,
       agent: (agentEl instanceof HTMLInputElement) ? agentEl.value : '',
       serving: (servingEl instanceof HTMLInputElement) ? servingEl.value : '',
-      tasks: selectedTasks
+      tasks: selectedTasks,
+      skillsToEnable: Array.from(selectedSkills)
     };
 
     const runBtn = document.getElementById('launch-btn');

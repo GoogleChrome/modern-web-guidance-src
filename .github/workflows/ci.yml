@@ -17,18 +17,29 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+      - run: git fetch --tags
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: 24
           cache: 'pnpm'
 
       - name: Install
         run: pnpm install --frozen-lockfile
+
+      - name: Restore Visual Guide Embeddings Cache
+        id: guides-embeddings-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            serving/build
+            serving/lib/use-cases.gen.ts
+            serving/lib/use-cases.vectors.gen.json.gz
+          key: ${{ runner.os }}-guide-embed-${{ hashFiles('guides/**/*.md', 'serving/scripts/build-guides.ts') }}
 
       - name: Preflight (Typecheck, Lint, Tests)
         env:
@@ -53,12 +64,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+      - run: git fetch --tags
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: 24
           cache: 'pnpm'
