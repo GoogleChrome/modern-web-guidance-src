@@ -466,9 +466,9 @@ function renderSummary(data) {
             </div>
             <div class="sparkline-container">
                                 <div class="sparkline-bar">
-                    <div class="sparkline-dot unguided" style="left: calc(${unguidedPassRate}% - 6px);" title="Unguided: ${unguidedPassRate}%"></div>
-                    <div class="sparkline-dot guided" style="left: calc(${guidedPassRate}% - 8px);" title="Guided: ${guidedPassRate}%"></div>
-                    <div class="sparkline-range" style="left: calc(${Math.min(unguidedPassRate, guidedPassRate)}% + 4px); width: calc(${Math.abs(guidedPassRate - unguidedPassRate)}% - 8px);"></div>
+                    <div class="sparkline-dot unguided" style="left: calc(${unguidedPassRate}% - 3px);" title="Unguided: ${unguidedPassRate}%"></div>
+                    <div class="sparkline-dot guided" style="left: calc(${guidedPassRate}% - 4px);" title="Guided: ${guidedPassRate}%"></div>
+                    <div class="sparkline-range" style="left: calc(${Math.min(unguidedPassRate, guidedPassRate)}% + ${unguidedPassRate < guidedPassRate ? 3 : 4}px); width: calc(${Math.abs(guidedPassRate - unguidedPassRate)}% - 7px);"></div>
                 </div>
                 <span class="sparkline-labels">${unguidedPassRate}% → <span>${guidedPassRate}%</span></span>
             </div>
@@ -493,9 +493,15 @@ function renderSummary(data) {
             </div>
             <div class="sparkline-container">
                 <div class="sparkline-bar small">
-                    <div class="sparkline-dot unguided small" style="left: calc(${(totalUnguidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100}% - 3px);" title="Unguided Count: ${totalUnguidedPassed}"></div>
-                    <div class="sparkline-dot guided small" style="left: calc(${(totalGuidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100}% - 4px);" title="Guided Count: ${totalGuidedPassed}"></div>
-                    <div class="sparkline-range small" style="left: calc(${Math.min((totalUnguidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100, (totalGuidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100)}% + 2px); width: calc(${Math.abs((totalGuidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100 - (totalUnguidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100)}% - 4px);"></div>
+                    ${(() => {
+                        const uPct = (totalUnguidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100;
+                        const gPct = (totalGuidedPassed / Math.max(totalUnguidedChecks, totalGuidedChecks)) * 100;
+                        return `
+                            <div class="sparkline-dot unguided small" style="left: calc(${uPct}% - 3px);" title="Unguided Count: ${totalUnguidedPassed}"></div>
+                            <div class="sparkline-dot guided small" style="left: calc(${gPct}% - 4px);" title="Guided Count: ${totalGuidedPassed}"></div>
+                            <div class="sparkline-range small" style="left: calc(${Math.min(uPct, gPct)}% + ${uPct < gPct ? 3 : 4}px); width: calc(${Math.abs(gPct - uPct)}% - 7px);"></div>
+                        `;
+                    })()}
                 </div>
                 <span class="sparkline-labels-small">${totalUnguidedPassed} → <span>${totalGuidedPassed}</span> <span>/ ${Math.max(totalUnguidedChecks, totalGuidedChecks)}</span></span>
             </div>
