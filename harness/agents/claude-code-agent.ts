@@ -7,6 +7,9 @@ import config, { Agents, Serving } from '../config.ts';
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
 
+// NOTE: Native Claude Code logs in ~/.claude/projects are stored without a prefix.
+// However, exportClaudeCodeTrajectories() explicitly prepends 'session-' when copying them
+// into the test output directory to ensure uniform matching across the dashboard and metrics engine.
 const TRAJECTORY_GLOB = 'session-*.jsonl';
 
 function getSessionFiles(dir: string, recursive = false): string[] {

@@ -53,7 +53,7 @@ function cleanupTempDir(dir: string) {
 test('Gemini CLI real trajectory parsing sanity check', async (t) => {
   const baseDir = path.join(os.homedir(), '.gemini', 'tmp');
   const recentFiles = getMostRecentFiles(baseDir, '*/chats/*.{json,jsonl}');
-  
+
   if (recentFiles.length === 0) {
     t.skip('No recent Gemini CLI trajectories found in ~/.gemini/tmp');
     return;
@@ -81,7 +81,7 @@ test('Gemini CLI real trajectory parsing sanity check', async (t) => {
 test('Claude Code real trajectory parsing sanity check', async (t) => {
   const baseDir = path.join(os.homedir(), '.claude', 'projects');
   const recentFiles = getMostRecentFiles(baseDir, '**/*.jsonl');
-  
+
   if (recentFiles.length === 0) {
     t.skip('No recent Claude Code trajectories found in ~/.claude/projects');
     return;
@@ -109,7 +109,7 @@ test('Claude Code real trajectory parsing sanity check', async (t) => {
 test('Codex CLI real trajectory parsing sanity check', async (t) => {
   const baseDir = path.join(os.homedir(), '.codex', 'sessions');
   const recentFiles = getMostRecentFiles(baseDir, '**/*.jsonl');
-  
+
   if (recentFiles.length === 0) {
     t.skip('No recent Codex CLI trajectories found in ~/.codex/sessions');
     return;
