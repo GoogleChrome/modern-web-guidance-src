@@ -17,6 +17,7 @@ export interface StoreUseCase {
 import { replaceMacros, type BuildTarget } from "../lib/macros.ts";
 
 import { scanAllGuides, type GuideInventory, getGuideMarkdownPath } from "../../lib/guide-validation.ts";
+import { config } from "../../lib/skills-config.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
@@ -58,7 +59,9 @@ export async function processGuides(opts: BuildOptions) {
   TARGET = target || 'local-dev';
 
   // Scan guides first to see if we even need to run
-  let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
+  let readyGuides = scanAllGuides().filter(inv => {
+    return inv.hasGuide && config.monoskill.bundledCategories.includes(inv.category);
+  });
 
   const crypto = await import("node:crypto");
   const hash = crypto.createHash("sha256");

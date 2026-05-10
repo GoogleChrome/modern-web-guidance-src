@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import matter from "gray-matter";
 import * as esbuild from "esbuild";
 import { scanAllGuides, scanDisciplineSkills } from "../../lib/guide-validation.ts";
+import { config } from "../../lib/skills-config.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
 import { processGuides } from "../scripts/build-guides.ts";
@@ -93,18 +94,27 @@ function convertSkillToUseNpx(skillDest: string) {
 }
 
 export function processSkills(publishRoot: string, distDir: string, npx: boolean) {
-  console.log("Scanning for skills (SKILL.md) in guides/...");
-  const skills = scanDisciplineSkills();
+  console.log("Processing standalone skills from configuration...");
+  const skills = config.standaloneSkills;
 
   for (const skill of skills) {
     const skillName = skill.name;
-    const source = path.join(skill.dir, "SKILL.md");
+    const source = path.join(rootDir, skill.sourcePath);
     const skillDestDir = path.join(publishRoot, "skills", skillName);
     
     fs.mkdirSync(skillDestDir, { recursive: true });
     
     const target = npx ? 'skills-cli-npx' : 'skills-cli';
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
+
+    if (skillName === config.monoskill.name) {
+      for (const kw of config.monoskill.requiredKeywords) {
+        if (!content.includes(kw)) {
+          throw new Error(`Monoskill ${skillName} description MUST explicitly include keyword: '${kw}'`);
+        }
+      }
+    }
+
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
     
     console.log(`Processed and copied skill ${skillName} (SKILL.md) to ${skillDestDir}`);
