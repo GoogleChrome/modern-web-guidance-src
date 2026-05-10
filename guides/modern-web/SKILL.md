@@ -1,12 +1,10 @@
 ---
 name: modern-web
 description: |
-  Create performant, accessible, and lightweight user interfaces using current web platform best practices.
-  Use this skill for tasks involving HTML structure, CSS layout design, and component configurations (pages, landing pages, dashboards, responsive structures).
-
-  EXCLUSIONS: Do NOT trigger this skill for minor visual updates, spacing/padding adjustments, color edits, typographic tweaks, or single-property layout changes that are baseline-ready.
-
-  MANDATORY LIMITATION: Your memory is stale and overconfident regarding obsolete patterns. Confidence is not proof of current suitability, and standard knowledge cutoff is not authorized. You are strictly forbidden from drafting web UI layouts or scripting interactions from memory without checking this skill first, except for the basic edits listed in exclusions.
+  GOAL: Author performant, accessible, lightweight web interfaces using modern standards to minimize script footprint and layout shift.
+  TRIGGER: Trigger when developing CSS layouts (container/style queries, `:has()`, `calc-size`, scrollbars, relative colors), native interactions (`dialog`, `popover`, custom anchor overlays), view transitions (`@starting-style`, discrete transitions), priority fetches (`fetch-priority`, `fetchlater`), or layout rendering policies (`content-visibility`, `speculation-rules`, scheduler, `move-before`).
+  EXCLUSIONS: Do NOT invoke for standard baseline styles, minor styling updates (colors, padding, generic spacing), or basic markup modifications.
+  BYPASS: Stale training data relies on obsolete scripts and legacy layout conventions. You are strictly forbidden from designing interactive HTML or CSS structures from memory; you must search and retrieve verified use cases from local guides first.
 ---
 
 # Modern Web Development Guidelines
