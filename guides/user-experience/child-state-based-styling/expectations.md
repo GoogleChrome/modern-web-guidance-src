@@ -2,5 +2,5 @@
 - The container element's styling (e.g., background color, border color) MUST change based on a specific state of the child element (e.g., `:checked`, `:focus`, `:invalid`).
 - The state-based styling MUST be implemented primarily using the CSS `:has()` pseudo-class to select the container based on the child's state (e.g., `.container:has(input:checked)`, `.container:has(input:focus)`).
 - If the state-based styling is critical to the component's functionality, the implementation MUST include a fallback strategy for browsers that do not support the `:has()` selector.
-- When a CSS fallback is implemented, it MUST use `@supports not selector(:has(*))` in CSS to provide alternative styling via a modifier class (e.g., `.is-active`, `.has-error`).
+- When a CSS fallback is implemented, it MUST use feature detection in CSS (e.g., `@supports selector(:has(*))` or `@supports not selector(:has(*))`) to isolate or provide alternative styling via a modifier class (e.g., `.is-active`, `.has-error`).
 - When a fallback relies on user interaction, the fallback strategy MUST include a JavaScript feature detection block using `CSS.supports('selector(:has(*))')` to manually toggle the modifier class on the container element when the relevant event occurs in unsupported browsers.
