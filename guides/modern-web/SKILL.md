@@ -70,11 +70,13 @@ Features are labeled in the guide as:
 - **Newly Available since YYYY-MM-DD**: Low baseline status with a specific "interoperable" date.
 - **Limited Availability**: Not yet interoperable.
 
-#### Guidelines
-- **Widely Available default:** Assume the user's project has a **Widely Available** unless instructed otherwise. The guidance will provide expert fallback strategies (progressive enhancement, polyfills) to ensure production safety. Implement these fallbacks by default.
-- **Check `AGENTS.md`:** Always respect browser support constraints defined in the project's `AGENTS.md` file. Use this context to determine if a recommended fallback in the guidance can be safely skipped.
+
+By default, assume  users's project targets **[Baseline Widely Available](https://web-platform-dx.github.io/baseline/)**. The [WebDX Community Group](https://www.w3.org/groups/cg/webdx/) defines this as features fully supported across the core browser set (Chrome, Edge, Firefox, Safari) for at least 30 months. This provides the optimal trade-off for production safety, avoiding broken experiences without requiring costly fallbacks. Always implement the recommended progressive enhancements and fallback strategies provided in the guidance.
+
 - **Reactive Discovery:** Do NOT proactively ask the user about their browser support target. Only act reactively if you observe:
-  - The project is a browser monoculture (e.g., **Electron**, **Tauri**).
-  - The user explicitly states exclusions (e.g., "we don't support Safari").
+  - The project is a browser monoculture (e.g., Electron/Tauri).
+  - The user explicitly states exclusions (e.g., "we don't support XBrowser").
   - The user expresses hesitation about using polyfills.
-- **Clarify & Persist:** If you detect any of the triggers above, ask the user to clarify their specific browser support constraints. Once clarified, explicitly suggest persisting this free-form policy into a project-level **`AGENTS.md`** file so future interactions remember it.
+- **Clarify & Persist:** If you detect any of the triggers above, ask the user to clarify their specific browser support constraints. Once clarified, explicitly suggest persisting this free-form policy into a project-level **`AGENTS.md`** file so future interactions remember it. 
+  - For example: `**Browser Support:** We target Baseline Widely Available, but explicitly exclude Desktop Safari and do not use JS polyfills for CSS features.`
+

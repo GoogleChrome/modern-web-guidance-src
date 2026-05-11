@@ -1,6 +1,5 @@
 # Baseline & Modern Web Guidance: Our Approach
 
-We are shifting how the Modern Web Guidance skill handles browser compatibility and Baseline targets. Instead of relying on a rigid, schema-driven JSON configuration (which conflicts with how static tools use Baseline as a "ceiling"), we're adopting a reactive, context-aware approach driven natively by the agent. 
 
 ### 1. Default to Widely Available
 Out of the box, the guidance defaults to **Widely Available**.
