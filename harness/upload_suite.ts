@@ -17,7 +17,7 @@ async function uploadDirectory(bucket: any, dirPath: string, gcsPrefix: string, 
       const fullPath = path.join(currentDir, file.name);
       const destinationPath = path.join(currentPrefix, file.name);
 
-      if (file.name === 'node_modules') continue;
+      if (file.name === 'node_modules' || file.name === '.jetskicli') continue;
 
       if (file.isDirectory()) {
         if (!summaryOnly) {
