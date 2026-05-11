@@ -95,9 +95,9 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
     const skillName = skill.name;
     const source = path.join(skill.dir, "SKILL.md");
     const skillDestDir = path.join(publishRoot, "skills", skillName);
-    
+
     fs.mkdirSync(skillDestDir, { recursive: true });
-    
+
     const target = npx ? 'skills-cli-npx' : 'skills-cli';
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
@@ -111,8 +111,8 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
-async function main(opts: {publishRoot: string, version?: string, npx?: boolean}): Promise<BuildResult | undefined> {
-  const {publishRoot, version, npx} = opts;
+async function main(opts: { publishRoot: string, version?: string, npx?: boolean }): Promise<BuildResult | undefined> {
+  const { publishRoot, version, npx } = opts;
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web");
   const modernWebMjs = path.join(DIST_DIR, "modern-web.mjs");
@@ -168,9 +168,12 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
           return basename === "model.json" || basename.startsWith("group1-shard");
         }
       });
+      console.log(`Copied ${tfjsModelDir} to ${destTfjsModelDir}`);
     }
 
     try {
+      console.log("Bundling search.mjs...");
+      // To analyze bundle size breakdown, assign build()s return to `result` and use `esbuild.analyzeMetafile(result.metafile)`
       const resultSearch = await esbuild.build({
         entryPoints: [path.join(SERVING_DIR, "lib/search.ts")],
         bundle: true,
@@ -186,10 +189,19 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
         metafile: true,
         minify: true,
         alias: {
+          // Force transformers to use the ESM entry point to avoid CommonJS issues in the bundle
           "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
+          // We leverage Transformers.js only for tokenization. But it is a large dependency and
+          // tries to do a lot more, including loading native dependencies (onnxruntime-node) that
+          // we have no use for. We use this dummy shim to ensure we can use the library without
+          // pulling in native binaries.
           "onnxruntime-node": path.resolve(SERVING_DIR, "lib/dummy-onnx.ts"),
         },
         plugins: [{
+          // TFJS deep imports fail in pure Node ESM because they lack extensions.
+          // In raw Node runs, tfjs-kernels.ts uses require() to load the CommonJS version (all kernels).
+          // For the production bundle, we use this plugin to swap it with tfjs-kernels-precise.ts
+          // which only registers the specific kernels we need, keeping the bundle small.
           name: 'use-precise-kernels',
           setup(build) {
             build.onResolve({ filter: /tfjs-kernels\.ts$/ }, _args => {
@@ -199,13 +211,15 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
         }],
       });
       fs.writeFileSync(path.join(publishRoot, "search.meta.json"), JSON.stringify(resultSearch.metafile, null, 2));
+      console.log(`Generated metafile for search.mjs at ${path.join(publishRoot, "search.meta.json")}`);
 
+      console.log("Bundling modern-web.mjs...");
       const resultModernWeb = await esbuild.build({
         entryPoints: [path.join(SERVING_DIR, "bin/modern-web.ts")],
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: modernWebMjs,
+        outfile: path.join(publishRoot, "skills/modern-web/modern-web.mjs"),
         plugins: [{
           name: 'rewrite-search',
           setup(build) {
@@ -266,7 +280,7 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
       const content = fs.readFileSync(guidePath, "utf-8");
       const { data } = matter(content);
       if (data.description) description = data.description;
-    } catch {}
+    } catch { }
 
     const sortedFeatureIds = [...guide.featureIds].sort();
     const signature = sortedFeatureIds.join(',');
@@ -274,8 +288,8 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     sortedFeatureIds.forEach(id => allFeatureIds.add(id));
 
     if (!useCaseGroupMap.has(signature)) {
-       const features = sortedFeatureIds.map(fId => ({ id: fId, name: getFeatureName(fId) }));
-       useCaseGroupMap.set(signature, { features, useCases: [] });
+      const features = sortedFeatureIds.map(fId => ({ id: fId, name: getFeatureName(fId) }));
+      useCaseGroupMap.set(signature, { features, useCases: [] });
     }
     useCaseGroupMap.get(signature)!.useCases.push({ id: guide.name, description });
   }
@@ -292,7 +306,7 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   try {
     const pkgJson = JSON.parse(fs.readFileSync(path.join(publishRoot, "package.json"), "utf8"));
     if (pkgJson.version) version = pkgJson.version;
-  } catch {}
+  } catch { }
 
   let dynamicMd = `#### Skill Coverage in \`v${version}\`\n\n`;
   const featureNamesCsv = allFeaturesSorted.map(f => `\`${f.name.replace(/</g, '&lt;')}\``).join(', ');
@@ -322,7 +336,7 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
 function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath: string) {
   const allowedLicenses = ['MIT', 'Apache 2.0', 'Apache-2.0', 'BSD-3-Clause', 'BSD-2-Clause', 'ISC', '0BSD'];
   const paths = new Set<string>();
-  
+
   for (const metafile of metafiles) for (const p of Object.keys(metafile.inputs)) paths.add(p);
 
   const nodeModules = new Map<string, string>();
@@ -353,11 +367,11 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
   const stringifiedDependencies = Array.from(nodeModules.keys()).sort().map(name => {
     const nodeModulePath = nodeModules.get(name)!;
     const dependency = JSON.parse(fs.readFileSync(path.join(nodeModulePath, 'package.json'), 'utf-8'));
-    
+
     const licenseFilePaths = ['LICENSE', 'LICENSE.txt', 'LICENSE.md', 'LICENSE.MIT', 'LICENSE.APACHE'].map(f => path.join(nodeModulePath, f));
     const licenseFile = licenseFilePaths.find(f => fs.existsSync(f));
     if (licenseFile) dependency.licenseText = fs.readFileSync(licenseFile, 'utf-8');
-    
+
     const license = dependency.license ?? 'N/A';
     if (!allowedLicenses.includes(license)) throw new Error(`Unapproved license for dependency ${name}: ${license}`);
 
@@ -394,8 +408,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   (async () => {
     try {
-      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true});
-      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version});
+      await main({ publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true });
+      await main({ publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version });
     } catch (err) {
       console.error(err);
       process.exit(1);
