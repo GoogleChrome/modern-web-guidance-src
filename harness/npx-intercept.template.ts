@@ -1,5 +1,14 @@
 #!/usr/bin/env node
 
+/**
+ * @file npx-intercept.template.ts
+ * @description This script acts as a shim for `npx` during evaluations.
+ * It intercepts calls to `npx -y modern-web-guidance@latest` and redirects them
+ * to the local build in `dist/skills-cli`, ensuring that agents use the fresh
+ * local guides instead of fetching the published package from the npm registry.
+ * All other `npx` calls fall back to the real system `npx`.
+ */
+
 import { spawnSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
