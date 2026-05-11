@@ -101,6 +101,29 @@ export function copyFileIfExists(src: string, dest: string): void {
 }
 
 /**
+ * Safely reads and parses a JSONL file, filtering out empty or malformed lines.
+ */
+export function parseJsonlFile<T = any>(filePath: string): T[] {
+  try {
+    if (!fs.existsSync(filePath)) return [];
+    const content = fs.readFileSync(filePath, 'utf8');
+    return content
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+      .flatMap(line => {
+        try {
+          return [JSON.parse(line) as T];
+        } catch {
+          return [];
+        }
+      });
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Creates a trustedFolders.json file to avoid "untrusted folder" errors.
  * @param contentsDir Directory to write the trustedFolders.json file to (e.g. .gemini or .gemini/jetski)
  * @param folders List of absolute paths to trust
@@ -474,7 +497,7 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
       fs.copyFileSync(srcFile, destFile);
       console.log(`Copied trajectory: ${fileName} to ${targetDir}`);
 
-      const trajectoryId = fileName.replace(/\.(json|pb)$/, '');
+      const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db)$/, '');
       const fileBuffer = fs.readFileSync(srcFile);
       const htmlContent = generateExportHtml(new Uint8Array(fileBuffer), fileName);
       const htmlFileName = trajectoryId.startsWith('session-') ? `${trajectoryId}.html` : `session-${trajectoryId}.html`;
@@ -583,7 +606,7 @@ export async function runCliAgentCommand(
  * @returns HTML content
  */
 export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, prodBase = DEFAULT_PROD_BASE): string {
-    const trajectoryId = fileName.replace(/\.(json|pb)$/, '');
+    const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db)$/, '');
     const title = `Trajectory - ${trajectoryId}`;
 
     // Node.js environment: Buffer is faster than manual conversion
@@ -663,7 +686,6 @@ export function getGraderScriptContent(
   guideName: string
 ): string {
   const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
-  const targetPkgJson = path.join(targetDir, 'package.json');
   const targetFile = path.join(targetDir, 'index.html');
   const gradeReportDir = path.join(targetDir, 'grade-report');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
@@ -674,20 +696,6 @@ import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
 async function run() {
   try {
-    const pkgJsonPath = ${JSON.stringify(targetPkgJson)};
-    if (fs.existsSync(pkgJsonPath)) {
-      const installResult = spawnSync('pnpm', ['install', '--no-frozen-lockfile', '--prefer-offline', '--ignore-workspace'], {
-        cwd: ${JSON.stringify(targetDir)},
-        stdio: 'inherit',
-        shell: true,
-        env: { ...process.env, CI: 'true' }
-      });
-      if (installResult.status !== 0) {
-        console.error("pnpm install failed");
-        process.exit(1);
-      }
-    }
-
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},

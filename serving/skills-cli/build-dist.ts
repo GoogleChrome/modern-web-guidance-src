@@ -10,8 +10,6 @@ import { rootDir, guidesDir } from "../../lib/paths.ts";
 import { processGuides } from "../scripts/build-guides.ts";
 import { replaceMacros } from "../lib/macros.ts";
 
-
-
 const SERVING_DIR = path.join(rootDir, "serving");
 const ROOT_DIST_DIR = path.join(rootDir, "dist");
 
@@ -262,7 +260,7 @@ async function main(opts: { publishRoot: string, version?: string, npx?: boolean
 function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   const guidesDir = path.join(publishRoot, 'skills/modern-web/guides');
   const readyGuides = scanAllGuides().filter(inv => {
-    if (!inv.hasGuide) return false;
+    if (!inv.hasGuide || inv.featureIds.length === 0) return false;
 
     const guideBuildPath = path.join(guidesDir, inv.category, `${inv.name}.md`);
     return fs.existsSync(guideBuildPath);

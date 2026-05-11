@@ -311,7 +311,7 @@ describe('INCLUDE', () => {
     it('replaces macro with forms skill path', () => {
       const content = '{{ GUIDE_REF("forms") }}';
       const result = replaceMacros(content, path.join(rootDir, 'test.md'));
-      assert.equal(result, '`guides/forms/SKILL.md`');
+      assert.equal(result, '`guides/forms/forms/guide.md`');
     });
 
     it('replaces macro with category-level skill command for skills-cli', () => {
