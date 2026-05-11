@@ -81,7 +81,7 @@ test('SKILL.md validations', async () => {
 
 test('Discipline guides present (forms, performance)', async () => {
   const checkGuide = async (name: string) => {
-    const guidesDir = path.join(DIST_DIR, 'skills/modern-web/guides');
+    const guidesDir = path.join(DIST_DIR, 'skills/modern-web-guidance/guides');
     const guidePath = path.join(guidesDir, name, `${name}.md`);
     await assert.doesNotReject(fs.access(guidePath), `Missing guide file in ${name}`);
   };
