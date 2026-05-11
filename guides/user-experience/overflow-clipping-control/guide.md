@@ -76,7 +76,7 @@ This pattern is particularly useful for preventing unwanted overflow on replaced
 
 ## Fallback Strategy
 
-{{ BASELINE_STATUS("overflow-clip") }}
+{{ BASELINE_STATUS("overflow-clip-margin") }}
 
 For browsers that do not support `overflow: clip` or `overflow-clip-margin`, the standard fallback is `overflow: hidden`. This clips the content to the padding box but allows programmatic scrolling.
 
