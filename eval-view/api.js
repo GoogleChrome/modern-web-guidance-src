@@ -30,7 +30,13 @@ export class ApiClient {
             }
             return url;
         } else {
-            return `${path}?source=${this.source}`;
+            let fullPath = path;
+            // Prepend results/ for local results in static mode
+            if (this.source === 'static' && !path.startsWith('results/') && !path.startsWith('base_apps/') && !path.startsWith('tasks/')) {
+                fullPath = `results/${path}`;
+            }
+            const separator = fullPath.includes('?') ? '&' : '?';
+            return `${fullPath}${separator}source=${this.source}`;
         }
     }
 

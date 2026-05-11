@@ -223,7 +223,7 @@ export function updateMcpConfig(
  * @param agent The agent type
  * @returns True if successful, false otherwise
  */
-export function copySkills(homeDir: string, agent: string, cli: boolean): boolean {
+export function copySkills(homeDir: string, agent: string, cli: boolean, skillsToEnable: string[] = ['modern-web']): boolean {
   const guidesSource = guidesDir;
 
   let destDir = '';
@@ -240,8 +240,8 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
   try {
     fs.mkdirSync(destDir, { recursive: true });
 
-    if (cli) { // Add modern-web-use-cases Skill (& resources) from skills-cli dist
-      const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web-use-cases');
+    if (cli && skillsToEnable.includes('modern-web')) { // Add modern-web Skill (& resources) from skills-cli dist
+      const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web');
       if (!fs.existsSync(distSource)) {
         console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter serving build-dist' automatically...`);
         try {
@@ -257,7 +257,7 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
       }
 
       try {
-        const destSkillDir = path.join(destDir, 'modern-web-use-cases');
+        const destSkillDir = path.join(destDir, 'modern-web');
         fs.mkdirSync(destSkillDir, { recursive: true });
 
         if (fs.existsSync(distSource)) {
@@ -288,7 +288,8 @@ export function copySkills(homeDir: string, agent: string, cli: boolean): boolea
         d => d.isDirectory() &&
         !d.name.startsWith('.') &&
         d.name !== 'node_modules' &&
-        d.name !== 'modern-web-use-cases' // only needed when using Skills (CLI), already added above
+        d.name !== 'modern-web' && // only needed when using Skills (CLI), already added above
+        skillsToEnable.includes(d.name)
       );
 
     for (const dir of topLevelDirs) {

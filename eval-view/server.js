@@ -1,9 +1,11 @@
 
+
 import * as http from "http";
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { exec, spawn } from 'child_process';
+import { runAllManifests } from './generate-manifests.js';
 
 const PORT = process.env.PORT || 8081;
 const STATIC = process.env.STATIC === 'true';
@@ -12,6 +14,7 @@ if (STATIC) {
   console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
   
   const distDir = path.resolve('../dist/dashboard');
+
   if (fs.existsSync(distDir)) {
     fs.rmSync(distDir, { recursive: true, force: true });
   }
@@ -43,6 +46,9 @@ if (STATIC) {
       console.error(`Failed to create symlink for ${link.name}:`, message);
     }
   }
+
+  console.log('🔄 Generating manifests for static mode...');
+  await runAllManifests({ outputDir: distDir });
 
   console.log(`🚀 Spawning statikk on port ${PORT} serving ../dist/dashboard...`);
   const p = spawn('pnpm', ['dlx', 'statikk', '--port', PORT.toString(), '../dist/dashboard'], { stdio: 'inherit' });
@@ -171,7 +177,7 @@ const server = http.createServer(async (req, res) => {
   // --- /api/grouped-tasks : lists tasks grouped per guide ---
   if (decodedPath === '/api/grouped-tasks') {
     try {
-      const { getTaskMap } = await import('../lib/guide-validation.ts');
+      const { getTaskMap, isDisciplineSkillDir } = await import('../lib/guide-validation.ts');
       const { USE_CASES } = await import('../serving/lib/practices.ts');
       const taskMap = getTaskMap();
       /** @type {Record<string, Record<string, string[]>>} */
@@ -182,10 +188,9 @@ const server = http.createServer(async (req, res) => {
       for (const [key, info] of taskMap.entries()) {
         const [guide, task] = key.split('/');
         
-        const parentDir = path.basename(path.dirname(info.guideDir));
-        const isSkill = parentDir === 'guides';
+        const isDisciplineSkill = isDisciplineSkillDir(info.guideDir);
         
-        if (isSkill) {
+        if (isDisciplineSkill) {
           if (!disciplines[guide]) disciplines[guide] = [];
           disciplines[guide].push(task);
         } else {
@@ -201,6 +206,33 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ guides: grouped, disciplines: disciplines }));
     } catch (e) {
       console.error('Error fetching grouped tasks:', e);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }));
+    }
+    return;
+  }
+
+  // --- /api/available-skills : lists folders with SKILL.md ---
+  if (decodedPath === '/api/available-skills') {
+    try {
+      const guidesDir = path.resolve('../guides');
+      const skills = [];
+      if (fs.existsSync(guidesDir)) {
+        const candidates = fs.readdirSync(guidesDir, { withFileTypes: true })
+          .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+          .map(d => d.name);
+
+        for (const candidate of candidates) {
+          const skillSource = path.join(guidesDir, candidate, "SKILL.md");
+          if (fs.existsSync(skillSource)) {
+            skills.push(candidate);
+          }
+        }
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ skills }));
+    } catch (e) {
+      console.error('Error fetching skills:', e);
       res.writeHead(500);
       res.end(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }));
     }

@@ -1,6 +1,6 @@
 ---
 name: declarative-button-actions
-description: Declaratively connect a button to any element to trigger custom, application-specific actions.
+description: Declaratively connect a button to any element to trigger custom, application-specific actions using declarative button commands, invoker commands, button commands, custom commands, or declarative toggle actions.
 web-feature-ids:
   - invoker-commands
 sources:
@@ -46,14 +46,12 @@ For custom, application-specific actions, you can define your own command names.
 </button>
 
 <script>
-  // Listen for the 'command' event globally (or on a stable parent)
-  document.addEventListener('command', (event) => {
+  // Listen for the 'command' event directly on the target element
+  // (This is necessary because the native 'command' event does not bubble)
+  document.getElementById('action-target').addEventListener('command', (event) => {
     // Robustly handle both native API and manual/polyfill fallbacks
     const command = event.command || event.detail?.command;
-    const target = event.target;
-
-    // Only process commands for our specific target
-    if (target.id !== 'action-target') return;
+    const target = event.currentTarget;
 
     // Custom commands are checked to identify the requested action
     if (command === '--spin') {
@@ -132,13 +130,13 @@ if (!supportsInvokers) {
   });
 }
 
-// 3. The unified listener: Uses the registry to execute the requested action
-document.addEventListener('command', (event) => {
+// 3. The unified listener: Registered directly on the target element
+document.getElementById('action-target').addEventListener('command', (event) => {
   const command = event.command || event.detail?.command;
-  const target = event.target;
+  const target = event.currentTarget;
   const action = commandRegistry[command];
 
-  if (action && target.id === 'action-target') {
+  if (action) {
     action(target);
   }
 });

@@ -1,40 +1,59 @@
 #!/usr/bin/env node --experimental-strip-types
 
-import { parseArgs } from "util";
+import { parseArgs } from "node:util";
+import { spawnSync } from "node:child_process";
+import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { retrieveUseCase } from "../lib/retrieve.ts";
 
-const { values } = parseArgs({
+const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
   options: {
-    search: { type: "string", short: "s" },
-    retrieve: { type: "string", short: "r" },
     help: { type: "boolean", short: "h" },
+    version: { type: "boolean", short: "v" },
   },
-  allowPositionals: false,
+  allowPositionals: true,
+  strict: false,
 });
 
 function printUsage() {
   console.log(`
-Usage: modern-web [options]
+Usage: modern-web <command> [args]
+
+Commands:
+  search <query>          Search use cases by query
+  retrieve <ids>          Retrieve use case(s) by ID(s), comma-separated
+  install                 Install skills
 
 Options:
-  -s, --search <query>          Search use cases by query
-  -r, --retrieve <ids>          Retrieve use case(s) by ID(s), comma-separated
-  -h, --help                    Show this help
+  -h, --help              Show this help
+  -v, --version           Show version
 `);
 }
 
 async function main() {
-  if (values.help) {
-    printUsage();
+  if (values.version) {
+    console.log(getVersion());
     process.exit(0);
   }
 
-  if (values.search) {
+  if (values.help || positionals.length === 0) {
+    printUsage();
+    process.exit(values.help ? 0 : 1);
+  }
+
+  const command = positionals[0];
+  const arg = positionals.slice(1).join(" ");
+
+  if (command === "search") {
+    if (!arg) {
+      console.error("No search query provided.");
+      process.exit(1);
+    }
     try {
       // Dynamic import to keep the CLI loading fast -- only load the embedder if needed.
       const { searchUseCases } = await import("../lib/search.ts");
-      const results = await searchUseCases(values.search);
+      const results = await searchUseCases(arg);
       if (results.length === 0) {
         console.log("[]");
       } else {
@@ -47,8 +66,12 @@ async function main() {
       console.error("Search failed:", error);
       process.exit(1);
     }
-  } else if (values.retrieve) {
-    const ids = values.retrieve.split(",").map(id => id.trim()).filter(Boolean);
+  } else if (command === "retrieve") {
+    if (!arg) {
+      console.error("No IDs provided for retrieve.");
+      process.exit(1);
+    }
+    const ids = arg.split(",").map(id => id.trim()).filter(Boolean);
     if (ids.length === 0) {
       console.error("No IDs provided for retrieve.");
       process.exit(1);
@@ -64,11 +87,34 @@ async function main() {
         process.exit(1);
       }
     }
+  } else if (command === "install") {
+    const extraArgs = process.argv.slice(3);
+    const result = spawnSync("npx", ["skills", "add", "GoogleChrome/modern-web-guidance", ...extraArgs], {
+      stdio: "inherit",
+    });
+    if (result.error) {
+      console.error("Install failed:", result.error);
+      process.exit(1);
+    }
+    process.exit(result.status ?? 0);
   } else {
+    console.error(`Unknown command: ${command}`);
     printUsage();
     process.exit(1);
   }
 }
+
+function getVersion(): string {
+  try {
+    // Resolves to serving/package.json in dev, or dist/skills-cli/package.json in prod bundles
+    const pkgPath = join(import.meta.dirname, "../../package.json");
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+    return pkg.version || "unknown";
+  } catch (e) {
+    return "unknown";
+  }
+}
+
 
 main().catch(err => {
   console.error("Execution failed:", err);

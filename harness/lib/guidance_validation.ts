@@ -12,14 +12,13 @@ export async function collectGuidesUsed(dirPath: string, serving: Serving, agent
   if (agent === Agents.GEMINI_CLI) {
     return collectGeminiGuidesFromTrajectory(dirPath, serving);
   }
-
   // For MCP and Jetski runs, collect guide usage from modern-web log if present
   // Jetski impl does not support trajectory pb parsing, so we rely on modern-web log (will not be present in Skills runs)
   if (serving === Serving.MCP || agent === Agents.JETSKI || agent === Agents.JETSKI_CLI) {
     const logPath = path.join(dirPath, MODERN_WEB_LOG_FILE);
 
     if (!fs.existsSync(logPath)) {
-      return { retrievedGuides: ['unknown'], fileReadGuides: ['unknown'] };
+      return { retrievedGuides: [], fileReadGuides: [] };
     }
 
     const logContent = fs.readFileSync(logPath, 'utf8').trim();
@@ -45,7 +44,7 @@ export async function collectGuidesUsed(dirPath: string, serving: Serving, agent
 
     return {
       retrievedGuides: [...new Set(guidesFromLog)],
-      fileReadGuides: ['unknown']
+      fileReadGuides: []
     };
   }
 
@@ -56,12 +55,12 @@ export async function collectGuidesUsed(dirPath: string, serving: Serving, agent
     const guides = await collectCodexGuidesFromTrajectory(dirPath, serving);
     return {
       retrievedGuides: guides,
-      fileReadGuides: ['unknown']
+      fileReadGuides: []
     };
   }
   
   console.warn(`Unknown agent ${agent} for skills collection`);
-  return { retrievedGuides: ['unknown'], fileReadGuides: ['unknown'] };
+  return { retrievedGuides: [], fileReadGuides: [] };
 }
 
 export async function collectGuidanceToolsUsed(dir: string, serving: Serving, agent: string): Promise<string[]> {
