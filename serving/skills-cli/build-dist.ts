@@ -117,20 +117,8 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
   const DIST_DIR = path.join(publishRoot, "skills/modern-web");
   const modernWebMjs = path.join(DIST_DIR, "modern-web.mjs");
 
-  // Selective clean: preserve modern-web so we don't wipe out our cached vectors or guides.
-  if (fs.existsSync(publishRoot)) {
-    const skillsDir = path.join(publishRoot, "skills");
-    if (fs.existsSync(skillsDir)) {
-      for (const s of fs.readdirSync(skillsDir)) {
-        if (s !== "modern-web") {
-          fs.rmSync(path.join(skillsDir, s), { recursive: true, force: true });
-        }
-      }
-    }
-  } else {
-    fs.mkdirSync(publishRoot, { recursive: true });
-  }
-
+  // Step 1: Check if we can short-circuit without wiping anything.
+  // processGuides internally uses dist/.cache/ and evaluates the source hashes.
   const skipped = await processGuides({
     outputDir: DIST_DIR,
     target: npx ? 'skills-cli-npx' : 'skills-cli',
@@ -140,6 +128,18 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
     return { featuresCount: 0, useCasesCount: 0, skillsCount: 0, skillNames: [] };
   }
 
+  // Step 2: If we didn't short-circuit, we do a clean, purist build.
+  // Now we can safely wipe publishRoot completely!
+  fs.rmSync(publishRoot, { recursive: true, force: true });
+  fs.mkdirSync(publishRoot, { recursive: true });
+
+  // Step 3: Because we just wiped publishRoot, we restore the fresh vectors/guides 
+  // from .cache/ into DIST_DIR.
+  await processGuides({
+    outputDir: DIST_DIR,
+    target: npx ? 'skills-cli-npx' : 'skills-cli',
+  });
+
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
   const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
 
@@ -148,15 +148,7 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
   try {
     fs.mkdirSync(publishRoot, { recursive: true });
 
-    try {
-      await processGuides({
-        outputDir: DIST_DIR,
-        target: npx ? 'skills-cli-npx' : 'skills-cli',
-      });
-    } catch (error) {
-      console.error("Failed to build guides:", error);
-      process.exit(1);
-    }
+
 
     fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
 
@@ -244,7 +236,7 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
     const { skillsCount, skillNames } = processSkills(publishRoot, DIST_DIR, !!npx);
     const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
 
-    console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
+    console.log(`\nSuccess! standalone distribution generated in ${publishRoot}`);
     return { featuresCount, useCasesCount, skillsCount, skillNames };
   } finally {
     if (fs.existsSync(lockFilePath)) {

@@ -127,8 +127,6 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
 
-  console.log("Initializing Embedder…");
-
   if (modelName) {
     console.log(`Using custom embedding model: ${modelName}`);
   }
@@ -178,7 +176,6 @@ export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
   const jsonContent = JSON.stringify(storeUseCases);
   const compressed = zlib.gzipSync(jsonContent);
   fs.writeFileSync(CACHED_VECTORS, compressed);
-  console.log(`Vector storage updated at ${path.relative(WORKSPACE_ROOT, CACHED_VECTORS)}`);
 
   fs.writeFileSync(CACHED_MANIFEST, JSON.stringify({ hash: currentHash }, null, 2));
 
