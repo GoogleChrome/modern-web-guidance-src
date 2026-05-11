@@ -166,11 +166,11 @@ export function updateMcpConfig(
    const mcpConfig: { mcpServers: Record<string, any> } = { mcpServers: {} };
 
   for (const serverName of serversToEnable) {
-    if (serverName === 'modern-web-guidance') {
+    if (serverName.startsWith('modern-web')) {
       if (!modernWebServerPath || !fs.existsSync(modernWebServerPath)) {
         throw new Error(`Example MCP server path not found: ${modernWebServerPath}`);
       }
-      mcpConfig.mcpServers['modern-web-guidance'] = {
+      mcpConfig.mcpServers[serverName] = {
         command: 'node',
         args: [modernWebServerPath]
       };
@@ -263,7 +263,7 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
   try {
     fs.mkdirSync(destDir, { recursive: true });
 
-    if (cli && skillsToEnable.includes('modern-web-guidance')) { // Add modern-web-guidance Skill (& resources) from skills-cli dist
+    if (cli && skillsToEnable.some(s => s.startsWith('modern-web'))) { // Add modern-web-guidance Skill (& resources) from skills-cli dist
       const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web-guidance');
       if (!fs.existsSync(distSource)) {
         console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter serving build-dist' automatically...`);
@@ -311,8 +311,8 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
         d => d.isDirectory() &&
         !d.name.startsWith('.') &&
         d.name !== 'node_modules' &&
-        d.name !== 'modern-web-guidance' && // only needed when using Skills (CLI), already added above
-        skillsToEnable.includes(d.name)
+        !d.name.startsWith('modern-web') && // only needed when using Skills (CLI), already added above
+        skillsToEnable.some(s => s === d.name || (d.name.startsWith('modern-web') && s.startsWith('modern-web')))
       );
 
     for (const dir of topLevelDirs) {
