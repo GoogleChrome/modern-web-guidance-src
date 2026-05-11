@@ -27,11 +27,11 @@ describe('processSkills', () => {
     fs.rmSync(testOutputDir, { recursive: true, force: true });
   });
 
-  it('processes macros in SKILL.md', () => {
+  it('processes macros in SKILL.md', async () => {
     const publishRoot = testOutputDir;
     const distDir = path.join(publishRoot, 'skills/modern-web');
 
-    processSkills(publishRoot, distDir, false);
+    await processSkills(publishRoot, distDir, false);
 
     const builtSkillPath = path.join(publishRoot, 'skills', dummySkillName, 'SKILL.md');
     assert.ok(fs.existsSync(builtSkillPath), 'Built SKILL.md should exist');
@@ -43,11 +43,11 @@ describe('processSkills', () => {
     assert.ok(content.includes('`forms` (via `node <modern-web-directory>/modern-web.mjs retrieve "forms"`)'), 'Should resolve forms skill reference');
   });
 
-  it('processes GUIDE_REF macros in real CSS SKILL.md', () => {
+  it('processes GUIDE_REF macros in real CSS SKILL.md', async () => {
     const publishRoot = testOutputDir;
     const distDir = path.join(publishRoot, 'skills/modern-web');
 
-    processSkills(publishRoot, distDir, false);
+    await processSkills(publishRoot, distDir, false);
 
     const builtSkillPath = path.join(publishRoot, 'skills', 'css', 'SKILL.md');
     assert.ok(fs.existsSync(builtSkillPath), 'Built CSS SKILL.md should exist');

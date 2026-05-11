@@ -4,6 +4,7 @@ import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import matter from "gray-matter";
 import * as esbuild from "esbuild";
+import { AutoTokenizer } from "@huggingface/transformers";
 import { scanAllGuides, scanDisciplineSkills } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../lib/baseline.ts";
 import { rootDir } from "../../lib/paths.ts";
@@ -92,9 +93,26 @@ function convertSkillToUseNpx(skillDest: string) {
   fs.writeFileSync(skillDest, skillText);
 }
 
-export function processSkills(publishRoot: string, distDir: string, npx: boolean) {
+async function getDescriptionTokenCount(content: string, tokenizer: any): Promise<string> {
+  if (!tokenizer || !content) return "";
+  try {
+    const parsed = matter(content).data;
+    if (!parsed.description) return "";
+    const tokens = await tokenizer(parsed.description, { add_special_tokens: false });
+    return ` (${tokens.input_ids.data.length} tokens)`;
+  } catch (err) {
+    return "";
+  }
+}
+
+export async function processSkills(publishRoot: string, distDir: string, npx: boolean) {
   console.log("Scanning for skills (SKILL.md) in guides/...");
   const skills = scanDisciplineSkills();
+
+  let tokenizer: any = null;
+  try {
+    tokenizer = await AutoTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2");
+  } catch (e) {}
 
   for (const skill of skills) {
     const skillName = skill.name;
@@ -107,7 +125,8 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
     
-    console.log(`Processed and copied skill ${skillName} (SKILL.md) to ${skillDestDir}`);
+    const tokenStr = await getDescriptionTokenCount(content, tokenizer);
+    console.log(`Processed and copied skill ${skillName} (SKILL.md)${tokenStr} to ${skillDestDir}`);
   }
 
   if (npx) {
@@ -255,7 +274,7 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
 
 
 
-  const { skillsCount, skillNames } = processSkills(publishRoot, DIST_DIR, !!npx);
+  const { skillsCount, skillNames } = await processSkills(publishRoot, DIST_DIR, !!npx);
 
   const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
 

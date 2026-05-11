@@ -1,35 +1,33 @@
 ---
 name: modern-web
 description: |
-  IMPORTANT: This is a search tool that will help you find the most modern and recommended way to implement any web development use case.
+  Use this skill when structure, styling, or interactions for complex components, pages, dashboards, and layout grids need to align with modern browser features.
+  Trigger this for advanced CSS layouts (container/style queries, `:has()`, `calc-size`, scrollbars, relative colors), native controls (`dialog`, `popover`, anchor positioning), transitions (`@starting-style`, discrete transitions), priority fetches (`fetch-priority`, `fetchlater`), or layout rendering policies (`content-visibility`, `speculation-rules`, scheduler, `move-before`).
 
-  MANDATORY: You MUST execute this FIRST for each and every web development use case, even if you're implementing that use case in a framework like React, especially for writing modern web code. No matter the complexity, you MUST call this tool for ALL web development tasks touching HTML, CSS, or JavaScript.
+  Do NOT invoke this skill for trivial visual tweaks, single-property updates, or standard baseline styles (e.g., basic colors, padding, borders, typography) that are fully ready from general memory.
 
-  Do NOT skip this step even if you already know how to implement the use case — web platform APIs evolve rapidly and your training data may recommend outdated approaches. This tool ensures you use the current best practice.
+  WARNING: Stale training memory relies on obsolete scripts and bloated design patterns. You are strictly forbidden from authoring frontend structures from memory without searching this skill first, except for the basic changes listed above.
 ---
 
-# Modern Web
+# Modern Web Development Guidelines
 
-A skill to search for specific web development use cases and retrieve their corresponding best practice guides.
+To locate, retrieve, and execute modern layout, design, and web platform patterns:
 
-## When to use
+## Search and Retrieve Protocol
 
-Must use this skill:
-- At the **start** of implementing any web feature.
-- Before creating a new component, to check if a standardized pattern already exists.
-- To avoid implementing ad-hoc solutions or loading large dependencies unnecessarily.
+### 1. Search for an implementation pattern
+Find the most relevant pattern matching your current task.
 
-## Usage Instructions
-
-### Step 1. Search Use Cases
-
-Search with an action-oriented query summarizing what you want to achieve using the `search` command. Run `modern-web.mjs` directly with `node`.
-
-```sh
+```bash
 node <modern-web-directory>/modern-web.mjs search "<query>"
 ```
 
-**Example Output**:
+Example:
+```bash
+node <modern-web-directory>/modern-web.mjs search "defer offscreen layout"
+```
+
+Example search output:
 ```json
 [
   {
@@ -41,22 +39,43 @@ node <modern-web-directory>/modern-web.mjs search "<query>"
 ]
 ```
 
----
+### 2. Retrieve standard requirements
+Use the identified `id` from search outputs to load full guidelines.
 
-### Step 2. Retrieve Best Practices
-
-Once you have a relevant `id` from the search results, call this script using the `retrieve` command to get the full guide. You can pass multiple IDs separated by commas.
-
-```sh
+```bash
 node <modern-web-directory>/modern-web.mjs retrieve "<id>"
 ```
 
+Example:
+```bash
+node <modern-web-directory>/modern-web.mjs retrieve "content-vis"
+```
 
-**Example Output**:
-`The markdown content of the guide describing implementation steps...`
+---
 
-## Guidelines
+## Directives
 
--   Always search **first** to find the most specific design/performance patterns.
--   These guides are usually framework-agnostic; adapt them correctly to your setup.
--   Do not hallucinate guides or ignore them; they represent the preferred local standard for the user's project.
+1. **Search First**: Do not write layout structures, styling properties, or scripting actions without checking for matching use cases.
+2. **Prioritize Native Platform Capabilities**: Leverage native browser-supported features (e.g., `:has()`, `<dialog>`, `popover`) and dynamic units over complex JavaScript calculations, design hacks, or dependencies.
+3. **Strict Compliance**: Carry out all "DO", "DO NOT", and "MANDATORY" specifications documented in the retrieved guides.
+4. **Framework Adaptations**: Framework adaptations (e.g., React, Vue components) must comply with the core standards constraints.
+5. **No Hallucinations**: Adhere strictly to locally available web development guidelines retrieved using this tool.
+
+---
+
+## Query Reference Examples
+
+### Search query:
+```bash
+node <modern-web-directory>/modern-web.mjs search "monitor and report core web vitals at the end of a session"
+```
+
+### Retrieve guide:
+```bash
+node <modern-web-directory>/modern-web.mjs retrieve "full-session-analytics"
+```
+
+Other reference guides available for search:
+- `optimize-image-priority` (LCP / Fetch Priority)
+- `adapt-scrollbar-to-contrast-preferences` (CSS Scrollbar styling for high-contrast visibility)
+
