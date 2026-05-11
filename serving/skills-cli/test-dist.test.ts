@@ -140,7 +140,7 @@ test('modern-web CLI search and retrieve', async () => {
 });
 
 test('modern-web CLI version flags', async () => {
-  const binaryPath = path.join(DIST_DIR, 'skills/modern-web/modern-web.mjs');
+  const binaryPath = path.join(DIST_DIR, 'skills/modern-web-guidance/modern-web.mjs');
   const pkgJsonRaw = await fs.readFile(path.join(DIST_DIR, 'package.json'), 'utf8');
   const pkgJson = JSON.parse(pkgJsonRaw);
   const expectedVersion = pkgJson.version;
