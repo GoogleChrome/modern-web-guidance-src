@@ -71,24 +71,15 @@ For more control over the colors of built-in UI such as `accent-color` or `scrol
   --brand-text-light: hsl(210, 100%, 2%);
   --brand-text-dark: hsl(0, 0%, 100%);
 
-  /* Define fallback values using system colors for initial resolution */
-  --accent-color: var(--brand-accent-light, AccentColor);
-  --background-color: var(--brand-bg-light, Canvas);
-  --text-color: var(--brand-text-light, CanvasText);
+  /* Optional: Use light-dark() for more control of built-in UI colors */
+  --background-color: light-dark(var(--brand-bg-light), var(--brand-bg-dark));
+  --text-color: light-dark(var(--brand-text-light), var(--brand-text-dark));
 
+  /* Set dynamic browser UI accent color for each mode */
+  --accent-color: light-dark(var(--brand-accent-light), var(--brand-accent-dark));
 
   /* MANDATORY: Automatically adapt native UI to user system preferences */
   color-scheme: light dark;
-  
-
-  /* OPTIONAL: use light-dark() for more control of built-in UI colors */
-  @supports (color: light-dark(white, black)) {
-    --background-color: light-dark(var(--brand-bg-light), var(--brand-bg-dark));
-    --text-color: light-dark(var(--brand-text-light), var(--brand-text-dark));
-
-    /* Set dynamic browser UI accent color for each mode */
-    --accent-color: light-dark(var(--brand-accent-light), var(--brand-accent-dark));
-  }
 }
 
 body {
@@ -117,8 +108,7 @@ pre, code {
 
 ## Best Practices
   - The `@property` Risk **:
-    - If you define a theme variable with registered custom properties (via `@property`), the browser resolves it to a specific color immediately. Descendant elements that change their `color-scheme` (e.g., a dark-themed card on a light page) will inherit the *already-resolved color* instead of the dynamic function. 
-    - Since theme variables defined with `@property` have a defined `syntax: "<color>"`, they "lock" the resolved color at computed value time, making them non-reactive to local theme changes. **Mandatory**: Do not register properties meant to be design tokens that dynamically switch based on `light-dark()`. If you need to animate a color variable, use a separate property.
+    - **Mandatory**: Do not register properties meant to be design tokens that dynamically switch based on `light-dark()` as `<color>`. If you need to animate a color variable, use a separate property. `light-dark()` resolves at computed value time, and registered properties inherit resolved, computed values, so the color would no longer be reactive to local theme changes. Descendant elements that change their `color-scheme` (e.g., a dark-themed card on a light page) will inherit the *already-resolved color* instead of the dynamic function.
     - Built-in inherited properties such as `color` and `accent-color` can also be affected by this issue. To prevent this, always reassign the dynamic theme variable on these built-in properties when they are inside of a nested theme. 
     - **Example: Handling Built-In Inherited Properties**
 
@@ -127,14 +117,13 @@ pre, code {
         /* Define browser UI accent color for each mode */
         --brand-accent-light: #0056b3;
         --brand-accent-dark: #00e5ff;
-        --accent-color: var(--brand-accent-light, AccentColor);
+        /* OPTIONAL: Apply dynamic color switching based on light-dark */
+        --accent-color: light-dark(var(--brand-accent-light), var(--brand-accent-dark));
 
         /* MANDATORY: Automatically adapt native UI to user system preferences */
         color-scheme: light dark;
         /* Set built-in inherited property */
         accent-color: var(--accent-color);
-        /* OPTIONAL: Apply dynamic color switching based on light-dark */
-        --accent-color: light-dark(var(--brand-accent-light), var(--brand-accent-dark));
         }
 
       textarea {
@@ -146,14 +135,14 @@ pre, code {
 - **System Colors**: Use system color keywords like `Canvas` (background) and `CanvasText` (text) for your custom components when you want them to match the browser's native themed surfaces exactly. This is ideal for ensuring consistency between your content and the browser's UI (like scrollbars) while automatically respecting OS-level accessibility features like High Contrast mode.
 - **Respect User Preference**: **MANDATORY**: Avoid forcing a single theme on the overall page. While specific components (like a code editor) may benefit from a fixed theme, the main application should respect the user's system preference and ideally provide a manual toggle to allow users to choose between light, dark, or system-default modes.
 - **Forcing a Theme**: Use a single value like `color-scheme: dark` or `color-scheme: light` ONLY for specific sections of your site (like a code editor or a video player) that must remain in one theme. Avoid applying this to the root element unless it's the result of an explicit user selection via a theme toggle.
-- **Opting out of Auto-Dark Mode**: Use `color-scheme: only light` to prevent browsers (particularly on mobile) from automatically inverting your colors if you haven't yet implemented a dedicated dark theme.
+- **Opting out of Auto-Dark Mode**: Use `color-scheme: only light` to prevent browsers (particularly on mobile) from automatically inverting your colors if you haven't yet implemented a dedicated dark theme or prefer not to show the component with a dark theme.
 
 ## Fallback strategies
 
 {{ BASELINE_STATUS("color-scheme") }}
 {{ BASELINE_STATUS("light-dark") }}
 
-- **Progressive Enhancement**: Browsers that do not support `color-scheme` or `light-dark()` will simply ignore these properties and use their default light-mode UI.
+- **Progressive Enhancement**: Browsers that do not support `color-scheme` will ignore this property and use their default light-mode UI.
 - **Handling `light-dark()` Support**: For browsers that support `color-scheme` but not yet `light-dark()`, light and dark versions of colors should first be defined as custom properties, and the `prefers-color-scheme` media query should be used to set colors for the respective mode like in the example below:
 
 ```css
@@ -181,7 +170,7 @@ pre, code {
 
 textarea {
   color-scheme: dark;
-  /* **Mandatory**: when nesting schemes, dynamic values set with light-dark() must also be re-assigned on the element where the scheme changes */
+  /* **Mandatory**: when nesting schemes, dynamic values set with light-dark() used in inherited properties must also be re-assigned on the element where the scheme changes */
   accent-color: var(--accent-color); 
 }
 ```

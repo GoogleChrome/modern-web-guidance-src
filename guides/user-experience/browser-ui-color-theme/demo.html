@@ -158,7 +158,11 @@
 
     /* DEMONSTRATION: Opting out of Auto-Dark Mode */
     .opt-out-section {
-      /* Prevents browsers from automatically inverting colors on this element */
+      /* 
+        MANDATORY: Use 'only light' to prevent browsers (particularly on mobile) 
+        from automatically inverting colors if a dedicated dark theme 
+        isn't yet implemented for this section.
+      */
       color-scheme: only light;
       background-color: var(--background-color);
       color: var(--text-color);
