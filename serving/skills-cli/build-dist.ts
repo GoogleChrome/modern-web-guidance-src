@@ -45,28 +45,24 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   const geminiData = JSON.parse(fs.readFileSync(geminiPath, 'utf8'));
   geminiData.version = newVersion;
   fs.writeFileSync(geminiPath, JSON.stringify(geminiData, null, 2) + '\n');
-  console.log(`Updated ${geminiPath}`);
 
   // VSCode
   const vscodePath = path.join(publishCliDir, "package.json");
   const vscodeData = JSON.parse(fs.readFileSync(vscodePath, 'utf8'));
   vscodeData.version = newVersion;
   fs.writeFileSync(vscodePath, JSON.stringify(vscodeData, null, 2) + '\n');
-  console.log(`Updated ${vscodePath}`);
 
   // Claude Plugin
   const claudePluginPath = path.join(publishCliDir, ".claude-plugin/plugin.json");
   const claudePluginData = JSON.parse(fs.readFileSync(claudePluginPath, 'utf8'));
   claudePluginData.version = newVersion;
   fs.writeFileSync(claudePluginPath, JSON.stringify(claudePluginData, null, 2) + '\n');
-  console.log(`Updated ${claudePluginPath}`);
 
   // Claude Marketplace
   const marketplacePath = path.join(publishCliDir, ".claude-plugin/marketplace.json");
   const marketplaceData = JSON.parse(fs.readFileSync(marketplacePath, 'utf8'));
   marketplaceData.plugins[0].version = newVersion;
   fs.writeFileSync(marketplacePath, JSON.stringify(marketplaceData, null, 2) + '\n');
-  console.log(`Updated ${marketplacePath}`);
 }
 
 function convertSkillToUseNpx(skillDest: string) {
@@ -106,8 +102,6 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
     const target = npx ? 'skills-cli-npx' : 'skills-cli';
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
-    
-    console.log(`Processed and copied skill ${skillName} (SKILL.md) to ${skillDestDir}`);
   }
 
   if (npx) {
@@ -420,6 +414,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   (async () => {
     try {
+      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true});
       await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version});
     } catch (err) {
       console.error(err);

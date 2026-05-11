@@ -24,10 +24,6 @@ export function assertSearchResults(output: string) {
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const DIST_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
-if (!process.env.FULL) {
-  console.log("Skipping distribution tests (FULL=1 not set)...");
-  process.exit(0);
-}
 
 test('Claude Plugin Config in Dist', async () => {
   const marketplaceJsonRaw = await fs.readFile(path.join(DIST_DIR, '.claude-plugin/marketplace.json'), 'utf8');
