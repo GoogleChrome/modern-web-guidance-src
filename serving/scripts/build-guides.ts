@@ -127,7 +127,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   BUILD_GUIDES_DIR = cachePaths.cachedGuides;
 
   // 2. Scan & Hash
-  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
+  let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
   const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING);
 
   // 3. Cache Evaluation
