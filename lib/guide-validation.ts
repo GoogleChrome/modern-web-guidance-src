@@ -181,9 +181,10 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
     const { hasGuide, hasDemo, hasGrader, hasTask, isDisciplineSkill } = inv;
     const relativeSubdir = path.relative(REPO_ROOT, subdir);
     const guideExists = hasGuide || inv.isStub;
+    const isDisciplineGuide = inv.name === inv.category;
     
     // Discipline skills don't need demo.html
-    if (!isDisciplineSkill && guideExists !== hasDemo) {
+    if (!isDisciplineSkill && !isDisciplineGuide && guideExists !== hasDemo) {
       const missingFile = guideExists ? DEMO_FILE : GUIDE_FILE;
       const msg = `❌ Error in ${relativeSubdir}: Missing ${missingFile}. Must have BOTH ${GUIDE_FILE} and ${DEMO_FILE}.`;
       console.error(msg);
@@ -213,8 +214,8 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       guideData = validation.data;
       guideBody = validation.body;
 
-      if (isDisciplineSkill) {
-        // Discipline skills (SKILL.md) don't require the same frontmatter as use cases
+      if (isDisciplineSkill || isDisciplineGuide) {
+        // Discipline skills/guides don't require the same frontmatter as use cases
         guideErrors = guideErrors.filter(e => !e.includes('Missing "web-feature-ids"') && !e.includes('Missing "description"'));
       }
 
