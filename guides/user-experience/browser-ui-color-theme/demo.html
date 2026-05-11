@@ -139,9 +139,12 @@
       color-scheme: dark;
 
       /* 
-        MANDATORY: When nesting schemes, built-in inherited properties 
-        (like color and accent-color) that use light-dark() tokens must 
-        be explicitly re-assigned on the element where the scheme changes.
+        MANDATORY: when nesting schemes, dynamic built-in inherited properties (e.g. color, accent-color) set with 
+        light-dark() must also be set on the element where the scheme changes. 
+
+        When setting a different color-scheme on a component, **DO NOT** redefine custom properties (e.g. --accent-color: light-dark(black, white);) 
+        unless the custom property needs to be updated. The custom property only needs 
+        to be applied to a property (e.g. accent-color: var(--accent-color);).
       */
       background-color: var(--background-color);
       color: var(--text-color);

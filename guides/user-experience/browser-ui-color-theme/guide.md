@@ -124,7 +124,7 @@ pre, code {
         color-scheme: light dark;
         /* Set built-in inherited property */
         accent-color: var(--accent-color);
-        }
+      }
 
       textarea {
         color-scheme: dark;
