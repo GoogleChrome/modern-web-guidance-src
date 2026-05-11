@@ -17,8 +17,8 @@
   ],
   "scripts": {
     "baselinestatus": "node cli/baseline-status.ts",
-    "prepublishOnly": "npm run build",
-    "build": "node scripts/build-guides.ts && npm run build-dist",
+    "prepublishOnly": "pnpm run build",
+    "build": "node scripts/build-guides.ts && pnpm run build-dist",
     "build:megaskill": "node scripts/build-megaskill.ts",
     "build-dist": "node --experimental-strip-types */build-dist.ts",
     "publish-skills": "node --experimental-strip-types skills-cli/publish-skills.ts",
