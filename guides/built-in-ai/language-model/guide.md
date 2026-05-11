@@ -71,11 +71,12 @@ outputEl.textContent = result;
 // promptStreaming() yields independent chunks that must be concatenated;
 // use for longer content so each chunk can be rendered progressively.
 const stream = session.promptStreaming('Write a long story about a robot.');
-let text = '';
+let completeResult = '';
 for await (const chunk of stream) {
-  text += chunk;
-  outputEl.textContent = text;
+  completeResult += chunk;
+  outputEl.append(text);
 }
+console.log('Full story:', completeResult);
 ```
 
 ### Multimodal Input
@@ -191,6 +192,7 @@ const character = await session.prompt([
 - **Output Safety**: Model output is untrusted. Always write results to
   `textContent`, not `innerHTML`, to prevent XSS injection from malicious model
   output.
+- Use a sanitizer like the native Sanitizer API or DOMPurify if you need to allow limited HTML.  
 - **Aborting Tasks**: Use `AbortController` to allow users to stop long-running
   generations. Pass the `signal` to `prompt()` or `promptStreaming()`, not to
   `LanguageModel.create()`.

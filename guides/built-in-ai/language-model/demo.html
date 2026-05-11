@@ -66,6 +66,8 @@
     }
 
     const session = await LanguageModel.create({
+      expectedInputs: [{type: 'text', languages: ['en']}],
+      expectedOutputs: [{type: 'text', languages: ['en']}],
       monitor(m) {
         m.addEventListener('downloadprogress', (e) => {
           downloadProgressEl.textContent = `Downloading model: ${Math.round(e.loaded * 100)}%`;
@@ -125,6 +127,8 @@
       cloneBtn.disabled = true;
       try {
         const base = await LanguageModel.create({
+          expectedInputs: [{type: 'text', languages: ['en']}],
+          expectedOutputs: [{type: 'text', languages: ['en']}],
           initialPrompts: [
             { role: 'system', content: 'You are a helpful assistant. Keep answers to one sentence.' },
           ],
