@@ -26,18 +26,9 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
 }
 
 export function extractTokenUsageFromResults(resultsDir: string, agent: string): { total: number; cached: number } | undefined {
-  const extractors = [
-    { name: Agents.GEMINI_CLI, fn: extractGeminiCliTokenUsage },
-    { name: Agents.CLAUDE_CODE, fn: extractClaudeCodeTokenUsage },
-    { name: Agents.CODEX_CLI, fn: extractCodexCliTokenUsage },
-  ];
-
-  extractors.sort((a, b) => (a.name === agent ? -1 : b.name === agent ? 1 : 0));
-
-  for (const { fn } of extractors) {
-    const usage = fn(resultsDir);
-    if (usage) return usage;
-  }
+  if (agent === Agents.GEMINI_CLI) return extractGeminiCliTokenUsage(resultsDir);
+  if (agent === Agents.CLAUDE_CODE) return extractClaudeCodeTokenUsage(resultsDir);
+  if (agent === Agents.CODEX_CLI) return extractCodexCliTokenUsage(resultsDir);
   return undefined;
 }
 
