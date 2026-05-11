@@ -674,8 +674,6 @@ import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
 async function run() {
   try {
-
-
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},
