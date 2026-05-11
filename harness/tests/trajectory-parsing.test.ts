@@ -105,7 +105,7 @@ test('collectGemini metrics from a .jsonl trajectory file', async () => {
 
     // Test Tools
     const tools = collectGeminiToolsFromTrajectory(tempDir);
-    assert.deepStrictEqual(tools, ['modern-web']);
+    assert.deepStrictEqual(tools.sort(), ['modern-web-guidance', 'modern-web'].sort());
 
   } finally {
     removeTempDir(tempDir);
