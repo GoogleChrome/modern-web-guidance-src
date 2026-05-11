@@ -9,7 +9,7 @@
     "gd": "bin/gd.ts"
   },
   "scripts": {
-    "test": "pnpm -r test",
+    "test": "pnpm -r --parallel test",
     "install:gray-matter": "pnpm add -D -w gray-matter",
     "baselinestatus": "pnpm --filter serving baselinestatus",
     "lint": "oxlint --ignore-path .oxlintignore",

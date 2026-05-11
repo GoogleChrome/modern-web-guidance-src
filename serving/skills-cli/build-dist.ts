@@ -6,7 +6,7 @@ import matter from "gray-matter";
 import * as esbuild from "esbuild";
 import { scanAllGuides, scanDisciplineSkills } from "../../lib/guide-validation.ts";
 import { getFeatureName } from "../lib/baseline.ts";
-import { rootDir } from "../../lib/paths.ts";
+import { rootDir, guidesDir } from "../../lib/paths.ts";
 import { processGuides } from "../scripts/build-guides.ts";
 import { replaceMacros } from "../lib/macros.ts";
 
@@ -88,8 +88,8 @@ function convertSkillToUseNpx(skillDest: string) {
   fs.writeFileSync(skillDest, skillText);
 }
 
-export function processSkills(publishRoot: string, distDir: string, npx: boolean) {
-  const skills = scanDisciplineSkills();
+export function processSkills(publishRoot: string, distDir: string, npx: boolean, scanDir = guidesDir) {
+  const skills = scanDisciplineSkills(scanDir);
 
   for (const skill of skills) {
     const skillName = skill.name;

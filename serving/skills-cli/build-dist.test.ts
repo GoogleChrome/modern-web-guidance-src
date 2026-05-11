@@ -11,19 +11,17 @@ import { rootDir } from '../../lib/paths.ts';
 
 describe('processSkills', () => {
   const testOutputDir = path.join(import.meta.dirname, 'test-output');
-  const testGuidesDir = path.join(rootDir, 'guides');
+  const testGuidesDir = path.join(testOutputDir, 'guides');
   const dummySkillName = 'test-dummy-skill';
   const dummySkillDir = path.join(testGuidesDir, dummySkillName);
 
   before(() => {
     fs.mkdirSync(dummySkillDir, { recursive: true });
     fs.writeFileSync(path.join(dummySkillDir, 'SKILL.md'), '---\nname: test-dummy-skill\ndescription: Test dummy skill\n---\nTest Skill with macro: {{ BASELINE_STATUS("grid") }} and guide ref: {{ GUIDE_REF("forms") }}');
-    fs.mkdirSync(testOutputDir, { recursive: true });
     resetGuidesMap();
   });
 
   after(() => {
-    fs.rmSync(dummySkillDir, { recursive: true, force: true });
     fs.rmSync(testOutputDir, { recursive: true, force: true });
   });
 
@@ -31,7 +29,7 @@ describe('processSkills', () => {
     const publishRoot = testOutputDir;
     const distDir = path.join(publishRoot, 'skills/modern-web');
 
-    processSkills(publishRoot, distDir, false);
+    processSkills(publishRoot, distDir, false, testGuidesDir);
 
     const builtSkillPath = path.join(publishRoot, 'skills', dummySkillName, 'SKILL.md');
     assert.ok(fs.existsSync(builtSkillPath), 'Built SKILL.md should exist');
