@@ -101,14 +101,13 @@ body {
 pre, code {
   /* Apply dark scheme to built-in UI elements */
   color-scheme: dark;
-  /* **Mandatory**: when nesting schemes, dynamic properties set with 
+  /* **Mandatory**: when nesting schemes, dynamic built-in inherited properties (e.g. color, accent-color) set with 
     light-dark() must also be set on the element where the scheme changes. 
 
     When setting a different color-scheme on a component, **DO NOT** redefine custom properties (e.g. --accent-color: light-dark(black, white);) 
     unless the custom property needs to be updated. The custom property only needs 
     to be applied to a property (e.g. accent-color: var(--accent-color);).
   */
-  /* Apply custom accent color to UI elements*/
   accent-color: var(--accent-color);
   /* Set colors for other theme styles */
   background-color: var(--background-color);
@@ -117,34 +116,33 @@ pre, code {
 ```
 
 ## Best Practices
-  - **Token Resolution and Inheritance**: Be aware that `light-dark()` currently resolves based on the `color-scheme` of the element where the value is **defined**, not where it is **used**.
-  - **The "Inheritance Footgun"**: If you define a theme variable on the `:root`, the browser resolves it to a specific color immediately. Descendant elements that change their `color-scheme` (e.g., a dark-themed card on a light page) will inherit the *already-resolved color* instead of the dynamic function.
-  - **The `@property` Risk**: This issue is particularly critical when using registered custom properties (via `@property`). Because these have a defined `syntax: "<color>"`, they "lock" the resolved color at computed value time, making them non-reactive to local theme changes. **Mandatory**: Do not register custom properties that should dynamically resolve based on `light-dark()`.
-  - **The Workaround**: For components that might exist in "nested" themes, you must re-assign your tokens to their respective properties locally whenever you change the `color-scheme`.
+  - The `@property` Risk **:
+    - If you define a theme variable with registered custom properties (via `@property`), the browser resolves it to a specific color immediately. Descendant elements that change their `color-scheme` (e.g., a dark-themed card on a light page) will inherit the *already-resolved color* instead of the dynamic function. 
+    - Since theme variables defined with `@property` have a defined `syntax: "<color>"`, they "lock" the resolved color at computed value time, making them non-reactive to local theme changes. **Mandatory**: Do not register properties meant to be design tokens that dynamically switch based on `light-dark()`. If you need to animate a color variable, use a separate property.
+    - Built-in inherited properties such as `color` and `accent-color` can also be affected by this issue. To prevent this, always reassign the dynamic theme variable on these built-in properties when they are inside of a nested theme. 
+    - **Example: Handling Built-In Inherited Properties**
 
-- **Example: Handling Resolution Gaps**
-  ```css
-  /* ⚠️ PROBLEM: Variable resolves at :root (light) and stays 'yellow' */
-  :root {
-    color-scheme: light dark;
-    --color-accent: light-dark(yellow, blue);
-  }
+      ```css
+      :root {
+        /* Define browser UI accent color for each mode */
+        --brand-accent-light: #0056b3;
+        --brand-accent-dark: #00e5ff;
+        --accent-color: var(--brand-accent-light, AccentColor);
 
-  /* ❌ FAILURE: The card remains yellow even in dark mode */
-  .dark-section {
-    color-scheme: dark;
-  }
-  .dark-section .card {
-    background-color: var(--color-accent); 
-  }
+        /* MANDATORY: Automatically adapt native UI to user system preferences */
+        color-scheme: light dark;
+        /* Set built-in inherited property */
+        accent-color: var(--accent-color);
+        /* OPTIONAL: Apply dynamic color switching based on light-dark */
+        --accent-color: light-dark(var(--brand-accent-light), var(--brand-accent-dark));
+        }
 
-  /* ✅ FIX: Reassign the token where the scheme changes */
-  .dark-section {
-    color-scheme: dark;
-    background-color: var(--color-accent); /* Forces re-resolution */
-  }
-  ```
-
+      textarea {
+        color-scheme: dark;
+        /* **Mandatory**: when nesting schemes, dynamic values set with light-dark() on built-in inherited properties must also be re-assigned on the element where the scheme changes */
+        accent-color: var(--accent-color); 
+      }
+     ```
 - **System Colors**: Use system color keywords like `Canvas` (background) and `CanvasText` (text) for your custom components when you want them to match the browser's native themed surfaces exactly. This is ideal for ensuring consistency between your content and the browser's UI (like scrollbars) while automatically respecting OS-level accessibility features like High Contrast mode.
 - **Respect User Preference**: **MANDATORY**: Avoid forcing a single theme on the overall page. While specific components (like a code editor) may benefit from a fixed theme, the main application should respect the user's system preference and ideally provide a manual toggle to allow users to choose between light, dark, or system-default modes.
 - **Forcing a Theme**: Use a single value like `color-scheme: dark` or `color-scheme: light` ONLY for specific sections of your site (like a code editor or a video player) that must remain in one theme. Avoid applying this to the root element unless it's the result of an explicit user selection via a theme toggle.
