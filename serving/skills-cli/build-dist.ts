@@ -301,7 +301,7 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
   }
 
   // Sort groups alphabetically by the name of their first feature
-  const sortedGroups = Array.from(useCaseGroupMap.values()).sort((a, b) => (a.features[0]?.name || "").localeCompare(b.features[0]?.name || ""));
+  const sortedGroups = Array.from(useCaseGroupMap.values()).sort((a, b) => a.features[0].name.localeCompare(b.features[0].name));
 
   // Determine all features to generate the summary text
   const allFeaturesSorted = Array.from(allFeatureIds)
