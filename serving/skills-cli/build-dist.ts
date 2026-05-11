@@ -76,8 +76,6 @@ export function processSkills(publishRoot: string, scanDir = guidesDir) {
     const target = 'skills-cli';
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
-    
-    console.log(`Processed and copied skill ${skillName} (SKILL.md) to ${skillDestDir}`);
   }
 
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
