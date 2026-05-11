@@ -166,11 +166,11 @@ export function updateMcpConfig(
    const mcpConfig: { mcpServers: Record<string, any> } = { mcpServers: {} };
 
   for (const serverName of serversToEnable) {
-    if (serverName === 'modern-web') {
+    if (serverName.startsWith('modern-web')) {
       if (!modernWebServerPath || !fs.existsSync(modernWebServerPath)) {
         throw new Error(`Example MCP server path not found: ${modernWebServerPath}`);
       }
-      mcpConfig.mcpServers['modern-web'] = {
+      mcpConfig.mcpServers[serverName] = {
         command: 'node',
         args: [modernWebServerPath]
       };
@@ -246,7 +246,7 @@ export function updateMcpConfig(
  * @param agent The agent type
  * @returns True if successful, false otherwise
  */
-export function copySkills(homeDir: string, agent: string, cli: boolean, skillsToEnable: string[] = ['modern-web']): boolean {
+export function copySkills(homeDir: string, agent: string, cli: boolean, skillsToEnable: string[] = ['modern-web-guidance']): boolean {
   const guidesSource = guidesDir;
 
   let destDir = '';
@@ -263,8 +263,8 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
   try {
     fs.mkdirSync(destDir, { recursive: true });
 
-    if (cli && skillsToEnable.includes('modern-web')) { // Add modern-web Skill (& resources) from skills-cli dist
-      const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web');
+    if (cli && skillsToEnable.some(s => s.startsWith('modern-web'))) { // Add modern-web-guidance Skill (& resources) from skills-cli dist
+      const distSource = path.join(rootDir, 'dist/skills-cli/skills/modern-web-guidance');
       if (!fs.existsSync(distSource)) {
         console.log(`skills-cli distribution not found at ${distSource}. Running 'pnpm --filter serving build-dist' automatically...`);
         try {
@@ -280,7 +280,7 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
       }
 
       try {
-        const destSkillDir = path.join(destDir, 'modern-web');
+        const destSkillDir = path.join(destDir, 'modern-web-guidance');
         fs.mkdirSync(destSkillDir, { recursive: true });
 
         if (fs.existsSync(distSource)) {
@@ -311,8 +311,8 @@ export function copySkills(homeDir: string, agent: string, cli: boolean, skillsT
         d => d.isDirectory() &&
         !d.name.startsWith('.') &&
         d.name !== 'node_modules' &&
-        d.name !== 'modern-web' && // only needed when using Skills (CLI), already added above
-        skillsToEnable.includes(d.name)
+        !d.name.startsWith('modern-web') && // only needed when using Skills (CLI), already added above
+        skillsToEnable.some(s => s === d.name || (d.name.startsWith('modern-web') && s.startsWith('modern-web')))
       );
 
     for (const dir of topLevelDirs) {

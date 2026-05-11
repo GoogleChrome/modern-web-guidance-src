@@ -63,30 +63,7 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   fs.writeFileSync(marketplacePath, JSON.stringify(marketplaceData, null, 2) + '\n');
 }
 
-function convertSkillToUseNpx(skillDest: string) {
-  let skillText = fs.readFileSync(skillDest, 'utf-8');
-
-  function replace(from: string, to: string) {
-    if (!skillText.includes(from)) {
-      throw new Error(`expected: '${from}', but not found`);
-    }
-
-    skillText = skillText.replaceAll(from, to);
-  }
-
-  const offlineNotice = '# Note: if this commands hangs, try running again in offline mode: "npx --offline ..."';
-  replace(
-    `node <modern-web-directory>/modern-web.mjs search "<query>"`,
-    `npx -y -p modern-web-guidance@latest -- modern-web search "<query>"\n${offlineNotice}`
-  );
-  replace(
-    `node <modern-web-directory>/modern-web.mjs retrieve "<id>"`,
-    `npx -y -p modern-web-guidance@latest -- modern-web retrieve "<id>"\n${offlineNotice}`
-  );
-  fs.writeFileSync(skillDest, skillText);
-}
-
-export function processSkills(publishRoot: string, distDir: string, npx: boolean, scanDir = guidesDir) {
+export function processSkills(publishRoot: string, scanDir = guidesDir) {
   const skills = scanDisciplineSkills(scanDir);
 
   for (const skill of skills) {
@@ -96,30 +73,27 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
 
     fs.mkdirSync(skillDestDir, { recursive: true });
 
-    const target = npx ? 'skills-cli-npx' : 'skills-cli';
+    const target = 'skills-cli';
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
-  }
-
-  if (npx) {
-    const skillDest = path.join(distDir, "SKILL.md");
-    convertSkillToUseNpx(skillDest);
+    
+    console.log(`Processed and copied skill ${skillName} (SKILL.md) to ${skillDestDir}`);
   }
 
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
-async function main(opts: { publishRoot: string, version?: string, npx?: boolean }): Promise<BuildResult | undefined> {
-  const { publishRoot, version, npx } = opts;
+async function main(opts: { publishRoot: string, version?: string}): Promise<BuildResult | undefined> {
+  const { publishRoot, version} = opts;
 
-  const DIST_DIR = path.join(publishRoot, "skills/modern-web");
+  const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
   const modernWebMjs = path.join(DIST_DIR, "modern-web.mjs");
 
   // Step 1: Check if we can short-circuit without wiping anything.
   // processGuides internally uses dist/.cache/ and evaluates the source hashes.
   const skipped = await processGuides({
     outputDir: DIST_DIR,
-    target: npx ? 'skills-cli-npx' : 'skills-cli',
+    target: 'skills-cli',
   });
 
   if (skipped && fs.existsSync(modernWebMjs)) {
@@ -135,7 +109,7 @@ async function main(opts: { publishRoot: string, version?: string, npx?: boolean
   // from .cache/ into DIST_DIR.
   await processGuides({
     outputDir: DIST_DIR,
-    target: npx ? 'skills-cli-npx' : 'skills-cli',
+    target: 'skills-cli',
   });
 
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
@@ -177,7 +151,7 @@ async function main(opts: { publishRoot: string, version?: string, npx?: boolean
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(publishRoot, "skills/modern-web/search.mjs"),
+        outfile: path.join(publishRoot, "skills/modern-web-guidance/search.mjs"),
         banner: {
           js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
         },
@@ -217,7 +191,7 @@ async function main(opts: { publishRoot: string, version?: string, npx?: boolean
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(publishRoot, "skills/modern-web/modern-web.mjs"),
+        outfile: path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs"),
         plugins: [{
           name: 'rewrite-search',
           setup(build) {
@@ -245,7 +219,7 @@ async function main(opts: { publishRoot: string, version?: string, npx?: boolean
       process.exit(1);
     }
 
-    const { skillsCount, skillNames } = processSkills(publishRoot, DIST_DIR, !!npx);
+    const { skillsCount, skillNames } = processSkills(publishRoot);
     const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
 
     console.log(`\nSuccess! standalone distribution generated in ${publishRoot}`);
@@ -258,7 +232,7 @@ async function main(opts: { publishRoot: string, version?: string, npx?: boolean
 }
 
 function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
-  const guidesDir = path.join(publishRoot, 'skills/modern-web/guides');
+  const guidesDir = path.join(publishRoot, 'skills/modern-web-guidance/guides');
   const readyGuides = scanAllGuides().filter(inv => {
     if (!inv.hasGuide || inv.featureIds.length === 0) return false;
 
@@ -406,7 +380,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   (async () => {
     try {
-      await main({ publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true });
       await main({ publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version });
     } catch (err) {
       console.error(err);

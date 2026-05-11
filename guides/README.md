@@ -140,7 +140,7 @@ If you need more control, you can run each step individually:
 1. Configure the following settings for your run in the [harness config](../harness/config.ts):
 
 ```
-mcpServersToEnable: ['modern-web'],
+mcpServersToEnable: ['modern-web-guidance'],
 serving: Serving.MCP,
 agent: Agents.GEMINI_CLI
 ```

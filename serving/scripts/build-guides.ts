@@ -95,7 +95,7 @@ function evaluateCacheHit(paths: CachePaths, currentHash: string): boolean {
 }
 
 function restoreFromCache(paths: CachePaths, outputDir: string, target: string): void {
-  if (target === 'skills-cli' || target === 'skills-cli-npx') {
+  if (target === 'skills-cli') {
     fs.mkdirSync(outputDir, { recursive: true });
     fs.copyFileSync(paths.cachedVectors, path.join(outputDir, "use-cases.vectors.gen.json.gz"));
     fs.cpSync(paths.cachedGuides, path.join(outputDir, "guides"), { recursive: true });

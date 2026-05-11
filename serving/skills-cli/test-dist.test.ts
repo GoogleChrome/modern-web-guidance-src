@@ -50,22 +50,22 @@ test('Gemini and VS Code manifests', async () => {
   const pkgJson = JSON.parse(pkgJsonRaw);
   assert.strictEqual(pkgJson.publisher, 'GoogleChrome');
   assert.ok(pkgJson.contributes?.chatSkills, 'Must contribute chatSkills');
-  assert.strictEqual(pkgJson.contributes.chatSkills[0].path, './skills/modern-web/SKILL.md');
+  assert.strictEqual(pkgJson.contributes.chatSkills[0].path, './skills/modern-web-guidance/SKILL.md');
 });
 
 test('SKILL.md validations', async () => {
-  const skillPath = path.join(DIST_DIR, 'skills/modern-web/SKILL.md');
-  await assert.doesNotReject(fs.access(skillPath), `Missing SKILL.md in modern-web`);
+  const skillPath = path.join(DIST_DIR, 'skills/modern-web-guidance/SKILL.md');
+  await assert.doesNotReject(fs.access(skillPath), `Missing SKILL.md in modern-web-guidance`);
 
   const content = await fs.readFile(skillPath, 'utf8');
   const { data } = matter(content);
   assert.ok(data.name, `Missing 'name' field in frontmatter`);
-  assert.strictEqual(data.name, 'modern-web', `Frontmatter name must match folder name`);
+  assert.strictEqual(data.name, 'modern-web-guidance', `Frontmatter name must match folder name`);
 });
 
 test('Discipline guides present (forms, performance)', async () => {
   const checkGuide = async (name: string) => {
-    const guidesDir = path.join(DIST_DIR, 'skills/modern-web/guides');
+    const guidesDir = path.join(DIST_DIR, 'skills/modern-web-guidance/guides');
     const guidePath = path.join(guidesDir, name, `${name}.md`);
     await assert.doesNotReject(fs.access(guidePath), `Missing guide file in ${name}`);
   };
@@ -108,7 +108,7 @@ test('README dynamic Skill Coverage content', async () => {
 });
 
 test('modern-web CLI search and retrieve', async () => {
-  const binaryPath = path.join(DIST_DIR, 'skills/modern-web/modern-web.mjs');
+  const binaryPath = path.join(DIST_DIR, 'skills/modern-web-guidance/modern-web.mjs');
   
   // 1. Validate search
   const searchOut = execSync(`node "${binaryPath}" search "address form"`, { encoding: 'utf8' });
@@ -120,7 +120,7 @@ test('modern-web CLI search and retrieve', async () => {
 });
 
 test('modern-web CLI version flags', async () => {
-  const binaryPath = path.join(DIST_DIR, 'skills/modern-web/modern-web.mjs');
+  const binaryPath = path.join(DIST_DIR, 'skills/modern-web-guidance/modern-web.mjs');
   const pkgJsonRaw = await fs.readFile(path.join(DIST_DIR, 'package.json'), 'utf8');
   const pkgJson = JSON.parse(pkgJsonRaw);
   const expectedVersion = pkgJson.version;
