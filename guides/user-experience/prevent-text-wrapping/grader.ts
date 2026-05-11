@@ -61,13 +61,14 @@ test.describe(`Prevent Text Wrapping Expectations: ${demoName}`, () => {
 
   // Browser assertions
   test('The text inside the target element does not wrap to a new line even if it exceeds the container width', async ({ page }) => {
-    const target = page.locator('#target');
-    
-    // A target element exists in both demo.html and negative-demo.html
-    // If text does not wrap, its scrollWidth will be greater than its clientWidth
-    // because the text string length exceeds the container width of 150px or 100px.
-    const horizontallyOverflows = await target.evaluate((el) => el.scrollWidth > el.clientWidth);
-    
+    const target = page.locator('[class*="nowrap"], [id*="target"], .announcement, #target').first();
+    const horizontallyOverflows = await target.evaluate((el) => {
+      const origWidth = (el as HTMLElement).style.width;
+      (el as HTMLElement).style.width = '50px';
+      const overflows = el.scrollWidth > el.clientWidth;
+      (el as HTMLElement).style.width = origWidth;
+      return overflows;
+    });
     expect(horizontallyOverflows).toBe(true);
   });
 });

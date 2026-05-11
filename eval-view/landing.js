@@ -1,4 +1,4 @@
-import { getRunStats, getColor, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
+import { getRunStats, initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 
 let allTestData = {}; // Cache all test data by testId
@@ -12,6 +12,11 @@ function isRemoteDashboard() {
     return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 }
 
+const servingDisplayNames = {
+    'skills': 'Skills',
+    'skills_cli': 'Skills (CLI)',
+    'mcp': 'MCP'
+};
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         // Initialize UI
@@ -247,15 +252,29 @@ function renderAll() {
     renderSuites();
 }
 
+
+
 async function loadLocalTests() {
     if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
         return; // Avoid 404s by skipping local network fetches when hosted on Github Pages
     }
     
     try {
-        const response = await fetch(`/api/suites?t=${Date.now()}`);
-        if (!response.ok) return; // Silent fail for local if we are on gh-pages
-        const manifest = await response.json();
+        let response = await fetch(`/api/suites?t=${Date.now()}`);
+        let manifest;
+        let useResultsPrefix = false;
+
+        if (!response.ok) {
+            // Try fetching suites.gen.json as fallback for static mode
+            const staticRes = await fetch(`/suites.gen.json?t=${Date.now()}`);
+            if (!staticRes.ok) return; // Silent fail if both fail
+            const suites = await staticRes.json();
+            // convert array of strings to expected format [{id: string, source: 'local'}]
+            manifest = { suites: suites.map(id => ({ id, source: 'local', timestamp: new Date().toISOString() })) };
+            useResultsPrefix = true;
+        } else {
+            manifest = await response.json();
+        }
 
         if (manifest.suites && manifest.suites.length > 0) {
             document.getElementById('empty-state').style.display = 'none';
@@ -268,10 +287,11 @@ async function loadLocalTests() {
             const testId = suite.id;
             const suiteTimestamp = suite.timestamp;
             try {
-                const response = await fetch(`${testId}/evals.json?source=local&t=${Date.now()}`);
+                const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
+                const response = await fetch(`${fetchPath}?source=local&t=${Date.now()}`);
                 if (response.ok) {
                     const parsed = await response.json();
-                    registerTestData(testId, 'local', parsed, suiteTimestamp);
+                    registerTestData(testId, useResultsPrefix ? 'static' : 'local', parsed, suiteTimestamp);
                 }
             } catch (e) {
                 console.warn(`Failed to load local test ${testId}:`, e);
@@ -284,12 +304,21 @@ async function loadLocalTests() {
 
 async function loadRemoteTests() {
     try {
-        // Fetch from GCS JSON API directly instead of our node proxy
-        const response = await authenticatedFetch(`https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/`);
-        if (!response.ok) throw new Error('Failed to fetch remote suites');
+        const prefixes = [];
+        let pageToken = '';
         
-        const data = await response.json();
-        const prefixes = data.prefixes || [];
+        // Paginate GCS to retrieve all prefixes without truncation limits
+        do {
+            const url = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o?delimiter=/&t=${Date.now()}${pageToken ? `&pageToken=${pageToken}` : ''}`;
+            const response = await authenticatedFetch(url);
+            if (!response.ok) throw new Error('Failed to fetch remote suites');
+            
+            const data = await response.json();
+            if (data.prefixes) {
+                prefixes.push(...data.prefixes);
+            }
+            pageToken = data.nextPageToken || '';
+        } while (pageToken);
         
         if (prefixes.length > 0) {
              document.getElementById('empty-state').style.display = 'none';
@@ -336,7 +365,7 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
 
     allTestData[compoundKey] = {
         testId: testId,
-        timestamp: forcedTimestamp || parsed.timestamp || new Date().toISOString(),
+        timestamp: parsed.timestamp || forcedTimestamp || new Date().toISOString(),
         data: parsed,
         source: source,
         agent: parsed.agent || 'unknown',
@@ -348,7 +377,8 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
     
     updateFilterOptions('filter-model-group', 'model');
     updateFilterOptions('filter-serving-group', 'serving');
-    updateFilterOptions('filter-agent-group', 'agent');
+    updateServingFilterOptions();
+    updateAgentFilterOptions();
 }
 
 function updateFilterOptions(groupId, key) {
@@ -365,6 +395,44 @@ function updateFilterOptions(groupId, key) {
     ).join('');
 }
 
+function updateServingFilterOptions() {
+    const servingGroup = document.getElementById('filter-serving-group');
+    if (!servingGroup) return;
+
+    const servs = new Set();
+    Object.values(allTestData).forEach(test => {
+        if (test.serving) servs.add(test.serving);
+    });
+
+    const sortedServs = Array.from(servs).sort();
+    
+    const currentOptions = Array.from(servingGroup.querySelectorAll('option')).map(o => o.value);
+    if (JSON.stringify(currentOptions) === JSON.stringify(sortedServs)) return;
+
+    servingGroup.innerHTML = sortedServs.map(s => 
+        `<option value="${escapeHtml(s)}">${escapeHtml(servingDisplayNames[s] || s)}</option>`
+    ).join('');
+}
+
+function updateAgentFilterOptions() {
+    const agentGroup = document.getElementById('filter-agent-group');
+    if (!agentGroup) return;
+
+    const agents = new Set();
+    Object.values(allTestData).forEach(test => {
+        if (test.agent) agents.add(test.agent);
+    });
+
+    const sortedAgents = Array.from(agents).sort();
+    
+    const currentOptions = Array.from(agentGroup.querySelectorAll('option')).map(o => o.value);
+    if (JSON.stringify(currentOptions) === JSON.stringify(sortedAgents)) return;
+
+    agentGroup.innerHTML = sortedAgents.map(a => 
+        `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`
+    ).join('');
+}
+
 // ==========================================
 // RENDERERS
 // ==========================================
@@ -377,11 +445,6 @@ function renderSuites() {
         headerSource.style.display = isRemoteDashboard() ? 'none' : '';
     }
 
-    const servingDisplayNames = {
-        'skills': 'Skills',
-        'skills_cli': 'Skills (CLI)',
-        'mcp': 'MCP'
-    };
     if (testIds.length === 0) return;
 
     let html = '';
@@ -398,7 +461,31 @@ function renderSuites() {
 
         const data = testInfo.data;
         const results = data.results;
-        const _date = new Date(testInfo.timestamp);
+        let _date = new Date(testInfo.timestamp);
+        
+        // Match Action Date logic from dashboard.js: 
+        // If timestamp is missing or is exactly midnight (often indicates only a date was provided),
+        // try to extract a more specific date from the testId.
+        const timeStr = _date.toLocaleTimeString('en-US');
+        if (timeStr === '12:00:00 AM' || isNaN(_date.getTime())) {
+            // Try to match YYYY-MM-DDTHH-mm-ss or YYYY-MM-DD
+            const isoLikeMatch = testId.match(/(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})/);
+            const dateOnlyMatch = testId.match(/(\d{4}-\d{2}-\d{2})/);
+            
+            if (isoLikeMatch) {
+                // Reconstruct to a valid ISO string YYYY-MM-DDTHH:mm:ss
+                const isoStr = `${isoLikeMatch[1]}T${isoLikeMatch[2]}:${isoLikeMatch[3]}:${isoLikeMatch[4]}`;
+                const parsedDate = new Date(isoStr);
+                if (!isNaN(parsedDate.getTime())) {
+                    _date = parsedDate;
+                }
+            } else if (dateOnlyMatch) {
+                const parsedDate = new Date(dateOnlyMatch[1]);
+                if (!isNaN(parsedDate.getTime())) {
+                    _date = parsedDate;
+                }
+            }
+        }
 
         // Custom format to match "March 5, 2:25PM"
         const prettyTimestampStr = _date.toLocaleString('en-US', {
@@ -409,6 +496,12 @@ function renderSuites() {
             hour12: true
         }).replace(' at ', ', ');
 
+        // If it's still 12:00 AM after potential testId extraction, show only the date
+        const finalTimeStr = _date.toLocaleTimeString('en-US');
+        const displayTimestamp = (finalTimeStr === '12:00:00 AM') 
+            ? _date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+            : prettyTimestampStr;
+
         const gStats = calculateGroupTotalStats(results, 'guided');
         const uStats = calculateGroupTotalStats(results, 'unguided');
 
@@ -418,23 +511,40 @@ function renderSuites() {
         const localLink = `dashboard.html?testId=${testId}&source=${testInfo.source}`;
         const timeAgoStr = timeAgo(_date);
 
+        const scenarioKeys = Object.keys(data.results || {});
+        const distinctScenarios = new Set(scenarioKeys.map(k => k.replace(' - guided', '').replace(' - unguided', '')));
+        const taskCount = data.summary && data.summary.taskCount ? data.summary.taskCount : distinctScenarios.size;
+        let maxRuns = 1;
+        scenarioKeys.forEach(k => { if (data.results[k].length > maxRuns) maxRuns = data.results[k].length; });
+
+        const earlyFailureRate = data.summary?.unguidedEarlyFailureRate || 0;
+        const isFaulty = earlyFailureRate === 100;
+
+        const { label, ldap } = formatSuiteLabel(testInfo);
+
         html += `
-            <tr class="suite-table-row" onclick="window.location.href='${localLink}'" style="cursor: pointer;">
-                <td style="padding-left:15px; text-align: left; font-weight: 600;">${testId}</td>
-                <td style="padding-left:15px; text-align: left; font-size: 0.85rem;">
-                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">${timeAgoStr}</div>
-                    <div style="color: var(--text-secondary); font-size: 0.8em;">${prettyTimestampStr}</div>
+            <tr class="suite-table-row ${isFaulty ? 'faulty' : ''}">
+                <td style="text-align: left; font-weight: 600;">
+                    <a href="${localLink}" class="suite-link" style="color: inherit; text-decoration: none;">
+                        <div style="color: var(--text-primary); font-size: 0.95rem;" title="${escapeHtml(testId)}">${escapeHtml(label)}</div>
+                        <div style="font-size: 0.8rem; font-weight: 400; color: var(--text-secondary); margin-top: 4px;">${timeAgoStr} • <span style="font-size: 0.75rem;">${displayTimestamp}</span>${ldap ? ` • <span>${escapeHtml(ldap)}</span>` : ''}</div>
+                    </a>
                 </td>
-                <td>${testInfo.agent}</td>
+                <td>${getAgentBadge(testInfo.agent)}${escapeHtml(testInfo.agent)}</td>
                 <td>${servingDisplayNames[testInfo.serving] || testInfo.serving}</td>
-                <td style="font-size: 0.85rem; color: var(--text-secondary);">${testInfo.model}</td>
-                <td class="rate-cell" data-compound-key="${compoundKey}">
-                    <div class="rate-bar" style="width: ${gRate}%;"></div>
-                    <div class="rate-value"><span style="font-weight: 700; color: ${getColor(gRate)};">${gRate}%</span></div>
-                </td>
-                <td class="rate-cell" data-compound-key="${compoundKey}">
-                    <div class="rate-bar" style="width: ${uRate}%;"></div>
-                    <div class="rate-value"><span style="font-weight: 700; color: ${getColor(uRate)};">${uRate}%</span></div>
+                <td style="font-size: 0.85rem; color: var(--text-secondary); word-break: break-word; width: 120px;">${escapeHtml(testInfo.model).replaceAll('-', '-&shy;')}</td>
+                <td style="font-weight: 600;">${taskCount} ${maxRuns > 1 ? `<span style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 400;">×${maxRuns}</span>` : ''}</td>
+                <td class="uplift-cell" data-compound-key="${compoundKey}" style="width: 200px; padding: 0; vertical-align: middle; position: relative; z-index: 2;">
+                    <a href="${localLink}" style="display: block; color: inherit; text-decoration: none; padding: 10px 15px;">
+                        <div class="suite-dumbbell-track">
+                            <div class="connector" style="left: calc(${Math.min(uRate, gRate)}% + 2px); width: calc(${Math.abs(gRate - uRate)}% - 4px);"></div>
+                            <div class="dot unguided" style="left: calc(${uRate}% - 3px);"></div>
+                            <div class="dot guided" style="left: calc(${gRate}% - 4px);"></div>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; text-align: center;">
+                            <span style="font-weight: bold; color: var(--text-primary);">${gRate - uRate >= 0 ? '+' : ''}${gRate - uRate}%</span>
+                        </div>
+                    </a>
                 </td>
                 ${isRemoteDashboard() ? '' : `<td style="text-transform: capitalize;">${testInfo.source}</td>`}
             </tr>
@@ -443,6 +553,7 @@ function renderSuites() {
 
     container.innerHTML = html;
     setupRateCellHovers();
+    renderPivotInsights(); // Refresh insights based on current filters
 }
 
 let tooltipChartInstance = null;
@@ -451,7 +562,7 @@ let hideTimeout = null;
 const tooltipContainer = $('#tooltip-container');
 
 function setupRateCellHovers() {
-    const rateCells = document.querySelectorAll('.rate-cell');
+    const rateCells = document.querySelectorAll('.uplift-cell');
     rateCells.forEach(cell => {
         cell.addEventListener('mouseenter', (e) => {
             if (!(cell instanceof HTMLElement)) return;
@@ -505,7 +616,7 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
 
     if (!tooltipChartInstance) {
         tooltipChartInstance = new DumbbellChart('tooltip-chart', {
-            size: 400, height: 300, rowHeight: 20, margin: { top: 15, right: 15, bottom: 15, left: 15 }, hideLegend: true, hideLabels: true, hideSeparators: true, hideZeros: true, hideAxes: true
+            size: 270, maxHeight: 250, rowHeight: 20, margin: { top: 15, right: 15, bottom: 15, left: 15 }, hideLegend: true, hideLabels: true, hideSeparators: true, hideZeros: true, hideAxes: true
         });
     }
 
@@ -553,9 +664,69 @@ function hideTooltipChart() {
 // HELPERS
 // ==========================================
 
+function formatSuiteLabel(testInfo) {
+    const { testId, agent, serving } = testInfo;
+    if (!testId) return { label: 'evaluation-run', ldap: '' };
+
+    const timeRegex = /[-_]?\b\d{4}-\d{2}-\d{2}(?:[T_]\d{2}-\d{2}-\d{2})?\b[-_]?/;
+    const parts = testId.split(timeRegex);
+    
+    let prefix = parts[0] || '';
+    let suffix = parts[1] || '';
+    
+    prefix = prefix.replace(/^[-_]+|[-_]+$/g, '');
+    suffix = suffix.replace(/^[-_]+|[-_]+$/g, '');
+    
+    const label = prefix || 'evaluation-run';
+    
+    if (!suffix) return { label, ldap: '' };
+    
+    const normalize = s => (s || '').toLowerCase().replace(/[-_]+/g, '');
+    const normAgent = normalize(agent);
+    const normServing = normalize(serving);
+    
+    const suffixParts = suffix.split('-');
+    let ldap = '';
+    const otherTags = [];
+    
+    suffixParts.forEach(part => {
+        const normPart = normalize(part);
+        if (normPart === normAgent || normPart === normServing) return;
+        if (normPart === 'cli' || normPart === 'run' || normPart === 'skills') return;
+        otherTags.push(part);
+    });
+    
+    if (otherTags.length > 0) {
+        ldap = otherTags.pop();
+    }
+    
+    let finalLabel = label;
+    if (otherTags.length > 0) {
+        finalLabel += '-' + otherTags.join('-');
+    }
+    
+    return { label: finalLabel, ldap };
+}
+
+function getAgentBadge(agentName) {
+    const name = (agentName || '').toLowerCase();
+    if (name.includes('gemini') || name.includes('jetski')) {
+        return '<span class="agent-badge gemini">✦</span>';
+    }
+    if (name.includes('codex') || name.includes('openai')) {
+        return '<span class="agent-badge openai">❂</span>';
+    }
+    if (name.includes('claude')) {
+        return '<span class="agent-badge claude">✱</span>';
+    }
+    return '';
+}
+
 function calculateGroupTotalStats(results, groupType) {
     let passed = 0;
     let total = 0;
+
+    if (!results) return { passed, total }; // Guard against missing results
 
     Object.keys(results).forEach(key => {
         // key format: "scenario - prompt - agent"
@@ -579,3 +750,100 @@ function getSortedTestIds() {
         return new Date(allTestData[b].timestamp).getTime() - new Date(allTestData[a].timestamp).getTime();
     });
 }
+
+function renderPivotInsights() {
+    const testIds = getSortedTestIds(); // Uses selected filters!
+    const grouped = {
+        agent: {},
+        serving: {},
+        model: {}
+    };
+
+    testIds.forEach(compoundKey => {
+        const testInfo = allTestData[compoundKey];
+        if (!testInfo) return;
+        
+        const data = testInfo.data;
+        const gStats = calculateGroupTotalStats(data.results, 'guided');
+        const uStats = calculateGroupTotalStats(data.results, 'unguided');
+        const gRate = gStats.total > 0 ? Math.round((gStats.passed / gStats.total) * 100) : 0;
+        const uRate = uStats.total > 0 ? Math.round((uStats.passed / uStats.total) * 100) : 0;
+        const uplift = gRate - uRate;
+
+        if (!grouped.agent[testInfo.agent]) grouped.agent[testInfo.agent] = [];
+        grouped.agent[testInfo.agent].push({ uplift, uRate, gRate });
+
+        if (!grouped.serving[testInfo.serving]) grouped.serving[testInfo.serving] = [];
+        grouped.serving[testInfo.serving].push({ uplift, uRate, gRate });
+
+        if (!grouped.model[testInfo.model]) grouped.model[testInfo.model] = [];
+        grouped.model[testInfo.model].push({ uplift, uRate, gRate });
+    });
+
+    const getDumbbellMedian = (arr) => {
+        if (arr.length === 0) return { uRate: 0, gRate: 0, uplift: 0 };
+        const sorted = [...arr].sort((a,b) => a.uplift - b.uplift);
+        const mid = Math.floor(sorted.length / 2);
+        return sorted[mid];
+    };
+
+    const renderPivotTable = (groupObj, filterKey) => {
+        let rowsHtml = '';
+        Object.keys(groupObj).forEach(key => {
+            const items = groupObj[key];
+            const medianItem = getDumbbellMedian(items);
+            const medUplift = medianItem.uplift;
+            const uRate = medianItem.uRate;
+            const gRate = medianItem.gRate;
+
+            rowsHtml += `
+                <tr onclick="setInsightFilter('${filterKey}', '${key}')" style="cursor: pointer;">
+                    <td>
+                        <div style="font-weight: 600;">${filterKey === 'serving' ? (servingDisplayNames[key] || key) : key}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">${items.length} trials</div>
+                    </td>
+                    <td class="insight-dumbbell-cell">
+                        <div class="insight-dumbbell-track">
+                            <div class="connector" style="left: calc(${Math.min(uRate, gRate)}% + 1px); width: calc(${Math.abs(gRate - uRate)}% - 2px);"></div>
+                            <div class="dot unguided" style="left: calc(${uRate}% - 2px);"></div>
+                            <div class="dot guided" style="left: calc(${gRate}% - 3px);"></div>
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); text-align: center; margin-top: 2px;">${medUplift >= 0 ? '+' : ''}${medUplift}%</div>
+                    </td>
+                </tr>
+            `;
+        });
+        return `<table class="insights-table"><tbody>${rowsHtml}</tbody></table>`;
+    };
+
+    const container = document.getElementById('insights-container');
+    if (container) {
+        container.innerHTML = `
+            <div class="insights-panel">
+                <div class="insights-panel-title">By Agent</div>
+                ${renderPivotTable(grouped.agent, 'agent')}
+            </div>
+            <div class="insights-panel">
+                <div class="insights-panel-title">By Serving</div>
+                ${renderPivotTable(grouped.serving, 'serving')}
+            </div>
+            <div class="insights-panel">
+                <div class="insights-panel-title">By Model</div>
+                ${renderPivotTable(grouped.model, 'model')}
+            </div>
+        `;
+    }
+}
+
+// @ts-expect-error global export
+window.setInsightFilter = (filterKey, value) => {
+    const selects = {
+        agent: document.getElementById('filter-agent'),
+        serving: document.getElementById('filter-serving'),
+        model: document.getElementById('filter-model')
+    };
+    if (selects[filterKey]) {
+        selects[filterKey].value = value;
+        selects[filterKey].dispatchEvent(new Event('change')); // Trigger table refresh!
+    }
+};
