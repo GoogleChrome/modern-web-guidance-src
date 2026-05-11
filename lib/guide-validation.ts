@@ -453,11 +453,6 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
     const categoryDir = path.join(scanDir, category);
     if (!fs.existsSync(categoryDir)) continue;
 
-    // Check if category itself is a discipline skill
-    if (fs.existsSync(path.join(categoryDir, SKILL_FILE))) {
-      guides.push(inventoryGuide(categoryDir));
-    }
-
     // Scan subdirectories
     for (const entry of fs.readdirSync(categoryDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
@@ -468,9 +463,26 @@ export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
 }
 
 export function scanDisciplineSkills(scanDir = guidesDir): GuideInventory[] {
-  return scanAllGuides(scanDir).filter(g => g.isDisciplineSkill);
-}
+  const skills: GuideInventory[] = [];
 
+  if (!fs.existsSync(scanDir)) return skills;
+
+  // Read top-level directories in guides/
+  const categories = fs.readdirSync(scanDir, { withFileTypes: true })
+     .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')
+     .map(d => d.name);
+
+  for (const category of categories) {
+    const categoryDir = path.join(scanDir, category);
+    
+    // If the category directory itself contains a SKILL.md, it's a discipline skill
+    if (fs.existsSync(path.join(categoryDir, SKILL_FILE))) {
+      skills.push(inventoryGuide(categoryDir));
+    }
+  }
+
+  return skills;
+}
 
 let cachedGuidesMap: Map<string, GuideInventory> | null = null;
 
