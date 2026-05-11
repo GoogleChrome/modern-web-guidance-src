@@ -133,7 +133,7 @@ test.describe(`Translator Expectations: ${demoName}`, () => {
       }
       
       // Click translate button
-      const translateBtn = await page.$('button[type="submit"], button#run, button:has-text("Translate")');
+      const translateBtn = await page.$('button[type="submit"], button#run, button[class*="translate"], button[data-translate], button:has-text("Translate"), button:has-text("Traducir")');
       if (translateBtn) {
         await translateBtn.click();
         // Wait for potential async translation

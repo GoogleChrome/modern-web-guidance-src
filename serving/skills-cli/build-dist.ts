@@ -80,8 +80,15 @@ function convertSkillToUseNpx(skillDest: string) {
     skillText = skillText.replaceAll(from, to);
   }
 
-  replace(`node <modern-web-directory>/modern-web.mjs search "<query>"`, `npx -p modern-web-guidance@latest -- modern-web search "<query>"`);
-  replace(`node <modern-web-directory>/modern-web.mjs retrieve "<id>"`, `npx -p modern-web-guidance@latest -- modern-web retrieve "<id>"`);
+  const offlineNotice = '# Note: if this commands hangs, try running again in offline mode: "npx --offline ..."';
+  replace(
+    `node <modern-web-directory>/modern-web.mjs search "<query>"`,
+    `npx -y -p modern-web-guidance@latest -- modern-web search "<query>"\n${offlineNotice}`
+  );
+  replace(
+    `node <modern-web-directory>/modern-web.mjs retrieve "<id>"`,
+    `npx -y -p modern-web-guidance@latest -- modern-web retrieve "<id>"\n${offlineNotice}`
+  );
   fs.writeFileSync(skillDest, skillText);
 }
 
@@ -396,7 +403,7 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
 }
 
 function getLatestVersion() {
-  const getLatestGitTag = () => execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  const getLatestGitTag = () => execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname | head -n 1 | grep .', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
   const tag = getLatestGitTag();
   const version = tag.startsWith('v') ? tag.slice(1) : tag;
   return version;
@@ -404,7 +411,7 @@ function getLatestVersion() {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   let version;
-  // Not sure why but in CI the `git describe` command fails. Even though we fetched tags. shrug.
+  // Not sure why but in CI this command sometimes fails. Even though we fetched tags. shrug.
   try {
     version = getLatestVersion();
   } catch (err) {

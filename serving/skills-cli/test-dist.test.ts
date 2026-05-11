@@ -139,6 +139,23 @@ test('modern-web CLI search and retrieve', async () => {
   assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
 });
 
+test('modern-web CLI version flags', async () => {
+  const binaryPath = path.join(DIST_DIR, 'skills/modern-web/modern-web.mjs');
+  const pkgJsonRaw = await fs.readFile(path.join(DIST_DIR, 'package.json'), 'utf8');
+  const pkgJson = JSON.parse(pkgJsonRaw);
+  const expectedVersion = pkgJson.version;
+
+  assert.ok(expectedVersion, 'expectedVersion should exist in package.json');
+
+  // 1. Test --version
+  const versionOutLong = execSync(`node "${binaryPath}" --version`, { encoding: 'utf8' }).trim();
+  assert.strictEqual(versionOutLong, expectedVersion, '--version output should match package.json version');
+
+  // 2. Test -v
+  const versionOutShort = execSync(`node "${binaryPath}" -v`, { encoding: 'utf8' }).trim();
+  assert.strictEqual(versionOutShort, expectedVersion, '-v output should match package.json version');
+});
+
 // TODO: this has been failing locally from publish-skills.ts
 test.skip('THIRD_PARTY_NOTICES validation', async () => {
   const noticesPath = path.join(DIST_DIR, 'THIRD_PARTY_NOTICES');

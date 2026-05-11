@@ -6,7 +6,7 @@
   "type": "module",
   "private": true,
   "bin": {
-    "gd": "./bin/gd.ts"
+    "gd": "bin/gd.ts"
   },
   "scripts": {
     "test": "pnpm -r test",

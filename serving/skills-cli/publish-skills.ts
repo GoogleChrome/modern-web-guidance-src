@@ -4,10 +4,21 @@ import { execSync } from 'node:child_process';
 import ghpages from 'gh-pages';
 import { buildDist } from './build-dist.ts';
 import { fileURLToPath } from 'node:url';
+import { minimatch } from 'minimatch';
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../.."); // guidance/
 const SERVING_DIR = path.join(ROOT_DIR, "serving");
 const DIST_DIR = path.join(ROOT_DIR, "dist");
+
+// This controls what is published to https://github.com/GoogleChrome/modern-web-guidance.
+const GH_PUBLISH_PATTERNS = [
+  '**/*',
+  '!**/guides/**',
+  '!**/tfjs_model_minilm/**',
+  '!**/*.{js,mjs,ts,bin,map,gz}',
+  '!THIRD_PARTY_NOTICES',
+  '!skills/modern-web/package.json',
+];
 
 const isDryRun = process.argv.includes('--dry-run');
 
@@ -17,7 +28,7 @@ function incrementVersion(version: string): string {
   return `${parts[0]}.${parts[1]}.${patch}`;
 }
 
-const getLatestGitTag = () => execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+const getLatestGitTag = () => execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname | head -n 1 | grep .', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
 
 export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<string> {
   console.log("Determining next version...");
@@ -42,7 +53,7 @@ async function publishToDistributionRepo(publishCliDir: string, newVersion: stri
     dotfiles: true,
     message: `Release v${newVersion}`,
     tag: `v${newVersion}`,
-    remove: "**/*"
+    src: GH_PUBLISH_PATTERNS,
   });
 
   // TODO: not working. Think we need a GH API key from the modern-web-guidance repo.
@@ -92,8 +103,21 @@ async function main() {
   const { featuresCount, useCasesCount, skillsCount, skillNames } = result;
 
   if (isDryRun) {
-    const files = await fs.readdir(publishCliDir, {recursive: true});
-    console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${files.filter(f => !f.includes('node_modules')).sort((a,b) => a.localeCompare(b)).join('\n - ')}`);
+    const files = await fs.readdir(publishCliDir, {recursive: true, withFileTypes: true});
+    const filteredFiles = files
+      .filter(f => !f.parentPath.includes('node_modules') && f.isFile())
+      .map(f => path.relative(publishCliDir, path.join(f.parentPath, f.name)))
+      .filter(f => {
+        return GH_PUBLISH_PATTERNS.every(pattern => {
+          if (pattern.startsWith('!')) {
+            return !minimatch(f, pattern.slice(1), { dot: true });
+          }
+          return minimatch(f, pattern, { dot: true });
+        });
+      })
+      .sort((a,b) => a.localeCompare(b));
+
+    console.log(`\n[Dry Run] Skipping GitHub publishing. Would push:\n - ${filteredFiles.join('\n - ')}`);
     console.log(`\n[Dry Run] ✅ Successfully verified v${newVersion} build pipeline offline!`);
 
     console.log(`\n[Dry Run] Summary:`);
