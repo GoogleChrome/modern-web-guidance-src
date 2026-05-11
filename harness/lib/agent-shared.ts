@@ -663,7 +663,6 @@ export function getGraderScriptContent(
   guideName: string
 ): string {
   const runGraderModulePath = path.join(guidesDir, 'run-grader.ts');
-  const targetPkgJson = path.join(targetDir, 'package.json');
   const targetFile = path.join(targetDir, 'index.html');
   const gradeReportDir = path.join(targetDir, 'grade-report');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
