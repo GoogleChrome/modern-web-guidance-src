@@ -89,7 +89,6 @@ function convertSkillToUseNpx(skillDest: string) {
 }
 
 export function processSkills(publishRoot: string, distDir: string, npx: boolean) {
-  console.log("Scanning for skills (SKILL.md) in guides/...");
   const skills = scanDisciplineSkills();
 
   for (const skill of skills) {
@@ -109,17 +108,37 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
     convertSkillToUseNpx(skillDest);
   }
 
-  console.log(`Successfully copied ${skills.length} skills to distribution.`);
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
 async function main(opts: {publishRoot: string, version?: string, npx?: boolean}): Promise<BuildResult | undefined> {
   const {publishRoot, version, npx} = opts;
 
-  fs.rmSync(publishRoot, { recursive: true, force: true });
-  fs.mkdirSync(publishRoot, {recursive: true});
-
   const DIST_DIR = path.join(publishRoot, "skills/modern-web");
+  const modernWebMjs = path.join(DIST_DIR, "modern-web.mjs");
+
+  // Selective clean: preserve modern-web so we don't wipe out our cached vectors or guides.
+  if (fs.existsSync(publishRoot)) {
+    const skillsDir = path.join(publishRoot, "skills");
+    if (fs.existsSync(skillsDir)) {
+      for (const s of fs.readdirSync(skillsDir)) {
+        if (s !== "modern-web") {
+          fs.rmSync(path.join(skillsDir, s), { recursive: true, force: true });
+        }
+      }
+    }
+  } else {
+    fs.mkdirSync(publishRoot, { recursive: true });
+  }
+
+  const skipped = await processGuides({
+    outputDir: DIST_DIR,
+    target: npx ? 'skills-cli-npx' : 'skills-cli',
+  });
+
+  if (skipped && fs.existsSync(modernWebMjs)) {
+    return { featuresCount: 0, useCasesCount: 0, skillsCount: 0, skillNames: [] };
+  }
 
   fs.mkdirSync(ROOT_DIST_DIR, { recursive: true });
   const lockFilePath = path.join(ROOT_DIST_DIR, "build-dist.lock");
@@ -127,134 +146,106 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
   await acquireLock(lockFilePath);
 
   try {
-    console.log("Ensuring dist/ output directory exists...");
     fs.mkdirSync(publishRoot, { recursive: true });
 
-  console.log("Generating guides and updating vector store...");
-  try {
-    console.time("⏳ processGuides");
-    await processGuides({
-      outputDir: DIST_DIR,
-      target: npx ? 'skills-cli-npx' : 'skills-cli',
-    });
-    console.timeEnd("⏳ processGuides");
-  } catch (error) {
-    console.error("Failed to build guides:", error);
-    process.exit(1);
-  }
-
-  // Placing modern-web.mjs inside the skill directory instead of bin/ for self-containment!
-
-  console.log("Copying installation manifests and metadata for AI tools...");
-  fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
-
-  if (version) {
-    console.log(`Updating version to ${version} in distribution files...`);
-    updateVersionsInDir(publishRoot, version);
-  }
-
-  console.log("Copying TFJS model files...");
-  const tfjsModelDir = path.join(SERVING_DIR, "lib/tfjs_model_minilm");
-  const destTfjsModelDir = path.join(DIST_DIR, "tfjs_model_minilm");
-  if (fs.existsSync(tfjsModelDir)) {
-    fs.cpSync(tfjsModelDir, destTfjsModelDir, {
-      recursive: true,
-      filter: (src) => {
-        const stat = fs.statSync(src);
-        if (stat.isDirectory()) return true;
-        const basename = path.basename(src);
-        return basename === "model.json" || basename.startsWith("group1-shard");
-      }
-    });
-    console.log(`Copied ${tfjsModelDir} to ${destTfjsModelDir}`);
-  }
-
-  try {
-    console.log("Bundling search.mjs...");
-    // To analyze bundle size breakdown, assign build()s return to `result` and use `esbuild.analyzeMetafile(result.metafile)`
-    const resultSearch = await esbuild.build({
-      entryPoints: [path.join(SERVING_DIR, "lib/search.ts")],
-      bundle: true,
-      platform: "node",
-      format: "esm",
-      outfile: path.join(publishRoot, "skills/modern-web/search.mjs"),
-      banner: {
-        js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
-      },
-      external: ["sharp", "iconv-lite", "@img/colour", "tr46", "whatwg-url", "webidl-conversions"],
-      sourcemap: true,
-      loader: { ".node": "file" },
-      metafile: true,
-      minify: true,
-      alias: {
-        // Force transformers to use the ESM entry point to avoid CommonJS issues in the bundle
-        "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
-        // We leverage Transformers.js only for tokenization. But it is a large dependency and
-        // tries to do a lot more, including loading native dependencies (onnxruntime-node) that
-        // we have no use for. We use this dummy shim to ensure we can use the library without
-        // pulling in native binaries.
-        "onnxruntime-node": path.resolve(SERVING_DIR, "lib/dummy-onnx.ts"),
-      },
-      plugins: [{
-        // TFJS deep imports fail in pure Node ESM because they lack extensions.
-        // In raw Node runs, tfjs-kernels.ts uses require() to load the CommonJS version (all kernels).
-        // For the production bundle, we use this plugin to swap it with tfjs-kernels-precise.ts
-        // which only registers the specific kernels we need, keeping the bundle small.
-        name: 'use-precise-kernels',
-        setup(build) {
-          build.onResolve({ filter: /tfjs-kernels\.ts$/ }, _args => {
-            return { path: path.resolve(SERVING_DIR, "lib/tfjs-kernels-precise.ts") }
-          })
-        },
-      }],
-    });
-    fs.writeFileSync(path.join(publishRoot, "search.meta.json"), JSON.stringify(resultSearch.metafile, null, 2));
-    console.log(`Generated metafile for search.mjs at ${path.join(publishRoot, "search.meta.json")}`);
-
-    console.log("Bundling modern-web.mjs...");
-    const resultModernWeb = await esbuild.build({
-      entryPoints: [path.join(SERVING_DIR, "bin/modern-web.ts")],
-      bundle: true,
-      platform: "node",
-      format: "esm",
-      outfile: path.join(publishRoot, "skills/modern-web/modern-web.mjs"),
-      plugins: [{
-        name: 'rewrite-search',
-        setup(build) {
-          build.onResolve({ filter: /search\.ts$/ }, _args => {
-            return { path: './search.mjs', external: true }
-          })
-        },
-      }],
-      loader: { ".node": "file" },
-      metafile: true,
-    });
-
-    console.log("Generating THIRD_PARTY_NOTICES...");
-    generateThirdPartyNotices(
-      [resultSearch.metafile, resultModernWeb.metafile],
-      path.join(publishRoot, "THIRD_PARTY_NOTICES")
-    );
-
-    const metaFile = path.join(publishRoot, "search.meta.json");
-    if (fs.existsSync(metaFile)) {
-      fs.unlinkSync(metaFile);
-      console.log(`Removed intermediate metafile ${metaFile}`);
+    try {
+      await processGuides({
+        outputDir: DIST_DIR,
+        target: npx ? 'skills-cli-npx' : 'skills-cli',
+      });
+    } catch (error) {
+      console.error("Failed to build guides:", error);
+      process.exit(1);
     }
 
-  } catch (error) {
-    console.error("Failed to bundle with esbuild:", error);
-    process.exit(1);
-  }
+    fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
 
+    if (version) {
+      updateVersionsInDir(publishRoot, version);
+    }
 
+    const tfjsModelDir = path.join(SERVING_DIR, "lib/tfjs_model_minilm");
+    const destTfjsModelDir = path.join(DIST_DIR, "tfjs_model_minilm");
+    if (fs.existsSync(tfjsModelDir)) {
+      fs.cpSync(tfjsModelDir, destTfjsModelDir, {
+        recursive: true,
+        filter: (src) => {
+          const stat = fs.statSync(src);
+          if (stat.isDirectory()) return true;
+          const basename = path.basename(src);
+          return basename === "model.json" || basename.startsWith("group1-shard");
+        }
+      });
+    }
 
-  const { skillsCount, skillNames } = processSkills(publishRoot, DIST_DIR, !!npx);
+    try {
+      const resultSearch = await esbuild.build({
+        entryPoints: [path.join(SERVING_DIR, "lib/search.ts")],
+        bundle: true,
+        platform: "node",
+        format: "esm",
+        outfile: path.join(publishRoot, "skills/modern-web/search.mjs"),
+        banner: {
+          js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
+        },
+        external: ["sharp", "iconv-lite", "@img/colour", "tr46", "whatwg-url", "webidl-conversions"],
+        sourcemap: true,
+        loader: { ".node": "file" },
+        metafile: true,
+        minify: true,
+        alias: {
+          "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
+          "onnxruntime-node": path.resolve(SERVING_DIR, "lib/dummy-onnx.ts"),
+        },
+        plugins: [{
+          name: 'use-precise-kernels',
+          setup(build) {
+            build.onResolve({ filter: /tfjs-kernels\.ts$/ }, _args => {
+              return { path: path.resolve(SERVING_DIR, "lib/tfjs-kernels-precise.ts") }
+            })
+          },
+        }],
+      });
+      fs.writeFileSync(path.join(publishRoot, "search.meta.json"), JSON.stringify(resultSearch.metafile, null, 2));
 
-  const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
+      const resultModernWeb = await esbuild.build({
+        entryPoints: [path.join(SERVING_DIR, "bin/modern-web.ts")],
+        bundle: true,
+        platform: "node",
+        format: "esm",
+        outfile: modernWebMjs,
+        plugins: [{
+          name: 'rewrite-search',
+          setup(build) {
+            build.onResolve({ filter: /search\.ts$/ }, _args => {
+              return { path: './search.mjs', external: true }
+            })
+          },
+        }],
+        loader: { ".node": "file" },
+        metafile: true,
+      });
 
-  console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
-  return { featuresCount, useCasesCount, skillsCount, skillNames };
+      generateThirdPartyNotices(
+        [resultSearch.metafile, resultModernWeb.metafile],
+        path.join(publishRoot, "THIRD_PARTY_NOTICES")
+      );
+
+      const metaFile = path.join(publishRoot, "search.meta.json");
+      if (fs.existsSync(metaFile)) {
+        fs.unlinkSync(metaFile);
+      }
+
+    } catch (error) {
+      console.error("Failed to bundle with esbuild:", error);
+      process.exit(1);
+    }
+
+    const { skillsCount, skillNames } = processSkills(publishRoot, DIST_DIR, !!npx);
+    const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases(publishRoot);
+
+    console.log("\nSuccess! standalone distribution generated in dist/skills-cli/");
+    return { featuresCount, useCasesCount, skillsCount, skillNames };
   } finally {
     if (fs.existsSync(lockFilePath)) {
       fs.unlinkSync(lockFilePath);
@@ -263,7 +254,6 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
 }
 
 function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
-  console.log("Generating dynamic README content around features and use cases...");
   const guidesDir = path.join(publishRoot, 'skills/modern-web/guides');
   const readyGuides = scanAllGuides().filter(inv => {
     if (!inv.hasGuide) return false;
@@ -332,7 +322,6 @@ function updateReadmeWithFeaturesAndUseCases(publishRoot: string) {
     let readmeContent = fs.readFileSync(readmePath, "utf-8");
     readmeContent = readmeContent.replace('## Installation', dynamicMd + '\n\n## Installation');
     fs.writeFileSync(readmePath, readmeContent);
-    console.log("README dynamically updated with features and use cases.");
   }
 
   return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
@@ -393,7 +382,6 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
   }).join(divider);
 
   fs.writeFileSync(outputFilePath, stringifiedDependencies);
-  console.log(`Generated THIRD_PARTY_NOTICES at ${outputFilePath}`);
 }
 
 function getLatestVersion() {
