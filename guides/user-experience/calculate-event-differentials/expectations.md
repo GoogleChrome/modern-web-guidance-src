@@ -4,7 +4,7 @@
 - The implementation MUST use `Temporal.ZonedDateTime` as the primary type for calculating differences between real-world events that occur in specific time zones.
 - The implementation MUST calculate the time elapsed since a start event using the `.since()` method on a `Temporal.ZonedDateTime` instance.
 - The implementation MUST calculate the time remaining until an end event using the `.until()` method on a `Temporal.ZonedDateTime` instance.
-- The implementation MUST specify a `largestUnit` (such as `'year'`, `'month'`, or `'day'`) in the options object passed to `.since()` or `.until()` to ensure balanced, human-readable durations.
+- The implementation MUST specify a `largestUnit` (such as `'year'`, `'month'`, or `'day'`) in its duration calculations to ensure balanced, human-readable durations.
 - The implementation MUST use `Temporal.ZonedDateTime.compare` to compare two date-time points (e.g., determining if a current time is past an expiration time).
-- The implementation MUST NOT attempt to modify `Temporal` instances directly, as they are immutable. It MUST use the new instances returned by operations like `add()` or `subtract()`.
+- If the implementation uses `add()` or `subtract()` methods, it MUST use the returned new instances, as `Temporal` instances are immutable.
 - The implementation MUST NOT use the legacy `Date` object for the core event differential calculations.

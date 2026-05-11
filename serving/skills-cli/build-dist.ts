@@ -403,7 +403,7 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
 }
 
 function getLatestVersion() {
-  const getLatestGitTag = () => execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  const getLatestGitTag = () => execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname | head -n 1 | grep .', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
   const tag = getLatestGitTag();
   const version = tag.startsWith('v') ? tag.slice(1) : tag;
   return version;
@@ -411,7 +411,7 @@ function getLatestVersion() {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   let version;
-  // Not sure why but in CI the `git describe` command fails. Even though we fetched tags. shrug.
+  // Not sure why but in CI this command sometimes fails. Even though we fetched tags. shrug.
   try {
     version = getLatestVersion();
   } catch (err) {

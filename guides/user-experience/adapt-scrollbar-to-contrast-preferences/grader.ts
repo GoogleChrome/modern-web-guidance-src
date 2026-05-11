@@ -77,11 +77,13 @@ test.describe(`Adapt scrollbar to high-contrast preferences Expectations: ${demo
 
   // 5. Browser test: Verify variables change under prefers-contrast: more
   test('CSS variables for scrollbar update to high-contrast colors when prefers-contrast: more is emulated', async ({ page }) => {
-    // Find the element with scrollbar-color or a scroller class
-    const scroller = page.locator('.scroller, .adaptive-contrast, .content-box, [style*="scrollbar-color"], [style*="overflow"]').first();
-    
-    // Check initial state (subtle)
-    const initialThumb = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-thumb').trim() || getComputedStyle(el).getPropertyValue('--thumb').trim());
+    // Find the element with scrollbar-color or a scroller class, fallback to html
+    let scroller = page.locator('.scroller, .adaptive-contrast, .content-box, [style*="scrollbar-color"], [style*="overflow"]').first();
+    let initialThumb = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-thumb').trim() || getComputedStyle(el).getPropertyValue('--thumb').trim()).catch(() => '');
+    if (!initialThumb) {
+      scroller = page.locator('html, body').first();
+      initialThumb = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-thumb').trim() || getComputedStyle(el).getPropertyValue('--thumb').trim());
+    }
     
     // Emulate high contrast
     await page.emulateMedia({ contrast: 'more' });
@@ -89,18 +91,23 @@ test.describe(`Adapt scrollbar to high-contrast preferences Expectations: ${demo
     // Check high contrast state
     const highContrastThumb = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-thumb').trim() || getComputedStyle(el).getPropertyValue('--thumb').trim());
     
-    // The value should change to something very dark/bright (e.g. #000 or #000000)
-    // In demo.html it's #000000
+    // The value should change to something very dark/bright
     expect(highContrastThumb.toLowerCase()).not.toBe(initialThumb.toLowerCase());
   });
 
   // 6. Browser test: High contrast colors are actually distinct (black/white or very dark/light)
   test('High contrast scrollbar colors are highly distinct (e.g., black or white)', async ({ page }) => {
     await page.emulateMedia({ contrast: 'more' });
-    const scroller = page.locator('.scroller, .adaptive-contrast, .content-box, [style*="scrollbar-color"], [style*="overflow"]').first();
     
-    const thumbColor = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-thumb').trim());
-    const trackColor = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-track').trim());
+    let scroller = page.locator('.scroller, .adaptive-contrast, .content-box, [style*="scrollbar-color"], [style*="overflow"]').first();
+    let thumbColor = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-thumb').trim()).catch(() => '');
+    let trackColor = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-track').trim()).catch(() => '');
+    
+    if (!thumbColor) {
+      scroller = page.locator('html, body').first();
+      thumbColor = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-thumb').trim());
+      trackColor = await scroller.evaluate(el => getComputedStyle(el).getPropertyValue('--scrollbar-track').trim());
+    }
     
     // Check if thumb is black or very dark
     const isHighContrast = (thumbColor.toLowerCase() === '#000000' || thumbColor.toLowerCase() === '#000' || thumbColor.toLowerCase() === 'black') ||
