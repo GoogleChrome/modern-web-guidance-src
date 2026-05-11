@@ -608,9 +608,6 @@ function renderGrid(data, testId) {
                 return totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
             };
 
-
-
-
             const unguidedAvg = getAvg(unguidedRuns);
             const guidedAvg = getAvg(guidedRuns);
             const uplift = guidedAvg - unguidedAvg;
@@ -698,7 +695,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                         const arr = JSON.parse(arrayStr);
                         promptText = arr[1];
                         const baseAppPath = arr[4];
-                        if (baseAppPath) baseApp = baseAppPath.split('/').pop();
+                        if (baseAppPath) baseApp = sampleRun.baseApp || baseAppPath.split('/').pop();
                     }
                 } catch (e) {
                     console.log('Falling back to living guide file:', e);
@@ -843,6 +840,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
                  const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : (files.includes('modern-web.log') ? 'modern-web.log' : null);
                  const jsonFile = files.find(f => f.endsWith('_results.json'));
+                 const runtimeFile = files.includes('runtime.json') ? 'runtime.json' : null;
                  const appUrl = api.source === 'remote'
                      ? `https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`
                       : api.getAbsoluteUrl ? api.getAbsoluteUrl(resultPath) : `${usedBasePath}/index.html`;
@@ -863,6 +861,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                              <button class="tfoot-action-btn" onclick="viewDiff('${escapeHtml(setupPath)}', '${escapeHtml(resultPath)}', '${escapeHtml(scenarioName)}', ${run.runNumber})"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>
                              <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(appUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>
                              ${jsonFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${jsonFile}`)}', '${escapeHtml(`${usedBasePath}/${jsonFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 11.5 2h-7zm0 1h7a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5z"/><path d="M4.5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg> JSON</button>` : ''}
+                             ${runtimeFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${runtimeFile}`)}', '${escapeHtml(`${usedBasePath}/${runtimeFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/></svg> Runtime</button>` : ''}
                              ${logFile ? `<button class="tfoot-action-btn" onclick="viewContent('${escapeHtml(`${usedBasePath}/${logFile}`)}', '${escapeHtml(`${usedBasePath}/${logFile}`)}')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
                              <button class="tfoot-action-btn" onclick="window.open('${escapeHtml(playWUrl)}', '_blank')"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> PlayW</button>
                          </div>
