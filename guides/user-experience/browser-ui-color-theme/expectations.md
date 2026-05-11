@@ -6,5 +6,7 @@
 - **MANDATORY (If using `light-dark()`)**: The implementation includes a fallback strategy for browsers that support `color-scheme` but not `light-dark()` (typically using `prefers-color-scheme` media queries to set custom property values).
 - **MANDATORY (If using `light-dark()`)**: Registered custom properties (via `@property`) are **not** used for values that must dynamically resolve with `light-dark()`, as the registration syntax "locks" the resolved color at computed value time.
 - The `accent-color` property is used to theme built-in interactive elements like checkboxes and radio buttons to match the site's brand across both light and dark modes.
+- The `scrollbar-color` property is used to provide consistent scrollbar styling that respects the active color scheme.
+- The implementation uses `color-scheme: only light` or `color-scheme: only dark` when a specific element must opt out of automatic browser-driven color inversions.
 - System color keywords (e.g., `Canvas`, `CanvasText`, `AccentColor`) are utilized to ensure custom elements or fallbacks remain consistent with the browser's native UI surfaces.
 - Built-in browser UI elements, including scrollbars and form controls, correctly adapt their appearance to match the active color scheme.

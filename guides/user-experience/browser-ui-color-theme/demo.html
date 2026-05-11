@@ -33,6 +33,30 @@
       --background-color: var(--brand-bg-light, Canvas);
       --text-color: var(--brand-text-light, CanvasText);
 
+      /* Apply theme to root properties to ensure the entire viewport is themed correctly. */
+      background-color: var(--background-color);
+      color: var(--text-color);
+      accent-color: var(--accent-color);
+      
+      /* OPTIONAL: Use scrollbar-color for consistent cross-browser scrollbar control. */
+      scrollbar-color: var(--accent-color) var(--background-color);
+
+      /* 
+        OPTIONAL: For older WebKit-based browsers that do not support scrollbar-color,
+        continue to use non-standard ::-webkit-scrollbar pseudo-elements.
+      */
+      &::-webkit-scrollbar {
+        width: 12px;
+      }
+      &::-webkit-scrollbar-track {
+        background: var(--background-color);
+      }
+      &::-webkit-scrollbar-thumb {
+        background-color: var(--accent-color);
+        border-radius: 10px;
+        border: 3px solid var(--background-color);
+      }
+
       /* MANDATORY: Fallback Strategy for browsers without light-dark(). */
       @media (prefers-color-scheme: light) {
         --accent-color: var(--brand-accent-light);
@@ -51,15 +75,20 @@
         --background-color: light-dark(var(--brand-bg-light), var(--brand-bg-dark));
         --text-color: light-dark(var(--brand-text-light), var(--brand-text-dark));
       }
+
+      /* 
+        MANDATORY: Registered custom properties (via @property) are NOT used 
+        for tokens that dynamically resolve with light-dark(). 
+        Registration "locks" the resolved value at computed-time on the root, 
+        which would prevent re-resolution in nested elements with different schemes.
+      */
     }
 
     body {
       padding: 2rem;
       max-width: 900px;
       margin: 0 auto;
-      background-color: var(--background-color);
-      color: var(--text-color);
-      accent-color: var(--accent-color);
+      /* Inherits color, accent-color, and scrollbar-color from :root */
       transition: background-color 0.3s, color 0.3s;
     }
 
@@ -109,9 +138,15 @@
     .forced-dark-section {
       color-scheme: dark;
 
+      /* 
+        MANDATORY: When nesting schemes, built-in inherited properties 
+        (like color and accent-color) that use light-dark() tokens must 
+        be explicitly re-assigned on the element where the scheme changes.
+      */
       background-color: var(--background-color);
       color: var(--text-color);
       accent-color: var(--accent-color);
+      scrollbar-color: var(--accent-color) var(--background-color);
       
       padding: 2rem;
       border-radius: 12px;
@@ -119,6 +154,17 @@
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
+    }
+
+    /* DEMONSTRATION: Opting out of Auto-Dark Mode */
+    .opt-out-section {
+      /* Prevents browsers from automatically inverting colors on this element */
+      color-scheme: only light;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      padding: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
     }
 
     progress { width: 100%; }
@@ -191,6 +237,13 @@
       </div>
 
       <progress value="85" max="100"></progress>
+    </section>
+
+    <section class="control-group">
+      <h2>Opt-out Example</h2>
+      <div class="opt-out-section">
+        <p>This section uses <code>color-scheme: only light</code> to prevent automatic browser overrides even if the rest of the page is dark.</p>
+      </div>
     </section>
   </main>
 
