@@ -27,18 +27,11 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
 
 export function extractTokenUsageFromResults(resultsDir: string, agent: string): { total: number; cached: number } | undefined {
   let usage: { total: number; cached: number } | undefined = undefined;
-  if (agent === Agents.GEMINI_CLI) {
-    usage = extractGeminiCliTokenUsage(resultsDir);
-  } else if (agent === Agents.CLAUDE_CODE) {
-    usage = extractClaudeCodeTokenUsage(resultsDir);
-  } else if (agent === Agents.CODEX_CLI) {
-    usage = extractCodexCliTokenUsage(resultsDir);
-  }
+  if (agent === Agents.GEMINI_CLI) usage = extractGeminiCliTokenUsage(resultsDir);
+  else if (agent === Agents.CLAUDE_CODE) usage = extractClaudeCodeTokenUsage(resultsDir);
+  else if (agent === Agents.CODEX_CLI) usage = extractCodexCliTokenUsage(resultsDir);
 
-  if (!usage) {
-    usage = extractGeminiCliTokenUsage(resultsDir) || extractClaudeCodeTokenUsage(resultsDir) || extractCodexCliTokenUsage(resultsDir);
-  }
-  return usage;
+  return usage || extractGeminiCliTokenUsage(resultsDir) || extractClaudeCodeTokenUsage(resultsDir) || extractCodexCliTokenUsage(resultsDir);
 }
 
 function extractErrorMessage(dir: string, targetFile: string): string {

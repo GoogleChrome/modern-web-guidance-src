@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
+import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile } from '../lib/agent-shared.ts';
 
 import type { ConversationRecord } from '@google/gemini-cli-core';
 
@@ -127,12 +127,11 @@ async function run() {
 }
 
 function readTrajectory(filePath: string): ConversationRecord {
-  const content = fs.readFileSync(filePath, 'utf8');
   if (filePath.endsWith('.jsonl')) {
-    const lines = content.split('\n').filter(l => l.trim().length > 0);
-    const messages = lines.map(l => JSON.parse(l));
+    const messages = parseJsonlFile(filePath);
     return { messages } as unknown as ConversationRecord;
   }
+  const content = fs.readFileSync(filePath, 'utf8');
   return JSON.parse(content) as ConversationRecord;
 }
 
