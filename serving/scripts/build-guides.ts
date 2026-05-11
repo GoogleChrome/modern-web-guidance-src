@@ -111,7 +111,7 @@ export async function processGuides(opts: BuildOptions) {
   };
 
   if (shouldSkip) {
-    console.log(`⏭️ Cache hit for ${TARGET}. Restoring from ${path.relative(WORKSPACE_ROOT, CACHE_DIR)}...`);
+    // Cache hit for ${TARGET}. Restoring from ${path.relative(WORKSPACE_ROOT, CACHE_DIR)}...
     restoreToTarget();
     console.log("👌");
     return;
