@@ -26,12 +26,19 @@ export function extractModelFromResults(resultsDir: string, agent: string): stri
 }
 
 export function extractTokenUsageFromResults(resultsDir: string, agent: string): { total: number; cached: number } | undefined {
-  let usage: { total: number; cached: number } | undefined = undefined;
-  if (agent === Agents.GEMINI_CLI) usage = extractGeminiCliTokenUsage(resultsDir);
-  else if (agent === Agents.CLAUDE_CODE) usage = extractClaudeCodeTokenUsage(resultsDir);
-  else if (agent === Agents.CODEX_CLI) usage = extractCodexCliTokenUsage(resultsDir);
+  const extractors = [
+    { name: Agents.GEMINI_CLI, fn: extractGeminiCliTokenUsage },
+    { name: Agents.CLAUDE_CODE, fn: extractClaudeCodeTokenUsage },
+    { name: Agents.CODEX_CLI, fn: extractCodexCliTokenUsage },
+  ];
 
-  return usage || extractGeminiCliTokenUsage(resultsDir) || extractClaudeCodeTokenUsage(resultsDir) || extractCodexCliTokenUsage(resultsDir);
+  extractors.sort((a, b) => (a.name === agent ? -1 : b.name === agent ? 1 : 0));
+
+  for (const { fn } of extractors) {
+    const usage = fn(resultsDir);
+    if (usage) return usage;
+  }
+  return undefined;
 }
 
 function extractErrorMessage(dir: string, targetFile: string): string {
