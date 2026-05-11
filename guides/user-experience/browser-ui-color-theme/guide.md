@@ -37,7 +37,7 @@ MANDATORY: To help prevent a "flash of un-themed content" (FOUC), place a `<meta
 MANDATORY: Apply the `color-scheme` property to the `html` element or the `:root` pseudo-class. Browsers specifically look to the root element to determine the theme for the entire viewport—including the root scrollbars and the initial "canvas" background. If applied only to the `body`, these global UI surfaces may remain in light mode because the `body` does not control the window's rendering context.
 
 ```css
-/* MANDATORY: Apply to :root or html for viewport-wide theming */
+/* MANDATORY: Apply color-scheme to :root or html for viewport-wide theming */
 :root {
   /* MANDATORY: Automatically adapt native UI to user system preferences */
   color-scheme: light dark;
