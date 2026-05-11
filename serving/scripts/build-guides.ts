@@ -45,84 +45,101 @@ let IS_NO_CHUNKING = false;
 let TARGET: BuildTarget = 'local-dev';
 
 
-export async function processGuides(opts: BuildOptions): Promise<boolean> {
-  const { outputDir, target, force, targetGuidePath, modelName, noChunking } = opts;
+interface CachePaths {
+  cacheDir: string;
+  cachedVectors: string;
+  cachedTs: string;
+  cachedManifest: string;
+  cachedGuides: string;
+}
 
-  TARGET = target || 'local-dev';
-  IS_NO_CHUNKING = !!noChunking;
+function resolveCachePaths(target: BuildTarget): CachePaths {
+  const cacheDir = path.join(WORKSPACE_ROOT, `dist/.cache/${target}`);
+  return {
+    cacheDir,
+    cachedVectors: path.join(cacheDir, "use-cases.vectors.gen.json.gz"),
+    cachedTs: path.join(cacheDir, "use-cases.gen.ts"),
+    cachedManifest: path.join(cacheDir, "manifest.json"),
+    cachedGuides: path.join(cacheDir, "guides"),
+  };
+}
 
-  const CACHE_DIR = path.join(WORKSPACE_ROOT, `dist/.cache/${TARGET}`);
-  const CACHED_VECTORS = path.join(CACHE_DIR, "use-cases.vectors.gen.json.gz");
-  const CACHED_TS = path.join(CACHE_DIR, "use-cases.gen.ts");
-  const CACHED_MANIFEST = path.join(CACHE_DIR, "manifest.json");
-  const CACHED_GUIDES = path.join(CACHE_DIR, "guides");
-
-  BUILD_GUIDES_DIR = CACHED_GUIDES;
-
-  // Scan guides first to see if we even need to run
-  let readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
-
+async function computePipelineHash(guides: GuideInventory[], target: string, noChunking: boolean): Promise<string> {
   const crypto = await import("node:crypto");
   const hash = crypto.createHash("sha256");
 
-  // Bust cache if the build script itself or options change
   hash.update(fs.readFileSync(import.meta.filename, "utf-8"));
-  hash.update(TARGET);
-  hash.update(IS_NO_CHUNKING.toString());
+  hash.update(target);
+  hash.update(noChunking.toString());
 
-  for (const inv of readyGuides) {
+  for (const inv of guides) {
     const guidePath = getGuideMarkdownPath(inv);
     if (fs.existsSync(guidePath)) {
       hash.update(path.relative(WORKSPACE_ROOT, guidePath));
       hash.update(fs.readFileSync(guidePath, "utf-8"));
     }
   }
-  const currentHash = hash.digest("hex");
+  return hash.digest("hex");
+}
 
-  let shouldSkip = !targetGuidePath && !force;
-
-  if (shouldSkip) {
-    if (!fs.existsSync(CACHED_TS) || !fs.existsSync(CACHED_VECTORS) || !fs.existsSync(CACHED_MANIFEST)) {
-      shouldSkip = false;
-    } else {
-      try {
-        const manifest = JSON.parse(fs.readFileSync(CACHED_MANIFEST, "utf-8"));
-        if (manifest.hash !== currentHash) {
-          shouldSkip = false;
-        }
-      } catch (e) {
-        shouldSkip = false;
-      }
-    }
+function evaluateCacheHit(paths: CachePaths, currentHash: string): boolean {
+  if (!fs.existsSync(paths.cachedTs) || !fs.existsSync(paths.cachedVectors) || !fs.existsSync(paths.cachedManifest)) {
+    return false;
   }
+  try {
+    const manifest = JSON.parse(fs.readFileSync(paths.cachedManifest, "utf-8"));
+    return manifest.hash === currentHash;
+  } catch {
+    return false;
+  }
+}
 
-  const restoreToTarget = () => {
-    if (TARGET === 'skills-cli' || TARGET === 'skills-cli-npx') {
-      fs.mkdirSync(outputDir, { recursive: true });
-      fs.copyFileSync(CACHED_VECTORS, path.join(outputDir, "use-cases.vectors.gen.json.gz"));
-      fs.cpSync(CACHED_GUIDES, path.join(outputDir, "guides"), { recursive: true });
-    } else {
-      fs.mkdirSync(path.join(ROOT_DIR, "lib"), { recursive: true });
-      fs.mkdirSync(path.join(ROOT_DIR, "build"), { recursive: true });
-      fs.copyFileSync(CACHED_VECTORS, path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz"));
-      fs.copyFileSync(CACHED_TS, OUTPUT_FILE);
-      fs.cpSync(CACHED_GUIDES, path.join(ROOT_DIR, "build/guides"), { recursive: true });
-    }
-  };
+function restoreFromCache(paths: CachePaths, outputDir: string, target: string): void {
+  if (target === 'skills-cli' || target === 'skills-cli-npx') {
+    fs.mkdirSync(outputDir, { recursive: true });
+    fs.copyFileSync(paths.cachedVectors, path.join(outputDir, "use-cases.vectors.gen.json.gz"));
+    fs.cpSync(paths.cachedGuides, path.join(outputDir, "guides"), { recursive: true });
+  } else {
+    fs.mkdirSync(path.join(ROOT_DIR, "lib"), { recursive: true });
+    fs.mkdirSync(path.join(ROOT_DIR, "build"), { recursive: true });
+    fs.copyFileSync(paths.cachedVectors, path.join(ROOT_DIR, "lib/use-cases.vectors.gen.json.gz"));
+    fs.copyFileSync(paths.cachedTs, OUTPUT_FILE);
+    fs.cpSync(paths.cachedGuides, path.join(ROOT_DIR, "build/guides"), { recursive: true });
+  }
+}
 
-  if (shouldSkip) {
-    // Cache hit for ${TARGET}. Restoring from ${path.relative(WORKSPACE_ROOT, CACHE_DIR)}...
-    restoreToTarget();
+function prepareCleanCacheDir(paths: CachePaths): void {
+  if (fs.existsSync(paths.cacheDir)) {
+    fs.rmSync(paths.cacheDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(paths.cacheDir, { recursive: true });
+  fs.mkdirSync(paths.cachedGuides, { recursive: true });
+}
+
+export async function processGuides(opts: BuildOptions): Promise<boolean> {
+  const { outputDir, target, force, targetGuidePath, modelName, noChunking } = opts;
+
+  TARGET = target || 'local-dev';
+  IS_NO_CHUNKING = !!noChunking;
+
+  // 1. Configuration & Paths
+  const cachePaths = resolveCachePaths(TARGET);
+  BUILD_GUIDES_DIR = cachePaths.cachedGuides;
+
+  // 2. Scan & Hash
+  const readyGuides = scanAllGuides().filter(inv => inv.hasGuide);
+  const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING);
+
+  // 3. Cache Evaluation
+  const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash);
+  if (isHit) {
+    restoreFromCache(cachePaths, outputDir, TARGET);
     console.log("👌");
-    return true;
+    return true; // Skipped
   }
 
-  // Miss: clean cache dir
-  if (fs.existsSync(CACHE_DIR)) {
-    fs.rmSync(CACHE_DIR, { recursive: true, force: true });
-  }
-  fs.mkdirSync(CACHE_DIR, { recursive: true });
-  fs.mkdirSync(CACHED_GUIDES, { recursive: true });
+  // 4. Execution Pipeline (Miss)
+  prepareCleanCacheDir(cachePaths);
 
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
@@ -169,17 +186,17 @@ export interface UseCase {
 export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
 `;
 
-  fs.writeFileSync(CACHED_TS, tsContent);
-  console.log(`Generated ${useCases.length} use cases to ${path.relative(WORKSPACE_ROOT, CACHED_TS)}`);
+  fs.writeFileSync(cachePaths.cachedTs, tsContent);
+  console.log(`Generated ${useCases.length} use cases to ${path.relative(WORKSPACE_ROOT, cachePaths.cachedTs)}`);
 
 
   const jsonContent = JSON.stringify(storeUseCases);
   const compressed = zlib.gzipSync(jsonContent);
-  fs.writeFileSync(CACHED_VECTORS, compressed);
+  fs.writeFileSync(cachePaths.cachedVectors, compressed);
 
-  fs.writeFileSync(CACHED_MANIFEST, JSON.stringify({ hash: currentHash }, null, 2));
+  fs.writeFileSync(cachePaths.cachedManifest, JSON.stringify({ hash: currentHash }, null, 2));
 
-  restoreToTarget();
+  restoreFromCache(cachePaths, outputDir, TARGET);
   return false;
 }
 
