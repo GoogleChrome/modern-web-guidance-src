@@ -79,19 +79,15 @@ test('SKILL.md validations', async () => {
   assert.strictEqual(data.name, 'modern-web', `Frontmatter name must match folder name`);
 });
 
-test('Generic skill validations (forms, performance)', async () => {
-  const checkSkill = async (skillName: string) => {
-    const skillPath = path.join(DIST_DIR, `skills/${skillName}/SKILL.md`);
-    await assert.doesNotReject(fs.access(skillPath), `Missing SKILL.md in ${skillName}`);
-
-    const content = await fs.readFile(skillPath, 'utf8');
-    const { data } = matter(content);
-    assert.ok(data.name, `Missing 'name' field in frontmatter for ${skillName}`);
-    assert.strictEqual(data.name, skillName, `Frontmatter name must match folder name for ${skillName}`);
+test('Discipline guides present (forms, performance)', async () => {
+  const checkGuide = async (name: string) => {
+    const guidesDir = path.join(DIST_DIR, 'skills/modern-web/guides');
+    const guidePath = path.join(guidesDir, name, `${name}.md`);
+    await assert.doesNotReject(fs.access(guidePath), `Missing guide file in ${name}`);
   };
 
-  await checkSkill('forms');
-  await checkSkill('performance');
+  await checkGuide('forms');
+  await checkGuide('performance');
 });
 
 test('Manifest source paths resolve relative to dist directory', async () => {

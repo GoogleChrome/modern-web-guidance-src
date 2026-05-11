@@ -43,19 +43,16 @@ describe('processSkills', () => {
     assert.ok(content.includes('`forms` (via `node <modern-web-directory>/modern-web.mjs retrieve "forms"`)'), 'Should resolve forms skill reference');
   });
 
-  it('processes GUIDE_REF macros in real CSS SKILL.md', () => {
-    const publishRoot = testOutputDir;
-    const distDir = path.join(publishRoot, 'skills/modern-web');
+  it('processes GUIDE_REF macros in real CSS guide.md', () => {
+    const skillFilePath = path.join(rootDir, 'guides/css/css/guide.md');
+    assert.ok(fs.existsSync(skillFilePath), 'guides/css/css/guide.md should exist');
 
-    processSkills(publishRoot, distDir, false);
+    const content = fs.readFileSync(skillFilePath, 'utf8');
+    const result = replaceMacros(content, skillFilePath, { target: 'skills-cli' });
 
-    const builtSkillPath = path.join(publishRoot, 'skills', 'css', 'SKILL.md');
-    assert.ok(fs.existsSync(builtSkillPath), 'Built CSS SKILL.md should exist');
-
-    const content = fs.readFileSync(builtSkillPath, 'utf8');
-    assert.ok(!content.includes('{{ GUIDE_REF'), 'GUIDE_REF macro should be resolved');
-    assert.ok(content.includes('`child-state-based-styling` (via `node <modern-web-directory>/modern-web.mjs retrieve "child-state-based-styling"`)'), 'Should contain command for child-state-based-styling');
-    assert.ok(content.includes('`content-based-styling` (via `node <modern-web-directory>/modern-web.mjs retrieve "content-based-styling"`)'), 'Should contain command for content-based-styling');
+    assert.ok(!result.includes('{{ GUIDE_REF'), 'GUIDE_REF macro should be resolved');
+    assert.ok(result.includes('`child-state-based-styling` (via `node <modern-web-directory>/modern-web.mjs retrieve "child-state-based-styling"`)'), 'Should contain command for child-state-based-styling');
+    assert.ok(result.includes('`content-based-styling` (via `node <modern-web-directory>/modern-web.mjs retrieve "content-based-styling"`)'), 'Should contain command for content-based-styling');
   });
 
   it('uses the same command text as in modern-web/SKILL.md', () => {
