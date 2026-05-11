@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import config, { Agents, Serving } from '../config.ts';
-import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand } from '../lib/agent-shared.ts';
+import { getSuiteConfig, updateMcpConfig, createIsolatedHome, cleanupIsolatedHome, copyFileIfExists, parseAgentArgs, createWorkDir, copySkills, watchLogFile, exportTrajectories, runCliAgentCommand, parseJsonlFile } from '../lib/agent-shared.ts';
 
 import type { ConversationRecord } from '@google/gemini-cli-core';
 
@@ -14,6 +14,12 @@ export interface GuidedUsage {
 }
 
 import { MODERN_WEB_LOG_FILE } from '../../constants.ts';
+
+const TRAJECTORY_GLOB = 'session-*.{json,jsonl}';
+
+function getSessionFiles(dir: string, recursive = false): string[] {
+  return fs.globSync(recursive ? `**/${TRAJECTORY_GLOB}` : TRAJECTORY_GLOB, { cwd: dir });
+}
 
 // Usage: node gemini-cli-agent.ts <prompt> <runType> <targetDir> <templateDir>
 /**
@@ -108,6 +114,7 @@ async function run() {
 
     const tmpDir = path.join(path.dirname(workDir), '.gemini', 'tmp');
     exportTrajectories(tmpDir, '*/chats/*.json', targetDir);
+    exportTrajectories(tmpDir, '*/chats/*.jsonl', targetDir);
 
     console.log("Gemini CLI agent finished successfully.");
 
@@ -120,6 +127,10 @@ async function run() {
 }
 
 function readTrajectory(filePath: string): ConversationRecord {
+  if (filePath.endsWith('.jsonl')) {
+    const messages = parseJsonlFile(filePath);
+    return { messages } as unknown as ConversationRecord;
+  }
   const content = fs.readFileSync(filePath, 'utf8');
   return JSON.parse(content) as ConversationRecord;
 }
@@ -128,8 +139,7 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, _servin
   const retrievedGuides: string[] = [];
   const fileReadGuides: string[] = [];
   try {
-    const files = fs.readdirSync(dirPath);
-    const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
+    const sessionFiles = getSessionFiles(dirPath);
 
     for (const file of sessionFiles) {
       const sessionPath = path.join(dirPath, file);
@@ -173,7 +183,7 @@ export async function collectGeminiGuidesFromTrajectory(dirPath: string, _servin
 }
 
 export function extractGeminiCliModel(resultsDir: string): string {
-  const sessionFiles = fs.globSync('**/session-*.json', { cwd: resultsDir });
+  const sessionFiles = getSessionFiles(resultsDir, true);
   if (sessionFiles.length === 0) return 'unknown';
 
   const counts: Record<string, number> = {};
@@ -199,10 +209,37 @@ export function extractGeminiCliModel(resultsDir: string): string {
   return 'unknown';
 }
 
+export function extractGeminiCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
+  let total = 0;
+  let cached = 0;
+  let hasData = false;
+  try {
+    const sessionFiles = getSessionFiles(dir);
+    for (const file of sessionFiles) {
+      try {
+        const session = readTrajectory(path.join(dir, file));
+        if (session.messages) {
+          const messagesWithTokens = (session.messages as any[]).filter(m => m && typeof m === 'object' && 'tokens' in m) as Array<{ tokens: { total?: number; cached?: number } }>;
+          const lastMsg = messagesWithTokens[messagesWithTokens.length - 1];
+          if (lastMsg) {
+            total += lastMsg.tokens.total || 0;
+            cached += lastMsg.tokens.cached || 0;
+            hasData = true;
+          }
+        }
+      } catch {
+        // Ignore
+      }
+    }
+  } catch {
+    // Ignore
+  }
+  return hasData ? { total, cached } : undefined;
+}
+
 export function collectGeminiToolsFromTrajectory(dir: string): string[] {
   const toolsUsed: string[] = [];
-  const files = fs.readdirSync(dir);
-  const sessionFiles = files.filter(f => f.startsWith('session-') && f.endsWith('.json'));
+  const sessionFiles = getSessionFiles(dir);
   const firstSession = sessionFiles[0];
   if (!firstSession) return toolsUsed;
 

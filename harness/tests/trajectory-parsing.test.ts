@@ -64,6 +64,54 @@ test('collectGemini metrics from a single trajectory file', async () => {
   }
 });
 
+test('collectGemini metrics from a .jsonl trajectory file', async () => {
+  const tempDir = createTempDir();
+  try {
+    const lines = [
+      JSON.stringify({
+        type: 'gemini',
+        toolCalls: [
+          {
+            name: 'mcp_modern-web_get_best_practices',
+            args: { use_case_id: 'accessible-error-announcement' }
+          },
+          {
+            name: 'read_file',
+            args: { file_path: '/path/to/skills/modern-web/references/forms/required-field-feedback.md' }
+          }
+        ]
+      }),
+      JSON.stringify({
+        type: 'gemini',
+        toolCalls: [
+          {
+            name: 'run_shell_command',
+            args: { command: 'npx modern-web retrieve dialog-closedby' }
+          },
+          {
+            name: 'activate_skill',
+            args: { name: 'modern-web' }
+          }
+        ]
+      })
+    ];
+
+    fs.writeFileSync(path.join(tempDir, 'session-123.jsonl'), lines.join('\n'));
+
+    // Test Guides
+    const guides = await collectGeminiGuidesFromTrajectory(tempDir, 'mcp');
+    assert.deepStrictEqual(guides.retrievedGuides.sort(), ['accessible-error-announcement', 'dialog-closedby'].sort());
+    assert.deepStrictEqual(guides.fileReadGuides, ['required-field-feedback']);
+
+    // Test Tools
+    const tools = collectGeminiToolsFromTrajectory(tempDir);
+    assert.deepStrictEqual(tools, ['modern-web']);
+
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
 test('collectClaude metrics from a single trajectory file', async () => {
   const tempDir = createTempDir();
   try {
