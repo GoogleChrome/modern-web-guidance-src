@@ -4,6 +4,62 @@
     <meta charset="utf-8" />
     <title>Position-Aware Tooltips</title>
     <style>
+      #anchor {
+        background: #e0e0e0;
+        padding: 0.1em 0.3em;
+        border-radius: 0.25em;
+      }
+
+      #tooltip {
+        position-area: block-start;
+        position-try-fallbacks: flip-block;
+        container-type: anchored;
+      }
+      .tooltip-content {
+        padding: 0.5rem;
+        border: 1px solid black;
+        margin-block-end: 0.25rem;
+        color: white;
+        background: black;
+      }
+
+      @supports (container-type: anchored) {
+        .tooltip-content{
+          border-radius: 0.5rem 0.5rem 0 0;
+        }
+        .tooltip-content::before {
+          content: "▼";
+          position: absolute;
+          inset-block-end: -0.3rem;
+          inset-inline-start: 1rem;
+          color: black;
+        }
+      }
+
+      @container anchored(fallback: flip-block) {
+        .tooltip-content::before {
+          content: "▲";
+          inset-block-start: -0.3rem;
+          inset-block-end: auto;
+        }
+        .tooltip-content {
+          border-radius: 0 0 0.5rem 0.5rem;
+          margin-block-start: 0.25rem;
+        }
+      }
+
+      /* Reset popover styles if anchor positioning is available. */
+      @supports (anchor-name: --my-anchor) {
+        [popover] {
+          inset: auto;
+          margin: unset;
+        }
+      }
+
+      [popover] {
+        border: none;
+      }
+
       body {
         font-family: system-ui, sans-serif;
         margin: 0;
@@ -11,7 +67,7 @@
       }
 
       .spacer {
-        height: 100vh;
+        block-size: 100vb;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -24,52 +80,30 @@
         line-height: 1.5;
         margin: 0;
       }
-
-      .anchor {
-        anchor-name: --my-anchor;
-        background: #e0e0e0;
-        padding: 0.1em 0.3em;
-        border-radius: 0.25em;
-      }
-
-      .tooltip {
-        position: fixed;
-        position-anchor: --my-anchor;
-        position-area: top;
-        position-try-fallbacks: flip-block;
-        margin-bottom: 0.5rem;
-        container-type: anchored;
-        padding: 0.5rem;
-        border: 1px solid black;
-        background: white;
-      }
-
-      .tooltip::before {
-        content: '▼';
-        position: absolute;
-        top: 100%;
-        left: 1rem;
-      }
-
-      @container anchored(fallback: flip-block) {
-        .tooltip {
-          margin-bottom: 0;
-          margin-top: 0.5rem;
-        }
-        .tooltip::before {
-          content: '▲';
-          top: auto;
-          bottom: 100%;
-        }
-      }
     </style>
   </head>
   <body>
     <div class="spacer">↓ Scroll down ↓</div>
     <p>
-      Here is an inline <span class="anchor">anchor</span> within some text.
+      Here is an inline
+      <button popovertarget="tooltip" id="anchor">anchor</button> within some
+      text.
     </p>
-    <div class="tooltip">Tooltip</div>
+    <div id="tooltip" popover role="tooltip">
+      <div class="tooltip-content">Tooltip</div>
+    </div>
     <div class="spacer">↑ Scroll up ↑</div>
+
+    <script type="module">
+      // Fallback strategy: Dynamically import the popover-polyfill for browsers that do not support the popover attribute natively.
+      if (!("popover" in HTMLElement.prototype)) {
+        await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover-fn.js").then(
+          ({ apply }) => {
+            apply();
+          },
+        );
+      }
+      document.getElementById("anchor").click();
+    </script>
   </body>
 </html>

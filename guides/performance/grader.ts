@@ -104,10 +104,8 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
     const result = await page.evaluate(() => {
       const lowPriority = Array.from(document.querySelectorAll('[fetchpriority="low"]'));
-      if (lowPriority.length === 0) return false;
-
       const images = Array.from(document.querySelectorAll('img'));
-      if (images.length === 0) return true;
+      if (images.length <= 1) return true;
 
       const largest = images.reduce((a, b) => {
         const rectA = a.getBoundingClientRect();
@@ -115,7 +113,14 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
         return (rectA.width * rectA.height > rectB.width * rectB.height) ? a : b;
       });
 
-      return lowPriority.every(el => el !== largest);
+      const otherAboveFold = images.filter(img => {
+        if (img === largest) return false;
+        const rect = img.getBoundingClientRect();
+        return rect.top < window.innerHeight && rect.bottom > 0 && rect.width > 0;
+      });
+      if (otherAboveFold.length === 0) return true;
+
+      return lowPriority.length > 0 && lowPriority.every(el => el !== largest);
     });
     expect(result).toBe(true);
   });

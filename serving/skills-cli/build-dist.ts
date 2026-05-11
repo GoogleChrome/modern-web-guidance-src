@@ -80,8 +80,15 @@ function convertSkillToUseNpx(skillDest: string) {
     skillText = skillText.replaceAll(from, to);
   }
 
-  replace(`node <modern-web-directory>/modern-web.mjs search "<query>"`, `npx -p modern-web-guidance@latest -- modern-web search "<query>"`);
-  replace(`node <modern-web-directory>/modern-web.mjs retrieve "<id>"`, `npx -p modern-web-guidance@latest -- modern-web retrieve "<id>"`);
+  const offlineNotice = '# Note: if this commands hangs, try running again in offline mode: "npx --offline ..."';
+  replace(
+    `node <modern-web-directory>/modern-web.mjs search "<query>"`,
+    `npx -y -p modern-web-guidance@latest -- modern-web search "<query>"\n${offlineNotice}`
+  );
+  replace(
+    `node <modern-web-directory>/modern-web.mjs retrieve "<id>"`,
+    `npx -y -p modern-web-guidance@latest -- modern-web retrieve "<id>"\n${offlineNotice}`
+  );
   fs.writeFileSync(skillDest, skillText);
 }
 
@@ -90,9 +97,9 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
   const skills = scanDisciplineSkills();
 
   for (const skill of skills) {
-    const category = skill.category;
+    const skillName = skill.name;
     const source = path.join(skill.dir, "SKILL.md");
-    const skillDestDir = path.join(publishRoot, "skills", category);
+    const skillDestDir = path.join(publishRoot, "skills", skillName);
     
     fs.mkdirSync(skillDestDir, { recursive: true });
     
@@ -100,7 +107,7 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target });
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
     
-    console.log(`Processed and copied skill ${category} (SKILL.md) to ${skillDestDir}`);
+    console.log(`Processed and copied skill ${skillName} (SKILL.md) to ${skillDestDir}`);
   }
 
   if (npx) {
@@ -109,11 +116,11 @@ export function processSkills(publishRoot: string, distDir: string, npx: boolean
   }
 
   console.log(`Successfully copied ${skills.length} skills to distribution.`);
-  return { skillsCount: skills.length, skillNames: skills.map(s => s.category) };
+  return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
-async function main(opts: {publishRoot: string, version?: string, npx?: boolean, subset?: number}): Promise<BuildResult | undefined> {
-  const {publishRoot, version, npx, subset} = opts;
+async function main(opts: {publishRoot: string, version?: string, npx?: boolean}): Promise<BuildResult | undefined> {
+  const {publishRoot, version, npx} = opts;
 
   fs.rmSync(publishRoot, { recursive: true, force: true });
   fs.mkdirSync(publishRoot, {recursive: true});
@@ -135,7 +142,6 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean,
     await processGuides({
       outputDir: DIST_DIR,
       target: npx ? 'skills-cli-npx' : 'skills-cli',
-      subset,
     });
     console.timeEnd("⏳ processGuides");
   } catch (error) {
@@ -397,7 +403,7 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
 }
 
 function getLatestVersion() {
-  const getLatestGitTag = () => execSync('git describe --tags --abbrev=0 --match="v*.*.*"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  const getLatestGitTag = () => execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname | head -n 1 | grep .', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
   const tag = getLatestGitTag();
   const version = tag.startsWith('v') ? tag.slice(1) : tag;
   return version;
@@ -405,7 +411,7 @@ function getLatestVersion() {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   let version;
-  // Not sure why but in CI the `git describe` command fails. Even though we fetched tags. shrug.
+  // Not sure why but in CI this command sometimes fails. Even though we fetched tags. shrug.
   try {
     version = getLatestVersion();
   } catch (err) {
@@ -414,7 +420,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   (async () => {
     try {
-      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true, subset: 3});
+      await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli-npx"), version, npx: true});
       await main({publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version});
     } catch (err) {
       console.error(err);

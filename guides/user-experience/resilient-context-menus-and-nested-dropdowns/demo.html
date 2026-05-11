@@ -1,180 +1,233 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resilient Context Menu</title>
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Resilient Context Menu</title>
+    <!-- Polyfill for CSS Anchor Positioning -->
+    <script type="module">
+      if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+        await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
+      }
+    </script>
 
-  <!-- Polyfill for CSS Anchor Positioning -->
-  <script type="module">
-    if (!("anchorName" in document.documentElement.style)) {
-      import("https://unpkg.com/@oddbird/css-anchor-positioning");
-    }
-  </script>
+    <script type="module">
+      if (!("anchorName" in document.documentElement.style)) {
+        await import("https://unpkg.com/@oddbird/css-anchor-positioning");
+      }
+    </script>
 
-  <style>
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      min-height: 100vh;
-      margin: 0;
-      background-color: #f6f8fa;
-      overflow: hidden; /* Prevent scrolling while dragging */
-    }
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        margin: 0;
+        background-color: #f6f8fa;
+        overflow: hidden; /* Prevent scrolling while dragging */
+      }
 
-    /* Container to allow visualizing edge collision */
-    .wrapper {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      padding: 1.5rem 2rem;
-      border: 2px dashed #d0d7de;
-      border-radius: 8px;
-      background: #ffffff;
-      cursor: grab;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-      touch-action: none;
-    }
+      /* Container to allow visualizing edge collision */
+      .wrapper {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 1.5rem 2rem;
+        border: 2px dashed #d0d7de;
+        border-radius: 8px;
+        background: #ffffff;
+        cursor: grab;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        touch-action: none;
+      }
 
-    .wrapper:active {
-      cursor: grabbing;
-    }
+      .wrapper:active {
+        cursor: grabbing;
+      }
 
-    .drag-hint {
-      font-size: 12px;
-      color: #768390;
-      user-select: none;
-      pointer-events: none;
-    }
+      .drag-hint {
+        font-size: 12px;
+        color: #768390;
+        user-select: none;
+        pointer-events: none;
+        min-inline-size: max-content;
+      }
 
-    .kebab-button {
-      /* 1. Define the anchor */
-      anchor-name: --kebab-anchor;
+      .kebab-button {
+        background-color: #ffffff;
+        border: 1px solid #d0d7de;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        cursor: pointer;
+        font-size: 24px;
+        line-height: 1;
+        padding: 4px 12px;
+        border-radius: 4px;
+        color: #333;
+        transition: background-color 0.2s;
+        anchor-name: --kebab-anchor;
+      }
 
-      background-color: #ffffff;
-      border: 1px solid #d0d7de;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-      cursor: pointer;
-      font-size: 24px;
-      line-height: 1;
-      padding: 4px 12px;
-      border-radius: 4px;
-      color: #333;
-      transition: background-color 0.2s;
-    }
+      .kebab-button:hover,
+      .kebab-button:focus-visible {
+        background-color: #e0e0e0;
+      }
 
-    .kebab-button:hover,
-    .kebab-button:focus-visible {
-      background-color: #e0e0e0;
-    }
+      .menu {
+        /* Native popover styles reset / setup */
+        padding: 8px 0;
+        border: 1px solid #d0d7de;
+        border-radius: 8px;
+        background-color: white;
+        box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
+        min-width: 160px;
 
-    .context-menu {
-      /* Native popover styles reset / setup */
-      margin: 0;
-      padding: 8px 0;
-      border: 1px solid #d0d7de;
-      border-radius: 8px;
-      background-color: white;
-      box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
-      min-width: 160px;
+        position-anchor: --kebab-anchor;
+        /* Mandatory: use insets rather that position-area for positioning */
+        bottom: auto;
+        right: auto;
+        top: anchor(bottom);
+        left: anchor(left);
+        margin: 0;
 
-      /* 2. Anchor Positioning setup */
-      position-anchor: --kebab-anchor;
+        /* Edge collision handling */
+        position-try-fallbacks: flip-block, flip-inline;
+      }
 
-      /* 3. Tethering using position-area */
-      position-area: bottom span-right;
+      .submenu {
+        padding: 8px 0;
+        border: 1px solid #d0d7de;
+        border-radius: 8px;
+        background-color: white;
+        box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
+        min-width: 140px;
 
-      /* 4. Edge collision handling */
-      position-try-fallbacks: flip-block, flip-inline;
+        position-anchor: --submenu-trigger;
 
-      /* Reset inset to allow anchoring to take over */
-      inset: auto;
-    }
+        /* Mandatory: use insets rather that position-area for positioning */
+        bottom: auto;
+        right: auto;
+        top: anchor(top);
+        left: anchor(right);
+        margin: 0;
 
-    .context-menu::backdrop {
-      background: transparent;
-    }
+        position-try-fallbacks: flip-inline, flip-block;
+      }
 
-    .menu-item {
-      display: flex;
-      align-items: center;
-      width: 100%;
-      text-align: left;
-      padding: 8px 16px;
-      border: none;
-      background: none;
-      cursor: pointer;
-      font-size: 14px;
-      color: #24292f;
-    }
+      .menu-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        text-align: left;
+        padding: 8px 16px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 14px;
+        color: #24292f;
+      }
 
-    .menu-item:hover,
-    .menu-item:focus-visible {
-      background-color: #f3f4f6;
-    }
-  </style>
-</head>
+      .menu-item:hover,
+      .menu-item:focus-visible {
+        background-color: #f3f4f6;
+      }
 
-<body>
+      .menu-item::after {
+        content: "›";
+        font-size: 18px;
+        color: #768390;
+        display: none;
+      }
 
-  <div class="wrapper">
-    <span class="drag-hint">Drag me near the edges!</span>
-    <button id="trigger-btn" class="kebab-button" popovertarget="dropdown-menu" aria-label="Open context menu">
-      &#8942;
-    </button>
-  </div>
+      .has-submenu > .menu-item::after {
+        display: block;
+      }
+      .submenu-trigger {
+        anchor-name: --submenu-trigger;
+      }
+    </style>
+  </head>
 
-  <!-- The actual dropdown menu (Popover API) -->
-  <div id="dropdown-menu" class="context-menu" popover="auto">
-    <button class="menu-item" type="button">Edit</button>
-    <button class="menu-item" type="button">Duplicate</button>
-    <button class="menu-item" type="button" style="color: #cf222e;">Delete</button>
-  </div>
+  <body>
+    <div class="wrapper">
+      <span class="drag-hint">Drag me near the edges!</span>
+      <button
+        id="trigger-btn"
+        class="kebab-button"
+        popovertarget="dropdown-menu"
+        aria-label="Open context menu"
+      >
+        &#8942;
+      </button>
+    </div>
 
-  <script>
-    const wrapper = document.querySelector('.wrapper');
-    let isDragging = false;
-    let startX, startY, startLeft, startTop;
+    <!-- The actual dropdown menu (Popover API) -->
+    <div id="dropdown-menu" class="menu" popover="auto">
+      <button class="menu-item" type="button">Edit</button>
+      <div class="has-submenu">
+        <button
+          class="menu-item submenu-trigger"
+          type="button"
+          popovertarget="submenu-options"
+        >
+          Share
+        </button>
+        <div id="submenu-options" class="submenu" popover="auto">
+          <button class="menu-item" type="button">Copy Link</button>
+          <button class="menu-item" type="button">Email</button>
+        </div>
+      </div>
+      <button class="menu-item" type="button">Duplicate</button>
+      <button class="menu-item" type="button" style="color: #cf222e">
+        Delete
+      </button>
+    </div>
 
-    wrapper.addEventListener('pointerdown', (e) => {
-      // Don't start dragging if we're clicking the button
-      if (e.target.closest('.kebab-button')) return;
-      
-      isDragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
-      
-      const rect = wrapper.getBoundingClientRect();
-      startLeft = rect.left;
-      startTop = rect.top;
-      
-      // Remove transform so we can freely position with pixel left/top
-      wrapper.style.transform = 'none';
-      wrapper.style.left = `${startLeft}px`;
-      wrapper.style.top = `${startTop}px`;
-      
-      wrapper.setPointerCapture(e.pointerId);
-    });
+    <script>
+      const wrapper = document.querySelector(".wrapper");
+      let isDragging = false;
+      let startX, startY, startLeft, startTop;
 
-    wrapper.addEventListener('pointermove', (e) => {
-      if (!isDragging) return;
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
-      wrapper.style.left = `${startLeft + dx}px`;
-      wrapper.style.top = `${startTop + dy}px`;
-    });
+      wrapper.addEventListener("pointerdown", (e) => {
+        // Don't start dragging if we're clicking the button
+        if (e.target.closest(".kebab-button")) return;
 
-    wrapper.addEventListener('pointerup', (e) => {
-      if (!isDragging) return;
-      isDragging = false;
-      wrapper.releasePointerCapture(e.pointerId);
-    });
-  </script>
-</body>
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
 
+        const rect = wrapper.getBoundingClientRect();
+        startLeft = rect.left;
+        startTop = rect.top;
+
+        // Remove transform so we can freely position with pixel left/top
+        wrapper.style.transform = "none";
+        wrapper.style.left = `${startLeft}px`;
+        wrapper.style.top = `${startTop}px`;
+
+        wrapper.setPointerCapture(e.pointerId);
+      });
+
+      wrapper.addEventListener("pointermove", (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        wrapper.style.left = `${startLeft + dx}px`;
+        wrapper.style.top = `${startTop + dy}px`;
+      });
+
+      wrapper.addEventListener("pointerup", (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        wrapper.releasePointerCapture(e.pointerId);
+      });
+    </script>
+  </body>
 </html>
