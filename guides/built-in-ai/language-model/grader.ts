@@ -10,11 +10,6 @@ if (!targetFile) {
 }
 const filePath = path.resolve(targetFile);
 
-// The Prompt API requires a locally downloaded Gemini Nano model and cannot be
-// provisioned in CI. LanguageModel (and the legacy window.ai) are replaced with
-// in-process stubs so behaviour can be verified without a real model. If you
-// want to run against a real Chrome with the model present, swap the stubs for
-// a simple pass-through that delegates to the real window.LanguageModel.
 test.describe('Prompt API Compliance', () => {
 
   test.beforeEach(async ({ page }) => {
@@ -76,43 +71,6 @@ test.describe('Prompt API Compliance', () => {
         };
       };
 
-      (window as any).LanguageModel = {
-        availability: async () => {
-          spy.availabilityCalled = true;
-          return 'available';
-        },
-        create: async (options: any) => {
-          spy.languageModelCalled = true;
-          spy.createOptions.push(options);
-          return createSession(true);
-        }
-      };
-
-      (window as any).ai = {
-        languageModel: {
-          capabilities: async () => {
-            spy.aiCalled = true;
-            spy.capabilitiesCalled = true;
-            return {};
-          },
-          create: async (options: any) => {
-            spy.aiCalled = true;
-            spy.createOptions.push(options);
-            return {
-              prompt: async () => 'legacy',
-              promptStreaming: () => {
-                const s = { onmessage: null };
-                spy.legacyStream = s;
-                return s;
-              },
-              get maxTokens() {
-                return 1000;
-              }
-            };
-          }
-        }
-      };
-
       const originalSet = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML')!.set!;
       Object.defineProperty(Element.prototype, 'innerHTML', {
         set: function(val) {
@@ -124,10 +82,7 @@ test.describe('Prompt API Compliance', () => {
 
     await page.goto(`file://${filePath}`);
     await page.waitForLoadState('networkidle');
-    // Allow async top-level script work (availability check, session creation)
-    // to complete before querying the spy or clicking buttons.
-    await page.waitForTimeout(500);
-
+    
     const buttons = await page.locator('button').all();
     for (const btn of buttons) {
       try {
@@ -226,8 +181,7 @@ test.describe('Prompt API - Unavailability Handling', () => {
       };
     });
     await page.goto(`file://${filePath}`);
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');    
     const createCalled = await page.evaluate(() => (window as any).unavailSpy.createCalled);
     expect(createCalled, 'LanguageModel.create() must not be called when availability is "unavailable"').toBe(false);
   });

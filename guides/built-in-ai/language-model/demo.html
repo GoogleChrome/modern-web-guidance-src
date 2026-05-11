@@ -79,7 +79,7 @@
       try {
         const stream = session.promptStreaming(promptInput.value);
         for await (const chunk of stream) {
-          promptOutput.textContent = chunk;
+          promptOutput.append(chunk)
         }
       } finally {
         promptBtn.disabled = false;
