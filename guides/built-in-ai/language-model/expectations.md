@@ -6,7 +6,7 @@
 1. `LanguageModel.create()` should register a `downloadprogress` listener via the `monitor` option to handle the case where the model needs to be downloaded.
 1. `session.promptStreaming()` should be used when a streaming, incremental response is needed.
 1. `session.prompt()` should be used for one-shot responses.
-1. Output from `session.prompt()` or `session.promptStreaming()` must never be set via `innerHTML`. Use `textContent` or equivalent safe DOM APIs to prevent XSS from untrusted model output.
+1. Output from `session.prompt()` or `session.promptStreaming()` must never be set via `innerHTML`. Instead, use an HTML sanitizer like the native Sanitizer API or the DOMPurify library, or `textContent` or equivalent safe DOM APIs to prevent XSS from untrusted model output.
 1. For structured output, the `responseConstraint` option should be passed a JSON Schema object to `session.prompt()`.
 1. The result of `session.prompt()` with `responseConstraint` should be parsed with `JSON.parse()`.
 1. A separate `JSON.stringify()` call to convert the schema to a string is not needed — the schema is passed as a plain object.

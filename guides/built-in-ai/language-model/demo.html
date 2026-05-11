@@ -10,6 +10,11 @@
   <h1>Language Model (Prompt API)</h1>
 
   <section>
+    <h2>Download Progress</h2>
+    <p id="download-progress">Checking…</p>
+  </section>
+
+  <section>
     <h2>Availability</h2>
     <p id="availability">Checking…</p>
   </section>
@@ -38,6 +43,7 @@
 
   <script type="module">
     const availabilityEl = document.getElementById('availability');
+    const downloadProgressEl = document.getElementById('download-progress');
     const promptInput = document.getElementById('prompt-input');
     const promptBtn = document.getElementById('prompt-btn');
     const promptOutput = document.getElementById('prompt-output');
@@ -62,7 +68,7 @@
     const session = await LanguageModel.create({
       monitor(m) {
         m.addEventListener('downloadprogress', (e) => {
-          availabilityEl.textContent = `Downloading model: ${Math.round(e.loaded * 100)}%`;
+          downloadProgressEl.textContent = `Downloading model: ${Math.round(e.loaded * 100)}%`;
         });
       },
     });
