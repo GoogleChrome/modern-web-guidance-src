@@ -15,6 +15,9 @@ import { replaceMacros } from "../lib/macros.ts";
 const SERVING_DIR = path.join(rootDir, "serving");
 const ROOT_DIST_DIR = path.join(rootDir, "dist");
 
+const VERBOSE = process.env.VERBOSE === '1';
+const log = (msg: string) => VERBOSE && console.log(msg);
+
 interface BuildResult {
   featuresCount: number;
   useCasesCount: number;
@@ -127,125 +130,119 @@ async function main(opts: {publishRoot: string, version?: string, npx?: boolean}
   await acquireLock(lockFilePath);
 
   try {
-    console.log("Ensuring dist/ output directory exists...");
+    log("Ensuring dist/ output directory exists...");
     fs.mkdirSync(publishRoot, { recursive: true });
 
-  console.log("Generating guides and updating vector store...");
-  try {
-    console.time("⏳ processGuides");
-    await processGuides({
-      outputDir: DIST_DIR,
-      target: npx ? 'skills-cli-npx' : 'skills-cli',
-    });
-    console.timeEnd("⏳ processGuides");
-  } catch (error) {
-    console.error("Failed to build guides:", error);
-    process.exit(1);
-  }
-
-  // Placing modern-web.mjs inside the skill directory instead of bin/ for self-containment!
-
-  console.log("Copying installation manifests and metadata for AI tools...");
-  fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
-
-  if (version) {
-    console.log(`Updating version to ${version} in distribution files...`);
-    updateVersionsInDir(publishRoot, version);
-  }
-
-  console.log("Copying TFJS model files...");
-  const tfjsModelDir = path.join(SERVING_DIR, "lib/tfjs_model_minilm");
-  const destTfjsModelDir = path.join(DIST_DIR, "tfjs_model_minilm");
-  if (fs.existsSync(tfjsModelDir)) {
-    fs.cpSync(tfjsModelDir, destTfjsModelDir, {
-      recursive: true,
-      filter: (src) => {
-        const stat = fs.statSync(src);
-        if (stat.isDirectory()) return true;
-        const basename = path.basename(src);
-        return basename === "model.json" || basename.startsWith("group1-shard");
-      }
-    });
-    console.log(`Copied ${tfjsModelDir} to ${destTfjsModelDir}`);
-  }
-
-  try {
-    console.log("Bundling search.mjs...");
-    // To analyze bundle size breakdown, assign build()s return to `result` and use `esbuild.analyzeMetafile(result.metafile)`
-    const resultSearch = await esbuild.build({
-      entryPoints: [path.join(SERVING_DIR, "lib/search.ts")],
-      bundle: true,
-      platform: "node",
-      format: "esm",
-      outfile: path.join(publishRoot, "skills/modern-web/search.mjs"),
-      banner: {
-        js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
-      },
-      external: ["sharp", "iconv-lite", "@img/colour", "tr46", "whatwg-url", "webidl-conversions"],
-      sourcemap: true,
-      loader: { ".node": "file" },
-      metafile: true,
-      minify: true,
-      alias: {
-        // Force transformers to use the ESM entry point to avoid CommonJS issues in the bundle
-        "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
-        // We leverage Transformers.js only for tokenization. But it is a large dependency and
-        // tries to do a lot more, including loading native dependencies (onnxruntime-node) that
-        // we have no use for. We use this dummy shim to ensure we can use the library without
-        // pulling in native binaries.
-        "onnxruntime-node": path.resolve(SERVING_DIR, "lib/dummy-onnx.ts"),
-      },
-      plugins: [{
-        // TFJS deep imports fail in pure Node ESM because they lack extensions.
-        // In raw Node runs, tfjs-kernels.ts uses require() to load the CommonJS version (all kernels).
-        // For the production bundle, we use this plugin to swap it with tfjs-kernels-precise.ts
-        // which only registers the specific kernels we need, keeping the bundle small.
-        name: 'use-precise-kernels',
-        setup(build) {
-          build.onResolve({ filter: /tfjs-kernels\.ts$/ }, _args => {
-            return { path: path.resolve(SERVING_DIR, "lib/tfjs-kernels-precise.ts") }
-          })
-        },
-      }],
-    });
-    fs.writeFileSync(path.join(publishRoot, "search.meta.json"), JSON.stringify(resultSearch.metafile, null, 2));
-    console.log(`Generated metafile for search.mjs at ${path.join(publishRoot, "search.meta.json")}`);
-
-    console.log("Bundling modern-web.mjs...");
-    const resultModernWeb = await esbuild.build({
-      entryPoints: [path.join(SERVING_DIR, "bin/modern-web.ts")],
-      bundle: true,
-      platform: "node",
-      format: "esm",
-      outfile: path.join(publishRoot, "skills/modern-web/modern-web.mjs"),
-      plugins: [{
-        name: 'rewrite-search',
-        setup(build) {
-          build.onResolve({ filter: /search\.ts$/ }, _args => {
-            return { path: './search.mjs', external: true }
-          })
-        },
-      }],
-      loader: { ".node": "file" },
-      metafile: true,
-    });
-
-    console.log("Generating THIRD_PARTY_NOTICES...");
-    generateThirdPartyNotices(
-      [resultSearch.metafile, resultModernWeb.metafile],
-      path.join(publishRoot, "THIRD_PARTY_NOTICES")
-    );
-
-    const metaFile = path.join(publishRoot, "search.meta.json");
-    if (fs.existsSync(metaFile)) {
-      fs.unlinkSync(metaFile);
-      console.log(`Removed intermediate metafile ${metaFile}`);
+    log("Generating guides and updating vector store...");
+    let skipped = false;
+    try {
+      if (VERBOSE) console.time("⏳ processGuides");
+      skipped = await processGuides({
+        outputDir: DIST_DIR,
+        target: npx ? 'skills-cli-npx' : 'skills-cli',
+      });
+      if (VERBOSE) console.timeEnd("⏳ processGuides");
+    } catch (error) {
+      console.error("Failed to build guides:", error);
+      process.exit(1);
     }
 
-  } catch (error) {
-    console.error("Failed to bundle with esbuild:", error);
-    process.exit(1);
-  }
+    // Short-circuit if nothing changed and esbuild output already exists!
+    if (skipped && fs.existsSync(path.join(DIST_DIR, "modern-web.mjs"))) {
+      return { featuresCount: 0, useCasesCount: 0, skillsCount: 0, skillNames: [] };
+    }
+
+    log("Copying installation manifests and metadata for AI tools...");
+    fs.cpSync(path.join(SERVING_DIR, "skills-cli/template"), publishRoot, { recursive: true });
+
+    if (version) {
+      log(`Updating version to ${version} in distribution files...`);
+      updateVersionsInDir(publishRoot, version);
+    }
+
+    log("Copying TFJS model files...");
+    const tfjsModelDir = path.join(SERVING_DIR, "lib/tfjs_model_minilm");
+    const destTfjsModelDir = path.join(DIST_DIR, "tfjs_model_minilm");
+    if (fs.existsSync(tfjsModelDir)) {
+      fs.cpSync(tfjsModelDir, destTfjsModelDir, {
+        recursive: true,
+        filter: (src) => {
+          const stat = fs.statSync(src);
+          if (stat.isDirectory()) return true;
+          const basename = path.basename(src);
+          return basename === "model.json" || basename.startsWith("group1-shard");
+        }
+      });
+      log(`Copied ${tfjsModelDir} to ${destTfjsModelDir}`);
+    }
+
+    try {
+      log("Bundling search.mjs...");
+      const resultSearch = await esbuild.build({
+        entryPoints: [path.join(SERVING_DIR, "lib/search.ts")],
+        bundle: true,
+        platform: "node",
+        format: "esm",
+        outfile: path.join(publishRoot, "skills/modern-web/search.mjs"),
+        banner: {
+          js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
+        },
+        external: ["sharp", "iconv-lite", "@img/colour", "tr46", "whatwg-url", "webidl-conversions"],
+        sourcemap: true,
+        loader: { ".node": "file" },
+        metafile: true,
+        minify: true,
+        alias: {
+          "@huggingface/transformers": path.resolve(SERVING_DIR, "../node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/src/tokenizers.js"),
+          "onnxruntime-node": path.resolve(SERVING_DIR, "lib/dummy-onnx.ts"),
+        },
+        plugins: [{
+          name: 'use-precise-kernels',
+          setup(build) {
+            build.onResolve({ filter: /tfjs-kernels\.ts$/ }, _args => {
+              return { path: path.resolve(SERVING_DIR, "lib/tfjs-kernels-precise.ts") }
+            })
+          },
+        }],
+      });
+      fs.writeFileSync(path.join(publishRoot, "search.meta.json"), JSON.stringify(resultSearch.metafile, null, 2));
+      log(`Generated metafile for search.mjs at ${path.join(publishRoot, "search.meta.json")}`);
+
+      log("Bundling modern-web.mjs...");
+      const resultModernWeb = await esbuild.build({
+        entryPoints: [path.join(SERVING_DIR, "bin/modern-web.ts")],
+        bundle: true,
+        platform: "node",
+        format: "esm",
+        outfile: path.join(publishRoot, "skills/modern-web/modern-web.mjs"),
+        plugins: [{
+          name: 'rewrite-search',
+          setup(build) {
+            build.onResolve({ filter: /search\.ts$/ }, _args => {
+              return { path: './search.mjs', external: true }
+            })
+          },
+        }],
+        loader: { ".node": "file" },
+        metafile: true,
+      });
+
+      log("Generating THIRD_PARTY_NOTICES...");
+      generateThirdPartyNotices(
+        [resultSearch.metafile, resultModernWeb.metafile],
+        path.join(publishRoot, "THIRD_PARTY_NOTICES")
+      );
+
+      const metaFile = path.join(publishRoot, "search.meta.json");
+      if (fs.existsSync(metaFile)) {
+        fs.unlinkSync(metaFile);
+        log(`Removed intermediate metafile ${metaFile}`);
+      }
+
+    } catch (error) {
+      console.error("Failed to bundle with esbuild:", error);
+      process.exit(1);
+    }
 
 
 
