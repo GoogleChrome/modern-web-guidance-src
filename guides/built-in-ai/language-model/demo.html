@@ -67,17 +67,24 @@
       },
     });
 
-    availabilityEl.textContent = `Status: ready (context ${session.contextUsage}/${session.contextWindow} tokens used)`;
+    function updateTokenDisplay() {
+      availabilityEl.textContent = `Status: ready (context ${session.contextUsage}/${session.contextWindow} tokens used)`;
+    }
+    updateTokenDisplay();
 
     // Streaming prompt
     promptBtn.addEventListener('click', async () => {
       promptOutput.textContent = '';
       promptBtn.disabled = true;
-      const stream = session.promptStreaming(promptInput.value);
-      for await (const chunk of stream) {
-        promptOutput.textContent = chunk;
+      try {
+        const stream = session.promptStreaming(promptInput.value);
+        for await (const chunk of stream) {
+          promptOutput.textContent = chunk;
+        }
+      } finally {
+        promptBtn.disabled = false;
+        updateTokenDisplay();
       }
-      promptBtn.disabled = false;
     });
 
     // Structured output: sentiment analysis
@@ -94,39 +101,45 @@
     sentimentBtn.addEventListener('click', async () => {
       sentimentOutput.textContent = 'Analyzing…';
       sentimentBtn.disabled = true;
-      const result = await session.prompt(
-        `Rate this feedback: "${sentimentInput.value}"`,
-        { responseConstraint: sentimentSchema },
-      );
-      sentimentOutput.textContent = JSON.stringify(JSON.parse(result), null, 2);
-      sentimentBtn.disabled = false;
+      try {
+        const result = await session.prompt(
+          `Rate this feedback: "${sentimentInput.value}"`,
+          { responseConstraint: sentimentSchema },
+        );
+        sentimentOutput.textContent = JSON.stringify(JSON.parse(result), null, 2);
+      } finally {
+        sentimentBtn.disabled = false;
+        updateTokenDisplay();
+      }
     });
 
     // Session cloning: two personas share the same base context
     cloneBtn.addEventListener('click', async () => {
       cloneOutput.textContent = 'Asking both clones…';
       cloneBtn.disabled = true;
+      try {
+        const base = await LanguageModel.create({
+          initialPrompts: [
+            { role: 'system', content: 'You are a helpful assistant. Keep answers to one sentence.' },
+          ],
+        });
 
-      const base = await LanguageModel.create({
-        initialPrompts: [
-          { role: 'system', content: 'You are a helpful assistant. Keep answers to one sentence.' },
-        ],
-      });
+        const optimist = await base.clone();
+        const pessimist = await base.clone();
+        base.destroy();
 
-      const optimist = await base.clone();
-      const pessimist = await base.clone();
-      base.destroy();
+        const [a, b] = await Promise.all([
+          optimist.prompt('What do you think about AI?'),
+          pessimist.prompt('What do you think about AI? Answer as a pessimist.'),
+        ]);
 
-      const [a, b] = await Promise.all([
-        optimist.prompt('What do you think about AI?'),
-        pessimist.prompt('What do you think about AI? Answer as a pessimist.'),
-      ]);
+        optimist.destroy();
+        pessimist.destroy();
 
-      optimist.destroy();
-      pessimist.destroy();
-
-      cloneOutput.textContent = `Optimist: ${a}\n\nPessimist: ${b}`;
-      cloneBtn.disabled = false;
+        cloneOutput.textContent = `Optimist: ${a}\n\nPessimist: ${b}`;
+      } finally {
+        cloneBtn.disabled = false;
+      }
     });
   </script>
 </body>

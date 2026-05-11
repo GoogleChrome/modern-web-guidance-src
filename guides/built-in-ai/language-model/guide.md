@@ -1,5 +1,6 @@
 ---
 name: language-model
+description: Run on-device natural language inference in the browser using the Prompt API, with streaming output, structured JSON responses, and multi-turn session management.
 web-feature-ids:
   - languagemodel
 sources:
@@ -31,9 +32,11 @@ Check model availability before triggering a download:
 ```javascript
 const availability = await LanguageModel.availability();
 
+// Do not call create() when unavailable — the model cannot run on this device.
 if (availability !== 'unavailable') {
   const session = await LanguageModel.create({
     monitor(m) {
+      // Inform the user while the model downloads so the UI doesn't appear frozen.
       m.addEventListener('downloadprogress', (e) => {
         console.log(`Downloaded ${e.loaded * 100}%`);
       });
@@ -44,22 +47,34 @@ if (availability !== 'unavailable') {
 
 ## 2. Core Prompting Capabilities
 
+Session examples in this section omit `session.destroy()` for brevity. Always
+call `session.destroy()` when a session is no longer needed to free device
+memory (see Section 5).
+
 ### Basic and Streamed Output
 
 For short responses, use `prompt()`. For longer content, use `promptStreaming()`
 to provide a more responsive UI.
 
+**MANDATORY**: Never assign model output to `innerHTML`. Model output is
+untrusted and can contain injected markup. Always use `textContent` or a
+sanitizer.
+
 ```javascript
 const session = await LanguageModel.create();
 
-// Request-based output
+// prompt() accumulates the full response before resolving — use for short, one-shot output.
 const result = await session.prompt('Write a haiku about coding.');
-console.log(result);
+// textContent, not innerHTML — model output is untrusted and must not be parsed as markup.
+outputEl.textContent = result;
 
-// Streamed output
+// promptStreaming() yields independent chunks that must be concatenated;
+// use for longer content so each chunk can be rendered progressively.
 const stream = session.promptStreaming('Write a long story about a robot.');
+let text = '';
 for await (const chunk of stream) {
-  console.log(chunk);
+  text += chunk;
+  outputEl.textContent = text;
 }
 ```
 
@@ -70,6 +85,7 @@ frames).
 
 ```javascript
 const session = await LanguageModel.create({
+  // Declaring expected input types lets the browser optimize model loading.
   expectedInputs: [{ type: 'text' }, { type: 'image' }],
   expectedOutputs: [{ type: 'text' }],
 });
@@ -107,6 +123,8 @@ const mainSession = await LanguageModel.create({
 
 const branchA = await mainSession.clone();
 const branchB = await mainSession.clone();
+// Destroy the base after cloning — the clones own their own context from here.
+mainSession.destroy();
 ```
 
 ### Restoring Past Sessions
@@ -114,8 +132,13 @@ const branchB = await mainSession.clone();
 While a native "restore" feature is in development, you can recreate a session
 by feeding previous history into `initialPrompts`.
 
+**Note**: `localStorage` is unencrypted and persistent. Stored conversation
+history may include user PII — consider the privacy implications before persisting
+chat history.
+
 ```javascript
-const history = JSON.parse(localStorage.getItem('chat_history'));
+// || '[]' ensures JSON.parse never receives null when the key doesn't exist yet.
+const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
 const session = await LanguageModel.create({
   initialPrompts: history, // Array of {role, content} objects
 });
@@ -130,6 +153,7 @@ output is valid JSON that can be parsed immediately.
 ### Example: Sentiment Classification
 
 ```javascript
+// Pass the schema as a plain object — do not JSON.stringify() it first.
 const schema = {
   type: 'object',
   properties: {
@@ -153,19 +177,23 @@ console.log(data.rating); // 5
 You can guide the model further by prefilling the assistant's response using
 `prefix: true`.
 
-````javascript
+```javascript
 const character = await session.prompt([
   { role: 'user', content: 'Create a character sheet' },
   { role: 'assistant', content: '```json\n', prefix: true },
 ]);
-````
+```
 
 ## 5. Best Practices and Safety
 
 - **Resource Cleanup**: Always call `session.destroy()` when a conversation is
   finished to free up memory.
+- **Output Safety**: Model output is untrusted. Always write results to
+  `textContent`, not `innerHTML`, to prevent XSS injection from malicious model
+  output.
 - **Aborting Tasks**: Use `AbortController` to allow users to stop long-running
-  generations.
+  generations. Pass the `signal` to `prompt()` or `promptStreaming()`, not to
+  `LanguageModel.create()`.
 - **Security**: Use Permission Policies to control access in iframes:
   `<iframe src="..." allow="language-model"></iframe>`.
 - **Design**: Review the
