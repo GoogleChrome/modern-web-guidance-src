@@ -45,7 +45,7 @@ let IS_NO_CHUNKING = false;
 let TARGET: BuildTarget = 'local-dev';
 
 
-export async function processGuides(opts: BuildOptions): Promise<boolean> {
+export async function processGuides(opts: BuildOptions) {
   const { outputDir, target, force, targetGuidePath, modelName, noChunking } = opts;
 
   TARGET = target || 'local-dev';
@@ -114,7 +114,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     // Cache hit for ${TARGET}. Restoring from ${path.relative(WORKSPACE_ROOT, CACHE_DIR)}...
     restoreToTarget();
     console.log("👌");
-    return true;
+    return;
   }
 
   // Miss: clean cache dir
@@ -183,7 +183,6 @@ export const USE_CASES: UseCase[] = ${JSON.stringify(useCases, null, 2)};
   fs.writeFileSync(CACHED_MANIFEST, JSON.stringify({ hash: currentHash }, null, 2));
 
   restoreToTarget();
-  return false;
 }
 
 export function chunkMarkdown(markdown: string): string[] {
